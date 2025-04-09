@@ -1,3 +1,4 @@
+import { EPlexDataType, PlexMetadata } from '@maintainerr/contracts';
 import {
   Body,
   Controller,
@@ -11,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { BasicResponseDto } from './dto/basic-response.dto';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
-import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
   CreateUpdateCollection,
   PlexCollection,
@@ -52,7 +52,7 @@ export class PlexApiController {
     return this.plexApiService.searchLibraryContents(id, query, type);
   }
   @Get('meta/:id')
-  getMetadata(@Param('id') id: string) {
+  getMetadata(@Param('id') id: string): Promise<PlexMetadata> {
     return this.plexApiService.getMetadata(id);
   }
   @Get('meta/:id/seen')

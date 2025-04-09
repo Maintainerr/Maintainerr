@@ -1,5 +1,12 @@
-import { PlexCollection, PlexPlaylist } from './collection.interface';
-import { Media } from './media.interface';
+import {
+  Media,
+  PlexActor,
+  PlexGenre,
+  PlexMetadata,
+  PlexPlaylist,
+  PlexRating,
+} from '@maintainerr/contracts';
+import { PlexCollection } from './collection.interface';
 
 export interface PlexLibraryItem {
   ratingKey: string;
@@ -45,30 +52,11 @@ export interface PlexLibraryResponse {
     size: number;
     totalSize?: number;
     Metadata?:
-      | PlexLibraryItem[]
+      | PlexMetadata[]
       | PlexCollection[]
       | PlexCollection
       | PlexPlaylist[];
   };
-}
-export interface PlexGenre {
-  id: number;
-  filter: string;
-  tag: string;
-}
-
-export interface PlexActor {
-  id: number;
-  filter: string;
-  tag: string; // contains name
-  role: string;
-  thumb: string;
-}
-
-export interface PlexRating {
-  image: string;
-  value: number;
-  type: 'audience' | 'critic';
 }
 
 export interface PlexLibrary {
@@ -122,7 +110,7 @@ export interface PlexUserAccount {
   thumb: string;
 }
 
-export interface PlexSeenBy extends PlexLibraryItem {
+export interface PlexSeenBy {
   historyKey: string;
   key: string;
   ratingKey: string;
@@ -132,4 +120,11 @@ export interface PlexSeenBy extends PlexLibraryItem {
   viewedAt: number;
   accountID: number;
   deviceID: number;
+  parentRatingKey?: string;
+  grandparentRatingKey?: string;
+  parentTitle?: string;
+  type: 'movie' | 'episode';
+  librarySectionID: number;
+  index?: number;
+  parentIndex?: number;
 }

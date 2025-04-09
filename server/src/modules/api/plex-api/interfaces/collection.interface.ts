@@ -27,22 +27,3 @@ export interface CreateUpdateCollection {
   summary?: string;
   child?: string;
 }
-
-export interface PlexPlaylist {
-  ratingKey: string;
-  key: string;
-  guid: string;
-  type: string;
-  title: string;
-  summary: string;
-  smart: boolean;
-  playlistType: string;
-  composite: string;
-  viewCount: number;
-  lastViewedAt: number;
-  duration: number;
-  leafCount: number;
-  addedAt: number;
-  updatedAt: number;
-  itemCount: number;
-}

@@ -54,7 +54,9 @@ describe('SonarrActionHandler', () => {
         tmdbId: 1,
       });
 
-      plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+      (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+        collectionMedia.plexData,
+      );
 
       const mockedSonarrApi = mockSonarrApi();
       jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId');
@@ -92,7 +94,9 @@ describe('SonarrActionHandler', () => {
         tmdbId: 1,
       });
 
-      plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+      (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+        collectionMedia.plexData,
+      );
 
       const mockedSonarrApi = mockSonarrApi();
       jest
@@ -174,7 +178,9 @@ describe('SonarrActionHandler', () => {
         tmdbId: 1,
       });
 
-      plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+      (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+        collectionMedia.plexData,
+      );
 
       const mockedSonarrApi = mockSonarrApi();
       jest
@@ -202,7 +208,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -237,7 +245,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -272,7 +282,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -306,7 +318,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -341,7 +355,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -376,7 +392,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -416,7 +434,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -443,7 +463,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -470,7 +492,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -510,7 +534,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -546,7 +572,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 
@@ -573,7 +601,9 @@ describe('SonarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    (plexApi.getMetadata as jest.Mock).mockResolvedValue(
+      collectionMedia.plexData,
+    );
 
     const series = createSonarrSeries();
 

@@ -26,13 +26,16 @@ export class MediaIdFinder {
     if (!tmdbShow?.external_ids?.tvdb_id) {
       let plexData = await this.plexApi.getMetadata(plexId.toString());
       // fetch correct record for seasons & episodes
-      plexData = plexData.grandparentRatingKey
-        ? await this.plexApi.getMetadata(
-            plexData.grandparentRatingKey.toString(),
-          )
-        : plexData.parentRatingKey
-          ? await this.plexApi.getMetadata(plexData.parentRatingKey.toString())
-          : plexData;
+      plexData =
+        plexData.type === 'episode'
+          ? await this.plexApi.getMetadata(
+              plexData.grandparentRatingKey.toString(),
+            )
+          : plexData.type === 'season'
+            ? await this.plexApi.getMetadata(
+                plexData.parentRatingKey.toString(),
+              )
+            : plexData;
 
       const tvdbidPlex = plexData?.Guid?.find((el) => el.id.includes('tvdb'));
       if (tvdbidPlex) {

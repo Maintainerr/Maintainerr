@@ -1,4 +1,12 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import {
+  EPlexDataType,
+  PlexEpisode,
+  PlexMetadata,
+  PlexMovie,
+  PlexSeason,
+  PlexShow,
+} from '@maintainerr/contracts';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import cacheManager from '../../api/lib/cache';
 import PlexCommunityApi, {
@@ -17,7 +25,6 @@ import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
 import { BasicResponseDto } from './dto/basic-response.dto';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
-import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
   CreateUpdateCollection,
   PlexCollection,
@@ -34,10 +41,7 @@ import {
   PlexUserAccount,
   SimplePlexUser,
 } from './interfaces/library.interfaces';
-import {
-  PlexMetadata,
-  PlexMetadataResponse,
-} from './interfaces/media.interface';
+import { PlexMetadataResponse } from './interfaces/media.interface';
 import {
   PlexAccountsResponse,
   PlexDevice,
@@ -139,7 +143,7 @@ export class PlexApiService {
       const results = response.MediaContainer.Metadata
         ? Promise.all(
             response.MediaContainer.Metadata.map(async (el: PlexMetadata) => {
-              return el.grandparentRatingKey
+              return el.type == 'episode'
                 ? await this.getMetadata(el.grandparentRatingKey.toString())
                 : el;
             }),
@@ -291,13 +295,21 @@ export class PlexApiService {
     }
   }
 
+  public async getMetadata(key: string, unused?: string): Promise<PlexMetadata>;
+  public async getMetadata(type: 'movie', key: string): Promise<PlexMovie>;
+  public async getMetadata(type: 'show', key: string): Promise<PlexShow>;
+  public async getMetadata(type: 'season', key: string): Promise<PlexSeason>;
+  public async getMetadata(type: 'episode', key: string): Promise<PlexEpisode>;
   public async getMetadata(
-    key: string,
+    type: PlexMetadata['type'] | string,
+    key?: string,
     options: { includeChildren?: boolean } = {},
     useCache: boolean = true,
-  ): Promise<PlexMetadata> {
+  ) {
     try {
-      const response = await this.plexClient.query<PlexMetadataResponse>(
+      const response = await this.plexClient.query<
+        PlexMetadataResponse<PlexMetadata>
+      >(
         `/library/metadata/${key}${
           options.includeChildren
             ? '?includeChildren=1&includeExternalMedia=1&asyncAugmentMetadata=1&asyncCheckFiles=1&asyncRefreshAnalysis=1'
@@ -306,7 +318,14 @@ export class PlexApiService {
         useCache,
       );
       if (response) {
-        return response.MediaContainer.Metadata[0];
+        if (!['movie', 'show', 'season', 'episode'].includes(type)) {
+          return response.MediaContainer.Metadata[0];
+        } else if (response.MediaContainer.Metadata[0].type !== type) {
+          throw new Error(
+            `Returned type ${response.MediaContainer.Metadata[0].type} does not match requested type ${type}`,
+          );
+        }
+        return response.MediaContainer.Metadata[0] as PlexMetadata;
       } else {
         return undefined;
       }

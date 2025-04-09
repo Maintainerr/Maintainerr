@@ -30,13 +30,16 @@ export class SonarrActionHandler {
       collection.sonarrSettingsId,
     );
 
-    let plexData: PlexMetadata = undefined;
+    let plexData: PlexMetadata | undefined = undefined;
 
     // get the tvdb id
     let tvdbId = undefined;
     switch (collection.type) {
       case EPlexDataType.SEASONS:
-        plexData = await this.plexApi.getMetadata(media.plexId.toString());
+        plexData = await this.plexApi.getMetadata(
+          'season',
+          media.plexId.toString(),
+        );
         tvdbId = await this.mediaIdFinder.findTvdbId(
           plexData.parentRatingKey,
           media.tmdbId,
@@ -50,7 +53,10 @@ export class SonarrActionHandler {
             )?.id;
         break;
       case EPlexDataType.EPISODES:
-        plexData = await this.plexApi.getMetadata(media.plexId.toString());
+        plexData = await this.plexApi.getMetadata(
+          'episode',
+          media.plexId.toString(),
+        );
         tvdbId = await this.mediaIdFinder.findTvdbId(
           plexData.grandparentRatingKey,
           media.tmdbId,
@@ -75,6 +81,41 @@ export class SonarrActionHandler {
                 media.plexId.toString(),
               )
             )?.id;
+        break;
+    }
+
+    switch (collection.type) {
+      case EPlexDataType.EPISODES:
+        if (plexData.type !== 'episode') {
+          this.logger.warn(
+            `Plex data type ${plexData.type} does not match collection type ${collection.type}. No action was taken.`,
+          );
+          return;
+        }
+        break;
+      case EPlexDataType.SEASONS:
+        if (plexData.type !== 'season') {
+          this.logger.warn(
+            `Plex data type ${plexData.type} does not match collection type ${collection.type}. No action was taken.`,
+          );
+          return;
+        }
+        break;
+      case EPlexDataType.SHOWS:
+        if (plexData.type !== 'show') {
+          this.logger.warn(
+            `Plex data type ${plexData.type} does not match collection type ${collection.type}. No action was taken.`,
+          );
+          return;
+        }
+        break;
+      case EPlexDataType.MOVIES:
+        if (plexData.type !== 'movie') {
+          this.logger.warn(
+            `Plex data type ${plexData.type} does not match collection type ${collection.type}. No action was taken.`,
+          );
+          return;
+        }
         break;
     }
 
@@ -103,8 +144,8 @@ export class SonarrActionHandler {
 
     switch (collection.arrAction) {
       case ServarrAction.DELETE:
-        switch (collection.type) {
-          case EPlexDataType.SEASONS:
+        switch (plexData.type) {
+          case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               plexData.index,
@@ -114,7 +155,7 @@ export class SonarrActionHandler {
               `[Sonarr] Removed season ${plexData.index} from show '${sonarrMedia.title}'`,
             );
             break;
-          case EPlexDataType.EPISODES:
+          case 'episode':
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               plexData.parentIndex,
@@ -136,8 +177,8 @@ export class SonarrActionHandler {
         }
         break;
       case ServarrAction.UNMONITOR:
-        switch (collection.type) {
-          case EPlexDataType.SEASONS:
+        switch (plexData.type) {
+          case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               plexData.index,
@@ -147,7 +188,7 @@ export class SonarrActionHandler {
               `[Sonarr] Unmonitored season ${plexData.index} from show '${sonarrMedia.title}'`,
             );
             break;
-          case EPlexDataType.EPISODES:
+          case 'episode':
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               plexData.parentIndex,
@@ -178,8 +219,8 @@ export class SonarrActionHandler {
         }
         break;
       case ServarrAction.UNMONITOR_DELETE_ALL:
-        switch (collection.type) {
-          case EPlexDataType.SHOWS:
+        switch (plexData.type) {
+          case 'show':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'all',
@@ -204,8 +245,8 @@ export class SonarrActionHandler {
         }
         break;
       case ServarrAction.UNMONITOR_DELETE_EXISTING:
-        switch (collection.type) {
-          case EPlexDataType.SEASONS:
+        switch (plexData.type) {
+          case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               plexData.index,
@@ -216,7 +257,7 @@ export class SonarrActionHandler {
               `[Sonarr] Removed exisiting episodes from season ${plexData.index} from show '${sonarrMedia.title}'`,
             );
             break;
-          case EPlexDataType.SHOWS:
+          case 'show':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'existing',

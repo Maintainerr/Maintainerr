@@ -1,20 +1,19 @@
-import { Injectable } from '@nestjs/common';
-import { PlexMetadata } from '../../../modules/api/plex-api/interfaces/media.interface';
+import {
+  isPlexEpisode,
+  isPlexSeason,
+  PlexMetadata,
+} from '@maintainerr/contracts';
+import { Injectable, Logger } from '@nestjs/common';
+import { warn } from 'console';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
 import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
-import { MaintainerrLogger } from '../../logging/logs.service';
-import { PlexLibraryItem } from '../plex-api/interfaces/library.interfaces';
 
 @Injectable()
 export class TmdbIdService {
   constructor(
     private readonly tmdbApi: TmdbApiService,
     private readonly plexApi: PlexApiService,
-    private readonly logger: MaintainerrLogger,
-  ) {
-    logger.setContext(TmdbIdService.name);
-  }
-
+  ) {}
   async getTmdbIdFromPlexRatingKey(
     ratingKey: string,
   ): Promise<{ type: 'movie' | 'tv'; id: number | undefined }> {
@@ -22,29 +21,29 @@ export class TmdbIdService {
       let libItem: PlexMetadata = await this.plexApi.getMetadata(ratingKey);
       if (libItem) {
         // fetch show in case of season / episode
-        libItem = libItem.grandparentRatingKey
+        libItem = isPlexEpisode(libItem)
           ? await this.plexApi.getMetadata(
               libItem.grandparentRatingKey.toString(),
             )
-          : libItem.parentRatingKey
+          : isPlexSeason(libItem)
             ? await this.plexApi.getMetadata(libItem.parentRatingKey.toString())
             : libItem;
 
         return this.getTmdbIdFromPlexData(libItem);
       } else {
-        this.logger.warn(
-          `Failed to fetch metadata of Plex rating key : ${ratingKey}`,
+        warn(
+          `[TMDb] Failed to fetch metadata of Plex rating key : ${ratingKey}`,
         );
       }
     } catch (e) {
-      this.logger.warn(`Failed to fetch id : ${e.message}`);
-      this.logger.debug(e);
+      warn(`[TMDb] Failed to fetch id : ${e.message}`);
+      Logger.debug(e);
       return undefined;
     }
   }
 
   async getTmdbIdFromPlexData(
-    libItem: PlexMetadata | PlexLibraryItem,
+    libItem: PlexMetadata,
   ): Promise<{ type: 'movie' | 'tv'; id: number | undefined }> {
     try {
       let id: number = undefined;
@@ -95,8 +94,8 @@ export class TmdbIdService {
         id: id,
       };
     } catch (e) {
-      this.logger.warn(`Failed to fetch id : ${e.message}`);
-      this.logger.debug(e);
+      warn(`[TMDb] Failed to fetch id : ${e.message}`);
+      Logger.debug(e);
       return undefined;
     }
   }

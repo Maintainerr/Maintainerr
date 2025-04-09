@@ -1,10 +1,17 @@
 import { faker } from '@faker-js/faker';
-import { EPlexDataType } from '../../src/modules/api/plex-api/enums/plex-data-type-enum';
 import {
-  PlexLibrary,
-  PlexLibraryItem,
-} from '../../src/modules/api/plex-api/interfaces/library.interfaces';
-import { PlexMetadata } from '../../src/modules/api/plex-api/interfaces/media.interface';
+  CollectionMediaDto,
+  CollectionMediaWithPlexDataDto,
+  EPlexDataType,
+  PlexEpisode,
+  PlexGenre,
+  PlexMetadata,
+  PlexMovie,
+  PlexSeason,
+  PlexShow,
+  ServarrAction,
+} from '@maintainerr/contracts';
+import { PlexLibrary } from '../../src/modules/api/plex-api/interfaces/library.interfaces';
 import {
   RadarrMovie,
   RadarrMovieFile,
@@ -18,11 +25,7 @@ import {
   SonarrSeriesTypes,
 } from '../../src/modules/api/servarr-api/interfaces/sonarr.interface';
 import { Collection } from '../../src/modules/collections/entities/collection.entities';
-import {
-  CollectionMedia,
-  CollectionMediaWithPlexData,
-} from '../../src/modules/collections/entities/collection_media.entities';
-import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
+import { CollectionMedia } from '../../src/modules/collections/entities/collection_media.entities';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
 
 export const EPlexDataTypeToPlexTypeMap = {
@@ -73,13 +76,10 @@ export const createCollection = (
 };
 
 export const createCollectionMedia = (
-  collectionOrType?: Collection | EPlexDataType,
+  collection?: Collection,
   properties: Partial<CollectionMedia> = {},
 ): CollectionMedia => {
-  const collectionToUse =
-    collectionOrType instanceof Collection
-      ? collectionOrType
-      : createCollection({ type: collectionOrType });
+  const collectionToUse = collection ?? createCollection();
 
   return {
     id: faker.number.int(),
@@ -93,71 +93,120 @@ export const createCollectionMedia = (
     ...properties,
   };
 };
-
-type CollectionMediaWithPlexDataOptional = Omit<
-  CollectionMediaWithPlexData,
-  'plexData'
-> & {
-  plexData: Partial<Omit<PlexMetadata, 'type'>>;
-};
-
-export const createCollectionMediaWithPlexData = (
-  collectionOrType?: Collection | EPlexDataType,
-  properties: Partial<CollectionMediaWithPlexDataOptional> = {},
-): CollectionMediaWithPlexData => {
-  const collectionMedia: CollectionMedia = {
-    ...createCollectionMedia(collectionOrType, properties),
-    ...properties,
-  };
-
-  return {
-    ...createCollectionMedia(collectionOrType, properties),
-    ...properties,
-    plexData: createPlexMetadata({
-      ...properties.plexData,
-      type: EPlexDataTypeToPlexTypeMap[collectionMedia.collection.type],
-    }),
-  };
-};
-
-export const createPlexMetadata = (
-  properties: Partial<PlexMetadata> = {},
-): PlexMetadata => {
-  const type =
-    properties.type ??
-    faker.helpers.arrayElement(['movie', 'show', 'season', 'episode']);
-
-  return {
-    ratingKey: faker.string.sample(10),
+export const createCollectionMediaWithPlexData = <
+  T extends PlexMetadata['type'],
+>(
+  collection?: Collection,
+  type?: T,
+  properties: Partial<CollectionMediaDto> = {},
+): T extends 'movie'
+  ? CollectionMediaWithPlexDataDto & { plexData: PlexMovie }
+  : T extends 'show'
+    ? CollectionMediaWithPlexDataDto & { plexData: PlexShow }
+    : T extends 'season'
+      ? CollectionMediaWithPlexDataDto & { plexData: PlexSeason }
+      : T extends 'episode'
+        ? CollectionMediaWithPlexDataDto & { plexData: PlexEpisode }
+        : never => {
+  const plexData = {
     index: faker.number.int(),
     addedAt: faker.date.past().getTime(),
     updatedAt: faker.date.past().getTime(),
-    title: faker.word.words(2),
-    Guid: [
+    title: faker.string.sample(10),
+    Guid: faker.helpers.arrayElements([
       {
-        id: `tvdb://${faker.number.int()}`,
+        id: faker.string.uuid(),
       },
       {
-        id: `tmdb://${faker.number.int()}`,
+        id: faker.string.uuid(),
       },
-      {
-        id: `imdb://tt${faker.number.int()}`,
-      },
-    ],
-    guid: `plex://${type}/${faker.string.sample(24)}`,
-    leafCount: ['show', 'season'].includes(type)
-      ? faker.number.int()
-      : undefined,
-    originallyAvailableAt: faker.date.past().toISOString().split('T')[0],
-    viewedLeafCount: ['show', 'season'].includes(type)
-      ? faker.number.int()
-      : undefined,
-    Media: [],
-    media: [],
+    ]),
+    guid: faker.string.uuid(),
+    summary: faker.string.sample(10),
+    ratingKey: faker.string.uuid(),
+  } satisfies Omit<PlexMetadata, 'type'>;
+
+  let data: PlexMetadata;
+
+  if (type === 'movie') {
+    data = {
+      ...plexData,
+      type: 'movie',
+      Collection: [],
+      Label: [],
+    } satisfies PlexMovie;
+  } else if (type === 'show') {
+    const past = faker.date.past();
+    const originallyAvailableAt = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-${String(past.getDate()).padStart(2, '0')}`;
+
+    data = {
+      ...plexData,
+      type: 'show',
+      contentRating: faker.string.sample(10),
+      Genre: [
+        {
+          id: faker.number.int(),
+          tag: faker.music.genre(),
+          filter: faker.string.sample(10),
+        } as PlexGenre,
+      ],
+      year: faker.number.int(),
+      leafCount: faker.number.int(),
+      viewedLeafCount: faker.number.int(),
+      originallyAvailableAt,
+      Collection: [],
+      Label: [],
+    } satisfies PlexShow;
+  } else if (type === 'season') {
+    data = {
+      ...plexData,
+      type: 'season',
+      leafCount: faker.number.int(),
+      viewedLeafCount: faker.number.int(),
+      Collection: [],
+      Label: [],
+    } satisfies PlexSeason;
+  } else if (type === 'episode') {
+    data = {
+      ...plexData,
+      type: 'episode',
+      Collection: [],
+      Label: [],
+    } satisfies PlexEpisode;
+  } else {
+    throw new Error('Invalid type provided');
+  }
+
+  return {
+    ...createCollectionMedia(collection, properties),
+    plexData: data,
     ...properties,
-    type,
-  };
+  } as any;
 };
+
+export const createMoviePlexMetadata = (
+  properties: Partial<PlexMovie> = {},
+): PlexMovie => ({
+  ratingKey: faker.string.uuid(),
+  guid: faker.string.uuid(),
+  Guid: [
+    {
+      id: faker.string.uuid(),
+    },
+    {
+      id: faker.string.uuid(),
+    },
+  ],
+  type: 'movie',
+  title: faker.string.sample(10),
+  index: faker.number.int(),
+  addedAt: faker.date.past().getTime(),
+  updatedAt: faker.date.past().getTime(),
+  summary: faker.string.sample(10),
+  Collection: [],
+  Label: [],
+  ...properties,
+});
 
 export const createPlexLibraries = (
   properties: Partial<PlexLibrary> = {},
