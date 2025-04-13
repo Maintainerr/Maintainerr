@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
-const apiPort = process.env.API_PORT || 3001
+const apiPort = process.env.API_PORT
 
 export function middleware(request: NextRequest) {
   if (
