@@ -3,17 +3,17 @@ name: "Release"
 on:
   workflow_dispatch:
     inputs:
-      dry-run-semantic-release:
+      dry-run:
         type: boolean
-        description: Dry-run semantic-release
+        description: Dry run
         default: false
       with-docker-images:
         type: boolean
-        description: Build and push docker images
+        description: Build and push Docker images
         default: true
       with-artifacts:
         type: boolean
-        description: Build and push artifacts
+        description: Build and push release artifacts
         default: true
 
 env:
@@ -50,11 +50,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           npx semantic-release --dry-run --repository-url "$(git config --get remote.origin.url)"
+
+      - name: Validate release number
+        if: ${{ steps.release-version.outputs.version == '' && github.event.inputs.dry-run == 'false' }}
+        run: |
+          exit 1
+
     outputs:
       version: ${{ steps.release-version.outputs.version }}
 
   build-docker-image:
-    if: ${{ github.event.inputs.with-docker-images == 'true' && needs.semantic-release-dry.outputs.version != '' }}
+    if: github.event.inputs.with-docker-images == 'true'
     name: Build Docker image
     needs: semantic-release-dry
     permissions:
@@ -115,15 +121,17 @@ jobs:
             GIT_SHA=${{ github.sha }}
             VERSION_TAG=stable
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=${{ github.event.inputs.dry-run == 'false' && 'true' || 'false' }}
 
       - name: Export digest
+        if: github.event.inputs.dry-run == 'false'
         run: |
           mkdir -p ${{ runner.temp }}/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest
+        if: github.event.inputs.dry-run == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
@@ -135,7 +143,7 @@ jobs:
       version: ${{ steps.package-version.outputs.current-version }}
 
   build-artifacts:
-    if: github.event.inputs.with-artifacts == 'true' && needs.semantic-release-dry.outputs.version != ''
+    if: github.event.inputs.with-artifacts == 'true'
     name: Build artifacts
     needs: semantic-release-dry
     strategy:
@@ -236,7 +244,7 @@ jobs:
 
   merge:
     name: Merge Docker digests and push
-    if: ${{ github.event.inputs.with-docker-images == 'true' && needs.semantic-release-dry.outputs.version != '' }}
+    if: ${{ github.event.inputs.with-docker-images == 'true' && github.event.inputs.dry-run == 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -323,14 +331,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          if [ "${{ github.event.inputs.dry-run-semantic-release }}" == "true" ]; then
+          if [ "${{ github.event.inputs.dry-run }}" == "true" ]; then
           npx semantic-release --dry-run --repository-url "$(git config --get remote.origin.url)"
           else
           npx semantic-release --repository-url "$(git config --get remote.origin.url)"
           fi
 
       - name: Mkdocs Deploy
-        if: ${{ success() }}
+        if: ${{ success() && github.event.inputs.dry-run == 'false' }}
         continue-on-error: true
         uses: peter-evans/repository-dispatch@v3
         with:
