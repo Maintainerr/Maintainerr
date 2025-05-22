@@ -56,6 +56,24 @@ export class PlexApiController {
       sort,
     );
   }
+<<<<<<< HEAD
+=======
+  @Get('library/:id/content/count')
+  async getLibraryContentCount(
+    @Param('id') id: string,
+    @Query('type') type?: EPlexDataType,
+  ) {
+    const [count, libraries] = await Promise.all([
+      this.plexApiService.getLibraryContentCount(id, type),
+      this.plexApiService.getLibraries(),
+    ]);
+
+    const library = libraries.find((lib) => String(lib.key) === String(id));
+    const libraryName = library?.title ?? 'Unknown';
+
+    return { count: (count ?? 0) + 20, libraryName };
+  }
+>>>>>>> a013b3db (changing data fetch to pull only the library count, instead of a hardcoded 1000)
 
   @Get('library/:id/content/search/:query')
   searchibraryContent(

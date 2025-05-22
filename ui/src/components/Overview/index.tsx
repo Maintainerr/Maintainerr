@@ -23,6 +23,12 @@ const Overview = () => {
   const [selectedLibrary, setSelectedLibrary] = useState<number | undefined>(
     undefined,
   )
+  const backendSortableFields = [
+    'addedAt',
+    'originallyAvailableAt',
+    'viewCount',
+    'lastViewedAt',
+  ]
 
   useEffect(() => {
     const stored = sessionStorage.getItem('maintainerr_selectedLibrary')
@@ -41,9 +47,14 @@ const Overview = () => {
   const [searchUsed, setSearchUsed] = useState<boolean>(false)
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
   const SearchCtx = useContext(SearchContext)
+<<<<<<< HEAD
 
   const { data: plexLibraries } = usePlexLibraries()
 
+=======
+  const LibrariesCtx = useContext(LibrariesContext)
+  const [libraryCount, setLibraryCount] = useState<number>(1000)
+>>>>>>> a013b3db (changing data fetch to pull only the library count, instead of a hardcoded 1000)
   const [sortOption, setSortOption] = useState<SortOption>('title:asc')
   const [filterOption, setFilterOption] = useState<FilterOption>('all')
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -120,6 +131,7 @@ const Overview = () => {
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
 
   useEffect(() => {
+<<<<<<< HEAD
     if (!plexLibraries || plexLibraries.length === 0) return
 
     if (SearchCtx.search.text !== '') {
@@ -140,18 +152,24 @@ const Overview = () => {
 =======
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
     } else {
+=======
+    if (SearchCtx.search.text === '') {
+>>>>>>> a013b3db (changing data fetch to pull only the library count, instead of a hardcoded 1000)
       setSearchUsed(false)
       setData([])
       loadingRef.current = true
-      fetchData()
+
+      if (selectedLibrary !== undefined) {
+        switchLib(selectedLibrary)
+      }
     }
   }, [SearchCtx.search.text])
 
   useEffect(() => {
-    if (selectedLibrary !== undefined && SearchCtx.search.text === '') {
-      fetchData()
+    if (!searchUsed && selectedLibrary !== undefined) {
+      switchLib(selectedLibrary)
     }
-  }, [selectedLibrary])
+  }, [sortOption, filterOption])
 
   const sortData = (
     items: IPlexMetadata[],
@@ -174,12 +192,7 @@ const Overview = () => {
     return items
   }
 
-  useEffect(() => {
-    setVisibleCount(100)
-    fetchData()
-  }, [sortOption, filterOption])
-
-  const switchLib = (libraryId: number) => {
+  const switchLib = async (libraryId: number) => {
     loadingRef.current = true
     setData([])
 <<<<<<< HEAD
@@ -188,29 +201,23 @@ const Overview = () => {
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
     setSearchUsed(false)
     setSelectedLibrary(libraryId)
-  }
 
-  const backendSortableFields = [
-    'addedAt',
-    'originallyAvailableAt',
-    'viewCount',
-    'lastViewedAt',
-  ]
+    // Fetch count and exclusions first
+    const [countResp, exclusionResp] = await Promise.all([
+      GetApiHandler(`/plex/library/${libraryId}/content/count`),
+      GetApiHandler(`/rules/exclusion/all`),
+    ])
 
-  const fetchData = async () => {
-    if (selectedLibrary && SearchCtx.search.text === '') {
-      const askedLib = selectedLibrary
-      const sortField = sortOption.split(':')[0]
-      const isBackendSortable = backendSortableFields.includes(sortField)
-      const apiSortParam = isBackendSortable ? `&sort=${sortOption}` : ''
+    const count = countResp?.count ?? 1000
+    setLibraryCount(count)
+    console.log(`Fetching ${count} items for library ${libraryId}`)
 
-      const [plexResp, exclusionResp] = await Promise.all([
-        GetApiHandler(
-          `/plex/library/${selectedLibrary}/content?page=1&size=1000${apiSortParam}`,
-        ),
-        GetApiHandler(`/rules/exclusion/all`),
-      ])
+    // Fetch all metadata
+    const sortField = sortOption.split(':')[0]
+    const isBackendSortable = backendSortableFields.includes(sortField)
+    const apiSortParam = isBackendSortable ? `&sort=${sortOption}` : ''
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       if (askedLib === selectedLibraryRef.current) {
         // check lib again, we don't want to change array when lib was changed
@@ -220,16 +227,22 @@ const Overview = () => {
         setIsLoading(false)
 =======
       const enrichedItems = metadataEnrichment(plexResp.items, exclusionResp)
+=======
+    const plexResp = await GetApiHandler(
+      `/plex/library/${libraryId}/content?page=1&size=${count}${apiSortParam}`,
+    )
+>>>>>>> a013b3db (changing data fetch to pull only the library count, instead of a hardcoded 1000)
 
-      const sortedItems = sortData(enrichedItems, sortOption)
+    const enrichedItems = metadataEnrichment(plexResp.items, exclusionResp)
+    const sortedItems = sortData(enrichedItems, sortOption)
 
-      const filteredItems = sortedItems.filter((item) => {
-        if (filterOption === 'excluded') return !!item.maintainerrExclusionType
-        if (filterOption === 'nonExcluded')
-          return !item.maintainerrExclusionType
-        return true
-      })
+    const filteredItems = sortedItems.filter((item) => {
+      if (filterOption === 'excluded') return !!item.maintainerrExclusionType
+      if (filterOption === 'nonExcluded') return !item.maintainerrExclusionType
+      return true
+    })
 
+<<<<<<< HEAD
       if (askedLib === selectedLibrary) {
         setVisibleCount(100)
         setAllItems(filteredItems)
@@ -238,6 +251,12 @@ const Overview = () => {
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
       }
     }
+=======
+    setVisibleCount(100)
+    setAllItems(filteredItems)
+    setData(filteredItems.slice(0, 100))
+    loadingRef.current = false
+>>>>>>> a013b3db (changing data fetch to pull only the library count, instead of a hardcoded 1000)
   }
 
   // Triggers additional data load when near the bottom
