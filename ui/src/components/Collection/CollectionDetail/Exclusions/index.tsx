@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { debounce } from 'lodash-es'
+=======
+import _ from 'lodash'
+>>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
 import { useEffect, useRef, useState } from 'react'
 import { ICollection } from '../..'
 import GetApiHandler from '../../../../utils/ApiHandler'
@@ -115,18 +119,12 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
 
   return (
     <OverviewContent
-      dataFinished={true}
-      fetchData={() => {}}
       loading={loadingRef.current}
+      viewMode="poster"
       data={data}
       libraryId={props.libraryId}
       collectionPage={true}
       collectionId={props.collection.id}
-      extrasLoading={
-        loadingExtraRef &&
-        !loadingRef.current &&
-        totalSize >= pageData.current * fetchAmount
-      }
       onRemove={(id: string) =>
         setTimeout(() => {
           setData(dataRef.current.filter((el) => +el.ratingKey !== +id))

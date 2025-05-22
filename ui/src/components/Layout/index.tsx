@@ -43,7 +43,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
       <link rel="icon" href={`${basePath}/favicon.ico`} />
       <div className="flex h-full min-h-full min-w-0 bg-zinc-900">
         <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-zinc-700 md:border-t" />
-        <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-zinc-800 to-zinc-900">
+        <div className="absolute top-0 h-64 w-full bg-zinc-900">
           <div className="relative inset-0 h-full w-full bg-gradient-to-t from-zinc-900 to-transparent" />
         </div>
         <NavBar open={navBarOpen} setClosed={handleNavbar}></NavBar>
@@ -51,7 +51,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
         <div
           className={`searchbar fixed left-0 right-0 top-0 z-10 flex flex-shrink-0 bg-transparent bg-opacity-80 transition duration-300 lg:ml-64`}
         >
-          <div className="transparent-glass-bg flex flex-1 items-center justify-between pr-4 md:pl-4 md:pr-4">
+          <div className="flex flex-1 items-center justify-between bg-zinc-900 pr-4 md:pl-4 md:pr-4">
             <button
               className={`px-4 text-white opacity-70 transition duration-300 focus:outline-none lg:hidden`}
               aria-label="Open sidebar"
@@ -78,10 +78,11 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
         </div>
 
         <main
-          className="relative top-16 mt-2 w-full focus:outline-none"
+          className="relative top-16 w-full focus:outline-none"
           tabIndex={0}
         >
           <div className="mb-6">
+<<<<<<< HEAD
             <div className="max-w-8xl mx-auto px-4">
               <ToastContainer
                 stacked
@@ -93,6 +94,9 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               />
               {children}
             </div>
+=======
+            <div className="mx-auto px-4">{props.children}</div>
+>>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
           </div>
         </main>
       </div>

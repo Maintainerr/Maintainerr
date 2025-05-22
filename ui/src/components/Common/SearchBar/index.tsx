@@ -45,7 +45,7 @@ const SearchBar = (props: ISearchBar) => {
         onChange={(e) => inputHandler(e)}
         placeholder={props.placeholder ? props.placeholder : 'Search'}
         value={text}
-        className="block w-full rounded-full border border-zinc-600 bg-zinc-900 bg-opacity-80 py-2 pl-10 text-white placeholder-zinc-300 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0 sm:text-base"
+        className="block w-full rounded-full border border-zinc-600 bg-zinc-900 bg-opacity-80 pl-10 text-white placeholder-zinc-300 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0 sm:text-base"
       />
     </div>
   )

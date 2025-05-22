@@ -56,6 +56,20 @@ export class RulesController {
     return this.rulesService.getExclusions(query.rulegroupId, query.plexId);
   }
 
+  @Get('/exclusion/all')
+  async getAllExcludedItems() {
+    const exclusions = await this.rulesService.getAllExclusions();
+
+    // Return array of objects like: { plexId: 12345, type: 3 }
+    return exclusions.map((excl) => ({
+      plexId: +excl.plexId,
+      type: excl.type,
+      ruleGroupId: excl.ruleGroupId,
+      id: excl.id,
+      parent: excl.parent,
+    }));
+  }
+
   @Get('/count')
   async getRuleGroupCount() {
     return this.rulesService.getRuleGroupCount();

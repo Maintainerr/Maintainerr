@@ -251,11 +251,13 @@ export class PlexApiService {
     id: string,
     { offset = 0, size = 50 }: { offset?: number; size?: number } = {},
     datatype?: EPlexDataType,
+    sort?: string,
   ): Promise<{ totalSize: number; items: PlexLibraryItem[] }> {
     try {
       const type = datatype ? '&type=' + datatype : '';
+      const sortParam = sort ? '&sort=' + sort : '';
       const response = await this.plexClient.query<PlexLibraryResponse>({
-        uri: `/library/sections/${id}/all?includeGuids=1${type}`,
+        uri: `/library/sections/${id}/all?includeGuids=1${type}${sortParam}`,
         extraHeaders: {
           'X-Plex-Container-Start': `${offset}`,
           'X-Plex-Container-Size': `${size}`,

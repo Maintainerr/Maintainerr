@@ -1,4 +1,5 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { TmdbApiService } from './tmdb.service';
 
 @Controller('api/moviedb')
@@ -24,10 +25,11 @@ export class TmdbApiController {
     return this.movieDbApi.getBackdropImagePath({ tmdbId: tmdbId, type: type });
   }
   @Get('/image/:type/:tmdbId')
-  getImage(
+  streamImage(
     @Param('tmdbId', new ParseIntPipe()) tmdbId: number,
     @Param('type') type: 'movie' | 'show',
+    @Res() res: Response,
   ) {
-    return this.movieDbApi.getImagePath({ tmdbId: tmdbId, type: type });
+    return this.movieDbApi.streamImage(tmdbId, type, res);
   }
 }

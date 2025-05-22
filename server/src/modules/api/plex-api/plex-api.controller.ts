@@ -34,19 +34,27 @@ export class PlexApiController {
   async getLibraries() {
     return this.plexApiService.getLibraries();
   }
+<<<<<<< HEAD
 
   @Get('library/:id/content{/:page}')
   getLibraryContent(
+=======
+  @Get('library/:id/content')
+  async getPagedContent(
+>>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
     @Param('id') id: string,
-    @Param('page', new ParseIntPipe()) page: number,
-    @Query('amount') amount: number,
+    @Query('page') page = '1',
+    @Query('size') size = '120',
+    @Query('sort') sort = 'addedAt:desc',
   ) {
-    const size = amount ? amount : 50;
-    const offset = (page - 1) * size;
-    return this.plexApiService.getLibraryContents(id, {
-      offset: offset,
-      size: size,
-    });
+    const offset = (parseInt(page) - 1) * parseInt(size);
+
+    return this.plexApiService.getLibraryContents(
+      id,
+      { offset, size: parseInt(size) },
+      undefined,
+      sort,
+    );
   }
 
   @Get('library/:id/content/search/:query')

@@ -167,17 +167,11 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
 
         {selectedTab === 'media' ? (
           <OverviewContent
-            dataFinished={true}
-            fetchData={() => {}}
             loading={loadingRef.current}
+            viewMode="poster"
             data={data}
             libraryId={props.libraryId}
             collectionPage={true}
-            extrasLoading={
-              loadingExtraRef &&
-              !loadingRef.current &&
-              totalSize >= pageData.current * fetchAmount
-            }
             onRemove={(id: string) =>
               setTimeout(() => {
                 setData(dataRef.current.filter((el) => +el.ratingKey !== +id))

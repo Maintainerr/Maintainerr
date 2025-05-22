@@ -89,7 +89,7 @@ const RulesListPage = () => {
       <div className="w-full">
         <LibrarySwitcher onLibraryChange={onSwitchLibrary} />
 
-        <div className="m-auto mb-3 flex">
+        <div className="m-auto mb-3 mt-4 flex">
           <div className="ml-auto sm:ml-0">
             <AddButton onClick={() => navigate('/rules/new')} text="New Rule" />
           </div>

@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import axios from 'axios';
+import { Response } from 'express';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
@@ -98,23 +100,38 @@ export class TmdbApiService extends ExternalApiService {
     }
   };
 
-  // TODO: ADD CACHING!!!!
-  public getImagePath = async ({
-    tmdbId,
-    type,
-  }: {
-    tmdbId: number;
-    type: 'movie' | 'show';
-  }): Promise<string> => {
+  public streamImage = async (
+    tmdbId: number,
+    type: 'movie' | 'show',
+    res: Response,
+  ): Promise<void> => {
     try {
-      if (type === 'movie') {
-        return (await this.getMovie({ movieId: tmdbId }))?.poster_path;
-      } else {
-        return (await this.getTvShow({ tvId: tmdbId }))?.poster_path;
+      const posterPath =
+        type === 'movie'
+          ? (await this.getMovie({ movieId: tmdbId }))?.poster_path
+          : (await this.getTvShow({ tvId: tmdbId }))?.poster_path;
+
+      if (!posterPath) {
+        res.status(404).send('Poster not found');
+        return;
       }
+
+      const imageUrl = `https://image.tmdb.org/t/p/w300_and_h450_face${posterPath}`;
+      const response = await axios.get(imageUrl, {
+        responseType: 'stream',
+      });
+
+      // Set caching headers
+      res.set({
+        'Content-Type': response.headers['content-type'],
+        'Cache-Control': 'public, max-age=86400',
+        Expires: new Date(Date.now() + 86400000).toUTCString(),
+      });
+
+      response.data.pipe(res);
     } catch (e) {
-      this.logger.warn(`Failed to fetch image path: ${e.message}`);
-      this.logger.debug(e);
+      this.logger.warn(`[TMDb] Failed to stream image: ${e.message}`);
+      res.status(500).send('Failed to stream image');
     }
   };
 

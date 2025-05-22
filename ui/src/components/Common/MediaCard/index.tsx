@@ -52,7 +52,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [image, setImage] = useState<string | null>(null)
   const [excludeModal, setExcludeModal] = useState(false)
   const [addModal, setAddModal] = useState(false)
-  const [hasExclusion, setHasExclusion] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
 
   const openMediaModal = () => {
@@ -67,16 +66,7 @@ const MediaCard: React.FC<IMediaCard> = ({
         setImage(resp),
       )
     }
-    getExclusions()
-  }, [])
-
-  const getExclusions = () => {
-    if (!collectionPage) {
-      GetApiHandler(`/rules/exclusion?plexId=${id}`).then((resp: []) =>
-        resp.length > 0 ? setHasExclusion(true) : setHasExclusion(false),
-      )
-    }
-  }
+  }, [tmdbid, mediaType])
 
   // Just to get the year from the date
   if (year && mediaType !== 'episode') {
@@ -111,7 +101,7 @@ const MediaCard: React.FC<IMediaCard> = ({
         />
       ) : undefined}
       <div
-        className={`relative transform-gpu cursor-default overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${
+        className={`relative transform-gpu cursor-default overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none transition duration-300 ${
           showDetail
             ? 'scale-105 shadow-lg ring-zinc-500'
             : 'scale-100 shadow ring-zinc-700'
@@ -127,7 +117,14 @@ const MediaCard: React.FC<IMediaCard> = ({
             <img
               className="absolute inset-0 h-full w-full object-cover"
               alt=""
+<<<<<<< HEAD
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
+=======
+              src={`/api/moviedb/image/${mediaType}/${tmdbid}`}
+              fill
+              loading="lazy"
+              style={{ objectFit: 'cover' }}
+>>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
             />
           ) : undefined}
           <div className="absolute left-0 right-0 flex items-center justify-between p-2">
@@ -147,7 +144,8 @@ const MediaCard: React.FC<IMediaCard> = ({
               </div>
             </div>
           </div>
-          {hasExclusion && !collectionPage ? (
+          {exclusionType === 'global' ||
+          (exclusionType === 'specific' && !collectionPage) ? (
             <div className="absolute right-0 flex items-center justify-between p-2">
               <div
                 className={`pointer-events-none z-40 rounded-full shadow ${

@@ -23,14 +23,14 @@ const CollectionItem = (props: ICollectionItem) => {
               className="backdrop-image"
               width="600"
               height="800"
-              src={`https://image.tmdb.org/t/p/w500${props.collection.media[0].image_path}`}
+              src={`/api/moviedb/image/movie/${props.collection.media[0].tmdbId}`}
               alt="img"
             />
             <img
               className="backdrop-image"
               width="600"
               height="800"
-              src={`https://image.tmdb.org/t/p/w500/${props.collection.media[1].image_path}`}
+              src={`/api/moviedb/image/movie/${props.collection.media[1].tmdbId}`}
               alt="img"
             />
             <div className="collection-backdrop"></div>
