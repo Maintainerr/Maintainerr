@@ -16,6 +16,7 @@ interface IOverviewContent {
   viewMode: 'poster' | 'table'
   ruleGroups?: Record<number, string>
   ruleGroupId?: number
+  maintainerrRuleGroupIds?: number[]
   collectionPage?: boolean
   collectionInfo?: ICollectionMedia[]
   collectionId?: number
@@ -171,6 +172,8 @@ const OverviewContent = (props: IOverviewContent) => {
                       : 4
               }
               image={el.thumb}
+              ruleGroups={props.ruleGroups}
+              maintainerrRuleGroupIds={el.maintainerrRuleGroupIds}
               summary={
                 el.type === 'movie' || el.type === 'show'
                   ? el.summary

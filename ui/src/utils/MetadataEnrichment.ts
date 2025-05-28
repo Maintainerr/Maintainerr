@@ -16,21 +16,36 @@ export function metadataEnrichment(
 ): IPlexMetadata[] {
   const exclusionMap = new Map<
     string,
-    { id: number; type: 'global' | 'specific'; ruleGroupId?: number }
+    { ids: number[]; type: 'global' | 'specific'; ruleGroupIds: number[] }
   >()
 
   const showRatingKeysToMark = new Map<string, number[]>()
 
-  // Step 1: Process exclusions
   for (const excl of exclusions) {
     const key = String(excl.plexId).trim()
     const isSpecific = !!excl.ruleGroupId
 
-    exclusionMap.set(key, {
-      id: excl.id,
-      type: isSpecific ? 'specific' : 'global',
-      ruleGroupId: excl.ruleGroupId,
-    })
+    const existing = exclusionMap.get(key)
+
+    if (existing) {
+      // Add to existing entry
+      if (
+        excl.ruleGroupId !== undefined &&
+        !existing.ruleGroupIds.includes(excl.ruleGroupId)
+      ) {
+        existing.ruleGroupIds.push(excl.ruleGroupId)
+      }
+      if (!existing.ids.includes(excl.id)) {
+        existing.ids.push(excl.id)
+      }
+    } else {
+      // Initialize new entry
+      exclusionMap.set(key, {
+        ids: [excl.id],
+        type: isSpecific ? 'specific' : 'global',
+        ruleGroupIds: excl.ruleGroupId !== undefined ? [excl.ruleGroupId] : [],
+      })
+    }
 
     if (isSpecific && excl.parent && excl.ruleGroupId !== undefined) {
       const parentKey = String(excl.parent).trim()
@@ -46,7 +61,6 @@ export function metadataEnrichment(
     collectionInfo?.filter((m) => m.isManual).map((m) => m.plexId) ?? [],
   )
 
-  // Step 2: Enrich items
   return items.map((item) => {
     const key = item.ratingKey.trim()
     const direct = exclusionMap.get(key)
@@ -56,9 +70,8 @@ export function metadataEnrichment(
       return {
         ...item,
         maintainerrExclusionType: direct.type,
-        maintainerrExclusionId: direct.id,
-        maintainerrRuleGroupId: direct.ruleGroupId,
-        maintainerrRuleGroupIds: direct.ruleGroupId ? [direct.ruleGroupId] : [],
+        maintainerrExclusionId: direct.ids[0],
+        maintainerrRuleGroupIds: direct.ruleGroupIds,
         maintainerrIsManual: isManual,
       }
     }

@@ -125,7 +125,7 @@ const Overview = () => {
           ? +stored
           : fallbackId
 
-      switchLib(validId) // 💥 This is the missing piece
+      switchLib(validId)
     }
   }, [LibrariesCtx.libraries])
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)

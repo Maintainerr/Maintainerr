@@ -40,12 +40,16 @@ export class PlexApiController {
   getLibraryContent(
 =======
   @Get('library/:id/content')
+<<<<<<< HEAD
   async getPagedContent(
 >>>>>>> fafbad29 (initial commit after updating to new branch and fixing conflicts)
+=======
+  async getLibraryContent(
+>>>>>>> 134942b7 (added exclusions tooltip to posterview)
     @Param('id') id: string,
     @Query('page') page = '1',
-    @Query('size') size = '120',
-    @Query('sort') sort = 'addedAt:desc',
+    @Query('size') size?: string,
+    @Query('sort') sort?: string,
   ) {
     const offset = (parseInt(page) - 1) * parseInt(size);
 

@@ -3,7 +3,6 @@ import {
   DocumentRemoveIcon,
   FlagIcon,
   GlobeAltIcon,
-  PlusCircleIcon,
 } from '@heroicons/react/outline'
 import React, { useState } from 'react'
 import AddModal from '../../AddModal'
@@ -81,13 +80,13 @@ const TableData: React.FC<TableDataProps> = ({
                   key={item.ratingKey}
                   className="transition focus-within:bg-zinc-800 hover:bg-zinc-800"
                 >
-                  <td className="px-2 text-center text-sm">
-                    <div className="flex min-w-[2rem] items-center justify-center gap-1">
+                  <td className="text-center text-sm">
+                    <div className="m-auto flex w-1 items-center justify-center whitespace-nowrap">
                       {/* Exclusion icon */}
                       {item.maintainerrExclusionType === 'global' && (
                         <Tooltipwrapper
                           id={`global-tooltip-${item.ratingKey}`}
-                          content="Excluded Globally"
+                          content="Excluded from all rules"
                           placement="right"
                         >
                           <GlobeAltIcon className="h-4 w-4 text-zinc-100" />
@@ -120,24 +119,11 @@ const TableData: React.FC<TableDataProps> = ({
                           <FlagIcon className="h-4 w-4 text-zinc-100" />
                         </Tooltipwrapper>
                       )}
-
-                      {/* Manual icon */}
-                      <div className="h-4 w-4">
-                        {item.maintainerrIsManual && (
-                          <Tooltipwrapper
-                            id={`manual-tooltip-${item.ratingKey}`}
-                            content="Manually added to collection"
-                            placement="right"
-                          >
-                            <PlusCircleIcon className="h-4 w-4 text-green-400" />
-                          </Tooltipwrapper>
-                        )}
-                      </div>
                     </div>
                   </td>
 
                   <td
-                    className="flex cursor-alias items-center px-2 py-2 hover:underline"
+                    className="m-auto flex cursor-alias items-center px-2 py-2 hover:underline"
                     title={title}
                     onClick={() => openModal(item)}
                   >
