@@ -317,6 +317,9 @@ const Overview = () => {
                 value={selectedLibrary}
               />
             </div>
+            <div className="ml-4 mt-2 inline-flex cursor-default items-center rounded-md bg-zinc-700 p-2 text-sm font-medium text-white md:mt-0">
+              Items: {data.length} / {libraryCount - 20}
+            </div>
             <div className="ml-0 mt-2 flex space-x-2 md:ml-auto md:mt-0">
               <ViewToggleDropdown viewMode={viewMode} onChange={setViewMode} />
               <SortDropdown value={sortOption} onChange={setSortOption} />
