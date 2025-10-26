@@ -215,14 +215,14 @@ jobs:
           type: "zip"
           directory: "./_output/"
           path: "."
-          filename: "../_artifacts/Maintainerr.${{ needs.semantic-release-dry.outputs.version }}.${{ matrix.name }}-${{ matrix.architecture }}.zip"
+          filename: "../_artifacts/Maintainerr.${{ needs.semantic-release-dry.outputs.version }}.${{ matrix.name }}-${{ matrix.architecture }}_EXPERIMENTAL.zip"
 
       - name: Create tar
         if: ${{ matrix.name == 'osx' || matrix.name == 'linux' }}
         shell: pwsh
         run: |
           cd ./_output/
-          tar -zcf ../_artifacts/Maintainerr.${{ needs.semantic-release-dry.outputs.version }}.${{ matrix.name }}-${{ matrix.architecture }}.tar.gz .
+          tar -zcf ../_artifacts/Maintainerr.${{ needs.semantic-release-dry.outputs.version }}.${{ matrix.name }}-${{ matrix.architecture }}_EXPERIMENTAL.tar.gz .
 
       - name: Publish artifact
         uses: actions/upload-artifact@v4
