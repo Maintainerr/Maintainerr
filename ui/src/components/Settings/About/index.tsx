@@ -1,8 +1,8 @@
 import { InformationCircleIcon } from '@heroicons/react/solid'
-import React, { useEffect, useState } from 'react'
+import { type VersionResponse } from '@maintainerr/contracts'
+import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Releases from './Releases'
-import { type VersionResponse } from '@maintainerr/contracts'
 
 const AboutSettings = () => {
   useEffect(() => {
@@ -72,7 +72,7 @@ const AboutSettings = () => {
             </p>
             <p className="mt-3 text-sm leading-5 md:ml-6 md:mt-0">
               <a
-                href="http://github.com/jorenn92/maintainerr"
+                href="https://github.com/Maintainerr/Maintainerr"
                 className="whitespace-nowrap font-medium text-gray-100 transition duration-150 ease-in-out hover:text-white"
                 target="_blank"
                 rel="noreferrer"
@@ -256,7 +256,7 @@ const AboutSettings = () => {
                 href="https://github.com/sponsors/jorenn92"
                 target="_blank"
               >
-                Github Sponsors
+                GitHub Sponsors
               </a>
               <p className="pr-2 !no-underline">or</p>
               <a

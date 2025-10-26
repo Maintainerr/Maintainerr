@@ -22,7 +22,7 @@ const messages = {
 }
 
 const REPO_RELEASE_API =
-  'https://api.github.com/repos/jorenn92/maintainerr/releases?per_page=10'
+  'https://api.github.com/repos/maintainerr/maintainerr/releases?per_page=10'
 
 interface GitHubRelease {
   url: string
