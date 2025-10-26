@@ -61,7 +61,7 @@ jobs:
 
   build-docker-image:
     if: github.event.inputs.with-docker-images == 'true'
-    name: Build Docker image
+    name: Build ${{ matrix.platform || 'Docker image' }}
     needs: semantic-release-dry
     permissions:
       contents: read
@@ -138,9 +138,6 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
-
-    outputs:
-      version: ${{ steps.package-version.outputs.current-version }}
 
   build-artifacts:
     if: github.event.inputs.with-artifacts == 'true'
