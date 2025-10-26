@@ -3,7 +3,7 @@
 echo "Welcome to the Maintainerr installation script!"
 
 if [ -f .installed ]; then
-  echo "The script has already been ran. If you need to re-run it, please delete the installation directory, backing up any customized .env files in server/ and ui/ and extract the archive again."
+  echo "The script has already been run. If you need to re-run it, please delete the installation directory, backing up any customized .env files in server/ and ui/ and extract the archive again."
   exit 1
 fi
 
