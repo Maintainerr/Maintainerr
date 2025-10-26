@@ -62,13 +62,15 @@ export class JellyfinApiService {
 
   public async getMediaId(tmdbId: number, type: "movie" | "show" | "season" | "episode" | "collection") {
     try {
-      const response: JellyfinItemsResponse = await this.api.get(`/Items?recursive=true&includeItemTypes=${type == "movie" ? itemType.movie : itemType.show}&hasTmdbId=true&fields=ProviderIds`);
+      const response: JellyfinItemsResponse = await this.api.get(`/Items?recursive=true&includeItemTypes=${type == "movie" ? itemType.movie : itemType.show}&fields=ProviderIds`);
       if (response.Items.length > 0) {
         const media = response.Items.find((jellyfinItem) => +jellyfinItem.ProviderIds.Tmdb == tmdbId);
         if (media)
           return media.Id
-        return null
       }
+      this.logger.warn(
+        `Media with tmdbId ${tmdbId} not found`,
+      );
       return null;
     } catch (err) {
       this.logger.warn(
