@@ -16,7 +16,7 @@ env:
 
 jobs:
   build-docker-image:
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/release-pr') && github.event.issue.state == 'open' && (github.event.comment.author_association == 'COLLABORATOR' || github.event.comment.author_association == 'OWNER') }}
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/release-pr') && github.event.issue.state == 'open' && (github.event.comment.author_association == 'COLLABORATOR' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER') }}
     name: Build ${{ matrix.platform }}
     strategy:
       fail-fast: false
