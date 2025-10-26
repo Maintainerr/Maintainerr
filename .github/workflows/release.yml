@@ -5,15 +5,15 @@ on:
     inputs:
       dry-run:
         type: boolean
-        description: Dry run
+        description: Dry run (no pushing of images or creating a release)
         default: false
       with-docker-images:
         type: boolean
-        description: Build and push Docker images
+        description: Build Docker images
         default: true
       with-artifacts:
         type: boolean
-        description: Build and push release artifacts
+        description: Build release artifacts
         default: true
 
 env:
