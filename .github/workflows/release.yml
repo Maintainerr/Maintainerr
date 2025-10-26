@@ -61,7 +61,7 @@ jobs:
 
   build-docker-image:
     if: github.event.inputs.with-docker-images == 'true'
-    name: Build ${{ matrix.platform || 'Docker image' }}
+    name: Build ${{ matrix.platform }} Docker image
     needs: semantic-release-dry
     permissions:
       contents: read
@@ -141,7 +141,7 @@ jobs:
 
   build-artifacts:
     if: github.event.inputs.with-artifacts == 'true'
-    name: Build artifacts
+    name: Build ${{ matrix.name }}/${{ matrix.architecture }} artifact
     needs: semantic-release-dry
     strategy:
       fail-fast: false
