@@ -60,7 +60,7 @@ interface NavBarProps {
 const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const navRef = useRef<HTMLDivElement>(null)
   const SearchCtx = useContext(SearchContext)
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH
 
   useEffect(() => {
     setTimeout(() => {

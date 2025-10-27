@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const apiPort = process.env.API_PORT || 3001
+const apiPort = process.env.API_PORT
 
 export const config = {
   runtime: 'edge',

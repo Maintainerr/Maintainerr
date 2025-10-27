@@ -12,6 +12,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@actions/core@npm:1.10.1":
+  version: 1.10.1
+  resolution: "@actions/core@npm:1.10.1"
+  dependencies:
+    "@actions/http-client": "npm:^2.0.1"
+    uuid: "npm:^8.3.2"
+  checksum: 10c0/7a61446697a23dcad3545cf0634dedbdedf20ae9a0ee6ee977554589a15deb4a93593ee48a41258933d58ce0778f446b0d2c162b60750956fb75e0b9560fb832
+  languageName: node
+  linkType: hard
+
+"@actions/http-client@npm:^2.0.1":
+  version: 2.2.3
+  resolution: "@actions/http-client@npm:2.2.3"
+  dependencies:
+    tunnel: "npm:^0.0.6"
+    undici: "npm:^5.25.4"
+  checksum: 10c0/13141b66a42aa4afd8c50f7479e13a5cdb5084ccb3c73ec48894b8029743389a3d2bf8cdc18e23fb70cd33995740526dd308815613907571e897c3aa1e5eada6
+  languageName: node
+  linkType: hard
+
 "@alloc/quick-lru@npm:^5.2.0":
   version: 5.2.0
   resolution: "@alloc/quick-lru@npm:5.2.0"
@@ -1180,6 +1200,13 @@ __metadata:
   version: 9.8.0
   resolution: "@faker-js/faker@npm:9.8.0"
   checksum: 10c0/f5db1125c1ea0115b9142fb4d4cb37cac2da4cd12ed02afb1cabf3b9600bd365bf480386250975a4fb200d77c00e8364dc8f61ac273a9dcdd2f2f42c3b29b0ec
+  languageName: node
+  linkType: hard
+
+"@fastify/busboy@npm:^2.0.0":
+  version: 2.1.1
+  resolution: "@fastify/busboy@npm:2.1.1"
+  checksum: 10c0/6f8027a8cba7f8f7b736718b013f5a38c0476eea67034c94a0d3c375e2b114366ad4419e6a6fa7ffc2ef9c6d3e0435d76dd584a7a1cbac23962fda7650b579e3
   languageName: node
   linkType: hard
 
@@ -2726,6 +2753,7 @@ __metadata:
     "@maintainerr/contracts": "workspace:^"
     "@nestjs/cli": "npm:^11.0.10"
     "@nestjs/common": "npm:^11.1.6"
+    "@nestjs/config": "npm:^4.0.0"
     "@nestjs/core": "npm:^11.1.6"
     "@nestjs/event-emitter": "npm:^3.0.1"
     "@nestjs/platform-express": "npm:^11.1.6"
@@ -2996,6 +3024,20 @@ __metadata:
     class-validator:
       optional: true
   checksum: 10c0/75bd76533f68133e7530c8145f7bbee8c2d169bb93aadf1e3eb6874b254cdfb7a7fe328d387ba4564d6d6bc63ff7213c0645cb6fcda7eee2ef33fa179b77699a
+  languageName: node
+  linkType: hard
+
+"@nestjs/config@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@nestjs/config@npm:4.0.0"
+  dependencies:
+    dotenv: "npm:16.4.7"
+    dotenv-expand: "npm:12.0.1"
+    lodash: "npm:4.17.21"
+  peerDependencies:
+    "@nestjs/common": ^10.0.0 || ^11.0.0
+    rxjs: ^7.1.0
+  checksum: 10c0/e741997048ab7fd9413c240f459590f168ce7b3ec54888e9b3f0cfccf4a29db4814884aa0119b9af9127f0b6833a1c59158d414aa86f3400929190dc91febd97
   languageName: node
   linkType: hard
 
@@ -8517,6 +8559,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dotenv-expand@npm:12.0.1":
+  version: 12.0.1
+  resolution: "dotenv-expand@npm:12.0.1"
+  dependencies:
+    dotenv: "npm:^16.4.5"
+  checksum: 10c0/51996bfa670073d7a441b8fbed26ac991026fba2c05e9a937a898ce7d2a2e7166f7b6ec4eb8879e576defb5d1ad399ed1300db8f803d6977577fea55b4d82dac
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:16.4.7, dotenv@npm:^16.4.5":
+  version: 16.4.7
+  resolution: "dotenv@npm:16.4.7"
+  checksum: 10c0/be9f597e36a8daf834452daa1f4cc30e5375a5968f98f46d89b16b983c567398a330580c88395069a77473943c06b877d1ca25b4afafcdd6d4adb549e8293462
+  languageName: node
+  linkType: hard
+
 "dotenv@npm:^16.4.7":
   version: 16.5.0
   resolution: "dotenv@npm:16.5.0"
@@ -13380,6 +13438,7 @@ __metadata:
     "@types/node": "npm:^22.18.10"
     knip: "npm:^5.61.3"
     semantic-release: "npm:^24.2.7"
+    semantic-release-gha-output: "npm:^1.1.1"
     turbo: "npm:^2.5.6"
     typescript: "npm:^5.9.2"
   languageName: unknown
@@ -17214,6 +17273,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"semantic-release-gha-output@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "semantic-release-gha-output@npm:1.1.1"
+  dependencies:
+    "@actions/core": "npm:1.10.1"
+  peerDependencies:
+    semantic-release: ">=17"
+  checksum: 10c0/a77faf9bc03fa0a9eccd0e597ba0a24dc0beffbfadc76034151c569f6ae37484b4660e931a3e4d76f4375b340358df8b04fa20bba5bbe2e420829f5c1276d3c3
+  languageName: node
+  linkType: hard
+
 "semantic-release@npm:^24.2.7":
   version: 24.2.7
   resolution: "semantic-release@npm:24.2.7"
@@ -19005,6 +19075,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tunnel@npm:^0.0.6":
+  version: 0.0.6
+  resolution: "tunnel@npm:0.0.6"
+  checksum: 10c0/e27e7e896f2426c1c747325b5f54efebc1a004647d853fad892b46d64e37591ccd0b97439470795e5262b5c0748d22beb4489a04a0a448029636670bfd801b75
+  languageName: node
+  linkType: hard
+
 "turbo-darwin-64@npm:2.5.6":
   version: 2.5.6
   resolution: "turbo-darwin-64@npm:2.5.6"
@@ -19545,6 +19622,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"undici@npm:^5.25.4":
+  version: 5.29.0
+  resolution: "undici@npm:5.29.0"
+  dependencies:
+    "@fastify/busboy": "npm:^2.0.0"
+  checksum: 10c0/e4e4d631ca54ee0ad82d2e90e7798fa00a106e27e6c880687e445cc2f13b4bc87c5eba2a88c266c3eecffb18f26e227b778412da74a23acc374fca7caccec49b
+  languageName: node
+  linkType: hard
+
 "unicode-emoji-modifier-base@npm:^1.0.0":
   version: 1.0.0
   resolution: "unicode-emoji-modifier-base@npm:1.0.0"
@@ -19851,6 +19937,15 @@ __metadata:
   bin:
     uuid: dist/esm/bin/uuid
   checksum: 10c0/34aa51b9874ae398c2b799c88a127701408cd581ee89ec3baa53509dd8728cbb25826f2a038f9465f8b7be446f0fbf11558862965b18d21c993684297628d4d3
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^8.3.2":
+  version: 8.3.2
+  resolution: "uuid@npm:8.3.2"
+  bin:
+    uuid: dist/bin/uuid
+  checksum: 10c0/bcbb807a917d374a49f475fae2e87fdca7da5e5530820ef53f65ba1d12131bd81a92ecf259cc7ce317cbe0f289e7d79fdfebcef9bfa3087c8c8a2fa304c9be54
   languageName: node
   linkType: hard
 

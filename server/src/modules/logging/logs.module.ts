@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import chalk from 'chalk';
@@ -16,11 +17,6 @@ import {
 } from './logs.service';
 import { EventEmitterTransport } from './winston/eventEmitterTransport';
 
-const dataDir =
-  process.env.NODE_ENV === 'production'
-    ? '/opt/data'
-    : path.join(__dirname, '../../../../data');
-
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature([LogSettings])],
@@ -30,11 +26,18 @@ const dataDir =
     LogSettingsService,
     {
       provide: winston.Logger,
-      inject: [getRepositoryToken(LogSettings), EventEmitter2],
+      inject: [getRepositoryToken(LogSettings), EventEmitter2, ConfigService],
       useFactory: async (
         logSettingsRepo: Repository<LogSettings>,
         eventEmitter: EventEmitter2,
+        configService: ConfigService,
       ) => {
+        const dataDirConfig = configService.get<string>('DATA_DIR');
+        const dataDir =
+          process.env.NODE_ENV === 'production'
+            ? dataDirConfig
+            : path.join(__dirname, '../../../../data');
+
         const logSettings = await logSettingsRepo.findOne({ where: {} });
         const maxSize = `${logSettings.max_size}m`;
         const maxFiles = `${logSettings.max_files}d`;

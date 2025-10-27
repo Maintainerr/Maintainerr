@@ -24,6 +24,7 @@
   "dependencies": {
     "@maintainerr/contracts": "workspace:^",
     "@nestjs/common": "^11.1.6",
+    "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.1.6",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/platform-express": "^11.1.6",

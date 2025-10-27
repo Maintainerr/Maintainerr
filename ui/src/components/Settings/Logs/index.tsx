@@ -134,7 +134,7 @@ const Logs = () => {
 
   useEffect(() => {
     const MAX_LOG_LINES = 1000
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH
     const es = new ReconnectingEventSource(`${basePath}/api/logs/stream`)
 
     const handleLog = (event: MessageEvent) => {

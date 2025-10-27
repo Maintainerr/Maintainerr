@@ -32,7 +32,7 @@ interface Metadata {
   Guid: { id: string }[]
 }
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH
 const iconMap: Record<string, Record<string, string>> = {
   imdb: {
     audience: `${basePath}/icons_logos/imdb_icon.svg`,
@@ -62,7 +62,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       [mediaType],
     )
 
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH
 
     useEffect(() => {
       GetApiHandler('/plex').then((resp) =>

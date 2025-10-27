@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-export const API_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+export const API_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH
 
 const ApiHandler = async <Response,>(
   url: string,

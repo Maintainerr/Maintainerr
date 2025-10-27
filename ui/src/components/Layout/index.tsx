@@ -17,7 +17,7 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
   const SettingsCtx = useContext(SettingsContext)
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)

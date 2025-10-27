@@ -9,3 +9,5 @@ node_modules
 !.yarn/versions
 .idea
 .turbo
+_artifacts
+_output
