@@ -320,6 +320,9 @@ export class SonarrGetterService {
             (el) => el.id === showProfile,
           ).name;
         }
+        case 'fileAudioLanguages': {
+          return episodeFile?.mediaInfo?.audioLanguages ?? null;
+        }
       }
     } catch (e) {
       this.logger.warn(

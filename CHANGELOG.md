@@ -1,3 +1,15 @@
+# [2.20.0](https://github.com/maintainerr/Maintainerr/compare/v2.19.0...v2.20.0) (2025-10-27)
+
+
+### Bug Fixes
+
+* Improve email rendering ([#1968](https://github.com/maintainerr/Maintainerr/issues/1968)) ([f2cfcb9](https://github.com/maintainerr/Maintainerr/commit/f2cfcb90be2b77247c47b33acf4407d404163843))
+
+
+### Features
+
+* Add Sonarr & Radarr audio languages rule options ([#1886](https://github.com/maintainerr/Maintainerr/issues/1886)) ([60f1756](https://github.com/maintainerr/Maintainerr/commit/60f1756963236e74f3ca8a47868268080f609220))
+
 # [2.19.0](https://github.com/jorenn92/Maintainerr/compare/v2.18.2...v2.19.0) (2025-08-17)
 
 

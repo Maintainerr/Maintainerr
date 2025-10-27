@@ -56,7 +56,6 @@ class EmailAgent implements NotificationAgent {
         },
         locals: {
           body: payload.message.replaceAll('\n', '<br>'),
-          applicationTitle: 'Maintainerr',
           recipientEmail,
         },
       };
@@ -73,7 +72,6 @@ class EmailAgent implements NotificationAgent {
         extra: payload.extra ?? [],
         imageUrl: payload.image,
         timestamp: new Date().toTimeString(),
-        applicationTitle: 'Maintainerr',
         recipientEmail,
       },
     };

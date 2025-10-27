@@ -54,7 +54,7 @@ function createDataDirectoryStructure() {
     }
   } catch (err) {
     console.warn(
-      `THE CONTAINER NO LONGER OPERATES WITH PRIVILEGED USER PERMISSIONS. PLEASE UPDATE YOUR CONFIGURATION ACCORDINGLY: https://github.com/jorenn92/Maintainerr/releases/tag/v2.0.0`,
+      `THE CONTAINER NO LONGER OPERATES WITH PRIVILEGED USER PERMISSIONS. PLEASE UPDATE YOUR CONFIGURATION ACCORDINGLY: https://github.com/Maintainerr/Maintainerr/releases/tag/v2.0.0`,
     );
     console.error(
       'Could not create or access (files in) the data directory. Please make sure the necessary permissions are set',
