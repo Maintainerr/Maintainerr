@@ -57,6 +57,8 @@ export class SettingsService implements SettingDto {
 
   plex_auth_token: string;
 
+  plex_default_library: number | null;
+
   overseerr_url: string;
 
   overseerr_api_key: string;
@@ -114,6 +116,7 @@ export class SettingsService implements SettingDto {
       this.plex_port = settingsDb?.plex_port;
       this.plex_ssl = settingsDb?.plex_ssl;
       this.plex_auth_token = settingsDb?.plex_auth_token;
+      this.plex_default_library = settingsDb?.plex_default_library;
       this.overseerr_url = settingsDb?.overseerr_url;
       this.overseerr_api_key = settingsDb?.overseerr_api_key;
       this.tautulli_url = settingsDb?.tautulli_url;

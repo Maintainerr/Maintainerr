@@ -45,6 +45,9 @@ export class Settings implements SettingDto {
   plex_auth_token: string;
 
   @Column({ nullable: true })
+  plex_default_library: number;
+
+  @Column({ nullable: true })
   overseerr_api_key: string;
 
   @Column({ nullable: true })

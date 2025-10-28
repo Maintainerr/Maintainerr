@@ -15,6 +15,12 @@ import DocsButton from '../../Common/DocsButton'
 import TestButton from '../../Common/TestButton'
 import PlexLoginButton from '../../Login/Plex'
 
+interface ILibrary {
+  key: string
+  type: 'movie' | 'show'
+  title: string
+}
+
 interface PresetServerDisplay {
   name: string
   ssl: boolean
@@ -81,10 +87,22 @@ const PlexSettings = () => {
   }>({ status: false, version: '0' })
   const [availableServers, setAvailableServers] = useState<PlexDevice[]>()
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
+  const [libraries, setLibraries] = useState<ILibrary[]>([])
+  const defaultLibraryRef = useRef<HTMLSelectElement>(null)
 
   useEffect(() => {
     document.title = 'Maintainerr - Settings - Plex'
   }, [])
+
+  useEffect(() => {
+    if (tokenValid && libraries.length === 0) {
+      GetApiHandler('/plex/libraries').then((resp) => {
+        if (resp) {
+          setLibraries(resp)
+        }
+      })
+    }
+  }, [tokenValid])
 
   const submit = async (
     e: React.FormEvent<HTMLFormElement> | undefined,
@@ -102,6 +120,7 @@ const PlexSettings = () => {
         plex_port: number
         plex_name: string
         plex_ssl: number
+        plex_default_library?: number
         plex_auth_token?: string
       } = {
         plex_hostname: sslRef.current?.checked
@@ -114,6 +133,9 @@ const PlexSettings = () => {
         plex_port: +portRef.current.value,
         plex_name: nameRef.current.value,
         plex_ssl: +sslRef.current.checked, // not used, server derives this from https://
+        plex_default_library: defaultLibraryRef.current?.value
+          ? +defaultLibraryRef.current.value
+          : null,
       }
 
       if (plex_token) {
@@ -496,6 +518,35 @@ const PlexSettings = () => {
                     onError={authFailed}
                   ></PlexLoginButton>
                 )}
+              </div>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label htmlFor="defaultLibrary" className="text-label">
+              Default Library
+              <span className="label-tip">
+                {`Select the default library to display on the overview page`}
+              </span>
+            </label>
+            <div className="form-input">
+              <div className="form-input-field">
+                <select
+                  name="defaultLibrary"
+                  id="defaultLibrary"
+                  ref={defaultLibraryRef}
+                  defaultValue={
+                    settingsCtx.settings.plex_default_library?.toString() || ''
+                  }
+                  disabled={!tokenValid || libraries.length === 0}
+                >
+                  <option value="">No default library</option>
+                  {libraries.map((library) => (
+                    <option key={library.key} value={library.key}>
+                      {library.title} ({library.type})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

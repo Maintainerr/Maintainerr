@@ -20,6 +20,7 @@ export interface ISettings {
   plex_port: number
   plex_ssl: number
   plex_auth_token: string | null
+  plex_default_library: number | null
   overseerr_api_key: string
   tautulli_url: string
   tautulli_api_key: string
