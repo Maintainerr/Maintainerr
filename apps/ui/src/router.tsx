@@ -22,11 +22,16 @@ import DocsPage from './pages/DocsPage'
 import PlexLoadingPage from './pages/PlexLoadingPage'
 import RuleFormPage from './pages/RuleFormPage'
 import RulesListPage from './pages/RulesListPage'
+import SetupPage from './pages/SetupPage'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
 
 export const router = createBrowserRouter(
   [
+    {
+      path: '/setup',
+      element: <SetupPage />,
+    },
     {
       path: '/',
       element: <Layout />,

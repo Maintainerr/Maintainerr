@@ -31,8 +31,8 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
 
   useEffect(() => {
     GetApiHandler('/settings/test/setup').then((setupDone) => {
-      if (!setupDone) {
-        navigate('/settings/plex')
+      if (!setupDone && location.pathname !== '/setup') {
+        navigate('/setup')
       }
     })
   }, [navigate, location.pathname])
