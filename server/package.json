@@ -39,7 +39,7 @@
     "http-terminator": "^3.2.0",
     "lodash": "^4.17.21",
     "mime-types": "^3.0.1",
-    "nestjs-graceful-shutdown": "^1.0.3",
+    "nestjs-graceful-shutdown": "^2.0.0",
     "nestjs-zod": "^4.3.1",
     "node-cache": "^5.1.2",
     "nodemailer": "7.0.10",

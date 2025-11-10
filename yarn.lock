@@ -2786,7 +2786,7 @@ __metadata:
     jest: "npm:^30.2.0"
     lodash: "npm:^4.17.21"
     mime-types: "npm:^3.0.1"
-    nestjs-graceful-shutdown: "npm:^1.0.3"
+    nestjs-graceful-shutdown: "npm:^2.0.0"
     nestjs-zod: "npm:^4.3.1"
     node-cache: "npm:^5.1.2"
     nodemailer: "npm:7.0.10"
@@ -14546,13 +14546,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nestjs-graceful-shutdown@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "nestjs-graceful-shutdown@npm:1.0.3"
+"nestjs-graceful-shutdown@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "nestjs-graceful-shutdown@npm:2.0.0"
   peerDependencies:
     "@nestjs/common": "*"
     http-terminator: ^3.2.0
-  checksum: 10c0/ae654c534a1a569ddd89e37e7c112ff0579af9ee77cebd6f91fbfb55bd7672c872d5bb68c3daae593b6e9fae2c3b7408850dc61f90086439b23eced537352a51
+  checksum: 10c0/6f41ebaa098cccc0d38e520ca8c7a4a81a1d33789b3b02dd4e94a68b40e7801de2bbcefe00583635e84ce82614612de973888d6f20344cf743c64844a3aa40dc
   languageName: node
   linkType: hard
 
