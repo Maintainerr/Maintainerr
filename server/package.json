@@ -40,7 +40,7 @@
     "http-terminator": "^3.2.0",
     "lodash": "^4.17.21",
     "mime-types": "^3.0.1",
-    "nestjs-zod": "^4.3.1",
+    "nestjs-zod": "^5.0.1",
     "node-cache": "^5.1.2",
     "nodemailer": "7.0.10",
     "openpgp": "^6.2.2",
@@ -53,7 +53,7 @@
     "winston-daily-rotate-file": "^5.0.0",
     "xml2js": "^0.6.2",
     "yaml": "^2.8.0",
-    "zod": "^3.25.67"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@automock/adapters.nestjs": "^2.1.0",
