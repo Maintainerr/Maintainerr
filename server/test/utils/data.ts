@@ -305,6 +305,7 @@ export const createRadarrMovieFile = (
     scanType: faker.helpers.arrayElement(['Progressive', 'Interlaced']),
     subtitles: faker.helpers.arrayElements(['eng', 'spa', 'fre']).join('/'),
     videoFps: faker.helpers.arrayElement([24, 30, 60]),
+    ...(properties.mediaInfo as any),
   },
   ...properties,
 });
@@ -418,6 +419,32 @@ export const createSonarrEpisodeFile = (
   relativePath: faker.system.filePath(),
   qualityCutoffNotMet: faker.datatype.boolean(),
   size: faker.number.int(),
+  mediaInfo: {
+    audioBitrate: faker.number.int(),
+    audioChannels: faker.helpers.arrayElement([1, 2, 5.1, 6, 8]),
+    audioCodec: faker.helpers.arrayElement([
+      'DTS-HD MA',
+      'DTS',
+      'AC3',
+      'E-AC3',
+      'AAC',
+    ]),
+    audioLanguages: faker.helpers.arrayElement(['eng', 'spa', 'fre']),
+    audioStreamCount: faker.number.int(),
+    videoBitDepth: faker.number.int(),
+    videoBitrate: faker.number.int(),
+    videoCodec: faker.helpers.arrayElement(['AVC', 'HEVC', 'VP9', 'AV1']),
+    videoFps: faker.helpers.arrayElement([24, 30, 60]),
+    resolution: faker.helpers.arrayElement([
+      '1920x1080',
+      '1280x720',
+      '3840x2160',
+    ]),
+    runTime: faker.date.anytime().toISOString().split('T')[1].split('.')[0],
+    scanType: faker.helpers.arrayElement(['Progressive', 'Interlaced']),
+    subtitles: faker.helpers.arrayElements(['eng', 'spa', 'fre']).join('/'),
+    ...(properties.mediaInfo as any),
+  },
   ...properties,
 });
 

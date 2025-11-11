@@ -117,11 +117,6 @@ class DiscordAgent implements NotificationAgent {
       description: payload.message,
       color,
       timestamp: new Date().toISOString(),
-      author: payload.event
-        ? {
-            name: payload.event,
-          }
-        : undefined,
       fields,
       thumbnail: {
         url: payload.image,
@@ -148,16 +143,13 @@ class DiscordAgent implements NotificationAgent {
     this.logger.log('Sending Discord notification');
 
     try {
-      await axios.post(
-        this.getSettings().options.webhookUrl as string,
-        {
-          username: this.getSettings().options.botUsername
-            ? this.getSettings().options.botUsername
-            : 'Maintainerr',
-          avatar_url: this.getSettings().options.botAvatarUrl,
-          embeds: [this.buildEmbed(type, payload)],
-        } as DiscordWebhookPayload,
-      );
+      await axios.post(this.getSettings().options.webhookUrl, {
+        username: this.getSettings().options.botUsername
+          ? this.getSettings().options.botUsername
+          : 'Maintainerr',
+        avatar_url: this.getSettings().options.botAvatarUrl,
+        embeds: [this.buildEmbed(type, payload)],
+      } as DiscordWebhookPayload);
 
       return 'Success';
     } catch (e) {
@@ -165,11 +157,10 @@ class DiscordAgent implements NotificationAgent {
         `Error sending Discord notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          errorMessage: e.message,
           response: e.response?.data,
         })}`,
+        e,
       );
-      this.logger.debug(e);
 
       return `Failure: ${e.message}`;
     }

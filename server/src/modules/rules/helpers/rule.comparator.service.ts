@@ -494,12 +494,34 @@ export class RuleComparatorService {
       }
     }
 
+    if (action === RulePossibility.CONTAINS_ALL) {
+      try {
+        if (!Array.isArray(val2)) {
+          return (val1 as unknown[])?.includes(val2);
+        } else {
+          if (val2.length > 0) {
+            return val2.every((el) => {
+              return (val1 as unknown[])?.includes(el);
+            });
+          } else {
+            return false;
+          }
+        }
+      } catch (_err) {
+        return null;
+      }
+    }
+
     if (action === RulePossibility.NOT_CONTAINS) {
       return !this.doRuleAction(val1, val2, RulePossibility.CONTAINS);
     }
 
     if (action === RulePossibility.NOT_CONTAINS_PARTIAL) {
       return !this.doRuleAction(val1, val2, RulePossibility.CONTAINS_PARTIAL);
+    }
+
+    if (action === RulePossibility.NOT_CONTAINS_ALL) {
+      return !this.doRuleAction(val1, val2, RulePossibility.CONTAINS_ALL);
     }
 
     if (action === RulePossibility.BEFORE) {

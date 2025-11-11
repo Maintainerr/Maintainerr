@@ -17,6 +17,7 @@ export function addPortToUrl(url: string, port: number): string {
 
 export function removePortFromUrl(url: string): string | undefined {
   try {
+    if (!url) return undefined
     const urlObject = new URL(url)
     urlObject.port = ''
     return urlObject.toString()

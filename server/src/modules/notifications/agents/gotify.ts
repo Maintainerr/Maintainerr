@@ -50,9 +50,7 @@ class GotifyAgent implements NotificationAgent {
   ): GotifyPayload {
     const priority = 0;
 
-    const title = payload.event
-      ? `${payload.event} - ${payload.subject}`
-      : payload.subject;
+    const title = payload.subject;
     const message = payload.message ?? '';
 
     // for (const extra of payload.extra ?? []) {
@@ -94,11 +92,10 @@ class GotifyAgent implements NotificationAgent {
         `Error sending Gotify notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          errorMessage: e.message,
           response: e.response?.data,
         })}`,
+        e,
       );
-      this.logger.debug(e);
 
       return `Failure: ${e.message}`;
     }

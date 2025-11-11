@@ -1,7 +1,12 @@
+import { BasicResponseDto } from '@maintainerr/contracts';
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import { NotificationService } from './notifications.service';
-import { NotificationType } from './notifications-interfaces';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  NotificationAgentKey,
+  NotificationAgentOptions,
+  NotificationType,
+} from './notifications-interfaces';
+import { NotificationService } from './notifications.service';
 
 @Controller('api/notifications')
 export class NotificationsController {
@@ -15,12 +20,12 @@ export class NotificationsController {
     @Body()
     payload: {
       id?: number;
-      agent: string;
+      agent: NotificationAgentKey;
       name: string;
       enabled: boolean;
       types: number[];
       aboutScale: number;
-      options: object;
+      options: NotificationAgentOptions;
     },
   ) {
     const agent = this.notificationService.createDummyTestAgent(payload);
@@ -49,15 +54,15 @@ export class NotificationsController {
     @Body()
     payload: {
       id?: number;
-      agent: string;
+      agent: NotificationAgentKey;
       name: string;
       enabled: boolean;
       types: number[];
       aboutScale: number;
-      options: object;
+      options: NotificationAgentOptions;
     },
-  ) {
-    return this.notificationService.addNotificationConfiguration(payload);
+  ): Promise<BasicResponseDto> {
+    return await this.notificationService.addNotificationConfiguration(payload);
   }
 
   @Post('/configuration/connect')

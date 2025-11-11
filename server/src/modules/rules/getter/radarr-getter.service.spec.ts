@@ -167,6 +167,79 @@ describe('RadarrGetterService', () => {
     });
   });
 
+  describe('fileAudioLanguages', () => {
+    let collectionMedia: CollectionMedia;
+    let plexLibraryItem: PlexLibraryItem;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia(EPlexDataType.MOVIES);
+      collectionMedia.collection.radarrSettingsId = 1;
+      plexLibraryItem = createPlexLibraryItem('movie');
+      tmdbIdService.getTmdbIdFromPlexRatingKey.mockResolvedValue({
+        type: 'movie',
+        id: 1,
+      });
+    });
+
+    it('should return audio languages', async () => {
+      const movie = createRadarrMovie({
+        movieFile: createRadarrMovieFile({
+          mediaInfo: { audioLanguages: 'eng' } as any,
+        }),
+      });
+      mockRadarrApi(movie);
+
+      const response = await radarrGetterService.get(
+        22,
+        plexLibraryItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe('eng');
+    });
+
+    it('should return null when no movie file exists', async () => {
+      const movie = createRadarrMovie({
+        movieFile: undefined,
+      });
+      mockRadarrApi(movie);
+
+      const response = await radarrGetterService.get(
+        22,
+        plexLibraryItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(null);
+    });
+
+    it('should return null when no media info exists', async () => {
+      const movie = createRadarrMovie({
+        movieFile: createRadarrMovieFile({
+          mediaInfo: undefined,
+        }),
+      });
+      mockRadarrApi(movie);
+
+      const response = await radarrGetterService.get(
+        22,
+        plexLibraryItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(null);
+    });
+  });
+
   const mockRadarrApi = (movie?: RadarrMovie) => {
     const mockedRadarrApi = new RadarrApi({} as any, logger as any);
     const mockedServarrService = new ServarrService({} as any, logger as any);

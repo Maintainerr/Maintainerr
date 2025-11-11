@@ -213,6 +213,8 @@ const PlexSettings = () => {
   const verifyToken = (token?: string) => {
     const authToken = token || settingsCtx.settings.plex_auth_token
     if (authToken) {
+      const controller = new AbortController()
+
       axios
         .get('https://plex.tv/api/v2/user', {
           headers: {
@@ -221,11 +223,17 @@ const PlexSettings = () => {
             'X-Plex-Client-Identifier': '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
             'X-Plex-Token': authToken,
           },
+          signal: controller.signal,
         })
         .then((response) => {
           setTokenValid(response.status === 200 ? true : false)
         })
         .catch(() => setTokenValid(false))
+
+      // Cancel the request if component unmounts
+      return () => {
+        controller.abort()
+      }
     } else {
       setTokenValid(false)
     }
@@ -304,7 +312,7 @@ const PlexSettings = () => {
       {testBanner.version !== '0' ? (
         testBanner.status ? (
           <Alert
-            type="warning"
+            type="info"
             title={`Successfully connected to Plex (${testBanner.version})`}
           />
         ) : (

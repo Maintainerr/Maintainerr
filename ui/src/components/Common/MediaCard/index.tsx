@@ -132,6 +132,7 @@ const MediaCard: React.FC<IMediaCard> = ({
               alt=""
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
               fill
+              sizes="100vw"
               style={{ objectFit: 'cover' }}
             />
           ) : undefined}

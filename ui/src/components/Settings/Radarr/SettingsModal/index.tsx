@@ -218,11 +218,14 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
       {testResult != null ? (
         testResult?.status ? (
           <Alert
-            type="warning"
+            type="info"
             title={`Successfully connected to Radarr (${testResult.version})`}
           />
         ) : (
-          <Alert type="error" title="Failed to connect to Radarr" />
+          <Alert
+            type="error"
+            title={testResult.version || 'Failed to connect to Radarr'}
+          />
         )
       ) : undefined}
 

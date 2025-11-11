@@ -1,3 +1,56 @@
+# [2.20.0](https://github.com/maintainerr/Maintainerr/compare/v2.19.0...v2.20.0) (2025-10-27)
+
+
+### Bug Fixes
+
+* Improve email rendering ([#1968](https://github.com/maintainerr/Maintainerr/issues/1968)) ([f2cfcb9](https://github.com/maintainerr/Maintainerr/commit/f2cfcb90be2b77247c47b33acf4407d404163843))
+
+
+### Features
+
+* Add Sonarr & Radarr audio languages rule options ([#1886](https://github.com/maintainerr/Maintainerr/issues/1886)) ([60f1756](https://github.com/maintainerr/Maintainerr/commit/60f1756963236e74f3ca8a47868268080f609220))
+
+# [2.19.0](https://github.com/jorenn92/Maintainerr/compare/v2.18.2...v2.19.0) (2025-08-17)
+
+
+### Features
+
+* add comprehensive Copilot instructions ([#1888](https://github.com/jorenn92/Maintainerr/issues/1888)) ([5053168](https://github.com/jorenn92/Maintainerr/commit/5053168d532a52c141899373c0ed6fa7afe45e2d))
+* Improve Jellyseerr settings UX ([#1872](https://github.com/jorenn92/Maintainerr/issues/1872)) ([2c7e7c3](https://github.com/jorenn92/Maintainerr/commit/2c7e7c300dfc9e031db306f90a80a39e28ef53d8))
+* Improve Overseerr settings UX ([#1871](https://github.com/jorenn92/Maintainerr/issues/1871)) ([0c484fb](https://github.com/jorenn92/Maintainerr/commit/0c484fbbabf0e127b3cc189c8a7d6b84428178f1))
+
+## [2.18.2](https://github.com/jorenn92/Maintainerr/compare/v2.18.1...v2.18.2) (2025-07-12)
+
+
+### Bug Fixes
+
+* ensuring correct application during connection test ([#1849](https://github.com/jorenn92/Maintainerr/issues/1849)) ([363661d](https://github.com/jorenn92/Maintainerr/commit/363661dc34b959579fda86aeb17606bff125cbbd))
+
+## [2.18.1](https://github.com/jorenn92/Maintainerr/compare/v2.18.0...v2.18.1) (2025-06-19)
+
+
+### Bug Fixes
+
+* **notifications:** Missing email templates ([#1834](https://github.com/jorenn92/Maintainerr/issues/1834)) ([f3a09d1](https://github.com/jorenn92/Maintainerr/commit/f3a09d12769e210e63fc89ed034d9dd873e2e32e))
+* Patch remaining runtime and cleanup issues ([#1813](https://github.com/jorenn92/Maintainerr/issues/1813)) ([d5bec2e](https://github.com/jorenn92/Maintainerr/commit/d5bec2e2ba13ecebfb5b1dc7d9029c33071e5269))
+
+# [2.18.0](https://github.com/jorenn92/Maintainerr/compare/v2.17.0...v2.18.0) (2025-06-13)
+
+
+### Bug Fixes
+
+* Hide days in notifications for Do nothing rules ([#1788](https://github.com/jorenn92/Maintainerr/issues/1788)) ([d590220](https://github.com/jorenn92/Maintainerr/commit/d590220a94806100fa0b9e140f0382fa94fd08ff))
+* Improve community rule loading states ([#1810](https://github.com/jorenn92/Maintainerr/issues/1810)) ([17691f4](https://github.com/jorenn92/Maintainerr/commit/17691f44607b10b8915ecbd92657bc2080eff6db))
+* Improve UI memory handling ([#1808](https://github.com/jorenn92/Maintainerr/issues/1808)) ([ec110b9](https://github.com/jorenn92/Maintainerr/commit/ec110b9116606a29726cce14abb63589acfed84f))
+* Media About To Be Handled notifications not sending ([#1801](https://github.com/jorenn92/Maintainerr/issues/1801)) ([1ef0346](https://github.com/jorenn92/Maintainerr/commit/1ef0346b1304e6ffcb416e1dceb78596a0d98fa5))
+* Notification selected types, agent checkbox options ([#1791](https://github.com/jorenn92/Maintainerr/issues/1791)) ([b43066a](https://github.com/jorenn92/Maintainerr/commit/b43066a5c35cd61f740f61211c435e6e569b3055))
+* **notifications:** Subject missing breaking some agents ([#1812](https://github.com/jorenn92/Maintainerr/issues/1812)) ([0d283de](https://github.com/jorenn92/Maintainerr/commit/0d283de710b14ccae33f6e2d332d8a914091d401))
+
+
+### Features
+
+* **rules:** add new CONTAINS_ALL action for complete subset validation ([#1825](https://github.com/jorenn92/Maintainerr/issues/1825)) ([67d85dd](https://github.com/jorenn92/Maintainerr/commit/67d85ddd23297527d56e67f6dd51ed2319745326))
+
 # [2.17.0](https://github.com/jorenn92/Maintainerr/compare/v2.16.0...v2.17.0) (2025-05-29)
 
 

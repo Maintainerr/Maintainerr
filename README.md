@@ -4,18 +4,18 @@
 
 <p align="center" >
   <a href="https://discord.gg/WP4ZW2QYwk"><img alt="Discord" src="https://img.shields.io/discord/1152219249549512724?style=flat&logo=discord&logoColor=white&label=Maintainerr"></a>
-  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/jorenn92/maintainerr/.github%2Fworkflows%2Fbuild.yml?branch=main&style=flat&logo=github&label=Latest%20Build"></picture>
-  <a href="https://github.com/jorenn92/Maintainerr/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/jorenn92/maintainerr?style=flat&logo=github&logoColor=white&label=Latest%20Release"></a>
-  <picture><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/jorenn92/maintainerr/latest?style=flat&logo=github&logoColor=white"></picture>
-  <picture><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/jorenn92/maintainerr?style=flat&logo=github&logoColor=white&label=Stars"></picture>
+  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/maintainerr/maintainerr/.github%2Fworkflows%2Fbuild.yml?branch=main&style=flat&logo=github&label=Latest%20Build"></picture>
+  <a href="https://github.com/maintainerr/Maintainerr/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Latest%20Release"></a>
+  <picture><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/maintainerr/maintainerr/latest?style=flat&logo=github&logoColor=white"></picture>
+  <picture><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Stars"></picture>
   <a href="https://hub.docker.com/r/jorenn92/maintainerr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/jorenn92/maintainerr?style=flat&logo=docker&logoColor=white&label=Docker%20Pulls"></a>
-  <picture><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/jorenn92/maintainerr?style=flat&logo=github&logoColor=white&label=COMMITS"></picture>
-  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues-closed/jorenn92/maintainerr?style=flat&logo=github&logoColor=white"></picture>
-  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/jorenn92/maintainerr?style=flat&logo=github&logoColor=white"></picture>
+  <picture><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=COMMITS"></picture>
+  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues-closed/maintainerr/maintainerr?style=flat&logo=github&logoColor=white"></picture>
+  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/maintainerr/maintainerr?style=flat&logo=github&logoColor=white"></picture>
   <a href="https://github.com/sponsors/jorenn92"><img alt="GitHub Sponsors" src="https://img.shields.io/github/sponsors/JORENN92?style=flat&logo=github%20sponsors&logoColor=white&label=sponsors"></a>
   <a href="https://ko-fi.com/maintainerr_app"><img alt="Static Badge" src="https://img.shields.io/badge/DONATE-kofi-red?style=flat&logo=ko-fi&logoColor=white"></a>
   <a href="https://docs.maintainerr.info"><img alt="Documentation" src="https://img.shields.io/badge/Material_for_MkDocs-%3A)-blue?style=flat&logo=materialformkdocs&logoColor=white"></a>
-  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/jorenn92/maintainerr?style=flat"></picture>
+  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/maintainerr/maintainerr?style=flat"></picture>
 </p>
 
 <b>Maintainerr</b> makes managing your media easy.
@@ -58,7 +58,7 @@ Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 
 # Installation
 
-Docker images for amd64 & arm64 are available under [jorenn92/maintainerr](https://hub.docker.com/r/jorenn92/maintainerr) and ghcr.io/jorenn92/maintainerr. <br />
+Docker images for amd64 & arm64 are available under <b>ghcr.io/maintainerr/maintainerr</b> and [jorenn92/maintainerr](https://hub.docker.com/r/jorenn92/maintainerr). <br />
 
 Data is saved within the container under /opt/data, it is recommended to tie a persistent volume to this location in your docker command/compose file.
 Make sure this directory is read/writeable by the user specified in the 'user' instruction. If no 'user' instruction is configured, the volume should be accessible by UID:GID 1000:1000.
@@ -75,7 +75,7 @@ docker run -d \
 -u 1000:1000 \
 -p 6246:6246 \
 --restart unless-stopped \
-ghcr.io/jorenn92/maintainerr:latest
+ghcr.io/maintainerr/maintainerr:latest
 ```
 
 Docker-compose:
@@ -85,7 +85,7 @@ version: '3'
 
 services:
     maintainerr:
-        image: ghcr.io/jorenn92/maintainerr:latest # or jorenn92/maintainerr:latest
+        image: ghcr.io/maintainerr/maintainerr:latest # or jorenn92/maintainerr:latest
         container_name: maintainerr
         user: 1000:1000
         volumes:

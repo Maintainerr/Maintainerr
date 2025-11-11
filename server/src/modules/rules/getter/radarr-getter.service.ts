@@ -155,6 +155,9 @@ export class RadarrGetterService {
           case 'fileQualityName': {
             return movieResponse.movieFile?.quality?.quality?.name ?? null;
           }
+          case 'fileAudioLanguages': {
+            return movieResponse.movieFile?.mediaInfo?.audioLanguages ?? null;
+          }
         }
       } else {
         this.logger.debug(

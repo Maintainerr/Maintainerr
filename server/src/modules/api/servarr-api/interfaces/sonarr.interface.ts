@@ -12,6 +12,7 @@ export interface SonarrSeason {
   };
 }
 export interface SonarrInfo {
+  appName: string;
   version: string;
   buildTime: string;
   isDebug: boolean;

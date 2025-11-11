@@ -33,6 +33,7 @@ class EmailAgent implements NotificationAgent {
     if (
       settings.enabled &&
       settings.options.emailFrom &&
+      settings.options.emailTo &&
       settings.options.smtpHost &&
       settings.options.smtpPort
     ) {
@@ -46,36 +47,31 @@ class EmailAgent implements NotificationAgent {
     type: NotificationType,
     payload: NotificationPayload,
     recipientEmail: string,
-    recipientName?: string,
   ): EmailOptions | undefined {
     if (type === NotificationType.TEST_NOTIFICATION) {
       return {
-        template: path.join(__dirname, '../../../templates/email/test-email'),
+        template: path.join(__dirname, '../email/templates/test-email'),
         message: {
           to: recipientEmail,
         },
         locals: {
-          body: payload.message,
-          applicationTitle: 'Maintainerr',
-          recipientName,
+          body: payload.message.replaceAll('\n', '<br>'),
           recipientEmail,
         },
       };
     }
 
     return {
-      template: path.join(__dirname, '../templates/email-template'),
+      template: path.join(__dirname, '../email/templates/email-template'),
       message: {
         to: recipientEmail,
       },
       locals: {
-        event: payload.event,
-        body: payload.message,
+        subject: payload.subject,
+        body: payload.message.replaceAll('\n', '<br>'),
         extra: payload.extra ?? [],
         imageUrl: payload.image,
         timestamp: new Date().toTimeString(),
-        applicationTitle: 'Maintainerr',
-        recipientName,
         recipientEmail,
       },
     };
@@ -88,28 +84,19 @@ class EmailAgent implements NotificationAgent {
     this.logger.log('Sending email notification');
 
     try {
-      const email = new PreparedEmail(
-        this.appSettings,
-        this.getSettings() as NotificationAgentEmail,
-        this.getSettings().options.pgpKey as string,
-      );
+      const email = new PreparedEmail(this.getSettings());
       await email.send(
-        this.buildMessage(
-          type,
-          payload,
-          this.getSettings().options.emailTo as string,
-        ),
+        this.buildMessage(type, payload, this.getSettings().options.emailTo),
       );
     } catch (e) {
       this.logger.error(
         `Error sending Email notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          errorMessage: e.message,
           response: e.response?.data,
         })}`,
+        e,
       );
-      this.logger.debug(e);
 
       return `Failure: ${e.message}`;
     }

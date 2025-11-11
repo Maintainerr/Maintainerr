@@ -9,6 +9,11 @@
           "classValidatorShim": false
         }
       }
+    ],
+    "assets": [
+      {
+        "include": "modules/notifications/email/templates/**/*"
+      }
     ]
   }
 }

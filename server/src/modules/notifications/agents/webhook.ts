@@ -109,16 +109,16 @@ class WebhookAgent implements NotificationAgent {
       return 'Success';
     }
 
-    this.logger.debug('Sending webhook notification');
+    this.logger.log('Sending webhook notification');
 
     try {
       await axios.post(
-        settings.options.webhookUrl as string,
+        settings.options.webhookUrl,
         this.buildPayload(type, payload),
         settings.options.authHeader
           ? {
               headers: {
-                Authorization: settings.options.authHeader as string,
+                Authorization: settings.options.authHeader,
               },
             }
           : undefined,
@@ -130,11 +130,10 @@ class WebhookAgent implements NotificationAgent {
         `Error sending Webhook notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          errorMessage: e.message,
           response: e.response?.data,
         })}`,
+        e,
       );
-      this.logger.debug(e);
 
       return `Failure: ${e.message}`;
     }

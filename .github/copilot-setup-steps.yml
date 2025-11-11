@@ -1,0 +1,16 @@
+steps:
+  - name: Set up Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
+  
+  - name: Activate corepack
+    run: |
+      corepack install
+      corepack enable
+  
+  - name: Install dependencies
+    run: yarn --immutable
+  
+  - name: Build contracts
+    run: yarn workspace @maintainerr/contracts build

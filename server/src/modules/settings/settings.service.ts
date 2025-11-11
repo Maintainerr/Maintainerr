@@ -1,4 +1,8 @@
-import { TautulliSettingDto } from '@maintainerr/contracts';
+import {
+  JellyseerrSettingDto,
+  OverseerrSettingDto,
+  TautulliSettingDto,
+} from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
@@ -308,6 +312,50 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  public async removeOverseerrSetting() {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsRepo.save({
+        ...settingsDb,
+        overseerr_url: null,
+        overseerr_api_key: null,
+      });
+
+      this.overseerr_url = null;
+      this.overseerr_api_key = null;
+      this.overseerr.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error('Error removing Overseerr settings: ', e);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateOverseerrSetting(
+    settings: OverseerrSettingDto,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsRepo.save({
+        ...settingsDb,
+        overseerr_url: settings.url,
+        overseerr_api_key: settings.api_key,
+      });
+
+      this.overseerr_url = settings.url;
+      this.overseerr_api_key = settings.api_key;
+      this.overseerr.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error('Error while updating Overseerr settings: ', e);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async addSonarrSetting(
     settings: Omit<SonarrSettings, 'id' | 'collections'>,
   ): Promise<SonarrSettingResponseDto> {
@@ -505,49 +553,73 @@ export class SettingsService implements SettingDto {
     );
   }
 
-  public async testOverseerr(): Promise<BasicResponseDto> {
-    try {
-      const validateResponse = await this.overseerr.validateApiConnectivity();
+  public async testOverseerr(
+    setting?: OverseerrSettingDto,
+  ): Promise<BasicResponseDto> {
+    return await this.overseerr.testConnection(
+      setting
+        ? {
+            apiKey: setting.api_key,
+            url: setting.url,
+          }
+        : undefined,
+    );
+  }
 
-      if (validateResponse.status === 'OK') {
-        const resp = await this.overseerr.status();
-        return resp?.version != null
-          ? { status: 'OK', code: 1, message: resp.version }
-          : {
-              status: 'NOK',
-              code: 0,
-              message:
-                'Connection failed! Double check your entries and make sure to Save Changes before you Test.',
-            };
-      } else {
-        return validateResponse;
-      }
+  public async testJellyseerr(
+    setting?: JellyseerrSettingDto,
+  ): Promise<BasicResponseDto> {
+    return await this.jellyseerr.testConnection(
+      setting
+        ? {
+            apiKey: setting.api_key,
+            url: setting.url,
+          }
+        : undefined,
+    );
+  }
+
+  public async removeJellyseerrSetting() {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsRepo.save({
+        ...settingsDb,
+        jellyseerr_url: null,
+        jellyseerr_api_key: null,
+      });
+
+      this.jellyseerr_url = null;
+      this.jellyseerr_api_key = null;
+      this.jellyseerr.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      this.logger.error('Error removing Jellyseerr settings: ', e);
+      return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
 
-  public async testJellyseerr(): Promise<BasicResponseDto> {
+  public async updateJellyseerrSetting(
+    settings: JellyseerrSettingDto,
+  ): Promise<BasicResponseDto> {
     try {
-      const validateResponse = await this.jellyseerr.validateApiConnectivity();
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      if (validateResponse.status === 'OK') {
-        const resp = await this.jellyseerr.status();
-        return resp?.version != null
-          ? { status: 'OK', code: 1, message: resp.version }
-          : {
-              status: 'NOK',
-              code: 0,
-              message:
-                'Connection failed! Double check your entries and make sure to Save Changes before you Test.',
-            };
-      } else {
-        return validateResponse;
-      }
+      await this.settingsRepo.save({
+        ...settingsDb,
+        jellyseerr_url: settings.url,
+        jellyseerr_api_key: settings.api_key,
+      });
+
+      this.jellyseerr_url = settings.url;
+      this.jellyseerr_api_key = settings.api_key;
+      this.jellyseerr.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      this.logger.error('Error while updating Jellyseerr settings: ', e);
+      return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
 
@@ -583,6 +655,14 @@ export class SettingsService implements SettingDto {
       const apiClient = await this.servarr.getRadarrApiClient(id);
 
       const resp = await apiClient.info();
+      //Make sure it's actually Radarr and not Sonarr
+      if (resp?.appName && resp.appName.toLowerCase() !== 'radarr') {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: `Unexpected application name returned: ${resp.appName}`,
+        };
+      }
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
@@ -599,6 +679,14 @@ export class SettingsService implements SettingDto {
       const apiClient = await this.servarr.getSonarrApiClient(id);
 
       const resp = await apiClient.info();
+      //Make sure it's actually Sonarr and not Radarr
+      if (resp?.appName && resp.appName.toLowerCase() !== 'sonarr') {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: `Unexpected application name returned: ${resp.appName}`,
+        };
+      }
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };

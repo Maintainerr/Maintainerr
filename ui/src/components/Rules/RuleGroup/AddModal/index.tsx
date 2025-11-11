@@ -73,7 +73,7 @@ const AddModal = (props: AddModal) => {
   const [selectedLibrary, setSelectedLibrary] = useState<ILibrary>()
   const [collection, setCollection] = useState<ICollection>()
   const [isLoading, setIsLoading] = useState(true)
-  const [CommunityModal, setCommunityModal] = useState(false)
+  const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
     useState(false)
@@ -187,18 +187,15 @@ const AddModal = (props: AddModal) => {
     setRules(rules)
   }
 
-  const toggleCommunityRuleModal = (e: any) => {
-    e.preventDefault()
-
-    if (CommunityModal) {
-      setCommunityModal(false)
+  const toggleCommunityRuleModal = () => {
+    if (selectedLibrary == null) {
+      alert('Please select a library first.')
     } else {
-      setCommunityModal(true)
+      setShowCommunityModal(!showCommunityModal)
     }
   }
 
   const toggleYamlExporter = async (e: any) => {
-    e.preventDefault()
     const response = await PostApiHandler('/rules/yaml/encode', {
       rules: JSON.stringify(rules),
       mediaType: selectedType,
@@ -216,7 +213,6 @@ const AddModal = (props: AddModal) => {
   }
 
   const toggleYamlImporter = (e: any) => {
-    e.preventDefault()
     yaml.current = undefined
     if (!yamlImporterModal) {
       setYamlImporterModal(true)
@@ -247,7 +243,7 @@ const AddModal = (props: AddModal) => {
   const handleLoadRules = (rules: IRule[]) => {
     updateRules(rules)
     ruleCreatorVersion.current = ruleCreatorVersion.current + 1
-    setCommunityModal(false)
+    setShowCommunityModal(false)
   }
 
   const cancel = () => {
@@ -319,8 +315,7 @@ const AddModal = (props: AddModal) => {
     }
   }, [])
 
-  const create = (e: any) => {
-    e.preventDefault()
+  const create = () => {
     if (
       nameRef.current.value &&
       libraryRef.current.value &&
@@ -989,6 +984,7 @@ const AddModal = (props: AddModal) => {
                       <button
                         className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-zinc-900 shadow-md hover:bg-amber-800 md:h-10"
                         onClick={toggleCommunityRuleModal}
+                        type="button"
                       >
                         {
                           <CloudDownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
@@ -1003,6 +999,7 @@ const AddModal = (props: AddModal) => {
                     <button
                       className="ml-3 flex h-fit rounded bg-amber-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-amber-500 md:h-10 md:text-base"
                       onClick={toggleYamlImporter}
+                      type="button"
                     >
                       {
                         <DownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200 md:h-6" />
@@ -1015,6 +1012,7 @@ const AddModal = (props: AddModal) => {
                     <button
                       className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-sm shadow-md hover:bg-amber-800 md:h-10 md:text-base"
                       onClick={toggleYamlExporter}
+                      type="button"
                     >
                       {
                         <UploadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
@@ -1025,15 +1023,15 @@ const AddModal = (props: AddModal) => {
                     </button>
                   </div>
                 </div>
-                {CommunityModal ? (
+                {showCommunityModal && selectedLibrary && (
                   <CommunityRuleModal
                     currentRules={rules}
-                    type={selectedLibrary ? selectedLibrary.type : 'movie'}
+                    type={selectedLibrary.type}
                     onUpdate={handleLoadRules}
-                    onCancel={() => setCommunityModal(false)}
+                    onCancel={() => setShowCommunityModal(false)}
                   />
-                ) : undefined}
-                {yamlImporterModal ? (
+                )}
+                {yamlImporterModal && (
                   <YamlImporterModal
                     yaml={yaml.current ? yaml.current : undefined}
                     onImport={(yaml: string) => {
@@ -1044,7 +1042,7 @@ const AddModal = (props: AddModal) => {
                       setYamlImporterModal(false)
                     }}
                   />
-                ) : undefined}
+                )}
 
                 {configureNotificionModal ? (
                   <ConfigureNotificationModal
@@ -1081,6 +1079,7 @@ const AddModal = (props: AddModal) => {
               <button
                 className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
                 onClick={create}
+                type="button"
               >
                 {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">

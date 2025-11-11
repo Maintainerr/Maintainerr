@@ -30,10 +30,10 @@ export const useEvent = <T,>(
   listener: (event: T) => any,
 ) => {
   const context = useContext(EventsContext)
-  const listenerAdded = useRef(listener)
+  const listenerRef = useRef(listener)
 
   useEffect(() => {
-    listenerAdded.current = listener
+    listenerRef.current = listener
   })
 
   useEffect(() => {
@@ -44,7 +44,11 @@ export const useEvent = <T,>(
     }
 
     const parserListener = (ev: MessageEvent) => {
-      listenerAdded.current(JSON.parse(ev.data))
+      try {
+        listenerRef.current(JSON.parse(ev.data))
+      } catch (error) {
+        console.error('Error parsing event data:', error)
+      }
     }
 
     context.addEventListener(type, parserListener, options)

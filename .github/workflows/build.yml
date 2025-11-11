@@ -15,7 +15,7 @@ permissions:
 
 env:
   DOCKERHUB_SLUG: jorenn92/maintainerr
-  GHCR_SLUG: ghcr.io/jorenn92/maintainerr
+  GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
   build_docker_image:

@@ -46,6 +46,14 @@ const Overview = () => {
         )
       }
     }, 300)
+
+    // Cleanup on unmount
+    return () => {
+      setData([])
+      dataRef.current = []
+      totalSizeRef.current = 999
+      pageData.current = 0
+    }
   }, [])
 
   useEffect(() => {
@@ -114,7 +122,7 @@ const Overview = () => {
         // check lib again, we don't want to change array when lib was changed
         setTotalSize(resp.totalSize)
         pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...resp.items])
+        setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
         setIsLoading(false)
       }
       setLoadingExtra(false)

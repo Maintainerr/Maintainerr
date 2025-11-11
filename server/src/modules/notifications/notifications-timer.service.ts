@@ -1,6 +1,4 @@
-import { MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CollectionsService } from '../collections/collections.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { TaskBase } from '../tasks/task.base';
@@ -23,7 +21,6 @@ export class NotificationTimerService extends TaskBase {
     protected readonly logger: MaintainerrLogger,
     protected readonly collectionService: CollectionsService,
     private readonly notificationService: NotificationService,
-    private readonly eventEmitter: EventEmitter2,
   ) {
     logger.setContext(NotificationTimerService.name);
     super(taskService, logger);
@@ -45,49 +42,50 @@ export class NotificationTimerService extends TaskBase {
           (n) => n.id === agent.getNotification().id,
         );
 
-        if (notification?.enabled) {
-          const itemsToNotify = (
-            await Promise.all(
-              (notification.rulegroups || []).map(async (group) => {
-                const notifyDate = new Date(
-                  new Date().getTime() -
-                    group.collection.deleteAfterDays * 86400000 +
-                    notification.aboutScale * 86400000,
+        if (!notification?.enabled || !notification.rulegroups?.length) {
+          return;
+        }
+
+        const itemsToNotify = (
+          await Promise.all(
+            notification.rulegroups.map(async (group) => {
+              const notifyDate = new Date(
+                new Date().getTime() -
+                  group.collection.deleteAfterDays * 86400000 +
+                  notification.aboutScale * 86400000,
+              );
+
+              const collectionMedia =
+                await this.collectionService.getCollectionMedia(
+                  group.collection?.id,
                 );
 
-                const collectionMedia =
-                  await this.collectionService.getCollectionMedia(
-                    group.collection?.id,
+              return (
+                collectionMedia?.filter((media) => {
+                  const mediaDate = new Date(media.addDate);
+                  return (
+                    getDayStart(mediaDate).getTime() ===
+                    getDayStart(notifyDate).getTime()
                   );
+                }) || []
+              );
+            }),
+          )
+        ).flat();
 
-                return (
-                  collectionMedia?.filter((media) => {
-                    const mediaDate = new Date(media.addDate);
-                    return (
-                      getDayStart(mediaDate).getTime() ===
-                      getDayStart(notifyDate).getTime()
-                    );
-                  }) || []
-                );
-              }),
-            )
-          ).flat();
+        const transformedItems = itemsToNotify.map((i) => ({
+          plexId: i.plexId,
+        }));
 
-          const transformedItems = itemsToNotify.map((i) => ({
-            plexId: i.plexId,
-          }));
-
-          // send the notification if required
-          if (notification.rulegroups && transformedItems.length > 0) {
-            this.eventEmitter.emit(
-              MaintainerrEvent.Notifications_Fire,
-              this.type,
-              transformedItems,
-              undefined,
-              notification.aboutScale,
-              agent,
-            );
-          }
+        // send the notification if required
+        if (transformedItems.length > 0) {
+          await this.notificationService.handleNotification(
+            this.type,
+            transformedItems,
+            undefined,
+            notification.aboutScale,
+            agent,
+          );
         }
       }),
     );

@@ -65,15 +65,16 @@ const SettingsTabs: React.FC<{
   const router = useRouter()
 
   useEffect(() => {
-    window.addEventListener('touchstart', (e) => {
+    const handleTouchStart = (e: TouchEvent) => {
       if (!allEnabled) {
         e.preventDefault()
       }
-    })
-    return () => {
-      window.removeEventListener('touchstart', (e) => e.preventDefault)
     }
-  }, [])
+    window.addEventListener('touchstart', handleTouchStart)
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart)
+    }
+  }, [allEnabled])
 
   return (
     <>

@@ -1,15 +1,15 @@
 import { useState } from 'react'
+import { ISonarrSetting } from '..'
+import { PostApiHandler, PutApiHandler } from '../../../../utils/ApiHandler'
 import {
   addPortToUrl,
   getBaseUrl,
   getHostname,
   getPortFromUrl,
 } from '../../../../utils/SettingsUtils'
+import Alert from '../../../Common/Alert'
 import DocsButton from '../../../Common/DocsButton'
 import Modal from '../../../Common/Modal'
-import { PostApiHandler, PutApiHandler } from '../../../../utils/ApiHandler'
-import Alert from '../../../Common/Alert'
-import { ISonarrSetting } from '..'
 
 interface ISonarrSettingsModal {
   onUpdate: (setting: ISonarrSetting) => void
@@ -218,11 +218,14 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
       {testResult != null ? (
         testResult?.status ? (
           <Alert
-            type="warning"
+            type="info"
             title={`Successfully connected to Sonarr (${testResult.version})`}
           />
         ) : (
-          <Alert type="error" title="Failed to connect to Sonarr" />
+          <Alert
+            type="error"
+            title={testResult.version || 'Failed to connect to Sonarr'}
+          />
         )
       ) : undefined}
 

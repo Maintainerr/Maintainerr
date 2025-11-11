@@ -51,7 +51,7 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
           title={
             props.thumbsActive
               ? ''
-              : 'You Already submitted karma for this rule'
+              : 'You have already submitted karma for this rule.'
           }
         >
           <ChevronUpIcon

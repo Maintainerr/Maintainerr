@@ -14,21 +14,21 @@ const ApiHandler = async <Response,>(
   ) => {
     switch (method) {
       case 'get':
-        return await axios
-          .get<Response>(`${API_BASE_PATH}/api${url}`)
-          .then((res) => res.data)
+        return (await axios.get<Response>(`${API_BASE_PATH}/api${url}`)).data
       case 'post':
-        return await axios
-          .post<Response>(`${API_BASE_PATH}/api${url}`, payload)
-          .then((res) => res.data)
+        return (
+          await axios.post<Response>(`${API_BASE_PATH}/api${url}`, payload)
+        ).data
       case 'put':
-        return await axios
-          .put<Response>(`${API_BASE_PATH}/api${url}`, payload)
-          .then((res) => res.data)
+        return (
+          await axios.put<Response>(`${API_BASE_PATH}/api${url}`, payload)
+        ).data
       case 'delete':
-        return await axios
-          .delete<Response>(`${API_BASE_PATH}/api${url}`, payload)
-          .then((res) => res.data)
+        return (
+          await axios.delete<Response>(`${API_BASE_PATH}/api${url}`, {
+            data: payload,
+          })
+        ).data
     }
   }
   const data = await fetcher(url, payload, method)

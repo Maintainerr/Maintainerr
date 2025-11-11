@@ -1,5 +1,6 @@
 import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
+import { NotificationAgentOptions } from '../notifications-interfaces';
 
 @Entity()
 export class Notification {
@@ -15,11 +16,11 @@ export class Notification {
   @Column({ default: false })
   enabled: boolean;
 
-  @Column('text', { nullable: true })
-  types: string;
+  @Column('simple-json', { nullable: true })
+  types: number[];
 
-  @Column({ type: 'simple-json', nullable: false })
-  options: string;
+  @Column('json', { nullable: false })
+  options: NotificationAgentOptions;
 
   @Column({ default: 3, nullable: false })
   aboutScale: number;

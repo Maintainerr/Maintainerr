@@ -174,7 +174,8 @@ class PGPEncryptor extends Transform {
       callback();
     } catch (e) {
       this.logger.error(
-        `Something went wrong while encrypting email message with OpenPGP. Sending email without encryption. ${e.message}`,
+        `Something went wrong while encrypting email message with OpenPGP. Sending email without encryption.`,
+        e,
       );
 
       this.push(message);

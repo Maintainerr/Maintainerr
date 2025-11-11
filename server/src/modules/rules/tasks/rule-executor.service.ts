@@ -377,10 +377,15 @@ export class RuleExecutorService extends TaskBase {
 
           this.eventEmitter.emit(
             MaintainerrEvent.CollectionMedia_Removed,
-            new CollectionMediaRemovedDto(dataToRemove, collection.title, {
-              type: 'rulegroup',
-              value: rulegroup.id,
-            }),
+            new CollectionMediaRemovedDto(
+              dataToRemove,
+              collection.title,
+              {
+                type: 'rulegroup',
+                value: rulegroup.id,
+              },
+              collection.deleteAfterDays,
+            ),
           );
         }
 

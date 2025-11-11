@@ -1,8 +1,8 @@
+import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
-import { BasicResponseDto } from '../external-api/dto/basic-response.dto';
 import { JellyseerrApi } from './helpers/jellyseerr-api.helper';
 
 interface JellyseerrMediaInfo {
@@ -108,6 +108,10 @@ interface JellyseerrStatus {
   commitTag: string;
   updateAvailable: boolean;
   commitsBehind: number;
+}
+
+interface JellyseerrAbout {
+  version: string;
 }
 
 export enum JellyseerrMediaStatus {
@@ -369,16 +373,40 @@ export class JellyseerrApiService {
     }
   }
 
-  public async validateApiConnectivity(): Promise<BasicResponseDto> {
+  public async testConnection(
+    params?: ConstructorParameters<typeof JellyseerrApi>[0],
+  ): Promise<BasicResponseDto> {
+    const api = params
+      ? new JellyseerrApi(
+          {
+            apiKey: params.apiKey,
+            url: `${params.url?.replace(/\/$/, '')}/api/v1`,
+          },
+          this.logger,
+        )
+      : this.api;
+
     try {
-      await this.api.getRawWithoutCache(`/settings/about`, {
-        signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
-      });
+      const response = await api.getRawWithoutCache<JellyseerrAbout>(
+        `/settings/about`,
+        {
+          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+        },
+      );
+
+      if (!response.data?.version) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message:
+            'Failure, an unexpected response was returned. The URL is likely incorrect.',
+        };
+      }
 
       return {
         status: 'OK',
         code: 1,
-        message: 'Success',
+        message: response.data.version,
       };
     } catch (e) {
       this.logger.warn(

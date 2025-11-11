@@ -1,84 +1,140 @@
-export interface NotificationAgentConfig {
+export interface DiscordOptions {
+  agent: NotificationAgentKey.DISCORD;
+  botUsername?: string;
+  botAvatarUrl?: string;
+  webhookUrl: string;
+}
+
+export interface SlackOptions {
+  agent: NotificationAgentKey.SLACK;
+  webhookUrl: string;
+}
+
+export interface EmailOptions {
+  agent: NotificationAgentKey.EMAIL;
+  senderName: string;
+  emailFrom: string;
+  emailTo: string;
+  smtpHost: string;
+  smtpPort: number;
+  secure?: boolean;
+  ignoreTls?: boolean;
+  requireTls?: boolean;
+  authUser?: string;
+  authPass?: string;
+  allowSelfSigned?: boolean;
+  pgpKey?: string;
+  pgpPassword?: string;
+}
+
+export interface LunaSeaOptions {
+  agent: NotificationAgentKey.LUNASEA;
+  webhookUrl: string;
+  profileName?: string;
+}
+
+export interface TelegramOptions {
+  agent: NotificationAgentKey.TELEGRAM;
+  botUsername?: string;
+  botAuthToken: string;
+  chatId: string;
+  sendSilently?: boolean;
+}
+
+export interface PushbulletOptions {
+  agent: NotificationAgentKey.PUSHBULLET;
+  accessToken: string;
+  channelTag?: string;
+}
+
+export interface PushoverOptions {
+  agent: NotificationAgentKey.PUSHOVER;
+  accessToken: string;
+  userToken: string;
+  sound: string;
+}
+
+export interface WebhookOptions {
+  agent: NotificationAgentKey.WEBHOOK;
+  webhookUrl: string;
+  jsonPayload: string;
+  authHeader?: string;
+}
+
+export interface GotifyOptions {
+  agent: NotificationAgentKey.GOTIFY;
+  url: string;
+  token: string;
+}
+
+export type NotificationAgentOptions =
+  | DiscordOptions
+  | SlackOptions
+  | EmailOptions
+  | LunaSeaOptions
+  | TelegramOptions
+  | PushbulletOptions
+  | PushoverOptions
+  | WebhookOptions
+  | GotifyOptions;
+
+interface BaseNotificationAgentConfig {
   enabled: boolean;
   types?: number[];
-  options: Record<string, unknown>;
-}
-export interface NotificationAgentDiscord extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    botUsername?: string;
-    botAvatarUrl?: string;
-    webhookUrl: string;
-  };
 }
 
-export interface NotificationAgentSlack extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    webhookUrl: string;
-  };
+export interface NotificationAgentConfig extends BaseNotificationAgentConfig {
+  options: NotificationAgentOptions;
 }
 
-export interface NotificationAgentEmail extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    emailFrom: string;
-    smtpHost: string;
-    smtpPort: number;
-    secure: boolean;
-    ignoreTls: boolean;
-    requireTls: boolean;
-    authUser?: string;
-    authPass?: string;
-    allowSelfSigned: boolean;
-    senderName: string;
-    pgpPrivateKey?: string;
-    pgpPassword?: string;
-  };
+// Specific agent configurations
+export interface NotificationAgentDiscord extends BaseNotificationAgentConfig {
+  options: DiscordOptions;
 }
 
-export interface NotificationAgentLunaSea extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    webhookUrl: string;
-    profileName?: string;
-  };
+export interface NotificationAgentSlack extends BaseNotificationAgentConfig {
+  options: SlackOptions;
 }
 
-export interface NotificationAgentTelegram extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    botUsername?: string;
-    botAPI: string;
-    chatId: string;
-    sendSilently: boolean;
-  };
+export interface NotificationAgentEmail extends BaseNotificationAgentConfig {
+  options: EmailOptions;
 }
 
-export interface NotificationAgentPushbullet extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    accessToken: string;
-    channelTag?: string;
-  };
+export interface NotificationAgentLunaSea extends BaseNotificationAgentConfig {
+  options: LunaSeaOptions;
 }
 
-export interface NotificationAgentPushover extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    accessToken: string;
-    userToken: string;
-    sound: string;
-  };
+export interface NotificationAgentTelegram extends BaseNotificationAgentConfig {
+  options: TelegramOptions;
 }
 
-export interface NotificationAgentWebhook extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    webhookUrl: string;
-    jsonPayload: string;
-    authHeader?: string;
-  };
+export interface NotificationAgentPushbullet
+  extends BaseNotificationAgentConfig {
+  options: PushbulletOptions;
 }
 
-export interface NotificationAgentGotify extends NotificationAgentConfig {
-  options: NotificationAgentConfig['options'] & {
-    url: string;
-    token: string;
-  };
+export interface NotificationAgentPushover extends BaseNotificationAgentConfig {
+  options: PushoverOptions;
 }
+
+export interface NotificationAgentWebhook extends BaseNotificationAgentConfig {
+  options: WebhookOptions;
+}
+
+export interface NotificationAgentGotify extends BaseNotificationAgentConfig {
+  options: GotifyOptions;
+}
+
+export type AnyNotificationAgentConfig =
+  | NotificationAgentDiscord
+  | NotificationAgentSlack
+  | NotificationAgentEmail
+  | NotificationAgentLunaSea
+  | NotificationAgentTelegram
+  | NotificationAgentPushbullet
+  | NotificationAgentPushover
+  | NotificationAgentWebhook
+  | NotificationAgentGotify;
 
 export enum NotificationAgentKey {
   DISCORD = 'discord',

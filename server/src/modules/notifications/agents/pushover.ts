@@ -71,7 +71,7 @@ class PushoverAgent implements NotificationAgent {
         attachment_type: contentType,
       };
     } catch (e) {
-      this.logger.error(`Error getting image payload: ${e.message}`);
+      this.logger.error(`Error getting image payload`, e);
       return {};
     }
   }
@@ -80,8 +80,8 @@ class PushoverAgent implements NotificationAgent {
     type: NotificationType,
     payload: NotificationPayload,
   ): Promise<Partial<PushoverPayload>> {
-    const title = payload.event ?? payload.subject;
-    let message = payload.event ? `<b>${payload.subject}</b>` : '';
+    const title = payload.subject;
+    let message = `<b>${payload.subject}</b>`;
     const priority = 0;
 
     if (payload.message) {
@@ -139,11 +139,10 @@ class PushoverAgent implements NotificationAgent {
           `Error sending Pushover notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            errorMessage: e.message,
             response: e.response?.data,
           })}`,
+          e,
         );
-        this.logger.debug(e);
         return `Failure: ${e.message}`;
       }
     }

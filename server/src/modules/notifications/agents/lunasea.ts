@@ -30,15 +30,9 @@ class LunaSeaAgent implements NotificationAgent {
   private buildPayload(type: NotificationType, payload: NotificationPayload) {
     return {
       notification_type: NotificationType[type],
-      event: payload.event,
       subject: payload.subject,
       message: payload.message,
       image: payload.image ?? null,
-      email: this.getSettings().options.email,
-      username: this.getSettings().options.displayName
-        ? this.getSettings().options.profileName
-        : this.getSettings().options.displayName,
-      avatar: this.getSettings().options.avatar,
       extra: payload.extra ?? [],
     };
   }
@@ -67,7 +61,7 @@ class LunaSeaAgent implements NotificationAgent {
 
     try {
       await axios.post(
-        this.getSettings().options.webhookUrl as string,
+        this.getSettings().options.webhookUrl,
         this.buildPayload(type, payload),
         settings.options.profileName
           ? {
@@ -86,11 +80,10 @@ class LunaSeaAgent implements NotificationAgent {
         `Error sending Lunasea notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          errorMessage: e.message,
           response: e.response?.data,
         })}`,
+        e,
       );
-      this.logger.debug(e);
 
       return `Failure: ${e.message}`;
     }

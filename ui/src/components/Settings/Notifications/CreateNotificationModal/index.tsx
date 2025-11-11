@@ -1,3 +1,4 @@
+import { BasicResponseDto } from '@maintainerr/contracts'
 import { Editor } from '@monaco-editor/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
@@ -120,14 +121,14 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     if (props.selected) {
       nameRef.current = props.selected.name
       enabledRef.current = props.selected.enabled
-      setFormValues(JSON.parse(props.selected.options as unknown as string))
+      setFormValues(props.selected.options)
     }
   }, [])
 
   const postNotificationConfig = (payload: AgentConfiguration) => {
     PostApiHandler('/notifications/configuration/add', payload).then(
-      (status) => {
-        props.onSave(status)
+      (status: BasicResponseDto) => {
+        props.onSave(status.status === 'OK')
       },
     )
   }
@@ -154,7 +155,11 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
         okDisabled={false}
         okText="Save"
         okButtonType={'primary'}
-        title={'New Notification Agent'}
+        title={
+          props.selected?.id
+            ? 'Edit Notification Agent'
+            : 'New Notification Agent'
+        }
         iconSvg={''}
         onOk={handleSubmit}
         secondaryButtonType="success"
@@ -172,6 +177,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                 <div className="form-input-field">
                   <input
                     type="text"
+                    id="name"
                     name="name"
                     defaultValue={props.selected?.name}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
@@ -194,9 +200,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     id="enabled"
                     defaultChecked={props.selected?.enabled}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                      event.target.value === 'on'
-                        ? (enabledRef.current = true)
-                        : (enabledRef.current = false)
+                      (enabledRef.current = event.target.checked)
                     }
                   ></input>
                 </div>
@@ -204,7 +208,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
             </div>
             {/* Select agent */}
             <div className="form-row">
-              <label htmlFor="ssl" className="text-label">
+              <label htmlFor="agent" className="text-label">
                 Agent *
               </label>
               <div className="form-input">
@@ -241,7 +245,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
               {targetAgent?.options.map((option) => {
                 return (
                   <div className="form-row" key={`form-row-${option.field}`}>
-                    <label htmlFor="name" className="text-label">
+                    <label
+                      htmlFor={`${targetAgent.name}-${option.field}`}
+                      className="text-label"
+                    >
                       {camelCaseToPrettyText(
                         option.field + (option.required ? ' *' : ''),
                       )}
@@ -294,12 +301,16 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                                 ? formValues?.[option.field]
                                 : false
                             }
-                            onChange={(e) =>
-                              handleInputChange(
-                                option.field,
-                                e.target.value || e.target.checked,
-                              )
-                            }
+                            onChange={(e) => {
+                              if (option.type == 'checkbox') {
+                                handleInputChange(
+                                  option.field,
+                                  e.target.checked,
+                                )
+                              } else {
+                                handleInputChange(option.field, e.target.value)
+                              }
+                            }}
                           ></input>
                         )}
                       </div>
@@ -310,9 +321,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
 
               {/* Select types */}
               <div className="form-row">
-                <label htmlFor="ssl" className="text-label">
-                  Types *
-                </label>
+                <label className="text-label">Types *</label>
                 <div className="form-input">
                   {availableTypes.map((n) => (
                     <div key={n.id}>

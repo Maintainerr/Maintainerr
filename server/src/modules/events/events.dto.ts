@@ -20,6 +20,7 @@ export class CollectionMediaRemovedDto {
     public mediaItems: { plexId: number }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
+    public dayAmount?: number,
   ) {}
 }
 
