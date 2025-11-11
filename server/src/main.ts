@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { setupGracefulShutdown } from '@tygra/nestjs-graceful-shutdown';
 import * as fs from 'fs';
-import { setupGracefulShutdown } from 'nestjs-graceful-shutdown';
 import { patchNestJsSwagger } from 'nestjs-zod';
 import path from 'path';
 import { AppModule } from './app/app.module';

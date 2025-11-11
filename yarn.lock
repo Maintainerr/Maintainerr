@@ -2765,6 +2765,7 @@ __metadata:
     "@suites/di.nestjs": "npm:^3.0.1"
     "@suites/doubles.jest": "npm:^3.0.1"
     "@suites/unit": "npm:^3.0.1"
+    "@tygra/nestjs-graceful-shutdown": "npm:^2.0.0"
     "@types/email-templates": "npm:^10.0.4"
     "@types/express": "npm:^5.0.5"
     "@types/jest": "npm:^30.0.0"
@@ -2786,7 +2787,6 @@ __metadata:
     jest: "npm:^30.2.0"
     lodash: "npm:^4.17.21"
     mime-types: "npm:^3.0.1"
-    nestjs-graceful-shutdown: "npm:^2.0.0"
     nestjs-zod: "npm:^4.3.1"
     node-cache: "npm:^5.1.2"
     nodemailer: "npm:7.0.10"
@@ -4599,6 +4599,24 @@ __metadata:
   dependencies:
     tslib: "npm:^2.4.0"
   checksum: 10c0/f9fde5c554455019f33af6c8215f1a1435028803dc2a2825b077d812bed4209a1a64444a4ca0ce2ea7e1175c8d88e2f9173a36a33c199e8a5c671aa31de8242d
+  languageName: node
+  linkType: hard
+
+"@tygra/http-terminator@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "@tygra/http-terminator@npm:2.0.0"
+  checksum: 10c0/00152e3b1f64c64511955bf767a900173279376f901f9497740911b941ecd1e290d36a344320268b49c7704a636f4f847f18d7fb4bd442d32705a7fc23532201
+  languageName: node
+  linkType: hard
+
+"@tygra/nestjs-graceful-shutdown@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "@tygra/nestjs-graceful-shutdown@npm:2.0.0"
+  dependencies:
+    "@tygra/http-terminator": "npm:^2.0.0"
+  peerDependencies:
+    "@nestjs/common": "*"
+  checksum: 10c0/003840e8640426ff3083a16fd9b234708ae645be0696aa474ea8aeb7fc76301fed83c7a5e88be6476f7ff0ae087c421327a43ca451bae6cac2c1b9adc531cbad
   languageName: node
   linkType: hard
 
@@ -14543,16 +14561,6 @@ __metadata:
   version: 1.0.0
   resolution: "nerf-dart@npm:1.0.0"
   checksum: 10c0/e19e17d7bd91dfcb1acd07cbdd8df1f0613f3408227538fe91793c6dfcf58e95b5f18b88b4a13e9b31587e89a119fd76d6df4b8d8c65564dd2c409d787819583
-  languageName: node
-  linkType: hard
-
-"nestjs-graceful-shutdown@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "nestjs-graceful-shutdown@npm:2.0.0"
-  peerDependencies:
-    "@nestjs/common": "*"
-    http-terminator: ^3.2.0
-  checksum: 10c0/6f41ebaa098cccc0d38e520ca8c7a4a81a1d33789b3b02dd4e94a68b40e7801de2bbcefe00583635e84ce82614612de973888d6f20344cf743c64844a3aa40dc
   languageName: node
   linkType: hard
 
