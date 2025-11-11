@@ -33,7 +33,7 @@ export default [
 
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: '.',
+        tsconfigRootDir: import.meta.dirname,
       },
     },
 
