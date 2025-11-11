@@ -23,7 +23,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 - **Framework**: Nest.js with TypeScript
 - **Database**: TypeORM with SQLite
-- **Testing**: Jest with custom test utilities (@automock, @suites)
+- **Testing**: Jest with @suites for dependency mocking and unit testing
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: Zod schemas with nestjs-zod
 - **Architecture**: Event-driven with schedulers, graceful shutdown support
@@ -204,7 +204,7 @@ These specifications provide comprehensive type definitions and endpoint documen
 
 ### Backend Testing
 
-- **Unit Tests**: Jest with @automock for dependency mocking
+- **Unit Tests**: Jest with @suites for dependency mocking
 - **File Pattern**: `*.spec.ts` files alongside source code
 - **Coverage**: Focus on service logic and complex business rules
 - **Test Database**: Use in-memory SQLite for integration tests

@@ -177,56 +177,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@automock/adapters.nestjs@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@automock/adapters.nestjs@npm:2.1.0"
-  dependencies:
-    "@automock/common": "npm:^3.1.0"
-    "@automock/types": "npm:^2.0.1"
-    reflect-metadata: "npm:^0.1.13"
-  checksum: 10c0/b68de2686f5a86b394e3de59d67cc7471358109644ccb8cea7cfb7f36ba3d8f819c6f0f6db4b15ef21bb4ec39190291290318bbd114667ee3900fdb0ed6bccf4
-  languageName: node
-  linkType: hard
-
-"@automock/common@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "@automock/common@npm:3.1.0"
-  dependencies:
-    "@automock/types": "npm:^2.0.1"
-  checksum: 10c0/7f1f5efa0a8fdcbfe4d77bb5b14108c0aba12b6a359e719b99bf5df8570b91f0d5c32600b30957d25324bc0b1a7f35041e2b3bd3671297e3c0400f847be94efb
-  languageName: node
-  linkType: hard
-
-"@automock/core@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@automock/core@npm:2.1.0"
-  dependencies:
-    "@automock/common": "npm:^3.1.0"
-    "@automock/types": "npm:^2.0.1"
-    lodash.isequal: "npm:^4.5.0"
-  checksum: 10c0/805ca06c848a21f8a2440a233377c8705b6fde6d866cd383f6afa1f6537fe1ff5988ece8bb602d830348cd75826cd6e7b0cb3b70035fc3221578abdd061f7706
-  languageName: node
-  linkType: hard
-
-"@automock/jest@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@automock/jest@npm:2.1.0"
-  dependencies:
-    "@automock/core": "npm:^2.1.0"
-    "@automock/types": "npm:^2.0.1"
-  peerDependencies:
-    jest: ^26 || ^27 || ^28 || ^29
-  checksum: 10c0/18a0b4ac24dbce19e739d8c85adff25f460f5beb675a95f00042cbf60484ad1c7bc336848c3a3b50aab7163ae9cb265b946093d523057d7f0c357fd3f4618005
-  languageName: node
-  linkType: hard
-
-"@automock/types@npm:^2.0.1":
-  version: 2.0.1
-  resolution: "@automock/types@npm:2.0.1"
-  checksum: 10c0/49709adb117d40a52b924b5fbe4d1d50556216aeceb27f2bdded639bb066e70aaf088a680ac0eb5e2747ad46f64d94169472f25aad5ab3033d99831fb8e45fda
-  languageName: node
-  linkType: hard
-
 "@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.16.7, @babel/code-frame@npm:^7.22.13, @babel/code-frame@npm:^7.23.5":
   version: 7.23.5
   resolution: "@babel/code-frame@npm:7.23.5"
@@ -2789,8 +2739,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@maintainerr/server@workspace:server"
   dependencies:
-    "@automock/adapters.nestjs": "npm:^2.1.0"
-    "@automock/jest": "npm:^2.1.0"
     "@eslint/eslintrc": "npm:^3.3.1"
     "@eslint/js": "npm:^9.39.1"
     "@faker-js/faker": "npm:^9.8.0"
@@ -17068,13 +17016,6 @@ __metadata:
   version: 1.6.4
   resolution: "reconnecting-eventsource@npm:1.6.4"
   checksum: 10c0/ce760895524473e6b77e026ba9b62401a0f59bd60335c8f69d0c461b10f9f65d753a6c40843a3a1a67c28ee36341c2a6019632719e8df27a8b2110eb2486c32d
-  languageName: node
-  linkType: hard
-
-"reflect-metadata@npm:^0.1.13":
-  version: 0.1.14
-  resolution: "reflect-metadata@npm:0.1.14"
-  checksum: 10c0/3a6190c7f6cb224f26a012d11f9e329360c01c1945e2cbefea23976a8bacf9db6b794aeb5bf18adcb673c448a234fbc06fc41853c00a6c206b30f0777ecf019e
   languageName: node
   linkType: hard
 
