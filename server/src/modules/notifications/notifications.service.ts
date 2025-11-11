@@ -760,11 +760,24 @@ export class NotificationService {
         if (items.length > 1) {
           // if multiple items
           const titles = [];
+          let numUnknownItems = 0;
 
           for (const i of items) {
             const item = await this.plexApi.getMetadata(i.plexId.toString());
 
-            titles.push(item ? this.getTitle(item) : 'Unknown media item');
+            if (item) {
+              titles.push(this.getTitle(item));
+            } else {
+              numUnknownItems++;
+            }
+          }
+
+          if (numUnknownItems > 0) {
+            titles.push(
+              `${numUnknownItems} item${
+                numUnknownItems > 1 ? 's' : ''
+              } that no longer exist${numUnknownItems > 1 ? '' : 's'} in Plex`,
+            );
           }
 
           const result = titles
@@ -779,7 +792,7 @@ export class NotificationService {
           );
           message = message.replace(
             '{media_title}',
-            item ? this.getTitle(item) : 'Unknown media item',
+            item ? this.getTitle(item) : '1 item that no longer exists in Plex',
           );
         }
       }
