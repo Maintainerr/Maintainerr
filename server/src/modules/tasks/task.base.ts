@@ -19,31 +19,33 @@ export abstract class TaskBase
   async onApplicationBootstrap(): Promise<void> {
     this.onBootstrapHook();
 
-    new Promise<void>(async (resolve, reject) => {
-      while (this.jobCreationAttempts < 3) {
-        this.jobCreationAttempts++;
-        const state = await this.taskService.createJob(
-          this.name,
-          this.cronSchedule,
-          this.execute.bind(this),
-          true,
-        );
-
-        if (state.code === 1) {
-          resolve();
-          return;
-        }
-
-        if (this.jobCreationAttempts < 3) {
-          this.logger.warn(
-            `Creation of ${this.name} task failed. Retrying in 10s... (Attempt ${this.jobCreationAttempts}/3)`,
+    new Promise<void>((resolve, reject) => {
+      void (async () => {
+        while (this.jobCreationAttempts < 3) {
+          this.jobCreationAttempts++;
+          const state = await this.taskService.createJob(
+            this.name,
+            this.cronSchedule,
+            this.execute.bind(this),
+            true,
           );
 
-          await delay(10_000);
-        }
-      }
+          if (state.code === 1) {
+            resolve();
+            return;
+          }
 
-      reject();
+          if (this.jobCreationAttempts < 3) {
+            this.logger.warn(
+              `Creation of ${this.name} task failed. Retrying in 10s... (Attempt ${this.jobCreationAttempts}/3)`,
+            );
+
+            await delay(10_000);
+          }
+        }
+
+        reject();
+      })();
     }).catch((err) => {
       this.logger.error(
         `Creation of ${this.name} task failed after 3 attempts.`,

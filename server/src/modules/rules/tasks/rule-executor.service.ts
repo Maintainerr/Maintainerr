@@ -223,7 +223,7 @@ export class RuleExecutorService extends TaskBase {
 
         // Handle manually added
         if (children && children.length > 0) {
-          children.forEach(async (child) => {
+          for (const child of children) {
             if (child && child.ratingKey)
               if (
                 !collectionMedia.find((e) => {
@@ -243,12 +243,12 @@ export class RuleExecutorService extends TaskBase {
                   true,
                 );
               }
-          });
+          }
         }
 
         // Handle manually removed
         if (collectionMedia && collectionMedia.length > 0) {
-          collectionMedia.forEach(async (media) => {
+          for (const media of collectionMedia) {
             if (media && media.plexId) {
               if (
                 !children ||
@@ -267,7 +267,7 @@ export class RuleExecutorService extends TaskBase {
                 );
               }
             }
-          });
+          }
         }
 
         this.logger.log(

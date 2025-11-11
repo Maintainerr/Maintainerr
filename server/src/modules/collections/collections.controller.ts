@@ -26,14 +26,14 @@ export class CollectionsController {
     private readonly collectionWorkerService: CollectionWorkerService,
   ) {}
   @Post()
-  createCollection(@Body() request: any) {
-    this.collectionService.createCollectionWithChildren(
+  async createCollection(@Body() request: any) {
+    await this.collectionService.createCollectionWithChildren(
       request.collection,
       request.media,
     );
   }
   @Post('/add')
-  addToCollection(
+  async addToCollection(
     @Body()
     request: {
       collectionId: number;
@@ -41,15 +41,15 @@ export class CollectionsController {
       manual?: boolean;
     },
   ) {
-    this.collectionService.addToCollection(
+    await this.collectionService.addToCollection(
       request.collectionId,
       request.media,
       request.manual ? request.manual : false,
     );
   }
   @Post('/remove')
-  removeFromCollection(@Body() request: any) {
-    this.collectionService.removeFromCollection(
+  async removeFromCollection(@Body() request: any) {
+    await this.collectionService.removeFromCollection(
       request.collectionId,
       request.media,
     );
