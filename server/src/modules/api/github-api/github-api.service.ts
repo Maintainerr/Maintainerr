@@ -36,6 +36,13 @@ export class GitHubApiService {
               `Request quota exhausted for ${options.method} ${options.url}`,
             );
 
+            if (retryAfter && retryAfter > 10) {
+              logger.error(
+                `Aborting retry for ${options.method} ${options.url} due to long wait time of ${retryAfter} seconds`,
+              );
+              return false;
+            }
+
             // Retry the first time, then give up
             if (retryCount < 1) {
               logger.log(`Retrying after ${retryAfter} seconds`);
