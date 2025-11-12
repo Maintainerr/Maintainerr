@@ -159,8 +159,8 @@ export class NotificationService {
       }
 
       // reset & reload notification agents
-  await this.registerConfiguredAgents(true);
-  return { code: 1, status: 'OK', message: 'Success' };
+      await this.registerConfiguredAgents(true);
+      return { code: 1, status: 'OK', message: 'Success' };
     } catch (err) {
       this.logger.error('Adding a new notification configuration failed', err);
       return { code: 0, status: 'NOK', message: err };
