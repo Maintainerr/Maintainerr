@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { GracefulShutdownModule } from '@tygra/nestjs-graceful-shutdown';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { ExternalApiModule } from '../modules/api/external-api/external-api.module';
+import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
 import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';
 import { JellyseerrApiService } from '../modules/api/jellyseerr-api/jellyseerr-api.service';
 import { OverseerrApiModule } from '../modules/api/overseerr-api/overseerr-api.module';
@@ -38,6 +39,7 @@ import ormConfig from './config/typeOrmConfig';
     SettingsModule,
     PlexApiModule,
     ExternalApiModule,
+    GitHubApiModule,
     TmdbApiModule,
     ServarrApiModule,
     OverseerrApiModule,
