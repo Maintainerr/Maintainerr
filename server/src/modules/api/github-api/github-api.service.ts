@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { throttling } from '@octokit/plugin-throttling';
 import { Octokit } from 'octokit';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import cacheManager from '../lib/cache';
 
-interface GitHubRelease {
+export interface GitHubRelease {
   tag_name: string;
   name: string;
   body: string;
@@ -12,13 +13,14 @@ interface GitHubRelease {
   published_at: string;
 }
 
-interface GitHubCommit {
+export interface GitHubCommit {
   sha: string;
 }
 
 @Injectable()
 export class GitHubApiService {
   private octokit: Octokit;
+  private cache = cacheManager.getCache('github');
 
   constructor(private readonly logger: MaintainerrLogger) {
     logger.setContext(GitHubApiService.name);
@@ -74,12 +76,23 @@ export class GitHubApiService {
     owner: string,
     repo: string,
   ): Promise<GitHubRelease | undefined> {
+    const cacheKey = `release:${owner}/${repo}:latest`;
+    const cached = this.cache?.data.get<GitHubRelease>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
       const response = await this.octokit.rest.repos.getLatestRelease({
         owner,
         repo,
       });
-      return response.data as GitHubRelease;
+      const release = response.data as GitHubRelease;
+      
+      // Cache for 24 hours (default TTL in cache config)
+      this.cache?.data.set(cacheKey, release);
+      
+      return release;
     } catch (err) {
       this.logger.debug(
         `Failed to fetch latest release for ${owner}/${repo}: ${err.message}`,
@@ -100,13 +113,24 @@ export class GitHubApiService {
     repo: string,
     ref: string,
   ): Promise<GitHubCommit | undefined> {
+    const cacheKey = `commit:${owner}/${repo}:${ref}`;
+    const cached = this.cache?.data.get<GitHubCommit>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
       const response = await this.octokit.rest.repos.getCommit({
         owner,
         repo,
         ref,
       });
-      return { sha: response.data.sha };
+      const commit = { sha: response.data.sha };
+      
+      // Cache for 24 hours (default TTL in cache config)
+      this.cache?.data.set(cacheKey, commit);
+      
+      return commit;
     } catch (err) {
       this.logger.debug(
         `Failed to fetch commit ${ref} for ${owner}/${repo}: ${err.message}`,
@@ -127,13 +151,24 @@ export class GitHubApiService {
     repo: string,
     perPage: number = 10,
   ): Promise<GitHubRelease[] | undefined> {
+    const cacheKey = `releases:${owner}/${repo}:${perPage}`;
+    const cached = this.cache?.data.get<GitHubRelease[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
       const response = await this.octokit.rest.repos.listReleases({
         owner,
         repo,
         per_page: perPage,
       });
-      return response.data as GitHubRelease[];
+      const releases = response.data as GitHubRelease[];
+      
+      // Cache for 24 hours (default TTL in cache config)
+      this.cache?.data.set(cacheKey, releases);
+      
+      return releases;
     } catch (err) {
       this.logger.debug(
         `Failed to fetch releases for ${owner}/${repo}: ${err.message}`,

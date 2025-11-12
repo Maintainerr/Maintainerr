@@ -97,6 +97,9 @@
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@octokit|octokit|bottleneck)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.ts"
     ],
