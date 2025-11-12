@@ -55,8 +55,8 @@ export class AppService {
   private async isUpdateAvailable(currentVersion: string, versionTag: string) {
     if (versionTag === 'stable') {
       const githubResp = await this.githubApi.getLatestRelease(
-        'jorenn92',
-        'maintainerr',
+        'Maintainerr',
+        'Maintainerr',
       );
       if (githubResp && githubResp.tag_name) {
         const transformedLocalVersion = currentVersion
@@ -75,8 +75,8 @@ export class AppService {
       // in case of develop, compare SHA's
       if (process.env.GIT_SHA) {
         const githubResp = await this.githubApi.getCommit(
-          'jorenn92',
-          'maintainerr',
+          'Maintainerr',
+          'Maintainerr',
           'main',
         );
         if (githubResp && githubResp.sha) {
