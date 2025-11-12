@@ -64,7 +64,13 @@ function createDataDirectoryStructure() {
 }
 
 createDataDirectoryStructure();
-bootstrap();
+bootstrap().catch((error) => {
+  console.error(
+    'A fatal error occurred starting the server. This is likely a bug, please report this issue on GitHub.',
+    { error },
+  );
+  process.exit(1);
+});
 
 process
   .on('unhandledRejection', (err) => {
@@ -79,5 +85,5 @@ process
       'The server has crashed because of an uncaughtException. This is likely a bug, please report this issue on GitHub.',
       err,
     );
-    process.exit(1);
+    process.exit(2);
   });

@@ -97,9 +97,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
         const movieFiles: RadarrMovieFile[] = await this.get(
           `moviefile?movieId=${movieId}`,
         );
-        movieFiles.forEach(
-          async (e) => await this.runDelete(`moviefile/${e.id}`),
-        );
+        for (const movieFile of movieFiles) {
+          await this.runDelete(`moviefile/${movieFile.id}`);
+        }
       }
     } catch (e) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");

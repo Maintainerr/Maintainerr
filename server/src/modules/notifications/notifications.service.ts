@@ -86,31 +86,33 @@ export class NotificationService {
     return this.activeAgents;
   };
 
-  public sendNotification(
+  public async sendNotification(
     type: NotificationType,
     payload: NotificationPayload,
     rulegroup?: RuleGroup,
-  ): void {
-    this.activeAgents.forEach((agent) => {
-      // if rulegroup is supplied, then only send the notification if configured
-      if (
-        rulegroup == undefined ||
-        rulegroup?.notifications?.find(
-          (n) => n.id === agent.getNotification().id,
+  ): Promise<void> {
+    await Promise.allSettled(
+      this.activeAgents.map(async (agent) => {
+        // if rulegroup is supplied, then only send the notification if configured
+        if (
+          rulegroup == undefined ||
+          rulegroup?.notifications?.find(
+            (n) => n.id === agent.getNotification().id,
+          )
         )
-      )
-        this.sendNotificationToAgent(type, payload, agent);
-    });
+          await this.sendNotificationToAgent(type, payload, agent);
+      }),
+    );
   }
 
-  public sendNotificationToAgent(
+  public async sendNotificationToAgent(
     type: NotificationType,
     payload: NotificationPayload,
     agent: NotificationAgent,
   ): Promise<string> {
     if (agent.shouldSend()) {
       if (agent.getSettings().types?.includes(type))
-        return agent.send(type, payload);
+        return await agent.send(type, payload);
     }
     return Promise.resolve('Agent is not allowed to send this message.');
   }
@@ -157,8 +159,8 @@ export class NotificationService {
       }
 
       // reset & reload notification agents
-      await this.registerConfiguredAgents(true);
-      return { code: 1, status: 'OK', message: 'Success' };
+  await this.registerConfiguredAgents(true);
+  return { code: 1, status: 'OK', message: 'Success' };
     } catch (err) {
       this.logger.error('Adding a new notification configuration failed', err);
       return { code: 0, status: 'NOK', message: err };
@@ -399,7 +401,7 @@ export class NotificationService {
       await this.notificationRepo.delete(notificationId);
 
       // reset & reload notification agents
-      this.registerConfiguredAgents(true);
+      await this.registerConfiguredAgents(true);
 
       return { code: 1, result: 'success' };
     } catch (err) {
@@ -652,7 +654,7 @@ export class NotificationService {
     if (agent) {
       return this.sendNotificationToAgent(type, payload, agent);
     } else {
-      this.sendNotification(type, payload, rulegroup);
+      await this.sendNotification(type, payload, rulegroup);
       return 'Success';
     }
   }
@@ -823,8 +825,8 @@ export class NotificationService {
   // OnEvent handlers
 
   @OnEvent(MaintainerrEvent.RuleHandler_Failed)
-  private ruleHandlerFailed(data: RuleHandlerFailedDto) {
-    this.handleNotification(
+  private async ruleHandlerFailed(data: RuleHandlerFailedDto) {
+    await this.handleNotification(
       NotificationType.RULE_HANDLING_FAILED,
       undefined,
       data?.collectionName,
@@ -835,13 +837,13 @@ export class NotificationService {
   }
 
   @OnEvent(MaintainerrEvent.CollectionHandler_Failed)
-  private collectionHandlerFailed() {
-    this.handleNotification(NotificationType.COLLECTION_HANDLING_FAILED);
+  private async collectionHandlerFailed() {
+    await this.handleNotification(NotificationType.COLLECTION_HANDLING_FAILED);
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Added)
-  private collectionMediaAdded(data: CollectionMediaAddedDto) {
-    this.handleNotification(
+  private async collectionMediaAdded(data: CollectionMediaAddedDto) {
+    await this.handleNotification(
       NotificationType.MEDIA_ADDED_TO_COLLECTION,
       data.mediaItems,
       data.collectionName,
@@ -852,8 +854,8 @@ export class NotificationService {
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Removed)
-  private collectionMediaRemoved(data: CollectionMediaRemovedDto) {
-    this.handleNotification(
+  private async collectionMediaRemoved(data: CollectionMediaRemovedDto) {
+    await this.handleNotification(
       NotificationType.MEDIA_REMOVED_FROM_COLLECTION,
       data.mediaItems,
       data.collectionName,
@@ -864,8 +866,8 @@ export class NotificationService {
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Handled)
-  private collectionMediaHandled(data: CollectionMediaHandledDto) {
-    this.handleNotification(
+  private async collectionMediaHandled(data: CollectionMediaHandledDto) {
+    await this.handleNotification(
       NotificationType.MEDIA_HANDLED,
       data.mediaItems,
       data.collectionName,

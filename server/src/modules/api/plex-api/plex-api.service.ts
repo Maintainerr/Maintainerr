@@ -58,7 +58,7 @@ export class PlexApiService {
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
     this.logger.setContext(PlexApiService.name);
-    this.initialize({});
+    void this.initialize({});
   }
 
   private getDbSettings(): PlexSettings {
@@ -103,7 +103,7 @@ export class PlexApiService {
           this.loggerFactory.createLogger(),
         );
 
-        this.setMachineId();
+        await this.setMachineId();
       } else {
         this.logger.log(
           "Plex API isn't fully initialized, required settings aren't set",
@@ -117,7 +117,7 @@ export class PlexApiService {
 
   public async getStatus() {
     try {
-      const response: PlexStatusResponse = await this.plexClient.queryWithCache(
+      const response: PlexStatusResponse = await this.plexClient.query(
         '/',
         false,
       );
@@ -597,12 +597,16 @@ export class PlexApiService {
 
   public async getCollectionChildren(
     collectionId: string,
+    useCache: boolean = true,
   ): Promise<PlexLibraryItem[]> {
     try {
       const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>({
-          uri: `/library/collections/${collectionId}/children`,
-        });
+        await this.plexClient.queryAll<PlexLibraryResponse>(
+          {
+            uri: `/library/collections/${collectionId}/children`,
+          },
+          useCache,
+        );
 
       // Empty collections return no Metadata node
       if (response.MediaContainer.Metadata === undefined) {
@@ -624,7 +628,7 @@ export class PlexApiService {
     childId: string,
   ): Promise<PlexCollection | BasicResponseDto> {
     try {
-      this.forceMachineId();
+      await this.forceMachineId();
       const response: PlexLibraryResponse = await this.plexClient.putQuery({
         // uri: `/library/collections/${collectionId}/items?uri=\/library\/metadata\/${childId}`,
         uri: `/library/collections/${collectionId}/items?uri=server:\/\/${this.machineId}\/com.plexapp.plugins.library\/library\/metadata\/${childId}`,
@@ -1018,7 +1022,7 @@ export class PlexApiService {
 
   private async forceMachineId() {
     if (!this.machineId) {
-      this.setMachineId();
+      await this.setMachineId();
     }
   }
 }

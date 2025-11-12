@@ -39,6 +39,7 @@ class PGPEncryptor extends Transform {
   };
 
   // Actually do stuff
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   _flush = async (callback: TransformCallback): Promise<void> => {
     const message = Buffer.concat(this._messageChunks, this._messageLength);
 

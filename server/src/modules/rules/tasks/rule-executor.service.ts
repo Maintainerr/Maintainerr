@@ -41,14 +41,11 @@ export class RuleExecutorService extends TaskBase {
   protected cronSchedule = ''; // overriden in onBootstrapHook
 
   ruleConstants: RuleConstants;
-  userId: string;
   plexData: PlexData;
   plexDataType: EPlexDataType;
   workerData: PlexLibraryItem[];
   resultData: PlexLibraryItem[];
   statisticsData: IComparisonStatistics[];
-  Data: PlexLibraryItem[];
-
   startTime: Date;
 
   constructor(
@@ -112,7 +109,7 @@ export class RuleExecutorService extends TaskBase {
           progressedEvent.totalRuleGroups = ruleGroups.length;
           progressedEvent.totalEvaluations = totalEvaluations;
 
-          for (let i = 0; i < ruleGroups.length; i++) {
+          ruleloop: for (let i = 0; i < ruleGroups.length; i++) {
             const rulegroup = ruleGroups[i];
 
             progressedEvent.processingRuleGroup = {
@@ -160,20 +157,27 @@ export class RuleExecutorService extends TaskBase {
                   abortSignal,
                 );
 
-                if (ruleResult) {
-                  this.statisticsData.push(...ruleResult.stats);
-                  this.resultData.push(...ruleResult.data);
+                if (ruleResult == null) {
+                  continue ruleloop;
                 }
+
+                this.statisticsData.push(...ruleResult.stats);
+                this.resultData.push(...ruleResult.data);
               }
 
-              await this.handleCollection(
+              const handled = await this.handleCollection(
                 await this.rulesService.getRuleGroupById(rulegroup.id), // refetch to get latest changes
               );
+
+              if (!handled) {
+                continue;
+              }
 
               this.logger.log(
                 `Execution of rules for '${rulegroup.name}' done.`,
               );
             }
+
             await this.syncManualPlexMediaToCollectionDB(
               await this.rulesService.getRuleGroupById(rulegroup.id), // refetch to get latest changes
             );
@@ -204,84 +208,85 @@ export class RuleExecutorService extends TaskBase {
   }
 
   private async syncManualPlexMediaToCollectionDB(rulegroup: RuleGroup) {
-    if (rulegroup && rulegroup.collectionId) {
-      let collection = await this.collectionService.getCollection(
-        rulegroup.collectionId,
+    if (!rulegroup?.collectionId) return;
+
+    let collection = await this.collectionService.getCollection(
+      rulegroup.collectionId,
+    );
+
+    collection =
+      await this.collectionService.relinkManualCollection(collection);
+
+    if (!collection?.plexId) return;
+
+    const maintainerrMedias = await this.collectionService.getCollectionMedia(
+      rulegroup.collectionId,
+    );
+
+    const plexMedias = await this.plexApi.getCollectionChildren(
+      collection.plexId.toString(),
+      false,
+    );
+
+    // Handle manually added
+    if (plexMedias != null) {
+      const manuallyAddedPlexMedia = plexMedias.filter(
+        (plexMedia) =>
+          plexMedia?.ratingKey != null &&
+          !maintainerrMedias.find((e) => +e.plexId === +plexMedia.ratingKey),
       );
 
-      collection =
-        await this.collectionService.relinkManualCollection(collection);
+      const maintainerrMediaToAdd: AddRemoveCollectionMedia[] =
+        manuallyAddedPlexMedia.map((plexMedia) => ({
+          plexId: +plexMedia.ratingKey,
+          reason: {
+            type: 'media_added_manually',
+          },
+        }));
 
-      if (collection && collection.plexId) {
-        const collectionMedia = await this.collectionService.getCollectionMedia(
-          rulegroup.collectionId,
-        );
-
-        const children = await this.plexApi.getCollectionChildren(
-          collection.plexId.toString(),
-        );
-
-        // Handle manually added
-        if (children && children.length > 0) {
-          children.forEach(async (child) => {
-            if (child && child.ratingKey)
-              if (
-                !collectionMedia.find((e) => {
-                  return +e.plexId === +child.ratingKey;
-                })
-              ) {
-                await this.collectionService.addToCollection(
-                  collection.id,
-                  [
-                    {
-                      plexId: +child.ratingKey,
-                      reason: {
-                        type: 'media_added_manually',
-                      },
-                    },
-                  ],
-                  true,
-                );
-              }
-          });
-        }
-
-        // Handle manually removed
-        if (collectionMedia && collectionMedia.length > 0) {
-          collectionMedia.forEach(async (media) => {
-            if (media && media.plexId) {
-              if (
-                !children ||
-                !children.find((e) => +media.plexId === +e.ratingKey)
-              ) {
-                await this.collectionService.removeFromCollection(
-                  collection.id,
-                  [
-                    {
-                      plexId: +media.plexId,
-                      reason: {
-                        type: 'media_removed_manually',
-                      },
-                    },
-                  ] satisfies AddRemoveCollectionMedia[],
-                );
-              }
-            }
-          });
-        }
-
-        this.logger.log(
-          `Synced collection '${
-            collection.manualCollection
-              ? collection.manualCollectionName
-              : collection.title
-          }' with Plex`,
+      if (maintainerrMediaToAdd.length > 0) {
+        await this.collectionService.addToCollection(
+          collection.id,
+          maintainerrMediaToAdd,
+          true,
         );
       }
     }
+
+    // Handle manually removed
+    if (maintainerrMedias != null) {
+      const manuallyRemoved = maintainerrMedias.filter(
+        (maintainerrMedia) =>
+          maintainerrMedia.plexId != null &&
+          !plexMedias.find((e) => +maintainerrMedia.plexId === +e.ratingKey),
+      );
+
+      const maintainerrMediaToRemove: AddRemoveCollectionMedia[] =
+        manuallyRemoved.map((maintainerrMedia) => ({
+          plexId: +maintainerrMedia.plexId,
+          reason: {
+            type: 'media_removed_manually',
+          },
+        }));
+
+      if (maintainerrMediaToRemove.length > 0) {
+        await this.collectionService.removeFromCollection(
+          collection.id,
+          maintainerrMediaToRemove,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Synced collection '${
+        collection.manualCollection
+          ? collection.manualCollectionName
+          : collection.title
+      }' with Plex`,
+    );
   }
 
-  private async handleCollection(rulegroup: RuleGroup) {
+  private async handleCollection(rulegroup: RuleGroup): Promise<boolean> {
     try {
       let collection = await this.collectionService.getCollection(
         rulegroup?.collectionId,
@@ -326,13 +331,7 @@ export class RuleExecutorService extends TaskBase {
 
         data.push(...manualData);
 
-        let currentCollectionData = collMediaData.map((e) => {
-          return e.plexId;
-        });
-
-        currentCollectionData = currentCollectionData
-          ? currentCollectionData
-          : [];
+        const currentCollectionData = collMediaData.map((e) => e.plexId);
 
         const mediaToAdd = data.filter(
           (el) => !currentCollectionData.includes(el),
@@ -426,7 +425,7 @@ export class RuleExecutorService extends TaskBase {
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);
 
-        return collection;
+        return true;
       } else {
         this.logger.log(
           `collection not found with id ${rulegroup.collectionId}`,
@@ -439,6 +438,8 @@ export class RuleExecutorService extends TaskBase {
             value: rulegroup.id,
           }),
         );
+
+        return false;
       }
     } catch (err) {
       this.logger.warn(
@@ -452,6 +453,8 @@ export class RuleExecutorService extends TaskBase {
           value: rulegroup.id,
         }),
       );
+
+      return false;
     }
   }
 
@@ -490,6 +493,9 @@ export class RuleExecutorService extends TaskBase {
       },
       this.plexDataType,
     );
+
+    // TODO If response is undefined we need to abort
+
     if (response) {
       this.plexData.data = response.items ? response.items : [];
 
@@ -499,6 +505,7 @@ export class RuleExecutorService extends TaskBase {
     } else {
       this.plexData.finished = true;
     }
+
     this.plexData.page++;
   }
 }

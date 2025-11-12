@@ -155,7 +155,7 @@ export class ExternalApiService {
           keyTtl - (ttl ?? DEFAULT_TTL) * 1000 <
           Date.now() - DEFAULT_ROLLING_BUFFER
         ) {
-          this.axios.get<T>(endpoint, config).then((response) => {
+          void this.axios.get<T>(endpoint, config).then((response) => {
             this.cache?.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
           });
         }

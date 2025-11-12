@@ -70,9 +70,9 @@ export class AppModule implements OnModuleInit {
     // Initialize modules requiring settings
     await this.settings.init();
     await this.plexApi.initialize({});
-    await this.overseerApi.init();
-    await this.tautulliApi.init();
-    await this.jellyseerrApi.init();
+    this.overseerApi.init();
+    this.tautulliApi.init();
+    this.jellyseerrApi.init();
 
     // intialize notification agents
     await this.notificationService.registerConfiguredAgents();

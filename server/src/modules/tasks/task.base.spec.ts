@@ -54,7 +54,7 @@ describe('TaskBase', () => {
   it('should create a job on application bootstrap', () => {
     tasksService.createJob.mockResolvedValue({ code: 0, message: 'OK' });
 
-    task.onApplicationBootstrap();
+    void task.onApplicationBootstrap();
 
     expect(tasksService.createJob).toHaveBeenCalledWith(
       'Test Task',
@@ -68,7 +68,7 @@ describe('TaskBase', () => {
   it('should try job creation 3 times before stopping', async () => {
     tasksService.createJob.mockResolvedValue({ code: 0, message: 'Error' });
 
-    task.onApplicationBootstrap();
+    void task.onApplicationBootstrap();
 
     expect(tasksService.createJob).toHaveBeenCalledTimes(1);
 
@@ -148,7 +148,7 @@ describe('TaskBase', () => {
   });
 
   it('should update the job schedule', () => {
-    task.updateJob('0 0 * * *');
+    void task.updateJob('0 0 * * *');
     expect(tasksService.updateJob).toHaveBeenCalledWith(
       'Test Task',
       '0 0 * * *',

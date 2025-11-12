@@ -18,7 +18,7 @@ export interface IRuleComparisonResult {
   secondValue: RuleValueType
   action: string
   operator?: string
-  result: boolean
+  result: RuleResultType
 }
 
 export type RuleValueType =
@@ -29,3 +29,5 @@ export type RuleValueType =
   | number[]
   | string[]
   | null
+
+export type RuleResultType = true | false | 'error'

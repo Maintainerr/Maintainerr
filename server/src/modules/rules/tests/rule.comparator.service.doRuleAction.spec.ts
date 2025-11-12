@@ -1,18 +1,841 @@
+import { IComparisonStatistics } from '@maintainerr/contracts';
+import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
-import { RulePossibility } from '../constants/rules.constants';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
+import { RuleConstanstService } from '../constants/constants.service';
+import {
+  Application,
+  RuleOperators,
+  RulePossibility,
+  RuleType,
+} from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
+import { RuleDbDto } from '../dtos/ruleDb.dto';
+import { RulesDto } from '../dtos/rules.dto';
 import { ValueGetterService } from '../getter/getter.service';
 import { RuleComparatorService } from '../helpers/rule.comparator.service';
 
 describe('RuleComparatorService', () => {
   let ruleComparatorService: RuleComparatorService;
+  let mockedValueGetterService: Mocked<ValueGetterService>;
+  let mockedRuleConstanstService: Mocked<RuleConstanstService>;
 
   beforeEach(async () => {
-    const { unit } = await TestBed.solitary(RuleComparatorService)
-      .mock(ValueGetterService)
-      .final({ get: jest.fn() })
-      .compile();
+    const { unit, unitRef } = await TestBed.solitary(
+      RuleComparatorService,
+    ).compile();
 
     ruleComparatorService = unit;
+    mockedValueGetterService = unitRef.get(ValueGetterService);
+    mockedRuleConstanstService = unitRef.get(RuleConstanstService);
+  });
+
+  describe('executeRulesWithData', () => {
+    it('should include media item for 4 sections, AND(true,false), OR(false), OR(true), AND(true)', async () => {
+      const section0Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR, // Should be forced to NULL
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const section0Rule2: RuleDto = {
+        action: RulePossibility.CONTAINS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 0] satisfies [number, number], // addUser
+        operator: RuleOperators.AND,
+        customVal: {
+          ruleTypeId: +RuleType.TEXT,
+          value: '["User"]',
+        },
+      };
+
+      const section1Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 1,
+        firstVal: [Application.PLEX, 14] satisfies [number, number], // sw_episodes
+        operator: RuleOperators.OR,
+        lastVal: [Application.PLEX, 15] satisfies [number, number], // sw_viewedEpisodes
+      };
+
+      const section2Rule1: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 2,
+        firstVal: [Application.PLEX, 6] satisfies [number, number], // collections
+        operator: RuleOperators.OR,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const section3Rule1: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 3,
+        firstVal: [Application.PLEX, 5] satisfies [number, number], // viewCount
+        operator: RuleOperators.AND,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const ruleGroup: RulesDto = {
+        id: 1,
+        dataType: EPlexDataType.SHOWS,
+        libraryId: 1,
+        name: 'Test Rule Group',
+        description: '',
+        useRules: true,
+        rules: [
+          {
+            id: 1,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 2,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule2),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 3,
+            isActive: true,
+            ruleJson: JSON.stringify(section1Rule1),
+            ruleGroupId: 1,
+            section: 1,
+          } satisfies RuleDbDto,
+          {
+            id: 4,
+            isActive: true,
+            ruleJson: JSON.stringify(section2Rule1),
+            ruleGroupId: 1,
+            section: 2,
+          } satisfies RuleDbDto,
+          {
+            id: 5,
+            isActive: true,
+            ruleJson: JSON.stringify(section3Rule1),
+            ruleGroupId: 1,
+            section: 3,
+          } satisfies RuleDbDto,
+        ],
+      };
+
+      const plexLibraryItem = {
+        ratingKey: '12345',
+      } as PlexLibraryItem; // We're not testing the actual data here so casting for simplicity
+
+      const plexData: PlexLibraryItem[] = [plexLibraryItem];
+
+      mockedValueGetterService.get.mockImplementation(
+        ([val1, val2]: [number, number]) => {
+          if (val1 === Application.OVERSEERR && val2 === 0) {
+            return Promise.resolve([]);
+          } else if (val1 === Application.OVERSEERR && val2 === 6) {
+            return Promise.resolve(true);
+          } else if (val1 === Application.PLEX && val2 === 14) {
+            return Promise.resolve(3);
+          } else if (val1 === Application.PLEX && val2 === 15) {
+            return Promise.resolve(7);
+          } else if (val1 === Application.PLEX && val2 === 6) {
+            return Promise.resolve(2);
+          } else if (val1 === Application.PLEX && val2 === 5) {
+            return Promise.resolve(3);
+          }
+
+          throw new Error('Invalid test setup');
+        },
+      );
+
+      mockedRuleConstanstService.getValueHumanName.mockReturnValue(
+        'App - rule name',
+      );
+      mockedRuleConstanstService.getCustomValueIdentifier.mockReturnValue({
+        type: 'custom value type',
+        value: 'custom value',
+      });
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        ruleGroup,
+        plexData,
+      );
+
+      // TODO Update rule.comparator to not return the same item more than once, then remove the unique filtering in rule-executor.
+      expect(result.data).toEqual([plexLibraryItem]);
+      expect(result.stats).toEqual([
+        {
+          plexId: 12345,
+          result: true,
+          sectionResults: [
+            {
+              id: 0,
+              result: false,
+              ruleResults: [
+                {
+                  action: 'equals',
+                  firstValue: true,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 1,
+                  secondValueName: 'custom value type',
+                },
+                {
+                  action: 'contains',
+                  firstValue: [],
+                  firstValueName: 'App - rule name',
+                  result: false,
+                  secondValue: ['User'],
+                  secondValueName: 'custom value type',
+                  operator: 'AND',
+                },
+              ],
+            },
+            {
+              id: 1,
+              result: false,
+              operator: 'OR',
+              ruleResults: [
+                {
+                  action: 'equals',
+                  firstValue: 3,
+                  firstValueName: 'App - rule name',
+                  result: false,
+                  secondValue: 7,
+                  secondValueName: 'App - rule name',
+                },
+              ],
+            },
+            {
+              id: 2,
+              result: true,
+              operator: 'OR',
+              ruleResults: [
+                {
+                  action: 'bigger',
+                  firstValue: 2,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                },
+              ],
+            },
+            {
+              id: 3,
+              result: true,
+              operator: 'AND',
+              ruleResults: [
+                {
+                  action: 'bigger',
+                  firstValue: 3,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                },
+              ],
+            },
+          ],
+        } satisfies IComparisonStatistics,
+      ]);
+    });
+
+    it('should include media item for 1 section, OR(false,true)', async () => {
+      const section0Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR, // Should be forced to NULL
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const section0Rule2: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 0,
+        firstVal: [Application.PLEX, 5] satisfies [number, number], // viewCount
+        operator: RuleOperators.OR,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const ruleGroup: RulesDto = {
+        id: 1,
+        dataType: EPlexDataType.MOVIES,
+        libraryId: 1,
+        name: 'Test Rule Group',
+        description: '',
+        useRules: true,
+        rules: [
+          {
+            id: 1,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 2,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule2),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+        ],
+      };
+
+      const plexLibraryItem = {
+        ratingKey: '12345',
+      } as PlexLibraryItem; // We're not testing the actual data here so casting for simplicity
+
+      const plexData: PlexLibraryItem[] = [plexLibraryItem];
+
+      mockedValueGetterService.get.mockImplementation(
+        ([val1, val2]: [number, number]) => {
+          if (val1 === Application.OVERSEERR && val2 === 6) {
+            return Promise.resolve(false);
+          } else if (val1 === Application.PLEX && val2 === 5) {
+            return Promise.resolve(1);
+          }
+
+          throw new Error('Invalid test setup');
+        },
+      );
+
+      mockedRuleConstanstService.getValueHumanName.mockReturnValue(
+        'App - rule name',
+      );
+      mockedRuleConstanstService.getCustomValueIdentifier.mockReturnValue({
+        type: 'custom value type',
+        value: 'custom value',
+      });
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        ruleGroup,
+        plexData,
+      );
+
+      // TODO Update rule.comparator to not return the same item more than once, then remove the unique filtering in rule-executor.
+      expect(result.data).toEqual([plexLibraryItem]);
+      expect(result.stats).toEqual([
+        {
+          plexId: 12345,
+          result: true,
+          sectionResults: [
+            {
+              id: 0,
+              result: true,
+              ruleResults: [
+                {
+                  action: 'equals',
+                  firstValue: false,
+                  firstValueName: 'App - rule name',
+                  result: false,
+                  secondValue: 1,
+                  secondValueName: 'custom value type',
+                },
+                {
+                  action: 'bigger',
+                  firstValue: 1,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                  operator: 'OR',
+                },
+              ],
+            },
+          ],
+        } satisfies IComparisonStatistics,
+      ]);
+    });
+
+    it('should include media item for 1 section, OR(true,false)', async () => {
+      const section0Rule1: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 0,
+        firstVal: [Application.PLEX, 5] satisfies [number, number], // viewCount
+        operator: RuleOperators.OR,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const section0Rule2: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR, // Should be forced to NULL
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const ruleGroup: RulesDto = {
+        id: 1,
+        dataType: EPlexDataType.MOVIES,
+        libraryId: 1,
+        name: 'Test Rule Group',
+        description: '',
+        useRules: true,
+        rules: [
+          {
+            id: 1,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 2,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule2),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+        ],
+      };
+
+      const plexLibraryItem = {
+        ratingKey: '12345',
+      } as PlexLibraryItem; // We're not testing the actual data here so casting for simplicity
+
+      const plexData: PlexLibraryItem[] = [plexLibraryItem];
+
+      mockedValueGetterService.get.mockImplementation(
+        ([val1, val2]: [number, number]) => {
+          if (val1 === Application.OVERSEERR && val2 === 6) {
+            return Promise.resolve(false);
+          } else if (val1 === Application.PLEX && val2 === 5) {
+            return Promise.resolve(1);
+          }
+
+          throw new Error('Invalid test setup');
+        },
+      );
+
+      mockedRuleConstanstService.getValueHumanName.mockReturnValue(
+        'App - rule name',
+      );
+      mockedRuleConstanstService.getCustomValueIdentifier.mockReturnValue({
+        type: 'custom value type',
+        value: 'custom value',
+      });
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        ruleGroup,
+        plexData,
+      );
+
+      expect(result.data).toEqual([plexLibraryItem]);
+      expect(result.stats).toEqual([
+        {
+          plexId: 12345,
+          result: true,
+          sectionResults: [
+            {
+              id: 0,
+              result: true,
+              ruleResults: [
+                {
+                  action: 'bigger',
+                  firstValue: 1,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                },
+                {
+                  action: 'equals',
+                  firstValue: false,
+                  firstValueName: 'App - rule name',
+                  result: false,
+                  secondValue: 1,
+                  secondValueName: 'custom value type',
+                  operator: 'OR',
+                },
+              ],
+            },
+          ],
+        } satisfies IComparisonStatistics,
+      ]);
+    });
+
+    it('should not include media item for 1 section, AND(true,false)', async () => {
+      const section0Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR, // Should be forced to NULL
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const section0Rule2: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 0,
+        firstVal: [Application.PLEX, 5] satisfies [number, number], // viewCount
+        operator: RuleOperators.AND,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const ruleGroup: RulesDto = {
+        id: 1,
+        dataType: EPlexDataType.MOVIES,
+        libraryId: 1,
+        name: 'Test Rule Group',
+        description: '',
+        useRules: true,
+        rules: [
+          {
+            id: 1,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 2,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule2),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+        ],
+      };
+
+      const plexLibraryItem = {
+        ratingKey: '12345',
+      } as PlexLibraryItem; // We're not testing the actual data here so casting for simplicity
+
+      const plexData: PlexLibraryItem[] = [plexLibraryItem];
+
+      mockedValueGetterService.get.mockImplementation(
+        ([val1, val2]: [number, number]) => {
+          if (val1 === Application.OVERSEERR && val2 === 6) {
+            return Promise.resolve(true);
+          } else if (val1 === Application.PLEX && val2 === 5) {
+            return Promise.resolve(0);
+          }
+
+          throw new Error('Invalid test setup');
+        },
+      );
+
+      mockedRuleConstanstService.getValueHumanName.mockReturnValue(
+        'App - rule name',
+      );
+      mockedRuleConstanstService.getCustomValueIdentifier.mockReturnValue({
+        type: 'custom value type',
+        value: 'custom value',
+      });
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        ruleGroup,
+        plexData,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.stats).toEqual([
+        {
+          plexId: 12345,
+          result: false,
+          sectionResults: [
+            {
+              id: 0,
+              result: false,
+              ruleResults: [
+                {
+                  action: 'equals',
+                  firstValue: true,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 1,
+                  secondValueName: 'custom value type',
+                },
+                {
+                  action: 'bigger',
+                  firstValue: 0,
+                  firstValueName: 'App - rule name',
+                  result: false,
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                  operator: 'AND',
+                },
+              ],
+            },
+          ],
+        } satisfies IComparisonStatistics,
+      ]);
+    });
+
+    it('should include media item for 1 section, AND(true,true)', async () => {
+      const section0Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR, // Should be forced to NULL
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const section0Rule2: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 0,
+        firstVal: [Application.PLEX, 5] satisfies [number, number], // viewCount
+        operator: RuleOperators.AND,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const ruleGroup: RulesDto = {
+        id: 1,
+        dataType: EPlexDataType.MOVIES,
+        libraryId: 1,
+        name: 'Test Rule Group',
+        description: '',
+        useRules: true,
+        rules: [
+          {
+            id: 1,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 2,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule2),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+        ],
+      };
+
+      const plexLibraryItem = {
+        ratingKey: '12345',
+      } as PlexLibraryItem; // We're not testing the actual data here so casting for simplicity
+
+      const plexData: PlexLibraryItem[] = [plexLibraryItem];
+
+      mockedValueGetterService.get.mockImplementation(
+        ([val1, val2]: [number, number]) => {
+          if (val1 === Application.OVERSEERR && val2 === 6) {
+            return Promise.resolve(true);
+          } else if (val1 === Application.PLEX && val2 === 5) {
+            return Promise.resolve(1);
+          }
+
+          throw new Error('Invalid test setup');
+        },
+      );
+
+      mockedRuleConstanstService.getValueHumanName.mockReturnValue(
+        'App - rule name',
+      );
+      mockedRuleConstanstService.getCustomValueIdentifier.mockReturnValue({
+        type: 'custom value type',
+        value: 'custom value',
+      });
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        ruleGroup,
+        plexData,
+      );
+
+      expect(result.data).toEqual([plexLibraryItem]);
+      expect(result.stats).toEqual([
+        {
+          plexId: 12345,
+          result: true,
+          sectionResults: [
+            {
+              id: 0,
+              result: true,
+              ruleResults: [
+                {
+                  action: 'equals',
+                  firstValue: true,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 1,
+                  secondValueName: 'custom value type',
+                },
+                {
+                  action: 'bigger',
+                  firstValue: 1,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                  operator: 'AND',
+                },
+              ],
+            },
+          ],
+        } satisfies IComparisonStatistics,
+      ]);
+    });
+
+    /***
+     * Once a rule is marked as failed for a media item, that item should stop being processed and the remaining un-executed rules should not be included in the stats for it.
+     */
+    it('should not include media item when a getter fails (returned undefined)', async () => {
+      const section0Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 0,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR, // Should be forced to NULL
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const section0Rule2: RuleDto = {
+        action: RulePossibility.BIGGER,
+        section: 0,
+        firstVal: [Application.PLEX, 5] satisfies [number, number], // viewCount
+        operator: RuleOperators.AND,
+        customVal: {
+          ruleTypeId: +RuleType.NUMBER,
+          value: '0',
+        },
+      };
+
+      const section1Rule1: RuleDto = {
+        action: RulePossibility.EQUALS,
+        section: 1,
+        firstVal: [Application.OVERSEERR, 6] satisfies [number, number], // isRequested
+        operator: RuleOperators.OR,
+        customVal: {
+          ruleTypeId: +RuleType.BOOL,
+          value: '1',
+        },
+      };
+
+      const ruleGroup: RulesDto = {
+        id: 1,
+        dataType: EPlexDataType.MOVIES,
+        libraryId: 1,
+        name: 'Test Rule Group',
+        description: '',
+        useRules: true,
+        rules: [
+          {
+            id: 1,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 2,
+            isActive: true,
+            ruleJson: JSON.stringify(section0Rule2),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+          {
+            id: 3,
+            isActive: true,
+            ruleJson: JSON.stringify(section1Rule1),
+            ruleGroupId: 1,
+            section: 0,
+          } satisfies RuleDbDto,
+        ],
+      };
+
+      const plexLibraryItem = {
+        ratingKey: '12345',
+      } as PlexLibraryItem; // We're not testing the actual data here so casting for simplicity
+
+      const plexData: PlexLibraryItem[] = [plexLibraryItem];
+
+      mockedValueGetterService.get.mockImplementation(
+        ([val1, val2]: [number, number]) => {
+          if (val1 === Application.OVERSEERR && val2 === 6) {
+            return Promise.resolve(true);
+          } else if (val1 === Application.PLEX && val2 === 5) {
+            return Promise.resolve(undefined);
+          }
+
+          throw new Error('Invalid test setup');
+        },
+      );
+
+      mockedRuleConstanstService.getValueHumanName.mockReturnValue(
+        'App - rule name',
+      );
+      mockedRuleConstanstService.getCustomValueIdentifier.mockReturnValue({
+        type: 'custom value type',
+        value: 'custom value',
+      });
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        ruleGroup,
+        plexData,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.stats).toEqual([
+        {
+          plexId: 12345,
+          result: false,
+          sectionResults: [
+            {
+              id: 0,
+              result: false,
+              ruleResults: [
+                {
+                  action: 'equals',
+                  firstValue: true,
+                  firstValueName: 'App - rule name',
+                  result: true,
+                  secondValue: 1,
+                  secondValueName: 'custom value type',
+                },
+                {
+                  action: 'bigger',
+                  firstValue: undefined,
+                  firstValueName: 'App - rule name',
+                  result: 'error',
+                  secondValue: 0,
+                  secondValueName: 'custom value type',
+                  operator: 'AND',
+                },
+              ],
+            },
+          ],
+        } satisfies IComparisonStatistics,
+      ]);
+    });
   });
 
   describe('doRuleAction', () => {
