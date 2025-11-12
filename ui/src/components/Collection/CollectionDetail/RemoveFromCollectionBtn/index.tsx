@@ -15,13 +15,15 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setppopup] = useState<boolean>(false)
 
-  const handlePopup = () => {
+  const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation()
     if (props.popup) {
       setppopup(!popup)
     }
   }
 
-  const handle = () => {
+  const handle = (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation()
     if (!props.exclusionId) {
       DeleteApiHandler(
         `/collections/media?mediaId=${props.plexId}&collectionId=${props.collectionId}`,
