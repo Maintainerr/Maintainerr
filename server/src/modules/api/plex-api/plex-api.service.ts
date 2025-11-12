@@ -117,7 +117,7 @@ export class PlexApiService {
 
   public async getStatus() {
     try {
-      const response: PlexStatusResponse = await this.plexClient.queryWithCache(
+      const response: PlexStatusResponse = await this.plexClient.query(
         '/',
         false,
       );
@@ -597,12 +597,16 @@ export class PlexApiService {
 
   public async getCollectionChildren(
     collectionId: string,
+    useCache: boolean = true,
   ): Promise<PlexLibraryItem[]> {
     try {
       const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>({
-          uri: `/library/collections/${collectionId}/children`,
-        });
+        await this.plexClient.queryAll<PlexLibraryResponse>(
+          {
+            uri: `/library/collections/${collectionId}/children`,
+          },
+          useCache,
+        );
 
       // Empty collections return no Metadata node
       if (response.MediaContainer.Metadata === undefined) {
