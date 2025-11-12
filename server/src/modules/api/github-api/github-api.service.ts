@@ -88,10 +88,9 @@ export class GitHubApiService {
         repo,
       });
       const release = response.data as GitHubRelease;
-      
-      // Cache for 24 hours (default TTL in cache config)
+
       this.cache?.data.set(cacheKey, release);
-      
+
       return release;
     } catch (err) {
       this.logger.debug(
@@ -126,10 +125,9 @@ export class GitHubApiService {
         ref,
       });
       const commit = { sha: response.data.sha };
-      
-      // Cache for 24 hours (default TTL in cache config)
+
       this.cache?.data.set(cacheKey, commit);
-      
+
       return commit;
     } catch (err) {
       this.logger.debug(
@@ -164,10 +162,9 @@ export class GitHubApiService {
         per_page: perPage,
       });
       const releases = response.data as GitHubRelease[];
-      
-      // Cache for 24 hours (default TTL in cache config)
+
       this.cache?.data.set(cacheKey, releases);
-      
+
       return releases;
     } catch (err) {
       this.logger.debug(
