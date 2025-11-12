@@ -656,6 +656,7 @@ const AddModal = (props: AddModal) => {
                       <div className="form-input">
                         <div className="form-input-field">
                           <input
+                            key={`deleteAfterDays-${arrOption}`}
                             type="number"
                             name="collection_deleteDays"
                             id="collection_deleteDays"
