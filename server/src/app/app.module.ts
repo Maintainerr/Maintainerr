@@ -2,7 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GracefulShutdownModule } from 'nestjs-graceful-shutdown';
+import { GracefulShutdownModule } from '@tygra/nestjs-graceful-shutdown';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { ExternalApiModule } from '../modules/api/external-api/external-api.module';
 import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';

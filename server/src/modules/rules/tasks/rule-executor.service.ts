@@ -243,7 +243,6 @@ export class RuleExecutorService extends TaskBase {
             type: 'media_added_manually',
           },
         }));
-
       if (maintainerrMediaToAdd.length > 0) {
         await this.collectionService.addToCollection(
           collection.id,

@@ -15,12 +15,8 @@ export type LogLevel = LogLevelTuple[number]
 
 export const logSettingSchema = z.object({
   level: z.enum(LOG_LEVELS),
-  max_size: z
-    .number({ invalid_type_error: 'Max size must be a number' })
-    .min(0),
-  max_files: z
-    .number({ invalid_type_error: 'Max backups must be a number' })
-    .min(1),
+  max_size: z.number({ error: () => 'Max size must be a number' }).min(0),
+  max_files: z.number({ error: () => 'Max backups must be a number' }).min(1),
 })
 
 export type LogSettingSchemaInput = z.input<typeof logSettingSchema>

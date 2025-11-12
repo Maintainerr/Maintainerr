@@ -12,30 +12,21 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@v1.6.0
+        uses: dependabot/fetch-metadata@v2.4.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           skip-commit-verification: true
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Approve a PR if not already approved
+      - name: Approve PR
+        if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-major' }}
         run: |
-          gh pr checkout "$PR_URL"
-            if [ "$(gh pr status --json reviewDecision -q .currentBranch.reviewDecision)" != "APPROVED" ];
-          then
+          review_decision=$(gh pr view "$PR_URL" --json reviewDecision -q .reviewDecision)
+          if [ "$review_decision" != "APPROVED" ]; then
             gh pr review --approve "$PR_URL"
           else
-            echo "PR already approved.";
+            echo "PR already approved."
           fi
-        env:
-          PR_URL: ${{github.event.pull_request.html_url}}
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
-      - name: Enable auto-merge for Dependabot PRs
-        if: ${{ contains(github.event.pull_request.title, 'bump') && (steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor') }}
-        run: gh pr merge --auto --merge "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

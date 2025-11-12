@@ -11,7 +11,10 @@ export default [
   },
   {
     languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: '.' },
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
       globals: { ...globals.browser, ...globals.node },
     },
   },

@@ -1,9 +1,9 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { setupGracefulShutdown } from '@tygra/nestjs-graceful-shutdown';
 import * as fs from 'fs';
-import { setupGracefulShutdown } from 'nestjs-graceful-shutdown';
-import { patchNestJsSwagger } from 'nestjs-zod';
+import { cleanupOpenApiDoc } from 'nestjs-zod';
 import path from 'path';
 import { AppModule } from './app/app.module';
 import { MaintainerrLogger } from './modules/logging/logs.service';
@@ -12,8 +12,6 @@ const dataDir =
   process.env.NODE_ENV === 'production'
     ? '/opt/data'
     : path.join(__dirname, '../../data');
-
-patchNestJsSwagger();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -24,7 +22,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder().setTitle('Maintainerr').build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/swagger', app, documentFactory);
+  const document = documentFactory();
+  cleanupOpenApiDoc(document);
+  SwaggerModule.setup('api/swagger', app, document);
 
   app.useLogger(await app.resolve(MaintainerrLogger));
   app.enableCors({ origin: true });
