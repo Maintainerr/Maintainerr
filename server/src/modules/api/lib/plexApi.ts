@@ -123,8 +123,6 @@ class PlexApi {
     return result as unknown as T;
   }
 
-
-
   private getQuery<T>(options: RequestOptions) {
     return this._request<T>('GET', options);
   }
