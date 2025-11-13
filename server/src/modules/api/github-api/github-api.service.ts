@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { throttling } from '@octokit/plugin-throttling';
+import { Octokit } from 'octokit';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import cacheManager from '../lib/cache';
-
-// Type imports for Octokit (doesn't affect runtime)
-import type { Octokit } from 'octokit';
 
 export interface GitHubRelease {
   tag_name: string;
@@ -20,20 +19,11 @@ export interface GitHubCommit {
 
 @Injectable()
 export class GitHubApiService {
-  private octokitPromise: Promise<Octokit>;
+  private octokit: Octokit;
   private cache = cacheManager.getCache('github');
 
   constructor(private readonly logger: MaintainerrLogger) {
     logger.setContext(GitHubApiService.name);
-
-    // Initialize Octokit with throttling plugin using dynamic import
-    this.octokitPromise = this.initializeOctokit();
-  }
-
-  private async initializeOctokit(): Promise<Octokit> {
-    // Use dynamic import for ES modules
-    const { Octokit } = await import('octokit');
-    const { throttling } = await import('@octokit/plugin-throttling');
 
     // Create Octokit instance with throttling plugin
     const OctokitWithPlugins = Octokit.plugin(throttling);
@@ -42,12 +32,12 @@ export class GitHubApiService {
       {
         throttle: {
           onRateLimit: (retryAfter, options, octokit, retryCount) => {
-            this.logger.warn(
+            logger.warn(
               `Request quota exhausted for ${options.method} ${options.url}`,
             );
 
             if (retryAfter && retryAfter > 10) {
-              this.logger.error(
+              logger.error(
                 `Aborting retry for ${options.method} ${options.url} due to long wait time of ${retryAfter} seconds`,
               );
               return false;
@@ -55,17 +45,17 @@ export class GitHubApiService {
 
             // Retry the first time, then give up
             if (retryCount < 1) {
-              this.logger.log(`Retrying after ${retryAfter} seconds`);
+              logger.log(`Retrying after ${retryAfter} seconds`);
               return true;
             }
 
-            this.logger.warn(
+            logger.warn(
               `Rate limit retry exhausted for ${options.method} ${options.url}`,
             );
             return false;
           },
           onSecondaryRateLimit: (retryAfter, options) => {
-            this.logger.warn(
+            logger.warn(
               `Secondary rate limit detected for ${options.method} ${options.url}`,
             );
             // Don't retry on secondary rate limits
@@ -77,10 +67,10 @@ export class GitHubApiService {
     // Add GitHub PAT if provided via environment variable
     if (process.env.GITHUB_TOKEN) {
       octokitOptions.auth = process.env.GITHUB_TOKEN;
-      this.logger.log('GitHub API authentication configured with provided token');
+      logger.log('GitHub API authentication configured with provided token');
     }
 
-    return new OctokitWithPlugins(octokitOptions);
+    this.octokit = new OctokitWithPlugins(octokitOptions);
   }
 
   /**
@@ -100,8 +90,7 @@ export class GitHubApiService {
     }
 
     try {
-      const octokit = await this.octokitPromise;
-      const response = await octokit.rest.repos.getLatestRelease({
+      const response = await this.octokit.rest.repos.getLatestRelease({
         owner,
         repo,
       });
@@ -137,8 +126,7 @@ export class GitHubApiService {
     }
 
     try {
-      const octokit = await this.octokitPromise;
-      const response = await octokit.rest.repos.getCommit({
+      const response = await this.octokit.rest.repos.getCommit({
         owner,
         repo,
         ref,
@@ -175,8 +163,7 @@ export class GitHubApiService {
     }
 
     try {
-      const octokit = await this.octokitPromise;
-      const response = await octokit.rest.repos.listReleases({
+      const response = await this.octokit.rest.repos.listReleases({
         owner,
         repo,
         per_page: perPage,
