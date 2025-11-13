@@ -28,6 +28,13 @@ jobs:
             platform: linux/arm64
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Add eyes reaction to comment
+        if: matrix.platform == 'linux/amd64'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          reactions: eyes
+
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
