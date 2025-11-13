@@ -83,7 +83,6 @@ const AddModal = (props: AddModal) => {
   const descriptionRef = useRef<any>(undefined)
   const libraryRef = useRef<any>(undefined)
   const collectionTypeRef = useRef<any>(undefined)
-  const deleteAfterRef = useRef<any>(undefined)
   const keepLogsForMonthsRef = useRef<any>(undefined)
   const tautulliWatchedPercentOverrideRef = useRef<any>(undefined)
   const manualCollectionNameRef = useRef<any>('My custom collection')
@@ -120,6 +119,7 @@ const AddModal = (props: AddModal) => {
   )
   const [error, setError] = useState<boolean>(false)
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
+  const [deleteAfterDays, setDeleteAfterDays] = useState<number>(30)
   const ruleCreatorVersion = useRef<number>(1)
   const LibrariesCtx = useContext(LibrariesContext)
   const tautulliEnabled =
@@ -293,6 +293,9 @@ const AddModal = (props: AddModal) => {
         setRadarrSettingsId(collection.radarrSettingsId ?? null)
         setSonarrSettingsId(collection.sonarrSettingsId ?? null)
         setLibraryId(collection.libraryId.toString())
+        if (collection.deleteAfterDays !== undefined) {
+          setDeleteAfterDays(collection.deleteAfterDays)
+        }
       }
 
       setIsLoading(false)
@@ -314,6 +317,13 @@ const AddModal = (props: AddModal) => {
       })
     }
   }, [])
+
+  useEffect(() => {
+    // Reset deleteAfterDays to default when switching from "Do nothing" to another action
+    if (arrOption !== undefined && arrOption !== 4 && !collection) {
+      setDeleteAfterDays(30)
+    }
+  }, [arrOption, collection])
 
   const create = () => {
     if (
@@ -346,7 +356,7 @@ const AddModal = (props: AddModal) => {
           deleteAfterDays:
             arrOption === undefined || arrOption === 4
               ? undefined
-              : +deleteAfterRef.current.value,
+              : deleteAfterDays,
           manualCollection: manualCollection,
           manualCollectionName: manualCollectionNameRef.current.value,
           keepLogsForMonths: +keepLogsForMonthsRef.current.value,
@@ -656,14 +666,13 @@ const AddModal = (props: AddModal) => {
                       <div className="form-input">
                         <div className="form-input-field">
                           <input
-                            key={`deleteAfterDays-${arrOption}`}
                             type="number"
                             name="collection_deleteDays"
                             id="collection_deleteDays"
-                            defaultValue={
-                              collection ? collection.deleteAfterDays : 30
+                            value={deleteAfterDays}
+                            onChange={(e) =>
+                              setDeleteAfterDays(Number(e.target.value))
                             }
-                            ref={deleteAfterRef}
                           />
                         </div>
                       </div>
