@@ -688,7 +688,7 @@ export class NotificationService {
         case NotificationType.MEDIA_ABOUT_TO_BE_HANDLED:
           subject = 'Media About to be Handled';
           message =
-            "⏰ Reminder: {media_title} will be handled in {days} days. If you want to keep it, make sure to take action before it's gone. Don’t miss out!";
+            "⏰ Reminder: '{media_title}' will be handled in {days} days. If you want to keep it, make sure to take action before it's gone. Don’t miss out!";
           break;
         case NotificationType.MEDIA_ADDED_TO_COLLECTION:
           subject = 'Media Added to Collection';
