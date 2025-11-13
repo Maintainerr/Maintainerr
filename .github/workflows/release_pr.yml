@@ -30,7 +30,7 @@ jobs:
     steps:
       - name: Add eyes reaction to comment
         if: matrix.platform == 'linux/amd64'
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ github.event.comment.id }}
           reactions: eyes
