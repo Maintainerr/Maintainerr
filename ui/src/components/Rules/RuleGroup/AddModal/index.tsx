@@ -83,7 +83,6 @@ const AddModal = (props: AddModal) => {
   const descriptionRef = useRef<any>(undefined)
   const libraryRef = useRef<any>(undefined)
   const collectionTypeRef = useRef<any>(undefined)
-  const deleteAfterRef = useRef<any>(undefined)
   const keepLogsForMonthsRef = useRef<any>(undefined)
   const tautulliWatchedPercentOverrideRef = useRef<any>(undefined)
   const manualCollectionNameRef = useRef<any>('My custom collection')
@@ -92,6 +91,7 @@ const AddModal = (props: AddModal) => {
   const [listExclusion, setListExclusion] = useState<boolean>(true)
   const [forceOverseerr, setForceOverseerr] = useState<boolean>(false)
   const [manualCollection, setManualCollection] = useState<boolean>(false)
+  const [deleteDays, setDeleteDays] = useState<number | undefined>(undefined)
   const ConstantsCtx = useContext(ConstantsContext)
   const [
     configuredNotificationConfigurations,
@@ -148,7 +148,17 @@ const AddModal = (props: AddModal) => {
 
     setRadarrSettingsId(undefined)
     setSonarrSettingsId(undefined)
-    setArrOption(0)
+    updateArrOption(0)
+  }
+
+  function updateArrOption(value: number) {
+    setArrOption(value)
+
+    if (value === undefined || value === 4) {
+      setDeleteDays(undefined)
+    } else if (deleteDays === undefined) {
+      setDeleteDays(30)
+    }
   }
 
   function setLibraryId(value: string) {
@@ -164,7 +174,7 @@ const AddModal = (props: AddModal) => {
 
   function setCollectionType(event: { target: { value: string } }) {
     setSelectedType(event.target.value)
-    setArrOption(0)
+    updateArrOption(0)
   }
 
   const handleUpdateArrAction = (
@@ -172,7 +182,7 @@ const AddModal = (props: AddModal) => {
     arrAction: number,
     settingId?: number | null,
   ) => {
-    setArrOption(arrAction)
+    updateArrOption(arrAction)
 
     if (type === 'Radarr') {
       setSonarrSettingsId(undefined)
@@ -293,6 +303,7 @@ const AddModal = (props: AddModal) => {
         setRadarrSettingsId(collection.radarrSettingsId ?? null)
         setSonarrSettingsId(collection.sonarrSettingsId ?? null)
         setLibraryId(collection.libraryId.toString())
+        setDeleteDays(collection.deleteAfterDays ?? undefined)
       }
 
       setIsLoading(false)
@@ -344,9 +355,7 @@ const AddModal = (props: AddModal) => {
           visibleOnRecommended: showRecommended,
           visibleOnHome: showHome,
           deleteAfterDays:
-            arrOption === undefined || arrOption === 4
-              ? undefined
-              : +deleteAfterRef.current.value,
+            arrOption === undefined || arrOption === 4 ? undefined : deleteDays,
           manualCollection: manualCollection,
           manualCollectionName: manualCollectionNameRef.current.value,
           keepLogsForMonths: +keepLogsForMonthsRef.current.value,
@@ -659,10 +668,8 @@ const AddModal = (props: AddModal) => {
                             type="number"
                             name="collection_deleteDays"
                             id="collection_deleteDays"
-                            defaultValue={
-                              collection ? collection.deleteAfterDays : 30
-                            }
-                            ref={deleteAfterRef}
+                            value={deleteDays}
+                            onChange={(e) => setDeleteDays(+e.target.value)}
                           />
                         </div>
                       </div>
