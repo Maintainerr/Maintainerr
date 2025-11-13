@@ -21,8 +21,7 @@ const messages = {
   close: 'Close',
 }
 
-const REPO_RELEASE_API =
-  'https://api.github.com/repos/maintainerr/maintainerr/releases?per_page=10'
+const REPO_RELEASE_API = '/api/app/releases'
 
 interface GitHubRelease {
   url: string

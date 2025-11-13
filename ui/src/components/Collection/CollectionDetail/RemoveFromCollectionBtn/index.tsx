@@ -15,13 +15,15 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setppopup] = useState<boolean>(false)
 
-  const handlePopup = () => {
+  const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation()
     if (props.popup) {
       setppopup(!popup)
     }
   }
 
-  const handle = () => {
+  const handle = (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation()
     if (!props.exclusionId) {
       DeleteApiHandler(
         `/collections/media?mediaId=${props.plexId}&collectionId=${props.collectionId}`,
@@ -58,11 +60,10 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
           buttonSize="md"
           className="mb-1 mt-2 h-6 w-full text-zinc-200 shadow-md"
           onClick={(e) => {
-            e.stopPropagation() // Stops the MediaModal from also showing when clicked.
             if (props.popup) {
-              handlePopup()
+              handlePopup(e)
             } else {
-              handle()
+              handle(e)
             }
           }}
         >

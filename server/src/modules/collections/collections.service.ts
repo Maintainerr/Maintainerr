@@ -654,7 +654,7 @@ export class CollectionsService {
           );
 
           if (resp.code === 1) {
-            await this.collectionRepo.save({
+            collection = await this.collectionRepo.save({
               ...collection,
               plexId: null,
             });

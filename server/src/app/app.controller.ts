@@ -1,9 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
+import { GitHubApiService } from '../modules/api/github-api/github-api.service';
 import { AppService } from './app.service';
 
 @Controller('/api/app')
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly githubApi: GitHubApiService,
+  ) {}
 
   @Get('/status')
   async getAppStatus() {
@@ -13,5 +17,15 @@ export class AppController {
   @Get('/timezone')
   async getAppTimezone() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
+
+  @Get('/releases')
+  async getGitHubReleases() {
+    const releases = await this.githubApi.getReleases(
+      'maintainerr',
+      'maintainerr',
+      10,
+    );
+    return releases || [];
   }
 }
