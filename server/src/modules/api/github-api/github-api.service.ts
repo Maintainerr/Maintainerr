@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Octokit } from 'octokit';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import cacheManager from '../lib/cache';
+
+// Type imports for Octokit (doesn't affect runtime)
+import type { Octokit } from 'octokit';
 
 export interface GitHubRelease {
   tag_name: string;
@@ -29,7 +31,8 @@ export class GitHubApiService {
   }
 
   private async initializeOctokit(): Promise<Octokit> {
-    // Use dynamic import for ES module
+    // Use dynamic import for ES modules
+    const { Octokit } = await import('octokit');
     const { throttling } = await import('@octokit/plugin-throttling');
 
     // Create Octokit instance with throttling plugin
