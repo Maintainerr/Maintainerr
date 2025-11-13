@@ -715,16 +715,16 @@ export class NotificationService {
         case NotificationType.MEDIA_ABOUT_TO_BE_HANDLED:
           subject = 'Media About to be Handled';
           message =
-            "⏰ Reminder: These media items will be handled in {days} days. If you want to keep them, make sure to take action before they're gone. Don’t miss out! \n \n {media_items}";
+            "⏰ Reminder: These media items will be handled in {days} days. If you want to keep them, make sure to take action before they're gone. Don’t miss out!\n\n{media_items}";
           break;
         case NotificationType.MEDIA_ADDED_TO_COLLECTION:
           subject = 'Media Added to Collection';
           message = `\uD83D\uDCC2 These media items have been added to '{collection_name}'.`;
           if (dayAmount != null) {
             message +=
-              ' The items will be handled in {days} days. \n \n {media_items}';
+              ' The items will be handled in {days} days.\n\n{media_items}';
           } else {
-            message += ' \n \n {media_items}';
+            message += '\n\n{media_items}';
           }
           break;
         case NotificationType.MEDIA_REMOVED_FROM_COLLECTION:
@@ -732,15 +732,15 @@ export class NotificationService {
           message = `\uD83D\uDCC2 These media items have been removed from '{collection_name}'.`;
           if (dayAmount != null) {
             message +=
-              ' The items will not be handled anymore. \n \n {media_items}';
+              ' The items will not be handled anymore.\n\n{media_items}';
           } else {
-            message += ' \n \n {media_items}';
+            message += '\n\n{media_items}';
           }
           break;
         case NotificationType.MEDIA_HANDLED:
           subject = 'Media Handled';
           message =
-            "✅ These media items have been handled by '{collection_name}'. \n \n {media_items}";
+            "✅ These media items have been handled by '{collection_name}'.\n\n{media_items}";
           break;
       }
     }
