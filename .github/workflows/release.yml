@@ -193,7 +193,7 @@ jobs:
       - name: Mkdocs Deploy
         if: ${{ success() }}
         continue-on-error: true
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.DOCS_DEPLOY }}
           repository: Maintainerr/Maintainerr_docs
