@@ -36,12 +36,12 @@ export enum RuleOperators {
 }
 
 export enum Application {
-  PLEX,
-  RADARR,
-  SONARR,
-  OVERSEERR,
-  TAUTULLI,
-  JELLYSEERR,
+  PLEX = 0,
+  RADARR = 1,
+  SONARR = 2,
+  OVERSEERR = 3,
+  TAUTULLI = 4,
+  JELLYSEERR = 5,
 }
 
 export enum ArrAction {
@@ -104,6 +104,8 @@ export class RuleType {
       RulePossibility.NOT_CONTAINS,
       RulePossibility.CONTAINS_PARTIAL,
       RulePossibility.NOT_CONTAINS_PARTIAL,
+      RulePossibility.CONTAINS_ALL,
+      RulePossibility.NOT_CONTAINS_ALL,
       RulePossibility.COUNT_EQUALS,
       RulePossibility.COUNT_NOT_EQUALS,
       RulePossibility.COUNT_BIGGER,
@@ -520,7 +522,7 @@ export class RuleConstants {
           humanName: 'Quality profile',
           mediaType: MediaType.MOVIE,
           type: RuleType.TEXT,
-        }, // TODO
+        },
         {
           id: 4,
           name: 'releaseDate',
@@ -557,6 +559,13 @@ export class RuleConstants {
           type: RuleType.NUMBER,
         },
         {
+          id: 22,
+          name: 'fileAudioLanguages',
+          humanName: 'File - audio languages',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
           id: 9,
           name: 'fileQuality',
           humanName: 'File - quality (2160, 1080,..)',
@@ -583,6 +592,20 @@ export class RuleConstants {
           humanName: 'File - file path',
           mediaType: MediaType.MOVIE,
           type: RuleType.TEXT,
+        },
+        {
+          id: 21,
+          name: 'fileQualityName',
+          humanName: 'File - quality name',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 20,
+          name: 'fileQualityCutoffMet',
+          humanName: 'File - quality cutoff met',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.BOOL,
         },
         {
           id: 13,
@@ -666,6 +689,13 @@ export class RuleConstants {
           humanName: '[list] Tags (show)',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return text[]
+        },
+        {
+          id: 25,
+          name: 'qualityProfileName',
+          humanName: 'Quality profile name',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
         },
         {
           id: 3,
@@ -804,6 +834,14 @@ export class RuleConstants {
           type: RuleType.NUMBER,
         },
         {
+          id: 22,
+          name: 'episodeNumber',
+          humanName: 'Episode number',
+          showType: [EPlexDataType.EPISODES],
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+        },
+        {
           id: 21,
           name: 'episodeFilePath',
           humanName: 'Episode file path',
@@ -812,12 +850,28 @@ export class RuleConstants {
           type: RuleType.TEXT,
         },
         {
-          id: 22,
-          name: 'episodeNumber',
-          humanName: 'Episode number',
+          id: 23,
+          name: 'fileQualityCutoffMet',
+          humanName: 'Episode file quality cutoff met',
           showType: [EPlexDataType.EPISODES],
           mediaType: MediaType.SHOW,
-          type: RuleType.NUMBER,
+          type: RuleType.BOOL,
+        },
+        {
+          id: 24,
+          name: 'fileQualityName',
+          humanName: 'Episode file quality',
+          showType: [EPlexDataType.EPISODES],
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 26,
+          name: 'fileAudioLanguages',
+          humanName: 'Episode file audio languages',
+          showType: [EPlexDataType.EPISODES],
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
         },
       ],
     },
