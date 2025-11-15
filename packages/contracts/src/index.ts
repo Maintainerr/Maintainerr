@@ -1,5 +1,4 @@
 export * from './app'
-export * from './collections'
 export * from './events'
 export * from './plex'
 export * from './rules'

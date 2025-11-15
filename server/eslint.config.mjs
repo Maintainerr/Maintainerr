@@ -1,8 +1,8 @@
 import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
-import typescriptEslintEslintPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import pluginJest from 'eslint-plugin-jest';
 import globals from 'globals';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,10 +21,6 @@ export default [
   },
   ...compat.extends('plugin:@typescript-eslint/recommended'),
   {
-    plugins: {
-      '@typescript-eslint': typescriptEslintEslintPlugin,
-    },
-
     languageOptions: {
       globals: {
         ...globals.node,
@@ -36,12 +32,14 @@ export default [
       sourceType: 'module',
 
       parserOptions: {
-        project: 'tsconfig.json',
-        tsconfigRootDir: '.',
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
 
     rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -54,5 +52,22 @@ export default [
       ],
     },
   },
+  {
+    files: ['**/*.spec.ts', '**/*.test.ts'],
+    plugins: { jest: pluginJest },
+    languageOptions: {
+      globals: pluginJest.environments.globals.globals,
+    },
+    rules: {
+      'jest/no-disabled-tests': 'warn',
+      'jest/no-focused-tests': 'error',
+      'jest/no-identical-title': 'error',
+      'jest/prefer-to-have-length': 'warn',
+      'jest/valid-expect': 'error',
+      '@typescript-eslint/unbound-method': 'off',
+      'jest/unbound-method': 'error',
+    },
+  },
+
   eslintConfigPrettier,
 ];
