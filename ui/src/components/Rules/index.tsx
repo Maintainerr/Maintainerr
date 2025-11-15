@@ -18,6 +18,9 @@ const Rules = () => {
   const [editData, setEditData] = useState<IRuleGroup>()
   const [selectedLibrary, setSelectedLibrary] = useState<number>(9999)
   const [isLoading, setIsLoading] = useState(true)
+  const [executingRuleGroupId, setExecutingRuleGroupId] = useState<
+    number | null
+  >(null)
   const { ruleHandlerRunning } = useTaskStatusContext()
 
   const fetchData = async () => {
@@ -37,6 +40,12 @@ const Rules = () => {
     refreshData()
   }, [selectedLibrary])
 
+  useEffect(() => {
+    if (!ruleHandlerRunning && executingRuleGroupId !== null) {
+      setExecutingRuleGroupId(null)
+    }
+  }, [ruleHandlerRunning, executingRuleGroupId])
+
   const showAddModal = () => {
     setAddModal(!addModalActive)
   }
@@ -54,6 +63,32 @@ const Rules = () => {
   const editHandler = (group: IRuleGroup): void => {
     setEditData(group)
     setEditModal(true)
+  }
+
+  const executeRuleGroup = async (group: IRuleGroup) => {
+    setExecutingRuleGroupId(group.id)
+
+    try {
+      await PostApiHandler(`/rules/${group.id}/execute`, {})
+
+      toast.success(`Initiated rule execution for '${group.name}'.`)
+    } catch (e) {
+      setExecutingRuleGroupId(null)
+
+      if (e instanceof AxiosError) {
+        if (e.response?.status === 404) {
+          toast.error('Rule group not found.')
+          return
+        }
+
+        if (e.response?.status === 409) {
+          toast.error('Rule execution is already running.')
+          return
+        }
+      }
+
+      toast.error('Failed to initiate rule execution.')
+    }
   }
 
   const sync = async () => {
@@ -143,18 +178,27 @@ const Rules = () => {
         </div>
         <h1 className="mb-3 text-lg font-bold text-zinc-200">{'Rules'}</h1>
         <ul className="xs:collection-cards-vertical">
-          {(data as IRuleGroup[]).map((el) => (
-            <li
-              key={el.id}
-              className="collection relative mb-5 flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
-            >
-              <RuleGroup
-                onDelete={refreshData}
-                onEdit={editHandler}
-                group={el as IRuleGroup}
-              />
-            </li>
-          ))}
+          {(data as IRuleGroup[]).map((group) => {
+            const isExecuting = executingRuleGroupId === group.id
+            const executionDisabled =
+              !!ruleHandlerRunning || executingRuleGroupId !== null
+
+            return (
+              <li
+                key={group.id}
+                className="collection relative mb-5 flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
+              >
+                <RuleGroup
+                  onDelete={refreshData}
+                  onEdit={editHandler}
+                  onExecute={executeRuleGroup}
+                  group={group}
+                  isExecuting={isExecuting}
+                  executionDisabled={executionDisabled}
+                />
+              </li>
+            )
+          })}
         </ul>
       </div>
     </>

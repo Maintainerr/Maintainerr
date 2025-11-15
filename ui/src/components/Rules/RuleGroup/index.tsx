@@ -1,11 +1,13 @@
 import EditButton from '../../Common/EditButton'
 import DeleteButton from '../../Common/DeleteButton'
+import ExecuteButton from '../../Common/ExecuteButton'
 import { IRuleJson } from '../Rule'
 import { useContext, useState } from 'react'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
 import LibrariesContext from '../../../contexts/libraries-context'
-import { PencilIcon, TrashIcon } from '@heroicons/react/solid'
+import { PencilIcon, PlayIcon, TrashIcon } from '@heroicons/react/solid'
 import { AgentConfiguration } from '../../Settings/Notifications/CreateNotificationModal'
+import RunButton from '../../Common/RunButton'
 
 export interface IRuleGroup {
   id: number
@@ -25,6 +27,9 @@ const RuleGroup = (props: {
   group: IRuleGroup
   onDelete: () => void
   onEdit: (group: IRuleGroup) => void
+  onExecute: (group: IRuleGroup) => void
+  isExecuting: boolean
+  executionDisabled: boolean
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
   const LibrariesCtx = useContext(LibrariesContext)
@@ -97,7 +102,16 @@ const RuleGroup = (props: {
             </div>
           </div>
         </div>
-        <div className="grid w-full grid-cols-1 xl:grid-cols-2">
+        <div className="grid w-full grid-cols-1 xl:grid-cols-3">
+          <div>
+            <RunButton
+              onClick={() => props.onExecute(props.group)}
+              text="Run"
+              executing={props.isExecuting}
+              disabled={props.executionDisabled}
+              svgIcon={<PlayIcon className="m-auto h-5 text-zinc-200" />}
+            />
+          </div>
           <div>
             <EditButton
               onClick={onEdit}
