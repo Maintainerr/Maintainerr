@@ -19,7 +19,8 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "preserveWatchOutput": true
   },
   "include": ["**/*.mjs", "**/*.ts"]
 }
