@@ -1,8 +1,10 @@
-import { EPlexDataType, PlexMetadata } from '@maintainerr/contracts'
+import { ClipboardCopyIcon } from '@heroicons/react/solid'
 import { Editor } from '@monaco-editor/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'react-toastify'
 import YAML from 'yaml'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
+import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import FormItem from '../../../Common/FormItem'
 import Modal from '../../../Common/Modal'
@@ -12,8 +14,6 @@ interface ITestMediaItem {
   onCancel: () => void
   onSubmit: () => void
   collectionId: number
-  libraryId: number
-  dataType: EPlexDataType
 }
 
 interface IOptions {
@@ -32,6 +32,13 @@ const emptyOption: IOptions = {
 }
 
 const TestMediaItem = (props: ITestMediaItem) => {
+  const [loading, setLoading] = useState(true)
+  const [ruleGroup, setRuleGroup] = useState<{
+    dataType: EPlexDataType
+    libraryId: number
+    id: string
+  }>()
+
   const [mediaItem, setMediaItem] = useState<IMediaOptions>()
   const [selectedSeasons, setSelectedSeasons] = useState<number>(-1)
   const [selectedEpisodes, setSelectedEpisodes] = useState<number>(-1)
@@ -42,27 +49,34 @@ const TestMediaItem = (props: ITestMediaItem) => {
   const [comparisonResult, setComparisonResult] = useState<IComparisonResult>()
   const editorRef = useRef(undefined)
 
+  useEffect(() => {
+    GetApiHandler(`/rules/collection/${props.collectionId}`).then((resp) => {
+      setRuleGroup(resp)
+      setLoading(false)
+    })
+  }, [])
+
   const testable = useMemo(() => {
-    if (!mediaItem) return false
+    if (!mediaItem || !ruleGroup) return false
 
     // if movies or shows is selected
     if (
-      props.dataType === EPlexDataType.MOVIES ||
-      props.dataType === EPlexDataType.SHOWS
+      ruleGroup.dataType === EPlexDataType.MOVIES ||
+      ruleGroup.dataType === EPlexDataType.SHOWS
     ) {
       return true
     }
 
     // if seasons & season is selected
     else if (
-      props.dataType === EPlexDataType.SEASONS &&
+      ruleGroup.dataType === EPlexDataType.SEASONS &&
       selectedSeasons !== -1
     ) {
       return true
     }
     // if episodes mediaitem, season & episode is selected
     else if (
-      props.dataType === EPlexDataType.EPISODES &&
+      ruleGroup.dataType === EPlexDataType.EPISODES &&
       selectedSeasons !== -1 &&
       selectedEpisodes !== -1
     ) {
@@ -83,13 +97,13 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
     if (item?.type == EPlexDataType.SHOWS) {
       // get seasons
-      GetApiHandler<PlexMetadata[]>(`/plex/meta/${item.id}/children`).then(
-        (resp) => {
+      GetApiHandler(`/plex/meta/${item.id}/children`).then(
+        (resp: [{ ratingKey: number; title: string }]) => {
           setSeasonOptions([
             emptyOption,
             ...resp.map((el) => {
               return {
-                id: +el.ratingKey,
+                id: el.ratingKey,
                 title: el.title,
               }
             }),
@@ -106,13 +120,13 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
     if (seasons !== -1) {
       // get episodes
-      GetApiHandler<PlexMetadata[]>(`/plex/meta/${seasons}/children`).then(
-        (resp) => {
+      GetApiHandler(`/plex/meta/${seasons}/children`).then(
+        (resp: [{ ratingKey: number; index: number }]) => {
           setEpisodeOptions([
             emptyOption,
             ...resp.map((el) => {
               return {
-                id: +el.ratingKey,
+                id: el.ratingKey,
                 title: `Episode ${el.index}`,
               }
             }),
@@ -125,8 +139,10 @@ const TestMediaItem = (props: ITestMediaItem) => {
   const onSubmit = async () => {
     setComparisonResult(undefined)
 
+    if (!ruleGroup) return
+
     const result = await PostApiHandler(`/rules/test`, {
-      rulegroupId: props.collectionId,
+      rulegroupId: ruleGroup.id,
       mediaId: selectedMediaId,
     })
 
@@ -150,6 +166,39 @@ const TestMediaItem = (props: ITestMediaItem) => {
     }
   }, [selectedSeasons, selectedEpisodes, mediaItem])
 
+  if (loading || !ruleGroup) {
+    return
+  }
+
+  const copyToClipboard = async () => {
+    const value = (editorRef.current as any)?.getValue?.()
+    if (!value?.trim()) return
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        throw new Error('Clipboard not available')
+      }
+      toast.success('Copied to clipboard')
+    } catch {
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = value
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+        toast.success('Copied to clipboard')
+      } catch {
+        toast.error('Failed to copy to clipboard')
+      }
+    }
+  }
+
   return (
     <div className={'h-full w-full'}>
       <Modal
@@ -172,22 +221,24 @@ const TestMediaItem = (props: ITestMediaItem) => {
               <br />
               <br />
               {`The rule group is of type ${
-                props.dataType === EPlexDataType.MOVIES
+                ruleGroup.dataType === EPlexDataType.MOVIES
                   ? 'movies'
-                  : props.dataType === EPlexDataType.SEASONS
+                  : ruleGroup.dataType === EPlexDataType.SEASONS
                     ? 'seasons'
-                    : props.dataType === EPlexDataType.EPISODES
+                    : ruleGroup.dataType === EPlexDataType.EPISODES
                       ? 'episodes'
                       : 'series'
               }, as a result only media of type ${
-                props.dataType === EPlexDataType.MOVIES ? 'movies' : 'series'
+                ruleGroup.dataType === EPlexDataType.MOVIES
+                  ? 'movies'
+                  : 'series'
               } will be displayed in the search bar.`}
             </Alert>
           </div>
           <FormItem label="Media">
             <SearchMediaItem
-              mediatype={props.dataType}
-              libraryId={props.libraryId}
+              mediatype={ruleGroup.dataType}
+              libraryId={ruleGroup.libraryId}
               onChange={(el) => {
                 updateMediaItem(el as unknown as IMediaOptions)
               }}
@@ -196,8 +247,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
           {/* seasons */}
           <div className="w-full">
-            {props.dataType === EPlexDataType.SEASONS ||
-            props.dataType === EPlexDataType.EPISODES ? (
+            {ruleGroup.dataType === EPlexDataType.SEASONS ||
+            ruleGroup.dataType === EPlexDataType.EPISODES ? (
               <FormItem label="Season">
                 <select
                   name={`Seasons-field`}
@@ -218,7 +269,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
               </FormItem>
             ) : undefined}
 
-            {props.dataType === EPlexDataType.EPISODES ? (
+            {ruleGroup.dataType === EPlexDataType.EPISODES ? (
               // episodes
               <FormItem label="Episode">
                 <select
@@ -240,10 +291,20 @@ const TestMediaItem = (props: ITestMediaItem) => {
               </FormItem>
             ) : undefined}
           </div>
-
-          <label htmlFor={`editor-field`} className="text-label mb-3">
-            {'Output'}
-          </label>
+          <div className="mb-2 flex justify-between">
+            <label htmlFor="editor-field" className="text-label">
+              Output
+            </label>
+            {comparisonResult && (
+              <button
+                onClick={copyToClipboard}
+                title="Copy to clipboard"
+                aria-label="Copy to clipboard"
+              >
+                <ClipboardCopyIcon className="h-5 w-5 text-amber-600 hover:text-amber-500" />
+              </button>
+            )}
+          </div>
           <div className="editor-container h-full">
             <Editor
               options={{ readOnly: true, minimap: { enabled: false } }}

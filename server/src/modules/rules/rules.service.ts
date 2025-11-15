@@ -760,7 +760,7 @@ export class RulesService {
         }
         if (
           (rule.action === RulePossibility.IN_LAST ||
-            RulePossibility.IN_NEXT) &&
+            rule.action === RulePossibility.IN_NEXT) &&
           rule.customVal.ruleTypeId === 0
         ) {
           return this.createReturnStatus(true, 'Success');

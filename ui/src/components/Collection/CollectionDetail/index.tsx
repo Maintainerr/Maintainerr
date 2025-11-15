@@ -1,12 +1,8 @@
 import { PlayIcon } from '@heroicons/react/solid'
-import {
-  CollectionDto,
-  CollectionMediaDto,
-  CollectionMediaWithPlexDataDto,
-} from '@maintainerr/contracts'
 import _ from 'lodash'
 import Router from 'next/router'
 import { useEffect, useRef, useState } from 'react'
+import { ICollection, ICollectionMedia } from '..'
 import GetApiHandler from '../../../utils/ApiHandler'
 import TabbedLinks, { TabbedRoute } from '../../Common/TabbedLinks'
 import OverviewContent, { IPlexMetadata } from '../../Overview/Content'
@@ -16,7 +12,7 @@ import TestMediaItem from './TestMediaItem'
 
 interface ICollectionDetail {
   libraryId: number
-  collection: CollectionDto
+  collection: ICollection
   title: string
   onBack: () => void
 }
@@ -26,7 +22,7 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   props: ICollectionDetail,
 ) => {
   const [data, setData] = useState<IPlexMetadata[]>([])
-  const [media, setMedia] = useState<CollectionMediaDto[]>([])
+  const [media, setMedia] = useState<ICollectionMedia[]>([])
   const [selectedTab, setSelectedTab] = useState<string>('media')
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
   // paging
@@ -35,7 +31,7 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
   const dataRef = useRef<IPlexMetadata[]>([])
-  const mediaRef = useRef<CollectionMediaDto[]>([])
+  const mediaRef = useRef<ICollectionMedia[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
 
@@ -65,12 +61,11 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   }, [page])
 
   useEffect(() => {
-    window.addEventListener('scroll', _.debounce(handleScroll.bind(this), 200))
+    const debouncedScroll = _.debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll)
     return () => {
-      window.removeEventListener(
-        'scroll',
-        _.debounce(handleScroll.bind(this), 200),
-      )
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
     }
   }, [])
 
@@ -84,12 +79,10 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
       loadingExtraRef.current = true
     }
     // setLoading(true)
-    const resp = await GetApiHandler<{
-      totalSize: number
-      items: CollectionMediaWithPlexDataDto[]
-    }>(
-      `/collections/media/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}`,
-    )
+    const resp: { totalSize: number; items: ICollectionMedia[] } =
+      await GetApiHandler(
+        `/collections/media/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}`,
+      )
 
     setTotalSize(resp.totalSize)
     // pageData.current = pageData.current + 1
@@ -98,10 +91,8 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
     setData([
       ...dataRef.current,
       ...resp.items.map((el) => {
-        return {
-          ...el.plexData,
-          maintainerrIsManual: el.isManual ? el.isManual : false,
-        } satisfies IPlexMetadata
+        el.plexData!.maintainerrIsManual = el.isManual ? el.isManual : false
+        return el.plexData ? el.plexData : ({} as IPlexMetadata)
       }),
     ])
     loadingRef.current = false
@@ -209,10 +200,9 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
               }, 500)
             }
             collectionInfo={media.map((el) => {
-              return {
-                ...el,
-                collection: props.collection,
-              }
+              props.collection.media = []
+              el.collection = props.collection
+              return el
             })}
           />
         ) : selectedTab === 'exclusions' ? (
@@ -228,8 +218,6 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
       {mediaTestModalOpen && props.collection?.id ? (
         <TestMediaItem
           collectionId={+props.collection.id}
-          libraryId={props.libraryId}
-          dataType={props.collection.type}
           onCancel={() => {
             setMediaTestModalOpen(false)
           }}
