@@ -1,3 +1,4 @@
+import { RuleOperators, RulePossibility } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import YAML from 'yaml';
 import {
@@ -9,7 +10,6 @@ import {
   ICustomIdentifier,
   RuleConstanstService,
 } from '../constants/constants.service';
-import { RuleOperators, RulePossibility } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { ReturnStatus } from '../rules.service';
 

@@ -1,4 +1,4 @@
-import { createZodDto } from 'nestjs-zod'
+import { createZodDto } from 'nestjs-zod/dto'
 import { z } from 'zod'
 import { collectionSchema } from './collection'
 import { collectionMediaSchema } from './collectionMedia'
