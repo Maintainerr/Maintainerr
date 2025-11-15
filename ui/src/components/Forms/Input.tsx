@@ -34,22 +34,34 @@ Input.displayName = 'Input'
 type InputGroupProps = {
   name: string
   label: string
+  helpText?: JSX.Element | string
   error?: string
 } & InputHTMLAttributes<HTMLInputElement>
 
 export const InputGroup = forwardRef<HTMLInputElement, InputGroupProps>(
-  ({ label, ...props }: InputGroupProps, ref) => {
+  ({ label, helpText, ...props }: InputGroupProps, ref) => {
+    const ariaDescribedBy = []
+    if (helpText) ariaDescribedBy.push(`${props.name}-help`)
+    if (props.error) ariaDescribedBy.push(`${props.name}-error`)
+
     return (
       <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
         <label htmlFor={props.id || props.name} className="sm:mt-2">
           {label} {props.required && <>*</>}
+          {helpText && (
+            <p className={'text-xs font-normal'} id={`${props.name}-help`}>
+              {helpText}
+            </p>
+          )}
         </label>
         <div className="px-3 py-2 sm:col-span-2">
           <div className="max-w-xl">
             <Input
               {...props}
               ref={ref}
-              aria-describedby={props.error ? `${props.name}-error` : undefined}
+              aria-describedby={
+                ariaDescribedBy.length ? ariaDescribedBy.join(' ') : undefined
+              }
               error={!!props.error}
             />
             {props.error && (

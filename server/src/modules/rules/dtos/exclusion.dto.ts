@@ -1,4 +1,4 @@
-import { IAlterableMediaDto } from '@maintainerr/contracts';
+import { IAlterableMediaDto } from '../../collections/interfaces/collection-media.interface';
 
 export class ExclusionDto {
   plexId: number;

@@ -1,4 +1,4 @@
-import { Collection } from '../../collections/entities/collection.entities';
+import { CollectionLogMeta, ECollectionLogType } from '@maintainerr/contracts';
 import {
   Column,
   Entity,
@@ -6,12 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-
-export enum ECollectionLogType {
-  COLLECTION,
-  MEDIA,
-  RULES,
-}
+import { Collection } from '../../collections/entities/collection.entities';
 
 @Entity()
 @Index('idx_collection_log_collection_id', ['collection'])
@@ -36,4 +31,7 @@ export class CollectionLog {
 
   @Column({ nullable: true })
   type: ECollectionLogType;
+
+  @Column('simple-json', { nullable: true })
+  meta: CollectionLogMeta;
 }

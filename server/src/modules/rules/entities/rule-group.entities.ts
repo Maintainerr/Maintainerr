@@ -1,15 +1,19 @@
+import { Collection } from '../../collections/entities/collection.entities';
+import { ICollection } from '../../collections/interfaces/collection.interface';
 import {
-  Column,
   Entity,
-  JoinColumn,
+  Column,
+  PrimaryGeneratedColumn,
   OneToMany,
   OneToOne,
-  PrimaryGeneratedColumn,
+  JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
-import { Collection } from '../../collections/entities/collection.entities';
 import { Rules } from './rules.entities';
+import { Notification } from '../../notifications/entities/notification.entities';
 
-@Entity()
+@Entity('rule_group')
 export class RuleGroup {
   @PrimaryGeneratedColumn()
   id: number;
@@ -40,10 +44,21 @@ export class RuleGroup {
   })
   rules: Rules[];
 
+  @ManyToMany(() => Notification, {
+    eager: true,
+    onDelete: 'NO ACTION',
+  })
+  @JoinTable({
+    name: 'notification_rulegroup',
+    joinColumn: { name: 'rulegroupId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'notificationId', referencedColumnName: 'id' },
+  })
+  notifications: Notification[];
+
   @OneToOne(() => Collection, (c) => c.ruleGroup, {
     eager: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  collection: Collection;
+  collection: ICollection;
 }

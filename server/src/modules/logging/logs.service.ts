@@ -1,5 +1,5 @@
 import { LogSettingDto } from '@maintainerr/contracts';
-import { Injectable, LoggerService } from '@nestjs/common';
+import { Injectable, LoggerService, Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import winston from 'winston';
@@ -50,6 +50,19 @@ export class LogSettingsService {
 }
 
 @Injectable()
+export class MaintainerrLoggerFactory {
+  constructor(private readonly logger: winston.Logger) {}
+
+  public createLogger(context?: string): MaintainerrLogger {
+    const logger = new MaintainerrLogger(this.logger);
+    if (context) {
+      logger.setContext(context);
+    }
+    return logger;
+  }
+}
+
+@Injectable({ scope: Scope.TRANSIENT })
 export class MaintainerrLogger implements LoggerService {
   private context?: string;
 

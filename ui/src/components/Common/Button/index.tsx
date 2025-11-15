@@ -1,4 +1,4 @@
-import React, { ForwardedRef } from 'react'
+import React, { ForwardedRef, type JSX } from 'react'
 
 export type ButtonType =
   | 'default'

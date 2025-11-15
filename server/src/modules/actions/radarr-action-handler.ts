@@ -1,20 +1,22 @@
-import { ServarrAction } from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { ServarrAction } from '../collections/interfaces/collection.interface';
+import { MaintainerrLogger } from '../logging/logs.service';
 
 @Injectable()
 export class RadarrActionHandler {
-  private readonly logger = new Logger(RadarrActionHandler.name);
-
   constructor(
     private readonly servarrApi: ServarrService,
     private readonly plexApi: PlexApiService,
     private readonly tmdbIdService: TmdbIdService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(RadarrActionHandler.name);
+  }
 
   public async handleAction(
     collection: Collection,

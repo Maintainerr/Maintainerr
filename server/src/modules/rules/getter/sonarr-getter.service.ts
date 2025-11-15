@@ -1,32 +1,34 @@
-import {
-  Application,
-  EPlexDataType,
-  PlexMetadata,
-  Property,
-  RuleConstants,
-  RuleGroupDto,
-} from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
+import { PlexMetadata } from '../../../modules/api/plex-api/interfaces/media.interface';
 import { SonarrSeason } from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
 import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
+import { MaintainerrLogger } from '../../logging/logs.service';
+import {
+  Application,
+  Property,
+  RuleConstants,
+} from '@maintainerr/contracts';
+import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class SonarrGetterService {
   plexProperties: Property[];
-  private readonly logger = new Logger(SonarrGetterService.name);
 
   constructor(
     private readonly servarrService: ServarrService,
     private readonly plexApi: PlexApiService,
     private readonly tmdbApi: TmdbApiService,
     private readonly tmdbIdHelper: TmdbIdService,
+    private readonly logger: MaintainerrLogger,
   ) {
+    logger.setContext(SonarrGetterService.name);
     const ruleConstanst = new RuleConstants();
     this.plexProperties = ruleConstanst.applications.find(
       (el) => el.id === Application.SONARR,
@@ -36,7 +38,7 @@ export class SonarrGetterService {
     id: number,
     libItem: PlexLibraryItem,
     dataType?: EPlexDataType,
-    ruleGroup?: RuleGroupDto,
+    ruleGroup?: RulesDto,
   ) {
     if (!ruleGroup.collection?.sonarrSettingsId) {
       this.logger.error(
@@ -106,7 +108,7 @@ export class SonarrGetterService {
           : undefined;
 
       const episodeFile =
-        episode && dataType === EPlexDataType.EPISODES
+        episode?.episodeFileId && dataType === EPlexDataType.EPISODES
           ? await sonarrApiClient.getEpisodeFile(episode.episodeFileId)
           : undefined;
 
@@ -252,7 +254,7 @@ export class SonarrGetterService {
             return season.seasonNumber && showResponse.seasons
               ? +season.seasonNumber ===
                   (
-                    await this.getLastSeason(
+                    await this.getLastAiredOrCurrentlyAiringSeason(
                       showResponse.seasons,
                       showResponse.id,
                       sonarrApiClient,
@@ -303,6 +305,24 @@ export class SonarrGetterService {
         case 'ratingVotes': {
           return showResponse.ratings?.votes ?? null;
         }
+        case 'fileQualityCutoffMet': {
+          return episodeFile?.qualityCutoffNotMet != null
+            ? !episodeFile.qualityCutoffNotMet
+            : false;
+        }
+        case 'fileQualityName': {
+          return episodeFile?.quality?.quality?.name ?? null;
+        }
+        case 'qualityProfileName': {
+          const showProfile = showResponse.qualityProfileId;
+
+          return (await sonarrApiClient.getProfiles())?.find(
+            (el) => el.id === showProfile,
+          ).name;
+        }
+        case 'fileAudioLanguages': {
+          return episodeFile?.mediaInfo?.audioLanguages ?? null;
+        }
       }
     } catch (e) {
       this.logger.warn(
@@ -320,26 +340,28 @@ export class SonarrGetterService {
    * @param {number} showId - The ID of the show.
    * @return {Promise<SonarrSeason>} The last season found, or undefined if none is found.
    */
-  private async getLastSeason(
+  private async getLastAiredOrCurrentlyAiringSeason(
     seasons: SonarrSeason[],
     showId: number,
     apiClient: SonarrApi,
   ): Promise<SonarrSeason> {
-    // array find doesn't work as expected.. so keep this a for loop
     for (const s of seasons.reverse()) {
-      const epResp = showId
-        ? await apiClient.getEpisodes(showId, s.seasonNumber, [1])
-        : [];
+      const epResp = await apiClient.getEpisodes(showId, s.seasonNumber, [1]);
 
-      const resp =
-        epResp[0] && epResp[0].airDate === undefined
-          ? false
-          : s.statistics?.nextAiring !== undefined
-            ? s.statistics?.previousAiring !== undefined
-            : true;
+      if (epResp[0]?.airDateUtc === undefined) {
+        continue;
+      }
 
-      if (resp) return s;
+      const airDate = new Date(epResp[0].airDateUtc);
+      const now = new Date();
+
+      if (airDate > now) {
+        continue;
+      }
+
+      return s;
     }
+
     return undefined;
   }
 

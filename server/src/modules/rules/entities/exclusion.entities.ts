@@ -1,5 +1,5 @@
-import { PlexMetadata } from '@maintainerr/contracts';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Exclusion {

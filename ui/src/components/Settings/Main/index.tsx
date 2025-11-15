@@ -12,15 +12,17 @@ const MainSettings = () => {
   const apiKeyRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<boolean>()
   const [changed, setChanged] = useState<boolean>()
-  const [cacheImage, setCacheImage] = useState<boolean>()
+  const [cacheImage, setCacheImage] = useState<boolean>(
+    !!settingsCtx.settings.cacheImages,
+  )
 
   useEffect(() => {
     document.title = 'Maintainerr - Settings - General'
   }, [])
 
   useEffect(() => {
-    setCacheImage(settingsCtx.settings.cacheImages ? true : false)
-  }, [settingsCtx])
+    setCacheImage(!!settingsCtx.settings.cacheImages)
+  }, [settingsCtx.settings.cacheImages])
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -132,7 +134,7 @@ const MainSettings = () => {
                   name="cacheImages"
                   id="cacheImages"
                   type="checkbox"
-                  onClick={() => {
+                  onChange={() => {
                     setCacheImage(!cacheImage)
                   }}
                   checked={cacheImage}

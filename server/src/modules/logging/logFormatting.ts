@@ -1,5 +1,5 @@
 export const formatLogMessage = (message: any, stack: any) => {
-  if (Array.isArray(stack)) {
+  if (Array.isArray(stack) && stack.length > 0 && stack[0] != null) {
     let stackMessage = '';
 
     if (stack[0] instanceof Error) {

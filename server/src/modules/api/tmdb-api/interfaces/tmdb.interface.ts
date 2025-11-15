@@ -28,42 +28,6 @@ export interface TmdbTvResult extends TmdbMediaResult {
   first_air_date: string;
 }
 
-export interface TmdbPersonResult {
-  id: number;
-  name: string;
-  popularity: number;
-  profile_path?: string;
-  adult: boolean;
-  media_type: 'person';
-  known_for: (TmdbMovieResult | TmdbTvResult)[];
-}
-
-interface TmdbPaginatedResponse {
-  page: number;
-  total_results: number;
-  total_pages: number;
-}
-
-export interface TmdbSearchMultiResponse extends TmdbPaginatedResponse {
-  results: (TmdbMovieResult | TmdbTvResult | TmdbPersonResult)[];
-}
-
-export interface TmdbSearchMovieResponse extends TmdbPaginatedResponse {
-  results: TmdbMovieResult[];
-}
-
-export interface TmdbSearchTvResponse extends TmdbPaginatedResponse {
-  results: TmdbTvResult[];
-}
-
-export interface TmdbUpcomingMoviesResponse extends TmdbPaginatedResponse {
-  dates: {
-    maximum: string;
-    minimum: string;
-  };
-  results: TmdbMovieResult[];
-}
-
 export interface TmdbExternalIdResponse {
   movie_results: TmdbMovieResult[];
   tv_results: TmdbTvResult[];
@@ -357,55 +321,6 @@ export interface TmdbPersonCredit {
   release_date: string;
 }
 
-export interface TmdbPersonCreditCast extends TmdbPersonCredit {
-  character: string;
-}
-
-export interface TmdbPersonCreditCrew extends TmdbPersonCredit {
-  department: string;
-  job: string;
-}
-
-export interface TmdbPersonCombinedCredits {
-  id: number;
-  cast: TmdbPersonCreditCast[];
-  crew: TmdbPersonCreditCrew[];
-}
-
-export interface TmdbSeasonWithEpisodes extends TmdbTvSeasonResult {
-  episodes: TmdbTvEpisodeResult[];
-  external_ids: TmdbExternalIds;
-}
-
-export interface TmdbCollection {
-  id: number;
-  name: string;
-  overview?: string;
-  poster_path?: string;
-  backdrop_path?: string;
-  parts: TmdbMovieResult[];
-}
-
-export interface TmdbRegion {
-  iso_3166_1: string;
-  english_name: string;
-}
-
-export interface TmdbLanguage {
-  iso_639_1: string;
-  english_name: string;
-  name: string;
-}
-
-export interface TmdbGenresResult {
-  genres: TmdbGenre[];
-}
-
-export interface TmdbGenre {
-  id: number;
-  name: string;
-}
-
 export interface TmdbNetwork {
   id: number;
   name: string;
@@ -426,57 +341,4 @@ export interface TmdbWatchProviderDetails {
   logo_path?: string;
   provider_id: number;
   provider_name: string;
-}
-
-export interface SearchOptions {
-  query: string;
-  page?: number;
-  includeAdult?: boolean;
-  language?: string;
-}
-
-export interface DiscoverMovieOptions {
-  page?: number;
-  includeAdult?: boolean;
-  language?: string;
-  primaryReleaseDateGte?: string;
-  primaryReleaseDateLte?: string;
-  originalLanguage?: string;
-  genre?: number;
-  studio?: number;
-  sortBy?:
-    | 'popularity.asc'
-    | 'popularity.desc'
-    | 'release_date.asc'
-    | 'release_date.desc'
-    | 'revenue.asc'
-    | 'revenue.desc'
-    | 'primary_release_date.asc'
-    | 'primary_release_date.desc'
-    | 'original_title.asc'
-    | 'original_title.desc'
-    | 'vote_average.asc'
-    | 'vote_average.desc'
-    | 'vote_count.asc'
-    | 'vote_count.desc';
-}
-
-export interface DiscoverTvOptions {
-  page?: number;
-  language?: string;
-  firstAirDateGte?: string;
-  firstAirDateLte?: string;
-  includeEmptyReleaseDate?: boolean;
-  originalLanguage?: string;
-  genre?: number;
-  network?: number;
-  sortBy?:
-    | 'popularity.asc'
-    | 'popularity.desc'
-    | 'vote_average.asc'
-    | 'vote_average.desc'
-    | 'vote_count.asc'
-    | 'vote_count.desc'
-    | 'first_air_date.asc'
-    | 'first_air_date.desc';
 }

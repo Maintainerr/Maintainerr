@@ -3,13 +3,13 @@ import {
   PlusCircleIcon,
   TrashIcon,
 } from '@heroicons/react/solid'
-import { CollectionDto } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
 import LoadingSpinner from '../../Common/LoadingSpinner'
-import Modal from '../../Common/Modal'
 import SonarrSettingsModal from './SettingsModal'
+import { ICollection } from '../../Collection'
+import Modal from '../../Common/Modal'
 
 type DeleteSonarrSettingResponseDto =
   | {
@@ -23,7 +23,7 @@ type DeleteSonarrSettingResponseDto =
       code: 0
       message: string
       data: {
-        collectionsInUse: CollectionDto[]
+        collectionsInUse: ICollection[]
       } | null
     }
 
@@ -41,7 +41,7 @@ const SonarrSettings = () => {
     ISonarrSetting | boolean
   >()
   const [collectionsInUseWarning, setCollectionsInUseWarning] = useState<
-    CollectionDto[] | undefined
+    ICollection[] | undefined
   >()
 
   const handleSettingsSaved = (setting: ISonarrSetting) => {

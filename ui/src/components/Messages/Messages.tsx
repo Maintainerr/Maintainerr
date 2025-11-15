@@ -1,3 +1,4 @@
+import { Transition } from '@headlessui/react'
 import {
   BaseEventDto,
   CollectionHandlerFinishedEventDto,
@@ -11,7 +12,6 @@ import {
 import { useRef, useState } from 'react'
 import { useEvent } from '../../contexts/events-context'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
-import Transition from '../Transition'
 
 const isStartedOrFinishedEvent = (
   event: BaseEventDto,
@@ -50,7 +50,7 @@ const Messages = () => {
 }
 
 const RuleHandlerMessages = () => {
-  const finishedTimer = useRef<NodeJS.Timeout>()
+  const finishedTimer = useRef<NodeJS.Timeout>(undefined)
   const [show, setShow] = useState<boolean>(false)
 
   const [event, setEvent] = useState<
@@ -88,11 +88,11 @@ const RuleHandlerMessages = () => {
 
   return (
     <Transition
+      as="div"
       show={show}
-      enter="transition opacity-0 duration-1000"
+      className="transition duration-1000"
       enterFrom="opacity-0"
       enterTo="opacity-100"
-      leave="transition opacity-100 duration-1000"
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
     >
@@ -136,7 +136,7 @@ const RuleHandlerMessages = () => {
 }
 
 const CollectionHandlerMessages = () => {
-  const finishedTimer = useRef<NodeJS.Timeout>()
+  const finishedTimer = useRef<NodeJS.Timeout>(undefined)
   const [show, setShow] = useState<boolean>(false)
 
   const [event, setEvent] = useState<
@@ -174,7 +174,9 @@ const CollectionHandlerMessages = () => {
 
   return (
     <Transition
+      as="div"
       show={show}
+      className="mx-2 flex flex-col rounded-lg bg-zinc-900 py-2 pl-2 pr-4 text-xs font-bold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800"
       enter="transition opacity-0 duration-1000"
       enterFrom="opacity-0"
       enterTo="opacity-100"
@@ -182,41 +184,35 @@ const CollectionHandlerMessages = () => {
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
     >
-      <div
-        className={
-          'mx-2 flex flex-col rounded-lg bg-zinc-900 py-2 pl-2 pr-4 text-xs font-bold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800'
-        }
-      >
-        <div className="flex items-center gap-2">
-          <div>
-            <SmallLoadingSpinner className="m-auto h-4 px-0.5" />
-          </div>
-          {event && isStartedOrFinishedEvent(event) && <>{event.message}</>}
-          {event &&
-            isCollectionHandlerProgressedEvent(event) &&
-            event.processingCollection && (
-              <div>Processing: {event.processingCollection.name}</div>
-            )}
+      <div className="flex items-center gap-2">
+        <div>
+          <SmallLoadingSpinner className="m-auto h-4 px-0.5" />
         </div>
-        {event && isCollectionHandlerProgressedEvent(event) && (
-          <div className="ml-8 mt-2 bg-zinc-800">
-            {event.totalCollections > 1 && (
-              <div
-                className={`h-1.5 bg-amber-500 transition-width ease-in-out ${event.processingCollection?.processedMedias === 0 ? 'duration-0' : 'duration-150'}`}
-                style={{
-                  width: `${(event.processingCollection ? event.processingCollection?.processedMedias / event.processingCollection?.totalMedias : 0) * 100}%`,
-                }}
-              />
-            )}
+        {event && isStartedOrFinishedEvent(event) && <>{event.message}</>}
+        {event &&
+          isCollectionHandlerProgressedEvent(event) &&
+          event.processingCollection && (
+            <div>Processing: {event.processingCollection.name}</div>
+          )}
+      </div>
+      {event && isCollectionHandlerProgressedEvent(event) && (
+        <div className="ml-8 mt-2 bg-zinc-800">
+          {event.totalCollections > 1 && (
             <div
-              className="h-1.5 bg-amber-700 transition-width duration-150 ease-in-out"
+              className={`h-1.5 bg-amber-500 transition-width ease-in-out ${event.processingCollection?.processedMedias === 0 ? 'duration-0' : 'duration-150'}`}
               style={{
-                width: `${(event.processedMedias / event.totalMediaToHandle) * 100}%`,
+                width: `${(event.processingCollection ? event.processingCollection?.processedMedias / event.processingCollection?.totalMedias : 0) * 100}%`,
               }}
             />
-          </div>
-        )}
-      </div>
+          )}
+          <div
+            className="h-1.5 bg-amber-700 transition-width duration-150 ease-in-out"
+            style={{
+              width: `${(event.processedMedias / event.totalMediaToHandle) * 100}%`,
+            }}
+          />
+        </div>
+      )}
     </Transition>
   )
 }

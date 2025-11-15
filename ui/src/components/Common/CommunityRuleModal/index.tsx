@@ -1,8 +1,8 @@
 import { UploadIcon } from '@heroicons/react/solid'
-import { RuleDefinitionDto } from '@maintainerr/contracts'
 import { compareVersions } from 'compare-versions'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
+import { IRule } from '../../Rules/Rule/RuleCreator'
 import CommunityRuleUpload from '../../Rules/Rule/RuleCreator/CommunityRuleUpload'
 import Alert from '../Alert'
 import CommunityRuleTableRow from '../CommunityRowTableRow'
@@ -13,10 +13,11 @@ import Pagination from '../Pagination'
 import SearchBar from '../SearchBar'
 
 interface ICommunityRuleModal {
-  onUpdate: (rules: RuleDefinitionDto[]) => void
+  onUpdate: (rules: IRule[]) => void
   onCancel: () => void
-  currentRules?: RuleDefinitionDto[]
+  currentRules?: IRule[]
   type: 'movie' | 'show'
+  level?: 'show' | 'season' | 'episode'
 }
 
 interface ICommunityRuleKarmaHistory {
@@ -33,87 +34,126 @@ export interface ICommunityRule {
   description: string
   hasRules: boolean
   uploadedBy: string
-  JsonRules: RuleDefinitionDto[]
+  JsonRules: IRule[]
 }
 
 const CommunityRuleModal = (props: ICommunityRuleModal) => {
   const [communityRules, setCommunityRules] = useState<ICommunityRule[]>([])
-  const [originalRules, setoriginalRules] = useState<ICommunityRule[]>([])
-  const [shownRules, setShownRules] = useState<ICommunityRule[]>([])
-  const [currentPage, setCurrentPage] = useState<number>(0)
-  const [clickedRule, setClickedRule] = useState<number>(-1)
+  const [error, setError] = useState(false)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [selectedRule, setSelectedRule] = useState<number | undefined>()
   const [history, setHistory] = useState<ICommunityRuleKarmaHistory[]>([])
   const [showInfo, setInfo] = useState<boolean>(false)
   const [uploadMyRules, setUploadMyRules] = useState<boolean>(false)
-  const searchText = useRef<string>()
-  const appVersion = useRef<string>('0.0.0')
-
-  const paging = 5
+  const [appVersion, setAppVersion] = useState<string>('0.0.0')
+  const [searchText, setSearchText] = useState<string>('')
+  const itemsPerPage = 5
 
   useEffect(() => {
-    getAppVersion()
-    GetApiHandler('/rules/community/').then((resp: ICommunityRule[]) => {
-      if (resp) {
-        if (!('code' in resp)) {
-          resp = resp.filter((e) => {
-            const versionCheck =
-              compareVersions(
-                e.appVersion || '0.0.0',
-                appVersion.current || '0.0.0',
-              ) <= 0
-            const typeCheck = e.type === props.type
+    const fetchData = async () => {
+      setLoading(true)
+      setError(false)
 
-            return versionCheck && typeCheck
-          })
-          resp = resp.sort((a, b) => b.karma! - a.karma!)
+      const apiVersionPromise = getAppVersion()
+
+      const communityRulesPromise = GetApiHandler<ICommunityRule[]>(
+        '/rules/community',
+      ).then((resp) => {
+        if (Array.isArray(resp)) {
           setCommunityRules(resp)
-          setoriginalRules(resp)
-          setShownRules(resp.slice(0, paging))
         } else {
-          setCommunityRules([])
-          console.log(
-            'An error occurred fetching community rules. Does Maintainerr have privileges to access the internet?',
-          )
+          throw new Error(`Couldn't fetch community rules.`)
         }
-      } else {
-        setCommunityRules([])
-      }
-    })
+      })
 
-    getKarmaHistory()
+      const karmaPromise = getKarmaHistory()
+
+      await Promise.all([
+        apiVersionPromise,
+        communityRulesPromise,
+        karmaPromise,
+      ])
+        .catch((e) => {
+          setError(true)
+          console.error(e)
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    }
+
+    fetchData()
   }, [])
 
-  useEffect(() => {
-    paginate(1)
-  }, [communityRules])
-
-  const paginate = (page: number) => {
-    setShownRules(communityRules.slice((page - 1) * paging, page * paging))
-    setCurrentPage(page)
-  }
-
-  const getAppVersion = () => {
-    GetApiHandler('/settings/version').then((resp: string) => {
+  const getAppVersion = async () => {
+    return GetApiHandler('/settings/version').then((resp: string) => {
       if (resp) {
-        appVersion.current = resp
+        setAppVersion(resp)
+      } else {
+        throw new Error(`Couldn't fetch app version.`)
       }
     })
   }
 
-  const getKarmaHistory = () => {
-    GetApiHandler('/rules/community/karma/history').then(
+  const getKarmaHistory = async () => {
+    return GetApiHandler('/rules/community/karma/history').then(
       (resp: ICommunityRuleKarmaHistory[]) => {
         if (resp) {
           setHistory(resp)
         } else {
-          console.log(`Couldn't fetch community rule Karma history.`)
+          throw new Error(`Couldn't fetch community rule Karma history.`)
         }
       },
     )
   }
 
-  const handleCancel = () => {
-    props.onCancel()
+  const applicableCommunityRules = useMemo(() => {
+    return communityRules
+      .filter((rule) => {
+        const versionCheck =
+          compareVersions(rule.appVersion || '0.0.0', appVersion) <= 0
+        const typeCheck = rule.type === props.type
+
+        return versionCheck && typeCheck
+      })
+      .sort((a, b) => b.karma! - a.karma!)
+  }, [communityRules, appVersion, props.type])
+
+  const filteredCommunityRules = useMemo(() => {
+    return applicableCommunityRules.filter((rule) => {
+      const searchCheck =
+        searchText !== ''
+          ? rule.name.toLowerCase().includes(searchText.trim().toLowerCase()) ||
+            rule.description
+              .toLowerCase()
+              .includes(searchText.trim().toLowerCase()) ||
+            rule.uploadedBy
+              ?.toLowerCase()
+              .includes(searchText.trim().toLowerCase())
+          : true
+
+      return searchCheck
+    })
+  }, [applicableCommunityRules, searchText])
+
+  const shownRules = useMemo(() => {
+    return filteredCommunityRules.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage,
+    )
+  }, [filteredCommunityRules, currentPage, itemsPerPage])
+
+  const lastPage = Math.max(
+    1,
+    Math.ceil(filteredCommunityRules.length / itemsPerPage),
+  )
+  if (currentPage > lastPage) {
+    setCurrentPage(lastPage)
+  }
+
+  const paginate = (page: number) => {
+    setCurrentPage(page)
   }
 
   const handleUpload = () => {
@@ -122,77 +162,31 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
   }
 
   const handleClick = (id: number) => {
-    if (clickedRule !== id) {
-      setClickedRule(id)
+    if (selectedRule !== id) {
+      setSelectedRule(id)
+    } else {
+      setSelectedRule(undefined)
     }
   }
 
   const handleSubmit = () => {
-    if (props.onUpdate !== undefined && clickedRule !== -1) {
-      const rule = originalRules.find((r) => r.id === clickedRule)
+    if (props.onUpdate !== undefined && selectedRule != null) {
+      const rule = communityRules.find((r) => r.id === selectedRule)
       if (rule !== undefined) {
         props.onUpdate(rule.JsonRules)
       }
     }
   }
 
-  const handleSearch = (input: string) => {
-    searchText.current = input
-
-    if (input === '') {
-      setCommunityRules(originalRules)
-    } else {
-      setCommunityRules(
-        originalRules.filter(
-          (rule) =>
-            rule.name.toLowerCase().includes(input.trim().toLowerCase()) ||
-            rule.description
-              .toLowerCase()
-              .includes(input.trim().toLowerCase()) ||
-            rule.uploadedBy?.toLowerCase().includes(input.trim().toLowerCase()),
-        ),
-      )
+  const updateKarma = async (id: number, karmaAdjustment: number) => {
+    const rule = communityRules.find((e) => e.id === id)
+    if (rule?.karma == null) {
+      return
     }
-  }
 
-  const handleThumbsUp = (id: number) => {
-    const rule = originalRules.find((e) => e.id === id)
-
-    if (rule && rule.karma !== undefined) {
-      ThumbPoster(id, rule.karma + 10)
-      setoriginalRules(
-        originalRules.map((e) => {
-          if (e.id === id && e.karma !== undefined) {
-            e.karma += 10
-          }
-          return e
-        }),
-      )
-      setHistory([{ id: history.length, community_rule_id: id }, ...history])
-    }
-  }
-
-  const handleThumbsDown = (id: number) => {
-    const rule = originalRules.find((e) => e.id === id)
-
-    if (rule && rule.karma !== undefined) {
-      ThumbPoster(id, rule.karma - 10)
-      setoriginalRules(
-        originalRules.map((e) => {
-          if (e.id === id && e.karma !== undefined) {
-            e.karma -= 10
-          }
-          return e
-        }),
-      )
-      setHistory([{ id: history.length, community_rule_id: id }, ...history])
-    }
-  }
-
-  const ThumbPoster = async (id: number, karma: number): Promise<0 | 1> => {
-    return await PostApiHandler('/rules/community/karma', {
+    const result = await PostApiHandler('/rules/community/karma', {
       id: id,
-      karma: karma,
+      karma: rule.karma + karmaAdjustment,
     })
       .then((resp: { code: 0 | 1; result: string }) => {
         if (resp.code !== 0) {
@@ -201,13 +195,22 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
           return 0
         }
       })
-      .catch((e) => {
+      .catch(() => {
         return 0
       })
-  }
 
-  const handleInfo = () => {
-    setInfo(true)
+    if (result === 1) {
+      setCommunityRules(
+        communityRules.map((e) => {
+          const newRule = { ...e }
+          if (newRule.id === id && newRule.karma !== undefined) {
+            newRule.karma += karmaAdjustment
+          }
+          return newRule
+        }),
+      )
+      setHistory([{ id: history.length, community_rule_id: id }, ...history])
+    }
   }
 
   return (
@@ -215,23 +218,24 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
       <Modal
         loading={false}
         backgroundClickable={false}
-        onCancel={handleCancel}
-        okDisabled={clickedRule === -1}
+        onCancel={props.onCancel}
+        size="5xl"
+        okDisabled={selectedRule == null}
         onOk={handleSubmit}
-        okText={'Import'}
-        okButtonType={'primary'}
-        title={'Community Rules'}
-        iconSvg={''}
+        okText="Import"
+        okButtonType="primary"
+        title="Community Rules"
+        iconSvg=""
       >
-        <div className="mt-6">
+        <div>
           <Alert type="info">
-            {`Import rules made by the community. This will override your current rules`}
+            {`Import rules made by the community. This will override your current rules.`}
           </Alert>
         </div>
-        <SearchBar onSearch={handleSearch} />
-        {originalRules.length > 0 ? (
+        <SearchBar onSearch={(input) => setSearchText(input)} />
+        {!loading ? (
           <div className="flex flex-col">
-            <div className="-mx-4 my-2 overflow-x-auto md:mx-0 lg:mx-0">
+            <div className="-mx-4 overflow-x-auto md:mx-0 lg:mx-0">
               <div className="inline-block min-w-full py-2 align-middle">
                 <div className="overflow-hidden shadow md:mx-0 lg:mx-0">
                   <table className="ml-2 mr-2 min-w-full table-fixed">
@@ -246,25 +250,72 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
                         <th className="truncate bg-gray-500 px-3 text-center text-xs font-medium uppercase text-gray-200">
                           <span>Uploaded By</span>
                         </th>
+                        <th className="truncate bg-gray-500 px-3 text-center text-xs font-medium uppercase text-gray-200">
+                          <span>Made with Version</span>
+                        </th>
                       </tr>
-                      {shownRules.map((cr) => {
-                        return (
-                          <CommunityRuleTableRow
-                            key={cr.id}
-                            clicked={clickedRule === cr.id}
-                            onClick={handleClick}
-                            onDoubleClick={handleInfo}
-                            thumbsActive={
-                              history.find(
-                                (e) => e.community_rule_id === cr.id,
-                              ) === undefined
-                            }
-                            onThumbsUp={handleThumbsUp}
-                            onThumbsDown={handleThumbsDown}
-                            rule={cr}
-                          />
-                        )
-                      })}
+                      {error ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-4 py-4 text-center font-semibold text-amber-500"
+                          >
+                            An error occurred fetching community rules. Please
+                            try again later.
+                          </td>
+                        </tr>
+                      ) : (
+                        <>
+                          {applicableCommunityRules.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={4}
+                                className="px-4 py-4 text-center text-white"
+                              >
+                                No community rules found for this type &
+                                Maintainerr version.
+                              </td>
+                            </tr>
+                          ) : (
+                            <>
+                              {shownRules.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={4}
+                                    className="px-4 py-4 text-center text-white"
+                                  >
+                                    No community rules found for this search.
+                                  </td>
+                                </tr>
+                              ) : (
+                                <>
+                                  {shownRules.map((cr, index) => {
+                                    return (
+                                      <CommunityRuleTableRow
+                                        key={index}
+                                        clicked={selectedRule === cr.id}
+                                        onClick={handleClick}
+                                        onDoubleClick={() => setInfo(true)}
+                                        thumbsActive={
+                                          history.find(
+                                            (e) =>
+                                              e.community_rule_id === cr.id,
+                                          ) === undefined
+                                        }
+                                        onThumbsUp={(id) => updateKarma(id, 10)}
+                                        onThumbsDown={(id) =>
+                                          updateKarma(id, -10)
+                                        }
+                                        rule={cr}
+                                      />
+                                    )
+                                  })}
+                                </>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -274,8 +325,8 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
               <span className="float-left">
                 <InfoButton
                   text="Info"
-                  enabled={clickedRule !== -1}
-                  onClick={handleInfo}
+                  enabled={selectedRule != null}
+                  onClick={() => setInfo(true)}
                 />
               </span>
               <span className="float-right">
@@ -294,9 +345,9 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
               </span>
             </div>
             <Pagination
-              totalItems={communityRules.length}
+              totalItems={filteredCommunityRules.length}
               currentPage={currentPage}
-              pageSize={paging}
+              pageSize={itemsPerPage}
               handleForward={() => paginate(currentPage + 1)}
               handleBackward={() => paginate(currentPage - 1)}
             />
@@ -309,12 +360,12 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
           <Modal
             loading={false}
             onCancel={() => setInfo(false)}
-            cancelText={'Close'}
-            title={'Community Rule Description'}
-            iconSvg={''}
+            cancelText="Close"
+            title="Community Rule Description"
+            iconSvg=""
           >
             <div className="block max-h-full w-full max-w-full overflow-auto bg-zinc-600 p-3 text-zinc-200">
-              {originalRules.find((r) => r.id === clickedRule)?.description}
+              {communityRules.find((r) => r.id === selectedRule)?.description}
             </div>
           </Modal>
         ) : undefined}
@@ -325,6 +376,7 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
             onSubmit={handleUpload}
             type={props.type}
             rules={props.currentRules ? props.currentRules : []}
+            level={props.type === 'show' ? props.level : undefined}
           />
         ) : undefined}
       </Modal>

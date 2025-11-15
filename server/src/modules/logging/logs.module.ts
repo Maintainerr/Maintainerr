@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import chalk from 'chalk';
@@ -9,7 +9,11 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 import { LogSettings } from './entities/logSettings.entities';
 import { formatLogMessage } from './logFormatting';
 import { LogsController } from './logs.controller';
-import { LogSettingsService, MaintainerrLogger } from './logs.service';
+import {
+  LogSettingsService,
+  MaintainerrLogger,
+  MaintainerrLoggerFactory,
+} from './logs.service';
 import { EventEmitterTransport } from './winston/eventEmitterTransport';
 
 const dataDir =
@@ -17,10 +21,12 @@ const dataDir =
     ? '/opt/data'
     : path.join(__dirname, '../../../../data');
 
+@Global()
 @Module({
   imports: [TypeOrmModule.forFeature([LogSettings])],
   providers: [
     MaintainerrLogger,
+    MaintainerrLoggerFactory,
     LogSettingsService,
     {
       provide: winston.Logger,
@@ -92,7 +98,7 @@ const dataDir =
       },
     },
   ],
-  exports: [MaintainerrLogger, LogSettingsService],
+  exports: [MaintainerrLogger, LogSettingsService, MaintainerrLoggerFactory],
   controllers: [LogsController],
 })
 export class LogsModule {}

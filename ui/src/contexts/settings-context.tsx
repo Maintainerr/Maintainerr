@@ -1,7 +1,7 @@
 import {
   createContext,
-  ReactChild,
-  ReactFragment,
+  ReactElement,
+  ReactNode,
   ReactPortal,
   useState,
 } from 'react'
@@ -38,8 +38,10 @@ const SettingsContext = createContext({
 export function SettingsContextProvider(props: {
   children:
     | boolean
-    | ReactChild
-    | ReactFragment
+    | ReactElement<any>
+    | number
+    | string
+    | Iterable<ReactNode>
     | ReactPortal
     | null
     | undefined

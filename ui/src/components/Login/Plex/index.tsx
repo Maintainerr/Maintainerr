@@ -25,7 +25,7 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
       onAuthToken(authToken)
     } catch (e) {
       if (onError) {
-        onError(e.message)
+        onError(e instanceof Error ? e.message : 'Unknown error')
       }
       setLoading(false)
     }

@@ -1,18 +1,26 @@
 import { TrashIcon } from '@heroicons/react/solid'
-import {
-  EPlexDataType,
-  MediaType,
-  RuleDefinitionDto,
-  RuleOperator,
-  RulePossibility,
-  RuleTypes,
-} from '@maintainerr/contracts'
 import _ from 'lodash'
 import { FormEvent, useContext, useEffect, useState } from 'react'
+import { IRule } from '../'
 import ConstantsContext, {
   IProperty,
+  MediaType,
+  RulePossibility,
   RulePossibilityTranslations,
 } from '../../../../../contexts/constants-context'
+import { EPlexDataType } from '../../../../../utils/PlexDataType-enum'
+
+enum RuleType {
+  NUMBER,
+  DATE,
+  TEXT,
+  BOOL,
+  TEXT_LIST,
+}
+enum RuleOperators {
+  AND,
+  OR,
+}
 
 enum CustomParams {
   CUSTOM_NUMBER = 'custom_number',
@@ -30,8 +38,8 @@ interface IRuleInput {
   dataType?: EPlexDataType
   section?: number
   newlyAdded?: number[]
-  editData?: { rule: RuleDefinitionDto }
-  onCommit: (id: number, rule: RuleDefinitionDto) => void
+  editData?: { rule: IRule }
+  onCommit: (id: number, rule: IRule) => void
   onIncomplete: (id: number) => void
   onDelete: (section: number, id: number) => void
   allowDelete?: boolean
@@ -39,52 +47,54 @@ interface IRuleInput {
 
 const RuleInput = (props: IRuleInput) => {
   const ConstantsCtx = useContext(ConstantsContext)
-  const [operator, setOperator] = useState<RuleOperator>()
+  const [operator, setOperator] = useState<string>()
   const [firstval, setFirstVal] = useState<string>()
   const [action, setAction] = useState<RulePossibility>()
   const [secondVal, setSecondVal] = useState<string>()
 
-  const [customValType, setCustomValType] = useState<RuleTypes>()
+  const [customValType, setCustomValType] = useState<RuleType>()
   const [customVal, setCustomVal] = useState<string>()
   const [customValActive, setCustomValActive] = useState<boolean>(true)
 
   const [possibilities, setPossibilities] = useState<RulePossibility[]>([])
-  const [ruleType, setRuleType] = useState<RuleTypes>(RuleTypes.NUMBER)
+  const [ruleType, setRuleType] = useState<RuleType>(RuleType.NUMBER)
 
   useEffect(() => {
     if (props.editData?.rule) {
-      setOperator(props.editData.rule.operator ?? undefined)
+      setOperator(props.editData.rule.operator?.toString())
       setFirstVal(JSON.stringify(props.editData.rule.firstVal))
       setAction(props.editData.rule.action)
 
       if (props.editData.rule.customVal) {
         switch (props.editData.rule.customVal.ruleTypeId) {
           case 0:
-            const value = parseInt(props.editData.rule.customVal.value)
             // TODO: improve this.. Currently this is a hack to determine if param is amount of days or really a number
-            if (value % 86400 === 0 && value != 0) {
+            if (
+              (props.editData.rule.customVal.value as number) % 86400 === 0 &&
+              (props.editData.rule.customVal.value as number) != 0
+            ) {
               setSecondVal(CustomParams.CUSTOM_DAYS)
-              setRuleType(RuleTypes.NUMBER)
+              setRuleType(RuleType.NUMBER)
             } else {
               setSecondVal(CustomParams.CUSTOM_NUMBER)
-              setRuleType(RuleTypes.NUMBER)
+              setRuleType(RuleType.NUMBER)
             }
             break
           case 1:
             setSecondVal(CustomParams.CUSTOM_DATE)
-            setRuleType(RuleTypes.DATE)
+            setRuleType(RuleType.DATE)
             break
           case 2:
             setSecondVal(CustomParams.CUSTOM_TEXT)
-            setRuleType(RuleTypes.TEXT)
+            setRuleType(RuleType.TEXT)
             break
           case 3:
             setSecondVal(CustomParams.CUSTOM_BOOLEAN)
-            setRuleType(RuleTypes.BOOL)
+            setRuleType(RuleType.BOOL)
             break
           case 4:
             setSecondVal(CustomParams.CUSTOM_TEXT_LIST)
-            setRuleType(RuleTypes.TEXT_LIST)
+            setRuleType(RuleType.TEXT_LIST)
             break
         }
         setCustomVal(props.editData.rule.customVal.value.toString())
@@ -126,7 +136,7 @@ const RuleInput = (props: IRuleInput) => {
   }
 
   const updateOperator = (event: { target: { value: string } }) => {
-    setOperator(+event.target.value)
+    setOperator(event.target.value)
   }
 
   const onDelete = (e: FormEvent | null) => {
@@ -161,18 +171,18 @@ const RuleInput = (props: IRuleInput) => {
         props.onCommit(props.id ? props.id : 0, {
           customVal: {
             ruleTypeId: customValActive
-              ? customValType === RuleTypes.DATE
+              ? customValType === RuleType.DATE
                 ? customValType
-                : customValType === RuleTypes.NUMBER
+                : customValType === RuleType.NUMBER
                   ? customValType
-                  : customValType === RuleTypes.TEXT &&
+                  : customValType === RuleType.TEXT &&
                       secondVal === CustomParams.CUSTOM_DAYS
-                    ? RuleTypes.NUMBER
-                    : customValType === RuleTypes.TEXT
+                    ? RuleType.NUMBER
+                    : customValType === RuleType.TEXT
                       ? customValType
-                      : customValType === RuleTypes.BOOL
+                      : customValType === RuleType.BOOL
                         ? customValType
-                        : customValType === RuleTypes.TEXT_LIST
+                        : customValType === RuleType.TEXT_LIST
                           ? customValType
                           : +ruleType
               : +ruleType,
@@ -242,22 +252,22 @@ const RuleInput = (props: IRuleInput) => {
     if (secondVal) {
       if (secondVal === CustomParams.CUSTOM_NUMBER) {
         setCustomValActive(true)
-        setCustomValType(RuleTypes.NUMBER)
+        setCustomValType(RuleType.NUMBER)
       } else if (secondVal === CustomParams.CUSTOM_DATE) {
         setCustomValActive(true)
-        setCustomValType(RuleTypes.DATE)
+        setCustomValType(RuleType.DATE)
       } else if (secondVal === CustomParams.CUSTOM_DAYS) {
         setCustomValActive(true)
-        setCustomValType(RuleTypes.TEXT)
+        setCustomValType(RuleType.TEXT)
       } else if (secondVal === CustomParams.CUSTOM_TEXT) {
         setCustomValActive(true)
-        setCustomValType(RuleTypes.TEXT)
+        setCustomValType(RuleType.TEXT)
       } else if (secondVal === CustomParams.CUSTOM_TEXT_LIST) {
         setCustomValActive(true)
-        setCustomValType(RuleTypes.TEXT_LIST)
+        setCustomValType(RuleType.TEXT_LIST)
       } else if (secondVal === CustomParams.CUSTOM_BOOLEAN) {
         setCustomValActive(true)
-        setCustomValType(RuleTypes.BOOL)
+        setCustomValType(RuleType.BOOL)
         if (customVal !== '0') {
           setCustomVal('1')
         }
@@ -284,49 +294,42 @@ const RuleInput = (props: IRuleInput) => {
     return prop
   }
   return (
-    <div className="mt-10 h-full w-full" onSubmit={submit}>
-      <div className="section h-full w-full">
-        <h3 className="sm-heading max-width-form flex">
-          <div>
-            {props.tagId
-              ? `Rule #${props.tagId}`
-              : props.id
-                ? `Rule #${props.id}`
-                : `Rule #1`}
-          </div>
-
-          {props.allowDelete ? (
-            <button
-              className="ml-auto flex h-8 rounded bg-amber-900 text-zinc-200 shadow-md hover:bg-amber-800"
-              onClick={onDelete}
-              title={`Remove rule ${props.tagId}, section ${props.section}`}
-            >
-              {<TrashIcon className="m-auto ml-5 h-5" />}
-              <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
-                Delete
-              </p>
-            </button>
-          ) : undefined}
+    <div
+      className="w-full rounded-2xl bg-zinc-800 p-4 text-zinc-100 shadow-lg"
+      onSubmit={submit}
+    >
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-amber-600">
+          {props.tagId
+            ? `Rule #${props.tagId}`
+            : props.id
+              ? `Rule #${props.id}`
+              : `Rule #1`}
         </h3>
+
+        {props.allowDelete ? (
+          <button
+            className="flex items-center rounded-lg bg-red-600 px-3 py-1 text-zinc-100 shadow-md hover:bg-red-500"
+            onClick={onDelete}
+            title={`Remove rule ${props.tagId}, section ${props.section}`}
+          >
+            <TrashIcon className="mr-1 h-5 w-5" />
+            Delete
+          </button>
+        ) : null}
       </div>
+
       {props.id !== 1 ? (
         (props.id && props.id > 0) || (props.section && props.section > 1) ? (
-          <div className="form-row">
-            <label htmlFor="operator" className="text-label">
-              Operator
-              {!props.id ||
-              (props.tagId ? props.tagId === 1 : props.id === 1) ? (
-                <span className="label-tip">
-                  {`Section ${props.section}'s action on all previous section results.`}
-                </span>
-              ) : (
-                <span className="label-tip">
-                  {`Action on the previous rule.`}
-                </span>
-              )}
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
+          <div className="mb-3 mt-2 md:flex md:items-center">
+            {!props.id || (props.tagId ? props.tagId === 1 : props.id === 1) ? (
+              <label htmlFor="operator">Section Operator</label>
+            ) : (
+              <label htmlFor="operator">Operator</label>
+            )}
+            <div className="md:ml-4">
+              <div className="flex w-1/2 md:w-fit">
                 <select
                   name="operator"
                   id="operator"
@@ -334,12 +337,12 @@ const RuleInput = (props: IRuleInput) => {
                   value={operator}
                 >
                   <option value={undefined}> </option>
-                  {Object.keys(RuleOperator).map(
+                  {Object.keys(RuleOperators).map(
                     (value: string, key: number) => {
                       if (!isNaN(+value)) {
                         return (
                           <option key={key} value={key}>
-                            {RuleOperator[key]}
+                            {RuleOperators[key]}
                           </option>
                         )
                       }
@@ -352,209 +355,216 @@ const RuleInput = (props: IRuleInput) => {
         ) : undefined
       ) : undefined}
 
-      <div className="form-row">
-        <label htmlFor="first_val" className="text-label">
-          First value
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <select
-              name="first_val"
-              id="first_val"
-              onChange={updateFirstValue}
-              value={firstval}
-            >
-              <option value={undefined}></option>
-              {ConstantsCtx.constants.applications?.map((app) => {
-                return app.mediaType === MediaType.BOTH ||
-                  props.mediaType === app.mediaType ? (
-                  <optgroup key={app.id} label={app.name}>
-                    {app.props.map((prop) => {
-                      return (prop.mediaType === MediaType.BOTH ||
-                        props.mediaType === prop.mediaType) &&
-                        (props.mediaType === MediaType.MOVIE ||
-                          prop.showType === undefined ||
-                          prop.showType.includes(props.dataType!)) ? (
-                        <option
-                          key={app.id + 10 + prop.id}
-                          value={JSON.stringify([app.id, prop.id])}
-                        >{`${app.name} - ${prop.humanName}`}</option>
-                      ) : undefined
-                    })}
-                  </optgroup>
-                ) : undefined
-              })}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="form-row">
-        <label htmlFor="action" className="text-label">
-          Action
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <select
-              name="action"
-              id="action"
-              onChange={updateAction}
-              value={action}
-            >
-              <option value={undefined}> </option>
-              {possibilities.map((action) => (
-                <option key={action} value={action}>
-                  {RulePossibilityTranslations[action]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="form-row">
-        <label htmlFor="second_val" className="text-label">
-          Second value
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <select
-              name="second_val"
-              id="second_val"
-              onChange={updateSecondValue}
-              value={secondVal}
-            >
-              <option value={undefined}> </option>
-              <optgroup label="Custom values">
-                {ruleType === RuleTypes.DATE ? (
-                  <>
-                    <option value={CustomParams.CUSTOM_DAYS}>
-                      Amount of days
-                    </option>
-                    {action != null &&
-                    action !== RulePossibility.IN_LAST &&
-                    action !== RulePossibility.IN_NEXT ? (
-                      <option value={CustomParams.CUSTOM_DATE}>
-                        Specific date
+      {/* First Value Selection */}
+      <div className="mt-1 grid grid-cols-1 gap-x-3 gap-y-3 md:grid-cols-2">
+        <div>
+          <label htmlFor="first_val" className="block text-sm font-medium">
+            First Value
+          </label>
+          <select
+            name="first_val"
+            id="first_val"
+            onChange={updateFirstValue}
+            value={firstval}
+            className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
+          >
+            <option value={undefined} className="text-amber-600">
+              Select First Value...
+            </option>
+            {ConstantsCtx.constants.applications?.map((app) =>
+              app.mediaType === MediaType.BOTH ||
+              props.mediaType === app.mediaType ? (
+                <optgroup key={app.id} label={app.name}>
+                  {app.props.map((prop) =>
+                    (prop.mediaType === MediaType.BOTH ||
+                      props.mediaType === prop.mediaType) &&
+                    (props.mediaType === MediaType.MOVIE ||
+                      prop.showType === undefined ||
+                      prop.showType.includes(props.dataType!)) ? (
+                      <option
+                        key={`${app.id}-${prop.id}`}
+                        value={JSON.stringify([app.id, prop.id])}
+                      >
+                        {`${app.name} - ${prop.humanName}`}
                       </option>
-                    ) : undefined}
-                  </>
-                ) : undefined}
-                {ruleType === RuleTypes.NUMBER ? (
-                  <option value={CustomParams.CUSTOM_NUMBER}>Number</option>
-                ) : undefined}
-                {ruleType === RuleTypes.BOOL ? (
-                  <option value={CustomParams.CUSTOM_BOOLEAN}>Boolean</option>
-                ) : undefined}
-                {ruleType === RuleTypes.TEXT ? (
-                  <option value={CustomParams.CUSTOM_TEXT}>Text</option>
-                ) : undefined}
-                <MaybeTextListOptions ruleType={ruleType} action={action} />
-              </optgroup>
-              {ConstantsCtx.constants.applications?.map((app) => {
-                return (app.mediaType === MediaType.BOTH ||
-                  props.mediaType === app.mediaType) &&
-                  action != null &&
+                    ) : null,
+                  )}
+                </optgroup>
+              ) : null,
+            )}
+          </select>
+        </div>
+
+        {/* Action Selection */}
+        <div>
+          <label htmlFor="action" className="mb-1 block text-sm font-medium">
+            Action
+          </label>
+          <select
+            name="action"
+            id="action"
+            onChange={updateAction}
+            value={action}
+            className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
+          >
+            <option value={undefined} className="text-amber-600">
+              Select Action...
+            </option>
+            {possibilities.map((action) => (
+              <option key={action} value={action}>
+                {RulePossibilityTranslations[action]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Second Value Selection */}
+        <div>
+          <label
+            htmlFor="second_val"
+            className="mb-1 block text-sm font-medium"
+          >
+            Second Value
+          </label>
+          <select
+            name="second_val"
+            id="second_val"
+            onChange={updateSecondValue}
+            value={secondVal}
+            className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
+          >
+            <option value={undefined} className="text-amber-600">
+              Select Second Value...
+            </option>
+            <optgroup label="Custom values">
+              {ruleType === RuleType.DATE ? (
+                <>
+                  <option value={CustomParams.CUSTOM_DAYS}>
+                    Amount of days
+                  </option>
+                  {action != null &&
                   action !== RulePossibility.IN_LAST &&
                   action !== RulePossibility.IN_NEXT ? (
-                  <optgroup key={app.id} label={app.name}>
-                    {app.props.map((prop) => {
-                      // Add valid application-specific second values. Note that the second value
-                      // type may be different to the rule type - e.g. a rule type of "text list"
-                      // may be able to be matched to values of type "text list" as well as "text".
-                      const secondValueTypes = getSecondValueTypes(ruleType)
-                      for (const type of secondValueTypes) {
-                        if (+prop.type.key === type) {
-                          return (prop.mediaType === MediaType.BOTH ||
-                            props.mediaType === prop.mediaType) &&
-                            (props.mediaType === MediaType.MOVIE ||
-                              prop.showType === undefined ||
-                              prop.showType.includes(props.dataType!)) ? (
-                            <option
-                              key={app.id + 10 + prop.id}
-                              value={JSON.stringify([app.id, prop.id])}
-                            >{`${app.name} - ${prop.humanName}`}</option>
-                          ) : undefined
-                        }
+                    <option value={CustomParams.CUSTOM_DATE}>
+                      Specific date
+                    </option>
+                  ) : undefined}
+                </>
+              ) : undefined}
+              {ruleType === RuleType.NUMBER ? (
+                <option value={CustomParams.CUSTOM_NUMBER}>Number</option>
+              ) : undefined}
+              {ruleType === RuleType.BOOL ? (
+                <option value={CustomParams.CUSTOM_BOOLEAN}>Boolean</option>
+              ) : undefined}
+              {ruleType === RuleType.TEXT ? (
+                <option value={CustomParams.CUSTOM_TEXT}>Text</option>
+              ) : undefined}
+              <MaybeTextListOptions ruleType={ruleType} action={action} />
+            </optgroup>
+            {ConstantsCtx.constants.applications?.map((app) => {
+              return (app.mediaType === MediaType.BOTH ||
+                props.mediaType === app.mediaType) &&
+                action != null &&
+                action !== RulePossibility.IN_LAST &&
+                action !== RulePossibility.IN_NEXT ? (
+                <optgroup key={app.id} label={app.name}>
+                  {app.props.map((prop) => {
+                    // Add valid application-specific second values. Note that the second value
+                    // type may be different to the rule type - e.g. a rule type of "text list"
+                    // may be able to be matched to values of type "text list" as well as "text".
+                    const secondValueTypes = getSecondValueTypes(ruleType)
+                    for (const type of secondValueTypes) {
+                      if (+prop.type.key === type) {
+                        return (prop.mediaType === MediaType.BOTH ||
+                          props.mediaType === prop.mediaType) &&
+                          (props.mediaType === MediaType.MOVIE ||
+                            prop.showType === undefined ||
+                            prop.showType.includes(props.dataType!)) ? (
+                          <option
+                            key={app.id + 10 + prop.id}
+                            value={JSON.stringify([app.id, prop.id])}
+                          >{`${app.name} - ${prop.humanName}`}</option>
+                        ) : undefined
                       }
-                    })}
-                  </optgroup>
-                ) : undefined
-              })}
-            </select>
-          </div>
+                    }
+                  })}
+                </optgroup>
+              ) : undefined
+            })}
+          </select>
         </div>
-      </div>
 
-      {customValActive ? (
-        <div className="form-row">
-          <label htmlFor="custom_val" className="text-label">
-            Custom value
-          </label>
-          <div className="form-input">
-            <div className="form-input-field">
-              {customValType === RuleTypes.TEXT &&
-              secondVal === CustomParams.CUSTOM_DAYS ? (
-                <input
-                  type="number"
-                  name="custom_val"
-                  id="custom_val"
-                  onChange={updateCustomValue}
-                  value={customVal ? +customVal / 86400 : undefined}
-                  placeholder="Amount of days"
-                ></input>
-              ) : (customValType === RuleTypes.TEXT &&
-                  secondVal === CustomParams.CUSTOM_TEXT) ||
-                customValType === RuleTypes.TEXT_LIST ? (
-                <input
-                  type="text"
-                  name="custom_val"
-                  id="custom_val"
-                  onChange={updateCustomValue}
-                  value={customVal}
-                  placeholder="Text"
-                ></input>
-              ) : customValType === RuleTypes.DATE ? (
-                <input
-                  type="date"
-                  name="custom_val"
-                  id="custom_val"
-                  onChange={updateCustomValue}
-                  value={customVal}
-                  placeholder="Date"
-                ></input>
-              ) : customValType === RuleTypes.BOOL ? (
-                <select
-                  name="custom_val"
-                  id="custom_val"
-                  onChange={updateCustomValue}
-                  value={customVal}
-                >
-                  <option value={1}>True</option>
-                  <option value={0}>False</option>
-                </select>
-              ) : (
-                <input
-                  type="number"
-                  name="custom_val"
-                  id="custom_val"
-                  onChange={updateCustomValue}
-                  value={customVal}
-                  placeholder="Number"
-                ></input>
-              )}
-            </div>
+        {/* Custom Value Input */}
+        {customValActive ? (
+          <div className="mb-2">
+            <label
+              htmlFor="custom_val"
+              className="mb-1 block text-sm font-medium"
+            >
+              Custom Value
+            </label>
+            {customValType === RuleType.TEXT &&
+            secondVal === CustomParams.CUSTOM_DAYS ? (
+              <input
+                type="number"
+                name="custom_val"
+                id="custom_val"
+                onChange={updateCustomValue}
+                value={customVal ? +customVal / 86400 : undefined}
+                placeholder="Amount of days"
+              ></input>
+            ) : (customValType === RuleType.TEXT &&
+                secondVal === CustomParams.CUSTOM_TEXT) ||
+              customValType === RuleType.TEXT_LIST ? (
+              <input
+                type="text"
+                name="custom_val"
+                id="custom_val"
+                onChange={updateCustomValue}
+                value={customVal}
+                placeholder="Text"
+              ></input>
+            ) : customValType === RuleType.DATE ? (
+              <input
+                type="date"
+                name="custom_val"
+                id="custom_val"
+                onChange={updateCustomValue}
+                value={customVal}
+                placeholder="Date"
+              ></input>
+            ) : customValType === RuleType.BOOL ? (
+              <select
+                name="custom_val"
+                id="custom_val"
+                onChange={updateCustomValue}
+                value={customVal}
+              >
+                <option value={1}>True</option>
+                <option value={0}>False</option>
+              </select>
+            ) : (
+              <input
+                type="number"
+                name="custom_val"
+                id="custom_val"
+                onChange={updateCustomValue}
+                value={customVal}
+                placeholder="Number"
+              ></input>
+            )}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   )
 }
 
 /** Returns a list of types that are valid to be matched against a given first value type. */
-function getSecondValueTypes(firstType: RuleTypes) {
-  if (firstType === RuleTypes.TEXT_LIST || firstType === RuleTypes.TEXT) {
-    return [RuleTypes.TEXT, RuleTypes.TEXT_LIST]
+function getSecondValueTypes(firstType: RuleType) {
+  if (firstType === RuleType.TEXT_LIST || firstType === RuleType.TEXT) {
+    return [RuleType.TEXT, RuleType.TEXT_LIST]
   }
   return [firstType]
 }
@@ -563,10 +573,10 @@ function MaybeTextListOptions({
   ruleType,
   action,
 }: {
-  ruleType: RuleTypes
+  ruleType: RuleType
   action: RulePossibility | undefined
 }) {
-  if (action == null || ruleType !== RuleTypes.TEXT_LIST) {
+  if (action == null || ruleType !== RuleType.TEXT_LIST) {
     return
   }
 

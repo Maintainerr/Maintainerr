@@ -1,22 +1,19 @@
-import {
-  EPlexDataType,
-  PlexMetadata,
-  ServarrAction,
-} from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
+import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
+import { PlexMetadata } from '../api/plex-api/interfaces/media.interface';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
+import { ServarrAction } from './interfaces/collection.interface';
 
 @Injectable()
 export class CollectionHandler {
-  private readonly logger = new Logger(CollectionHandler.name);
-
   constructor(
     private readonly plexApi: PlexApiService,
     private readonly collectionService: CollectionsService,
@@ -24,14 +21,15 @@ export class CollectionHandler {
     private readonly settings: SettingsService,
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(CollectionHandler.name);
+  }
 
   public async handleMedia(collection: Collection, media: CollectionMedia) {
     if (collection.arrAction === ServarrAction.DO_NOTHING) {
       return;
     }
-
-    const plexData: PlexMetadata = undefined;
 
     const plexLibrary = (await this.plexApi.getLibraries()).find(
       (e) => +e.key === +collection.libraryId,
@@ -48,13 +46,13 @@ export class CollectionHandler {
     collection.handledMediaAmount++;
 
     // save a log record for the handled media item
-    this.collectionService.CollectionLogRecordForChild(
+    await this.collectionService.CollectionLogRecordForChild(
       media.plexId,
       collection.id,
       'handle',
     );
 
-    this.collectionService.saveCollection(collection);
+    await this.collectionService.saveCollection(collection);
 
     if (plexLibrary.type === 'movie' && collection.radarrSettingsId) {
       await this.radarrActionHandler.handleAction(collection, media);
@@ -79,21 +77,30 @@ export class CollectionHandler {
       if (this.settings.overseerrConfigured() && collection.forceOverseerr) {
         switch (collection.type) {
           case EPlexDataType.SEASONS:
+            const plexDataSeason: PlexMetadata = await this.plexApi.getMetadata(
+              media.plexId.toString(),
+            );
+
             await this.overseerrApi.removeSeasonRequest(
               media.tmdbId,
-              plexData.index,
+              plexDataSeason.index,
             );
+
             this.logger.log(
-              `[Overseerr] Removed request of season ${plexData.index} from show with tmdbid '${media.tmdbId}'`,
+              `[Overseerr] Removed request of season ${plexDataSeason.index} from show with tmdbid '${media.tmdbId}'`,
             );
             break;
           case EPlexDataType.EPISODES:
+            const plexDataEpisode: PlexMetadata =
+              await this.plexApi.getMetadata(media.plexId.toString());
+
             await this.overseerrApi.removeSeasonRequest(
               media.tmdbId,
-              plexData.parentIndex,
+              plexDataEpisode.parentIndex,
             );
+
             this.logger.log(
-              `[Overseerr] Removed request of season ${plexData.parentIndex} from show with tmdbid '${media.tmdbId}'. Because episode ${plexData.index} was removed.'`,
+              `[Overseerr] Removed request of season ${plexDataEpisode.parentIndex} from show with tmdbid '${media.tmdbId}'. Because episode ${plexDataEpisode.index} was removed.'`,
             );
             break;
           default:

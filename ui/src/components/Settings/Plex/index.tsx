@@ -3,7 +3,7 @@ import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash'
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useToasts } from 'react-toast-notifications'
+import { toast } from 'react-toastify'
 import SettingsContext from '../../../contexts/settings-context'
 import GetApiHandler, {
   DeleteApiHandler,
@@ -86,8 +86,6 @@ const PlexSettings = () => {
     document.title = 'Maintainerr - Settings - Plex'
   }, [])
 
-  const { addToast, removeToast } = useToasts()
-
   const submit = async (
     e: React.FormEvent<HTMLFormElement> | undefined,
     plex_token?: { plex_auth_token: string } | undefined,
@@ -139,9 +137,14 @@ const PlexSettings = () => {
         })
         setError(false)
         setChanged(true)
-      } else setError(true)
+        toast.success('Settings successfully updated!')
+      } else {
+        setError(true)
+        toast.error('Failed to update settings')
+      }
     } else {
       setError(true)
+      toast.error('Please fill in all required fields.')
     }
   }
 
@@ -187,6 +190,7 @@ const PlexSettings = () => {
 
   const authFailed = () => {
     setError(true)
+    toast.error('Authentication failed')
   }
 
   const deleteToken = async () => {
@@ -209,6 +213,8 @@ const PlexSettings = () => {
   const verifyToken = (token?: string) => {
     const authToken = token || settingsCtx.settings.plex_auth_token
     if (authToken) {
+      const controller = new AbortController()
+
       axios
         .get('https://plex.tv/api/v2/user', {
           headers: {
@@ -217,11 +223,17 @@ const PlexSettings = () => {
             'X-Plex-Client-Identifier': '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
             'X-Plex-Token': authToken,
           },
+          signal: controller.signal,
         })
         .then((response) => {
           setTokenValid(response.status === 200 ? true : false)
         })
         .catch(() => setTokenValid(false))
+
+      // Cancel the request if component unmounts
+      return () => {
+        controller.abort()
+      }
     } else {
       setTokenValid(false)
     }
@@ -250,39 +262,26 @@ const PlexSettings = () => {
 
   const refreshPresetServers = async () => {
     setIsRefreshingPresets(true)
-    let toastId: string | undefined
+    const toastId = 'plex-refresh-preset-servers'
+
     try {
-      addToast(
-        'Retrieving server list from Plex…',
-        {
-          autoDismiss: false,
-          appearance: 'info',
-        },
-        (id) => {
-          toastId = id
-        },
-      )
-      const response: PlexDevice[] = await GetApiHandler(
+      const serverPromise = GetApiHandler<PlexDevice[]>(
         '/settings/plex/devices/servers',
       )
-      if (response) {
-        setAvailableServers(response)
-      }
-      if (toastId) {
-        removeToast(toastId)
-      }
-      addToast('Plex server list retrieved successfully!', {
-        autoDismiss: true,
-        appearance: 'success',
-      })
-    } catch (e) {
-      if (toastId) {
-        removeToast(toastId)
-      }
-      addToast('Failed to retrieve Plex server list.', {
-        autoDismiss: true,
-        appearance: 'error',
-      })
+
+      const response = await toast.promise(
+        serverPromise,
+        {
+          pending: 'Retrieving server list from Plex',
+          success: 'Plex server list retrieved successfully!',
+          error: 'Failed to retrieve Plex server list.',
+        },
+        {
+          toastId,
+        },
+      )
+
+      setAvailableServers(response)
     } finally {
       setIsRefreshingPresets(false)
     }
@@ -313,7 +312,7 @@ const PlexSettings = () => {
       {testBanner.version !== '0' ? (
         testBanner.status ? (
           <Alert
-            type="warning"
+            type="info"
             title={`Successfully connected to Plex (${testBanner.version})`}
           />
         ) : (
@@ -507,7 +506,10 @@ const PlexSettings = () => {
                 <DocsButton page="Configuration/#plex" />
               </span>
               <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                <TestButton onClick={appTest} testUrl="/settings/test/plex" />
+                <TestButton
+                  onTestComplete={appTest}
+                  testUrl="/settings/test/plex"
+                />
 
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
                   <Button

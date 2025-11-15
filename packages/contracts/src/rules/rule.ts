@@ -14,6 +14,8 @@ export enum RulePossibility {
   NOT_CONTAINS,
   CONTAINS_PARTIAL,
   NOT_CONTAINS_PARTIAL,
+  CONTAINS_ALL,
+  NOT_CONTAINS_ALL,
   COUNT_EQUALS,
   COUNT_NOT_EQUALS,
   COUNT_BIGGER,
@@ -28,7 +30,7 @@ export enum RuleTypes {
   TEXT_LIST,
 }
 
-export enum RuleOperator {
+export enum RuleOperators {
   AND,
   OR,
 }
@@ -1015,7 +1017,7 @@ export class RuleConstants {
 
 export const ruleDefinitionSchema = z
   .object({
-    operator: z.coerce.number().pipe(z.nativeEnum(RuleOperator)).nullable(),
+    operator: z.coerce.number().pipe(z.nativeEnum(RuleOperators)).nullable(),
     action: z.coerce.number().pipe(z.nativeEnum(RulePossibility)),
     firstVal: z.tuple([z.number(), z.number()]),
     lastVal: z.tuple([z.number(), z.number()]).optional(),
@@ -1041,7 +1043,7 @@ export const ruleDefinitionSchema = z
           message: 'Invalid first value',
           path: ['firstVal'],
         })
-        return false
+        return
       }
 
       if (rule.lastVal) {
@@ -1055,7 +1057,7 @@ export const ruleDefinitionSchema = z
             message: 'Invalid last value',
             path: ['lastVal'],
           })
-          return false
+          return
         }
 
         if (
@@ -1063,16 +1065,13 @@ export const ruleDefinitionSchema = z
           ([RuleType.TEXT_LIST, RuleType.TEXT].includes(val1.type) &&
             [RuleType.TEXT_LIST, RuleType.TEXT].includes(val2.type))
         ) {
-          if (val1.type.possibilities.includes(+rule.action)) {
-            return true
-          } else {
+          if (!val1.type.possibilities.includes(+rule.action)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message:
                 'The specified action is not supported for the provided first value',
               path: ['action'],
             })
-            return false
           }
         } else {
           ctx.addIssue({
@@ -1080,7 +1079,6 @@ export const ruleDefinitionSchema = z
             message: 'First value and last value are not compatible',
             path: ['firstVal', 'lastVal'],
           })
-          return false
         }
       } else if (rule.customVal) {
         if (
@@ -1088,40 +1086,27 @@ export const ruleDefinitionSchema = z
           (val1.type == RuleType.TEXT_LIST &&
             rule.customVal.ruleTypeId.toString() == RuleType.TEXT.toString())
         ) {
-          if (val1.type.possibilities.includes(+rule.action)) {
-            return true
-          } else {
+          if (!val1.type.possibilities.includes(+rule.action)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message:
                 'The specified action is not supported for the provided first value',
               path: ['action'],
             })
-            return false
           }
+        } else {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Invalid custom value',
+            path: ['customVal'],
+          })
         }
-
-        if (
-          (rule.action === RulePossibility.IN_LAST ||
-            rule.action === RulePossibility.IN_NEXT) &&
-          rule.customVal.ruleTypeId === RuleTypes.NUMBER
-        ) {
-          return true
-        }
-
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Invalid custom value',
-          path: ['customVal'],
-        })
-        return false
       } else {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'One of lastVal or customVal is required',
           path: ['customVal'],
         })
-        return false
       }
     } catch (e) {
       console.debug(e)
@@ -1130,7 +1115,6 @@ export const ruleDefinitionSchema = z
         message: 'Unexpected error occurred during validation',
         path: [''],
       })
-      return false
     }
   })
 
@@ -1141,3 +1125,26 @@ export const ruleSchema = z.object({
   ruleGroupId: z.number(),
   isActive: z.boolean(),
 })
+
+export interface IComparisonStatistics {
+  plexId: number
+  result: boolean
+  sectionResults: ISectionComparisonResults[]
+}
+
+export interface ISectionComparisonResults {
+  id: number
+  result: boolean
+  operator?: string
+  ruleResults: IRuleComparisonResult[]
+}
+
+export interface IRuleComparisonResult {
+  firstValueName: string
+  firstValue: RuleValueType
+  secondValueName: string
+  secondValue: RuleValueType
+  action: string
+  operator?: string
+  result: boolean
+}

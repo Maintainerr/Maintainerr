@@ -1,4 +1,3 @@
-import { PlexMetadata } from '@maintainerr/contracts'
 import Image from 'next/image'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import GetApiHandler from '../../../../utils/ApiHandler'
@@ -25,16 +24,25 @@ interface ModalContentProps {
   isManual?: boolean
 }
 
+interface Metadata {
+  contentRating: string
+  audienceRating: string
+  Genre: { tag: string }[]
+  Rating: { image: string; value: number; type: string }[]
+  Guid: { id: string }[]
+}
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 const iconMap: Record<string, Record<string, string>> = {
   imdb: {
-    audience: '/icons_logos/imdb_icon.svg',
+    audience: `${basePath}/icons_logos/imdb_icon.svg`,
   },
   rottentomatoes: {
-    critic: '/icons_logos/rt_critic.svg',
-    audience: 'icons_logos/rt_audience.svg',
+    critic: `${basePath}/icons_logos/rt_critic.svg`,
+    audience: `${basePath}/icons_logos/rt_audience.svg`,
   },
   themoviedb: {
-    audience: '/icons_logos/tmdb_icon.svg',
+    audience: `${basePath}/icons_logos/tmdb_icon.svg`,
   },
 }
 
@@ -46,13 +54,15 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
       null,
     )
-    const [metadata, setMetadata] = useState<PlexMetadata | null>(null)
+    const [metadata, setMetadata] = useState<Metadata | null>(null)
 
     const mediaTypeOf = useMemo(
       () =>
         ['show', 'season', 'episode'].includes(mediaType) ? 'tv' : mediaType,
       [mediaType],
     )
+
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
     useEffect(() => {
       GetApiHandler('/plex').then((resp) =>
@@ -61,7 +71,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       GetApiHandler('/settings').then((resp) =>
         setTautulliModalUrl(resp?.tautulli_url || null),
       )
-      GetApiHandler<PlexMetadata>(`/plex/meta/${id}`).then((data) => {
+      GetApiHandler<Metadata>(`/plex/meta/${id}`).then((data) => {
         setMetadata(data)
         setLoading(false)
       })
@@ -184,7 +194,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         target="_blank"
                       >
                         <Image
-                          src={`/icons_logos/tmdb_logo.svg`}
+                          src={`${basePath}/icons_logos/tmdb_logo.svg`}
                           alt="TMDB Logo"
                           width={128}
                           height={32}
@@ -199,7 +209,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       target="_blank"
                     >
                       <Image
-                        src={`/icons_logos/plex_logo.svg`}
+                        src={`${basePath}/icons_logos/plex_logo.svg`}
                         alt="Plex Logo"
                         width={128}
                         height={32}
@@ -214,7 +224,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         target="_blank"
                       >
                         <Image
-                          src={`/icons_logos/tautulli_logo.svg`}
+                          src={`${basePath}/icons_logos/tautulli_logo.svg`}
                           alt="Plex Logo"
                           width={128}
                           height={32}

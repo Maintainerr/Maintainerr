@@ -1,7 +1,4 @@
-import {
-  CollectionWithMediaDto,
-  IAlterableMediaDto,
-} from '@maintainerr/contracts';
+import { ECollectionLogType } from '@maintainerr/contracts';
 import {
   Body,
   Controller,
@@ -15,10 +12,12 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ECollectionLogType } from '../collections/entities/collection_log.entities';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
-import { AddCollectionMedia } from './interfaces/collection-media.interface';
+import {
+  AddRemoveCollectionMedia,
+  IAlterableMediaDto,
+} from './interfaces/collection-media.interface';
 
 @Controller('api/collections')
 export class CollectionsController {
@@ -27,30 +26,30 @@ export class CollectionsController {
     private readonly collectionWorkerService: CollectionWorkerService,
   ) {}
   @Post()
-  createCollection(@Body() request: any) {
-    this.collectionService.createCollectionWithChildren(
+  async createCollection(@Body() request: any) {
+    await this.collectionService.createCollectionWithChildren(
       request.collection,
       request.media,
     );
   }
   @Post('/add')
-  addToCollection(
+  async addToCollection(
     @Body()
     request: {
       collectionId: number;
-      media: AddCollectionMedia[];
+      media: AddRemoveCollectionMedia[];
       manual?: boolean;
     },
   ) {
-    this.collectionService.addToCollection(
+    await this.collectionService.addToCollection(
       request.collectionId,
       request.media,
       request.manual ? request.manual : false,
     );
   }
   @Post('/remove')
-  removeFromCollection(@Body() request: any) {
-    this.collectionService.removeFromCollection(
+  async removeFromCollection(@Body() request: any) {
+    await this.collectionService.removeFromCollection(
       request.collectionId,
       request.media,
     );
@@ -96,7 +95,7 @@ export class CollectionsController {
   getCollections(
     @Query('libraryId') libraryId: number,
     @Query('typeId') typeId: 1 | 2 | 3 | 4,
-  ): Promise<CollectionWithMediaDto[]> {
+  ) {
     if (libraryId) {
       return this.collectionService.getCollections(libraryId, undefined);
     } else if (typeId) {

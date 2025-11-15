@@ -12,6 +12,7 @@ export interface SonarrSeason {
   };
 }
 export interface SonarrInfo {
+  appName: string;
   version: string;
   buildTime: string;
   isDebug: boolean;
@@ -33,10 +34,11 @@ export interface SonarrInfo {
 export interface SonarrEpisode {
   id: number;
   airDate: string;
+  airDateUtc: string;
   seriesId: number;
   seasonNumber: number;
   episodeNumber: number;
-  episodeFileId: number;
+  episodeFileId: number; // 0 if not downloaded
   hasFile: boolean;
   monitored: boolean;
   finaleType?: 'series' | 'season' | 'midseason';

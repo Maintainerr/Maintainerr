@@ -1,5 +1,5 @@
-import { RulePossibility } from '@maintainerr/contracts';
 import { TestBed } from '@suites/unit';
+import { RulePossibility } from '../constants/rules.constants';
 import { ValueGetterService } from '../getter/getter.service';
 import { RuleComparatorService } from '../helpers/rule.comparator.service';
 
@@ -133,6 +133,51 @@ describe('RuleComparatorService', () => {
       'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS_PARTIAL',
       (expected, val1, val2) => {
         const action = RulePossibility.NOT_CONTAINS_PARTIAL;
+        const result = ruleComparatorService['doRuleAction'](
+          val1,
+          val2,
+          action,
+        );
+        expect(result).toBe(!expected);
+      },
+    );
+
+    const containsAllData = [
+      [true, ['abc', 'def', 'ghi'], ['abc', 'def']],
+      [true, ['abc', 'def', 'ghi'], ['abc']],
+      [true, ['abc', 'def'], 'abc'],
+      [true, ['ABC', 'def'], ['abc']],
+      [true, ['abc', 'def'], ['ABC', 'DEF']],
+      [true, [1, 2, 3, 4], [1, 3]],
+      [true, [1, 2, 3, 4], [1]],
+      [true, ['abc', 'def', 'ghi'], ['abc', 'def', 'ghi']],
+      [false, ['abc', 'def'], ['abc', 'xyz']],
+      [false, ['abc', 'def'], ['xyz', 'uvw']],
+      [false, ['abc', 'def'], ['abc', 'def', 'ghi']],
+      [false, ['abc', 'def'], ['']],
+      [false, ['abc', 'def'], [undefined]],
+      [false, ['abc', 'def'], []],
+      [false, [1, 2, 3], [1, 5]],
+      [false, [], ['abc']],
+    ] as [boolean, any, any][];
+
+    it.each(containsAllData)(
+      'should return %s when val1 is %o and val2 is %o with action CONTAINS_ALL',
+      (expected, val1, val2) => {
+        const action = RulePossibility.CONTAINS_ALL;
+        const result = ruleComparatorService['doRuleAction'](
+          val1,
+          val2,
+          action,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+
+    it.each(containsAllData)(
+      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS_ALL',
+      (expected, val1, val2) => {
+        const action = RulePossibility.NOT_CONTAINS_ALL;
         const result = ruleComparatorService['doRuleAction'](
           val1,
           val2,

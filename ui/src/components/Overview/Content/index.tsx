@@ -1,9 +1,6 @@
-import {
-  CollectionMediaWithCollectionDto,
-  PlexMetadata,
-} from '@maintainerr/contracts'
 import _ from 'lodash'
 import { useEffect } from 'react'
+import { ICollectionMedia } from '../../Collection'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
@@ -18,12 +15,59 @@ interface IOverviewContent {
   onRemove?: (id: string) => void
   libraryId: number
   collectionPage?: boolean
-  collectionInfo?: CollectionMediaWithCollectionDto[]
+  collectionInfo?: ICollectionMedia[]
   collectionId?: number
 }
 
-// TODO Tidy this mess up
-export interface IPlexMetadata extends PlexMetadata {
+export interface IPlexMetadata {
+  ratingKey: string
+  key: string
+  parentRatingKey?: string
+  grandparentRatingKey?: string
+  art: string
+  audienceRating?: number
+  audienceRatingImage?: string
+  contentRating?: string
+  duration: number
+  guid: string
+  type: 'movie' | 'show' | 'season' | 'episode'
+  title: string
+  Guid: {
+    id: string
+  }[]
+  Genre?: {
+    id: string
+  }[]
+  Country?: {
+    tag: string
+  }[]
+  Role?: {
+    tag: string
+  }[]
+  Writer?: {
+    tag: string
+  }[]
+  Director?: {
+    tag: string
+  }[]
+  addedAt: number
+  childCount?: number
+  leafCount?: number
+  viewedLeafCount?: number
+  primaryExtraKey: string
+  originallyAvailableAt: string
+  updatedAt: number
+  thumb: string
+  tagline?: string
+  summary: string
+  studio: string
+  year: number
+  parentTitle?: string
+  grandparentTitle?: string
+  parentData?: IPlexMetadata
+  parentYear?: number
+  grandParentYear?: number
+  index?: number
   maintainerrExclusionType?: 'specific' | 'global' // this is added by Maintainerr, not a Plex type
   maintainerrExclusionId?: number // this is added by Maintainerr, not a Plex type
   maintainerrIsManual?: boolean // this is added by Maintainerr, not a Plex type
@@ -42,12 +86,11 @@ const OverviewContent = (props: IOverviewContent) => {
   }
 
   useEffect(() => {
-    window.addEventListener('scroll', _.debounce(handleScroll.bind(this), 200))
+    const debouncedScroll = _.debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll, { passive: true })
     return () => {
-      window.removeEventListener(
-        'scroll',
-        _.debounce(handleScroll.bind(this), 200),
-      )
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
     }
   }, [])
 

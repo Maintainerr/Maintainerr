@@ -1,13 +1,12 @@
+import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import React, { memo, useEffect, useState } from 'react'
-import Spinner from '../../../assets/spinner.svg'
 import { useIsTouch } from '../../../hooks/useIsTouch'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
 import CachedImage from '../CachedImage'
-import Transition from '../Transition'
 import MediaModalContent from './MediaModal'
 
 interface IMediaCard {
@@ -52,7 +51,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   onRemove = (id: string) => {},
 }) => {
   const isTouch = useIsTouch()
-  const [isUpdating, setIsUpdating] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [excludeModal, setExcludeModal] = useState(false)
@@ -134,6 +132,7 @@ const MediaCard: React.FC<IMediaCard> = ({
               alt=""
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
               fill
+              sizes="100vw"
               style={{ objectFit: 'cover' }}
             />
           ) : undefined}
@@ -240,113 +239,92 @@ const MediaCard: React.FC<IMediaCard> = ({
           ) : undefined}
 
           <Transition
-            show={isUpdating}
-            enter="transition ease-in-out duration-300 transform opacity-0"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="transition ease-in-out duration-300 transform opacity-100"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="absolute inset-0 z-40 flex items-center justify-center rounded-xl bg-zinc-800 bg-opacity-60 text-zinc-200">
-              <CachedImage
-                priority
-                src={Spinner}
-                className="h-10 w-10"
-                alt=""
-              />
-            </div>
-          </Transition>
-
-          <Transition
+            as="div"
             show={!image || showDetail}
-            enter="transition transform opacity-0"
+            className="absolute inset-0 transform cursor-alias overflow-hidden rounded-xl transition"
+            enter="opacity-0"
             enterFrom="opacity-0"
             enterTo="opacity-100"
-            leave="transition transform opacity-100"
+            leave="opacity-100"
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="absolute inset-0 cursor-alias overflow-hidden rounded-xl">
-              <div
-                className="absolute inset-0 h-full w-full overflow-hidden text-left"
-                style={{
-                  background:
-                    'linear-gradient(180deg, rgba(45, 55, 72, 0.4) 0%, rgba(45, 55, 72, 0.9) 100%)',
-                }}
-              >
-                <div className="flex h-full w-full items-end">
-                  <div className={`w-full px-2 pb-1 text-zinc-200`}>
-                    {year && <div className="text-sm font-medium">{year}</div>}
+            <div
+              className="absolute inset-0 h-full w-full overflow-hidden text-left"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(45, 55, 72, 0.4) 0%, rgba(45, 55, 72, 0.9) 100%)',
+              }}
+            >
+              <div className="flex h-full w-full items-end">
+                <div className={`w-full px-2 pb-1 text-zinc-200`}>
+                  {year && <div className="text-sm font-medium">{year}</div>}
 
-                    <h1
-                      className="w-full whitespace-normal text-sm font-bold leading-tight"
+                  <h1
+                    className="w-full whitespace-normal text-sm font-bold leading-tight"
+                    style={{
+                      WebkitLineClamp: 3,
+                      display: '-webkit-box',
+                      overflow: 'hidden',
+                      WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {title}
+                  </h1>
+                  {mediaType == 'episode' && (
+                    <div
+                      className="whitespace-normal text-xs"
                       style={{
-                        WebkitLineClamp: 3,
+                        WebkitLineClamp: 5,
                         display: '-webkit-box',
                         overflow: 'hidden',
                         WebkitBoxOrient: 'vertical',
                         wordBreak: 'break-word',
                       }}
                     >
-                      {title}
-                    </h1>
-                    {mediaType == 'episode' && (
-                      <div
-                        className="whitespace-normal text-xs"
-                        style={{
-                          WebkitLineClamp: 5,
-                          display: '-webkit-box',
-                          overflow: 'hidden',
-                          WebkitBoxOrient: 'vertical',
-                          wordBreak: 'break-word',
+                      {summary}
+                    </div>
+                  )}
+
+                  {!collectionPage ? (
+                    <div>
+                      <Button
+                        buttonType="twin-primary-l"
+                        buttonSize="md"
+                        className="mb-1 mt-2 h-6 w-1/2 text-zinc-200 shadow-md"
+                        onClick={(e) => {
+                          e.stopPropagation() // Stops the MediaModal from also showing when clicked.
+                          setAddModal(true)
                         }}
                       >
-                        {summary}
-                      </div>
-                    )}
-
-                    {!collectionPage ? (
-                      <div>
-                        <Button
-                          buttonType="twin-primary-l"
-                          buttonSize="md"
-                          className="mb-1 mt-2 h-6 w-1/2 text-zinc-200 shadow-md"
-                          onClick={(e) => {
-                            e.stopPropagation() // Stops the MediaModal from also showing when clicked.
-                            setAddModal(true)
-                          }}
-                        >
-                          {<DocumentAddIcon className="m-auto ml-3 h-3" />}{' '}
-                          <p className="rules-button-text m-auto mr-2">
-                            {'Add'}
-                          </p>
-                        </Button>
-                        <Button
-                          buttonSize="md"
-                          buttonType="twin-primary-r"
-                          className="mt-2 h-6 w-1/2"
-                          onClick={(e) => {
-                            e.stopPropagation() // Stops the MediaModal from also showing when clicked.
-                            setExcludeModal(true)
-                          }}
-                        >
-                          {<DocumentRemoveIcon className="m-auto ml-3 h-3" />}{' '}
-                          <p className="rules-button-text m-auto mr-2">
-                            {'Excl'}
-                          </p>
-                        </Button>
-                      </div>
-                    ) : (
-                      <RemoveFromCollectionBtn
-                        plexId={id}
-                        popup={exclusionType && exclusionType === 'global'}
-                        onRemove={() => onRemove(id.toString())}
-                        collectionId={collectionId}
-                        exclusionId={exclusionId}
-                      />
-                    )}
-                  </div>
+                        {<DocumentAddIcon className="m-auto ml-3 h-3" />}{' '}
+                        <p className="rules-button-text m-auto mr-2">{'Add'}</p>
+                      </Button>
+                      <Button
+                        buttonSize="md"
+                        buttonType="twin-primary-r"
+                        className="mt-2 h-6 w-1/2"
+                        onClick={(e) => {
+                          e.stopPropagation() // Stops the MediaModal from also showing when clicked.
+                          setExcludeModal(true)
+                        }}
+                      >
+                        {<DocumentRemoveIcon className="m-auto ml-3 h-3" />}{' '}
+                        <p className="rules-button-text m-auto mr-2">
+                          {'Excl'}
+                        </p>
+                      </Button>
+                    </div>
+                  ) : (
+                    <RemoveFromCollectionBtn
+                      plexId={id}
+                      popup={exclusionType && exclusionType === 'global'}
+                      onRemove={() => onRemove(id.toString())}
+                      collectionId={collectionId}
+                      exclusionId={exclusionId}
+                    />
+                  )}
                 </div>
               </div>
             </div>

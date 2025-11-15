@@ -1,6 +1,7 @@
-import { warn } from 'console';
 import { ExternalApiService } from '../../../../modules/api/external-api/external-api.service';
 import { DVRSettings } from '../../../../modules/settings/interfaces/dvr-settings.interface';
+import { MaintainerrLogger } from '../../../logging/logs.service';
+import cacheManager from '../../lib/cache';
 import {
   QualityProfile,
   QueueItem,
@@ -9,39 +10,36 @@ import {
   SystemStatus,
   Tag,
 } from '../interfaces/servarr.interface';
-import cacheManager from '../../lib/cache';
-import { Logger } from '@nestjs/common';
 
-export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
+export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
   static buildUrl(settings: DVRSettings, path?: string): string {
     return `${settings.useSsl ? 'https' : 'http'}://${settings.hostname}:${settings.port}${settings.baseUrl ?? ''}${path}`;
   }
 
   protected apiName: string;
 
-  constructor({
-    url,
-    apiKey,
-    cacheName,
-    apiName,
-  }: {
-    url: string;
-    apiKey: string;
-    cacheName?: string;
-    apiName: string;
-  }) {
+  constructor(
+    {
+      url,
+      apiKey,
+      cacheName,
+    }: {
+      url: string;
+      apiKey: string;
+      cacheName?: string;
+    },
+    protected readonly logger: MaintainerrLogger,
+  ) {
     super(
       url,
       {
         apikey: apiKey,
       },
+      logger,
       cacheName
         ? { nodeCache: cacheManager.getCache(cacheName).data }
         : undefined,
     );
-
-    this.apiName = apiName;
-    this.logger = new Logger(ServarrApi.name);
   }
 
   public getSystemStatus = async (): Promise<SystemStatus> => {
@@ -50,7 +48,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to retrieve system status: ${e.message}`);
+      this.logger.warn(`Failed to retrieve system status: ${e.message}`);
     }
   };
 
@@ -64,7 +62,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return data;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to retrieve profiles: ${e.message}`);
+      this.logger.warn(`Failed to retrieve profiles: ${e.message}`);
     }
   };
 
@@ -78,7 +76,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return data;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to retrieve root folders: ${e.message}`);
+      this.logger.warn(`Failed to retrieve root folders: ${e.message}`);
     }
   };
 
@@ -89,7 +87,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data.records;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to retrieve queue: ${e.message}`);
+      this.logger.warn(`Failed to retrieve queue: ${e.message}`);
     }
   };
 
@@ -99,7 +97,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to retrieve tags: ${e.message}`);
+      this.logger.warn(`Failed to retrieve tags: ${e.message}`);
     }
   };
 
@@ -111,7 +109,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to create tag: ${e.message}`);
+      this.logger.warn(`Failed to create tag: ${e.message}`);
     }
   };
 
@@ -131,7 +129,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       }
       return resp ? resp.data : undefined;
     } catch (e) {
-      warn(`[${this.apiName}] Failed to run command: ${e.message}`);
+      this.logger.warn(`Failed to run command: ${e.message}`);
     }
   }
 
@@ -139,7 +137,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     try {
       await this.delete(`/${command}`);
     } catch (e) {
-      warn(`[${this.apiName}] Failed to run DELETE: ${e.message}`);
+      this.logger.warn(`Failed to run DELETE: ${e.message}`);
     }
   }
 
@@ -147,7 +145,7 @@ export class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     try {
       await this.put(`/${command}`, body);
     } catch (e) {
-      warn(`[${this.apiName}] Failed to run PUT: ${e.message}`);
+      this.logger.warn(`Failed to run PUT: ${e.message}`);
     }
   }
 }

@@ -112,7 +112,6 @@
     height: 100%;
     opacity: 0.08;
     object-fit: cover;
-    float: left;
     display: inline-block;
     background-repeat: no-repeat;
   }
@@ -470,11 +469,6 @@
   .prose a:hover {
     color: #8d4c1c;
   }
-
-  .toast {
-    width: 360px;
-  }
-
   .react-select-container {
     @apply w-full;
   }

@@ -1,14 +1,14 @@
-import { CollectionWithMediaDto } from '@maintainerr/contracts'
+import { ICollection } from '..'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
 import ExecuteButton from '../../Common/ExecuteButton'
 import LibrarySwitcher from '../../Common/LibrarySwitcher'
 import CollectionItem from '../CollectionItem'
 
 interface ICollectionOverview {
-  collections: CollectionWithMediaDto[] | undefined
+  collections: ICollection[] | undefined
   onSwitchLibrary: (id: number) => void
   doActions: () => void
-  openDetail: (collection: CollectionWithMediaDto) => void
+  openDetail: (collection: ICollection) => void
 }
 
 const CollectionOverview = (props: ICollectionOverview) => {
@@ -24,6 +24,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
             onClick={props.doActions}
             text="Handle Collections"
             executing={collectionHandlerRunning}
+            disabled={collectionHandlerRunning}
           />
         </div>
       </div>

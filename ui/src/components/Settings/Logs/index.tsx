@@ -5,6 +5,8 @@ import {
   LogFile,
   LogSettingDto,
   logSettingSchema,
+  LogSettingSchemaInput,
+  LogSettingSchemaOutput,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -41,13 +43,13 @@ const LogSettingsForm = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting, isLoading },
-  } = useForm<LogSettingDto>({
+  } = useForm<LogSettingSchemaInput, unknown, LogSettingSchemaOutput>({
     resolver: zodResolver(logSettingSchema),
     defaultValues: async () =>
       await GetApiHandler<LogSettingDto>('/logs/settings'),
   })
 
-  const onSubmit = async (data: LogSettingDto) => {
+  const onSubmit = async (data: LogSettingSchemaOutput) => {
     setSaveError(false)
     setIsSubmitSuccessful(false)
 
@@ -131,18 +133,30 @@ const Logs = () => {
   const logsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const es = new ReconnectingEventSource('/api/logs/stream')
-    es.addEventListener('log', (event) => {
+    const MAX_LOG_LINES = 1000
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    const es = new ReconnectingEventSource(`${basePath}/api/logs/stream`)
+
+    const handleLog = (event: MessageEvent) => {
       const message: LogEvent = JSON.parse(event.data)
-      setLogLines((prev) => [...prev, message])
-    })
+      setLogLines((prev) => {
+        const newLines = [...prev, message]
+        // Keep only the last MAX_LOG_LINES
+        return newLines.slice(-MAX_LOG_LINES)
+      })
+    }
+
+    es.addEventListener('log', handleLog)
 
     es.onerror = (e) => {
       console.error('EventSource failed:', e)
     }
 
     return () => {
+      es.removeEventListener('log', handleLog)
       es.close()
+      // Clear logs on unmount to prevent memory leak
+      setLogLines([])
     }
   }, [])
 
@@ -159,7 +173,7 @@ const Logs = () => {
     if (!scrollToBottom || !logsRef.current) return
 
     logsRef.current.scrollTop = logsRef.current.scrollHeight
-  }, [filteredLogLines.length])
+  }, [filteredLogLines])
 
   return (
     <div className="section">

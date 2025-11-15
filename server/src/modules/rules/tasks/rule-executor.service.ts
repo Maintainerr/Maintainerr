@@ -1,23 +1,31 @@
 import {
-  EPlexDataType,
+  IComparisonStatistics,
   MaintainerrEvent,
-  RuleConstants,
-  RuleGroupDto,
   RuleHandlerFinishedEventDto,
   RuleHandlerProgressedEventDto,
   RuleHandlerStartedEventDto,
 } from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import cacheManager from '../../api/lib/cache';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { CollectionsService } from '../../collections/collections.service';
 import { Collection } from '../../collections/entities/collection.entities';
-import { AddCollectionMedia } from '../../collections/interfaces/collection-media.interface';
+import { AddRemoveCollectionMedia } from '../../collections/interfaces/collection-media.interface';
+import {
+  CollectionMediaAddedDto,
+  CollectionMediaRemovedDto,
+  RuleHandlerFailedDto,
+} from '../../events/events.dto';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { TaskBase } from '../../tasks/task.base';
 import { TasksService } from '../../tasks/tasks.service';
+import { RuleConstants } from '@maintainerr/contracts';
+import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroup } from '../entities/rule-group.entities';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
 
@@ -29,8 +37,6 @@ interface PlexData {
 
 @Injectable()
 export class RuleExecutorService extends TaskBase {
-  protected logger = new Logger(RuleExecutorService.name);
-
   protected name = 'Rule Handler';
   protected cronSchedule = ''; // overriden in onBootstrapHook
 
@@ -40,6 +46,9 @@ export class RuleExecutorService extends TaskBase {
   plexDataType: EPlexDataType;
   workerData: PlexLibraryItem[];
   resultData: PlexLibraryItem[];
+  statisticsData: IComparisonStatistics[];
+  Data: PlexLibraryItem[];
+
   startTime: Date;
 
   constructor(
@@ -50,8 +59,10 @@ export class RuleExecutorService extends TaskBase {
     private readonly settings: SettingsService,
     private readonly comparatorFactory: RuleComparatorServiceFactory,
     private readonly eventEmitter: EventEmitter2,
+    protected readonly logger: MaintainerrLogger,
   ) {
-    super(taskService);
+    super(taskService, logger);
+    logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
     this.plexData = { page: 1, finished: false, data: [] };
   }
@@ -60,21 +71,11 @@ export class RuleExecutorService extends TaskBase {
     this.cronSchedule = this.settings.rules_handler_job_cron;
   }
 
-  public async execute() {
-    // check if another instance of this task is already running
-    if (await this.isRunning()) {
-      this.logger.log(
-        `Another instance of the ${this.name} task is currently running. Skipping this execution`,
-      );
-      return;
-    }
-
+  protected async executeTask(abortSignal: AbortSignal) {
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Started,
       new RuleHandlerStartedEventDto('Started execution of all active rules'),
     );
-
-    await super.execute();
 
     try {
       this.logger.log('Starting execution of all active rules');
@@ -135,6 +136,7 @@ export class RuleExecutorService extends TaskBase {
               // prepare
               this.workerData = [];
               this.resultData = [];
+              this.statisticsData = [];
               this.plexData = { page: 0, finished: false, data: [] };
 
               this.plexDataType = rulegroup.dataType
@@ -144,10 +146,10 @@ export class RuleExecutorService extends TaskBase {
               // Run rules data chunks of 50
               while (!this.plexData.finished) {
                 await this.getPlexData(rulegroup.libraryId);
+
                 const ruleResult = await comparator.executeRulesWithData(
                   rulegroup,
                   this.plexData.data,
-                  false,
                   () => {
                     progressedEvent.processedEvaluations +=
                       this.plexData.data.length;
@@ -155,15 +157,19 @@ export class RuleExecutorService extends TaskBase {
                       this.plexData.data.length;
                     emitProgressedEvent();
                   },
+                  abortSignal,
                 );
 
                 if (ruleResult) {
-                  this.resultData.push(...ruleResult?.data);
+                  this.statisticsData.push(...ruleResult.stats);
+                  this.resultData.push(...ruleResult.data);
                 }
               }
+
               await this.handleCollection(
                 await this.rulesService.getRuleGroupById(rulegroup.id), // refetch to get latest changes
               );
+
               this.logger.log(
                 `Execution of rules for '${rulegroup.name}' done.`,
               );
@@ -177,14 +183,19 @@ export class RuleExecutorService extends TaskBase {
         this.logger.log(
           'Not all applications are reachable.. Skipped rule execution.',
         );
+
+        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
       }
     } catch (err) {
-      this.logger.log('Error running rules executor.');
-      this.logger.debug(err);
-    }
+      const executionBeingAborted =
+        err instanceof DOMException && err.name === 'AbortError';
 
-    // clean up
-    await this.finish();
+      if (!executionBeingAborted) {
+        this.logger.log('Error running rules executor.');
+        this.logger.debug(err);
+        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
+      }
+    }
 
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Finished,
@@ -192,7 +203,7 @@ export class RuleExecutorService extends TaskBase {
     );
   }
 
-  private async syncManualPlexMediaToCollectionDB(rulegroup: RuleGroupDto) {
+  private async syncManualPlexMediaToCollectionDB(rulegroup: RuleGroup) {
     if (rulegroup && rulegroup.collectionId) {
       let collection = await this.collectionService.getCollection(
         rulegroup.collectionId,
@@ -208,11 +219,12 @@ export class RuleExecutorService extends TaskBase {
 
         const children = await this.plexApi.getCollectionChildren(
           collection.plexId.toString(),
+          false,
         );
 
         // Handle manually added
         if (children && children.length > 0) {
-          children.forEach(async (child) => {
+          for (const child of children) {
             if (child && child.ratingKey)
               if (
                 !collectionMedia.find((e) => {
@@ -221,16 +233,23 @@ export class RuleExecutorService extends TaskBase {
               ) {
                 await this.collectionService.addToCollection(
                   collection.id,
-                  [{ plexId: +child.ratingKey }] as AddCollectionMedia[],
+                  [
+                    {
+                      plexId: +child.ratingKey,
+                      reason: {
+                        type: 'media_added_manually',
+                      },
+                    },
+                  ],
                   true,
                 );
               }
-          });
+          }
         }
 
         // Handle manually removed
         if (collectionMedia && collectionMedia.length > 0) {
-          collectionMedia.forEach(async (media) => {
+          for (const media of collectionMedia) {
             if (media && media.plexId) {
               if (
                 !children ||
@@ -238,11 +257,18 @@ export class RuleExecutorService extends TaskBase {
               ) {
                 await this.collectionService.removeFromCollection(
                   collection.id,
-                  [{ plexId: +media.plexId }] as AddCollectionMedia[],
+                  [
+                    {
+                      plexId: +media.plexId,
+                      reason: {
+                        type: 'media_removed_manually',
+                      },
+                    },
+                  ] satisfies AddRemoveCollectionMedia[],
                 );
               }
             }
-          });
+          }
         }
 
         this.logger.log(
@@ -256,7 +282,7 @@ export class RuleExecutorService extends TaskBase {
     }
   }
 
-  private async handleCollection(rulegroup: RuleGroupDto) {
+  private async handleCollection(rulegroup: RuleGroup) {
     try {
       let collection = await this.collectionService.getCollection(
         rulegroup?.collectionId,
@@ -309,39 +335,79 @@ export class RuleExecutorService extends TaskBase {
           ? currentCollectionData
           : [];
 
-        const dataToAdd = this.deDupe(
-          data
-            .filter((el) => !currentCollectionData.includes(el))
-            .map((el) => {
-              return { plexId: +el };
-            }),
+        const mediaToAdd = data.filter(
+          (el) => !currentCollectionData.includes(el),
         );
 
-        const dataToRemove = this.deDupe(
-          currentCollectionData
-            .filter((el) => !data.includes(el))
-            .map((el) => {
-              return { plexId: +el };
-            }),
+        const dataToAdd: AddRemoveCollectionMedia[] = this.prepareDataAmendment(
+          mediaToAdd.map((el) => {
+            return {
+              plexId: +el,
+              reason: {
+                type: 'media_added_by_rule',
+                data: this.statisticsData.find((stat) => el == stat.plexId),
+              },
+            } satisfies AddRemoveCollectionMedia;
+          }),
         );
+
+        const mediaToRemove = currentCollectionData.filter(
+          (el) => !data.includes(el),
+        );
+
+        const dataToRemove: AddRemoveCollectionMedia[] =
+          this.prepareDataAmendment(
+            mediaToRemove.map((el) => {
+              return {
+                plexId: +el,
+                reason: {
+                  type: 'media_removed_by_rule',
+                  data: this.statisticsData.find((stat) => el == stat.plexId),
+                },
+              } satisfies AddRemoveCollectionMedia;
+            }),
+          );
 
         if (dataToRemove.length > 0) {
-          this.logInfo(
+          this.logger.log(
             `Removing ${dataToRemove.length} media items from '${
               collection.manualCollection
                 ? collection.manualCollectionName
                 : collection.title
             }'.`,
           );
+
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Removed,
+            new CollectionMediaRemovedDto(
+              dataToRemove,
+              collection.title,
+              {
+                type: 'rulegroup',
+                value: rulegroup.id,
+              },
+              collection.deleteAfterDays,
+            ),
+          );
         }
 
         if (dataToAdd.length > 0) {
-          this.logInfo(
+          this.logger.log(
             `Adding ${dataToAdd.length} media items to '${
               collection.manualCollection
                 ? collection.manualCollectionName
                 : collection.title
             }'.`,
+          );
+
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Added,
+            new CollectionMediaAddedDto(
+              dataToAdd,
+              collection.title,
+              { type: 'rulegroup', value: rulegroup.id },
+              collection.deleteAfterDays,
+            ),
           );
         }
 
@@ -359,37 +425,60 @@ export class RuleExecutorService extends TaskBase {
         );
 
         // add the run duration to the collection
-        this.AddCollectionRunDuration(collection);
+        await this.AddCollectionRunDuration(collection);
 
         return collection;
       } else {
-        this.logInfo(`collection not found with id ${rulegroup.collectionId}`);
+        this.logger.log(
+          `collection not found with id ${rulegroup.collectionId}`,
+        );
+
+        this.eventEmitter.emit(
+          MaintainerrEvent.RuleHandler_Failed,
+          new RuleHandlerFailedDto(collection.title, {
+            type: 'rulegroup',
+            value: rulegroup.id,
+          }),
+        );
       }
     } catch (err) {
-      this.logger.warn(`Execption occurred whild handling rule: `, err);
+      this.logger.warn(
+        `Execption occurred whild handling rule: ${err.message}`,
+      );
+
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandler_Failed,
+        new RuleHandlerFailedDto(rulegroup.collection?.title, {
+          type: 'rulegroup',
+          value: rulegroup.id,
+        }),
+      );
     }
   }
 
-  private async getAllActiveRuleGroups(): Promise<RuleGroupDto[]> {
+  private async getAllActiveRuleGroups(): Promise<RulesDto[]> {
     return await this.rulesService.getRuleGroups(true);
   }
 
-  private deDupe(arr: { plexId: number }[]): { plexId: number }[] {
-    const uniqueArr = [];
+  private prepareDataAmendment(
+    arr: AddRemoveCollectionMedia[],
+  ): AddRemoveCollectionMedia[] {
+    const uniqueArr: AddRemoveCollectionMedia[] = [];
     arr.filter(
       (item) =>
         !uniqueArr.find((el) => el.plexId === item.plexId) &&
-        uniqueArr.push({ plexId: item.plexId }),
+        uniqueArr.push(item),
     );
     return uniqueArr;
   }
 
-  private AddCollectionRunDuration(collection: Collection) {
+  private async AddCollectionRunDuration(collection: Collection) {
     // add the run duration to the collection
     collection.lastDurationInSeconds = Math.floor(
       (new Date().getTime() - this.startTime.getTime()) / 1000,
     );
-    this.collectionService.saveCollection(collection);
+
+    await this.collectionService.saveCollection(collection);
   }
 
   private async getPlexData(libraryId: number): Promise<void> {
@@ -412,9 +501,5 @@ export class RuleExecutorService extends TaskBase {
       this.plexData.finished = true;
     }
     this.plexData.page++;
-  }
-
-  private async logInfo(message: string) {
-    this.logger.log(message);
   }
 }

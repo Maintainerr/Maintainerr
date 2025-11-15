@@ -1,11 +1,9 @@
-import {
-  Application,
-  EPlexDataType,
-  RuleGroupDto,
-  RuleValueType,
-} from '@maintainerr/contracts';
+import { RuleValueType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { Application } from '@maintainerr/contracts';
+import { RulesDto } from '../dtos/rules.dto';
 import { JellyseerrGetterService } from './jellyseerr-getter.service';
 import { OverseerrGetterService } from './overseerr-getter.service';
 import { PlexGetterService } from './plex-getter.service';
@@ -27,7 +25,7 @@ export class ValueGetterService {
   async get(
     [val1, val2]: [number, number],
     libItem: PlexLibraryItem,
-    ruleGroup?: RuleGroupDto,
+    ruleGroup?: RulesDto,
     dataType?: EPlexDataType,
   ): Promise<RuleValueType> {
     switch (val1) {

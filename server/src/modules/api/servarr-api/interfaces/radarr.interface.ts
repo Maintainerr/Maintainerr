@@ -26,7 +26,7 @@ export interface RadarrMovie {
   added: string;
   downloaded: boolean;
   hasFile: boolean;
-  movieFile: RadarrMovieFile;
+  movieFile?: RadarrMovieFile;
   sizeOnDisk: number;
   physicalRelease?: string;
   digitalRelease?: string;
@@ -86,7 +86,6 @@ export interface RadarrInfo {
 }
 
 export interface RadarrMediaInfo {
-  audioAdditionalFeatures: string;
   audioBitrate: number;
   audioChannels: number;
   audioCodec: string;
@@ -109,6 +108,7 @@ export interface RadarrMovieFile {
   size: number;
   mediaInfo: RadarrMediaInfo;
   path: string;
+  qualityCutoffNotMet: boolean;
 }
 
 export interface RadarrQualityContainer {

@@ -1,10 +1,11 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SettingsService } from '../../../modules/settings/settings.service';
-import { RadarrApi } from './helpers/radarr.helper';
-import { SonarrApi } from './helpers/sonarr.helper';
-import cacheManager from '../lib/cache';
+import { MaintainerrLoggerFactory } from '../../logging/logs.service';
 import { RadarrSettingRawDto } from "../../settings/dto's/radarr-setting.dto";
 import { SonarrSettingRawDto } from "../../settings/dto's/sonarr-setting.dto";
+import cacheManager from '../lib/cache';
+import { RadarrApi } from './helpers/radarr.helper';
+import { SonarrApi } from './helpers/sonarr.helper';
 
 @Injectable()
 export class ServarrService {
@@ -15,14 +16,18 @@ export class ServarrService {
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settings: SettingsService,
+    private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {}
 
   public async getSonarrApiClient(id: number | SonarrSettingRawDto) {
     if (typeof id === 'object') {
-      return new SonarrApi({
-        url: `${id.url}/api/v3/`,
-        apiKey: `${id.apiKey}`,
-      });
+      return new SonarrApi(
+        {
+          url: `${id.url}/api/v3/`,
+          apiKey: `${id.apiKey}`,
+        },
+        this.loggerFactory.createLogger(),
+      );
     } else {
       if (!this.sonarrApiCache[id]) {
         const setting = await this.settings.getSonarrSetting(id);
@@ -36,11 +41,14 @@ export class ServarrService {
           cacheManager.createCache(cacheKey, `Sonarr-${id}`, 'sonarr');
         }
 
-        this.sonarrApiCache[id] = new SonarrApi({
-          url: `${setting.url}/api/v3/`,
-          apiKey: `${setting.apiKey}`,
-          cacheName: cacheKey,
-        });
+        this.sonarrApiCache[id] = new SonarrApi(
+          {
+            url: `${setting.url}/api/v3/`,
+            apiKey: `${setting.apiKey}`,
+            cacheName: cacheKey,
+          },
+          this.loggerFactory.createLogger(),
+        );
       }
 
       return this.sonarrApiCache[id];
@@ -49,10 +57,13 @@ export class ServarrService {
 
   public async getRadarrApiClient(id: number | RadarrSettingRawDto) {
     if (typeof id === 'object') {
-      return new RadarrApi({
-        url: `${id.url}/api/v3/`,
-        apiKey: `${id.apiKey}`,
-      });
+      return new RadarrApi(
+        {
+          url: `${id.url}/api/v3/`,
+          apiKey: `${id.apiKey}`,
+        },
+        this.loggerFactory.createLogger(),
+      );
     } else {
       if (!this.radarrApiCache[id]) {
         const setting = await this.settings.getRadarrSetting(id);
@@ -66,11 +77,14 @@ export class ServarrService {
           cacheManager.createCache(cacheKey, `Radarr-${id}`, 'radarr');
         }
 
-        this.radarrApiCache[id] = new RadarrApi({
-          url: `${setting.url}/api/v3/`,
-          apiKey: `${setting.apiKey}`,
-          cacheName: cacheKey,
-        });
+        this.radarrApiCache[id] = new RadarrApi(
+          {
+            url: `${setting.url}/api/v3/`,
+            apiKey: `${setting.apiKey}`,
+            cacheName: cacheKey,
+          },
+          this.loggerFactory.createLogger(),
+        );
       }
 
       return this.radarrApiCache[id];

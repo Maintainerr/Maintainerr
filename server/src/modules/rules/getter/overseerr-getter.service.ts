@@ -1,11 +1,4 @@
-import {
-  Application,
-  EPlexDataType,
-  Property,
-  RuleConstants,
-} from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
-import { warn } from 'console';
+import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import {
   OverseerrApiService,
@@ -16,20 +9,30 @@ import {
   OverseerrTVRequest,
   OverSeerrTVResponse,
 } from '../../api/overseerr-api/overseerr-api.service';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
+import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
+import { MaintainerrLogger } from '../../logging/logs.service';
+import {
+  Application,
+  Property,
+  RuleConstants,
+} from '@maintainerr/contracts';
 
 @Injectable()
 export class OverseerrGetterService {
   appProperties: Property[];
-  private readonly logger = new Logger(OverseerrGetterService.name);
 
   constructor(
     private readonly overseerrApi: OverseerrApiService,
+    private readonly tmdbApi: TmdbApiService,
     private readonly plexApi: PlexApiService,
     private readonly tmdbIdHelper: TmdbIdService,
+    private readonly logger: MaintainerrLogger,
   ) {
+    logger.setContext(OverseerrGetterService.name);
     const ruleConstanst = new RuleConstants();
     this.appProperties = ruleConstanst.applications.find(
       (el) => el.id === Application.OVERSEERR,
@@ -274,7 +277,7 @@ export class OverseerrGetterService {
         return null;
       }
     } catch (e) {
-      warn(
+      this.logger.warn(
         `Overseerr-Getter - Action failed for '${libItem.title}' with id '${libItem.ratingKey}': ${e.message}`,
       );
       this.logger.debug(e);

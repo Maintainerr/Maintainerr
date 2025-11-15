@@ -1,102 +1,142 @@
 import { SaveIcon } from '@heroicons/react/solid'
-import { useContext, useEffect, useState } from 'react'
-import SettingsContext from '../../../contexts/settings-context'
-import { PostApiHandler } from '../../../utils/ApiHandler'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
-  addPortToUrl,
-  getBaseUrl,
-  getHostname,
-  getPortFromUrl,
-} from '../../../utils/SettingsUtils'
+  BasicResponseDto,
+  TautulliSettingDto,
+  tautulliSettingSchema,
+} from '@maintainerr/contracts'
+import { useEffect, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { z } from 'zod'
+import GetApiHandler, {
+  DeleteApiHandler,
+  PostApiHandler,
+} from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import TestButton from '../../Common/TestButton'
+import { InputGroup } from '../../Forms/Input'
+
+interface TestStatus {
+  status: boolean
+  message: string
+}
+
+const TautulliSettingDeleteSchema = z.object({
+  url: z.literal(''),
+  api_key: z.literal(''),
+})
+
+const TautulliSettingFormSchema = z.union([
+  tautulliSettingSchema,
+  TautulliSettingDeleteSchema,
+])
+
+type TautulliSettingFormResult = z.infer<typeof TautulliSettingFormSchema>
+
+const stripLeadingSlashes = (url: string) => url.replace(/\/+$/, '')
 
 const TautulliSettings = () => {
-  const settingsCtx = useContext(SettingsContext)
-  const [hostname, setHostname] = useState<string>()
-  const [baseUrl, setBaseUrl] = useState<string>()
-  const [apiKey, setApiKey] = useState<string>()
-  const [port, setPort] = useState<string>()
-  const [error, setError] = useState<boolean>()
-  const [changed, setChanged] = useState<boolean>()
-  const [testBanner, setTestbanner] = useState<{
-    status: boolean
-    version: string
-  }>({ status: false, version: '0' })
+  const [testedSettings, setTestedSettings] = useState<
+    TautulliSettingDto | undefined
+  >()
+
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<TestStatus>()
+  const [submitError, setSubmitError] = useState<boolean>(false)
+  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
 
   useEffect(() => {
     document.title = 'Maintainerr - Settings - Tautulli'
   }, [])
 
-  useEffect(() => {
-    setHostname(getHostname(settingsCtx.settings.tautulli_url))
-    setBaseUrl(getBaseUrl(settingsCtx.settings.tautulli_url))
-    setPort(getPortFromUrl(settingsCtx.settings.tautulli_url))
-    setApiKey(settingsCtx.settings.tautulli_api_key)
-  }, [settingsCtx])
-
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    let portToUse = port
-
-    // if port not specified, but hostname is. Derive the port
-    if (!port && hostname) {
-      const derivedPort = hostname.includes('http://')
-        ? 80
-        : hostname.includes('https://')
-          ? 443
-          : 80
-
-      if (derivedPort) {
-        portToUse = derivedPort.toString()
-        setPort(portToUse)
+  const {
+    register,
+    handleSubmit,
+    watch,
+    trigger,
+    control,
+    formState: { errors, isSubmitting, isLoading, defaultValues },
+  } = useForm<TautulliSettingFormResult, any, TautulliSettingFormResult>({
+    resolver: zodResolver(TautulliSettingFormSchema),
+    defaultValues: async () => {
+      const resp = await GetApiHandler<TautulliSettingDto>('/settings/tautulli')
+      return {
+        url: resp.url ?? '',
+        api_key: resp.api_key ?? '',
       }
-    }
+    },
+  })
 
-    if (hostname && apiKey && portToUse) {
-      const hostnameVal = hostname.includes('http://')
-        ? hostname
-        : hostname.includes('https://')
-          ? hostname
-          : portToUse == '443'
-            ? 'https://' + hostname
-            : 'http://' + hostname
+  const url = watch('url')
+  const api_key = watch('api_key')
 
-      let tautulli_url = `${addPortToUrl(hostnameVal, +portToUse)}`
-      tautulli_url = tautulli_url.endsWith('/')
-        ? tautulli_url.slice(0, -1)
-        : tautulli_url
+  const isGoingToRemoveSetting = url === '' && api_key === ''
+  const enteredSettingsAreSameAsSaved =
+    url === defaultValues?.url && api_key === defaultValues?.api_key
+  const enteredSettingsHaveBeenTested =
+    api_key == testedSettings?.api_key &&
+    url == testedSettings?.url &&
+    testResult?.status
+  const canSaveSettings =
+    (enteredSettingsAreSameAsSaved ||
+      enteredSettingsHaveBeenTested ||
+      isGoingToRemoveSetting) &&
+    !isSubmitting &&
+    !isLoading
 
-      const payload = {
-        tautulli_url: `${tautulli_url}${baseUrl ? `/${baseUrl}` : ''}`,
-        tautulli_api_key: apiKey,
+  const onSubmit = async (data: TautulliSettingDto) => {
+    setSubmitError(false)
+    setIsSubmitSuccessful(false)
+
+    const removingSetting = data.api_key === '' && data.url === ''
+
+    try {
+      const resp = await (removingSetting
+        ? DeleteApiHandler<BasicResponseDto>('/settings/tautulli')
+        : PostApiHandler<BasicResponseDto>('/settings/tautulli', data))
+
+      if (resp.code) {
+        setIsSubmitSuccessful(true)
+      } else {
+        setSubmitError(true)
       }
-
-      const resp: { code: 0 | 1; message: string } = await PostApiHandler(
-        '/settings',
-        {
-          ...settingsCtx.settings,
-          ...payload,
-        },
-      )
-      if (Boolean(resp.code)) {
-        settingsCtx.addSettings({
-          ...settingsCtx.settings,
-          ...payload,
-        })
-        setError(false)
-        setChanged(true)
-      } else setError(true)
-    } else {
-      setError(true)
+    } catch (err) {
+      setSubmitError(true)
     }
   }
 
-  const appTest = (result: { status: boolean; message: string }) => {
-    setTestbanner({ status: result.status, version: result.message })
+  const performTest = async () => {
+    if (testing || !(await trigger())) return
+
+    setTesting(true)
+
+    await PostApiHandler<BasicResponseDto>('/settings/test/tautulli', {
+      api_key: api_key,
+      url,
+    } satisfies TautulliSettingDto)
+      .then((resp) => {
+        setTestResult({
+          status: resp.code == 1 ? true : false,
+          message: resp.message ?? 'Unknown error',
+        })
+
+        if (resp.code == 1) {
+          setTestedSettings({
+            url,
+            api_key,
+          })
+        }
+      })
+      .catch((e) => {
+        setTestResult({
+          status: false,
+          message: 'Unknown error',
+        })
+      })
+      .finally(() => {
+        setTesting(false)
+      })
   }
 
   return (
@@ -105,96 +145,68 @@ const TautulliSettings = () => {
         <h3 className="heading">Tautulli Settings</h3>
         <p className="description">Tautulli configuration</p>
       </div>
-      {error ? (
-        <Alert type="warning" title="Not all fields contain values" />
-      ) : changed ? (
-        <Alert type="info" title="Settings successfully updated" />
+      {submitError ? (
+        <Alert type="warning" title="Something went wrong" />
+      ) : isSubmitSuccessful ? (
+        <Alert type="info" title="Tautulli settings successfully updated" />
       ) : undefined}
 
-      {testBanner.version !== '0' ? (
-        testBanner.status ? (
+      {testResult != null &&
+        (testResult?.status ? (
           <Alert
-            type="warning"
-            title={`Successfully connected to Tautulli (${testBanner.version})`}
+            type="info"
+            title={`Successfully connected to Tautulli (${testResult.message})`}
           />
         ) : (
-          <Alert
-            type="error"
-            title="Connection failed! Double check your entries and make sure to Save Changes before you Test."
-          />
-        )
-      ) : undefined}
+          <Alert type="error" title={testResult.message} />
+        ))}
 
       <div className="section">
-        <form onSubmit={submit}>
-          <div className="form-row">
-            <label htmlFor="hostname" className="text-label">
-              Hostname or IP
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
-                <input
-                  name="hostname"
-                  id="hostname"
-                  type="text"
-                  value={hostname}
-                  onChange={(e) => setHostname(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Controller
+            name={'url'}
+            defaultValue=""
+            control={control}
+            render={({ field }) => (
+              <InputGroup
+                label="URL"
+                value={field.value}
+                placeholder="http://localhost:8181"
+                onChange={field.onChange}
+                onBlur={(event) =>
+                  field.onChange(stripLeadingSlashes(event.target.value))
+                }
+                ref={field.ref}
+                name={field.name}
+                type="text"
+                error={errors.url?.message}
+                helpText={
+                  <>
+                    Example URL formats:{' '}
+                    <span className="whitespace-nowrap">
+                      http://localhost:8181
+                    </span>
+                    ,{' '}
+                    <span className="whitespace-nowrap">
+                      http://192.168.1.5/tautulli
+                    </span>
+                    ,{' '}
+                    <span className="whitespace-nowrap">
+                      https://tautulli.example.com
+                    </span>
+                  </>
+                }
+                required
+              />
+            )}
+          />
 
-          <div className="form-row">
-            <label htmlFor="port" className="text-label">
-              Port
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
-                <input
-                  name="port"
-                  id="port"
-                  type="number"
-                  value={port}
-                  onChange={(e) => setPort(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label htmlFor="baseUrl" className="text-label">
-              Base URL
-              <span className="label-tip">{`No Leading Slash`}</span>
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
-                <input
-                  name="baseUrl"
-                  id="baseUrl"
-                  type="text"
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label htmlFor="apikey" className="text-label">
-              Api key
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
-                <input
-                  name="apikey"
-                  id="apikey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
+          <InputGroup
+            label="API key"
+            type="password"
+            {...register('api_key')}
+            error={errors.api_key?.message}
+          />
 
           <div className="actions mt-5 w-full">
             <div className="flex w-full flex-wrap sm:flex-nowrap">
@@ -202,12 +214,20 @@ const TautulliSettings = () => {
                 <DocsButton page="Configuration/#tautulli" />
               </span>
               <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                <TestButton
-                  onClick={appTest}
-                  testUrl="/settings/test/tautulli"
-                />
+                <Button
+                  buttonType="success"
+                  onClick={performTest}
+                  className="ml-3"
+                  disabled={testing || isGoingToRemoveSetting}
+                >
+                  {testing ? 'Testing...' : 'Test'}
+                </Button>
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
-                  <Button buttonType="primary" type="submit">
+                  <Button
+                    buttonType="primary"
+                    type="submit"
+                    disabled={!canSaveSettings}
+                  >
                     <SaveIcon />
                     <span>Save Changes</span>
                   </Button>

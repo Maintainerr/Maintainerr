@@ -1,5 +1,4 @@
 import { DocumentTextIcon } from '@heroicons/react/solid'
-import Link from 'next/link'
 import Button from '../Button'
 
 interface IDocsButton {
@@ -10,18 +9,17 @@ interface IDocsButton {
 const DocsButton = (props: IDocsButton) => {
   return (
     <span className="inline-flex h-full w-full">
-      <Link
-        legacyBehavior
+      <Button
+        buttonType="default"
+        type="button"
+        as="a"
+        target="_blank"
         href={`https://docs.maintainerr.info/latest/${props.page ? props.page : ''}`}
-        passHref={true}
+        rel="noopener noreferrer"
       >
-        <a target="_blank" rel="noopener noreferrer">
-          <Button buttonType="default" type="button">
-            <DocumentTextIcon />
-            <span>{props.text ? props.text : 'Docs'}</span>
-          </Button>
-        </a>
-      </Link>
+        <DocumentTextIcon />
+        <span>{props.text ? props.text : 'Docs'}</span>
+      </Button>
     </span>
   )
 }

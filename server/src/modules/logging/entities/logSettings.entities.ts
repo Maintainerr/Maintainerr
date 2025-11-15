@@ -1,5 +1,5 @@
-import { LogLevel, LogSettingDto } from '@maintainerr/contracts';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { LogLevel, LogSettingDto } from '@maintainerr/contracts';
 
 export const DEFAULT_LOG_LEVEL = 'info';
 export const DEFAULT_LOG_MAX_SIZE = 20;
@@ -10,7 +10,7 @@ export class LogSettings implements LogSettingDto {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', nullable: false, default: DEFAULT_LOG_LEVEL })
+  @Column({ nullable: false, default: DEFAULT_LOG_LEVEL })
   level: LogLevel;
 
   @Column({ nullable: false, default: DEFAULT_LOG_MAX_SIZE })
