@@ -439,11 +439,22 @@ export class SettingsService implements SettingDto {
 
   public async deletePlexApiAuth(): Promise<BasicResponseDto> {
     try {
-      await this.settingsRepo.update({}, { plex_auth_token: null });
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsRepo.update(
+        {
+          id: settingsDb.id,
+        },
+        { plex_auth_token: null },
+      );
+
+      this.plex_auth_token = null;
+
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (err) {
       this.logger.error(
         'Something went wrong while deleting the Plex auth token',
+        err,
       );
       return { status: 'NOK', code: 0, message: err };
     }
@@ -453,10 +464,16 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
-        ...settingsDb,
-        plex_auth_token: plex_auth_token,
-      });
+      await this.settingsRepo.update(
+        {
+          id: settingsDb.id,
+        },
+        {
+          plex_auth_token: plex_auth_token,
+        },
+      );
+
+      this.plex_auth_token = plex_auth_token;
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
