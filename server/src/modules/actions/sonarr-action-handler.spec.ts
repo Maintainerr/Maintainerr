@@ -241,9 +241,13 @@ describe('SonarrActionHandler', () => {
       sonarrSettingsId: 1,
       type: EPlexDataType.EPISODES,
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
-      tmdbId: 1,
-    });
+    const collectionMedia = createCollectionMediaWithPlexData(
+      collection,
+      'episode',
+      {
+        tmdbId: 1,
+      },
+    );
 
     (plexApi.getMetadata as jest.Mock).mockResolvedValue(
       collectionMedia.plexData,
@@ -351,9 +355,13 @@ describe('SonarrActionHandler', () => {
       sonarrSettingsId: 1,
       type: EPlexDataType.EPISODES,
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
-      tmdbId: 1,
-    });
+    const collectionMedia = createCollectionMediaWithPlexData(
+      collection,
+      'episode',
+      {
+        tmdbId: 1,
+      },
+    );
 
     (plexApi.getMetadata as jest.Mock).mockResolvedValue(
       collectionMedia.plexData,

@@ -1,7 +1,5 @@
 import { faker } from '@faker-js/faker';
 import {
-  CollectionMediaDto,
-  CollectionMediaWithPlexDataDto,
   EPlexDataType,
   PlexEpisode,
   PlexGenre,
@@ -9,9 +7,11 @@ import {
   PlexMovie,
   PlexSeason,
   PlexShow,
-  ServarrAction,
 } from '@maintainerr/contracts';
-import { PlexLibrary } from '../../src/modules/api/plex-api/interfaces/library.interfaces';
+import {
+  PlexLibrary,
+  PlexLibraryItem,
+} from '../../src/modules/api/plex-api/interfaces/library.interfaces';
 import {
   RadarrMovie,
   RadarrMovieFile,
@@ -25,7 +25,11 @@ import {
   SonarrSeriesTypes,
 } from '../../src/modules/api/servarr-api/interfaces/sonarr.interface';
 import { Collection } from '../../src/modules/collections/entities/collection.entities';
-import { CollectionMedia } from '../../src/modules/collections/entities/collection_media.entities';
+import {
+  CollectionMedia,
+  CollectionMediaWithPlexData,
+} from '../../src/modules/collections/entities/collection_media.entities';
+import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
 
 export const EPlexDataTypeToPlexTypeMap = {
@@ -76,10 +80,13 @@ export const createCollection = (
 };
 
 export const createCollectionMedia = (
-  collection?: Collection,
+  collectionOrType?: Collection | EPlexDataType,
   properties: Partial<CollectionMedia> = {},
 ): CollectionMedia => {
-  const collectionToUse = collection ?? createCollection();
+  const collectionToUse =
+    collectionOrType instanceof Collection
+      ? collectionOrType
+      : createCollection({ type: collectionOrType });
 
   return {
     id: faker.number.int(),
@@ -93,21 +100,43 @@ export const createCollectionMedia = (
     ...properties,
   };
 };
-export const createCollectionMediaWithPlexData = <
-  T extends PlexMetadata['type'],
->(
-  collection?: Collection,
-  type?: T,
-  properties: Partial<CollectionMediaDto> = {},
+
+// Overload for backward compatibility: createCollectionMediaWithPlexData(collection, properties)
+export function createCollectionMediaWithPlexData(
+  collection: Collection,
+  properties?: Partial<CollectionMedia>,
+): CollectionMediaWithPlexData;
+
+// New overload: createCollectionMediaWithPlexData(collection, type, properties)
+export function createCollectionMediaWithPlexData<T extends PlexMetadata['type']>(
+  collection: Collection | undefined,
+  type: T,
+  properties?: Partial<CollectionMedia>,
 ): T extends 'movie'
-  ? CollectionMediaWithPlexDataDto & { plexData: PlexMovie }
+  ? CollectionMediaWithPlexData & { plexData: PlexMovie }
   : T extends 'show'
-    ? CollectionMediaWithPlexDataDto & { plexData: PlexShow }
+    ? CollectionMediaWithPlexData & { plexData: PlexShow }
     : T extends 'season'
-      ? CollectionMediaWithPlexDataDto & { plexData: PlexSeason }
+      ? CollectionMediaWithPlexData & { plexData: PlexSeason }
       : T extends 'episode'
-        ? CollectionMediaWithPlexDataDto & { plexData: PlexEpisode }
-        : never => {
+        ? CollectionMediaWithPlexData & { plexData: PlexEpisode }
+        : never;
+
+// Implementation
+export function createCollectionMediaWithPlexData(
+  collection?: Collection,
+  typeOrProperties?: PlexMetadata['type'] | Partial<CollectionMedia>,
+  properties?: Partial<CollectionMedia>,
+): CollectionMediaWithPlexData {
+  // Determine if called with old or new API
+  const isOldAPI = typeof typeOrProperties === 'object' || typeOrProperties === undefined;
+  const type: PlexMetadata['type'] = isOldAPI
+    ? (collection?.type
+        ? EPlexDataTypeToPlexTypeMap[collection.type]
+        : 'movie')
+    : (typeOrProperties as PlexMetadata['type']);
+  const props = isOldAPI ? (typeOrProperties as Partial<CollectionMedia> || {}) : (properties || {});
+
   const plexData = {
     index: faker.number.int(),
     addedAt: faker.date.past().getTime(),
@@ -178,11 +207,11 @@ export const createCollectionMediaWithPlexData = <
   }
 
   return {
-    ...createCollectionMedia(collection, properties),
+    ...createCollectionMedia(collection, props),
     plexData: data,
-    ...properties,
+    ...props,
   } as any;
-};
+}
 
 export const createMoviePlexMetadata = (
   properties: Partial<PlexMovie> = {},

@@ -122,7 +122,10 @@ describe('CollectionHandler', () => {
       forceOverseerr: true,
       type: EPlexDataType.SEASONS,
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection);
+    const collectionMedia = createCollectionMediaWithPlexData(
+      collection,
+      'season',
+    );
 
     settings.overseerrConfigured.mockReturnValue(true);
 
@@ -149,7 +152,10 @@ describe('CollectionHandler', () => {
       forceOverseerr: true,
       type: EPlexDataType.EPISODES,
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection);
+    const collectionMedia = createCollectionMediaWithPlexData(
+      collection,
+      'episode',
+    );
 
     settings.overseerrConfigured.mockReturnValue(true);
 
