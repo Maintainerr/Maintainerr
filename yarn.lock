@@ -2827,7 +2827,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.46.4"
     autoprefixer: "npm:10.4.21"
     axios: "npm:^1.13.2"
-    bowser: "npm:^2.11.0"
+    bowser: "npm:^2.12.1"
     clsx: "npm:^2.1.1"
     compare-versions: "npm:^6.1.1"
     cron-validator: "npm:^1.4.0"
@@ -7015,10 +7015,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bowser@npm:^2.11.0":
-  version: 2.11.0
-  resolution: "bowser@npm:2.11.0"
-  checksum: 10c0/04efeecc7927a9ec33c667fa0965dea19f4ac60b3fea60793c2e6cf06c1dcd2f7ae1dbc656f450c5f50783b1c75cf9dc173ba6f3b7db2feee01f8c4b793e1bd3
+"bowser@npm:^2.12.1":
+  version: 2.12.1
+  resolution: "bowser@npm:2.12.1"
+  checksum: 10c0/017e8cc63ce2dec75037340626e1408f68334dac95f953ba7db33a266c019f1d262346d2be3994f9a12b7e9c02f57c562078719b8c5e8e8febe01053c613ffbc
   languageName: node
   linkType: hard
 
