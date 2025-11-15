@@ -1,10 +1,13 @@
-import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
+import {
+  BasicResponseDto,
+  MaintainerrEvent,
+  PlexMetadata,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
-import { PlexMetadata } from '../api/plex-api/interfaces/media.interface';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import {
   CollectionMediaAddedDto,
@@ -815,9 +818,9 @@ export class NotificationService {
   }
 
   private getTitle(item: PlexMetadata): string {
-    return item.grandparentRatingKey
+    return item.type === 'episode' && item.grandparentRatingKey
       ? `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`
-      : item.parentRatingKey
+      : item.type === 'season' && item.parentRatingKey
         ? `${item.parentTitle} - season ${item.index}`
         : item.title;
   }

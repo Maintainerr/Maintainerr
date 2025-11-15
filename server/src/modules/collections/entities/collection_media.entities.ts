@@ -5,7 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
+import { PlexMetadata } from '@maintainerr/contracts';
 import { Collection } from './collection.entities';
 
 @Entity()

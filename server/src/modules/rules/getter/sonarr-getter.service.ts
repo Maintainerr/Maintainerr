@@ -1,7 +1,7 @@
+import { PlexMetadata } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
-import { PlexMetadata } from '../../../modules/api/plex-api/interfaces/media.interface';
 import { SonarrSeason } from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
 import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
@@ -371,7 +371,8 @@ export class SonarrGetterService {
       const plexMetaData = await this.plexApi.getMetadata(libItem.ratingKey);
       tvdbid = this.getGuidFromPlexLibItem(plexMetaData, 'tvdb');
       if (!tvdbid) {
-        const resp = await this.tmdbIdHelper.getTmdbIdFromPlexData(libItem);
+        const resp =
+          await this.tmdbIdHelper.getTmdbIdFromPlexData(plexMetaData);
         const tmdb = resp?.id ? resp.id : undefined;
         if (tmdb) {
           const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdb });

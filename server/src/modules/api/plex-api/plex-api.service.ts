@@ -3,6 +3,7 @@ import {
   PlexEpisode,
   PlexMetadata,
   PlexMovie,
+  PlexPlaylist,
   PlexSeason,
   PlexShow,
 } from '@maintainerr/contracts';
@@ -28,7 +29,6 @@ import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import {
   CreateUpdateCollection,
   PlexCollection,
-  PlexPlaylist,
 } from './interfaces/collection.interface';
 import {
   PlexHub,
@@ -437,7 +437,7 @@ export class PlexApiService {
         await this.plexClient.queryAll<PlexLibraryResponse>({
           uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
         });
-      return response.MediaContainer.Metadata as PlexSeenBy[];
+      return response.MediaContainer.Metadata as unknown as PlexSeenBy[];
     } catch (err) {
       this.logger.warn(
         'Plex api communication failure.. Is the application running?',

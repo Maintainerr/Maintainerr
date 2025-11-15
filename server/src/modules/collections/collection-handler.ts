@@ -1,9 +1,9 @@
+import { PlexMetadata } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
 import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
-import { PlexMetadata } from '../api/plex-api/interfaces/media.interface';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
@@ -93,6 +93,13 @@ export class CollectionHandler {
           case EPlexDataType.EPISODES:
             const plexDataEpisode: PlexMetadata =
               await this.plexApi.getMetadata(media.plexId.toString());
+
+            if (plexDataEpisode.type !== 'episode') {
+              this.logger.warn(
+                `Expected episode but got ${plexDataEpisode.type} for plexId ${media.plexId}`,
+              );
+              break;
+            }
 
             await this.overseerrApi.removeSeasonRequest(
               media.tmdbId,

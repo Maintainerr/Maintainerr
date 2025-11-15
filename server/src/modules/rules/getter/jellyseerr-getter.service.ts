@@ -60,7 +60,8 @@ export class JellyseerrGetterService {
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
-      const tmdb = await this.tmdbIdHelper.getTmdbIdFromPlexData(libItem);
+      const metadata = await this.plexApi.getMetadata(libItem.ratingKey);
+      const tmdb = await this.tmdbIdHelper.getTmdbIdFromPlexData(metadata);
       // const jellyseerrUsers = await this.jellyseerrApi.getUsers();
 
       if (tmdb && tmdb.id) {

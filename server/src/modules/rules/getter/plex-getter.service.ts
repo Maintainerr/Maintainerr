@@ -1,9 +1,7 @@
 import {
-  Application,
   EPlexDataType,
   isPlexMovie,
   PlexMetadata,
-  RuleGroupDto,
   RuleValueType,
 } from '@maintainerr/contracts';
 import { Injectable, Logger } from '@nestjs/common';
@@ -14,7 +12,11 @@ import {
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { Property, RuleConstants } from '../constants/rules.constants';
+import {
+  Application,
+  Property,
+  RuleConstants,
+} from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
@@ -102,6 +104,7 @@ export class PlexGetterService {
           return metadata.userRating ? +metadata.userRating : 0;
         }
         case 'people': {
+          if (metadata.type === 'season') return null;
           return metadata.Role ? metadata.Role.map((el) => el.tag) : null;
         }
         case 'viewCount': {
@@ -373,6 +376,7 @@ export class PlexGetterService {
             return eps.length ? eps.length : 0;
           }
 
+          if (metadata.type !== 'show') return 0;
           return metadata.leafCount ? +metadata.leafCount : 0;
         }
         case 'sw_viewedEpisodes': {
@@ -458,7 +462,10 @@ export class PlexGetterService {
             .getChildrenMetadata(seasons[seasons.length - 1].ratingKey)
             .then((eps) => {
               eps.sort((a, b) => a.index - b.index);
-              return eps[eps.length - 1]?.originallyAvailableAt || null;
+              const lastEp = eps[eps.length - 1];
+              return lastEp && lastEp.type !== 'season'
+                ? lastEp.originallyAvailableAt || null
+                : null;
             });
 
           // originallyAvailableAt is usually an ISO 8601 date string, no need to convert from epoch time
@@ -521,13 +528,17 @@ export class PlexGetterService {
             .getChildrenMetadata(parent.ratingKey)
             .then((eps) => {
               eps.sort((a, b) => a.index - b.index);
-              return eps[eps.length - 1]?.originallyAvailableAt || null;
+              const lastEp = eps[eps.length - 1];
+              return lastEp && lastEp.type !== 'season'
+                ? lastEp.originallyAvailableAt || null
+                : null;
             });
 
           // originallyAvailableAt is usually an ISO 8601 date string, no need to convert from epoch time
           return lastEpDate ? new Date(lastEpDate) : null;
         }
         case 'rating_imdb': {
+          if (metadata.type === 'season') return null;
           return (
             metadata.Rating?.find(
               (x) => x.image.startsWith('imdb') && x.type == 'audience',
@@ -535,6 +546,7 @@ export class PlexGetterService {
           );
         }
         case 'rating_rottenTomatoesCritic': {
+          if (metadata.type === 'season') return null;
           return (
             metadata.Rating?.find(
               (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
@@ -542,6 +554,7 @@ export class PlexGetterService {
           );
         }
         case 'rating_rottenTomatoesAudience': {
+          if (metadata.type === 'season') return null;
           return (
             metadata.Rating?.find(
               (x) =>
@@ -550,6 +563,7 @@ export class PlexGetterService {
           );
         }
         case 'rating_tmdb': {
+          if (metadata.type === 'season') return null;
           return (
             metadata.Rating?.find(
               (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
@@ -560,6 +574,7 @@ export class PlexGetterService {
           const showMetadata =
             metadata.type === 'season' ? parent : grandparent;
 
+          if (!showMetadata || showMetadata.type === 'season') return null;
           return (
             showMetadata.Rating?.find(
               (x) => x.image.startsWith('imdb') && x.type == 'audience',
@@ -570,6 +585,7 @@ export class PlexGetterService {
           const showMetadata =
             metadata.type === 'season' ? parent : grandparent;
 
+          if (!showMetadata || showMetadata.type === 'season') return null;
           return (
             showMetadata.Rating?.find(
               (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
@@ -580,6 +596,7 @@ export class PlexGetterService {
           const showMetadata =
             metadata.type === 'season' ? parent : grandparent;
 
+          if (!showMetadata || showMetadata.type === 'season') return null;
           return (
             showMetadata.Rating?.find(
               (x) =>
@@ -591,6 +608,7 @@ export class PlexGetterService {
           const showMetadata =
             metadata.type === 'season' ? parent : grandparent;
 
+          if (!showMetadata || showMetadata.type === 'season') return null;
           return (
             showMetadata.Rating?.find(
               (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
@@ -598,14 +616,8 @@ export class PlexGetterService {
           );
         }
         case 'collectionsIncludingSmart': {
-          if (
-            metadata.type !== 'episode' &&
-            metadata.type !== 'movie' &&
-            metadata.type !== 'season' &&
-            metadata.type !== 'show'
-          ) {
-            throw new Error(`Unexpected metadata type ${metadata.type}`);
-          }
+          // TypeScript exhaustiveness check - all PlexMetadata types are valid
+          const _: 'movie' | 'show' | 'season' | 'episode' = metadata.type;
 
           const collections = await this.plexApi.getCollections(
             ruleGroup.libraryId,
@@ -721,14 +733,8 @@ export class PlexGetterService {
           return Array.from(combinedCollections).map((el) => el.trim());
         }
         case 'collection_names_including_smart': {
-          if (
-            metadata.type !== 'episode' &&
-            metadata.type !== 'movie' &&
-            metadata.type !== 'season' &&
-            metadata.type !== 'show'
-          ) {
-            throw new Error(`Unexpected metadata type ${metadata.type}`);
-          }
+          // TypeScript exhaustiveness check - all PlexMetadata types are valid
+          const _: 'movie' | 'show' | 'season' | 'episode' = metadata.type;
 
           const collections = await this.plexApi.getCollections(
             ruleGroup.libraryId,

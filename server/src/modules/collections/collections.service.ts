@@ -118,11 +118,14 @@ export class CollectionsService {
               el.plexId.toString(),
             );
 
-            if (plexData?.grandparentRatingKey) {
+            if (plexData?.type === 'episode' && plexData.grandparentRatingKey) {
               plexData.parentData = await this.plexApi.getMetadata(
                 plexData.grandparentRatingKey.toString(),
               );
-            } else if (plexData?.parentRatingKey) {
+            } else if (
+              plexData?.type === 'season' &&
+              plexData.parentRatingKey
+            ) {
               plexData.parentData = await this.plexApi.getMetadata(
                 plexData.parentRatingKey.toString(),
               );
@@ -177,11 +180,17 @@ export class CollectionsService {
         await Promise.all(
           entities.map(async (el) => {
             el.plexData = await this.plexApi.getMetadata(el.plexId.toString());
-            if (el.plexData?.grandparentRatingKey) {
+            if (
+              el.plexData?.type === 'episode' &&
+              el.plexData.grandparentRatingKey
+            ) {
               el.plexData.parentData = await this.plexApi.getMetadata(
                 el.plexData.grandparentRatingKey.toString(),
               );
-            } else if (el.plexData?.parentRatingKey) {
+            } else if (
+              el.plexData?.type === 'season' &&
+              el.plexData.parentRatingKey
+            ) {
               el.plexData.parentData = await this.plexApi.getMetadata(
                 el.plexData.parentRatingKey.toString(),
               );

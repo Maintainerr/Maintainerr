@@ -1,4 +1,4 @@
-import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
+import { PlexMetadata } from '@maintainerr/contracts';
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
