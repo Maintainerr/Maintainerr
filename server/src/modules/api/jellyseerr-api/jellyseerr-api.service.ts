@@ -1,7 +1,8 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { BasicResponseDto } from '@maintainerr/contracts';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
-import { BasicResponseDto } from '../external-api/dto/basic-response.dto';
 import { JellyseerrApi } from './helpers/jellyseerr-api.helper';
 
 interface JellyseerrMediaInfo {
@@ -109,6 +110,10 @@ interface JellyseerrStatus {
   commitsBehind: number;
 }
 
+interface JellyseerrAbout {
+  version: string;
+}
+
 export enum JellyseerrMediaStatus {
   UNKNOWN = 1,
   PENDING,
@@ -151,17 +156,22 @@ interface JellyseerrUserResponseResult {
 export class JellyseerrApiService {
   api: JellyseerrApi;
 
-  private readonly logger = new Logger(JellyseerrApiService.name);
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settings: SettingsService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(JellyseerrApiService.name);
+  }
 
-  public async init() {
-    this.api = new JellyseerrApi({
-      url: `${this.settings.jellyseerr_url?.replace(/\/$/, '')}/api/v1`,
-      apiKey: `${this.settings.jellyseerr_api_key}`,
-    });
+  public init() {
+    this.api = new JellyseerrApi(
+      {
+        url: `${this.settings.jellyseerr_url?.replace(/\/$/, '')}/api/v1`,
+        apiKey: `${this.settings.jellyseerr_api_key}`,
+      },
+      this.logger,
+    );
   }
 
   public async getMovie(id: string | number): Promise<JellyseerrMovieResponse> {
@@ -258,7 +268,6 @@ export class JellyseerrApiService {
     } catch (err) {
       this.logger.warn(
         'Jellyseerr communication failed. Is the application running?',
-        err,
       );
       this.logger.debug(err);
       return undefined;
@@ -274,9 +283,9 @@ export class JellyseerrApiService {
           el.seasons.find((s) => s.seasonNumber === season),
         );
         if (requests.length > 0) {
-          requests.forEach((el) => {
-            this.deleteRequest(el.id.toString());
-          });
+          for (const el of requests) {
+            await this.deleteRequest(el.id.toString());
+          }
         } else {
           // no requests ? clear data and let Jellyseerr refetch.
           await this.api.delete(`/media/${media.id}`);
@@ -298,7 +307,6 @@ export class JellyseerrApiService {
     } catch (err) {
       this.logger.warn(
         'Jellyseerr communication failed. Is the application running?',
-        err,
       );
       this.logger.debug(err);
       return undefined;
@@ -312,11 +320,9 @@ export class JellyseerrApiService {
       );
       return response;
     } catch (e) {
-      this.logger.log("Couldn't delete media. Does it exist in Jellyseerr?", {
-        label: 'Jellyseerr API',
-        errorMessage: e.message,
-        mediaId,
-      });
+      this.logger.log(
+        `Couldn't delete media ${mediaId}. Does it exist in Jellyseerr? ${e.message}`,
+      );
       this.logger.debug(e);
       return null;
     }
@@ -336,13 +342,11 @@ export class JellyseerrApiService {
       }
 
       try {
-        this.deleteMediaItem(media.mediaInfo.id.toString());
+        await this.deleteMediaItem(media.mediaInfo.id.toString());
       } catch (e) {
-        this.logger.log("Couldn't delete media. Does it exist in Jellyseerr?", {
-          label: 'Jellyseerr API',
-          errorMessage: e.message,
-          id,
-        });
+        this.logger.log(
+          `Couldn't delete media by TMDB ID ${id}. Does it exist in Jellyseerr? ${e.message}`,
+        );
       }
     } catch (err) {
       this.logger.warn(
@@ -363,25 +367,46 @@ export class JellyseerrApiService {
       );
       return response;
     } catch (e) {
-      this.logger.log("Couldn't fetch Jellyseerr status!", {
-        label: 'Jellyseerr API',
-        errorMessage: e.message,
-      });
+      this.logger.log(`Couldn't fetch Jellyseerr status: ${e.message}`);
       this.logger.debug(e);
       return null;
     }
   }
 
-  public async validateApiConnectivity(): Promise<BasicResponseDto> {
+  public async testConnection(
+    params?: ConstructorParameters<typeof JellyseerrApi>[0],
+  ): Promise<BasicResponseDto> {
+    const api = params
+      ? new JellyseerrApi(
+          {
+            apiKey: params.apiKey,
+            url: `${params.url?.replace(/\/$/, '')}/api/v1`,
+          },
+          this.logger,
+        )
+      : this.api;
+
     try {
-      await this.api.getRawWithoutCache(`/settings/about`, {
-        signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
-      });
+      const response = await api.getRawWithoutCache<JellyseerrAbout>(
+        `/settings/about`,
+        {
+          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+        },
+      );
+
+      if (!response.data?.version) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message:
+            'Failure, an unexpected response was returned. The URL is likely incorrect.',
+        };
+      }
 
       return {
         status: 'OK',
         code: 1,
-        message: 'Success',
+        message: response.data.version,
       };
     } catch (e) {
       this.logger.warn(

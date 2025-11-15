@@ -1,3 +1,125 @@
+# [2.20.0](https://github.com/maintainerr/Maintainerr/compare/v2.19.0...v2.20.0) (2025-10-27)
+
+
+### Bug Fixes
+
+* Improve email rendering ([#1968](https://github.com/maintainerr/Maintainerr/issues/1968)) ([f2cfcb9](https://github.com/maintainerr/Maintainerr/commit/f2cfcb90be2b77247c47b33acf4407d404163843))
+
+
+### Features
+
+* Add Sonarr & Radarr audio languages rule options ([#1886](https://github.com/maintainerr/Maintainerr/issues/1886)) ([60f1756](https://github.com/maintainerr/Maintainerr/commit/60f1756963236e74f3ca8a47868268080f609220))
+
+# [2.19.0](https://github.com/jorenn92/Maintainerr/compare/v2.18.2...v2.19.0) (2025-08-17)
+
+
+### Features
+
+* add comprehensive Copilot instructions ([#1888](https://github.com/jorenn92/Maintainerr/issues/1888)) ([5053168](https://github.com/jorenn92/Maintainerr/commit/5053168d532a52c141899373c0ed6fa7afe45e2d))
+* Improve Jellyseerr settings UX ([#1872](https://github.com/jorenn92/Maintainerr/issues/1872)) ([2c7e7c3](https://github.com/jorenn92/Maintainerr/commit/2c7e7c300dfc9e031db306f90a80a39e28ef53d8))
+* Improve Overseerr settings UX ([#1871](https://github.com/jorenn92/Maintainerr/issues/1871)) ([0c484fb](https://github.com/jorenn92/Maintainerr/commit/0c484fbbabf0e127b3cc189c8a7d6b84428178f1))
+
+## [2.18.2](https://github.com/jorenn92/Maintainerr/compare/v2.18.1...v2.18.2) (2025-07-12)
+
+
+### Bug Fixes
+
+* ensuring correct application during connection test ([#1849](https://github.com/jorenn92/Maintainerr/issues/1849)) ([363661d](https://github.com/jorenn92/Maintainerr/commit/363661dc34b959579fda86aeb17606bff125cbbd))
+
+## [2.18.1](https://github.com/jorenn92/Maintainerr/compare/v2.18.0...v2.18.1) (2025-06-19)
+
+
+### Bug Fixes
+
+* **notifications:** Missing email templates ([#1834](https://github.com/jorenn92/Maintainerr/issues/1834)) ([f3a09d1](https://github.com/jorenn92/Maintainerr/commit/f3a09d12769e210e63fc89ed034d9dd873e2e32e))
+* Patch remaining runtime and cleanup issues ([#1813](https://github.com/jorenn92/Maintainerr/issues/1813)) ([d5bec2e](https://github.com/jorenn92/Maintainerr/commit/d5bec2e2ba13ecebfb5b1dc7d9029c33071e5269))
+
+# [2.18.0](https://github.com/jorenn92/Maintainerr/compare/v2.17.0...v2.18.0) (2025-06-13)
+
+
+### Bug Fixes
+
+* Hide days in notifications for Do nothing rules ([#1788](https://github.com/jorenn92/Maintainerr/issues/1788)) ([d590220](https://github.com/jorenn92/Maintainerr/commit/d590220a94806100fa0b9e140f0382fa94fd08ff))
+* Improve community rule loading states ([#1810](https://github.com/jorenn92/Maintainerr/issues/1810)) ([17691f4](https://github.com/jorenn92/Maintainerr/commit/17691f44607b10b8915ecbd92657bc2080eff6db))
+* Improve UI memory handling ([#1808](https://github.com/jorenn92/Maintainerr/issues/1808)) ([ec110b9](https://github.com/jorenn92/Maintainerr/commit/ec110b9116606a29726cce14abb63589acfed84f))
+* Media About To Be Handled notifications not sending ([#1801](https://github.com/jorenn92/Maintainerr/issues/1801)) ([1ef0346](https://github.com/jorenn92/Maintainerr/commit/1ef0346b1304e6ffcb416e1dceb78596a0d98fa5))
+* Notification selected types, agent checkbox options ([#1791](https://github.com/jorenn92/Maintainerr/issues/1791)) ([b43066a](https://github.com/jorenn92/Maintainerr/commit/b43066a5c35cd61f740f61211c435e6e569b3055))
+* **notifications:** Subject missing breaking some agents ([#1812](https://github.com/jorenn92/Maintainerr/issues/1812)) ([0d283de](https://github.com/jorenn92/Maintainerr/commit/0d283de710b14ccae33f6e2d332d8a914091d401))
+
+
+### Features
+
+* **rules:** add new CONTAINS_ALL action for complete subset validation ([#1825](https://github.com/jorenn92/Maintainerr/issues/1825)) ([67d85dd](https://github.com/jorenn92/Maintainerr/commit/67d85ddd23297527d56e67f6dd51ed2319745326))
+
+# [2.17.0](https://github.com/jorenn92/Maintainerr/compare/v2.16.0...v2.17.0) (2025-05-29)
+
+
+### Bug Fixes
+
+* Incorrect sectionResults operator ([#1805](https://github.com/jorenn92/Maintainerr/issues/1805)) ([4c97819](https://github.com/jorenn92/Maintainerr/commit/4c97819ae31f807425b497fbcb96941168b3c398))
+* prepend missing basePath occurences ([#1806](https://github.com/jorenn92/Maintainerr/issues/1806)) ([3e13645](https://github.com/jorenn92/Maintainerr/commit/3e13645fa505ad81a7b9cbbbe8627c82fdcc0d24))
+* Prevent undefined base path appearing in path ([#1807](https://github.com/jorenn92/Maintainerr/issues/1807)) ([e8b8815](https://github.com/jorenn92/Maintainerr/commit/e8b8815ec40abff0e07f21672f938526a82ef51b))
+
+
+### Features
+
+* Add additional *arr quality profile rules ([#1743](https://github.com/jorenn92/Maintainerr/issues/1743)) ([beb326a](https://github.com/jorenn92/Maintainerr/commit/beb326a47a13f480ab858e1a7a0c178f474425af))
+
+# [2.16.0](https://github.com/jorenn92/Maintainerr/compare/v2.15.0...v2.16.0) (2025-05-28)
+
+
+### Bug Fixes
+
+* Rule groups not in consistent order ([#1787](https://github.com/jorenn92/Maintainerr/issues/1787)) ([fe5c0d2](https://github.com/jorenn92/Maintainerr/commit/fe5c0d286406cf7e5fb13a6725be2b06f54bc5c0))
+* Tautulli settings not updating until restart ([#1804](https://github.com/jorenn92/Maintainerr/issues/1804)) ([ddae9d3](https://github.com/jorenn92/Maintainerr/commit/ddae9d3fd4b6932bb56662c1dea79597ccb9ec13))
+* Test media failing due to missing AbortSignal ([#1802](https://github.com/jorenn92/Maintainerr/issues/1802)) ([3d088b0](https://github.com/jorenn92/Maintainerr/commit/3d088b0de1445b5de7055f30673aaf36a8ba6826))
+
+
+### Features
+
+* Request stop of running rules ([#1735](https://github.com/jorenn92/Maintainerr/issues/1735)) ([7a08d94](https://github.com/jorenn92/Maintainerr/commit/7a08d94f490abbe4bfd68d66ed29a5c35aa5ba10))
+* Save rule results against collection log ([#1777](https://github.com/jorenn92/Maintainerr/issues/1777)) ([f379b39](https://github.com/jorenn92/Maintainerr/commit/f379b39bb8df4009eb0b5cae5374aee904310fe2))
+
+# [2.15.0](https://github.com/jorenn92/Maintainerr/compare/v2.14.0...v2.15.0) (2025-05-23)
+
+
+### Bug Fixes
+
+* Is (part of) latest aired/airing season should exclude future ([#1732](https://github.com/jorenn92/Maintainerr/issues/1732)) ([f7093df](https://github.com/jorenn92/Maintainerr/commit/f7093df90f809d210eead14cd0e958a0d7ba0ee7))
+* Modals not responsive ([#1729](https://github.com/jorenn92/Maintainerr/issues/1729)) ([b14f7e3](https://github.com/jorenn92/Maintainerr/commit/b14f7e3160321ef4a375fe020569adfad5555b1a))
+* Radarr Monitored returns null instead of false ([#1746](https://github.com/jorenn92/Maintainerr/issues/1746)) ([6b5c159](https://github.com/jorenn92/Maintainerr/commit/6b5c15942013b317c6ea6e665d3be74a3cab7861))
+* Remove floating promises ([#1776](https://github.com/jorenn92/Maintainerr/issues/1776)) ([cd3c3b3](https://github.com/jorenn92/Maintainerr/commit/cd3c3b38ca42463edafebc33ae22282bdb88b24c))
+* Test media targeting the wrong rule group ([#1728](https://github.com/jorenn92/Maintainerr/issues/1728)) ([42165b5](https://github.com/jorenn92/Maintainerr/commit/42165b5141d9a9cb4c71e622ac3b1660ec1dc518))
+* Unparsable log lines breaking the logs page ([#1772](https://github.com/jorenn92/Maintainerr/issues/1772)) ([87eee65](https://github.com/jorenn92/Maintainerr/commit/87eee65586285be7b19b057b667f6348920fc29b))
+
+
+### Features
+
+* Add notification support ([#1381](https://github.com/jorenn92/Maintainerr/issues/1381)) ([d729fbf](https://github.com/jorenn92/Maintainerr/commit/d729fbf2056d0ecaa15966548601bd5abc7aeef0))
+* Improve Tautulli settings UX ([#1621](https://github.com/jorenn92/Maintainerr/issues/1621)) ([3a9721f](https://github.com/jorenn92/Maintainerr/commit/3a9721fab2dcf1834a8f10edd3bcfad4be1e7d87))
+* Log unhandledRejection & uncaughtException ([#1733](https://github.com/jorenn92/Maintainerr/issues/1733)) ([139cd5b](https://github.com/jorenn92/Maintainerr/commit/139cd5b2da1d9eea1acf6b1bb9b13f21d8adaf2f))
+* Retry failed Plex API requests ([#1775](https://github.com/jorenn92/Maintainerr/issues/1775)) ([d3769eb](https://github.com/jorenn92/Maintainerr/commit/d3769ebf5566eb3fe9c07e7429bcac77f02ee78f))
+* update rule creation UI/UX & toasts ([#1696](https://github.com/jorenn92/Maintainerr/issues/1696)) ([6c34075](https://github.com/jorenn92/Maintainerr/commit/6c34075d3f94b01f97bbfe81605bcf4dc5e08e6b))
+* YAML Importer Modal additions ([#1754](https://github.com/jorenn92/Maintainerr/issues/1754)) ([66db26e](https://github.com/jorenn92/Maintainerr/commit/66db26eb0c22881930ef5fb58768e23b5fb087e2))
+
+# [2.14.0](https://github.com/jorenn92/Maintainerr/compare/v2.13.1...v2.14.0) (2025-04-15)
+
+
+### Bug Fixes
+
+* Ensure signals are passed down to the apps ([#1680](https://github.com/jorenn92/Maintainerr/issues/1680)) ([702fc17](https://github.com/jorenn92/Maintainerr/commit/702fc17feeae9dcc40b625c0710b9478158a182f))
+* force reset Overseerr throwing exception ([#1699](https://github.com/jorenn92/Maintainerr/issues/1699)) ([c74416f](https://github.com/jorenn92/Maintainerr/commit/c74416fa702d6268fde3a77ed9a5df1306d513a1))
+* Reintroduce episode # in media card ([#1688](https://github.com/jorenn92/Maintainerr/issues/1688)) ([b25159d](https://github.com/jorenn92/Maintainerr/commit/b25159d7a846a81bb68e5e777739edf8ca19f3b6))
+* Restrict Test Media to the collection's library ([#1693](https://github.com/jorenn92/Maintainerr/issues/1693)) ([c254d93](https://github.com/jorenn92/Maintainerr/commit/c254d931d75dc2fc8862db394cafb11b5bf0ed1e))
+* stop returning music libraries ([#1695](https://github.com/jorenn92/Maintainerr/issues/1695)) ([7202890](https://github.com/jorenn92/Maintainerr/commit/7202890181827d26f2536e7525df07b912799451))
+* Unable to save rules with 'Bigger' actions ([#1697](https://github.com/jorenn92/Maintainerr/issues/1697)) ([920a86b](https://github.com/jorenn92/Maintainerr/commit/920a86b1df41c35de073f1dbace6ecb4189d5797))
+
+
+### Features
+
+* Add episode number & file path rules ([#1673](https://github.com/jorenn92/Maintainerr/issues/1673)) ([6b3e4c9](https://github.com/jorenn92/Maintainerr/commit/6b3e4c90bf4cd2a76bd993782917a346c2001b21))
+* Add rule & collection job status indicators ([#1659](https://github.com/jorenn92/Maintainerr/issues/1659)) ([aebf3ae](https://github.com/jorenn92/Maintainerr/commit/aebf3ae40befcee0e83796d797c979ca96ab5174))
+
 ## [2.13.1](https://github.com/jorenn92/Maintainerr/compare/v2.13.0...v2.13.1) (2025-04-03)
 
 

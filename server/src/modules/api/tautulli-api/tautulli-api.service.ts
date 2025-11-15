@@ -1,7 +1,13 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
-import { SettingsService } from '../../..//modules/settings/settings.service';
-import { TautulliApi } from './helpers/tautulli-api.helper';
+import { BasicResponseDto } from '@maintainerr/contracts';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { AxiosError, CanceledError } from 'axios';
 import _ from 'lodash';
+import { SettingsService } from '../../..//modules/settings/settings.service';
+import {
+  MaintainerrLogger,
+  MaintainerrLoggerFactory,
+} from '../../logging/logs.service';
+import { TautulliApi } from './helpers/tautulli-api.helper';
 
 interface TautulliInfo {
   tautulli_version: string;
@@ -94,17 +100,23 @@ const MAX_PAGE_SIZE = 100;
 export class TautulliApiService {
   api: TautulliApi;
 
-  private readonly logger = new Logger(TautulliApiService.name);
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settings: SettingsService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+    private readonly loggerFactory: MaintainerrLoggerFactory,
+  ) {
+    logger.setContext(TautulliApiService.name);
+  }
 
-  public async init() {
-    this.api = new TautulliApi({
-      url: `${this.settings.tautulli_url}/api/v2`,
-      apiKey: `${this.settings.tautulli_api_key}`,
-    });
+  public init() {
+    this.api = new TautulliApi(
+      {
+        url: `${this.settings.tautulli_url}/api/v2`,
+        apiKey: this.settings.tautulli_api_key,
+      },
+      this.loggerFactory.createLogger(),
+    );
   }
 
   public async info(): Promise<Response<TautulliInfo> | null> {
@@ -120,10 +132,7 @@ export class TautulliApiService {
       );
       return response;
     } catch (e) {
-      this.logger.log("Couldn't fetch Tautulli info!", {
-        label: 'Tautulli API',
-        errorMessage: e.message,
-      });
+      this.logger.log(`Couldn't fetch Tautulli info: ${e.message}`);
       this.logger.debug(e);
       return null;
     }
@@ -151,10 +160,9 @@ export class TautulliApiService {
 
       return response.response.data;
     } catch (e) {
-      this.logger.log("Couldn't fetch Tautulli paginated history!", {
-        label: 'Tautulli API',
-        errorMessage: e.message,
-      });
+      this.logger.log(
+        `Couldn't fetch Tautulli paginated history: ${e.message}`,
+      );
       this.logger.debug(e);
       return null;
     }
@@ -206,10 +214,7 @@ export class TautulliApiService {
 
       return results;
     } catch (e) {
-      this.logger.log("Couldn't fetch Tautulli history!", {
-        label: 'Tautulli API',
-        errorMessage: e.message,
-      });
+      this.logger.log(`Couldn't fetch Tautulli history: ${e.message}`);
       this.logger.debug(e);
       return null;
     }
@@ -232,10 +237,7 @@ export class TautulliApiService {
 
       return response.response.data;
     } catch (e) {
-      this.logger.log("Couldn't fetch Tautulli metadata!", {
-        label: 'Tautulli API',
-        errorMessage: e.message,
-      });
+      this.logger.log(`Couldn't fetch Tautulli metadata: ${e.message}`);
       this.logger.debug(e);
       return null;
     }
@@ -263,10 +265,9 @@ export class TautulliApiService {
 
       return response.response.data.children_list;
     } catch (e) {
-      this.logger.log("Couldn't fetch Tautulli children metadata!", {
-        label: 'Tautulli API',
-        errorMessage: e.message,
-      });
+      this.logger.log(
+        `Couldn't fetch Tautulli children metadata: ${e.message}`,
+      );
       this.logger.debug(e);
       return null;
     }
@@ -286,12 +287,95 @@ export class TautulliApiService {
 
       return response.response.data;
     } catch (e) {
-      this.logger.log("Couldn't fetch Tautulli users!", {
-        label: 'Tautulli API',
-        errorMessage: e.message,
-      });
+      this.logger.log(`Couldn't fetch Tautulli users: ${e.message}`);
       this.logger.debug(e);
       return null;
+    }
+  }
+
+  public async testConnection(
+    params: ConstructorParameters<typeof TautulliApi>[0],
+  ): Promise<BasicResponseDto> {
+    const api = new TautulliApi(
+      {
+        apiKey: params.apiKey,
+        url: `${params.url}/api/v2`,
+      },
+      this.loggerFactory.createLogger(),
+    );
+
+    try {
+      const response = await api.getRawWithoutCache<
+        Response<TautulliInfo> | string | undefined
+      >('', {
+        signal: AbortSignal.timeout(10000),
+        params: {
+          cmd: 'get_tautulli_info',
+        },
+      });
+
+      if (
+        typeof response.data !== 'object' ||
+        response.data.response?.result === 'error' ||
+        !response.data.response?.data?.tautulli_version
+      ) {
+        const message =
+          typeof response.data === 'object'
+            ? response.data.response?.message
+            : undefined;
+
+        return {
+          status: 'NOK',
+          code: 0,
+          message:
+            message ??
+            'Failure, an unexpected response was returned. The URL is likely incorrect.',
+        };
+      } else {
+        return {
+          status: 'OK',
+          code: 1,
+          message: response.data.response.data.tautulli_version,
+        };
+      }
+    } catch (e) {
+      this.logger.warn(
+        `A failure occurred testing Tautulli connectivity: ${e}`,
+      );
+
+      if (e instanceof CanceledError) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message:
+            'Failured, connection timed out after 10 seconds with no response.',
+        };
+      } else if (e instanceof AxiosError) {
+        if (e.response?.status === 400) {
+          const data = e.response.data as Response<unknown>;
+
+          // Surface a Tautulli looking response to the user
+          if (data.response?.message && data.response?.result === 'error') {
+            return {
+              status: 'NOK',
+              code: 0,
+              message: data.response.message,
+            };
+          }
+        } else if (e.response?.status) {
+          return {
+            status: 'NOK',
+            code: 0,
+            message: `Failure, received response: ${e.response?.status} ${e.response?.statusText}.`,
+          };
+        }
+      }
+
+      return {
+        status: 'NOK',
+        code: 0,
+        message: `Failure: ${e.message}`,
+      };
     }
   }
 }

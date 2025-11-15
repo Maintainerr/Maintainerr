@@ -1,41 +1,41 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { TasksService } from '../../tasks/tasks.service';
-import { SettingsService } from '../../settings/settings.service';
-import { RulesService } from '../rules.service';
-import { PlexApiService } from '../../api/plex-api/plex-api.service';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { Collection } from '../../collections/entities/collection.entities';
+import { MaintainerrLogger } from '../../logging/logs.service';
+import { SettingsService } from '../../settings/settings.service';
 import { TaskBase } from '../../tasks/task.base';
+import { TasksService } from '../../tasks/tasks.service';
+import { RulesService } from '../rules.service';
 
 @Injectable()
 export class RuleMaintenanceService extends TaskBase {
-  protected logger = new Logger(RuleMaintenanceService.name);
-
   protected name = 'Rule Maintenance';
   protected cronSchedule = '20 4 * * *';
 
   constructor(
     protected readonly taskService: TasksService,
+    protected readonly logger: MaintainerrLogger,
     private readonly settings: SettingsService,
     private readonly rulesService: RulesService,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
     private readonly plexApi: PlexApiService,
   ) {
-    super(taskService);
+    logger.setContext(RuleMaintenanceService.name);
+    super(taskService, logger);
   }
 
-  public async execute() {
-    await super.execute();
+  protected async executeTask() {
     try {
       this.logger.log('Starting maintenance');
       const appStatus = await this.settings.testConnections();
 
       if (appStatus) {
         // remove media exclusions that are no longer available
-        this.removeLeftoverExclusions();
-        this.removeCollectionsWithoutRule();
+        await this.removeLeftoverExclusions();
+        await this.removeCollectionsWithoutRule();
         this.logger.log('Maintenance done');
       } else {
         this.logger.error(
@@ -45,7 +45,6 @@ export class RuleMaintenanceService extends TaskBase {
     } catch (e) {
       this.logger.error(`Rule Maintenance failed : ${e.message}`);
     }
-    this.finish();
   }
 
   private async removeLeftoverExclusions() {
@@ -57,7 +56,7 @@ export class RuleMaintenanceService extends TaskBase {
       const resp = await this.plexApi.getMetadata(exclusion.plexId.toString());
       // remove when not
       if (!resp?.ratingKey) {
-        this.rulesService.removeExclusion(exclusion.id);
+        await this.rulesService.removeExclusion(exclusion.id);
       }
     }
   }
@@ -77,7 +76,9 @@ export class RuleMaintenanceService extends TaskBase {
         }
       }
     } catch (err) {
-      this.logger.warn("Couldn't remove collection without rule: ");
+      this.logger.warn(
+        `Couldn't remove collection without rule: ${err.message}`,
+      );
       this.logger.debug(err);
     }
   }

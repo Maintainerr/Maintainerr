@@ -1,12 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ExternalApiService } from '../modules/api/external-api/external-api.service';
 import { type VersionResponse } from '@maintainerr/contracts';
+import { Injectable } from '@nestjs/common';
+import { GitHubApiService } from '../modules/api/github-api/github-api.service';
+import { MaintainerrLogger } from '../modules/logging/logs.service';
 
 @Injectable()
 export class AppService {
-  private readonly logger = new Logger(AppService.name);
-
-  constructor(private readonly externalApi: ExternalApiService) {}
+  constructor(
+    private readonly githubApi: GitHubApiService,
+    private readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(AppService.name);
+  }
 
   async getAppVersionStatus(): Promise<VersionResponse> {
     try {
@@ -50,10 +54,9 @@ export class AppService {
 
   private async isUpdateAvailable(currentVersion: string, versionTag: string) {
     if (versionTag === 'stable') {
-      const githubResp: { tag_name: string } = await this.externalApi.get(
-        'https://api.github.com/repos/jorenn92/maintainerr/releases/latest',
-        {},
-        7200, // cache this for 2 hours
+      const githubResp = await this.githubApi.getLatestRelease(
+        'Maintainerr',
+        'Maintainerr',
       );
       if (githubResp && githubResp.tag_name) {
         const transformedLocalVersion = currentVersion
@@ -71,10 +74,10 @@ export class AppService {
     } else {
       // in case of develop, compare SHA's
       if (process.env.GIT_SHA) {
-        const githubResp: { sha: string } = await this.externalApi.get(
-          'https://api.github.com/repos/jorenn92/maintainerr/commits/main',
-          {},
-          7200, // cache this for 2 hours
+        const githubResp = await this.githubApi.getCommit(
+          'Maintainerr',
+          'Maintainerr',
+          'main',
         );
         if (githubResp && githubResp.sha) {
           return githubResp.sha !== process.env.GIT_SHA;

@@ -1,6 +1,8 @@
-import cacheManager, { Cache } from './cache';
+import { Logger } from '@nestjs/common';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axiosRetry from 'axios-retry';
 import { PlexLibraryResponse } from '../plex-api/interfaces/library.interfaces';
-import xml2js from 'xml2js';
+import cacheManager, { Cache } from './cache';
 
 type PlexApiOptions = {
   hostname: string;
@@ -10,43 +12,76 @@ type PlexApiOptions = {
   timeout?: number;
 };
 
-type InternalRequestOptions = {
-  uri: string;
-  method: string;
-  parseResponse?: boolean;
-  extraHeaders?: Record<string, string>;
-};
-
 type RequestOptions = {
   uri: string;
   extraHeaders?: Record<string, string>;
 };
 
 class PlexApi {
+  private logger = new Logger(PlexApi.name);
   private cache: Cache;
   private options: PlexApiOptions;
-  private serverUrl: string;
+  private axios: AxiosInstance;
 
   constructor(options: PlexApiOptions) {
     this.options = options;
-    this.serverUrl = options.hostname + ':' + this.options.port;
     this.cache = cacheManager.getCache('plexguid');
+
+    const baseURL =
+      this.getServerScheme() + options.hostname + ':' + options.port;
+
+    this.axios = axios.create({
+      baseURL,
+      timeout: options.timeout,
+      headers: {
+        Accept: 'application/json',
+        'X-Plex-Token': this.options.token,
+      },
+    });
+    axiosRetry(this.axios, {
+      retries: 3,
+      retryDelay: axiosRetry.exponentialDelay,
+      onRetry: (_, error, requestConfig) => {
+        const url = this.axios.getUri(requestConfig);
+        this.logger.debug(
+          `Retrying ${requestConfig.method.toUpperCase()} ${url}: ${error}`,
+        );
+      },
+    });
   }
 
   async query<T>(
     options: RequestOptions | string,
-    docache: boolean = true,
+    useCache: boolean = true,
   ): Promise<T> {
-    return this.queryWithCache(options, docache);
+    if (typeof options === 'string') {
+      options = {
+        uri: options,
+      };
+    }
+
+    const cacheKey = this.serializeCacheKey(options);
+
+    if (useCache && this.cache.data.has(cacheKey)) {
+      return this.cache.data.get<T>(cacheKey);
+    } else {
+      const response = await this.getQuery<T>(options);
+      if (useCache && response) this.cache.data.set(cacheKey, response);
+      return response;
+    }
   }
 
   /**
    * Queries all items with the given options, will fetch all pages.
    *
-   * @param {any} options - The options for the query.
+   * @param {RequestOptions} options - The options for the query.
+   * @param {boolean} [useCache=true] - Whether to use the cache for the query.
    * @return {Promise<T[]>} - A promise that resolves to an array of T.
    */
-  async queryAll<T>(options): Promise<T> {
+  async queryAll<T>(
+    options: RequestOptions,
+    useCache: boolean = true,
+  ): Promise<T> {
     // vars
     let result = undefined;
     let next = true;
@@ -55,7 +90,7 @@ class PlexApi {
     options = {
       ...options,
       extraHeaders: {
-        ...options?.extraHeaders,
+        ...options.extraHeaders,
         'X-Plex-Container-Start': `${page}`,
         'X-Plex-Container-Size': `${size}`,
       },
@@ -63,10 +98,7 @@ class PlexApi {
 
     // loop responses
     while (next) {
-      const query: PlexLibraryResponse = await this.queryWithCache(
-        options,
-        true,
-      );
+      const query: PlexLibraryResponse = await this.query(options, useCache);
       if (result === undefined) {
         // if first response, replace result
         result = query;
@@ -91,66 +123,20 @@ class PlexApi {
     return result as unknown as T;
   }
 
-  async queryWithCache<T>(
-    options: RequestOptions | string,
-    doCache: boolean = true,
-  ): Promise<T> {
-    if (typeof options === 'string') {
-      options = {
-        uri: options,
-      };
-    }
-
-    const cacheKey = this.serializeCacheKey(options);
-    const cachedItem = this.cache.data.get<T>(cacheKey);
-
-    if (cachedItem && doCache) {
-      return cachedItem;
-    } else {
-      const response = await this.getQuery<T>(options);
-      if (doCache) this.cache.data.set(cacheKey, response);
-      return response;
-    }
-  }
-
   private getQuery<T>(options: RequestOptions) {
-    const newOptions: InternalRequestOptions = {
-      ...options,
-      method: 'GET',
-      parseResponse: true,
-    };
-
-    return this._request<T>(newOptions).then(attachUri(newOptions.uri));
+    return this._request<T>('GET', options);
   }
 
   deleteQuery(options: RequestOptions) {
-    const newOptions: InternalRequestOptions = {
-      ...options,
-      method: 'DELETE',
-      parseResponse: false,
-    };
-
-    return this._request(newOptions);
+    return this._request('DELETE', options);
   }
 
   postQuery<T>(options: RequestOptions) {
-    const newOptions: InternalRequestOptions = {
-      ...options,
-      method: 'POST',
-      parseResponse: true,
-    };
-
-    return this._request<T>(newOptions).then(attachUri(newOptions.uri));
+    return this._request<T>('POST', options);
   }
 
   putQuery<T>(options: RequestOptions) {
-    const newOptions = {
-      ...options,
-      method: 'PUT',
-      parseResponse: true,
-    };
-
-    return this._request<T>(newOptions).then(attachUri(newOptions.uri));
+    return this._request<T>('PUT', options);
   }
 
   private getServerScheme() {
@@ -160,57 +146,47 @@ class PlexApi {
     return this.options.port === 443 ? 'https://' : 'http://';
   }
 
-  private async _request<T>(options: InternalRequestOptions) {
-    const reqUrl = this.getServerScheme() + this.serverUrl + options.uri;
-    const method = options.method;
-    const timeout = this.options.timeout;
-    const parseResponse = options.parseResponse;
-    const extraHeaders = options.extraHeaders || {};
+  private async _request<T>(method: string, options: RequestOptions) {
+    const requestConfig: AxiosRequestConfig = {
+      url: options.uri,
+      method,
+      headers: options.extraHeaders,
+    };
 
     try {
-      const response = await fetch(reqUrl, {
-        method: method,
-        headers: {
-          Accept: 'application/json',
-          'X-Plex-Token': this.options.token,
-          Connection: 'close',
-          ...extraHeaders,
-        },
-        signal: timeout ? AbortSignal.timeout(timeout) : undefined,
-      });
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          throw new Error(
-            'Plex Server denied request due to lack of managed user permissions! In case of a delete request, delete content must be allowed in plex-media-server options.',
-          );
-        } else if (response.status === 401) {
-          throw new Error('Plex Server denied request');
-        }
-
-        throw new Error(
-          `Plex Server didnt respond with a valid 2xx status code, response code: ${response.status}`,
-        );
-      } else {
-        if (parseResponse) {
-          const contentType = response.headers.get('content-type');
-
-          if (contentType === 'application/json') {
-            return response.json() as T;
-          } else if (contentType?.includes('xml')) {
-            const text = await response.text();
-            return xml2js.parseStringPromise(text, {
-              attrkey: 'attributes',
-            }) as T;
-          } else {
-            return response.text();
-          }
-        } else {
-          return;
-        }
-      }
+      const response = await this.axios.request(requestConfig);
+      return response.data as T;
     } catch (err) {
-      throw err;
+      const url = this.axios.getUri(requestConfig);
+
+      if (err instanceof AxiosError) {
+        if (err.response?.status === 403) {
+          throw new Error(
+            `${requestConfig.method} ${url} failed: Plex Server denied request due to lack of managed user permissions! In case of a delete request, delete content must be allowed in plex-media-server options.`,
+            { cause: err },
+          );
+        } else if (err.response?.status === 401) {
+          throw new Error(
+            `${requestConfig.method} ${url} failed: Plex Server denied request`,
+            { cause: err },
+          );
+        } else if (err.response?.status) {
+          throw new Error(
+            `${requestConfig.method} ${url} failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: ${err.response?.status}`,
+            { cause: err },
+          );
+        } else {
+          throw new Error(
+            `${requestConfig.method} ${url} failed with exception: ${err}`,
+            { cause: err },
+          );
+        }
+      } else {
+        throw new Error(
+          `${requestConfig.method} ${url} failed with exception: ${err}${err.cause?.code ? `, error code: ${err.cause.code}` : ''}`,
+          { cause: err },
+        );
+      }
     }
   }
 
@@ -282,45 +258,5 @@ class PlexApi {
     }
   }
 }
-
-const uriResolvers = {
-  directory: function directory(parentUrl: string, dir: any) {
-    addDirectoryUriProperty(parentUrl, dir);
-  },
-  server: function server(parentUrl: string, srv: any) {
-    addServerUriProperty(srv);
-  },
-};
-
-const addServerUriProperty = (server: any) => {
-  server.uri = '/system/players/' + server.address;
-};
-
-const addDirectoryUriProperty = (parentUrl: string, directory: any) => {
-  if (parentUrl[parentUrl.length - 1] !== '/') {
-    parentUrl += '/';
-  }
-  if (directory.key[0] === '/') {
-    parentUrl = '';
-  }
-  directory.uri = parentUrl + directory.key;
-};
-
-const attachUri = (parentUrl: string) => {
-  return function resolveAndAttachUris(result: any) {
-    const children = result._children || [];
-
-    children.forEach(function (child: any) {
-      const childType = child._elementType.toLowerCase();
-      const resolver = uriResolvers[childType];
-
-      if (resolver) {
-        resolver(parentUrl, child);
-      }
-    });
-
-    return result;
-  };
-};
 
 export default PlexApi;

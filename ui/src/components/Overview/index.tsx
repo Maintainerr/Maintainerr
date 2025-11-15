@@ -1,10 +1,9 @@
-import { clone, debounce } from 'lodash'
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import { clone } from 'lodash'
+import { useContext, useEffect, useRef, useState } from 'react'
 import LibrariesContext from '../../contexts/libraries-context'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
-import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import OverviewContent, { IPlexMetadata } from './Content'
 
 const Overview = () => {
@@ -20,7 +19,7 @@ const Overview = () => {
   const totalSizeRef = useRef<number>(999)
 
   const [selectedLibrary, setSelectedLibrary] = useState<number>()
-  const selectedLibraryRef = useRef<number>()
+  const selectedLibraryRef = useRef<number>(undefined)
   const [searchUsed, setsearchUsed] = useState<boolean>(false)
 
   const pageData = useRef<number>(0)
@@ -47,6 +46,14 @@ const Overview = () => {
         )
       }
     }, 300)
+
+    // Cleanup on unmount
+    return () => {
+      setData([])
+      dataRef.current = []
+      totalSizeRef.current = 999
+      pageData.current = 0
+    }
   }, [])
 
   useEffect(() => {
@@ -115,7 +122,7 @@ const Overview = () => {
         // check lib again, we don't want to change array when lib was changed
         setTotalSize(resp.totalSize)
         pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...resp.items])
+        setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
         setIsLoading(false)
       }
       setLoadingExtra(false)

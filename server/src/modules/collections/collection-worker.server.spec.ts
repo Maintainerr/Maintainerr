@@ -1,4 +1,3 @@
-import { ServarrAction } from '@maintainerr/contracts';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { Repository } from 'typeorm';
@@ -8,12 +7,14 @@ import {
 } from '../../../test/utils/data';
 import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
+import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
 import { SettingsService } from '../settings/settings.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
+import { ServarrAction } from './interfaces/collection.interface';
 
 jest.mock('../../utils/delay');
 
@@ -87,8 +88,9 @@ describe('CollectionWorkerService', () => {
 
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
+      type: EPlexDataType.SHOWS,
     });
-    const collectionMedia = createCollectionMedia(collection, 'show');
+    const collectionMedia = createCollectionMedia(collection);
 
     collectionRepository.find.mockResolvedValue([collection]);
     collectionMediaRepository.find.mockResolvedValue([collectionMedia]);

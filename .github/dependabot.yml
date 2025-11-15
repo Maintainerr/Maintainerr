@@ -3,12 +3,35 @@ updates:
   - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: weekly
-      time: "20:00"
+      interval: daily
     groups:
       nestjs:
         patterns:
           - "@nestjs/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+      eslint:
+        patterns:
+          - "@eslint/js"
+          - "eslint"
     ignore:
       - dependency-name: "@heroicons/react"
       - dependency-name: "chalk"
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: daily
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: weekly

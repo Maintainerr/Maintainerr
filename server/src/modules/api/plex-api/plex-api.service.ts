@@ -1,5 +1,4 @@
-import { EPlexDataType, PlexMetadata } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import cacheManager from '../../api/lib/cache';
 import PlexCommunityApi, {
@@ -7,6 +6,10 @@ import PlexCommunityApi, {
   PlexCommunityWatchList,
   PlexCommunityWatchListResponse,
 } from '../../api/lib/plexCommunityApi';
+import {
+  MaintainerrLogger,
+  MaintainerrLoggerFactory,
+} from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { PlexSettings } from '../../settings/interfaces/plex-settings.interface';
 import { SettingsService } from '../../settings/settings.service';
@@ -14,6 +17,7 @@ import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
 import { BasicResponseDto } from './dto/basic-response.dto';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
+import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
   CreateUpdateCollection,
   PlexCollection,
@@ -30,7 +34,10 @@ import {
   PlexUserAccount,
   SimplePlexUser,
 } from './interfaces/library.interfaces';
-import { PlexMetadataResponse } from './interfaces/media.interface';
+import {
+  PlexMetadata,
+  PlexMetadataResponse,
+} from './interfaces/media.interface';
 import {
   PlexAccountsResponse,
   PlexDevice,
@@ -43,13 +50,15 @@ export class PlexApiService {
   private plexTvClient: PlexTvApi;
   private plexCommunityClient: PlexCommunityApi;
   private machineId: string;
-  private readonly logger = new Logger(PlexApiService.name);
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settings: SettingsService,
+    private readonly logger: MaintainerrLogger,
+    private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
-    this.initialize({});
+    this.logger.setContext(PlexApiService.name);
+    void this.initialize({});
   }
 
   private getDbSettings(): PlexSettings {
@@ -85,10 +94,16 @@ export class PlexApiService {
           token: plexToken,
         });
 
-        this.plexTvClient = new PlexTvApi(plexToken);
-        this.plexCommunityClient = new PlexCommunityApi(plexToken);
+        this.plexTvClient = new PlexTvApi(
+          plexToken,
+          this.loggerFactory.createLogger(),
+        );
+        this.plexCommunityClient = new PlexCommunityApi(
+          plexToken,
+          this.loggerFactory.createLogger(),
+        );
 
-        this.setMachineId();
+        await this.setMachineId();
       } else {
         this.logger.log(
           "Plex API isn't fully initialized, required settings aren't set",
@@ -102,7 +117,7 @@ export class PlexApiService {
 
   public async getStatus() {
     try {
-      const response: PlexStatusResponse = await this.plexClient.queryWithCache(
+      const response: PlexStatusResponse = await this.plexClient.query(
         '/',
         false,
       );
@@ -484,11 +499,9 @@ export class PlexApiService {
         `[Plex] Removed media with ID ${plexId} from Plex library.`,
       );
     } catch (e) {
-      this.logger.warn('Something went wrong while removing media from Plex.', {
-        label: 'Plex API',
-        errorMessage: e.message,
-        plexId,
-      });
+      this.logger.warn(
+        `Something went wrong while removing media ${plexId} from Plex.`,
+      );
       this.logger.debug(e);
     }
   }
@@ -516,7 +529,7 @@ export class PlexApiService {
 
   public async createCollection(params: CreateUpdateCollection) {
     try {
-      const response = await this.plexClient.postQuery({
+      const response = await this.plexClient.postQuery<any>({
         uri: `/library/collections?type=${
           params.type
         }&title=${encodeURIComponent(params.title)}&sectionId=${
@@ -584,12 +597,16 @@ export class PlexApiService {
 
   public async getCollectionChildren(
     collectionId: string,
+    useCache: boolean = true,
   ): Promise<PlexLibraryItem[]> {
     try {
       const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>({
-          uri: `/library/collections/${collectionId}/children`,
-        });
+        await this.plexClient.queryAll<PlexLibraryResponse>(
+          {
+            uri: `/library/collections/${collectionId}/children`,
+          },
+          useCache,
+        );
 
       // Empty collections return no Metadata node
       if (response.MediaContainer.Metadata === undefined) {
@@ -611,7 +628,7 @@ export class PlexApiService {
     childId: string,
   ): Promise<PlexCollection | BasicResponseDto> {
     try {
-      this.forceMachineId();
+      await this.forceMachineId();
       const response: PlexLibraryResponse = await this.plexClient.putQuery({
         // uri: `/library/collections/${collectionId}/items?uri=\/library\/metadata\/${childId}`,
         uri: `/library/collections/${collectionId}/items?uri=server:\/\/${this.machineId}\/com.plexapp.plugins.library\/library\/metadata\/${childId}`,
@@ -673,7 +690,10 @@ export class PlexApiService {
     try {
       // reload requirements, auth token might have changed
       const settings = (await this.settings.getSettings()) as Settings;
-      this.plexTvClient = new PlexTvApi(settings.plex_auth_token);
+      this.plexTvClient = new PlexTvApi(
+        settings.plex_auth_token,
+        this.loggerFactory.createLogger(),
+      );
 
       const devices = (await this.plexTvClient?.getDevices())?.filter(
         (device) => {
@@ -1002,7 +1022,7 @@ export class PlexApiService {
 
   private async forceMachineId() {
     if (!this.machineId) {
-      this.setMachineId();
+      await this.setMachineId();
     }
   }
 }

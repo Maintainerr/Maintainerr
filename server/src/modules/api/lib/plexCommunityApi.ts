@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from './cache';
 
@@ -51,21 +51,20 @@ export interface PlexCommunityWatchHistory {
 export class PlexCommunityApi extends ExternalApiService {
   private authToken: string;
 
-  constructor(authToken: string) {
-    super(
-      'https://community.plex.tv/api',
-      {},
-      {
-        headers: {
-          'X-Plex-Token': authToken,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        nodeCache: cacheManager.getCache('plexcommunity').data,
+  constructor(
+    authToken: string,
+    protected readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(PlexCommunityApi.name);
+    super('https://community.plex.tv/api', {}, logger, {
+      headers: {
+        'X-Plex-Token': authToken,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
-    );
+      nodeCache: cacheManager.getCache('plexcommunity').data,
+    });
     this.authToken = authToken;
-    this.logger = new Logger(PlexCommunityApi.name);
   }
 
   public async query<T = any | undefined>(

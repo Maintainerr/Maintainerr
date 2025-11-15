@@ -1,18 +1,19 @@
-import { EPlexDataType } from '@maintainerr/contracts';
+import { RulesDto } from '../../rules/dtos/rules.dto';
+import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import {
-  Column,
   Entity,
-  JoinColumn,
-  ManyToOne,
+  Column,
+  PrimaryGeneratedColumn,
   OneToMany,
   OneToOne,
-  PrimaryGeneratedColumn,
+  JoinColumn,
+  ManyToOne,
 } from 'typeorm';
+import { CollectionMedia } from './collection_media.entities';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { CollectionLog } from '../../collections/entities/collection_log.entities';
-import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { RadarrSettings } from '../../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../../settings/entities/sonarr_settings.entities';
-import { CollectionMedia } from './collection_media.entities';
 
 @Entity()
 export class Collection {
@@ -58,14 +59,14 @@ export class Collection {
   @Column({ nullable: false, default: false })
   forceOverseerr: boolean;
 
-  @Column({ type: 'integer', nullable: false, default: 1 })
+  @Column({ nullable: false, default: 1 })
   type: EPlexDataType;
 
   @Column({ nullable: false, default: 6 })
   keepLogsForMonths: number;
 
   @OneToOne(() => RuleGroup, (rg) => rg.collection)
-  ruleGroup: RuleGroup;
+  ruleGroup: RulesDto;
 
   @Column({ type: 'date', nullable: true, default: () => 'CURRENT_TIMESTAMP' }) // nullable = true for old collections
   addDate: Date;

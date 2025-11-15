@@ -1,5 +1,5 @@
-import { RuleConstants, RuleType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { RuleConstants, RuleType } from '@maintainerr/contracts';
 
 export interface ICustomIdentifier {
   type: string;

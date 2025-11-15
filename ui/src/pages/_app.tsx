@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { AppProps } from 'next/app'
-import { ToastProvider } from 'react-toast-notifications'
+import { ToastContainer } from 'react-toastify'
 import '../../styles/globals.css'
 import Layout from '../components/Layout'
 import { EventsProvider } from '../contexts/events-context'
@@ -20,9 +20,15 @@ function CoreApp({ Component, pageProps }: AppProps) {
             <SearchContextProvider>
               <Layout>
                 <LibrariesContextProvider>
-                  <ToastProvider>
-                    <Component {...pageProps} />
-                  </ToastProvider>
+                  <ToastContainer
+                    stacked
+                    position="top-right"
+                    autoClose={4500}
+                    hideProgressBar={false}
+                    theme="dark"
+                    closeOnClick
+                  />
+                  <Component {...pageProps} />
                 </LibrariesContextProvider>
               </Layout>
             </SearchContextProvider>

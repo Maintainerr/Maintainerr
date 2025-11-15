@@ -1,7 +1,7 @@
 import {
   createContext,
-  ReactChild,
-  ReactFragment,
+  ReactElement,
+  ReactNode,
   ReactPortal,
   useState,
 } from 'react'
@@ -19,8 +19,10 @@ const SearchContext = createContext({
 export function SearchContextProvider(props: {
   children:
     | boolean
-    | ReactChild
-    | ReactFragment
+    | ReactElement<any>
+    | number
+    | string
+    | Iterable<ReactNode>
     | ReactPortal
     | null
     | undefined

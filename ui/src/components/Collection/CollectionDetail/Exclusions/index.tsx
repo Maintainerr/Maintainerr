@@ -1,11 +1,11 @@
-import { CollectionDto } from '@maintainerr/contracts'
 import _ from 'lodash'
 import { useEffect, useRef, useState } from 'react'
+import { ICollection } from '../..'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import OverviewContent, { IPlexMetadata } from '../../../Overview/Content'
 
 interface ICollectionExclusions {
-  collection: CollectionDto
+  collection: ICollection
   libraryId: number
 }
 
@@ -59,12 +59,11 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
   }, [page])
 
   useEffect(() => {
-    window.addEventListener('scroll', _.debounce(handleScroll.bind(this), 200))
+    const debouncedScroll = _.debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll)
     return () => {
-      window.removeEventListener(
-        'scroll',
-        _.debounce(handleScroll.bind(this), 200),
-      )
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
     }
   }, [])
 

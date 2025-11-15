@@ -1,4 +1,4 @@
-import { RuleDto } from '@maintainerr/contracts';
+import { RuleDto } from './rule.dto';
 
 export class CommunityRule {
   id?: number;

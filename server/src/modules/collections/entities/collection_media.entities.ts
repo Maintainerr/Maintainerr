@@ -5,6 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { Collection } from './collection.entities';
 
 @Entity()
@@ -35,4 +36,8 @@ export class CollectionMedia {
     onDelete: 'CASCADE',
   })
   collection: Collection;
+}
+
+export class CollectionMediaWithPlexData extends CollectionMedia {
+  plexData: PlexMetadata;
 }

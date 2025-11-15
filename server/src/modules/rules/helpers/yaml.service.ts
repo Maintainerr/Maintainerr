@@ -1,16 +1,16 @@
+import { Injectable } from '@nestjs/common';
+import YAML from 'yaml';
 import {
   EPlexDataType,
   PlexDataTypeStrings,
-  RuleDefinitionDto,
-  RuleOperator,
-  RulePossibility,
-} from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
-import YAML from 'yaml';
+} from '../../..//modules/api/plex-api/enums/plex-data-type-enum';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   ICustomIdentifier,
   RuleConstanstService,
 } from '../constants/constants.service';
+import { RuleOperators, RulePossibility } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { ReturnStatus } from '../rules.service';
 
 interface IRuleYamlParent {
@@ -32,10 +32,14 @@ interface IRuleYaml {
 
 @Injectable()
 export class RuleYamlService {
-  private readonly logger = new Logger(RuleYamlService.name);
+  constructor(
+    private readonly ruleConstanstService: RuleConstanstService,
+    private readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(RuleYamlService.name);
+  }
 
-  constructor(private readonly ruleConstanstService: RuleConstanstService) {}
-  public encode(rules: RuleDefinitionDto[], mediaType: number): ReturnStatus {
+  public encode(rules: RuleDto[], mediaType: number): ReturnStatus {
     try {
       let workingSection = { id: 0, rules: [] };
       const sections: ISectionYaml[] = [];
@@ -51,7 +55,7 @@ export class RuleYamlService {
 
         // transform rule and add to workingSection
         workingSection.rules.push({
-          ...(rule.operator ? { operator: RuleOperator[+rule.operator] } : {}),
+          ...(rule.operator ? { operator: RuleOperators[+rule.operator] } : {}),
           firstValue: this.ruleConstanstService.getValueIdentifier(
             rule.firstVal,
           ),
@@ -100,7 +104,7 @@ export class RuleYamlService {
   public decode(yaml: string, mediaType: number): ReturnStatus {
     try {
       const decoded: IRuleYamlParent = YAML.parse(yaml);
-      const rules: RuleDefinitionDto[] = [];
+      const rules: RuleDto[] = [];
       let idRef = 0;
 
       // Break when media types are incompatible
@@ -122,7 +126,7 @@ export class RuleYamlService {
         for (const rule of section[idRef]) {
           rules.push({
             operator: rule.operator
-              ? +RuleOperator[rule.operator.toUpperCase()]
+              ? +RuleOperators[rule.operator.toUpperCase()]
               : null,
             action: +RulePossibility[rule.action.toUpperCase()],
             section: idRef,
@@ -149,7 +153,7 @@ export class RuleYamlService {
         idRef++;
       }
 
-      const returnObj: { mediaType: number; rules: RuleDefinitionDto[] } = {
+      const returnObj: { mediaType: number; rules: RuleDto[] } = {
         mediaType: EPlexDataType[decoded.mediaType],
         rules: rules,
       };

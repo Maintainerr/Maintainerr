@@ -23,7 +23,7 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
 2. Add the remote `upstream`:
 
    ```bash
-   git remote add upstream https://github.com/jorenn92/Maintainerr.git
+   git remote add upstream https://github.com/Maintainerr/Maintainerr.git
    ```
 
 3. Create a new branch:
@@ -73,7 +73,6 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
    - If the build fails with PowerShell, try to use cmd instead.
 
 8. Make your code changes/improvements and test that they work as intended.
-
    - Be sure to follow both the [code](#contributing-code) and [UI text](#ui-text-style) guidelines.
    - Should you need to update your fork (from any recent ORIGIN changes), you can do so by rebasing from `upstream`:
 
@@ -85,8 +84,8 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
 
 ### Contributing Code
 
-- If you are taking on an existing bug or feature ticket, please comment on the [issue](https://github.com/jorenn92/Maintainerr/issues) to avoid multiple people working on the same thing.
-- If you have a major change or large feature to contribute, reach out via [Discussions](https://github.com/jorenn92/Maintainerr/discussions) or our [Discord server](https://discord.gg/WP4ZW2QYwk) first to align with us! It'll save us all time, as the review will be quicker, and we will have more context about your change, allowing us to guide you in the right direction.
+- If you are taking on an existing bug or feature ticket, please comment on the [issue](https://github.com/Maintainerr/Maintainerr/issues) to avoid multiple people working on the same thing.
+- If you have a major change or large feature to contribute, reach out via [Discussions](https://github.com/Maintainerr/Maintainerr/discussions) or our [Discord server](https://discord.gg/WP4ZW2QYwk) first to align with us! It'll save us all time, as the review will be quicker, and we will have more context about your change, allowing us to guide you in the right direction.
   - You can create a "draft" pull request early to get feedback on your work.
 - Large PRs (>500 lines changed, excluding tests) should be split into smaller, manageable parts by stacking your PRs sequentially. This approach makes the review process significantly easier when done in order.
 - Each PR should target one major meaningful change, which allows us to review independent changes separately, rather than having everything blocked on a single review.

@@ -1,32 +1,41 @@
-import { RuleDefinitionDto } from '@maintainerr/contracts'
 import { useRef, useState } from 'react'
+import { IRule } from '..'
 import { PostApiHandler } from '../../../../../utils/ApiHandler'
+import { detectRequiredServices } from '../../../../../utils/CommunityRuleMaps'
 import Alert from '../../../../Common/Alert'
 import Modal from '../../../../Common/Modal'
-
 interface ICommunityRuleUpload {
-  rules: RuleDefinitionDto[]
+  rules: IRule[]
   type: 'movie' | 'show'
+  level?: 'show' | 'season' | 'episode'
   onSubmit: () => void
   onCancel: () => void
 }
 
 const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
-  const nameRef = useRef<any>()
-  const descriptionRef = useRef<any>()
-  const uploadedByRef = useRef<any>()
+  const nameRef = useRef<any>(undefined)
+  const descriptionRef = useRef<any>(undefined)
+  const uploadedByRef = useRef<any>(undefined)
   const [thanksModal, setThanksModal] = useState<boolean>(false)
   const [failed, setFailed] = useState<string>('')
 
   const handleUpload = async () => {
     if (nameRef.current.value && descriptionRef.current.value) {
-      await PostApiHandler(`/rules/community`, {
+      const requiredServices = detectRequiredServices(props.rules)
+      const payload: any = {
         name: nameRef.current.value,
         type: props.type,
         description: descriptionRef.current.value,
         JsonRules: props.rules,
         uploadedBy: uploadedByRef.current.value || undefined,
-      })
+        requiredServices,
+      }
+
+      if (props.type === 'show' && props.level) {
+        payload.level = props.level
+      }
+
+      await PostApiHandler(`/rules/community`, payload)
         .then((resp) => {
           if (resp.code === 1) {
             setThanksModal(true)

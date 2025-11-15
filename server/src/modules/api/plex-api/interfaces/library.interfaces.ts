@@ -1,5 +1,5 @@
-import { Media, PlexActor, PlexGenre } from '@maintainerr/contracts';
 import { PlexCollection, PlexPlaylist } from './collection.interface';
+import { Media } from './media.interface';
 
 export interface PlexLibraryItem {
   ratingKey: string;
@@ -50,6 +50,25 @@ export interface PlexLibraryResponse {
       | PlexCollection
       | PlexPlaylist[];
   };
+}
+export interface PlexGenre {
+  id: number;
+  filter: string;
+  tag: string;
+}
+
+export interface PlexActor {
+  id: number;
+  filter: string;
+  tag: string; // contains name
+  role: string;
+  thumb: string;
+}
+
+export interface PlexRating {
+  image: string;
+  value: number;
+  type: 'audience' | 'critic';
 }
 
 export interface PlexLibrary {

@@ -43,17 +43,16 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
   }
 
   return (
-    <Link legacyBehavior href={props.route}>
-      <a
-        className={`${linkClasses} ${
-          props.currentPath.match(props.regex)
-            ? activeLinkColor
-            : inactiveLinkColor
-        }`}
-        aria-current="page"
-      >
-        {props.children}
-      </a>
+    <Link
+      href={props.route}
+      className={`${linkClasses} ${
+        props.currentPath.match(props.regex)
+          ? activeLinkColor
+          : inactiveLinkColor
+      }`}
+      aria-current="page"
+    >
+      {props.children}
     </Link>
   )
 }
@@ -66,15 +65,16 @@ const SettingsTabs: React.FC<{
   const router = useRouter()
 
   useEffect(() => {
-    window.addEventListener('touchstart', (e) => {
+    const handleTouchStart = (e: TouchEvent) => {
       if (!allEnabled) {
         e.preventDefault()
       }
-    })
-    return () => {
-      window.removeEventListener('touchstart', (e) => e.preventDefault)
     }
-  }, [])
+    window.addEventListener('touchstart', handleTouchStart)
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart)
+    }
+  }, [allEnabled])
 
   return (
     <>

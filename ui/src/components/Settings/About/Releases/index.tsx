@@ -1,9 +1,9 @@
+import dynamic from 'next/dynamic'
+import { useEffect, useState } from 'react'
 import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
-import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
 
 // Dynamic import for markdown
 const ReactMarkdown = dynamic(() => import('react-markdown'), {
@@ -21,8 +21,7 @@ const messages = {
   close: 'Close',
 }
 
-const REPO_RELEASE_API =
-  'https://api.github.com/repos/jorenn92/maintainerr/releases?per_page=10'
+const REPO_RELEASE_API = '/api/app/releases'
 
 interface GitHubRelease {
   url: string
@@ -132,7 +131,11 @@ const Releases = ({ currentVersion }: ReleasesProps) => {
         const releases = await response.json()
         setData(releases)
       } catch (err) {
-        setError(err.message || 'Failed to fetch releases')
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : 'Failed to fetch releases',
+        )
       }
     }
 

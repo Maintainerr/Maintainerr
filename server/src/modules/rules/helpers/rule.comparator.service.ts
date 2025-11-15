@@ -1,40 +1,23 @@
 import {
-  EPlexDataType,
-  RuleDefinitionDto,
-  RuleGroupDto,
-  RuleOperator,
-  RulePossibility,
-  RuleType,
+  IComparisonStatistics,
+  IRuleComparisonResult,
   RuleValueType,
 } from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
+import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { RuleConstanstService } from '../constants/constants.service';
+import {
+  RuleOperators,
+  RulePossibility,
+  RuleType,
+} from '@maintainerr/contracts';
+import { RuleDto } from '../dtos/rule.dto';
+import { RuleDbDto } from '../dtos/ruleDb.dto';
+import { RulesDto } from '../dtos/rules.dto';
 import { ValueGetterService } from '../getter/getter.service';
-
-interface IComparisonStatistics {
-  plexId: number;
-  result: boolean;
-  sectionResults: ISectionComparisonResults[];
-}
-
-interface ISectionComparisonResults {
-  id: number;
-  result: boolean;
-  operator?: string;
-  ruleResults: IRuleComparisonResult[];
-}
-
-interface IRuleComparisonResult {
-  firstValueName: string;
-  firstValue: RuleValueType;
-  secondValueName: string;
-  secondValue: RuleValueType;
-  action: string;
-  operator?: string;
-  result: boolean;
-}
 
 interface IComparatorReturnValue {
   stats: IComparisonStatistics[];
@@ -46,53 +29,56 @@ export class RuleComparatorServiceFactory {
   constructor(
     private readonly valueGetter: ValueGetterService,
     private readonly ruleConstanstService: RuleConstanstService,
+    private readonly logger: MaintainerrLogger,
   ) {}
 
   create(): RuleComparatorService {
     return new RuleComparatorService(
       this.valueGetter,
       this.ruleConstanstService,
+      this.logger,
     );
   }
 }
 
 @Injectable()
 export class RuleComparatorService {
-  private readonly logger = new Logger(RuleComparatorService.name);
   workerData: PlexLibraryItem[];
   resultData: PlexLibraryItem[];
   plexData: PlexLibraryItem[];
   plexDataType: EPlexDataType;
   statistics: IComparisonStatistics[];
   statisticWorker: IRuleComparisonResult[];
-  enabledStats: boolean;
+  abortSignal?: AbortSignal;
 
   constructor(
     private readonly valueGetter: ValueGetterService,
     private readonly ruleConstanstService: RuleConstanstService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(RuleComparatorService.name);
+  }
 
   public async executeRulesWithData(
-    rulegroup: RuleGroupDto,
+    rulegroup: RulesDto,
     plexData: PlexLibraryItem[],
-    withStats = false,
     onRuleProgress?: (processingRule: number) => void,
+    abortSignal?: AbortSignal,
   ): Promise<IComparatorReturnValue> {
     try {
       // prepare
       this.plexData = plexData;
       this.plexDataType = rulegroup.dataType ? rulegroup.dataType : undefined;
-      this.enabledStats = withStats;
       this.workerData = [];
       this.resultData = [];
       this.statistics = [];
       this.statisticWorker = [];
+      this.abortSignal = abortSignal;
 
       // run rules
       let currentSection = 0;
       let sectionActionAnd = false;
 
-      // prepare statistics if needed
       this.prepareStatistics();
 
       let ruleNumber = 0;
@@ -101,43 +87,43 @@ export class RuleComparatorService {
         ruleNumber++;
         onRuleProgress?.(ruleNumber);
 
-        const ruleDefinition = rule.rule;
+        const parsedRule = JSON.parse((rule as RuleDbDto).ruleJson) as RuleDto;
 
         // force operator of very first rule to null, otherwise this might cause corruption
-        if (rule.id === rulegroup.rules[0]?.id) {
-          ruleDefinition.operator = null;
+        if ((rule as RuleDbDto)?.id === (rulegroup.rules[0] as RuleDbDto)?.id) {
+          parsedRule.operator = null;
         }
 
-        if (currentSection === rule.section) {
+        if (currentSection === (rule as RuleDbDto).section) {
           // if section didn't change
           // execute and store in work array
-          await this.executeRule(ruleDefinition, rulegroup);
+          await this.executeRule(parsedRule, rulegroup);
         } else {
-          // set the stat results of the completed section, if needed
+          // set the stat results of the completed section
           this.setStatisticSectionResults();
 
           // handle section action
           this.handleSectionAction(sectionActionAnd);
 
           // save new section action
-          sectionActionAnd = +ruleDefinition.operator === 0;
+          sectionActionAnd = +parsedRule.operator === 0;
           // reset first operator of new section
-          ruleDefinition.operator = null;
+          parsedRule.operator = null;
           // add new section to stats
-          this.addSectionToStatistics(rule.section, sectionActionAnd);
+          this.addSectionToStatistics(
+            (rule as RuleDbDto).section,
+            sectionActionAnd,
+          );
           // Execute the rule and set the new section
-          await this.executeRule(ruleDefinition, rulegroup);
-          currentSection = rule.section;
+          await this.executeRule(parsedRule, rulegroup);
+          currentSection = (rule as RuleDbDto).section;
         }
       }
-      // set the stat results of the last section, if needed
+      // set the stat results of the last section
       this.setStatisticSectionResults();
 
       // handle last section
       this.handleSectionAction(sectionActionAnd);
-
-      // update statistics results when needed
-      this.updateStatisticResults();
 
       // update result for matched media
       this.statistics.forEach((el) => {
@@ -147,6 +133,10 @@ export class RuleComparatorService {
       // return comparatorReturnValue
       return { stats: this.statistics, data: this.resultData };
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        throw e;
+      }
+
       this.logger.log(
         `Something went wrong while running rule ${rulegroup.name}`,
       );
@@ -155,45 +145,39 @@ export class RuleComparatorService {
   }
 
   private updateStatisticResults() {
-    if (this.enabledStats) {
-      this.statistics.forEach((el) => {
-        el.result = this.resultData.some((i) => +i.ratingKey === +el.plexId);
-      });
-    }
+    this.statistics.forEach((el) => {
+      el.result = this.resultData.some((i) => +i.ratingKey === +el.plexId);
+    });
   }
 
   private setStatisticSectionResults() {
     // add the result of the last section. If media is in workerData, section = true.
-    if (this.enabledStats) {
-      this.statistics.forEach((stat) => {
-        if (this.workerData.find((el) => +el.ratingKey === +stat.plexId)) {
-          stat.sectionResults[stat.sectionResults.length - 1].result = true;
-        } else {
-          stat.sectionResults[stat.sectionResults.length - 1].result = false;
-        }
-      });
-    }
+    this.statistics.forEach((stat) => {
+      if (this.workerData.find((el) => +el.ratingKey === +stat.plexId)) {
+        stat.sectionResults[stat.sectionResults.length - 1].result = true;
+      } else {
+        stat.sectionResults[stat.sectionResults.length - 1].result = false;
+      }
+    });
   }
 
   private addSectionToStatistics(id: number, isAND: boolean) {
-    if (this.enabledStats) {
-      this.statistics.forEach((data) => {
-        data.sectionResults.push({
-          id: id,
-          result: undefined,
-          operator: isAND ? 'AND' : 'OR',
-          ruleResults: [],
-        });
+    this.statistics.forEach((data) => {
+      data.sectionResults.push({
+        id: id,
+        result: undefined,
+        operator: isAND ? 'AND' : 'OR',
+        ruleResults: [],
       });
-    }
+    });
   }
 
-  private async executeRule(rule: RuleDefinitionDto, ruleGroup: RuleGroupDto) {
+  private async executeRule(rule: RuleDto, ruleGroup: RulesDto) {
     let data: PlexLibraryItem[];
     let firstVal: RuleValueType;
     let secondVal: RuleValueType;
 
-    if (rule.operator === null || +rule.operator === +RuleOperator.OR) {
+    if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
       data = _.cloneDeep(this.plexData);
     } else {
       data = _.cloneDeep(this.workerData);
@@ -208,7 +192,10 @@ export class RuleComparatorService {
         ruleGroup,
         this.plexDataType,
       );
+      this.abortSignal?.throwIfAborted();
+
       secondVal = await this.getSecondValue(rule, data[i], ruleGroup, firstVal);
+      this.abortSignal?.throwIfAborted();
 
       if (
         (firstVal !== undefined || null) &&
@@ -231,7 +218,7 @@ export class RuleComparatorService {
         );
 
         // alter workerData
-        if (rule.operator === null || +rule.operator === +RuleOperator.OR) {
+        if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
           if (comparisonResult) {
             // add to workerdata if not yet available
             if (
@@ -252,9 +239,9 @@ export class RuleComparatorService {
   }
 
   private async getSecondValue(
-    rule: RuleDefinitionDto,
+    rule: RuleDto,
     data: PlexLibraryItem,
-    rulegroup: RuleGroupDto,
+    rulegroup: RulesDto,
     firstVal: RuleValueType,
   ): Promise<RuleValueType> {
     let secondVal: RuleValueType;
@@ -312,65 +299,48 @@ export class RuleComparatorService {
   }
 
   private prepareStatistics() {
-    if (this.enabledStats) {
-      this.plexData.forEach((data) => {
-        this.statistics.push({
-          plexId: +data.ratingKey,
-          result: false,
-          sectionResults: [
-            {
-              id: 0,
-              result: undefined,
-              ruleResults: [],
-            },
-          ],
-        });
+    this.plexData.forEach((data) => {
+      this.statistics.push({
+        plexId: +data.ratingKey,
+        result: false,
+        sectionResults: [
+          {
+            id: 0,
+            result: undefined,
+            ruleResults: [],
+          },
+        ],
       });
-    }
+    });
   }
 
   private addStatistictoParent(
-    rule: RuleDefinitionDto,
+    rule: RuleDto,
     firstVal: RuleValueType,
     secondVal: RuleValueType,
     plexId: number,
     result: boolean,
   ) {
-    if (this.enabledStats) {
-      const index = this.statistics.findIndex((el) => +el.plexId === +plexId);
-      const sectionIndex = this.statistics[index].sectionResults.length - 1;
+    const index = this.statistics.findIndex((el) => +el.plexId === +plexId);
+    const lastSectionIndex = this.statistics[index].sectionResults.length - 1;
 
-      // push result to currently last section
-      this.statistics[index].sectionResults[sectionIndex].ruleResults.push({
-        operator:
-          rule.operator === null || rule.operator === undefined
-            ? RuleOperator[1]
-            : RuleOperator[rule.operator],
-        action: RulePossibility[rule.action].toLowerCase(),
-        firstValueName: this.ruleConstanstService.getValueHumanName(
-          rule.firstVal,
-        ),
-        firstValue: firstVal,
-        secondValueName: rule.lastVal
-          ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-          : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
-              .type,
-        secondValue: secondVal,
-        result: result,
-      });
-
-      // If it's the first rule of a section (but not the first one) then add the operator to the sectionResult
-      if (
-        index > 0 &&
-        this.statistics[index].sectionResults[sectionIndex].ruleResults
-          .length === 1
-      ) {
-        this.statistics[index].sectionResults[sectionIndex].operator =
-          rule.operator === null || rule.operator === undefined
-            ? RuleOperator[1]
-            : RuleOperator[rule.operator];
-      }
-    }
+    // push result to currently last section
+    this.statistics[index].sectionResults[lastSectionIndex].ruleResults.push({
+      ...(rule.operator != null
+        ? { operator: RuleOperators[rule.operator] }
+        : undefined),
+      action: RulePossibility[rule.action].toLowerCase(),
+      firstValueName: this.ruleConstanstService.getValueHumanName(
+        rule.firstVal,
+      ),
+      firstValue: firstVal,
+      secondValueName: rule.lastVal
+        ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
+        : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
+            .type,
+      secondValue: secondVal,
+      result: result,
+    });
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {
@@ -513,12 +483,34 @@ export class RuleComparatorService {
       }
     }
 
+    if (action === RulePossibility.CONTAINS_ALL) {
+      try {
+        if (!Array.isArray(val2)) {
+          return (val1 as unknown[])?.includes(val2);
+        } else {
+          if (val2.length > 0) {
+            return val2.every((el) => {
+              return (val1 as unknown[])?.includes(el);
+            });
+          } else {
+            return false;
+          }
+        }
+      } catch (_err) {
+        return null;
+      }
+    }
+
     if (action === RulePossibility.NOT_CONTAINS) {
       return !this.doRuleAction(val1, val2, RulePossibility.CONTAINS);
     }
 
     if (action === RulePossibility.NOT_CONTAINS_PARTIAL) {
       return !this.doRuleAction(val1, val2, RulePossibility.CONTAINS_PARTIAL);
+    }
+
+    if (action === RulePossibility.NOT_CONTAINS_ALL) {
+      return !this.doRuleAction(val1, val2, RulePossibility.CONTAINS_ALL);
     }
 
     if (action === RulePossibility.BEFORE) {

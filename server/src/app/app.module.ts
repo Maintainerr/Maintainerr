@@ -2,8 +2,10 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { GracefulShutdownModule } from '@tygra/nestjs-graceful-shutdown';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { ExternalApiModule } from '../modules/api/external-api/external-api.module';
+import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
 import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';
 import { JellyseerrApiService } from '../modules/api/jellyseerr-api/jellyseerr-api.service';
 import { OverseerrApiModule } from '../modules/api/overseerr-api/overseerr-api.module';
@@ -17,6 +19,8 @@ import { TmdbApiModule } from '../modules/api/tmdb-api/tmdb.module';
 import { CollectionsModule } from '../modules/collections/collections.module';
 import { EventsModule } from '../modules/events/events.module';
 import { LogsModule } from '../modules/logging/logs.module';
+import { NotificationsModule } from '../modules/notifications/notifications.module';
+import { NotificationService } from '../modules/notifications/notifications.service';
 import { RulesModule } from '../modules/rules/rules.module';
 import { SettingsModule } from '../modules/settings/settings.module';
 import { SettingsService } from '../modules/settings/settings.service';
@@ -26,6 +30,7 @@ import ormConfig from './config/typeOrmConfig';
 
 @Module({
   imports: [
+    GracefulShutdownModule.forRoot(),
     TypeOrmModule.forRoot(ormConfig),
     EventEmitterModule.forRoot({
       wildcard: true,
@@ -34,6 +39,7 @@ import ormConfig from './config/typeOrmConfig';
     SettingsModule,
     PlexApiModule,
     ExternalApiModule,
+    GitHubApiModule,
     TmdbApiModule,
     ServarrApiModule,
     OverseerrApiModule,
@@ -41,6 +47,7 @@ import ormConfig from './config/typeOrmConfig';
     JellyseerrApiModule,
     RulesModule,
     CollectionsModule,
+    NotificationsModule,
     EventsModule,
   ],
   controllers: [AppController],
@@ -58,14 +65,18 @@ export class AppModule implements OnModuleInit {
     private readonly plexApi: PlexApiService,
     private readonly overseerApi: OverseerrApiService,
     private readonly tautulliApi: TautulliApiService,
+    private readonly notificationService: NotificationService,
     private readonly jellyseerrApi: JellyseerrApiService,
   ) {}
   async onModuleInit() {
-    // Initialize stuff needing settings here.. Otherwise problems
+    // Initialize modules requiring settings
     await this.settings.init();
     await this.plexApi.initialize({});
-    await this.overseerApi.init();
-    await this.tautulliApi.init();
-    await this.jellyseerrApi.init();
+    this.overseerApi.init();
+    this.tautulliApi.init();
+    this.jellyseerrApi.init();
+
+    // intialize notification agents
+    await this.notificationService.registerConfiguredAgents();
   }
 }

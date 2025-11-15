@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   RadarrInfo,
@@ -7,17 +7,20 @@ import {
 } from '../interfaces/radarr.interface';
 
 export class RadarrApi extends ServarrApi<{ movieId: number }> {
-  constructor({
-    url,
-    apiKey,
-    cacheName,
-  }: {
-    url: string;
-    apiKey: string;
-    cacheName?: string;
-  }) {
-    super({ url, apiKey, cacheName, apiName: 'Radarr' });
-    this.logger = new Logger(RadarrApi.name);
+  constructor(
+    {
+      url,
+      apiKey,
+      cacheName,
+    }: {
+      url: string;
+      apiKey: string;
+      cacheName?: string;
+    },
+    protected readonly logger: MaintainerrLogger,
+  ) {
+    super({ url, apiKey, cacheName }, logger);
+    this.logger.setContext(ServarrApi.name);
   }
 
   public getMovies = async (): Promise<RadarrMovie[]> => {
@@ -36,8 +39,8 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       const response = await this.get<RadarrMovie>(`/movie/${id}`);
       return response;
     } catch (e) {
-      this.logger.warn(`[Radarr] Failed to retrieve movie with id ${id}`);
-      this.logger.debug(`[Radarr] Failed to retrieve movie: ${e.message}`);
+      this.logger.warn(`Failed to retrieve movie with id ${id}`);
+      this.logger.debug(`Failed to retrieve movie: ${e.message}`);
     }
   };
 
@@ -94,9 +97,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
         const movieFiles: RadarrMovieFile[] = await this.get(
           `moviefile?movieId=${movieId}`,
         );
-        movieFiles.forEach(
-          async (e) => await this.runDelete(`moviefile/${e.id}`),
-        );
+        for (const movieFile of movieFiles) {
+          await this.runDelete(`moviefile/${movieFile.id}`);
+        }
       }
     } catch (e) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");

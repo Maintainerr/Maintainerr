@@ -51,7 +51,7 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
           title={
             props.thumbsActive
               ? ''
-              : 'You Already submitted karma for this rule'
+              : 'You have already submitted karma for this rule.'
           }
         >
           <ChevronUpIcon
@@ -83,6 +83,9 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
       </td>
       <td className="px-4 py-4 text-center text-sm leading-5 text-white">
         {props.rule.uploadedBy ? props.rule.uploadedBy : '?'}
+      </td>
+      <td className="px-4 py-4 text-center text-sm leading-5 text-white">
+        {props.rule.appVersion ? props.rule.appVersion : '?'}
       </td>
     </tr>
   )

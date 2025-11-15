@@ -1,30 +1,31 @@
+import { Injectable } from '@nestjs/common';
+import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
+import { ServarrService } from '../../api/servarr-api/servarr.service';
+import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   Application,
   Property,
   RuleConstants,
-  RuleGroupDto,
 } from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
-import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
-import { ServarrService } from '../../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
+import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class RadarrGetterService {
   plexProperties: Property[];
-  private readonly logger = new Logger(RadarrGetterService.name);
-
   constructor(
     private readonly servarrService: ServarrService,
     private readonly tmdbIdHelper: TmdbIdService,
+    private readonly logger: MaintainerrLogger,
   ) {
+    logger.setContext(RadarrGetterService.name);
     const ruleConstanst = new RuleConstants();
     this.plexProperties = ruleConstanst.applications.find(
       (el) => el.id === Application.RADARR,
     ).props;
   }
 
-  async get(id: number, libItem: PlexLibraryItem, ruleGroup?: RuleGroupDto) {
+  async get(id: number, libItem: PlexLibraryItem, ruleGroup?: RulesDto) {
     if (!ruleGroup.collection?.radarrSettingsId) {
       this.logger.error(
         `No Radarr server configured for ${ruleGroup.collection?.title}`,
@@ -84,11 +85,7 @@ export class RadarrGetterService {
             return null;
           }
           case 'monitored': {
-            return movieResponse.monitored
-              ? movieResponse.monitored
-                ? 1
-                : 0
-              : null;
+            return movieResponse.monitored ? 1 : 0;
           }
           case 'tags': {
             const movieTags = movieResponse.tags;
@@ -149,6 +146,17 @@ export class RadarrGetterService {
           }
           case 'imdbRatingVotes': {
             return movieResponse.ratings.imdb?.votes ?? null;
+          }
+          case 'fileQualityCutoffMet': {
+            return movieResponse.movieFile?.qualityCutoffNotMet != null
+              ? !movieResponse.movieFile.qualityCutoffNotMet
+              : false;
+          }
+          case 'fileQualityName': {
+            return movieResponse.movieFile?.quality?.quality?.name ?? null;
+          }
+          case 'fileAudioLanguages': {
+            return movieResponse.movieFile?.mediaInfo?.audioLanguages ?? null;
           }
         }
       } else {

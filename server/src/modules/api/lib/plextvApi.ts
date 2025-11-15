@@ -1,9 +1,8 @@
-import { Logger } from '@nestjs/common';
+import xml2js, { parseStringPromise } from 'xml2js';
+import { PlexDevice } from '../../api/plex-api/interfaces/server.interface';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from './cache';
-import { parseStringPromise } from 'xml2js';
-import { PlexDevice } from '../../api/plex-api/interfaces/server.interface';
-import xml2js from 'xml2js';
 
 interface PlexAccountResponse {
   user: PlexUser;
@@ -130,21 +129,20 @@ export interface PlexWatchlistItem {
 export class PlexTvApi extends ExternalApiService {
   private authToken: string;
 
-  constructor(authToken: string) {
-    super(
-      'https://plex.tv',
-      {},
-      {
-        headers: {
-          'X-Plex-Token': authToken,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        nodeCache: cacheManager.getCache('plextv').data,
+  constructor(
+    authToken: string,
+    protected readonly logger: MaintainerrLogger,
+  ) {
+    logger.setContext(PlexTvApi.name);
+    super('https://plex.tv', {}, logger, {
+      headers: {
+        'X-Plex-Token': authToken,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
-    );
+      nodeCache: cacheManager.getCache('plextv').data,
+    });
     this.authToken = authToken;
-    this.logger = new Logger(PlexTvApi.name);
   }
 
   public async getUser(): Promise<PlexUser> {
@@ -157,7 +155,6 @@ export class PlexTvApi extends ExternalApiService {
     } catch (e) {
       this.logger.error(
         `Something went wrong while getting the account from plex.tv: ${e.message}`,
-        { label: 'Plex.tv API' },
       );
       throw new Error('Invalid auth token');
     }
@@ -235,10 +232,7 @@ export class PlexTvApi extends ExternalApiService {
         items: filteredList,
       };
     } catch (e) {
-      this.logger.error('Failed to retrieve watchlist items', {
-        label: 'Plex.TV Metadata API',
-        errorMessage: e.message,
-      });
+      this.logger.error(`Failed to retrieve watchlist items: ${e.message}`);
       return {
         offset,
         size,

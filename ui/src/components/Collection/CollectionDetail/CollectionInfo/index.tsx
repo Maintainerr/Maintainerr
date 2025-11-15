@@ -4,30 +4,35 @@ import {
   SortAscendingIcon,
   SortDescendingIcon,
 } from '@heroicons/react/outline'
-import { CollectionDto } from '@maintainerr/contracts'
+import { DocumentTextIcon } from '@heroicons/react/solid'
+import {
+  CollectionLogDto,
+  CollectionLogMetaMediaAddedByRule,
+  CollectionLogMetaMediaRemovedByRule,
+  isMetaActionedByRule,
+} from '@maintainerr/contracts'
+import { Editor } from '@monaco-editor/react'
 import _ from 'lodash'
 import { useEffect, useRef, useState } from 'react'
+import YAML from 'yaml'
+import { ICollection } from '../..'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import Alert from '../../../Common/Alert'
 import Badge from '../../../Common/Badge'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../../Common/LoadingSpinner'
+import Modal from '../../../Common/Modal'
 import Table from '../../../Common/Table'
 
 interface ICollectionInfo {
-  collection: CollectionDto
-}
-
-interface ICollectionInfoLog {
-  timestamp: Date
-  message: string
-  type: ECollectionLogType
+  collection: ICollection
 }
 
 interface ICollectionInfoLogApiResponse {
   totalSize: number
-  items: ICollectionInfoLog[]
+  items: CollectionLogDto[]
 }
 
 export enum ECollectionLogType {
@@ -37,12 +42,12 @@ export enum ECollectionLogType {
 }
 
 const CollectionInfo = (props: ICollectionInfo) => {
-  const [data, setData] = useState<ICollectionInfoLog[]>([])
+  const [data, setData] = useState<CollectionLogDto[]>([])
   const [page, setPage] = useState(0)
   const pageData = useRef<number>(0)
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
-  const dataRef = useRef<ICollectionInfoLog[]>([])
+  const dataRef = useRef<CollectionLogDto[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
   const [searchFilter, debouncedSearchFilter, setSearchFilter] =
@@ -51,12 +56,23 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const [currentFilter, setCurrentFilter] = useState<ECollectionLogType | -1>(
     -1,
   )
+  const [showMeta, setShowMeta] =
+    useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
 
   const fetchAmount = 25
 
   useEffect(() => {
     // Initial first fetch
     setPage(1)
+
+    // Cleanup on unmount
+    return () => {
+      // Clear all data to prevent memory leaks
+      setData([])
+      dataRef.current = []
+      totalSizeRef.current = 999
+      pageData.current = 0
+    }
   }, [])
 
   useEffect(() => {
@@ -93,12 +109,11 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }
 
   useEffect(() => {
-    window.addEventListener('scroll', _.debounce(handleScroll.bind(this), 200))
+    const debouncedScroll = _.debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll)
     return () => {
-      window.removeEventListener(
-        'scroll',
-        _.debounce(handleScroll.bind(this), 200),
-      )
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
     }
   }, [])
 
@@ -107,7 +122,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
       loadingExtraRef.current = true
     }
 
-    const resp: ICollectionInfoLogApiResponse = await GetApiHandler(
+    const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
       `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
         debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
       }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
@@ -154,173 +169,211 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }
 
   return (
-    <div className="w-full">
-      <ul className="collection-info">
-        <li key={`collection-info-added`}>
-          <span>Date Added</span>
-          <p className="collection-info-item">
-            {props.collection.addDate
-              ? new Date(props.collection.addDate).toLocaleDateString()
-              : '-'}
-          </p>
-        </li>
-        <li key={`collection-info-handled`}>
-          <span>Handled media items</span>
-          <p className="collection-info-item">
-            {props.collection.handledMediaAmount}
-          </p>
-        </li>
-        <li key={`collection-info-duration`}>
-          <span>Last duration</span>
-          <p className="collection-info-item">
-            {props.collection.lastDurationInSeconds
-              ? formatDuration(props.collection.lastDurationInSeconds)
-              : '-'}
-          </p>
-        </li>
-      </ul>
+    <>
+      <div className="w-full">
+        <ul className="collection-info">
+          <li key={`collection-info-added`}>
+            <span>Date Added</span>
+            <p className="collection-info-item">
+              {props.collection.addDate
+                ? new Date(props.collection.addDate).toLocaleDateString()
+                : '-'}
+            </p>
+          </li>
+          <li key={`collection-info-handled`}>
+            <span>Handled media items</span>
+            <p className="collection-info-item">
+              {props.collection.handledMediaAmount}
+            </p>
+          </li>
+          <li key={`collection-info-duration`}>
+            <span>Last duration</span>
+            <p className="collection-info-item">
+              {props.collection.lastDurationInSeconds
+                ? formatDuration(props.collection.lastDurationInSeconds)
+                : '-'}
+            </p>
+          </li>
+        </ul>
 
-      <div className="heading mt-5 font-bold text-zinc-300">
-        <h2>{'Logs'}</h2>
-      </div>
-
-      <div className="w-full pl-2 pr-2">
-        {/* full container */}
-        <div className="mb-2 flex flex-grow flex-col sm:flex-grow-0 sm:flex-row sm:justify-end">
-          {/* search */}
-          <div className="mr-2 mt-4 flex w-full flex-grow sm:w-1/2">
-            <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
-              <SearchIcon className="h-6 w-6" />
-            </span>
-            <input
-              type="text"
-              className="rounded-r-only"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value as string)}
-            />
-          </div>
-
-          {/* sort/filter container */}
-          <div className="mb-2 flex flex-1 flex-row justify-between sm:mb-0 sm:flex-none">
-            {/* sort */}
-            <div className="mr-2 mt-4 flex flex-grow sm:w-1/2">
-              <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
-                {currentSort === 'DESC' ? (
-                  <SortDescendingIcon className="h-6 w-6" />
-                ) : (
-                  <SortAscendingIcon className="h-6 w-6" />
-                )}
-              </span>
-              <select
-                id="sort"
-                name="sort"
-                onChange={(e) => {
-                  setCurrentSort(e.target.value as 'ASC' | 'DESC')
-                }}
-                value={currentSort}
-                className="rounded-r-only"
-              >
-                <option value="DESC">{'Descending'}</option>
-                <option value="ASC">{'Ascending'}</option>
-              </select>
-            </div>
-
-            {/* filter */}
-            <div className="mt-4 flex flex-grow sm:w-1/2">
-              <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
-                <FilterIcon className="h-6 w-6" />
-              </span>
-              <select
-                id="filter"
-                name="filter"
-                onChange={(e) => {
-                  setCurrentFilter(+e.target.value as ECollectionLogType)
-                }}
-                value={currentFilter}
-                className="rounded-r-only"
-              >
-                <option key={`filter-option-all`} value={-1}>
-                  -
-                </option>
-                {Object.values(ECollectionLogType)
-                  .filter((value) => typeof value === 'number')
-                  .map((value, index) => {
-                    return (
-                      <option key={`filter-option-${index}`} value={+value}>
-                        {ECollectionLogType[+value].charAt(0).toUpperCase() +
-                          ECollectionLogType[+value].slice(1).toLowerCase()}
-                      </option>
-                    )
-                  })}
-              </select>
-            </div>
-          </div>
+        <div className="heading mt-5 font-bold text-zinc-300">
+          <h2>{'Logs'}</h2>
         </div>
 
-        {/* data */}
-        <Table>
-          <thead>
-            <tr>
-              <Table.TH>{'DATE'}</Table.TH>
-              <Table.TH>{'LABEL'}</Table.TH>
-              <Table.TH>{'EVENT'}</Table.TH>
-            </tr>
-          </thead>
-          <Table.TBody>
-            {loadingRef.current ? (
+        <div className="w-full pl-2 pr-2">
+          {/* full container */}
+          <div className="mb-2 flex flex-grow flex-col sm:flex-grow-0 sm:flex-row sm:justify-end">
+            {/* search */}
+            <div className="mr-2 mt-4 flex w-full flex-grow sm:w-1/2">
+              <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
+                <SearchIcon className="h-6 w-6" />
+              </span>
+              <input
+                type="text"
+                className="rounded-r-only"
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value as string)}
+              />
+            </div>
+
+            {/* sort/filter container */}
+            <div className="mb-2 flex flex-1 flex-row justify-between sm:mb-0 sm:flex-none">
+              {/* sort */}
+              <div className="mr-2 mt-4 flex flex-grow sm:w-1/2">
+                <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
+                  {currentSort === 'DESC' ? (
+                    <SortDescendingIcon className="h-6 w-6" />
+                  ) : (
+                    <SortAscendingIcon className="h-6 w-6" />
+                  )}
+                </span>
+                <select
+                  id="sort"
+                  name="sort"
+                  onChange={(e) => {
+                    setCurrentSort(e.target.value as 'ASC' | 'DESC')
+                  }}
+                  value={currentSort}
+                  className="rounded-r-only"
+                >
+                  <option value="DESC">{'Descending'}</option>
+                  <option value="ASC">{'Ascending'}</option>
+                </select>
+              </div>
+
+              {/* filter */}
+              <div className="mt-4 flex flex-grow sm:w-1/2">
+                <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
+                  <FilterIcon className="h-6 w-6" />
+                </span>
+                <select
+                  id="filter"
+                  name="filter"
+                  onChange={(e) => {
+                    setCurrentFilter(+e.target.value as ECollectionLogType)
+                  }}
+                  value={currentFilter}
+                  className="rounded-r-only"
+                >
+                  <option key={`filter-option-all`} value={-1}>
+                    -
+                  </option>
+                  {Object.values(ECollectionLogType)
+                    .filter((value) => typeof value === 'number')
+                    .map((value, index) => {
+                      return (
+                        <option key={`filter-option-${index}`} value={+value}>
+                          {ECollectionLogType[+value].charAt(0).toUpperCase() +
+                            ECollectionLogType[+value].slice(1).toLowerCase()}
+                        </option>
+                      )
+                    })}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* data */}
+          <Table>
+            <thead>
               <tr>
-                <Table.TD colSpan={3} noPadding>
-                  <LoadingSpinner />
-                </Table.TD>
+                <Table.TH>{'DATE'}</Table.TH>
+                <Table.TH>{'LABEL'}</Table.TH>
+                <Table.TH>{'EVENT'}</Table.TH>
+                <Table.TH></Table.TH>
               </tr>
-            ) : (
-              <>
-                {data.map((row: ICollectionInfoLog, index: number) => {
-                  return (
-                    <tr key={`log-list-${index}`}>
-                      {/* timestamp */}
-                      <Table.TD className="text-gray-300">
-                        {new Date(row.timestamp).toLocaleString()}
-                      </Table.TD>
+            </thead>
+            <Table.TBody>
+              {loadingRef.current ? (
+                <tr>
+                  <Table.TD colSpan={3} noPadding>
+                    <LoadingSpinner />
+                  </Table.TD>
+                </tr>
+              ) : (
+                <>
+                  {data.map((row: CollectionLogDto, index: number) => {
+                    return (
+                      <tr key={`log-list-${index}`}>
+                        {/* timestamp */}
+                        <Table.TD className="text-gray-300">
+                          {new Date(row.timestamp).toLocaleString()}
+                        </Table.TD>
 
-                      {/* label */}
-                      <Table.TD className="text-gray-300">
-                        <Badge
-                          badgeType={
-                            row.type === ECollectionLogType.COLLECTION
-                              ? 'danger'
-                              : row.type === ECollectionLogType.MEDIA
-                                ? 'warning'
-                                : row.type === ECollectionLogType.RULES
-                                  ? 'success'
-                                  : 'default'
-                          }
-                        >
-                          {ECollectionLogType[row.type].toUpperCase()}
-                        </Badge>
-                      </Table.TD>
+                        {/* label */}
+                        <Table.TD className="text-gray-300">
+                          <Badge
+                            badgeType={
+                              row.type === ECollectionLogType.COLLECTION
+                                ? 'danger'
+                                : row.type === ECollectionLogType.MEDIA
+                                  ? 'warning'
+                                  : row.type === ECollectionLogType.RULES
+                                    ? 'success'
+                                    : 'default'
+                            }
+                          >
+                            {ECollectionLogType[row.type].toUpperCase()}
+                          </Badge>
+                        </Table.TD>
 
-                      {/* message */}
-                      <Table.TD className="text-gray-300">
-                        {row.message}
+                        {/* message */}
+                        <Table.TD className="text-gray-300">
+                          {row.message}
+                          {row.meta && row.type == ECollectionLogType.MEDIA && (
+                            <>
+                              {' '}
+                              {[
+                                'media_added_manually',
+                                'media_removed_manually',
+                              ].includes(row.meta.type) && (
+                                <span className="text-gray-400">(manual)</span>
+                              )}
+                            </>
+                          )}
+                        </Table.TD>
+                        <Table.TD className="text-right">
+                          {row.meta &&
+                            row.type == ECollectionLogType.MEDIA &&
+                            isMetaActionedByRule(row.meta) && (
+                              <button
+                                type="button"
+                                className="rounded bg-amber-600 px-2 py-1 text-white shadow-md hover:bg-amber-500"
+                                title="View Metadata"
+                                onClick={() => {
+                                  if (!isMetaActionedByRule(row.meta)) return
+
+                                  setShowMeta({
+                                    meta: row.meta,
+                                    title: row.message,
+                                  })
+                                }}
+                              >
+                                <DocumentTextIcon className="h-5 w-5" />
+                              </button>
+                            )}
+                        </Table.TD>
+                      </tr>
+                    )
+                  })}
+
+                  {loadingExtraRef.current ? (
+                    <tr>
+                      <Table.TD colSpan={2} noPadding>
+                        <SmallLoadingSpinner className="m-auto mb-2 mt-2 w-8" />
                       </Table.TD>
                     </tr>
-                  )
-                })}
-
-                {loadingExtraRef.current ? (
-                  <tr>
-                    <Table.TD colSpan={2} noPadding>
-                      <SmallLoadingSpinner className="m-auto mb-2 mt-2 w-8" />
-                    </Table.TD>
-                  </tr>
-                ) : undefined}
-              </>
-            )}
-          </Table.TBody>
-        </Table>
+                  ) : undefined}
+                </>
+              )}
+            </Table.TBody>
+          </Table>
+        </div>
       </div>
-    </div>
+      {showMeta ? (
+        <LogMetaModal onClose={() => setShowMeta(undefined)} {...showMeta} />
+      ) : undefined}
+    </>
   )
 }
 
@@ -349,3 +402,52 @@ const formatDuration = (seconds: number) => {
 }
 
 export default CollectionInfo
+
+interface LogMetaModalProps {
+  onClose: () => void
+  title: string
+  meta: CollectionLogMetaMediaAddedByRule | CollectionLogMetaMediaRemovedByRule
+}
+
+const LogMetaModal = (props: LogMetaModalProps) => {
+  const editorRef = useRef(undefined)
+
+  function handleEditorDidMount(editor: any, monaco: any) {
+    editorRef.current = editor
+  }
+
+  return (
+    <div className={'h-full w-full'}>
+      <Modal
+        loading={false}
+        backgroundClickable={false}
+        onOk={props.onClose}
+        okText={'Close'}
+        okButtonType={'primary'}
+        title={'Metadata'}
+      >
+        <div className="h-[80vh] overflow-hidden">
+          <div className="mt-1">
+            <Alert type="info">
+              Below are the rule evaluation results that triggered this action.
+              The output follows the same format as Test Media. Refer to the
+              documentation for guidance on interpreting this output.
+            </Alert>
+          </div>
+          <label htmlFor={`editor-field`} className="text-label mb-3">
+            Output
+          </label>
+          <div className="editor-container h-full">
+            <Editor
+              options={{ readOnly: true, minimap: { enabled: false } }}
+              defaultLanguage="yaml"
+              theme="vs-dark"
+              value={YAML.stringify(props.meta.data)}
+              onMount={handleEditorDidMount}
+            />
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}

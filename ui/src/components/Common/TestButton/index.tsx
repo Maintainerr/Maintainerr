@@ -1,12 +1,13 @@
 import { BeakerIcon, CheckIcon, ExclamationIcon } from '@heroicons/react/solid'
 import { FormEvent, useState } from 'react'
-import GetApiHandler from '../../../utils/ApiHandler'
+import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
 import Button from '../Button'
 import { SmallLoadingSpinner } from '../LoadingSpinner'
 
-interface ITestButton {
+interface ITestButton<T> {
+  payload?: T
   testUrl: string
-  onClick?: (result: { status: boolean; message: string }) => void
+  onTestComplete?: (result: { status: boolean; message: string }) => void
 }
 
 interface TestStatus {
@@ -20,7 +21,7 @@ interface BasicResponse {
   message: string
 }
 
-const TestButton = (props: ITestButton) => {
+const TestButton = <T,>(props: ITestButton<T>) => {
   const [loading, setLoading] = useState<boolean>(false)
   const [clicked, setClicked] = useState<TestStatus>({
     clicked: false,
@@ -29,9 +30,14 @@ const TestButton = (props: ITestButton) => {
 
   const performTest = async (e: FormEvent) => {
     setLoading(true)
-    await GetApiHandler(props.testUrl).then((resp: BasicResponse) => {
+
+    const handler = props.payload
+      ? PostApiHandler(props.testUrl, props.payload)
+      : GetApiHandler(props.testUrl)
+
+    await handler.then((resp: BasicResponse) => {
       setClicked({ clicked: true, status: resp.code == 1 ? true : false })
-      props.onClick?.({
+      props.onTestComplete?.({
         status: resp.code === 1 ? true : false,
         message: resp.message,
       })

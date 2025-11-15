@@ -1,30 +1,34 @@
-import {
-  Application,
-  EPlexDataType,
-  RuleConstants,
-  RuleDefinitionDto,
-  RuleDto,
-  RuleGroupDto,
-  RuleGroupUpdateDto,
-} from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { ECollectionLogType } from '@maintainerr/contracts';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
+import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
-import { ECollectionLogType } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { AddCollectionMedia } from '../collections/interfaces/collection-media.interface';
+import { AddRemoveCollectionMedia } from '../collections/interfaces/collection-media.interface';
+import { MaintainerrLogger } from '../logging/logs.service';
+import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
+import {
+  Application,
+  Property,
+  RuleConstants,
+  RulePossibility,
+  RuleType,
+} from '@maintainerr/contracts';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionContextDto } from './dtos/exclusion.dto';
+import { RuleDto } from './dtos/rule.dto';
+import { RuleDbDto } from './dtos/ruleDb.dto';
+import { RulesDto } from './dtos/rules.dto';
 import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
@@ -40,7 +44,6 @@ export interface ReturnStatus {
 
 @Injectable()
 export class RulesService {
-  private readonly logger = new Logger(RulesService.name);
   private readonly communityUrl = 'https://community.maintainerr.info';
 
   ruleConstants: RuleConstants;
@@ -49,8 +52,6 @@ export class RulesService {
     private readonly rulesRepository: Repository<Rules>,
     @InjectRepository(RuleGroup)
     private readonly ruleGroupRepository: Repository<RuleGroup>,
-    @InjectRepository(Collection)
-    private readonly collectionRepository: Repository<Collection>,
     @InjectRepository(CollectionMedia)
     private readonly collectionMediaRepository: Repository<CollectionMedia>,
     @InjectRepository(CommunityRuleKarma)
@@ -68,7 +69,9 @@ export class RulesService {
     private readonly connection: DataSource,
     private readonly ruleYamlService: RuleYamlService,
     private readonly ruleComparatorServiceFactory: RuleComparatorServiceFactory,
+    private readonly logger: MaintainerrLogger,
   ) {
+    logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
   }
   async getRuleConstants(): Promise<RuleConstants> {
@@ -116,44 +119,30 @@ export class RulesService {
 
     return localConstants;
   }
-  async getRules(ruleGroupId: string): Promise<RuleDto[]> {
+  async getRules(ruleGroupId: string): Promise<Rules[]> {
     try {
-      const rules = await this.connection
+      return await this.connection
         .getRepository(Rules)
         .createQueryBuilder('rules')
         .where('ruleGroupId = :id', { id: ruleGroupId })
         .getMany();
-
-      const mappedRules = rules.map((rule) => {
-        return {
-          id: rule.id,
-          isActive: rule.isActive,
-          rule: JSON.parse(rule.ruleJson),
-          ruleGroupId: rule.ruleGroupId,
-          section: rule.section,
-        } satisfies RuleDto;
-      });
-
-      return mappedRules;
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
       this.logger.debug(e);
       return undefined;
     }
   }
-
   async getRuleGroups(
     activeOnly = false,
     libraryId?: number,
     typeId?: number,
-  ): Promise<RuleGroupDto[]> {
+  ): Promise<RulesDto[]> {
     try {
       const rulegroups = await this.connection
-        .getRepository(RuleGroup)
-        .createQueryBuilder('rg')
+        .createQueryBuilder('rule_group', 'rg')
         .innerJoinAndSelect('rg.rules', 'r')
-        .orderBy('r.id')
         .innerJoinAndSelect('rg.collection', 'c')
+        .leftJoinAndSelect('rg.notifications', 'n')
         .where(
           activeOnly ? 'rg.isActive = true' : 'rg.isActive in (true, false)',
         )
@@ -164,33 +153,9 @@ export class RulesService {
               ? `c.type = ${typeId}`
               : 'rg.libraryId != -1',
         )
-        // .where(typeId !== undefined ? `c.type = ${typeId}` : '')
+        .orderBy('rg.id, r.id')
         .getMany();
-
-      return rulegroups.map((rulegroup) => {
-        const rules = rulegroup.rules.map((rule) => {
-          return {
-            id: rule.id,
-            isActive: rule.isActive,
-            rule: JSON.parse(rule.ruleJson),
-            ruleGroupId: rule.ruleGroupId,
-            section: rule.section,
-          } satisfies RuleDto;
-        });
-
-        return {
-          id: rulegroup.id,
-          name: rulegroup.name,
-          description: rulegroup.description,
-          libraryId: rulegroup.libraryId,
-          collectionId: rulegroup.collectionId,
-          collection: rulegroup.collection,
-          isActive: rulegroup.isActive,
-          useRules: rulegroup.useRules,
-          dataType: rulegroup.dataType,
-          rules: rules,
-        } satisfies RuleGroupDto;
-      });
+      return rulegroups as RulesDto[];
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
       this.logger.debug(e);
@@ -202,24 +167,12 @@ export class RulesService {
     return this.ruleGroupRepository.count();
   }
 
-  async getRuleGroupById(ruleGroupId: number): Promise<RuleGroupDto> {
+  async getRuleGroupById(ruleGroupId: number): Promise<RuleGroup> {
     try {
-      const data = await this.ruleGroupRepository.findOne({
+      return await this.ruleGroupRepository.findOne({
         where: { id: ruleGroupId },
+        relations: ['notifications'],
       });
-
-      return {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        libraryId: data.libraryId,
-        isActive: data.isActive,
-        useRules: data.useRules,
-        dataType: data.dataType,
-        collectionId: data.collectionId,
-        collection: data.collection,
-        rules: [], // TODO These aren't fetched right? So we should provide a type that does not have these available?
-      } satisfies RuleGroupDto;
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
       this.logger.debug(e);
@@ -231,6 +184,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { collectionId: id },
+        relations: ['notifications'],
       });
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
@@ -263,9 +217,18 @@ export class RulesService {
     }
   }
 
-  async setRules(params: RuleGroupUpdateDto) {
+  async setRules(params: RulesDto) {
     try {
-      const state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      let state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      params.rules.forEach((rule) => {
+        if (state.code === 1) {
+          state = this.validateRule(rule);
+        }
+      }, this);
+
+      if (state.code !== 1) {
+        return state;
+      }
 
       // create the collection
       const lib = (await this.plexApi.getLibraries()).find(
@@ -282,26 +245,20 @@ export class RulesService {
                 : EPlexDataType.SHOWS,
           title: params.name,
           description: params.description,
-          arrAction: params.collection.arrAction
-            ? params.collection.arrAction
-            : 0,
+          arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
-          listExclusions: params.collection.listExclusions
-            ? params.collection.listExclusions
-            : false,
-          forceOverseerr: params.collection.forceOverseerr
-            ? params.collection.forceOverseerr
-            : false,
+          listExclusions: params.listExclusions ? params.listExclusions : false,
+          forceOverseerr: params.forceOverseerr ? params.forceOverseerr : false,
           tautulliWatchedPercentOverride:
-            params.collection.tautulliWatchedPercentOverride ?? null,
-          radarrSettingsId: params.collection.radarrSettingsId ?? null,
-          sonarrSettingsId: params.collection.sonarrSettingsId ?? null,
-          visibleOnRecommended: params.collection.visibleOnRecommended,
-          visibleOnHome: params.collection.visibleOnHome,
-          deleteAfterDays: params.collection.deleteAfterDays ?? null,
-          manualCollection: params.collection.manualCollection,
-          manualCollectionName: params.collection.manualCollectionName,
-          keepLogsForMonths: +params.collection.keepLogsForMonths,
+            params.tautulliWatchedPercentOverride ?? null,
+          radarrSettingsId: params.radarrSettingsId ?? null,
+          sonarrSettingsId: params.sonarrSettingsId ?? null,
+          visibleOnRecommended: params.collection?.visibleOnRecommended,
+          visibleOnHome: params.collection?.visibleOnHome,
+          deleteAfterDays: params.collection?.deleteAfterDays ?? null,
+          manualCollection: params.collection?.manualCollection,
+          manualCollectionName: params.collection?.manualCollectionName,
+          keepLogsForMonths: +params.collection?.keepLogsForMonths,
         })
       )?.dbCollection;
 
@@ -318,6 +275,8 @@ export class RulesService {
         params.useRules !== undefined ? params.useRules : true,
         params.isActive !== undefined ? params.isActive : true,
         params.dataType !== undefined ? params.dataType : undefined,
+        undefined,
+        params.notifications,
       );
       // create rules
       if (params.useRules) {
@@ -327,10 +286,12 @@ export class RulesService {
             {
               ruleJson: ruleJson,
               ruleGroupId: groupId,
-              section: rule.section,
+              section: (rule as RuleDbDto).section,
             },
           ]);
         }
+
+        return state;
       } else {
         // empty rule if not using rules
         await this.rulesRepository.save([
@@ -341,6 +302,7 @@ export class RulesService {
           },
         ]);
       }
+
       return state;
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
@@ -349,124 +311,134 @@ export class RulesService {
     }
   }
 
-  async updateRules(params: RuleGroupUpdateDto) {
+  async updateRules(params: RulesDto) {
     try {
-      const state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      let state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      params.rules.forEach((rule) => {
+        if (state.code === 1) {
+          state = this.validateRule(rule);
+        }
+      }, this);
 
-      // get current group
-      const group = await this.ruleGroupRepository.findOne({
-        where: { id: params.id },
-      });
-
-      const dbCollection = await this.collectionService.getCollection(
-        group.collectionId,
-      );
-
-      // if datatype or manual collection settings changed then remove the collection media and specific exclusions. The Plex collection will be removed later by updateCollection()
-      if (
-        group.dataType !== params.dataType ||
-        params.collection.manualCollection !== dbCollection.manualCollection ||
-        params.collection.manualCollectionName !==
-          dbCollection.manualCollectionName ||
-        params.libraryId !== dbCollection.libraryId
-      ) {
-        this.logger.log(
-          `A crucial setting of Rulegroup '${params.name}' was changed. Removed all media & specific exclusions`,
-        );
-        await this.collectionMediaRepository.delete({
-          collectionId: group.collectionId,
+      if (state.code === 1) {
+        // get current group
+        const group = await this.ruleGroupRepository.findOne({
+          where: { id: params.id },
         });
 
-        await this.collectionService.addLogRecord(
-          { id: group.collectionId } as Collection,
-          'A crucial setting of the collection was updated. As a result all media and specific exclusions were removed',
-          ECollectionLogType.COLLECTION,
+        const dbCollection = await this.collectionService.getCollection(
+          group.collectionId,
         );
 
-        await this.exclusionRepo.delete({ ruleGroupId: params.id });
-      }
+        // if datatype or manual collection settings changed then remove the collection media and specific exclusions. The Plex collection will be removed later by updateCollection()
+        if (
+          group.dataType !== params.dataType ||
+          params.collection.manualCollection !==
+            dbCollection.manualCollection ||
+          params.collection.manualCollectionName !==
+            dbCollection.manualCollectionName ||
+          params.libraryId !== dbCollection.libraryId
+        ) {
+          this.logger.log(
+            `A crucial setting of Rulegroup '${params.name}' was changed. Removed all media & specific exclusions`,
+          );
+          await this.collectionMediaRepository.delete({
+            collectionId: group.collectionId,
+          });
 
-      // update the collection
-      const lib = (await this.plexApi.getLibraries()).find(
-        (el) => +el.key === +params.libraryId,
-      );
+          await this.collectionService.addLogRecord(
+            { id: group.collectionId } as Collection,
+            'A crucial setting of the collection was updated. As a result all media and specific exclusions were removed',
+            ECollectionLogType.COLLECTION,
+          );
 
-      const collection = (
-        await this.collectionService.updateCollection({
-          id: group.collectionId ? group.collectionId : undefined,
-          libraryId: +params.libraryId,
-          type:
-            lib.type === 'movie'
-              ? EPlexDataType.MOVIES
-              : params.dataType !== undefined
-                ? params.dataType
-                : EPlexDataType.SHOWS,
-          title: params.name,
-          description: params.description,
-          arrAction: params.collection.arrAction
-            ? params.collection.arrAction
-            : 0,
-          isActive: params.isActive,
-          listExclusions: params.collection.listExclusions
-            ? params.collection.listExclusions
-            : false,
-          forceOverseerr: params.collection.forceOverseerr
-            ? params.collection.forceOverseerr
-            : false,
-          tautulliWatchedPercentOverride:
-            params.collection.tautulliWatchedPercentOverride ?? null,
-          radarrSettingsId: params.collection.radarrSettingsId ?? null,
-          sonarrSettingsId: params.collection.sonarrSettingsId ?? null,
-          visibleOnRecommended: params.collection.visibleOnRecommended,
-          visibleOnHome: params.collection.visibleOnHome,
-          deleteAfterDays: params.collection.deleteAfterDays ?? null,
-          manualCollection: params.collection.manualCollection,
-          manualCollectionName: params.collection.manualCollectionName,
-          keepLogsForMonths: +params.collection.keepLogsForMonths,
-        })
-      ).collection;
+          await this.exclusionRepo.delete({ ruleGroupId: params.id });
+        }
 
-      // update or create group
-      const groupId = await this.createOrUpdateGroup(
-        params.name,
-        params.description,
-        params.libraryId,
-        collection.id,
-        params.useRules !== undefined ? params.useRules : true,
-        params.isActive !== undefined ? params.isActive : true,
-        params.dataType !== undefined ? params.dataType : undefined,
-        group.id,
-      );
+        // update the collection
+        const lib = (await this.plexApi.getLibraries()).find(
+          (el) => +el.key === +params.libraryId,
+        );
 
-      // remove previous rules
-      this.rulesRepository.delete({
-        ruleGroupId: groupId,
-      });
+        const collection = (
+          await this.collectionService.updateCollection({
+            id: group.collectionId ? group.collectionId : undefined,
+            libraryId: +params.libraryId,
+            type:
+              lib.type === 'movie'
+                ? EPlexDataType.MOVIES
+                : params.dataType !== undefined
+                  ? params.dataType
+                  : EPlexDataType.SHOWS,
+            title: params.name,
+            description: params.description,
+            arrAction: params.arrAction ? params.arrAction : 0,
+            isActive: params.isActive,
+            listExclusions: params.listExclusions
+              ? params.listExclusions
+              : false,
+            forceOverseerr: params.forceOverseerr
+              ? params.forceOverseerr
+              : false,
+            tautulliWatchedPercentOverride:
+              params.tautulliWatchedPercentOverride ?? null,
+            radarrSettingsId: params.radarrSettingsId ?? null,
+            sonarrSettingsId: params.sonarrSettingsId ?? null,
+            visibleOnRecommended: params.collection.visibleOnRecommended,
+            visibleOnHome: params.collection.visibleOnHome,
+            deleteAfterDays: params.collection.deleteAfterDays ?? null,
+            manualCollection: params.collection.manualCollection,
+            manualCollectionName: params.collection.manualCollectionName,
+            keepLogsForMonths: +params.collection.keepLogsForMonths,
+          })
+        ).dbCollection;
 
-      // create rules
-      if (params.useRules) {
-        for (const rule of params.rules) {
-          const ruleJson = JSON.stringify(rule);
+        // update or create group
+        const groupId = await this.createOrUpdateGroup(
+          params.name,
+          params.description,
+          params.libraryId,
+          collection.id,
+          params.useRules !== undefined ? params.useRules : true,
+          params.isActive !== undefined ? params.isActive : true,
+          params.dataType !== undefined ? params.dataType : undefined,
+          group.id,
+          params.notifications,
+        );
+
+        // remove previous rules
+        await this.rulesRepository.delete({
+          ruleGroupId: groupId,
+        });
+
+        // create rules
+        if (params.useRules) {
+          for (const rule of params.rules) {
+            const ruleJson = JSON.stringify(rule);
+            await this.rulesRepository.save([
+              {
+                ruleJson: ruleJson,
+                ruleGroupId: groupId,
+                section: (rule as RuleDbDto).section,
+              },
+            ]);
+          }
+        } else {
+          // empty rule if not using rules
           await this.rulesRepository.save([
             {
-              ruleJson: ruleJson,
+              ruleJson: JSON.stringify(''),
               ruleGroupId: groupId,
-              section: rule.section,
+              section: 0,
             },
           ]);
         }
+
+        this.logger.log(`Successfully updated rulegroup '${params.name}'.`);
+        return state;
       } else {
-        // empty rule if not using rules
-        await this.rulesRepository.save([
-          {
-            ruleJson: JSON.stringify(''),
-            ruleGroupId: groupId,
-            section: 0,
-          },
-        ]);
+        return state;
       }
-      this.logger.log(`Successfully updated rulegroup '${params.name}'.`);
-      return state;
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
       this.logger.debug(e);
@@ -474,7 +446,7 @@ export class RulesService {
     }
   }
   async setExclusion(data: ExclusionContextDto) {
-    let handleMedia: AddCollectionMedia[] = [];
+    let handleMedia: AddRemoveCollectionMedia[] = [];
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -489,7 +461,7 @@ export class RulesService {
           ? data.context
           : { type: group.dataType, id: data.mediaId },
         { plexId: data.mediaId },
-      )) as unknown as AddCollectionMedia[];
+      )) as unknown as AddRemoveCollectionMedia[];
       data.ruleGroupId = group.id;
     } else {
       // get type from metadata
@@ -501,7 +473,7 @@ export class RulesService {
         undefined,
         data.context ? data.context : { type: type, id: data.mediaId },
         { plexId: data.mediaId },
-      )) as unknown as AddCollectionMedia[];
+      )) as unknown as AddRemoveCollectionMedia[];
     }
     try {
       // add all items
@@ -608,7 +580,7 @@ export class RulesService {
   }
 
   async removeExclusionWitData(data: ExclusionContextDto) {
-    let handleMedia: AddCollectionMedia[] = [];
+    let handleMedia: AddRemoveCollectionMedia[] = [];
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -625,14 +597,14 @@ export class RulesService {
           ? data.context
           : { type: group.libraryId, id: data.mediaId },
         { plexId: data.mediaId },
-      )) as unknown as AddCollectionMedia[];
+      )) as unknown as AddRemoveCollectionMedia[];
     } else {
       // get type from metadata
       handleMedia = (await this.plexApi.getAllIdsForContextAction(
         undefined,
         { type: data.context.type, id: data.context.id },
         { plexId: data.mediaId },
-      )) as unknown as AddCollectionMedia[];
+      )) as unknown as AddRemoveCollectionMedia[];
     }
 
     try {
@@ -674,7 +646,7 @@ export class RulesService {
 
   async removeAllExclusion(plexId: number) {
     // get type from metadata
-    let handleMedia: AddCollectionMedia[] = [];
+    let handleMedia: AddRemoveCollectionMedia[] = [];
 
     const metaData = await this.plexApi.getMetadata(plexId.toString());
     const type =
@@ -684,7 +656,7 @@ export class RulesService {
       undefined,
       { type: type, id: plexId },
       { plexId: plexId },
-    )) as unknown as AddCollectionMedia[];
+    )) as unknown as AddRemoveCollectionMedia[];
 
     try {
       for (const media of handleMedia) {
@@ -746,6 +718,64 @@ export class RulesService {
     }
   }
 
+  private validateRule(rule: RuleDto): ReturnStatus {
+    try {
+      const val1: Property = this.ruleConstants.applications
+        .find((el) => el.id === rule.firstVal[0])
+        .props.find((el) => el.id === rule.firstVal[1]);
+      if (rule.lastVal) {
+        const val2: Property = this.ruleConstants.applications
+          .find((el) => el.id === rule.lastVal[0])
+          .props.find((el) => el.id === rule.lastVal[1]);
+        if (
+          val1.type === val2.type ||
+          ([RuleType.TEXT_LIST, RuleType.TEXT].includes(val1.type) &&
+            [RuleType.TEXT_LIST, RuleType.TEXT].includes(val2.type))
+        ) {
+          if (val1.type.possibilities.includes(+rule.action)) {
+            return this.createReturnStatus(true, 'Success');
+          } else {
+            return this.createReturnStatus(
+              false,
+              'Action is not supported on type',
+            );
+          }
+        } else {
+          return this.createReturnStatus(false, "Types don't match");
+        }
+      } else if (rule.customVal) {
+        if (
+          val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
+          (val1.type == RuleType.TEXT_LIST &&
+            rule.customVal.ruleTypeId.toString() == RuleType.TEXT.toString())
+        ) {
+          if (val1.type.possibilities.includes(+rule.action)) {
+            return this.createReturnStatus(true, 'Success');
+          } else {
+            return this.createReturnStatus(
+              false,
+              'Action is not supported on type',
+            );
+          }
+        }
+        if (
+          (rule.action === RulePossibility.IN_LAST ||
+            RulePossibility.IN_NEXT) &&
+          rule.customVal.ruleTypeId === 0
+        ) {
+          return this.createReturnStatus(true, 'Success');
+        } else {
+          return this.createReturnStatus(false, 'Validation failed');
+        }
+      } else {
+        return this.createReturnStatus(false, 'No second value found');
+      }
+    } catch (e) {
+      this.logger.debug(e);
+      return this.createReturnStatus(false, 'Unexpected error occurred');
+    }
+  }
+
   private createReturnStatus(success: boolean, result: string): ReturnStatus {
     return { code: success ? 1 : 0, result: result };
   }
@@ -759,6 +789,7 @@ export class RulesService {
     isActive = true,
     dataType = undefined,
     id?: number,
+    notifications?: Notification[],
   ): Promise<number> {
     try {
       const values = {
@@ -778,15 +809,34 @@ export class RulesService {
           .into(RuleGroup)
           .values(values)
           .execute();
-        return groupId.identifiers[0].id;
+
+        id = groupId.identifiers[0].id;
       } else {
         await connection
           .update(RuleGroup)
           .set(values)
           .where({ id: id })
           .execute();
-        return id;
       }
+
+      // Remove all existing notifications from the RuleGroup
+      await connection
+        .relation(RuleGroup, 'notifications')
+        .of(id)
+        .remove(
+          await connection
+            .relation(RuleGroup, 'notifications')
+            .of(id)
+            .loadMany(),
+        );
+
+      // Associate new notifications to the RuleGroup
+      await connection
+        .relation(RuleGroup, 'notifications')
+        .of(id)
+        .add(notifications?.map((notification) => notification.id));
+
+      return id;
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
       this.logger.debug(e);
@@ -924,10 +974,7 @@ export class RulesService {
       });
   }
 
-  public encodeToYaml(
-    rules: RuleDefinitionDto[],
-    mediaType: number,
-  ): ReturnStatus {
+  public encodeToYaml(rules: RuleDto[], mediaType: number): ReturnStatus {
     return this.ruleYamlService.encode(rules, mediaType);
   }
 
@@ -957,9 +1004,8 @@ export class RulesService {
       group.rules = await this.getRules(group.id.toString());
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       const result = await ruleComparator.executeRulesWithData(
-        group as RuleGroupDto,
+        group as RulesDto,
         [mediaResp as unknown as PlexLibraryItem],
-        true,
       );
 
       if (result) {
@@ -975,11 +1021,11 @@ export class RulesService {
   /**
    * Reset the Plex cache if any rule in the rule group requires it.
    *
-   * @param {RuleGroupDto} rulegroup - The rule group to check for cache reset requirement.
+   * @param {RulesDto} rulegroup - The rule group to check for cache reset requirement.
    * @return {Promise<boolean>} Whether the Plex cache was reset.
    */
   public async resetPlexCacheIfgroupUsesRuleThatRequiresIt(
-    rulegroup: RuleGroupDto,
+    rulegroup: RulesDto,
   ): Promise<boolean> {
     try {
       let result = false;
@@ -987,28 +1033,26 @@ export class RulesService {
 
       // for all rules in group
       for (const rule of rulegroup.rules) {
-        const ruleDefinition = rule.rule;
+        const parsedRule = JSON.parse((rule as RuleDbDto).ruleJson) as RuleDto;
 
         const firstValApplication = constant.applications.find(
-          (x) => x.id === ruleDefinition.firstVal[0],
+          (x) => x.id === parsedRule.firstVal[0],
         );
 
         //test first value
         const first = firstValApplication.props.find(
-          (x) => x.id == ruleDefinition.firstVal[1],
+          (x) => x.id == parsedRule.firstVal[1],
         );
 
         result = first.cacheReset ? true : result;
 
-        const secondValApplication = ruleDefinition.lastVal
-          ? constant.applications.find(
-              (x) => x.id === ruleDefinition.lastVal[0],
-            )
+        const secondValApplication = parsedRule.lastVal
+          ? constant.applications.find((x) => x.id === parsedRule.lastVal[0])
           : undefined;
 
         // test second value
         const second = secondValApplication?.props.find(
-          (x) => x.id == ruleDefinition.lastVal[1],
+          (x) => x.id == parsedRule.lastVal[1],
         );
 
         result = second?.cacheReset ? true : result;

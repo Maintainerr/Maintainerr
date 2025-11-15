@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import GetApiHandler from '../../utils/ApiHandler'
-import { useEffect, useState } from 'react'
 import {
   ArrowCircleUpIcon,
   BeakerIcon,
@@ -8,6 +5,9 @@ import {
   ServerIcon,
 } from '@heroicons/react/outline'
 import { type VersionResponse } from '@maintainerr/contracts'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import GetApiHandler from '../../utils/ApiHandler'
 
 enum messages {
   DEVELOP = 'Maintainerr Develop',
@@ -47,8 +47,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
     <>
       {!loading ? (
         <Link
-          href="https://github.com/jorenn92/Maintainerr/releases"
-          target="_blank"
+          href="/settings/about"
           onClick={onClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && onClick) {
