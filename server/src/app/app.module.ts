@@ -51,8 +51,18 @@ import ormConfig from './config/typeOrmConfig';
     CollectionsModule,
     NotificationsModule,
     EventsModule,
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'ui'),
+    ServeStaticModule.forRootAsync({
+      useFactory: () => {
+        if (process.env.NODE_ENV !== 'production') {
+          return [];
+        }
+
+        return [
+          {
+            rootPath: join(__dirname, '..', 'ui'),
+          },
+        ];
+      },
     }),
   ],
   controllers: [AppController],
