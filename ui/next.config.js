@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  output: 'export',
   reactStrictMode: true,
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -13,15 +14,6 @@ const nextConfig = {
     ],
   },
   basePath: '',
-  async redirects() {
-    return [
-      {
-        source: '/docs',
-        destination: 'https://docs.maintainerr.info/latest/Introduction',
-        permanent: true,
-      },
-    ]
-  },
 }
 
 module.exports = nextConfig

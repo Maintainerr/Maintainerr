@@ -14,7 +14,7 @@ export class InternalApiService {
   ) {}
 
   public init() {
-    const apiPort = process.env.API_PORT || 3001;
+    const apiPort = process.env.UI_PORT || 6246;
 
     this.api = new InternalApi(
       {

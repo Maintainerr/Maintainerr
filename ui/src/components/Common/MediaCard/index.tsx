@@ -1,12 +1,12 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
+import Image from 'next/image'
 import React, { memo, useEffect, useState } from 'react'
 import { useIsTouch } from '../../../hooks/useIsTouch'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
-import CachedImage from '../CachedImage'
 import MediaModalContent from './MediaModal'
 
 interface IMediaCard {
@@ -127,7 +127,7 @@ const MediaCard: React.FC<IMediaCard> = ({
       >
         <div className="absolute inset-0 h-full w-full overflow-hidden">
           {image ? (
-            <CachedImage
+            <Image
               className="absolute inset-0 h-full w-full"
               alt=""
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}

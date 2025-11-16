@@ -6,10 +6,10 @@ import {
   EyeIcon,
   XIcon,
 } from '@heroicons/react/outline'
+import Image from 'next/image'
 import Link from 'next/link'
 import { ReactNode, useContext, useEffect, useRef } from 'react'
 import SearchContext from '../../../contexts/search-context'
-import CachedImage from '../../Common/CachedImage'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
 
@@ -113,7 +113,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                   <div className="flex flex-shrink-0 items-center px-2">
                     <span className="px-4 text-xl text-zinc-50">
                       <a href="/">
-                        <CachedImage
+                        <Image
                           width={0}
                           height={0}
                           style={{ width: '100%', height: 'auto' }}
@@ -176,7 +176,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
               <div className="flex flex-shrink-0 items-center">
                 <span className="px-4 text-2xl text-zinc-50">
                   <Link href="/">
-                    <CachedImage
+                    <Image
                       width={0}
                       height={0}
                       style={{ width: '100%', height: 'auto' }}

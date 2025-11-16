@@ -96,8 +96,7 @@ services:
           - TZ=Europe/Brussels
 #      - BASE_PATH=/maintainerr # uncomment if you're serving maintainerr from a subdirectory
 #      - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
-#      - UI_PORT=6247 # uncomment to change the UI port (default 6246). Useful if you're on a network where the port is already in use
-#      - API_PORT=3002 # uncomment to change the API port (default 3001). Useful if you're on a network where the port is already in use
+#      - UI_PORT=6247 # uncomment to change the UI port (default 6246)
 #      - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
         ports:
           - 6246:6246

@@ -1,6 +1,7 @@
 import { MaintainerrEvent } from '@maintainerr/contracts'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import ReconnectingEventSource from 'reconnecting-eventsource'
+import { API_BASE_PATH } from '../utils/ApiHandler'
 
 const EventsContext = createContext<EventSource | undefined>(undefined)
 
@@ -8,8 +9,7 @@ export const EventsProvider = (props: any) => {
   const [eventSource, setEventSource] = useState<EventSource>()
 
   useEffect(() => {
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
-    const es = new ReconnectingEventSource(`${basePath}/api/events/stream`)
+    const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/events/stream`)
 
     es.onerror = (e) => {
       console.error('EventSource failed:', e)

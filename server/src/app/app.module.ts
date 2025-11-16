@@ -1,9 +1,11 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GracefulShutdownModule } from '@tygra/nestjs-graceful-shutdown';
 import { ZodValidationPipe } from 'nestjs-zod';
+import { join } from 'path';
 import { ExternalApiModule } from '../modules/api/external-api/external-api.module';
 import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
 import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';
@@ -49,6 +51,9 @@ import ormConfig from './config/typeOrmConfig';
     CollectionsModule,
     NotificationsModule,
     EventsModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'ui'),
+    }),
   ],
   controllers: [AppController],
   providers: [

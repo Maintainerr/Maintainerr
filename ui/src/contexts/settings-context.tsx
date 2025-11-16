@@ -14,7 +14,6 @@ export interface ISettings {
   apikey: string
   overseerr_url: string
   locale: string
-  cacheImages: number
   plex_name: string
   plex_hostname: string
   plex_port: number

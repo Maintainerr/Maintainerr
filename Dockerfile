@@ -27,7 +27,6 @@ RUN yarn workspaces focus --all --production
 # When all packages are hoisted, there is no node_modules folder. Ensure these folders always have a node_modules folder to COPY later on.
 RUN mkdir -p ./packages/contracts/node_modules
 RUN mkdir -p ./server/node_modules
-RUN mkdir -p ./ui/node_modules
 
 FROM base AS runner
 
@@ -36,22 +35,19 @@ WORKDIR /opt/app
 # copy root node_modules
 COPY --from=builder --chmod=777 --chown=node:node /app/node_modules ./node_modules
 
-# copy standalone UI
-COPY --from=builder --chmod=777 --chown=node:node /app/ui/.next/standalone/ui ./ui
-COPY --from=builder --chmod=777 --chown=node:node /app/ui/.next/static ./ui/.next/static
-COPY --from=builder --chmod=777 --chown=node:node /app/ui/public ./ui/public
-
 # Copy standalone server
 COPY --from=builder --chmod=777 --chown=node:node /app/server/dist ./server/dist
 COPY --from=builder --chmod=777 --chown=node:node /app/server/package.json ./server/package.json
 COPY --from=builder --chmod=777 --chown=node:node /app/server/node_modules ./server/node_modules
+
+# copy UI output to API to be served statically
+COPY --from=builder --chmod=777 --chown=node:node /app/ui/out ./server/dist/ui
 
 # Copy packages/contracts
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/package.json ./packages/contracts/package.json
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/node_modules ./packages/contracts/node_modules
 
-COPY docker/supervisord.conf /etc/supervisord.conf
 COPY --chmod=777 --chown=node:node docker/start.sh /opt/app/start.sh
 
 # Create required directories
@@ -60,23 +56,15 @@ RUN mkdir -m 777 /opt/data && \
     chown -R node:node /opt/data
 
 # This is required for docker user directive to work
-RUN chmod 777 /opt/app/start.sh && \
-    chmod 777 /opt/app/ui && \
-    chmod 777 /opt/app/ui/public && \
-    chmod 777 /opt/app/ui/.next/static && \
-    mkdir -m 777 /opt/app/ui/.next/cache && \
-    chown -R node:node /opt/app/ui/.next/cache
+RUN chmod 777 /opt/app/start.sh
 
-RUN apk --update --no-cache add curl supervisor
+RUN apk --update --no-cache add curl
 
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
 ARG DEBUG=false
 ENV DEBUG=${DEBUG}
-
-ARG API_PORT=3001
-ENV API_PORT=${API_PORT}
 
 ARG UI_PORT=6246
 ENV UI_PORT=${UI_PORT}

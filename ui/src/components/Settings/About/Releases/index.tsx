@@ -1,5 +1,6 @@
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
+import GetApiHandler from '../../../../utils/ApiHandler'
 import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
@@ -21,8 +22,6 @@ const messages = {
   close: 'Close',
 }
 
-const REPO_RELEASE_API = '/api/app/releases'
-
 interface GitHubRelease {
   url: string
   assets_url: string
@@ -41,19 +40,11 @@ interface GitHubRelease {
   zipball_url: string
   body: string
 }
+
 interface ReleaseProps {
   release: GitHubRelease
   isLatest: boolean
   currentVersion: string
-}
-interface ModalProps {
-  title: string
-  children: React.ReactNode
-  isOpen: boolean
-  onCancel: () => void
-  onOk?: () => void
-  cancelText?: string
-  okText?: string
 }
 
 const calculateRelativeTime = (dateString: string): string => {
@@ -124,12 +115,8 @@ const Releases = ({ currentVersion }: ReleasesProps) => {
   useEffect(() => {
     const fetchReleases = async () => {
       try {
-        const response = await fetch(REPO_RELEASE_API)
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`)
-        }
-        const releases = await response.json()
-        setData(releases)
+        const response = await GetApiHandler<GitHubRelease[]>(`/app/releases`)
+        setData(response)
       } catch (err) {
         setError(
           err instanceof Error && err.message

@@ -45,8 +45,6 @@ export class SettingsService implements SettingDto {
 
   locale: string;
 
-  cacheImages: number;
-
   plex_name: string;
 
   plex_hostname: string;
@@ -108,7 +106,6 @@ export class SettingsService implements SettingDto {
       this.applicationUrl = settingsDb?.applicationUrl;
       this.apikey = settingsDb?.apikey;
       this.locale = settingsDb?.locale;
-      this.cacheImages = settingsDb?.cacheImages;
       this.plex_name = settingsDb?.plex_name;
       this.plex_hostname = settingsDb?.plex_hostname;
       this.plex_port = settingsDb?.plex_port;

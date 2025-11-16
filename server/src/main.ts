@@ -29,8 +29,9 @@ async function bootstrap() {
   app.useLogger(await app.resolve(MaintainerrLogger));
   app.enableCors({ origin: true });
 
-  const apiPort = process.env.API_PORT || 3001;
-  await app.listen(apiPort);
+  const apiPort = process.env.UI_PORT || 6246;
+  const apiHostname = process.env.UI_HOSTNAME || '0.0.0.0';
+  await app.listen(apiPort, apiHostname);
 }
 
 function createDataDirectoryStructure() {

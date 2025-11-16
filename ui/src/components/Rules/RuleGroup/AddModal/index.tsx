@@ -6,6 +6,7 @@ import {
   SaveIcon,
   UploadIcon,
 } from '@heroicons/react/solid'
+import Image from 'next/image'
 import Router from 'next/router'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
@@ -24,7 +25,6 @@ import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import { ICollection } from '../../../Collection'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
-import CachedImage from '../../../Common/CachedImage'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import YamlImporterModal from '../../../Common/YamlImporterModal'
 import { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
@@ -393,7 +393,7 @@ const AddModal = (props: AddModal) => {
 
     return (
       <span>
-        <CachedImage fill src={`${basePath}/spinner.svg`} alt="Loading..." />
+        <Image fill src={`${basePath}/spinner.svg`} alt="Loading..." />
       </span>
     )
   }

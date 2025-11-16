@@ -26,9 +26,6 @@ export class Settings implements SettingDto {
   @Column({ nullable: false, default: 'en' })
   locale: string;
 
-  @Column({ nullable: false, default: true })
-  cacheImages: number;
-
   @Column({ nullable: true })
   plex_name: string;
 
