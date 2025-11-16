@@ -180,7 +180,9 @@ jobs:
             type=semver,pattern={{version}},value=${{ needs.build-docker-image.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.build-docker-image.outputs.version }}
             type=semver,pattern={{major}},value=${{ needs.build-docker-image.outputs.version }}
-          labels: org.opencontainers.image.revision=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.build-docker-image.outputs.version }}
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
