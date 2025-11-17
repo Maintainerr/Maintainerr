@@ -428,6 +428,21 @@ export class PlexApiService {
     }
   }
 
+  public async getWatchHistoryIncludingMarked(itemId: string): Promise<PlexSeenBy[]> {
+    try {
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>({
+        uri: `/library/metadata/${itemId}/users/top`,
+      });
+      return response.MediaContainer.Account as PlexSeenBy[];
+    } catch (err) {
+      this.logger.warn(
+        'Plex api communication failure.. Is the application running?',
+      );
+      this.logger.debug(err);
+      return undefined;
+    }
+  }
+
   public async getCollections(
     libraryId: string | number,
     subType?: 'movie' | 'show' | 'season' | 'episode',
