@@ -2721,7 +2721,7 @@ __metadata:
     "@nestjs/core": "npm:^11.1.9"
     "@nestjs/swagger": "npm:^11.2.1"
     class-transformer: "npm:^0.5.1"
-    class-validator: "npm:^0.14.1"
+    class-validator: "npm:^0.14.2"
     eslint: "npm:^9.39.1"
     eslint-config-prettier: "npm:^10.1.5"
     globals: "npm:^16.2.0"
@@ -7626,14 +7626,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"class-validator@npm:^0.14.1":
-  version: 0.14.1
-  resolution: "class-validator@npm:0.14.1"
+"class-validator@npm:^0.14.2":
+  version: 0.14.2
+  resolution: "class-validator@npm:0.14.2"
   dependencies:
     "@types/validator": "npm:^13.11.8"
-    libphonenumber-js: "npm:^1.10.53"
+    libphonenumber-js: "npm:^1.11.1"
     validator: "npm:^13.9.0"
-  checksum: 10c0/946e914e47548b5081449c720ea6a4877bac63dc960e14fca4b990b56e64efe3802d12f07ec22d6420c290245b72ea2d646939239f2a3b597794e6c4c2a4f2ae
+  checksum: 10c0/5bb67389d38fa23d342dffdd8e2dcee8235e1906e59799df5b2050278a6d89292fcaa88167f0215e3ddd684f47dcd51b004efa7be32d8aded91ee06cb317b3b8
   languageName: node
   linkType: hard
 
@@ -13384,10 +13384,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libphonenumber-js@npm:^1.10.53":
-  version: 1.11.20
-  resolution: "libphonenumber-js@npm:1.11.20"
-  checksum: 10c0/fb1010bfa5f8682dadfbd9608f76207510e13c456db96d0d534cf727efa2de005cafbb16d016046965894af0787bf567eb5a1a2688d7bb2d5f8b2eebc42437c6
+"libphonenumber-js@npm:^1.11.1":
+  version: 1.12.26
+  resolution: "libphonenumber-js@npm:1.12.26"
+  checksum: 10c0/20d79a32f4ec8d4d67d32897085cfd74a2a4c950b1ff1b6bedc35da37f2f369a8b0a8798d0e8a7b4b91ad8633ef6476320f52051af489fbe70e35e0271e39da9
   languageName: node
   linkType: hard
 
