@@ -2724,7 +2724,7 @@ __metadata:
     class-validator: "npm:^0.14.1"
     eslint: "npm:^9.39.1"
     eslint-config-prettier: "npm:^10.1.5"
-    globals: "npm:^16.2.0"
+    globals: "npm:^16.5.0"
     nestjs-zod: "npm:^5.0.1"
     prettier: "npm:^3.6.2"
     reflect-metadata: "npm:^0.2.2"
@@ -10874,10 +10874,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:^16.2.0":
-  version: 16.2.0
-  resolution: "globals@npm:16.2.0"
-  checksum: 10c0/c2b3ea163faa6f8a38076b471b12f4bda891f7df7f7d2e8294fb4801d735a51a73431bf4c1696c5bf5dbca5e0a0db894698acfcbd3068730c6b12eef185dea25
+"globals@npm:^16.5.0":
+  version: 16.5.0
+  resolution: "globals@npm:16.5.0"
+  checksum: 10c0/615241dae7851c8012f5aa0223005b1ed6607713d6813de0741768bd4ddc39353117648f1a7086b4b0fa45eae733f1c0a0fe369aa4e543bb63f8de8990178ea9
   languageName: node
   linkType: hard
 
