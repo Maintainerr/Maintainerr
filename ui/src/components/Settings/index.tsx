@@ -89,9 +89,7 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
             allEnabled={settingsCtx.settings.plex_auth_token !== null}
           />
         </div>
-        <div className="mt-10 text-white">
-          {props.children || <Outlet />}
-        </div>
+        <div className="mt-10 text-white">{props.children || <Outlet />}</div>
       </>
     )
   } else {
