@@ -34,7 +34,7 @@
     "react-select": "^5.10.2",
     "react-toastify": "^11.0.5",
     "reconnecting-eventsource": "^1.6.4",
-    "yaml": "^2.8.0",
+    "yaml": "^2.8.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
