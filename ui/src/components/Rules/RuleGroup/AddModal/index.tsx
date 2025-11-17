@@ -395,7 +395,11 @@ const AddModal = (props: AddModal) => {
 
     return (
       <span>
-        <img src={`${basePath}/spinner.svg`} alt="Loading..." className="w-full h-full" />
+        <img
+          src={`${basePath}/spinner.svg`}
+          alt="Loading..."
+          className="h-full w-full"
+        />
       </span>
     )
   }

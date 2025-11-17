@@ -17,7 +17,7 @@ const NotificationSettings = () => {
   const [configurations, setConfigurations] = useState<AgentConfiguration[]>()
   const [editConfig, setEditConfig] = useState<AgentConfiguration>()
 
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
   useEffect(() => {
     document.title = 'Maintainerr - Settings - Notifications'

@@ -3,10 +3,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import { RouterProvider } from 'react-router-dom'
-import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { EventsProvider } from './contexts/events-context'
-import { LibrariesContextProvider } from './contexts/libraries-context'
 import { SearchContextProvider } from './contexts/search-context'
 import { SettingsContextProvider } from './contexts/settings-context'
 import { TaskStatusProvider } from './contexts/taskstatus-context'
@@ -23,17 +21,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <TaskStatusProvider>
             <SettingsContextProvider>
               <SearchContextProvider>
-                <LibrariesContextProvider>
-                  <ToastContainer
-                    stacked
-                    position="top-right"
-                    autoClose={4500}
-                    hideProgressBar={false}
-                    theme="dark"
-                    closeOnClick
-                  />
-                  <RouterProvider router={router} />
-                </LibrariesContextProvider>
+                <RouterProvider router={router} />
               </SearchContextProvider>
             </SettingsContextProvider>
           </TaskStatusProvider>
