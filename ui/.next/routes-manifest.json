@@ -1,0 +1,149 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/collections",
+      "regex": "^/collections(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/collections(?:/)?$"
+    },
+    {
+      "page": "/docs",
+      "regex": "^/docs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/docs(?:/)?$"
+    },
+    {
+      "page": "/login/plex/loading",
+      "regex": "^/login/plex/loading(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login/plex/loading(?:/)?$"
+    },
+    {
+      "page": "/overview",
+      "regex": "^/overview(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/overview(?:/)?$"
+    },
+    {
+      "page": "/rules",
+      "regex": "^/rules(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/rules(?:/)?$"
+    },
+    {
+      "page": "/settings",
+      "regex": "^/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings(?:/)?$"
+    },
+    {
+      "page": "/settings/about",
+      "regex": "^/settings/about(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/about(?:/)?$"
+    },
+    {
+      "page": "/settings/jellyseerr",
+      "regex": "^/settings/jellyseerr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/jellyseerr(?:/)?$"
+    },
+    {
+      "page": "/settings/jobs",
+      "regex": "^/settings/jobs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/jobs(?:/)?$"
+    },
+    {
+      "page": "/settings/logs",
+      "regex": "^/settings/logs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/logs(?:/)?$"
+    },
+    {
+      "page": "/settings/main",
+      "regex": "^/settings/main(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/main(?:/)?$"
+    },
+    {
+      "page": "/settings/notifications",
+      "regex": "^/settings/notifications(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/notifications(?:/)?$"
+    },
+    {
+      "page": "/settings/overseerr",
+      "regex": "^/settings/overseerr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/overseerr(?:/)?$"
+    },
+    {
+      "page": "/settings/plex",
+      "regex": "^/settings/plex(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/plex(?:/)?$"
+    },
+    {
+      "page": "/settings/radarr",
+      "regex": "^/settings/radarr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/radarr(?:/)?$"
+    },
+    {
+      "page": "/settings/sonarr",
+      "regex": "^/settings/sonarr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/sonarr(?:/)?$"
+    },
+    {
+      "page": "/settings/tautulli",
+      "regex": "^/settings/tautulli(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings/tautulli(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

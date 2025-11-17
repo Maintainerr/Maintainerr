@@ -6,8 +6,8 @@ import {
   SaveIcon,
   UploadIcon,
 } from '@heroicons/react/solid'
-import Image from 'next/image'
-import Router from 'next/router'
+
+import { useNavigate } from 'react-router-dom'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { IRuleGroup } from '..'
@@ -313,18 +313,20 @@ const AddModal = (props: AddModal) => {
   }, [])
 
   useEffect(() => {
-    // trapping next router before-pop-state to manipulate router change on browser back button
-    Router.beforePopState(() => {
+    // Handle browser back button
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault()
       props.onCancel()
-      window.history.forward()
-      return false
-    })
-    return () => {
-      Router.beforePopState(() => {
-        return true
-      })
+      window.history.pushState(null, '', window.location.pathname)
     }
-  }, [])
+
+    window.history.pushState(null, '', window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [props.onCancel])
 
   const create = () => {
     if (
@@ -389,11 +391,11 @@ const AddModal = (props: AddModal) => {
   }
 
   if (isLoading) {
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
     return (
       <span>
-        <Image fill src={`${basePath}/spinner.svg`} alt="Loading..." />
+        <img src={`${basePath}/spinner.svg`} alt="Loading..." className="w-full h-full" />
       </span>
     )
   }

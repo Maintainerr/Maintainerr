@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import GetApiHandler from '../../../../utils/ApiHandler'
 
@@ -166,7 +165,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           key={index}
                           className="flex items-center justify-center space-x-1.5 rounded-lg bg-black bg-opacity-70 px-3 py-1 text-white shadow-lg"
                         >
-                          <Image
+                          <img
                             src={icon}
                             alt={`${prefix} ${type} Icon`}
                             width={24}
@@ -193,7 +192,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         href={`https://themoviedb.org/${mediaTypeOf}/${tmdbid}`}
                         target="_blank"
                       >
-                        <Image
+                        <img
                           src={`${basePath}/icons_logos/tmdb_logo.svg`}
                           alt="TMDB Logo"
                           width={128}
@@ -208,7 +207,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       href={`https://app.plex.tv/desktop#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${id}`}
                       target="_blank"
                     >
-                      <Image
+                      <img
                         src={`${basePath}/icons_logos/plex_logo.svg`}
                         alt="Plex Logo"
                         width={128}
@@ -223,7 +222,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
                         target="_blank"
                       >
-                        <Image
+                        <img
                           src={`${basePath}/icons_logos/tautulli_logo.svg`}
                           alt="Plex Logo"
                           width={128}

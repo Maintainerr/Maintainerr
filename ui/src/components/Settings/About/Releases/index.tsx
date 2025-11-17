@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
@@ -7,9 +6,7 @@ import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 
 // Dynamic import for markdown
-const ReactMarkdown = dynamic(() => import('react-markdown'), {
-  ssr: false,
-})
+const ReactMarkdown = lazy(() => import('react-markdown'))
 
 const messages = {
   releases: 'Releases',
@@ -78,7 +75,9 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
             }}
           >
             <div className="prose:sm prose">
-              <ReactMarkdown>{release.body}</ReactMarkdown>
+              <Suspense fallback={<LoadingSpinner />}>
+                <ReactMarkdown>{release.body}</ReactMarkdown>
+              </Suspense>
             </div>
           </Modal>
         </div>
