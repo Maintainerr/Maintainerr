@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST='{"components/Settings/About/Releases/index.tsx -> react-markdown":{"id":5003,"files":["static/chunks/3.4ad835b6b2ecca87.js"]}}';
