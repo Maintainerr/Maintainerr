@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import React from 'react'
 
 interface BadgeProps {
@@ -93,13 +93,12 @@ const Badge = (
     )
   } else if (href) {
     return (
-      <Link href={href}>
-        <a
-          className={badgeStyle.join(' ')}
-          ref={ref as React.Ref<HTMLAnchorElement>}
-        >
-          {children}
-        </a>
+      <Link
+        to={href}
+        className={badgeStyle.join(' ')}
+        ref={ref as React.Ref<HTMLAnchorElement>}
+      >
+        {children}
       </Link>
     )
   } else {

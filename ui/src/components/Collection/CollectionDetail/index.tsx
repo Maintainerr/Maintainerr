@@ -1,6 +1,6 @@
 import { PlayIcon } from '@heroicons/react/solid'
 import _ from 'lodash'
-import Router from 'next/router'
+import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection, ICollectionMedia } from '..'
 import GetApiHandler from '../../../utils/ApiHandler'
@@ -123,18 +123,20 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   }, [totalSize])
 
   useEffect(() => {
-    // trapping next router before-pop-state to manipulate router change on browser back button
-    Router.beforePopState(() => {
+    // Handle browser back button
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault()
       props.onBack()
-      window.history.forward()
-      return false
-    })
-    return () => {
-      Router.beforePopState(() => {
-        return true
-      })
+      window.history.pushState(null, '', window.location.pathname)
     }
-  }, [])
+
+    window.history.pushState(null, '', window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [props.onBack])
 
   const tabbedRoutes: TabbedRoute[] = [
     {

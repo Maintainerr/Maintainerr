@@ -14,10 +14,8 @@ RUN yarn install --network-timeout 99999999
 RUN yarn cache clean
 
 RUN <<EOF cat >> ./ui/.env
-NEXT_PUBLIC_BASE_PATH=/__PATH_PREFIX__
+VITE_BASE_PATH=/__PATH_PREFIX__
 EOF
-
-RUN sed -i "s,basePath: '',basePath: '/__PATH_PREFIX__',g" ./ui/next.config.js
 
 RUN yarn turbo build
 
@@ -41,7 +39,7 @@ COPY --from=builder --chmod=777 --chown=node:node /app/server/package.json ./ser
 COPY --from=builder --chmod=777 --chown=node:node /app/server/node_modules ./server/node_modules
 
 # copy UI output to API to be served statically
-COPY --from=builder --chmod=777 --chown=node:node /app/ui/out ./server/dist/ui
+COPY --from=builder --chmod=777 --chown=node:node /app/ui/dist ./server/dist/ui
 
 # Copy packages/contracts
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/dist ./packages/contracts/dist

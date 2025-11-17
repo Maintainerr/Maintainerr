@@ -1,23 +1,21 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash'
-import Head from 'next/head'
-import router from 'next/router'
-import { ReactNode, useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
+import { Outlet, useNavigate } from 'react-router-dom'
 import SearchContext from '../../contexts/search-context'
 import SettingsContext from '../../contexts/settings-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
 
-const Layout: React.FC<{ children?: ReactNode }> = (props: {
-  children?: ReactNode
-}) => {
+const Layout: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false)
-
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
   const SettingsCtx = useContext(SettingsContext)
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  const navigate = useNavigate()
+  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)
@@ -26,17 +24,17 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
   useEffect(() => {
     GetApiHandler('/settings/test/setup').then((setupDone) => {
       if (!setupDone) {
-        router.push('/settings/plex')
+        navigate('/settings/plex')
       }
     })
-  }, [])
+  }, [navigate])
 
   return (
     <section>
-      <Head>
+      <Helmet>
         <title>Maintainerr</title>
         <link rel="icon" href={`${basePath}/favicon.ico`} />
-      </Head>
+      </Helmet>
       <div className="flex h-full min-h-full min-w-0 bg-zinc-900">
         <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-zinc-700 md:border-t" />
         <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-zinc-800 to-zinc-900">
@@ -67,7 +65,7 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
               className={`mr-2 text-white ${
                 isScrolled ? 'opacity-90' : 'opacity-70'
               } transition duration-300 hover:text-white focus:text-white focus:outline-none`}
-              onClick={() => router.back()}
+              onClick={() => navigate(-1)}
             >
               <ArrowLeftIcon className="w-7" />
             </button>
@@ -76,7 +74,7 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
                 SearchCtx.addText(text)
 
                 if (text !== '') {
-                  router.push('/overview')
+                  navigate('/overview')
                 }
               }, 1000)}
             />
@@ -88,7 +86,9 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
           tabIndex={0}
         >
           <div className="mb-6">
-            <div className="max-w-8xl mx-auto px-4">{props.children}</div>
+            <div className="max-w-8xl mx-auto px-4">
+              <Outlet />
+            </div>
           </div>
         </main>
       </div>

@@ -6,9 +6,8 @@ import {
   EyeIcon,
   XIcon,
 } from '@heroicons/react/outline'
-import Image from 'next/image'
-import Link from 'next/link'
 import { ReactNode, useContext, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
@@ -60,7 +59,7 @@ interface NavBarProps {
 const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const navRef = useRef<HTMLDivElement>(null)
   const SearchCtx = useContext(SearchContext)
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
   useEffect(() => {
     setTimeout(() => {
@@ -112,16 +111,13 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                 >
                   <div className="flex flex-shrink-0 items-center px-2">
                     <span className="px-4 text-xl text-zinc-50">
-                      <a href="/">
-                        <Image
-                          width={0}
-                          height={0}
+                      <Link to="/">
+                        <img
                           style={{ width: '100%', height: 'auto' }}
                           src={`${basePath}/logo.svg`}
                           alt="Logo"
-                          priority
                         />
-                      </a>
+                      </Link>
                     </span>
                   </div>
                   <nav className="mt-12 flex-1 space-y-4 px-4">
@@ -129,7 +125,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                       return (
                         <Link
                           key={link.key}
-                          href={link.href}
+                          to={link.href}
                           onClick={() => {
                             if (link.href === '/overview') {
                               SearchCtx.removeText()
@@ -175,14 +171,11 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
             <div className="flex flex-1 flex-col overflow-y-auto pb-4 pt-4">
               <div className="flex flex-shrink-0 items-center">
                 <span className="px-4 text-2xl text-zinc-50">
-                  <Link href="/">
-                    <Image
-                      width={0}
-                      height={0}
+                  <Link to="/">
+                    <img
                       style={{ width: '100%', height: 'auto' }}
                       src={`${basePath}/logo.svg`}
                       alt="Logo"
-                      priority
                     />
                   </Link>
                 </span>
@@ -192,7 +185,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                   return (
                     <Link
                       key={`desktop-${navBarLink.key}`}
-                      href={navBarLink.href}
+                      to={navBarLink.href}
                       onClick={() => {
                         if (navBarLink.href === '/overview') {
                           SearchCtx.removeText()

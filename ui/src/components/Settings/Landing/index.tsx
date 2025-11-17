@@ -1,13 +1,13 @@
-import { useRouter } from 'next/router'
+import { useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 
 const SettingsLander = () => {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   useEffect(() => {
     document.title = 'Maintainerr - Settings'
-    router.push('/settings/main')
-  }, [])
+    navigate('/settings/main')
+  }, [navigate])
 
   return <></>
 }

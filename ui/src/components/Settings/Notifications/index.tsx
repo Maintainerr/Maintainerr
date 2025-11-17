@@ -3,7 +3,7 @@ import {
   PlusCircleIcon,
   TrashIcon,
 } from '@heroicons/react/solid'
-import Image from 'next/image'
+
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
@@ -51,7 +51,7 @@ const NotificationSettings = () => {
       <div className="mb-5 mt-6 h-full w-full text-white">
         <h3 className="heading flex items-center gap-2">
           Notification Settings
-          <Image
+          <img
             className="h-[1em] w-[2.5em]"
             width={'0'}
             height={'0'}
