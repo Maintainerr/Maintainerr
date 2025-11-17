@@ -1,4 +1,5 @@
 import { ReactNode, useContext, useEffect, useState } from 'react'
+import { Outlet } from 'react-router-dom'
 import SettingsContext from '../../contexts/settings-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import LoadingSpinner from '../Common/LoadingSpinner'
@@ -88,7 +89,9 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
             allEnabled={settingsCtx.settings.plex_auth_token !== null}
           />
         </div>
-        <div className="mt-10 text-white">{props.children}</div>
+        <div className="mt-10 text-white">
+          {props.children || <Outlet />}
+        </div>
       </>
     )
   } else {

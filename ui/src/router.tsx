@@ -53,50 +53,56 @@ export const router = createBrowserRouter(
         {
           path: 'settings',
           element: <Settings />,
-        },
-        {
-          path: 'settings/plex',
-          element: <SettingsPlex />,
-        },
-        {
-          path: 'settings/sonarr',
-          element: <SettingsSonarr />,
-        },
-        {
-          path: 'settings/radarr',
-          element: <SettingsRadarr />,
-        },
-        {
-          path: 'settings/overseerr',
-          element: <SettingsOverseerr />,
-        },
-        {
-          path: 'settings/jellyseerr',
-          element: <SettingsJellyseerr />,
-        },
-        {
-          path: 'settings/tautulli',
-          element: <SettingsTautulli />,
-        },
-        {
-          path: 'settings/notifications',
-          element: <SettingsNotifications />,
-        },
-        {
-          path: 'settings/jobs',
-          element: <SettingsJobs />,
-        },
-        {
-          path: 'settings/logs',
-          element: <SettingsLogs />,
-        },
-        {
-          path: 'settings/main',
-          element: <SettingsMain />,
-        },
-        {
-          path: 'settings/about',
-          element: <SettingsAbout />,
+          children: [
+            {
+              index: true,
+              element: <Navigate to="/settings/main" replace />,
+            },
+            {
+              path: 'main',
+              element: <SettingsMain />,
+            },
+            {
+              path: 'plex',
+              element: <SettingsPlex />,
+            },
+            {
+              path: 'sonarr',
+              element: <SettingsSonarr />,
+            },
+            {
+              path: 'radarr',
+              element: <SettingsRadarr />,
+            },
+            {
+              path: 'overseerr',
+              element: <SettingsOverseerr />,
+            },
+            {
+              path: 'jellyseerr',
+              element: <SettingsJellyseerr />,
+            },
+            {
+              path: 'tautulli',
+              element: <SettingsTautulli />,
+            },
+            {
+              path: 'notifications',
+              element: <SettingsNotifications />,
+            },
+            {
+              path: 'jobs',
+              element: <SettingsJobs />,
+            },
+            {
+              path: 'logs',
+              element: <SettingsLogs />,
+            },
+            {
+              path: 'about',
+              element: <SettingsAbout />,
+            },
+          ],
         },
       ],
     },
