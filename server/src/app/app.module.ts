@@ -60,6 +60,7 @@ import ormConfig from './config/typeOrmConfig';
         return [
           {
             rootPath: join(__dirname, '..', 'ui'),
+            serveRoot: process.env.BASE_PATH || undefined,
           },
         ];
       },

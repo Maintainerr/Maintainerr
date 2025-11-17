@@ -157,6 +157,8 @@ class PlexOAuth {
         'Window is undefined. Are you running this in the browser?',
       )
     }
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
     // Fixes dual-screen position                         Most browsers      Firefox
     const dualScreenLeft =
       window.screenLeft != undefined ? window.screenLeft : window.screenX
@@ -177,7 +179,7 @@ class PlexOAuth {
 
     //Set url to login/plex/loading so browser doesn't block popup
     const newWindow = window.open(
-      '/login/plex/loading',
+      `${basePath}/login/plex/loading`,
       title,
       'scrollbars=yes, width=' +
         w +

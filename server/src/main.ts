@@ -20,6 +20,17 @@ async function bootstrap() {
 
   setupGracefulShutdown({ app });
 
+  const basePathEnv = process.env.BASE_PATH?.trim();
+  if (basePathEnv && basePathEnv !== '/') {
+    const normalizedBasePath = basePathEnv
+      .replace(/\/+$/, '')
+      .replace(/^\/+/, '');
+
+    if (normalizedBasePath.length > 0) {
+      app.setGlobalPrefix(normalizedBasePath);
+    }
+  }
+
   const config = new DocumentBuilder().setTitle('Maintainerr').build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   const document = documentFactory();
