@@ -157,7 +157,7 @@ class PlexOAuth {
         'Window is undefined. Are you running this in the browser?',
       )
     }
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
     // Fixes dual-screen position                         Most browsers      Firefox
     const dualScreenLeft =

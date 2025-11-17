@@ -90,8 +90,9 @@ const SettingsTabs: React.FC<{
             navigate(e.target.value)
           }}
           defaultValue={
-            settingsRoutes.find((route) => !!location.pathname.match(route.route))
-              ?.route
+            settingsRoutes.find(
+              (route) => !!location.pathname.match(route.route),
+            )?.route
           }
           aria-label="Selected Tab"
         >

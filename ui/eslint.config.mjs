@@ -16,11 +16,21 @@ const compat = new FlatCompat({
 /** @type {import('eslint').Linter.Config[]} */
 const configs = [
   {
-    ignores: ['dist/**', '.next/**', 'out/**', '*.config.js', '*.config.mjs', '*.config.ts'],
+    ignores: [
+      'dist/**',
+      '.next/**',
+      'out/**',
+      '*.config.js',
+      '*.config.mjs',
+      '*.config.ts',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  ...compat.extends('plugin:react/recommended', 'plugin:react-hooks/recommended'),
+  ...compat.extends(
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+  ),
   {
     settings: {
       react: {
