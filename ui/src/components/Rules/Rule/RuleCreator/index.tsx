@@ -178,7 +178,7 @@ const RuleCreator = (props: iRuleCreator) => {
     updateRuleAmount([ruleAmount[0], rules])
   }
 
-  const addSection = (e: any) => {
+  const addSection = () => {
     const rules = [...ruleAmount[1]]
     rules.push(1)
 
@@ -204,7 +204,7 @@ const RuleCreator = (props: iRuleCreator) => {
             <div className="rounded-lg bg-zinc-700 px-6 py-0.5 shadow-md">
               <SectionHeading id={sid} name={'Section'} />
               <div className="flex flex-col space-y-2">
-                {ruleAmountArr[1][sid - 1].map((id, index) => (
+                {ruleAmountArr[1][sid - 1].map((id) => (
                   <div
                     key={`${sid}-${id}`}
                     className="flex w-full flex-col items-start"

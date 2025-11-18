@@ -7,7 +7,6 @@ import {
   UploadIcon,
 } from '@heroicons/react/solid'
 
-import { useNavigate } from 'react-router-dom'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { IRuleGroup } from '..'
@@ -205,7 +204,7 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  const toggleYamlExporter = async (e: any) => {
+  const toggleYamlExporter = async () => {
     const response = await PostApiHandler('/rules/yaml/encode', {
       rules: JSON.stringify(rules),
       mediaType: selectedType,
@@ -222,7 +221,7 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  const toggleYamlImporter = (e: any) => {
+  const toggleYamlImporter = () => {
     yaml.current = undefined
     if (!yamlImporterModal) {
       setYamlImporterModal(true)
@@ -372,7 +371,7 @@ const AddModal = (props: AddModal) => {
             if (resp.code === 1) props.onSuccess()
             else setError(true)
           })
-          .catch((err) => {
+          .catch(() => {
             setError(true)
           })
       } else {
@@ -381,7 +380,7 @@ const AddModal = (props: AddModal) => {
             if (resp.code === 1) props.onSuccess()
             else setError(true)
           })
-          .catch((err) => {
+          .catch(() => {
             setError(true)
           })
       }

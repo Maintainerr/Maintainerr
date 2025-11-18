@@ -1,5 +1,5 @@
 import { BeakerIcon, CheckIcon, ExclamationIcon } from '@heroicons/react/solid'
-import { FormEvent, useState } from 'react'
+import { useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
 import Button from '../Button'
 import { SmallLoadingSpinner } from '../LoadingSpinner'
@@ -28,7 +28,7 @@ const TestButton = <T,>(props: ITestButton<T>) => {
     status: false,
   })
 
-  const performTest = async (e: FormEvent) => {
+  const performTest = async () => {
     setLoading(true)
 
     const handler = props.payload

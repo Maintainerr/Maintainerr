@@ -412,7 +412,7 @@ interface LogMetaModalProps {
 const LogMetaModal = (props: LogMetaModalProps) => {
   const editorRef = useRef(undefined)
 
-  function handleEditorDidMount(editor: any, monaco: any) {
+  function handleEditorDidMount(editor: any) {
     editorRef.current = editor
   }
 

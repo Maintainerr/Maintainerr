@@ -130,7 +130,7 @@ const PlexSettings = () => {
           ...payload,
         },
       )
-      if (Boolean(resp.code)) {
+      if (resp.code) {
         settingsCtx.addSettings({
           ...settingsCtx.settings,
           ...payload,
@@ -196,7 +196,7 @@ const PlexSettings = () => {
   const deleteToken = async () => {
     const status = await DeleteApiHandler('/settings/plex/auth')
 
-    if (Boolean(status.code)) {
+    if (status.code) {
       settingsCtx.addSettings({
         ...settingsCtx.settings,
         plex_auth_token: null,

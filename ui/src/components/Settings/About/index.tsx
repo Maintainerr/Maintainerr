@@ -183,6 +183,7 @@ const AboutSettings = () => {
                 className="hover:text-amber-800"
                 href="https://docs.maintainerr.info"
                 target="_blank"
+                rel="noreferrer"
               >
                 https://docs.maintainerr.info
               </a>
@@ -200,6 +201,7 @@ const AboutSettings = () => {
                 className="hover:text-amber-800"
                 href="https://discord.gg/WP4ZW2QYwk"
                 target="_blank"
+                rel="noreferrer"
               >
                 https://discord.gg/WP4ZW2QYwk
               </a>
@@ -217,6 +219,7 @@ const AboutSettings = () => {
                 className="hover:text-amber-800"
                 href="https://features.maintainerr.info"
                 target="_blank"
+                rel="noreferrer"
               >
                 https://features.maintainerr.info
               </a>
@@ -234,6 +237,7 @@ const AboutSettings = () => {
                 className="hover:text-amber-800"
                 href="https://status.maintainerr.info"
                 target="_blank"
+                rel="noreferrer"
               >
                 https://status.maintainerr.info
               </a>
@@ -255,6 +259,7 @@ const AboutSettings = () => {
                 className="pr-2 underline hover:text-amber-800"
                 href="https://github.com/sponsors/jorenn92"
                 target="_blank"
+                rel="noreferrer"
               >
                 GitHub Sponsors
               </a>
@@ -263,6 +268,7 @@ const AboutSettings = () => {
                 className="pr-2 underline hover:text-amber-800"
                 href="https://ko-fi.com/maintainerr_app"
                 target="_blank"
+                rel="noreferrer"
               >
                 Ko-fi
               </a>

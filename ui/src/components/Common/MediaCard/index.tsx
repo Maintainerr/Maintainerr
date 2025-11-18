@@ -16,7 +16,6 @@ interface IMediaCard {
   mediaType: 'movie' | 'show' | 'season' | 'episode'
   title: string
   userScore: number
-  canExpand?: boolean
   inProgress?: boolean
   tmdbid?: string
   libraryId?: number
@@ -43,11 +42,10 @@ const MediaCard: React.FC<IMediaCard> = ({
   exclusionId = undefined,
   tmdbid = undefined,
   userScore,
-  canExpand = false,
   collectionPage = false,
   exclusionType = undefined,
   isManual = false,
-  onRemove = (id: string) => {},
+  onRemove = () => {},
 }) => {
   const isTouch = useIsTouch()
   const [showDetail, setShowDetail] = useState(false)

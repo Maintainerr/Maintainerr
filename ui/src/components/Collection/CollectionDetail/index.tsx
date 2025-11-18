@@ -1,6 +1,5 @@
 import { PlayIcon } from '@heroicons/react/solid'
 import _ from 'lodash'
-import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection, ICollectionMedia } from '..'
 import GetApiHandler from '../../../utils/ApiHandler'

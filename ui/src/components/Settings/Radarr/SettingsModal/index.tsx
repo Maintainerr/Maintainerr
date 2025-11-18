@@ -186,7 +186,7 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
 
         setTesting(false)
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           version: '0',

@@ -86,7 +86,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
     return false
   }, [mediaItem, selectedSeasons, selectedEpisodes])
 
-  function handleEditorDidMount(editor: any, monaco: any) {
+  function handleEditorDidMount(editor: any) {
     editorRef.current = editor
   }
 
