@@ -12,7 +12,6 @@ import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
 
 const Layout: React.FC = () => {
-  const [isScrolled, setIsScrolled] = useState(false)
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
   const SettingsCtx = useContext(SettingsContext)
@@ -45,28 +44,18 @@ const Layout: React.FC = () => {
         <NavBar open={navBarOpen} setClosed={handleNavbar}></NavBar>
         <div className="relative mb-16 flex w-0 min-w-0 flex-1 flex-col lg:ml-64"></div>
         <div
-          className={`searchbar fixed left-0 right-0 top-0 z-10 flex flex-shrink-0 bg-opacity-80 transition duration-300 ${
-            isScrolled ? 'bg-zinc-700' : 'bg-transparent'
-          } lg:ml-64`}
-          style={{
-            backdropFilter: isScrolled ? 'blur(5px)' : undefined,
-            WebkitBackdropFilter: isScrolled ? 'blur(5px)' : undefined,
-          }}
+          className={`searchbar fixed left-0 right-0 top-0 z-10 flex flex-shrink-0 bg-transparent bg-opacity-80 transition duration-300 lg:ml-64`}
         >
           <div className="transparent-glass-bg flex flex-1 items-center justify-between pr-4 md:pl-4 md:pr-4">
             <button
-              className={`px-4 text-white ${
-                isScrolled ? 'opacity-90' : 'opacity-70'
-              } transition duration-300 focus:outline-none lg:hidden`}
+              className={`px-4 text-white opacity-70 transition duration-300 focus:outline-none lg:hidden`}
               aria-label="Open sidebar"
               onClick={() => setNavBarOpen(true)}
             >
               <MenuAlt2Icon className="h-6 w-6" />
             </button>
             <button
-              className={`mr-2 text-white ${
-                isScrolled ? 'opacity-90' : 'opacity-70'
-              } transition duration-300 hover:text-white focus:text-white focus:outline-none`}
+              className={`mr-2 text-white opacity-70 transition duration-300 hover:text-white focus:text-white focus:outline-none`}
               onClick={() => navigate(-1)}
             >
               <ArrowLeftIcon className="w-7" />

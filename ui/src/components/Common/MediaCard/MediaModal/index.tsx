@@ -191,6 +191,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       <a
                         href={`https://themoviedb.org/${mediaTypeOf}/${tmdbid}`}
                         target="_blank"
+                        rel="noreferrer"
                       >
                         <img
                           src={`${basePath}/icons_logos/tmdb_logo.svg`}
@@ -206,6 +207,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     <a
                       href={`https://app.plex.tv/desktop#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${id}`}
                       target="_blank"
+                      rel="noreferrer"
                     >
                       <img
                         src={`${basePath}/icons_logos/plex_logo.svg`}
@@ -221,6 +223,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       <a
                         href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
                         target="_blank"
+                        rel="noreferrer"
                       >
                         <img
                           src={`${basePath}/icons_logos/tautulli_logo.svg`}

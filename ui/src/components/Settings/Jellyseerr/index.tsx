@@ -130,7 +130,7 @@ const JellyseerrSettings = () => {
           })
         }
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           message: 'Unknown error',

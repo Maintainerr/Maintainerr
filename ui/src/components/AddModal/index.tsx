@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
-import Modal from '../Common/Modal'
-import FormItem from '../Common/FormItem'
 import { EPlexDataType } from '../../utils/PlexDataType-enum'
-import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 import Alert from '../Common/Alert'
+import FormItem from '../Common/FormItem'
+import Modal from '../Common/Modal'
+import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 
 const AddModal = (props: IAddModal) => {
   const [selectedCollection, setSelectedCollection] = useState<number>()
@@ -106,7 +106,6 @@ const AddModal = (props: IAddModal) => {
         collectionId: undefined,
         action: 1,
       })
-    } else {
     }
     props.onSubmit()
   }

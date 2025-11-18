@@ -73,10 +73,8 @@ const Modal: React.FC<ModalProps> = ({
   tertiaryText,
   onTertiary,
   specialButtonType = 'default',
-  specialDisabled = false,
   specialText,
   onSpecial,
-  backdrop,
   size = '3xl',
 }) => {
   const modalRef = useRef<HTMLDivElement>(null)

@@ -31,7 +31,7 @@ const MainSettings = () => {
           ...payload,
         },
       )
-      if (Boolean(resp.code)) {
+      if (resp.code) {
         settingsCtx.addSettings({
           ...settingsCtx.settings,
           ...payload,

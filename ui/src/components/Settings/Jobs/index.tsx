@@ -39,7 +39,7 @@ const JobSettings = () => {
           ...payload,
         },
       )
-      if (Boolean(resp.code)) {
+      if (resp.code) {
         setError(false)
         setChanged(true)
 
@@ -85,7 +85,7 @@ const JobSettings = () => {
               Rule Handler
               <p className="text-xs font-normal">
                 Supports all standard{' '}
-                <a href="http://crontab.org/" target="_blank">
+                <a href="http://crontab.org/" target="_blank" rel="noreferrer">
                   cron
                 </a>{' '}
                 patterns
@@ -120,7 +120,7 @@ const JobSettings = () => {
               Collection Handler
               <p className="text-xs font-normal">
                 Supports all standard{' '}
-                <a href="http://crontab.org/" target="_blank">
+                <a href="http://crontab.org/" target="_blank" rel="noreferrer">
                   cron
                 </a>{' '}
                 patterns

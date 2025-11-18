@@ -43,7 +43,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
             setFailed(resp.result)
           }
         })
-        .catch((e) => {
+        .catch(() => {
           setFailed('Failed to connect to the server. Please try again later.')
         })
     }

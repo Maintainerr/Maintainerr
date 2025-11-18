@@ -130,7 +130,7 @@ const OverseerrSettings = () => {
           })
         }
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           message: 'Unknown error',

@@ -186,7 +186,7 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
 
         setTesting(false)
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           version: '0',
