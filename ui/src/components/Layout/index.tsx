@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
-import { debounce } from 'lodash'
+import { debounce } from 'lodash-es'
 import { useContext, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Outlet, useNavigate } from 'react-router-dom'

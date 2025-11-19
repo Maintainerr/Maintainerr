@@ -1,4 +1,4 @@
-import { clone } from 'lodash'
+import { clone } from 'lodash-es'
 import { useContext, useEffect, useRef, useState } from 'react'
 import LibrariesContext from '../../contexts/libraries-context'
 import SearchContext from '../../contexts/search-context'
@@ -7,20 +7,13 @@ import LibrarySwitcher from '../Common/LibrarySwitcher'
 import OverviewContent, { IPlexMetadata } from './Content'
 
 const Overview = () => {
-  // const [isLoading, setIsLoading] = useState<Boolean>(false)
-  const loadingRef = useRef<boolean>(false)
-
+  const [isLoading, setIsLoading] = useState<boolean>(false)
   const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
-
   const [data, setData] = useState<IPlexMetadata[]>([])
-  const dataRef = useRef<IPlexMetadata[]>([])
-
   const [totalSize, setTotalSize] = useState<number>(999)
-  const totalSizeRef = useRef<number>(999)
-
   const [selectedLibrary, setSelectedLibrary] = useState<number>()
-  const selectedLibraryRef = useRef<number>(undefined)
   const [searchUsed, setsearchUsed] = useState<boolean>(false)
+  const [pageDataCount, setPageDataCount] = useState<number>(0)
 
   const pageData = useRef<number>(0)
   const SearchCtx = useContext(SearchContext)
@@ -28,15 +21,22 @@ const Overview = () => {
 
   const fetchAmount = 30
 
-  const setIsLoading = (val: boolean) => {
-    loadingRef.current = val
+  const switchLib = (libraryId: number) => {
+    // get all movies & shows from plex
+    setIsLoading(true)
+    pageData.current = 0
+    setPageDataCount(0)
+    setTotalSize(999)
+    setData([])
+    setsearchUsed(false)
+    setSelectedLibrary(libraryId)
   }
 
   useEffect(() => {
     document.title = 'Maintainerr - Overview'
     setTimeout(() => {
       if (
-        loadingRef.current &&
+        isLoading &&
         data.length === 0 &&
         SearchCtx.search.text === '' &&
         LibrariesCtx.libraries.length > 0
@@ -50,11 +50,40 @@ const Overview = () => {
     // Cleanup on unmount
     return () => {
       setData([])
-      dataRef.current = []
-      totalSizeRef.current = 999
       pageData.current = 0
     }
   }, [])
+
+  const fetchData = async () => {
+    if (
+      selectedLibrary &&
+      SearchCtx.search.text === '' &&
+      totalSize >= pageData.current * fetchAmount
+    ) {
+      const askedLib = clone(selectedLibrary)
+
+      const resp: { totalSize: number; items: IPlexMetadata[] } =
+        await GetApiHandler(
+          `/plex/library/${selectedLibrary}/content/${
+            pageData.current + 1
+          }?amount=${fetchAmount}`,
+        )
+
+      if (askedLib === selectedLibrary) {
+        // check lib again, we don't want to change array when lib was changed
+        setTotalSize(resp.totalSize)
+        pageData.current = pageData.current + 1
+        setPageDataCount(pageData.current)
+        setData((prevData) => [
+          ...prevData,
+          ...(resp && resp.items ? resp.items : []),
+        ])
+        setIsLoading(false)
+      }
+      setLoadingExtra(false)
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (SearchCtx.search.text !== '') {
@@ -63,6 +92,7 @@ const Overview = () => {
           setsearchUsed(true)
           setTotalSize(resp.length)
           pageData.current = resp.length * 50
+          setPageDataCount(resp.length * 50)
           setData(resp ? resp : [])
           setIsLoading(false)
         },
@@ -73,62 +103,15 @@ const Overview = () => {
       setData([])
       setTotalSize(999)
       pageData.current = 0
+      setPageDataCount(0)
       setIsLoading(true)
       fetchData()
     }
   }, [SearchCtx.search.text])
 
   useEffect(() => {
-    selectedLibraryRef.current = selectedLibrary
     fetchData()
   }, [selectedLibrary])
-
-  useEffect(() => {
-    dataRef.current = data
-  }, [data])
-
-  useEffect(() => {
-    totalSizeRef.current = totalSize
-  }, [totalSize])
-
-  const switchLib = (libraryId: number) => {
-    // get all movies & shows from plex
-    setIsLoading(true)
-    pageData.current = 0
-    setTotalSize(999)
-    setData([])
-    dataRef.current = []
-    setsearchUsed(false)
-    setSelectedLibrary(libraryId)
-  }
-
-  const fetchData = async () => {
-    // This function didn't work with normal state. Used a state/ref hack as a result.
-    if (
-      selectedLibraryRef.current &&
-      SearchCtx.search.text === '' &&
-      totalSizeRef.current >= pageData.current * fetchAmount
-    ) {
-      const askedLib = clone(selectedLibraryRef.current)
-
-      const resp: { totalSize: number; items: IPlexMetadata[] } =
-        await GetApiHandler(
-          `/plex/library/${selectedLibraryRef.current}/content/${
-            pageData.current + 1
-          }?amount=${fetchAmount}`,
-        )
-
-      if (askedLib === selectedLibraryRef.current) {
-        // check lib again, we don't want to change array when lib was changed
-        setTotalSize(resp.totalSize)
-        pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
-        setIsLoading(false)
-      }
-      setLoadingExtra(false)
-      setIsLoading(false)
-    }
-  }
 
   return (
     <div className="w-full">
@@ -137,18 +120,16 @@ const Overview = () => {
       ) : undefined}
       {selectedLibrary ? (
         <OverviewContent
-          dataFinished={
-            !(totalSizeRef.current >= pageData.current * fetchAmount)
-          }
+          dataFinished={!(totalSize >= pageDataCount * fetchAmount)}
           fetchData={() => {
             setLoadingExtra(true)
             fetchData()
           }}
-          loading={loadingRef.current}
+          loading={isLoading}
           extrasLoading={
             loadingExtra &&
-            !loadingRef.current &&
-            totalSizeRef.current >= pageData.current * fetchAmount
+            !isLoading &&
+            totalSize >= pageDataCount * fetchAmount
           }
           data={data}
           libraryId={selectedLibrary}
