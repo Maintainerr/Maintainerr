@@ -100,7 +100,7 @@ const AddModal = (props: AddModal) => {
   )
 
   const [useRules, setUseRules] = useState<boolean>(
-    props.editData ? props.editData.useRules : true,
+    props.editData ? props.editData.useRules ?? true : true,
   )
   const [arrOption, setArrOption] = useState<number>()
   const [radarrSettingsId, setRadarrSettingsId] = useState<
@@ -110,10 +110,10 @@ const AddModal = (props: AddModal) => {
     number | null | undefined
   >(props.editData ? null : undefined)
   const [active, setActive] = useState<boolean>(
-    props.editData ? props.editData.isActive : true,
+    props.editData ? props.editData.isActive ?? true : true,
   )
   const [rules, setRules] = useState<IRule[]>(
-    props.editData
+    props.editData?.rules
       ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
       : [],
   )
@@ -268,7 +268,7 @@ const AddModal = (props: AddModal) => {
         LibrariesCtx.libraries.length <= 0
           ? GetApiHandler('/plex/libraries/')
           : Promise.resolve(null)
-      const collectionPromise: Promise<ICollection | null> = props.editData
+      const collectionPromise: Promise<ICollection | null> = props.editData?.collectionId
         ? GetApiHandler(
             `/collections/collection/${props.editData.collectionId}`,
           )
@@ -375,7 +375,7 @@ const AddModal = (props: AddModal) => {
             setError(true)
           })
       } else {
-        PutApiHandler('/rules', { id: props.editData.id, ...creationObj })
+        PutApiHandler('/rules', { id: props.editData?.id, ...creationObj })
           .then((resp) => {
             if (resp.code === 1) props.onSuccess()
             else setError(true)
