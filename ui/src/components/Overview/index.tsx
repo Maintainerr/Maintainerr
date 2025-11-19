@@ -1,5 +1,6 @@
 import { clone } from 'lodash-es'
 import { useContext, useEffect, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import LibrariesContext from '../../contexts/libraries-context'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
@@ -33,7 +34,6 @@ const Overview = () => {
   }
 
   useEffect(() => {
-    document.title = 'Maintainerr - Overview'
     setTimeout(() => {
       if (
         isLoading &&
@@ -114,28 +114,33 @@ const Overview = () => {
   }, [selectedLibrary])
 
   return (
-    <div className="w-full">
-      {!searchUsed ? (
-        <LibrarySwitcher allPossible={false} onSwitch={switchLib} />
-      ) : undefined}
-      {selectedLibrary ? (
-        <OverviewContent
-          dataFinished={!(totalSize >= pageDataCount * fetchAmount)}
-          fetchData={() => {
-            setLoadingExtra(true)
-            fetchData()
-          }}
-          loading={isLoading}
-          extrasLoading={
-            loadingExtra &&
-            !isLoading &&
-            totalSize >= pageDataCount * fetchAmount
-          }
-          data={data}
-          libraryId={selectedLibrary}
-        />
-      ) : undefined}
-    </div>
+    <>
+      <Helmet>
+        <title>Maintainerr - Overview</title>
+      </Helmet>
+      <div className="w-full">
+        {!searchUsed ? (
+          <LibrarySwitcher allPossible={false} onSwitch={switchLib} />
+        ) : undefined}
+        {selectedLibrary ? (
+          <OverviewContent
+            dataFinished={!(totalSize >= pageDataCount * fetchAmount)}
+            fetchData={() => {
+              setLoadingExtra(true)
+              fetchData()
+            }}
+            loading={isLoading}
+            extrasLoading={
+              loadingExtra &&
+              !isLoading &&
+              totalSize >= pageDataCount * fetchAmount
+            }
+            data={data}
+            libraryId={selectedLibrary}
+          />
+        ) : undefined}
+      </div>
+    </>
   )
 }
 export default Overview

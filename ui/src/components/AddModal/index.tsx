@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import { EPlexDataType } from '../../utils/PlexDataType-enum'
 import Alert from '../Common/Alert'
@@ -111,8 +112,6 @@ const AddModal = (props: IAddModal) => {
   }
 
   useEffect(() => {
-    document.title = 'Maintainerr - Overview'
-
     setSelectedSeasons(-1)
     setSelectedEpisodes(-1)
 
@@ -214,21 +213,25 @@ const AddModal = (props: IAddModal) => {
   }, [selectedSeasons, selectedEpisodes])
 
   return (
-    <Modal
-      loading={loading}
-      backgroundClickable={false}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      okDisabled={false}
-      title={props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'}
-      okText={'Submit'}
-      okButtonType={'primary'}
-      onSecondary={() => {}}
-      specialButtonType="warning"
-      specialDisabled={props.modalType !== 'add'}
-      specialText={'Remove from all collections'}
-      onSpecial={
-        props.modalType === 'add'
+    <>
+      <Helmet>
+        <title>Maintainerr - Overview</title>
+      </Helmet>
+      <Modal
+        loading={loading}
+        backgroundClickable={false}
+        onCancel={handleCancel}
+        onOk={handleOk}
+        okDisabled={false}
+        title={props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'}
+        okText={'Submit'}
+        okButtonType={'primary'}
+        onSecondary={() => {}}
+        specialButtonType="warning"
+        specialDisabled={props.modalType !== 'add'}
+        specialText={'Remove from all collections'}
+        onSpecial={
+          props.modalType === 'add'
           ? () => {
               setForceRemovalCheck(true)
             }
@@ -336,6 +339,7 @@ const AddModal = (props: IAddModal) => {
         </FormItem>
       </div>
     </Modal>
+    </>
   )
 }
 export default AddModal

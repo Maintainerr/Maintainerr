@@ -1,14 +1,11 @@
 import { InformationCircleIcon } from '@heroicons/react/solid'
 import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Releases from './Releases'
 
 const AboutSettings = () => {
-  useEffect(() => {
-    document.title = 'Maintainerr - Settings - About'
-  }, [])
-
   // Maintainerr Timezone
   const [timezone, setTimezone] = useState<string>('')
   useEffect(() => {
@@ -59,7 +56,11 @@ const AboutSettings = () => {
   // End Maintainerr Community Rules Count
 
   return (
-    <div className="h-full w-full">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - About</title>
+      </Helmet>
+      <div className="h-full w-full">
       <div className="mt-6 rounded-md border border-amber-600 bg-amber-500 bg-opacity-20 p-4 backdrop-blur">
         <div className="flex">
           <div className="flex-shrink-0">
@@ -284,6 +285,7 @@ const AboutSettings = () => {
       </div>
       {/* End Showing Releases */}
     </div>
+    </>
   )
 }
 export default AboutSettings

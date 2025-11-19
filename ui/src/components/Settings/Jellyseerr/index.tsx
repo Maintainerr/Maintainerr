@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -47,7 +48,6 @@ const JellyseerrSettings = () => {
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Jellyseerr'
   }, [])
 
   const {
@@ -143,6 +143,10 @@ const JellyseerrSettings = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Maintainerr - Settings - Jellyseerr</title>
+      </Helmet>
+      <>
       <div className="mb-6">
         <h3 className="heading">Jellyseerr Settings</h3>
         <p className="description">Jellyseerr configuration</p>
@@ -240,7 +244,7 @@ const JellyseerrSettings = () => {
         </form>
       </div>
     </>
+    </>
   )
 }
-
 export default JellyseerrSettings

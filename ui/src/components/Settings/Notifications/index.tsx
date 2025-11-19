@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import {
   DocumentAddIcon,
   PlusCircleIcon,
@@ -20,7 +21,6 @@ const NotificationSettings = () => {
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Notifications'
     GetApiHandler<AgentConfiguration[]>('/notifications/configurations').then(
       (configs) => setConfigurations(configs),
     )
@@ -47,8 +47,12 @@ const NotificationSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
-      <div className="mb-5 mt-6 h-full w-full text-white">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - Notifications</title>
+      </Helmet>
+      <div className="h-full w-full">
+        <div className="mb-5 mt-6 h-full w-full text-white">
         <h3 className="heading flex items-center gap-2">
           Notification Settings
           <img
@@ -149,6 +153,7 @@ const NotificationSettings = () => {
         />
       ) : null}
     </div>
+    </>
   )
 }
 

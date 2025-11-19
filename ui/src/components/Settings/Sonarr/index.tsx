@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import {
   DocumentAddIcon,
   PlusCircleIcon,
@@ -81,7 +82,6 @@ const SonarrSettings = () => {
   }, [])
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Sonarr'
   }, [])
 
   const showAddModal = () => {
@@ -91,6 +91,9 @@ const SonarrSettings = () => {
   if (!loaded) {
     return (
       <>
+        <Helmet>
+          <title>Maintainerr - Settings - Sonarr</title>
+        </Helmet>
         <div className="mt-6">
           <LoadingSpinner />
         </div>
@@ -100,6 +103,9 @@ const SonarrSettings = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Maintainerr - Settings - Sonarr</title>
+      </Helmet>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Sonarr Settings</h3>

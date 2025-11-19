@@ -3,6 +3,7 @@ import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import SettingsContext from '../../../contexts/settings-context'
 import GetApiHandler, {
@@ -83,7 +84,6 @@ const PlexSettings = () => {
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Plex'
   }, [])
 
   const submit = async (
@@ -288,7 +288,11 @@ const PlexSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - Plex</title>
+      </Helmet>
+      <div className="h-full w-full">
       <div className="section h-full w-full">
         <h3 className="heading">Plex Settings</h3>
         <p className="description">Plex configuration</p>
@@ -527,6 +531,7 @@ const PlexSettings = () => {
         </form>
       </div>
     </div>
+    </>
   )
 }
 export default PlexSettings

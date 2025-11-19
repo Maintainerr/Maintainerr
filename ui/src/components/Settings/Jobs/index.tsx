@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { SaveIcon } from '@heroicons/react/solid'
 import { useContext, useEffect, useRef, useState } from 'react'
 import SettingsContext from '../../../contexts/settings-context'
@@ -17,7 +18,6 @@ const JobSettings = () => {
   const [changed, setChanged] = useState<boolean>()
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Jobs'
   }, [])
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,7 +59,11 @@ const JobSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - Jobs</title>
+      </Helmet>
+      <div className="h-full w-full">
       <div className="section h-full w-full">
         <h3 className="heading">Job Settings</h3>
         <p className="description">Job configuration</p>
@@ -170,7 +174,7 @@ const JobSettings = () => {
         </form>
       </div>
     </div>
+    </>
   )
 }
-
 export default JobSettings
