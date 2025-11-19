@@ -1,8 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
-import Collection from './components/Collection'
 import Overview from './components/Overview'
-import Rules from './components/Rules'
 import Settings from './components/Settings'
 import SettingsAbout from './components/Settings/About'
 import SettingsJellyseerr from './components/Settings/Jellyseerr'
@@ -17,6 +15,13 @@ import SettingsSonarr from './components/Settings/Sonarr'
 import SettingsTautulli from './components/Settings/Tautulli'
 import DocsPage from './pages/DocsPage'
 import PlexLoadingPage from './pages/PlexLoadingPage'
+import RulesListPage from './pages/RulesListPage'
+import RuleFormPage from './pages/RuleFormPage'
+import CollectionsListPage from './pages/CollectionsListPage'
+import CollectionDetailPage from './pages/CollectionDetailPage'
+import CollectionMediaPage from './pages/CollectionMediaPage'
+import CollectionExclusionsPage from './pages/CollectionExclusionsPage'
+import CollectionInfoPage from './pages/CollectionInfoPage'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
 
@@ -36,11 +41,47 @@ export const router = createBrowserRouter(
         },
         {
           path: 'collections',
-          element: <Collection />,
+          children: [
+            {
+              index: true,
+              element: <CollectionsListPage />,
+            },
+            {
+              path: ':id',
+              element: <CollectionDetailPage />,
+              children: [
+                {
+                  index: true,
+                  element: <CollectionMediaPage />,
+                },
+                {
+                  path: 'exclusions',
+                  element: <CollectionExclusionsPage />,
+                },
+                {
+                  path: 'info',
+                  element: <CollectionInfoPage />,
+                },
+              ],
+            },
+          ],
         },
         {
           path: 'rules',
-          element: <Rules />,
+          children: [
+            {
+              index: true,
+              element: <RulesListPage />,
+            },
+            {
+              path: 'new',
+              element: <RuleFormPage />,
+            },
+            {
+              path: 'edit/:id',
+              element: <RuleFormPage />,
+            },
+          ],
         },
         {
           path: 'docs',

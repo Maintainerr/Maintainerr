@@ -1,0 +1,112 @@
+import { useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
+import { Outlet, useNavigate, useParams } from 'react-router-dom'
+import GetApiHandler from '../utils/ApiHandler'
+import LoadingSpinner from '../components/Common/LoadingSpinner'
+import { ICollection } from '../components/Collection'
+import { PlayIcon } from '@heroicons/react/solid'
+import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
+import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
+
+const CollectionDetailPage = () => {
+  const navigate = useNavigate()
+  const { id, tab } = useParams<{ id: string; tab?: string }>()
+  const [collection, setCollection] = useState<ICollection | undefined>()
+  const [isLoading, setIsLoading] = useState(true)
+  const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
+  const currentTab = tab || 'media'
+
+  useEffect(() => {
+    if (id) {
+      GetApiHandler(`/collections/collection/${id}`).then((resp) => {
+        setCollection(resp)
+        setIsLoading(false)
+      })
+    }
+  }, [id])
+
+  const tabbedRoutes: TabbedRoute[] = [
+    {
+      text: 'Media',
+      route: 'media',
+    },
+    {
+      text: 'Exclusions',
+      route: 'exclusions',
+    },
+    {
+      text: 'Info',
+      route: 'info',
+    },
+  ]
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'media') {
+      navigate(`/collections/${id}`)
+    } else {
+      navigate(`/collections/${id}/${tab}`)
+    }
+  }
+
+  if (isLoading || !collection) {
+    return (
+      <>
+        <Helmet>
+          <title>Maintainerr - Collection</title>
+        </Helmet>
+        <LoadingSpinner />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Helmet>
+        <title>Maintainerr - {collection.title}</title>
+      </Helmet>
+      <div className="w-full">
+        <div className="m-auto mb-3 flex w-full">
+          <h1 className="flex w-full justify-center overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-zinc-200 sm:m-0 sm:justify-start xl:m-0">
+            {collection.title}
+          </h1>
+        </div>
+
+        <div>
+          <div className="flex h-full items-center justify-center">
+            <div className="mb-4 mt-0 w-fit sm:w-full">
+              <TabbedLinks
+                onChange={handleTabChange}
+                routes={tabbedRoutes}
+                currentRoute={currentTab}
+                allEnabled={true}
+              />
+            </div>
+          </div>
+          <div className="flex justify-center sm:justify-start">
+            <button
+              className="edit-button mb-4 flex h-9 rounded text-zinc-200 shadow-md"
+              onClick={() => setMediaTestModalOpen(true)}
+            >
+              {<PlayIcon className="m-auto ml-5 h-5" />}{' '}
+              <p className="rules-button-text m-auto ml-1 mr-5">Test Media</p>
+            </button>
+          </div>
+
+          <Outlet context={{ collection }} />
+        </div>
+
+        {mediaTestModalOpen && collection?.id ? (
+          <TestMediaItem
+            collectionId={+collection.id}
+            onCancel={() => {
+              setMediaTestModalOpen(false)
+            }}
+            onSubmit={() => {}}
+          />
+        ) : undefined}
+      </div>
+    </>
+  )
+}
+
+export default CollectionDetailPage
