@@ -64,7 +64,7 @@ interface ICreateApiObject {
 
 const AddModal = (props: AddModal) => {
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>(
-    props.editData ? props.editData.libraryId.toString() : '',
+    props.editData?.libraryId ? props.editData.libraryId.toString() : '',
   )
   const [selectedType, setSelectedType] = useState<string>(
     props.editData?.type ? props.editData.type.toString() : '',
