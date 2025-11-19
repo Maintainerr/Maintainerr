@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
 import React, { useContext, useEffect, useRef, useState } from 'react'
 import SettingsContext from '../../../contexts/settings-context'
@@ -14,7 +15,6 @@ const MainSettings = () => {
   const [changed, setChanged] = useState<boolean>()
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - General'
   }, [])
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,7 +58,11 @@ const MainSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - General</title>
+      </Helmet>
+      <div className="h-full w-full">
       <div className="section h-full w-full">
         <h3 className="heading">General Settings</h3>
         <p className="description">Configure global settings</p>
@@ -131,6 +135,7 @@ const MainSettings = () => {
         </form>
       </div>
     </div>
+    </>
   )
 }
 export default MainSettings

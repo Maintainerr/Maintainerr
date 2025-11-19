@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { DownloadIcon, SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -23,15 +24,19 @@ import { SelectGroup } from '../../Forms/Select'
 
 const LogSettings = () => {
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Logs'
   }, [])
 
   return (
-    <div className="h-full w-full">
-      <LogSettingsForm />
-      <Logs />
-      <LogFiles />
-    </div>
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - Logs</title>
+      </Helmet>
+      <div className="h-full w-full">
+        <LogSettingsForm />
+        <Logs />
+        <LogFiles />
+      </div>
+    </>
   )
 }
 
@@ -338,5 +343,4 @@ const LogFiles = () => {
     </div>
   )
 }
-
 export default LogSettings

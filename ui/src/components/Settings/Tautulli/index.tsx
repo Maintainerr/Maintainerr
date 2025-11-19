@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -47,7 +48,6 @@ const TautulliSettings = () => {
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Tautulli'
   }, [])
 
   const {
@@ -140,7 +140,11 @@ const TautulliSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - Tautulli</title>
+      </Helmet>
+      <div className="h-full w-full">
       <div className="section h-full w-full">
         <h3 className="heading">Tautulli Settings</h3>
         <p className="description">Tautulli configuration</p>
@@ -238,7 +242,7 @@ const TautulliSettings = () => {
         </form>
       </div>
     </div>
+    </>
   )
 }
-
 export default TautulliSettings

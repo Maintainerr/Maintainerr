@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
 import { useContext, useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import LibrariesContext, { ILibrary } from '../../contexts/libraries-context'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
@@ -59,7 +60,6 @@ const Collection = () => {
   const [collections, setCollections] = useState<ICollection[]>()
 
   useEffect(() => {
-    document.title = 'Maintainerr - Collections'
   }, [])
 
   const onSwitchLibrary = (id: number) => {
@@ -111,27 +111,39 @@ const Collection = () => {
   }
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <>
+        <Helmet>
+          <title>Maintainerr - Collections</title>
+        </Helmet>
+        <LoadingSpinner />
+      </>
+    )
   }
 
   return (
-    <div className="w-full">
-      {detail.open ? (
-        <CollectionDetail
-          libraryId={detail.collection ? detail.collection.libraryId : 0}
-          title={detail.collection ? detail.collection.title : ''}
-          collection={detail.collection!}
-          onBack={closeDetail}
-        />
-      ) : (
-        <CollectionOverview
-          onSwitchLibrary={onSwitchLibrary}
-          collections={collections}
-          doActions={doActions}
-          openDetail={openDetail}
-        />
-      )}
-    </div>
+    <>
+      <Helmet>
+        <title>Maintainerr - Collections</title>
+      </Helmet>
+      <div className="w-full">
+        {detail.open ? (
+          <CollectionDetail
+            libraryId={detail.collection ? detail.collection.libraryId : 0}
+            title={detail.collection ? detail.collection.title : ''}
+            collection={detail.collection!}
+            onBack={closeDetail}
+          />
+        ) : (
+          <CollectionOverview
+            onSwitchLibrary={onSwitchLibrary}
+            collections={collections}
+            doActions={doActions}
+            openDetail={openDetail}
+          />
+        )}
+      </div>
+    </>
   )
 }
 

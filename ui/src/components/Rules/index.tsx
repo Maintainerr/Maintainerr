@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
 import { useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import { ConstantsContextProvider } from '../../contexts/constants-context'
 import { useTaskStatusContext } from '../../contexts/taskstatus-context'
@@ -26,7 +27,6 @@ const Rules = () => {
   }
 
   useEffect(() => {
-    document.title = 'Maintainerr - Rules'
     fetchData().then((resp) => {
       setData(resp)
       setIsLoading(false)
@@ -85,41 +85,59 @@ const Rules = () => {
 
   if (!data || isLoading) {
     return (
-      <span>
-        <LoadingSpinner />
-      </span>
+      <>
+        <Helmet>
+          <title>Maintainerr - Rules</title>
+        </Helmet>
+        <span>
+          <LoadingSpinner />
+        </span>
+      </>
     )
   }
 
   if (addModalActive) {
     return (
-      <ConstantsContextProvider>
-        <AddModal
-          onSuccess={refreshData}
-          onCancel={() => {
-            setAddModal(false)
-          }}
-        />
-      </ConstantsContextProvider>
+      <>
+        <Helmet>
+          <title>Maintainerr - Rules</title>
+        </Helmet>
+        <ConstantsContextProvider>
+          <AddModal
+            onSuccess={refreshData}
+            onCancel={() => {
+              setAddModal(false)
+            }}
+          />
+        </ConstantsContextProvider>
+      </>
     )
   }
 
   if (editModalActive) {
     return (
-      <ConstantsContextProvider>
-        <AddModal
-          onSuccess={refreshData}
-          editData={editData}
-          onCancel={() => {
-            setEditModal(false)
-          }}
-        />
-      </ConstantsContextProvider>
+      <>
+        <Helmet>
+          <title>Maintainerr - Rules</title>
+        </Helmet>
+        <ConstantsContextProvider>
+          <AddModal
+            onSuccess={refreshData}
+            editData={editData}
+            onCancel={() => {
+              setEditModal(false)
+            }}
+          />
+        </ConstantsContextProvider>
+      </>
     )
   }
 
   return (
     <>
+      <Helmet>
+        <title>Maintainerr - Rules</title>
+      </Helmet>
       <div className="w-full">
         <LibrarySwitcher onSwitch={onSwitchLibrary} />
 

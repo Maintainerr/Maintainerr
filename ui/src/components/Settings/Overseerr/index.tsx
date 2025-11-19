@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -47,7 +48,6 @@ const OverseerrSettings = () => {
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
 
   useEffect(() => {
-    document.title = 'Maintainerr - Settings - Overseerr'
   }, [])
 
   const {
@@ -142,7 +142,11 @@ const OverseerrSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <>
+      <Helmet>
+        <title>Maintainerr - Settings - Overseerr</title>
+      </Helmet>
+      <div className="h-full w-full">
       <div className="section h-full w-full">
         <h3 className="heading">Overseerr Settings</h3>
         <p className="description">Overseerr configuration</p>
@@ -240,7 +244,7 @@ const OverseerrSettings = () => {
         </form>
       </div>
     </div>
+    </>
   )
 }
-
 export default OverseerrSettings
