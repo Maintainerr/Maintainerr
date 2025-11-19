@@ -10,7 +10,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 ```
 ├── server/          # Nest.js backend API
-├── ui/             # Next.js frontend application
+├── ui/             # Vite + React Router frontend application
 ├── packages/
 │   └── contracts/  # Shared TypeScript types, DTOs, and interfaces
 ├── package.json    # Root package with Turborepo scripts
@@ -30,11 +30,14 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 ### Frontend (`ui/`)
 
-- **Framework**: Next.js 15+ with React 19+
+- **Build System**: Vite 7+ for fast development and production builds
+- **Framework**: React 19+ with React Router 7+ for client-side routing
 - **Styling**: TailwindCSS with Headless UI components
 - **State Management**: TanStack Query (React Query)
 - **Forms**: React Hook Form with Zod validation
 - **UI Components**: Custom components with Heroicons
+- **Page Metadata**: React Helmet Async for declarative head management
+- **Environment Variables**: Vite environment variables (import.meta.env.VITE_*)
 
 ### Shared (`packages/contracts/`)
 
@@ -110,11 +113,14 @@ yarn workspace @maintainerr/contracts build
 
 #### Frontend Patterns
 
-- **Pages**: Next.js app router structure
+- **Routing**: React Router with `createBrowserRouter` for declarative routing
+- **Routes**: Explicit route configuration in `/src/router.tsx` with nested route support
 - **Components**: Reusable UI components in `/src/components`
-- **Hooks**: Custom hooks for data fetching (TanStack Query)
+- **Hooks**: Custom hooks for data fetching (TanStack Query) and navigation (useNavigate, useLocation)
 - **Forms**: React Hook Form with Zod resolvers
 - **API**: Axios client with TypeScript contracts
+- **Page Metadata**: React Helmet Async for managing `<head>` elements declaratively
+- **Code Splitting**: React.lazy with Suspense for dynamic imports
 
 #### Shared Contracts
 
@@ -139,11 +145,13 @@ server/src/
 
 ```
 ui/src/
-├── pages/          # Next.js pages (app router)
 ├── components/     # Reusable UI components
 ├── hooks/          # Custom React hooks
+├── pages/          # Page components for routes (DocsPage, PlexLoadingPage)
 ├── utils/          # Client-side utilities
-└── styles/         # Global styles and Tailwind config
+├── styles/         # Global styles and Tailwind config
+├── router.tsx      # React Router configuration with route definitions
+└── main.tsx        # Application entry point
 ```
 
 ## Refactoring Guidelines
@@ -232,9 +240,11 @@ These specifications provide comprehensive type definitions and endpoint documen
 ### Performance Considerations
 
 - Use Turborepo caching for faster builds
-- Leverage Next.js optimizations (SSG, image optimization)
+- Leverage Vite's fast HMR and optimized production builds
 - Implement proper database indexing in TypeORM entities
 - Use React Query for efficient data fetching and caching
+- Use React.lazy with Suspense for code splitting
+- Optimize images and assets appropriately
 
 ## Contributing Guidelines
 
