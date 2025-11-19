@@ -1,4 +1,3 @@
-import { Helmet } from 'react-helmet-async'
 import { DownloadIcon, SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -10,6 +9,7 @@ import {
   LogSettingSchemaOutput,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { useForm } from 'react-hook-form'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import GetApiHandler, {
@@ -23,9 +23,6 @@ import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
 
 const LogSettings = () => {
-  useEffect(() => {
-  }, [])
-
   return (
     <>
       <Helmet>

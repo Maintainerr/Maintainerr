@@ -1,6 +1,6 @@
-import { Helmet } from 'react-helmet-async'
 import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import SettingsContext from '../../../contexts/settings-context'
 import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
@@ -13,9 +13,6 @@ const MainSettings = () => {
   const apiKeyRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<boolean>()
   const [changed, setChanged] = useState<boolean>()
-
-  useEffect(() => {
-  }, [])
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -63,78 +60,78 @@ const MainSettings = () => {
         <title>Maintainerr - Settings - General</title>
       </Helmet>
       <div className="h-full w-full">
-      <div className="section h-full w-full">
-        <h3 className="heading">General Settings</h3>
-        <p className="description">Configure global settings</p>
-      </div>
-      {error ? (
-        <Alert type="warning" title="Not all fields contain values" />
-      ) : changed ? (
-        <Alert type="info" title="Settings successfully updated" />
-      ) : undefined}
-      <div className="section">
-        <form onSubmit={submit}>
-          <div className="form-row">
-            <label htmlFor="name" className="text-label">
-              Hostname
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
-                <input
-                  name="name"
-                  id="name"
-                  type="text"
-                  ref={hostnameRef}
-                  defaultValue={settingsCtx.settings.applicationUrl}
-                ></input>
+        <div className="section h-full w-full">
+          <h3 className="heading">General Settings</h3>
+          <p className="description">Configure global settings</p>
+        </div>
+        {error ? (
+          <Alert type="warning" title="Not all fields contain values" />
+        ) : changed ? (
+          <Alert type="info" title="Settings successfully updated" />
+        ) : undefined}
+        <div className="section">
+          <form onSubmit={submit}>
+            <div className="form-row">
+              <label htmlFor="name" className="text-label">
+                Hostname
+              </label>
+              <div className="form-input">
+                <div className="form-input-field">
+                  <input
+                    name="name"
+                    id="name"
+                    type="text"
+                    ref={hostnameRef}
+                    defaultValue={settingsCtx.settings.applicationUrl}
+                  ></input>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="form-row">
-            <label htmlFor="name" className="text-label">
-              Api key
-            </label>
-            <div className="form-input">
-              <div className="form-input-field">
-                <input
-                  name="name"
-                  id="name"
-                  type="text"
-                  ref={apiKeyRef}
-                  defaultValue={settingsCtx.settings.apikey}
-                ></input>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    regenerateApi()
-                  }}
-                  className="input-action ml-3"
-                >
-                  <RefreshIcon />
-                </button>
+            <div className="form-row">
+              <label htmlFor="name" className="text-label">
+                Api key
+              </label>
+              <div className="form-input">
+                <div className="form-input-field">
+                  <input
+                    name="name"
+                    id="name"
+                    type="text"
+                    ref={apiKeyRef}
+                    defaultValue={settingsCtx.settings.apikey}
+                  ></input>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      regenerateApi()
+                    }}
+                    className="input-action ml-3"
+                  >
+                    <RefreshIcon />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="actions mt-5 w-full">
-            <div className="flex justify-end">
-              <div className="flex w-full">
-                <span className="mr-auto flex rounded-md shadow-sm">
-                  <DocsButton />
-                </span>
-                <span className="ml-auto flex rounded-md shadow-sm">
-                  <Button buttonType="primary" type="submit">
-                    <SaveIcon />
-                    <span>Save Changes</span>
-                  </Button>
-                </span>
+            <div className="actions mt-5 w-full">
+              <div className="flex justify-end">
+                <div className="flex w-full">
+                  <span className="mr-auto flex rounded-md shadow-sm">
+                    <DocsButton />
+                  </span>
+                  <span className="ml-auto flex rounded-md shadow-sm">
+                    <Button buttonType="primary" type="submit">
+                      <SaveIcon />
+                      <span>Save Changes</span>
+                    </Button>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
     </>
   )
 }

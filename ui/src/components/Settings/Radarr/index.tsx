@@ -1,16 +1,16 @@
-import { Helmet } from 'react-helmet-async'
 import {
   DocumentAddIcon,
   PlusCircleIcon,
   TrashIcon,
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
 import LoadingSpinner from '../../Common/LoadingSpinner'
-import RadarrSettingsModal from './SettingsModal'
-import { ICollection } from '../../Collection'
 import Modal from '../../Common/Modal'
+import RadarrSettingsModal from './SettingsModal'
 
 type DeleteRadarrSettingResponseDto =
   | {
@@ -79,9 +79,6 @@ const RadarrSettings = () => {
       setSettings(resp)
       setLoaded(true)
     })
-  }, [])
-
-  useEffect(() => {
   }, [])
 
   const showAddModal = () => {

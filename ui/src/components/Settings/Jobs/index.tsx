@@ -1,11 +1,11 @@
-import { Helmet } from 'react-helmet-async'
 import { SaveIcon } from '@heroicons/react/solid'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { isValidCron } from 'cron-validator'
+import { useContext, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import SettingsContext from '../../../contexts/settings-context'
 import { PostApiHandler } from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
-import { isValidCron } from 'cron-validator'
 
 const JobSettings = () => {
   const settingsCtx = useContext(SettingsContext)
@@ -16,9 +16,6 @@ const JobSettings = () => {
   const [error, setError] = useState<boolean>(false)
   const [erroMessage, setErrorMessage] = useState<string>('')
   const [changed, setChanged] = useState<boolean>()
-
-  useEffect(() => {
-  }, [])
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -64,116 +61,124 @@ const JobSettings = () => {
         <title>Maintainerr - Settings - Jobs</title>
       </Helmet>
       <div className="h-full w-full">
-      <div className="section h-full w-full">
-        <h3 className="heading">Job Settings</h3>
-        <p className="description">Job configuration</p>
-      </div>
+        <div className="section h-full w-full">
+          <h3 className="heading">Job Settings</h3>
+          <p className="description">Job configuration</p>
+        </div>
 
-      {error ? (
-        <Alert
-          type="warning"
-          title={
-            erroMessage.length > 0
-              ? erroMessage
-              : 'Something went wrong, please check your values'
-          }
-        />
-      ) : changed ? (
-        <Alert type="info" title="Settings successfully updated" />
-      ) : undefined}
+        {error ? (
+          <Alert
+            type="warning"
+            title={
+              erroMessage.length > 0
+                ? erroMessage
+                : 'Something went wrong, please check your values'
+            }
+          />
+        ) : changed ? (
+          <Alert type="info" title="Settings successfully updated" />
+        ) : undefined}
 
-      <div className="section">
-        <form onSubmit={submit}>
-          <div className="form-row">
-            <label htmlFor="ruleHandler" className="text-label">
-              Rule Handler
-              <p className="text-xs font-normal">
-                Supports all standard{' '}
-                <a href="http://crontab.org/" target="_blank" rel="noreferrer">
-                  cron
-                </a>{' '}
-                patterns
-              </p>
-            </label>
-            <div className="form-input">
-              <div
-                className={`form-input-field' ${
-                  !firstCronValid ? 'border-2 border-red-700' : ''
-                }`}
-              >
-                <input
-                  name="ruleHandler"
-                  id="ruleHandler"
-                  type="text"
-                  onChange={() => {
-                    setFirstCronValid(
-                      rulehanderRef.current?.value
-                        ? isValidCron(rulehanderRef.current.value)
-                        : false,
-                    )
-                  }}
-                  ref={rulehanderRef}
-                  defaultValue={settingsCtx.settings.rules_handler_job_cron}
-                ></input>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label htmlFor="collectionHanlder" className="text-label">
-              Collection Handler
-              <p className="text-xs font-normal">
-                Supports all standard{' '}
-                <a href="http://crontab.org/" target="_blank" rel="noreferrer">
-                  cron
-                </a>{' '}
-                patterns
-              </p>
-            </label>
-
-            <div className="form-input">
-              <div
-                className={`form-input-field' ${
-                  !secondCronValid ? 'border-2 border-red-700' : ''
-                }`}
-              >
-                <input
-                  name="collectionHanlder"
-                  id="collectionHanlder"
-                  type="text"
-                  onChange={() => {
-                    setSecondCronValid(
-                      collectionHandlerRef.current?.value
-                        ? isValidCron(collectionHandlerRef.current.value)
-                        : false,
-                    )
-                  }}
-                  ref={collectionHandlerRef}
-                  defaultValue={
-                    settingsCtx.settings.collection_handler_job_cron
-                  }
-                ></input>
-              </div>
-            </div>
-          </div>
-
-          <div className="actions mt-5 w-full">
-            <div className="flex justify-end">
-              <span className="ml-3 inline-flex rounded-md shadow-sm">
-                <Button
-                  buttonType="primary"
-                  type="submit"
-                  // disabled={isSubmitting || !isValid}
+        <div className="section">
+          <form onSubmit={submit}>
+            <div className="form-row">
+              <label htmlFor="ruleHandler" className="text-label">
+                Rule Handler
+                <p className="text-xs font-normal">
+                  Supports all standard{' '}
+                  <a
+                    href="http://crontab.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    cron
+                  </a>{' '}
+                  patterns
+                </p>
+              </label>
+              <div className="form-input">
+                <div
+                  className={`form-input-field' ${
+                    !firstCronValid ? 'border-2 border-red-700' : ''
+                  }`}
                 >
-                  <SaveIcon />
-                  <span>Save Changes</span>
-                </Button>
-              </span>
+                  <input
+                    name="ruleHandler"
+                    id="ruleHandler"
+                    type="text"
+                    onChange={() => {
+                      setFirstCronValid(
+                        rulehanderRef.current?.value
+                          ? isValidCron(rulehanderRef.current.value)
+                          : false,
+                      )
+                    }}
+                    ref={rulehanderRef}
+                    defaultValue={settingsCtx.settings.rules_handler_job_cron}
+                  ></input>
+                </div>
+              </div>
             </div>
-          </div>
-        </form>
+
+            <div className="form-row">
+              <label htmlFor="collectionHanlder" className="text-label">
+                Collection Handler
+                <p className="text-xs font-normal">
+                  Supports all standard{' '}
+                  <a
+                    href="http://crontab.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    cron
+                  </a>{' '}
+                  patterns
+                </p>
+              </label>
+
+              <div className="form-input">
+                <div
+                  className={`form-input-field' ${
+                    !secondCronValid ? 'border-2 border-red-700' : ''
+                  }`}
+                >
+                  <input
+                    name="collectionHanlder"
+                    id="collectionHanlder"
+                    type="text"
+                    onChange={() => {
+                      setSecondCronValid(
+                        collectionHandlerRef.current?.value
+                          ? isValidCron(collectionHandlerRef.current.value)
+                          : false,
+                      )
+                    }}
+                    ref={collectionHandlerRef}
+                    defaultValue={
+                      settingsCtx.settings.collection_handler_job_cron
+                    }
+                  ></input>
+                </div>
+              </div>
+            </div>
+
+            <div className="actions mt-5 w-full">
+              <div className="flex justify-end">
+                <span className="ml-3 inline-flex rounded-md shadow-sm">
+                  <Button
+                    buttonType="primary"
+                    type="submit"
+                    // disabled={isSubmitting || !isValid}
+                  >
+                    <SaveIcon />
+                    <span>Save Changes</span>
+                  </Button>
+                </span>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
     </>
   )
 }
