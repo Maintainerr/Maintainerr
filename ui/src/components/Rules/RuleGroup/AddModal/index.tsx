@@ -259,6 +259,23 @@ const AddModal = (props: AddModal) => {
     props.onCancel()
   }
 
+  // Update form state when editData changes (when data is loaded from API)
+  useEffect(() => {
+    if (props.editData) {
+      setSelectedLibraryId(props.editData.libraryId.toString())
+      setActive(props.editData.isActive ?? true)
+      setUseRules(props.editData.useRules ?? true)
+      setRules(
+        props.editData.rules
+          ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
+          : [],
+      )
+      setConfiguredNotificationConfigurations(
+        props.editData.notifications ?? [],
+      )
+    }
+  }, [props.editData])
+
   useEffect(() => {
     setIsLoading(true)
 
@@ -309,7 +326,7 @@ const AddModal = (props: AddModal) => {
     }
 
     load()
-  }, [])
+  }, [props.editData?.collectionId])
 
   useEffect(() => {
     // Handle browser back button
