@@ -1,7 +1,7 @@
 import { RefreshIcon } from '@heroicons/react/outline'
 import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
-import { orderBy } from 'lodash'
+import { orderBy } from 'lodash-es'
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import SettingsContext from '../../../contexts/settings-context'

@@ -1,5 +1,5 @@
 import { PlayIcon } from '@heroicons/react/solid'
-import _ from 'lodash'
+import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection, ICollectionMedia } from '..'
 import GetApiHandler from '../../../utils/ApiHandler'
@@ -60,7 +60,7 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   }, [page])
 
   useEffect(() => {
-    const debouncedScroll = _.debounce(handleScroll, 200)
+    const debouncedScroll = debounce(handleScroll, 200)
     window.addEventListener('scroll', debouncedScroll)
     return () => {
       window.removeEventListener('scroll', debouncedScroll)

@@ -1,5 +1,5 @@
 import { TrashIcon } from '@heroicons/react/solid'
-import _ from 'lodash'
+import { cloneDeep } from 'lodash-es'
 import { FormEvent, useContext, useEffect, useState } from 'react'
 import { IRule } from '../'
 import ConstantsContext, {
@@ -207,20 +207,18 @@ const RuleInput = (props: IRuleInput) => {
 
   useEffect(() => {
     // reset firstval & secondval in case of type switch & choices don't exist
-    const apps = _.cloneDeep(ConstantsCtx.constants.applications)?.map(
-      (app) => {
-        app.props = app.props.filter((prop) => {
-          return (
-            (prop.mediaType === MediaType.BOTH ||
-              props.mediaType === prop.mediaType) &&
-            (props.mediaType === MediaType.MOVIE ||
-              prop.showType === undefined ||
-              prop.showType.includes(props.dataType!))
-          )
-        })
-        return app
-      },
-    )
+    const apps = cloneDeep(ConstantsCtx.constants.applications)?.map((app) => {
+      app.props = app.props.filter((prop) => {
+        return (
+          (prop.mediaType === MediaType.BOTH ||
+            props.mediaType === prop.mediaType) &&
+          (props.mediaType === MediaType.MOVIE ||
+            prop.showType === undefined ||
+            prop.showType.includes(props.dataType!))
+        )
+      })
+      return app
+    })
     if (firstval) {
       const val = JSON.parse(firstval)
       const appId = val[0]

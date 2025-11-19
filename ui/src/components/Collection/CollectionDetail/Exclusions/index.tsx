@@ -1,4 +1,4 @@
-import _ from 'lodash'
+import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection } from '../..'
 import GetApiHandler from '../../../../utils/ApiHandler'
@@ -59,7 +59,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
   }, [page])
 
   useEffect(() => {
-    const debouncedScroll = _.debounce(handleScroll, 200)
+    const debouncedScroll = debounce(handleScroll, 200)
     window.addEventListener('scroll', debouncedScroll)
     return () => {
       window.removeEventListener('scroll', debouncedScroll)
