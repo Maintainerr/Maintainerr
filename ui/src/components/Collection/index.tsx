@@ -59,9 +59,6 @@ const Collection = () => {
   const [library, setLibrary] = useState<ILibrary>()
   const [collections, setCollections] = useState<ICollection[]>()
 
-  useEffect(() => {
-  }, [])
-
   const onSwitchLibrary = (id: number) => {
     const lib =
       id != 9999
