@@ -15,12 +15,18 @@ const RuleFormPage = () => {
 
   useEffect(() => {
     if (id) {
-      GetApiHandler(`/rules/${id}`).then((resp) => {
-        setEditData(resp)
-        setIsLoading(false)
-      })
+      GetApiHandler(`/rules/${id}`)
+        .then((resp) => {
+          setEditData(resp)
+          setIsLoading(false)
+        })
+        .catch((err) => {
+          console.error('Failed to load rule:', err)
+          setIsLoading(false)
+          navigate('/rules')
+        })
     }
-  }, [id])
+  }, [id, navigate])
 
   const handleSuccess = () => {
     navigate('/rules')

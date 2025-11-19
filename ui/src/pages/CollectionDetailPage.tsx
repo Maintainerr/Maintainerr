@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Outlet, useNavigate, useParams } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import GetApiHandler from '../utils/ApiHandler'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import { ICollection } from '../components/Collection'
@@ -10,18 +10,33 @@ import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaIt
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate()
-  const { id, tab } = useParams<{ id: string; tab?: string }>()
+  const location = useLocation()
+  const { id } = useParams<{ id: string }>()
   const [collection, setCollection] = useState<ICollection | undefined>()
   const [isLoading, setIsLoading] = useState(true)
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
-  const currentTab = tab || 'media'
+  
+  // Determine current tab from URL path
+  const getCurrentTab = () => {
+    const path = location.pathname
+    if (path.endsWith('/exclusions')) return 'exclusions'
+    if (path.endsWith('/info')) return 'info'
+    return 'media'
+  }
+  
+  const currentTab = getCurrentTab()
 
   useEffect(() => {
     if (id) {
-      GetApiHandler(`/collections/collection/${id}`).then((resp) => {
-        setCollection(resp)
-        setIsLoading(false)
-      })
+      GetApiHandler(`/collections/collection/${id}`)
+        .then((resp) => {
+          setCollection(resp)
+          setIsLoading(false)
+        })
+        .catch((err) => {
+          console.error('Failed to load collection:', err)
+          setIsLoading(false)
+        })
     }
   }, [id])
 
