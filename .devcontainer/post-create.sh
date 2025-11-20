@@ -8,7 +8,12 @@ set -e
 echo "🚀 Setting up Maintainerr development environment..."
 
 # Ensure we're in the workspace directory
-cd /workspace
+# This works both in dev containers (/workspace) and when run locally
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WORKSPACE_DIR="$( cd "${SCRIPT_DIR}/.." && pwd )"
+cd "${WORKSPACE_DIR}"
+
+echo "📂 Working directory: ${WORKSPACE_DIR}"
 
 # Enable corepack and set correct Yarn version
 echo "📦 Setting up Yarn..."

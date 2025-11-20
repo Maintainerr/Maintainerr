@@ -1,0 +1,41 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+# TypeScript, JavaScript, JSON
+[*.{ts,tsx,js,jsx,json,jsonc}]
+indent_style = space
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown
+[*.md]
+trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# Dockerfile
+[Dockerfile*]
+indent_style = space
+indent_size = 2
+
+# Make
+[Makefile]
+indent_style = tab
