@@ -1,17 +1,45 @@
 # Contributing to Maintainerr
 
-All help is welcome and greatly appreciated! If you would like to contribute to the project, the following instructions should get you started... (The below is specific to a Windows Development environment.)
+All help is welcome and greatly appreciated! If you would like to contribute to the project, the following instructions should get you started...
 
 ## Development
 
-### Tools Required
+### Quick Start with Dev Containers (Recommended)
+
+The easiest way to start developing is using VS Code Dev Containers or GitHub Codespaces. This provides a pre-configured environment with all dependencies and tools ready to go.
+
+**Prerequisites:**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Visual Studio Code](https://code.visualstudio.com/)
+- [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+**Steps:**
+1. Clone or fork the repository
+2. Open in VS Code
+3. Click "Reopen in Container" when prompted (or press F1 → "Dev Containers: Reopen in Container")
+4. Wait for the container to build and dependencies to install (5-10 minutes first time)
+5. Run `yarn dev` to start developing
+
+For detailed information, see the [Dev Container README](.devcontainer/README.md).
+
+**Using GitHub Codespaces:**
+1. Click the "Code" button on GitHub
+2. Select "Codespaces" → "Create codespace on main"
+3. Wait for the environment to build
+4. Start developing!
+
+### Manual Setup (Alternative)
+
+If you prefer to set up your development environment manually:
+
+#### Tools Required
 
 - HTML/TypeScript/JavaScript editor
 - [VSCode](https://code.visualstudio.com/) is recommended. Upon opening the project, a few extensions will be automatically recommended for install.
 - [NodeJS](https://nodejs.org/en/download/) (Node 20.x or higher)
 - [Git](https://git-scm.com/downloads)
 
-### Getting Started
+#### Getting Started
 
 1. [Fork](https://help.github.com/articles/fork-a-repo/) the repository to your own GitHub account and [clone](https://help.github.com/articles/cloning-a-repository/) the fork to your local device:
 

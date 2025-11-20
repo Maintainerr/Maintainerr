@@ -1,0 +1,170 @@
+{
+  "name": "Maintainerr Development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      // Node.js version to use (matches package.json engines requirement)
+      "NODE_VERSION": "22"
+    }
+  },
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true,
+      "username": "node",
+      "userUid": "1000",
+      "userGid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": true
+    }
+  },
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally
+  "forwardPorts": [
+    6246 // Main application port
+  ],
+
+  // Port attributes for better development experience
+  "portsAttributes": {
+    "6246": {
+      "label": "Maintainerr Application",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Set *default* container specific settings.json values on container create
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // Editor settings
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit",
+          "source.organizeImports": "explicit"
+        },
+        "files.eol": "\n",
+        
+        // TypeScript settings
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "typescript.preferences.importModuleSpecifier": "relative",
+        "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+        
+        // ESLint settings
+        "eslint.enable": true,
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ],
+        
+        // Language-specific formatters
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        
+        // TailwindCSS settings
+        "tailwindCSS.experimental.classRegex": [
+          ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ],
+        "files.associations": {
+          "globals.css": "tailwindcss"
+        },
+        
+        // Jest settings
+        "jest.jestCommandLine": "yarn test",
+        "jest.virtualFolders": [
+          {
+            "name": "server",
+            "rootPath": "server"
+          }
+        ],
+        
+        // Search exclusions
+        "search.exclude": {
+          "**/.yarn": true,
+          "**/node_modules": true,
+          "**/dist": true,
+          "**/.next": true
+        },
+        
+        // SQLite connection for database inspection
+        "sqltools.connections": [
+          {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "Dev SQLite Database",
+            "database": "${workspaceFolder}/data/maintainerr.sqlite"
+          }
+        ]
+      },
+      
+      // Extensions to install
+      "extensions": [
+        // Essential for TypeScript development
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        
+        // TailwindCSS support
+        "bradlc.vscode-tailwindcss",
+        
+        // Testing support
+        "orta.vscode-jest",
+        
+        // Database tools
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-sqlite",
+        
+        // Additional helpful extensions
+        "ms-vscode.vscode-typescript-next",
+        "yoavbls.pretty-ts-errors",
+        "EditorConfig.EditorConfig",
+        "GitHub.copilot",
+        "eamodio.gitlens",
+        
+        // Docker support (for understanding the production Dockerfile)
+        "ms-azuretools.vscode-docker",
+        
+        // YAML support (for GitHub Actions)
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+
+  // Use 'postCreateCommand' to run commands after the container is created
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root
+  "remoteUser": "node",
+
+  // Configure environment variables
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "UI_PORT": "6246",
+    "UI_HOSTNAME": "0.0.0.0",
+    "DATA_DIR": "${containerWorkspaceFolder}/data"
+  },
+
+  // Lifecycle scripts - keep container running
+  "overrideCommand": false
+}
