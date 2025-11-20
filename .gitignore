@@ -9,3 +9,7 @@ node_modules
 !.yarn/versions
 .idea
 .turbo
+
+# Environment variables
+.env.local
+.env*.local
