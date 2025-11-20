@@ -2802,7 +2802,7 @@ __metadata:
     http-terminator: "npm:^3.2.0"
     jest: "npm:^30.2.0"
     lodash: "npm:^4.17.21"
-    mime-types: "npm:^3.0.1"
+    mime-types: "npm:^3.0.2"
     nestjs-zod: "npm:^5.0.1"
     node-cache: "npm:^5.1.2"
     nodemailer: "npm:7.0.10"
@@ -14577,6 +14577,15 @@ __metadata:
   dependencies:
     mime-db: "npm:^1.54.0"
   checksum: 10c0/bd8c20d3694548089cf229016124f8f40e6a60bbb600161ae13e45f793a2d5bb40f96bbc61f275836696179c77c1d6bf4967b2a75e0a8ad40fe31f4ed5be4da5
+  languageName: node
+  linkType: hard
+
+"mime-types@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "mime-types@npm:3.0.2"
+  dependencies:
+    mime-db: "npm:^1.54.0"
+  checksum: 10c0/35a0dd1035d14d185664f346efcdb72e93ef7a9b6e9ae808bd1f6358227010267fab52657b37562c80fc888ff76becb2b2938deb5e730818b7983bf8bd359767
   languageName: node
   linkType: hard
 
