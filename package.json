@@ -32,7 +32,7 @@
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
-    "@types/node": "^22.18.10",
+    "@types/node": "^22.19.1",
     "knip": "^5.69.1",
     "semantic-release": "^25.0.2",
     "turbo": "^2.6.1",
