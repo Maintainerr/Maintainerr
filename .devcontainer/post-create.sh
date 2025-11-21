@@ -15,11 +15,6 @@ cd "${WORKSPACE_DIR}"
 
 echo "📂 Working directory: ${WORKSPACE_DIR}"
 
-# Enable corepack and set correct Yarn version
-echo "📦 Setting up Yarn..."
-corepack enable
-corepack install
-
 # Install dependencies
 echo "📥 Installing dependencies (this may take a few minutes)..."
 yarn install

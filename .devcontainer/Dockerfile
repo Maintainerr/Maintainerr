@@ -1,6 +1,6 @@
 # Use the official Node.js image as base
-# This matches the Node version requirement from package.json (^20.19.0 || >=22.12.0)
-ARG NODE_VERSION=22
+# Matches production Node version (Node 24)
+ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-bookworm
 
 # Install additional OS packages needed for development
@@ -24,19 +24,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 # Enable corepack for Yarn 4.x support
 RUN corepack enable && corepack prepare yarn@4.11.0 --activate
 
-# Set up a non-root user (node user already exists in base image)
-# Ensure the node user has proper permissions
+# Use the non-root node user that exists in the base image
 ARG USERNAME=node
-ARG USER_UID=1000
-ARG USER_GID=1000
-
-# Ensure node user has correct UID/GID (usually already 1000:1000 in the node image)
-RUN if [ "$USER_GID" != "$(id -g $USERNAME)" ]; then \
-        groupmod --gid $USER_GID $USERNAME; \
-    fi \
-    && if [ "$USER_UID" != "$(id -u $USERNAME)" ]; then \
-        usermod --uid $USER_UID --gid $USER_GID $USERNAME; \
-    fi
 
 # Create data directory with proper permissions for development
 # This matches the production requirement for /opt/data
