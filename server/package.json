@@ -32,7 +32,7 @@
     "@nestjs/swagger": "^11.2.3",
     "@nestjs/typeorm": "^11.0.0",
     "@octokit/core": "^5.2.0",
-    "@octokit/plugin-throttling": "^8.2.0",
+    "@octokit/plugin-throttling": "^11.0.3",
     "@tygra/nestjs-graceful-shutdown": "^2.0.0",
     "@types/express": "^5.0.5",
     "axios": "^1.13.2",
