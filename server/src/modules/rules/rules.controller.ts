@@ -61,7 +61,7 @@ export class RulesController {
     return this.rulesService.getRuleGroupCount();
   }
 
-  @Get('/:id')
+  @Get('/:id/rules')
   getRules(@Param('id') id: string) {
     return this.rulesService.getRules(id);
   }
@@ -86,6 +86,12 @@ export class RulesController {
       query.typeId ? query.typeId : undefined,
     );
   }
+
+  @Get('/:id')
+  getRuleGroup(@Param('id') id: number): Promise<RulesDto> {
+    return this.rulesService.getRuleGroup(id);
+  }
+
   @Delete('/:id')
   deleteRuleGroup(@Param('id') id: string) {
     return this.rulesService.deleteRuleGroup(+id);

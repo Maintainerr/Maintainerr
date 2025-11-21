@@ -1,13 +1,6 @@
-import {
-  createContext,
-  ReactElement,
-  ReactNode,
-  ReactPortal,
-  useState,
-} from 'react'
 import { EPlexDataType } from '../utils/PlexDataType-enum'
 
-interface Iconstants {
+export interface IConstants {
   applications: IApplication[] | null
 }
 interface IApplication {
@@ -85,48 +78,3 @@ export const enum Application {
   OVERSEERR,
   TAUTULLI,
 }
-
-const ConstantsContext = createContext({
-  constants: {} as Iconstants,
-  setConstants: (constants: Iconstants) => {},
-  removeConstants: () => {},
-})
-
-export function ConstantsContextProvider(props: {
-  children:
-    | boolean
-    | ReactElement<any>
-    | number
-    | string
-    | Iterable<ReactNode>
-    | ReactPortal
-    | null
-    | undefined
-}) {
-  const [constants, setConstants] = useState<Iconstants>({ applications: null })
-
-  function setConstantsHandler(constants: Iconstants) {
-    setConstants(constants)
-  }
-  function removeConstantsHandler() {
-    setConstants({} as Iconstants)
-  }
-
-  const context: {
-    constants: Iconstants
-    setConstants: (constants: Iconstants) => void
-    removeConstants: () => void
-  } = {
-    constants: constants,
-    setConstants: setConstantsHandler,
-    removeConstants: removeConstantsHandler,
-  }
-
-  return (
-    <ConstantsContext.Provider value={context}>
-      {props.children}
-    </ConstantsContext.Provider>
-  )
-}
-
-export default ConstantsContext

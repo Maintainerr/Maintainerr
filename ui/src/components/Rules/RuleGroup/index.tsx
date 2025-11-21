@@ -1,11 +1,11 @@
-import EditButton from '../../Common/EditButton'
-import DeleteButton from '../../Common/DeleteButton'
-import { IRuleJson } from '../Rule'
-import { useContext, useState } from 'react'
-import { DeleteApiHandler } from '../../../utils/ApiHandler'
-import LibrariesContext from '../../../contexts/libraries-context'
 import { PencilIcon, TrashIcon } from '@heroicons/react/solid'
+import { useState } from 'react'
+import { usePlexLibraries } from '../../../api/plex'
+import { DeleteApiHandler } from '../../../utils/ApiHandler'
+import DeleteButton from '../../Common/DeleteButton'
+import EditButton from '../../Common/EditButton'
 import { AgentConfiguration } from '../../Settings/Notifications/CreateNotificationModal'
+import { IRuleJson } from '../Rule'
 
 export interface IRuleGroup {
   id: number
@@ -27,7 +27,7 @@ const RuleGroup = (props: {
   onEdit: (group: IRuleGroup) => void
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
-  const LibrariesCtx = useContext(LibrariesContext)
+  const { data: plexLibraries } = usePlexLibraries()
 
   const onRemove = () => {
     setShowSureDelete(true)
@@ -82,9 +82,8 @@ const RuleGroup = (props: {
             </div>
             <div className="flex justify-center text-amber-500">
               {`${
-                LibrariesCtx.libraries.find(
-                  (el) => +el.key === +props.group.libraryId,
-                )?.title ?? ''
+                plexLibraries?.find((el) => +el.key === +props.group.libraryId)
+                  ?.title ?? ''
               }`}
             </div>
           </div>

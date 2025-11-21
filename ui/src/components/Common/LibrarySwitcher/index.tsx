@@ -1,6 +1,5 @@
-import { useContext, useEffect } from 'react'
-import LibrariesContext from '../../../contexts/libraries-context'
-import GetApiHandler from '../../../utils/ApiHandler'
+import { useEffect, useRef } from 'react'
+import { usePlexLibraries } from '../../../api/plex'
 
 interface ILibrarySwitcher {
   onSwitch: (libraryId: number) => void
@@ -8,26 +7,30 @@ interface ILibrarySwitcher {
 }
 
 const LibrarySwitcher = (props: ILibrarySwitcher) => {
-  const LibrariesCtx = useContext(LibrariesContext)
+  const { onSwitch, allPossible } = props
+  const { data: plexLibraries } = usePlexLibraries()
+  const lastAutoSelectedKey = useRef<number | null>(null)
 
   const onSwitchLibrary = (event: { target: { value: string } }) => {
-    props.onSwitch(+event.target.value)
+    onSwitch(+event.target.value)
   }
 
   useEffect(() => {
-    if (LibrariesCtx.libraries.length <= 0) {
-      GetApiHandler('/plex/libraries').then((resp) => {
-        if (resp) {
-          LibrariesCtx.addLibraries(resp)
-          if (props.allPossible !== undefined && !props.allPossible) {
-            props.onSwitch(+resp[0].key)
-          }
-        } else {
-          LibrariesCtx.addLibraries([])
-        }
-      })
+    if (!plexLibraries || plexLibraries.length === 0) {
+      return
     }
-  }, [])
+
+    if (allPossible === false) {
+      const firstKey = Number(plexLibraries[0].key)
+
+      if (!Number.isNaN(firstKey) && lastAutoSelectedKey.current !== firstKey) {
+        lastAutoSelectedKey.current = firstKey
+        onSwitch(firstKey)
+      }
+    } else {
+      lastAutoSelectedKey.current = null
+    }
+  }, [plexLibraries, allPossible, onSwitch])
 
   return (
     <>
@@ -40,7 +43,7 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
             {props.allPossible === undefined || props.allPossible ? (
               <option value={9999}>All</option>
             ) : undefined}
-            {LibrariesCtx.libraries.map((el) => {
+            {plexLibraries?.map((el) => {
               return (
                 <option key={el.key} value={el.key}>
                   {el.title}

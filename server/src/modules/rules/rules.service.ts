@@ -163,6 +163,24 @@ export class RulesService {
     }
   }
 
+  async getRuleGroup(id: number): Promise<RulesDto> {
+    try {
+      const rulegroup = await this.connection
+        .createQueryBuilder('rule_group', 'rg')
+        .innerJoinAndSelect('rg.rules', 'r')
+        .innerJoinAndSelect('rg.collection', 'c')
+        .leftJoinAndSelect('rg.notifications', 'n')
+        .andWhere(`rg.id = ${id}`)
+        .orderBy('r.id')
+        .getOne();
+      return rulegroup as RulesDto;
+    } catch (e) {
+      this.logger.warn(`Rules - Action failed : ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
   async getRuleGroupCount(): Promise<number> {
     return this.ruleGroupRepository.count();
   }

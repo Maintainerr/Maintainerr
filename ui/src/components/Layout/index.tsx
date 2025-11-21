@@ -4,7 +4,6 @@ import { useContext, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
-import { LibrariesContextProvider } from '../../contexts/libraries-context'
 import SearchContext from '../../contexts/search-context'
 import SettingsContext from '../../contexts/settings-context'
 import GetApiHandler from '../../utils/ApiHandler'
@@ -78,17 +77,15 @@ const Layout: React.FC = () => {
         >
           <div className="mb-6">
             <div className="max-w-8xl mx-auto px-4">
-              <LibrariesContextProvider>
-                <ToastContainer
-                  stacked
-                  position="top-right"
-                  autoClose={4500}
-                  hideProgressBar={false}
-                  theme="dark"
-                  closeOnClick
-                />
-                <Outlet />
-              </LibrariesContextProvider>
+              <ToastContainer
+                stacked
+                position="top-right"
+                autoClose={4500}
+                hideProgressBar={false}
+                theme="dark"
+                closeOnClick
+              />
+              <Outlet />
             </div>
           </div>
         </main>
