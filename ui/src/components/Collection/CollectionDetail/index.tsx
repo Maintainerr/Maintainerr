@@ -121,22 +121,6 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
     totalSizeRef.current = totalSize
   }, [totalSize])
 
-  useEffect(() => {
-    // Handle browser back button
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault()
-      props.onBack()
-      window.history.pushState(null, '', window.location.pathname)
-    }
-
-    window.history.pushState(null, '', window.location.pathname)
-    window.addEventListener('popstate', handlePopState)
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [props.onBack])
-
   const tabbedRoutes: TabbedRoute[] = [
     {
       text: 'Media',

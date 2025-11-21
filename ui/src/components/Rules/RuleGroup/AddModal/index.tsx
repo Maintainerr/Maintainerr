@@ -7,15 +7,13 @@ import {
   UploadIcon,
 } from '@heroicons/react/solid'
 
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { IRuleGroup } from '..'
-import ConstantsContext, {
-  Application,
-} from '../../../../contexts/constants-context'
-import LibrariesContext, {
-  ILibrary,
-} from '../../../../contexts/libraries-context'
+import { usePlexLibraries } from '../../../../api/plex'
+import { useRuleConstants } from '../../../../api/rules'
+import { Application } from '../../../../contexts/constants-context'
+import { ILibrary } from '../../../../contexts/libraries-context'
 import GetApiHandler, {
   PostApiHandler,
   PutApiHandler,
@@ -25,6 +23,7 @@ import { ICollection } from '../../../Collection'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
+import LoadingSpinner from '../../../Common/LoadingSpinner'
 import YamlImporterModal from '../../../Common/YamlImporterModal'
 import { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
@@ -71,7 +70,7 @@ const AddModal = (props: AddModal) => {
   )
   const [selectedLibrary, setSelectedLibrary] = useState<ILibrary>()
   const [collection, setCollection] = useState<ICollection>()
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(props.editData != null)
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
@@ -91,16 +90,14 @@ const AddModal = (props: AddModal) => {
   const [forceOverseerr, setForceOverseerr] = useState<boolean>(false)
   const [manualCollection, setManualCollection] = useState<boolean>(false)
   const [deleteDays, setDeleteDays] = useState<number | undefined>(undefined)
-  const ConstantsCtx = useContext(ConstantsContext)
   const [
     configuredNotificationConfigurations,
     setConfiguredNotificationConfigurations,
   ] = useState<AgentConfiguration[]>(
     props.editData?.notifications ? props.editData?.notifications : [],
   )
-
   const [useRules, setUseRules] = useState<boolean>(
-    props.editData ? props.editData.useRules ?? true : true,
+    props.editData ? (props.editData.useRules ?? true) : true,
   )
   const [arrOption, setArrOption] = useState<number>()
   const [radarrSettingsId, setRadarrSettingsId] = useState<
@@ -110,7 +107,7 @@ const AddModal = (props: AddModal) => {
     number | null | undefined
   >(props.editData ? null : undefined)
   const [active, setActive] = useState<boolean>(
-    props.editData ? props.editData.isActive ?? true : true,
+    props.editData ? (props.editData.isActive ?? true) : true,
   )
   const [rules, setRules] = useState<IRule[]>(
     props.editData?.rules
@@ -120,20 +117,23 @@ const AddModal = (props: AddModal) => {
   const [error, setError] = useState<boolean>(false)
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const ruleCreatorVersion = useRef<number>(1)
-  const LibrariesCtx = useContext(LibrariesContext)
+
+  const { data: plexLibraries, isLoading: plexLibrariesLoading } =
+    usePlexLibraries()
+
+  const { data: constants, isLoading: constantsLoading } = useRuleConstants()
+
   const tautulliEnabled =
-    ConstantsCtx.constants.applications?.some(
-      (x) => x.id == Application.TAUTULLI,
-    ) ?? false
+    constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
   const overseerrEnabled =
-    ConstantsCtx.constants.applications?.some(
-      (x) => x.id == Application.OVERSEERR,
-    ) ?? false
+    constants?.applications?.some((x) => x.id == Application.OVERSEERR) ?? false
 
   function updateLibraryId(value: string) {
-    const lib = LibrariesCtx.libraries.find(
-      (el: ILibrary) => +el.key === +value,
-    )
+    if (!plexLibraries) {
+      throw new Error('Plex libraries not loaded')
+    }
+
+    const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
 
     if (lib) {
       setSelectedLibraryId(lib.key)
@@ -161,9 +161,11 @@ const AddModal = (props: AddModal) => {
   }
 
   function setLibraryId(value: string) {
-    const lib = LibrariesCtx.libraries.find(
-      (el: ILibrary) => +el.key === +value,
-    )
+    if (!plexLibraries) {
+      throw new Error('Plex libraries not loaded')
+    }
+
+    const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
 
     if (lib) {
       setSelectedLibraryId(lib.key)
@@ -259,53 +261,19 @@ const AddModal = (props: AddModal) => {
     props.onCancel()
   }
 
-  // Update form state when editData changes (when data is loaded from API)
   useEffect(() => {
-    if (props.editData) {
-      setSelectedLibraryId(props.editData.libraryId.toString())
-      setActive(props.editData.isActive ?? true)
-      setUseRules(props.editData.useRules ?? true)
-      setRules(
-        props.editData.rules
-          ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
-          : [],
-      )
-      setConfiguredNotificationConfigurations(
-        props.editData.notifications ?? [],
-      )
-    }
-  }, [props.editData])
-
-  useEffect(() => {
+    if (!plexLibraries) return
     setIsLoading(true)
 
     const load = async () => {
-      const constantsPromise = GetApiHandler('/rules/constants')
-      const librariesPromise =
-        LibrariesCtx.libraries.length <= 0
-          ? GetApiHandler('/plex/libraries/')
-          : Promise.resolve(null)
-      const collectionPromise: Promise<ICollection | null> = props.editData?.collectionId
+      const collectionPromise: Promise<ICollection | null> = props.editData
+        ?.collectionId
         ? GetApiHandler(
             `/collections/collection/${props.editData.collectionId}`,
           )
         : Promise.resolve(null)
 
-      const [constants, libraries, collection] = await Promise.all([
-        constantsPromise,
-        librariesPromise,
-        collectionPromise,
-      ])
-
-      ConstantsCtx.setConstants(constants)
-
-      if (libraries != null) {
-        if (libraries) {
-          LibrariesCtx.addLibraries(libraries)
-        } else {
-          LibrariesCtx.addLibraries([])
-        }
-      }
+      const [collection] = await Promise.all([collectionPromise])
 
       if (collection) {
         setCollection(collection)
@@ -326,23 +294,7 @@ const AddModal = (props: AddModal) => {
     }
 
     load()
-  }, [props.editData?.collectionId])
-
-  useEffect(() => {
-    // Handle browser back button
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault()
-      props.onCancel()
-      window.history.pushState(null, '', window.location.pathname)
-    }
-
-    window.history.pushState(null, '', window.location.pathname)
-    window.addEventListener('popstate', handlePopState)
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [props.onCancel])
+  }, [props.editData?.collectionId, plexLibraries])
 
   const create = () => {
     if (
@@ -406,18 +358,8 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  if (isLoading) {
-    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-
-    return (
-      <span>
-        <img
-          src={`${basePath}/spinner.svg`}
-          alt="Loading..."
-          className="h-full w-full"
-        />
-      </span>
-    )
+  if (isLoading || plexLibrariesLoading || constantsLoading) {
+    return <LoadingSpinner />
   }
 
   return (
@@ -517,7 +459,7 @@ const AddModal = (props: AddModal) => {
                           {selectedLibraryId === '' && (
                             <option value="" disabled></option>
                           )}
-                          {LibrariesCtx.libraries.map((data: ILibrary) => {
+                          {plexLibraries?.map((data: ILibrary) => {
                             return (
                               <option key={data.key} value={data.key}>
                                 {data.title}
@@ -1119,6 +1061,7 @@ const AddModal = (props: AddModal) => {
               <button
                 className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
                 onClick={cancel}
+                type="button"
               >
                 {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">

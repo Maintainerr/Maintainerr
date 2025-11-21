@@ -1,8 +1,9 @@
 import { TrashIcon } from '@heroicons/react/solid'
 import { cloneDeep } from 'lodash-es'
-import { FormEvent, useContext, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { IRule } from '../'
-import ConstantsContext, {
+import { useRuleConstants } from '../../../../../api/rules'
+import {
   IProperty,
   MediaType,
   RulePossibility,
@@ -46,7 +47,6 @@ interface IRuleInput {
 }
 
 const RuleInput = (props: IRuleInput) => {
-  const ConstantsCtx = useContext(ConstantsContext)
   const [operator, setOperator] = useState<string>()
   const [firstval, setFirstVal] = useState<string>()
   const [action, setAction] = useState<RulePossibility>()
@@ -58,6 +58,8 @@ const RuleInput = (props: IRuleInput) => {
 
   const [possibilities, setPossibilities] = useState<RulePossibility[]>([])
   const [ruleType, setRuleType] = useState<RuleType>(RuleType.NUMBER)
+
+  const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
   useEffect(() => {
     if (props.editData?.rule) {
@@ -206,8 +208,10 @@ const RuleInput = (props: IRuleInput) => {
   }, [secondVal, customVal, operator, action, firstval, customValType])
 
   useEffect(() => {
+    if (!constants) return
+
     // reset firstval & secondval in case of type switch & choices don't exist
-    const apps = cloneDeep(ConstantsCtx.constants.applications)?.map((app) => {
+    const apps = cloneDeep(constants.applications)?.map((app) => {
       app.props = app.props.filter((prop) => {
         return (
           (prop.mediaType === MediaType.BOTH ||
@@ -226,7 +230,7 @@ const RuleInput = (props: IRuleInput) => {
         setFirstVal(undefined)
       }
     }
-  }, [props.dataType, props.mediaType])
+  }, [props.dataType, props.mediaType, constants])
 
   useEffect(() => {
     if (firstval) {
@@ -279,10 +283,12 @@ const RuleInput = (props: IRuleInput) => {
   const getPropFromTuple = (
     value: [number, number] | string,
   ): IProperty | undefined => {
+    if (!constants) return undefined
+
     if (typeof value === 'string') {
       value = JSON.parse(value)
     }
-    const application = ConstantsCtx.constants.applications?.find(
+    const application = constants.applications?.find(
       (el) => el.id === +value[0],
     )
 
@@ -291,6 +297,12 @@ const RuleInput = (props: IRuleInput) => {
     })
     return prop
   }
+
+  // TODO Something better...
+  if (!constants || constantsLoading) {
+    return <div>Loading...</div>
+  }
+
   return (
     <div
       className="w-full rounded-2xl bg-zinc-800 p-4 text-zinc-100 shadow-lg"
@@ -369,7 +381,7 @@ const RuleInput = (props: IRuleInput) => {
             <option value={undefined} className="text-amber-600">
               Select First Value...
             </option>
-            {ConstantsCtx.constants.applications?.map((app) =>
+            {constants.applications?.map((app) =>
               app.mediaType === MediaType.BOTH ||
               props.mediaType === app.mediaType ? (
                 <optgroup key={app.id} label={app.name}>
@@ -460,7 +472,7 @@ const RuleInput = (props: IRuleInput) => {
               ) : undefined}
               <MaybeTextListOptions ruleType={ruleType} action={action} />
             </optgroup>
-            {ConstantsCtx.constants.applications?.map((app) => {
+            {constants.applications?.map((app) => {
               return (app.mediaType === MediaType.BOTH ||
                 props.mediaType === app.mediaType) &&
                 action != null &&

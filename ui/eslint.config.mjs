@@ -25,6 +25,13 @@ const configs = [
     'plugin:react-hooks/recommended',
   ),
   {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: { ...globals.browser },
+    },
     settings: {
       react: {
         version: 'detect',

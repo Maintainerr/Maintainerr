@@ -1,6 +1,5 @@
-import { useContext } from 'react'
 import { ICollection } from '..'
-import LibrariesContext from '../../../contexts/libraries-context'
+import { usePlexLibraries } from '../../../api/plex'
 
 interface ICollectionItem {
   collection: ICollection
@@ -8,7 +7,7 @@ interface ICollectionItem {
 }
 
 const CollectionItem = (props: ICollectionItem) => {
-  const LibrariesCtx = useContext(LibrariesContext)
+  const { data: plexLibraries } = usePlexLibraries()
 
   return (
     <>
@@ -57,7 +56,7 @@ const CollectionItem = (props: ICollectionItem) => {
             <div className="mb-5 mr-5 sm:mr-0">
               <p className="font-bold">Library</p>
               <p className="text-amber-500">
-                {LibrariesCtx.libraries.find(
+                {plexLibraries?.find(
                   (el) => +el.key === +props.collection.libraryId,
                 )?.title ?? <>&nbsp;</>}
               </p>

@@ -1,39 +1,32 @@
 import { AxiosError } from 'axios'
-import { useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import LibrariesContext, { ILibrary } from '../contexts/libraries-context'
-import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
-import LoadingSpinner from '../components/Common/LoadingSpinner'
-import CollectionOverview from '../components/Collection/CollectionOverview'
 import { ICollection } from '../components/Collection'
+import CollectionOverview from '../components/Collection/CollectionOverview'
+import LoadingSpinner from '../components/Common/LoadingSpinner'
+import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const CollectionsListPage = () => {
   const navigate = useNavigate()
-  const LibrariesCtx = useContext(LibrariesContext)
   const [isLoading, setIsLoading] = useState(true)
-  const [library, setLibrary] = useState<ILibrary>()
   const [collections, setCollections] = useState<ICollection[]>()
 
-  const onSwitchLibrary = (id: number) => {
-    const lib =
-      id != 9999
-        ? LibrariesCtx.libraries.find((el) => +el.key === id)
-        : undefined
-    setLibrary(lib)
+  const getCollections = async (libraryId?: number) => {
+    const colls: ICollection[] = libraryId
+      ? await GetApiHandler(`/collections?libraryId=${libraryId}`)
+      : await GetApiHandler('/collections')
+    setCollections(colls)
+    setIsLoading(false)
   }
 
   useEffect(() => {
     getCollections()
-  }, [library])
+  }, [])
 
-  const getCollections = async () => {
-    const colls: ICollection[] = library
-      ? await GetApiHandler(`/collections?libraryId=${library.key}`)
-      : await GetApiHandler('/collections')
-    setCollections(colls)
-    setIsLoading(false)
+  const onSwitchLibrary = (id: number) => {
+    getCollections(id != 9999 ? id : undefined)
   }
 
   const doActions = async () => {
