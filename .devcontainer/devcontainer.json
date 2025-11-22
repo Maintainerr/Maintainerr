@@ -4,12 +4,9 @@
     "dockerfile": "Dockerfile",
     "context": "..",
     "args": {
-      // Node.js version to use (matches production)
       "NODE_VERSION": "24"
     }
   },
-
-  // Features to add to the dev container
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
@@ -24,79 +21,39 @@
       "ppa": true
     }
   },
-
-  // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [
-    6246 // Main application port
-  ],
-
-  // Port attributes for better development experience
+  "forwardPorts": [3000, 6246],
   "portsAttributes": {
+    "3000": {
+      "label": "Maintainerr UI",
+      "onAutoForward": "notify"
+    },
     "6246": {
-      "label": "Maintainerr Application",
+      "label": "Maintainerr API",
       "onAutoForward": "notify"
     }
   },
-
-  // Set *default* container specific settings.json values on container create
   "customizations": {
     "vscode": {
       "settings": {
-        // Container-specific settings
-        "files.eol": "\n",
-        
-        // TailwindCSS settings
-        "tailwindCSS.experimental.classRegex": [
-          ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
-        ]
+        "files.eol": "\n"
       },
-      
-      // Extensions to install
       "extensions": [
-        // Essential for TypeScript development
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        
-        // TailwindCSS support
         "bradlc.vscode-tailwindcss",
-        
-        // Testing support
         "orta.vscode-jest",
-        
-        // Database tools
         "mtxr.sqltools",
         "mtxr.sqltools-driver-sqlite",
-        
-        // Additional helpful extensions
-        "ms-vscode.vscode-typescript-next",
         "yoavbls.pretty-ts-errors",
-        "EditorConfig.EditorConfig",
-        "GitHub.copilot",
-        "eamodio.gitlens",
-        
-        // Docker support (for understanding the production Dockerfile)
-        "ms-azuretools.vscode-docker",
-        
-        // YAML support (for GitHub Actions)
-        "redhat.vscode-yaml"
+        "ms-azuretools.vscode-docker"
       ]
     }
   },
-
-  // Use 'postCreateCommand' to run commands after the container is created
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-
-  // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root
   "remoteUser": "node",
-
-  // Configure environment variables
   "remoteEnv": {
     "NODE_ENV": "development",
-    "UI_PORT": "6246",
-    "UI_HOSTNAME": "0.0.0.0",
     "DATA_DIR": "${containerWorkspaceFolder}/data"
   },
-
-  // Lifecycle scripts - keep container running
   "overrideCommand": false
 }

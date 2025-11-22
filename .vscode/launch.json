@@ -17,39 +17,12 @@
     },
     {
       "type": "node",
-      "request": "launch",
-      "name": "Debug Server Tests",
-      "runtimeExecutable": "yarn",
-      "runtimeArgs": [
-        "workspace",
-        "@maintainerr/server",
-        "test:debug"
-      ],
-      "skipFiles": ["<node_internals>/**"],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "cwd": "${workspaceFolder}/server"
-    },
-    {
-      "type": "node",
       "request": "attach",
       "name": "Attach to Server",
       "port": 9229,
       "restart": true,
       "skipFiles": ["<node_internals>/**"],
       "protocol": "inspector"
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Debug Full Stack",
-      "configurations": ["Debug Server"],
-      "presentation": {
-        "hidden": false,
-        "group": "debug",
-        "order": 1
-      },
-      "stopAll": true
     }
   ]
 }

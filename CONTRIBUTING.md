@@ -9,11 +9,13 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
 The easiest way to start developing is using VS Code Dev Containers or GitHub Codespaces. This provides a pre-configured environment with all dependencies and tools ready to go.
 
 **Prerequisites:**
+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 - [Visual Studio Code](https://code.visualstudio.com/)
 - [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
 **Steps:**
+
 1. Clone or fork the repository
 2. Open in VS Code
 3. Click "Reopen in Container" when prompted (or press F1 → "Dev Containers: Reopen in Container")
@@ -23,6 +25,7 @@ The easiest way to start developing is using VS Code Dev Containers or GitHub Co
 For detailed information, see the [Dev Container README](.devcontainer/README.md).
 
 **Using GitHub Codespaces:**
+
 1. Click the "Code" button on GitHub
 2. Select "Codespaces" → "Create codespace on main"
 3. Wait for the environment to build
@@ -30,7 +33,7 @@ For detailed information, see the [Dev Container README](.devcontainer/README.md
 
 ### Manual Setup (Alternative)
 
-If you prefer to set up your development environment manually:
+If you prefer to set up your development environment manually (specific to a Windows Development environment):
 
 #### Tools Required
 
