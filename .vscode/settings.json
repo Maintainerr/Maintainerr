@@ -54,5 +54,6 @@
       "name": "server",
       "rootPath": "server"
     }
-  ]
+  ],
+  "sqltools.useNodeRuntime": true
 }

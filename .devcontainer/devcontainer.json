@@ -1,0 +1,59 @@
+{
+  "name": "Maintainerr Development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "NODE_VERSION": "24"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true,
+      "username": "node",
+      "userUid": "1000",
+      "userGid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": true
+    }
+  },
+  "forwardPorts": [3000, 6246],
+  "portsAttributes": {
+    "3000": {
+      "label": "Maintainerr UI",
+      "onAutoForward": "notify"
+    },
+    "6246": {
+      "label": "Maintainerr API",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.eol": "\n"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "orta.vscode-jest",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-sqlite",
+        "yoavbls.pretty-ts-errors",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "remoteUser": "node",
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "DATA_DIR": "${containerWorkspaceFolder}/data"
+  },
+  "overrideCommand": false
+}
