@@ -36,7 +36,7 @@
     "knip": "^5.70.1",
     "semantic-release": "^25.0.2",
     "turbo": "^2.6.1",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   },
   "release": {
     "plugins": [
