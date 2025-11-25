@@ -46,7 +46,7 @@
     "nestjs-zod": "^5.0.1",
     "node-cache": "^5.1.2",
     "nodemailer": "7.0.10",
-    "octokit": "^3.2.2",
+    "octokit": "^5.0.5",
     "openpgp": "^6.2.2",
     "read-last-lines": "^1.8.0",
     "reflect-metadata": "^0.2.2",
