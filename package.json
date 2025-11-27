@@ -33,7 +33,7 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@types/node": "^22.19.1",
-    "knip": "^5.70.1",
+    "knip": "^5.70.2",
     "semantic-release": "^25.0.2",
     "turbo": "^2.6.1",
     "typescript": "^5.9.3"
