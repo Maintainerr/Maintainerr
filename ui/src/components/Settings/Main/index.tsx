@@ -1,57 +1,56 @@
 import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
-import React, { useContext, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import SettingsContext from '../../../contexts/settings-context'
-import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
+import { usePatchSettings, useSettings } from '../../../api/settings'
+import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import LoadingSpinner from '../../Common/LoadingSpinner'
 
 const MainSettings = () => {
-  const settingsCtx = useContext(SettingsContext)
   const hostnameRef = useRef<HTMLInputElement>(null)
   const apiKeyRef = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState<boolean>()
-  const [changed, setChanged] = useState<boolean>()
+  const [missingValuesError, setMissingValuesError] = useState<boolean>()
+  const { data: settings, isLoading, isError } = useSettings()
+  const {
+    mutateAsync: updateSettings,
+    isSuccess,
+    isPending,
+  } = usePatchSettings()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setMissingValuesError(false)
     if (hostnameRef.current?.value && apiKeyRef.current?.value) {
       const payload = {
         applicationUrl: hostnameRef.current.value,
         apikey: apiKeyRef.current.value,
       }
-      const resp: { code: 0 | 1; message: string } = await PostApiHandler(
-        '/settings',
-        {
-          ...settingsCtx.settings,
-          ...payload,
-        },
-      )
-      if (resp.code) {
-        settingsCtx.addSettings({
-          ...settingsCtx.settings,
-          ...payload,
-        })
-        setError(false)
-        setChanged(true)
-      } else setError(true)
+
+      await updateSettings(payload)
     } else {
-      setError(true)
+      setMissingValuesError(true)
     }
   }
 
   const regenerateApi = async () => {
     const key = await GetApiHandler('/settings/api/generate')
 
-    await PostApiHandler('/settings', {
+    await updateSettings({
       apikey: key,
     })
+  }
 
-    settingsCtx.addSettings({
-      ...settingsCtx.settings,
-      apikey: key,
-    })
+  if (isLoading || !settings) {
+    return (
+      <>
+        <Helmet>
+          <title>Maintainerr - Settings - General</title>
+        </Helmet>
+        <LoadingSpinner />
+      </>
+    )
   }
 
   return (
@@ -64,11 +63,20 @@ const MainSettings = () => {
           <h3 className="heading">General Settings</h3>
           <p className="description">Configure global settings</p>
         </div>
-        {error ? (
-          <Alert type="warning" title="Not all fields contain values" />
-        ) : changed ? (
+        {missingValuesError && (
+          <Alert type="error" title="Not all fields contain values" />
+        )}
+
+        {isError && (
+          <Alert
+            type="error"
+            title="Something went wrong, please check your values"
+          />
+        )}
+
+        {isSuccess && (
           <Alert type="info" title="Settings successfully updated" />
-        ) : undefined}
+        )}
         <div className="section">
           <form onSubmit={submit}>
             <div className="form-row">
@@ -82,7 +90,7 @@ const MainSettings = () => {
                     id="name"
                     type="text"
                     ref={hostnameRef}
-                    defaultValue={settingsCtx.settings.applicationUrl}
+                    defaultValue={settings.applicationUrl}
                   ></input>
                 </div>
               </div>
@@ -99,7 +107,7 @@ const MainSettings = () => {
                     id="name"
                     type="text"
                     ref={apiKeyRef}
-                    defaultValue={settingsCtx.settings.apikey}
+                    defaultValue={settings.apikey}
                   ></input>
                   <button
                     onClick={(e) => {
@@ -121,7 +129,11 @@ const MainSettings = () => {
                     <DocsButton />
                   </span>
                   <span className="ml-auto flex rounded-md shadow-sm">
-                    <Button buttonType="primary" type="submit">
+                    <Button
+                      buttonType="primary"
+                      type="submit"
+                      disabled={isPending}
+                    >
                       <SaveIcon />
                       <span>Save Changes</span>
                     </Button>

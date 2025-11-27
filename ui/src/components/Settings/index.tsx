@@ -1,15 +1,14 @@
-import { ReactNode, useContext, useEffect, useState } from 'react'
+import { ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
-import SettingsContext from '../../contexts/settings-context'
-import GetApiHandler from '../../utils/ApiHandler'
+import { useSettings } from '../../api/settings'
+import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from './Tabs'
 
 const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
   children?: ReactNode
 }) => {
-  const settingsCtx = useContext(SettingsContext)
-  const [loaded, setLoaded] = useState(false)
+  const { data: settings, isLoading, error } = useSettings()
 
   const settingsRoutes: SettingsRoute[] = [
     {
@@ -69,35 +68,37 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
     },
   ]
 
-  useEffect(() => {
-    if (settingsCtx.settings?.id === undefined) {
-      GetApiHandler('/settings').then((resp) => {
-        settingsCtx.addSettings(resp)
-        setLoaded(true)
-      })
-    } else {
-      setLoaded(true)
-    }
-  }, [])
+  if (error) {
+    return (
+      <>
+        <div className="mt-6">
+          <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={true} />
+        </div>
+        <div className="mt-10 flex">
+          <Alert type="error" title="There was a problem loading settings." />
+        </div>
+      </>
+    )
+  }
 
-  if (loaded) {
+  if (isLoading) {
+    return (
+      <div className="mt-6">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (settings) {
     return (
       <>
         <div className="mt-6">
           <SettingsTabs
             settingsRoutes={settingsRoutes}
-            allEnabled={settingsCtx.settings.plex_auth_token !== null}
+            allEnabled={settings.plex_auth_token !== null}
           />
         </div>
         <div className="mt-10 text-white">{props.children || <Outlet />}</div>
-      </>
-    )
-  } else {
-    return (
-      <>
-        <div className="mt-6">
-          <LoadingSpinner />
-        </div>
       </>
     )
   }

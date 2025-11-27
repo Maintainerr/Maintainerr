@@ -1,24 +1,30 @@
 import { SaveIcon } from '@heroicons/react/solid'
 import { isValidCron } from 'cron-validator'
-import { useContext, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import SettingsContext from '../../../contexts/settings-context'
-import { PostApiHandler } from '../../../utils/ApiHandler'
+import { usePatchSettings, useSettings } from '../../../api/settings'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
+import LoadingSpinner from '../../Common/LoadingSpinner'
 
 const JobSettings = () => {
-  const settingsCtx = useContext(SettingsContext)
   const rulehanderRef = useRef<HTMLInputElement>(null)
   const collectionHandlerRef = useRef<HTMLInputElement>(null)
   const [secondCronValid, setSecondCronValid] = useState(true)
   const [firstCronValid, setFirstCronValid] = useState(true)
-  const [error, setError] = useState<boolean>(false)
-  const [erroMessage, setErrorMessage] = useState<string>('')
-  const [changed, setChanged] = useState<boolean>()
+  const [missingValuesError, setMissingValuesError] = useState<boolean>(false)
+  const {
+    mutateAsync: updateSettings,
+    isError: updateSettingsError,
+    isPending: updateSettingsPending,
+    isSuccess: updateSettingsSuccess,
+  } = usePatchSettings()
+  const { data: settings, isLoading } = useSettings()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setMissingValuesError(false)
+
     if (
       rulehanderRef.current?.value &&
       collectionHandlerRef.current?.value &&
@@ -29,30 +35,22 @@ const JobSettings = () => {
         collection_handler_job_cron: collectionHandlerRef.current.value,
         rules_handler_job_cron: rulehanderRef.current.value,
       }
-      const resp: { code: 0 | 1; message: string } = await PostApiHandler(
-        '/settings',
-        {
-          ...settingsCtx.settings,
-          ...payload,
-        },
-      )
-      if (resp.code) {
-        setError(false)
-        setChanged(true)
 
-        // set context values
-        settingsCtx.settings.rules_handler_job_cron =
-          payload.rules_handler_job_cron
-        settingsCtx.settings.collection_handler_job_cron =
-          payload.collection_handler_job_cron
-      } else {
-        setError(true)
-        setErrorMessage(resp.message.length > 0 ? resp.message : '')
-      }
+      await updateSettings(payload)
     } else {
-      setError(true)
-      setErrorMessage('Please make sure all values are valid')
+      setMissingValuesError(true)
     }
+  }
+
+  if (isLoading || !settings) {
+    return (
+      <>
+        <Helmet>
+          <title>Maintainerr - Settings - Jobs</title>
+        </Helmet>
+        <LoadingSpinner />
+      </>
+    )
   }
 
   return (
@@ -66,18 +64,20 @@ const JobSettings = () => {
           <p className="description">Job configuration</p>
         </div>
 
-        {error ? (
+        {missingValuesError && (
+          <Alert type="error" title="Please make sure all values are valid" />
+        )}
+
+        {updateSettingsError && (
           <Alert
-            type="warning"
-            title={
-              erroMessage.length > 0
-                ? erroMessage
-                : 'Something went wrong, please check your values'
-            }
+            type="error"
+            title="Something went wrong, please check your values"
           />
-        ) : changed ? (
+        )}
+
+        {updateSettingsSuccess && (
           <Alert type="info" title="Settings successfully updated" />
-        ) : undefined}
+        )}
 
         <div className="section">
           <form onSubmit={submit}>
@@ -114,7 +114,7 @@ const JobSettings = () => {
                       )
                     }}
                     ref={rulehanderRef}
-                    defaultValue={settingsCtx.settings.rules_handler_job_cron}
+                    defaultValue={settings.rules_handler_job_cron}
                   ></input>
                 </div>
               </div>
@@ -154,9 +154,7 @@ const JobSettings = () => {
                       )
                     }}
                     ref={collectionHandlerRef}
-                    defaultValue={
-                      settingsCtx.settings.collection_handler_job_cron
-                    }
+                    defaultValue={settings.collection_handler_job_cron}
                   ></input>
                 </div>
               </div>
@@ -168,7 +166,7 @@ const JobSettings = () => {
                   <Button
                     buttonType="primary"
                     type="submit"
-                    // disabled={isSubmitting || !isValid}
+                    disabled={updateSettingsPending}
                   >
                     <SaveIcon />
                     <span>Save Changes</span>

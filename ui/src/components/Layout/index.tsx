@@ -5,7 +5,6 @@ import { Helmet } from 'react-helmet-async'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import SettingsContext from '../../contexts/settings-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
@@ -13,7 +12,6 @@ import NavBar from './NavBar'
 const Layout: React.FC = () => {
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
-  const SettingsCtx = useContext(SettingsContext)
   const navigate = useNavigate()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 

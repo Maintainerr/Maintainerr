@@ -10,6 +10,7 @@ import {
   RulePossibilityTranslations,
 } from '../../../../../contexts/constants-context'
 import { EPlexDataType } from '../../../../../utils/PlexDataType-enum'
+import LoadingSpinner from '../../../../Common/LoadingSpinner'
 
 enum RuleType {
   NUMBER,
@@ -298,9 +299,8 @@ const RuleInput = (props: IRuleInput) => {
     return prop
   }
 
-  // TODO Something better...
   if (!constants || constantsLoading) {
-    return <div>Loading...</div>
+    return <LoadingSpinner />
   }
 
   return (
