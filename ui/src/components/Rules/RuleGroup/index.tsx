@@ -1,7 +1,9 @@
 import { PencilIcon, TrashIcon } from '@heroicons/react/solid'
+import { EPlexDataType } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { usePlexLibraries } from '../../../api/plex'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { ICollection } from '../../Collection'
 import DeleteButton from '../../Common/DeleteButton'
 import EditButton from '../../Common/EditButton'
 import { AgentConfiguration } from '../../Settings/Notifications/CreateNotificationModal'
@@ -16,9 +18,9 @@ export interface IRuleGroup {
   collectionId: number
   rules: IRuleJson[]
   useRules: boolean
-  type?: number
-  listExclusions?: boolean
+  dataType: EPlexDataType
   notifications?: AgentConfiguration[]
+  collection?: ICollection
 }
 
 const RuleGroup = (props: {

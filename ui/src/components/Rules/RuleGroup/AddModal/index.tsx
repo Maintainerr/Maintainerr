@@ -14,12 +14,8 @@ import { usePlexLibraries } from '../../../../api/plex'
 import { useRuleConstants } from '../../../../api/rules'
 import { Application } from '../../../../contexts/constants-context'
 import { ILibrary } from '../../../../contexts/libraries-context'
-import GetApiHandler, {
-  PostApiHandler,
-  PutApiHandler,
-} from '../../../../utils/ApiHandler'
+import { PostApiHandler, PutApiHandler } from '../../../../utils/ApiHandler'
 import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
-import { ICollection } from '../../../Collection'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
@@ -61,35 +57,62 @@ interface ICreateApiObject {
   notifications: AgentConfiguration[]
 }
 
+const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
+
 const AddModal = (props: AddModal) => {
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>(
     props.editData?.libraryId ? props.editData.libraryId.toString() : '',
   )
   const [selectedType, setSelectedType] = useState<string>(
-    props.editData?.type ? props.editData.type.toString() : '',
+    props.editData?.dataType ? props.editData.dataType.toString() : '',
   )
-  const [selectedLibrary, setSelectedLibrary] = useState<ILibrary>()
-  const [collection, setCollection] = useState<ICollection>()
-  const [isLoading, setIsLoading] = useState(props.editData != null)
+  const selectedLibraryType: undefined | 'movie' | 'show' = selectedType
+    ? selectedType === EPlexDataType.MOVIES.toString()
+      ? 'movie'
+      : 'show'
+    : undefined
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
     useState(false)
 
   const yaml = useRef<string>(undefined)
-  const nameRef = useRef<any>(undefined)
-  const descriptionRef = useRef<any>(undefined)
-  const libraryRef = useRef<any>(undefined)
   const collectionTypeRef = useRef<any>(undefined)
-  const keepLogsForMonthsRef = useRef<any>(undefined)
-  const tautulliWatchedPercentOverrideRef = useRef<any>(undefined)
-  const manualCollectionNameRef = useRef<any>('My custom collection')
-  const [showRecommended, setShowRecommended] = useState<boolean>(true)
-  const [showHome, setShowHome] = useState<boolean>(true)
-  const [listExclusion, setListExclusion] = useState<boolean>(true)
-  const [forceOverseerr, setForceOverseerr] = useState<boolean>(false)
-  const [manualCollection, setManualCollection] = useState<boolean>(false)
-  const [deleteDays, setDeleteDays] = useState<number | undefined>(undefined)
+  const [name, setName] = useState<string>(props.editData?.name ?? '')
+  const [description, setDescription] = useState<string>(
+    props.editData?.description ?? '',
+  )
+  const [manualCollectionName, setManualCollectionName] = useState<string>(
+    props.editData?.collection?.manualCollectionName ??
+      DEFAULT_MANUAL_COLLECTION_NAME,
+  )
+  const [keepLogsForMonths, setKeepLogsForMonths] = useState<string>(
+    props.editData?.collection?.keepLogsForMonths?.toString() ?? '6',
+  )
+  const [tautulliWatchedPercentOverride, setTautulliWatchedPercentOverride] =
+    useState<string>(
+      props.editData?.collection?.tautulliWatchedPercentOverride?.toString() ??
+        '',
+    )
+
+  const [showRecommended, setShowRecommended] = useState<boolean>(
+    props.editData?.collection?.visibleOnRecommended ?? true,
+  )
+  const [showHome, setShowHome] = useState<boolean>(
+    props.editData?.collection?.visibleOnHome ?? true,
+  )
+  const [listExclusion, setListExclusion] = useState<boolean>(
+    props.editData?.collection?.listExclusions ?? true,
+  )
+  const [forceOverseerr, setForceOverseerr] = useState<boolean>(
+    props.editData?.collection?.forceOverseerr ?? false,
+  )
+  const [manualCollection, setManualCollection] = useState<boolean>(
+    props.editData?.collection?.manualCollection ?? false,
+  )
+  const [deleteDays, setDeleteDays] = useState<number | undefined>(
+    props.editData?.collection?.deleteAfterDays ?? undefined,
+  )
   const [
     configuredNotificationConfigurations,
     setConfiguredNotificationConfigurations,
@@ -99,13 +122,23 @@ const AddModal = (props: AddModal) => {
   const [useRules, setUseRules] = useState<boolean>(
     props.editData ? (props.editData.useRules ?? true) : true,
   )
-  const [arrOption, setArrOption] = useState<number>()
+  const [arrOption, setArrOption] = useState<number | undefined>(
+    props.editData?.collection?.arrAction ?? undefined,
+  )
   const [radarrSettingsId, setRadarrSettingsId] = useState<
     number | null | undefined
-  >(props.editData ? null : undefined)
+  >(
+    props.editData
+      ? (props.editData?.collection?.radarrSettingsId ?? null)
+      : undefined,
+  )
   const [sonarrSettingsId, setSonarrSettingsId] = useState<
     number | null | undefined
-  >(props.editData ? null : undefined)
+  >(
+    props.editData
+      ? (props.editData?.collection?.sonarrSettingsId ?? null)
+      : undefined,
+  )
   const [active, setActive] = useState<boolean>(
     props.editData ? (props.editData.isActive ?? true) : true,
   )
@@ -123,6 +156,71 @@ const AddModal = (props: AddModal) => {
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
+  useEffect(() => {
+    const editData = props.editData
+
+    if (!editData) {
+      setSelectedLibraryId('')
+      setSelectedType('')
+      setName('')
+      setDescription('')
+      setShowRecommended(true)
+      setShowHome(true)
+      setListExclusion(true)
+      setForceOverseerr(false)
+      setManualCollection(false)
+      setDeleteDays(undefined)
+      setConfiguredNotificationConfigurations([])
+      setUseRules(true)
+      setArrOption(undefined)
+      setRadarrSettingsId(undefined)
+      setSonarrSettingsId(undefined)
+      setActive(true)
+      setRules([])
+      ruleCreatorVersion.current += 1
+      setManualCollectionName(DEFAULT_MANUAL_COLLECTION_NAME)
+      setKeepLogsForMonths('6')
+      setTautulliWatchedPercentOverride('')
+
+      return
+    }
+
+    setSelectedLibraryId(editData.libraryId?.toString() ?? '')
+    setSelectedType(editData.dataType?.toString() ?? '')
+    setName(editData.name ?? '')
+    setDescription(editData.description ?? '')
+    setShowRecommended(editData.collection?.visibleOnRecommended ?? true)
+    setShowHome(editData.collection?.visibleOnHome ?? true)
+    setListExclusion(editData.collection?.listExclusions ?? true)
+    setForceOverseerr(editData.collection?.forceOverseerr ?? false)
+    setManualCollection(editData.collection?.manualCollection ?? false)
+    setDeleteDays(editData.collection?.deleteAfterDays ?? undefined)
+    setConfiguredNotificationConfigurations(editData.notifications ?? [])
+    setUseRules(editData.useRules ?? true)
+    setArrOption(editData.collection?.arrAction ?? undefined)
+    setRadarrSettingsId(editData.collection?.radarrSettingsId ?? null)
+    setSonarrSettingsId(editData.collection?.sonarrSettingsId ?? null)
+    setActive(editData.isActive ?? true)
+    setRules(
+      editData.rules
+        ? editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
+        : [],
+    )
+    ruleCreatorVersion.current += 1
+    setManualCollectionName(
+      editData.collection?.manualCollectionName ??
+        DEFAULT_MANUAL_COLLECTION_NAME,
+    )
+    const months = editData.collection?.keepLogsForMonths
+    setKeepLogsForMonths(
+      months !== undefined && months !== null ? months.toString() : '6',
+    )
+    const override = editData.collection?.tautulliWatchedPercentOverride
+    setTautulliWatchedPercentOverride(
+      override !== undefined && override !== null ? override.toString() : '',
+    )
+  }, [props.editData])
+
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
   const overseerrEnabled =
@@ -137,7 +235,6 @@ const AddModal = (props: AddModal) => {
 
     if (lib) {
       setSelectedLibraryId(lib.key)
-      setSelectedLibrary(lib)
       setSelectedType(
         lib.type === 'movie'
           ? EPlexDataType.MOVIES.toString()
@@ -157,19 +254,6 @@ const AddModal = (props: AddModal) => {
       setDeleteDays(undefined)
     } else if (deleteDays === undefined) {
       setDeleteDays(30)
-    }
-  }
-
-  function setLibraryId(value: string) {
-    if (!plexLibraries) {
-      throw new Error('Plex libraries not loaded')
-    }
-
-    const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
-
-    if (lib) {
-      setSelectedLibraryId(lib.key)
-      setSelectedLibrary(lib)
     }
   }
 
@@ -199,7 +283,7 @@ const AddModal = (props: AddModal) => {
   }
 
   const toggleCommunityRuleModal = () => {
-    if (selectedLibrary == null) {
+    if (selectedLibraryType == null) {
       alert('Please select a library first.')
     } else {
       setShowCommunityModal(!showCommunityModal)
@@ -261,64 +345,31 @@ const AddModal = (props: AddModal) => {
     props.onCancel()
   }
 
-  useEffect(() => {
-    if (!plexLibraries) return
-    setIsLoading(true)
-
-    const load = async () => {
-      const collectionPromise: Promise<ICollection | null> = props.editData
-        ?.collectionId
-        ? GetApiHandler(
-            `/collections/collection/${props.editData.collectionId}`,
-          )
-        : Promise.resolve(null)
-
-      const [collection] = await Promise.all([collectionPromise])
-
-      if (collection) {
-        setCollection(collection)
-        setShowRecommended(collection.visibleOnRecommended!)
-        setShowHome(collection.visibleOnHome!)
-        setListExclusion(collection.listExclusions!)
-        setForceOverseerr(collection.forceOverseerr!)
-        setArrOption(collection.arrAction)
-        setSelectedType(collection.type.toString())
-        setManualCollection(collection.manualCollection)
-        setRadarrSettingsId(collection.radarrSettingsId ?? null)
-        setSonarrSettingsId(collection.sonarrSettingsId ?? null)
-        setLibraryId(collection.libraryId.toString())
-        setDeleteDays(collection.deleteAfterDays ?? undefined)
-      }
-
-      setIsLoading(false)
-    }
-
-    load()
-  }, [props.editData?.collectionId, plexLibraries])
-
   const create = () => {
     if (
-      nameRef.current.value &&
-      libraryRef.current.value &&
+      name &&
+      selectedLibraryId &&
       (radarrSettingsId !== undefined || sonarrSettingsId !== undefined) &&
       ((useRules && rules.length > 0) || !useRules)
     ) {
       setFormIncomplete(false)
+      const tautulliOverrideValue =
+        tautulliWatchedPercentOverride !== ''
+          ? +tautulliWatchedPercentOverride
+          : undefined
+      const keepLogsForMonthsValue =
+        keepLogsForMonths !== '' ? +keepLogsForMonths : 0
       const creationObj: ICreateApiObject = {
-        name: nameRef.current.value,
-        description: descriptionRef.current.value,
-        libraryId: +libraryRef.current.value,
+        name,
+        description,
+        libraryId: +selectedLibraryId,
         arrAction: arrOption ? arrOption : 0,
         dataType: +selectedType,
         isActive: active,
         useRules: useRules,
         listExclusions: listExclusion,
         forceOverseerr: forceOverseerr,
-        tautulliWatchedPercentOverride:
-          tautulliWatchedPercentOverrideRef.current &&
-          tautulliWatchedPercentOverrideRef.current.value != ''
-            ? +tautulliWatchedPercentOverrideRef.current.value
-            : undefined,
+        tautulliWatchedPercentOverride: tautulliOverrideValue,
         radarrSettingsId: radarrSettingsId ?? undefined,
         sonarrSettingsId: sonarrSettingsId ?? undefined,
         collection: {
@@ -327,8 +378,8 @@ const AddModal = (props: AddModal) => {
           deleteAfterDays:
             arrOption === undefined || arrOption === 4 ? undefined : deleteDays,
           manualCollection: manualCollection,
-          manualCollectionName: manualCollectionNameRef.current.value,
-          keepLogsForMonths: +keepLogsForMonthsRef.current.value,
+          manualCollectionName,
+          keepLogsForMonths: keepLogsForMonthsValue,
         },
         rules: useRules ? rules : [],
         notifications: configuredNotificationConfigurations,
@@ -358,7 +409,7 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  if (isLoading || plexLibrariesLoading || constantsLoading) {
+  if (plexLibrariesLoading || constantsLoading) {
     return <LoadingSpinner />
   }
 
@@ -419,8 +470,8 @@ const AddModal = (props: AddModal) => {
                           name="name"
                           id="name"
                           type="text"
-                          ref={nameRef}
-                          defaultValue={props.editData?.name}
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
                         ></input>
                       </div>
                     </div>
@@ -436,8 +487,8 @@ const AddModal = (props: AddModal) => {
                           name="description"
                           id="description"
                           rows={5}
-                          defaultValue={props.editData?.description}
-                          ref={descriptionRef}
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
                         ></textarea>
                       </div>
                     </div>
@@ -454,7 +505,6 @@ const AddModal = (props: AddModal) => {
                           id="library"
                           value={selectedLibraryId}
                           onChange={(e) => updateLibraryId(e.target.value)}
-                          ref={libraryRef}
                         >
                           {selectedLibraryId === '' && (
                             <option value="" disabled></option>
@@ -470,7 +520,7 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
                   </div>
-                  {selectedLibrary && selectedLibrary!.type === 'movie' && (
+                  {selectedLibraryType && selectedLibraryType === 'movie' && (
                     <ArrAction
                       type="Radarr"
                       arrAction={arrOption}
@@ -499,7 +549,7 @@ const AddModal = (props: AddModal) => {
                     />
                   )}
 
-                  {selectedLibrary && selectedLibrary!.type !== 'movie' && (
+                  {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
                       <div className="form-row items-center">
                         <label htmlFor="type" className="text-label">
@@ -732,7 +782,7 @@ const AddModal = (props: AddModal) => {
                         Add list exclusions
                         <p className="text-xs font-normal">
                           Prevent lists to re-add removed{' '}
-                          {selectedLibrary ? selectedLibrary.type : 'movie'}
+                          {selectedLibraryType ? selectedLibraryType : 'movie'}
                         </p>
                       </label>
                       <div className="form-input">
@@ -840,8 +890,10 @@ const AddModal = (props: AddModal) => {
                             type="text"
                             name="manual_collection_name"
                             id="manual_collection_name"
-                            defaultValue={collection?.manualCollectionName}
-                            ref={manualCollectionNameRef}
+                            value={manualCollectionName}
+                            onChange={(e) =>
+                              setManualCollectionName(e.target.value)
+                            }
                           />
                         </div>
                       </div>
@@ -893,10 +945,10 @@ const AddModal = (props: AddModal) => {
                             type="number"
                             name="collection_logs_months"
                             id="collection_logs_months"
-                            defaultValue={
-                              collection ? collection.keepLogsForMonths : 6
+                            value={keepLogsForMonths}
+                            onChange={(e) =>
+                              setKeepLogsForMonths(e.target.value)
                             }
-                            ref={keepLogsForMonthsRef}
                           />
                         </div>
                       </div>
@@ -923,12 +975,12 @@ const AddModal = (props: AddModal) => {
                               max={100}
                               name="tautulli_watched_percent_override"
                               id="tautulli_watched_percent_override"
-                              defaultValue={
-                                collection
-                                  ? collection.tautulliWatchedPercentOverride
-                                  : ''
+                              value={tautulliWatchedPercentOverride}
+                              onChange={(e) =>
+                                setTautulliWatchedPercentOverride(
+                                  e.target.value,
+                                )
                               }
-                              ref={tautulliWatchedPercentOverrideRef}
                             />
                           </div>
                         </div>
@@ -994,10 +1046,10 @@ const AddModal = (props: AddModal) => {
                     </button>
                   </div>
                 </div>
-                {showCommunityModal && selectedLibrary && (
+                {showCommunityModal && selectedLibraryType && (
                   <CommunityRuleModal
                     currentRules={rules}
-                    type={selectedLibrary.type}
+                    type={selectedLibraryType}
                     onUpdate={handleLoadRules}
                     onCancel={() => setShowCommunityModal(false)}
                   />
@@ -1031,8 +1083,8 @@ const AddModal = (props: AddModal) => {
                 <RuleCreator
                   key={ruleCreatorVersion.current}
                   mediaType={
-                    selectedLibrary
-                      ? selectedLibrary.type === 'movie'
+                    selectedLibraryType != null
+                      ? selectedLibraryType === 'movie'
                         ? 1
                         : 2
                       : 0
