@@ -11,6 +11,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { RadarrSettingRawDto } from "./dto's/radarr-setting.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
+import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
 import { SettingsService } from './settings.service';
 
@@ -54,6 +56,10 @@ export class SettingsController {
   @Post()
   updateSettings(@Body() payload: SettingDto) {
     return this.settingsService.updateSettings(payload);
+  }
+  @Patch()
+  patchSettings(@Body() payload: UpdateSettingDto) {
+    return this.settingsService.patchSettings(payload);
   }
   @Post('/plex/token')
   updateAuthToken(@Body() payload: { plex_auth_token: string }) {

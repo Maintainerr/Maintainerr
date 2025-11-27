@@ -2,17 +2,20 @@ import { RefreshIcon } from '@heroicons/react/outline'
 import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
-import SettingsContext from '../../../contexts/settings-context'
-import GetApiHandler, {
-  DeleteApiHandler,
-  PostApiHandler,
-} from '../../../utils/ApiHandler'
+import {
+  useDeletePlexAuth,
+  usePatchSettings,
+  useSettings,
+  useUpdatePlexAuth,
+} from '../../../api/settings'
+import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import LoadingSpinner from '../../Common/LoadingSpinner'
 import TestButton from '../../Common/TestButton'
 import PlexLoginButton from '../../Login/Plex'
 
@@ -66,14 +69,12 @@ export interface PlexDevice {
 }
 
 const PlexSettings = () => {
-  const settingsCtx = useContext(SettingsContext)
   const hostnameRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const portRef = useRef<HTMLInputElement>(null)
   const sslRef = useRef<HTMLInputElement>(null)
   const serverPresetRef = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState<boolean>()
-  const [changed, setChanged] = useState<boolean>()
+  const [error, setError] = useState<string | undefined>()
   const [tokenValid, setTokenValid] = useState<boolean>(false)
   const [clearTokenClicked, setClearTokenClicked] = useState<boolean>(false)
   const [testBanner, setTestbanner] = useState<{
@@ -83,11 +84,28 @@ const PlexSettings = () => {
   const [availableServers, setAvailableServers] = useState<PlexDevice[]>()
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
 
-  const submit = async (
-    e: React.FormEvent<HTMLFormElement> | undefined,
-    plex_token?: { plex_auth_token: string } | undefined,
-  ) => {
+  const {
+    mutateAsync: updateSettings,
+    isPending,
+    isSuccess: updateSettingsSuccess,
+    isError: updateSettingsError,
+  } = usePatchSettings()
+  const {
+    mutateAsync: deletePlexAuth,
+    isSuccess: deletePlexAuthSuccess,
+    isError: deletePlexAuthError,
+    isPending: deletePlexAuthPending,
+  } = useDeletePlexAuth()
+  const { mutateAsync: updatePlexAuth } = useUpdatePlexAuth()
+  const {
+    data: settings,
+    error: settingsError,
+    isLoading: settingsLoading,
+  } = useSettings()
+
+  const submit = async (e: React.FormEvent<HTMLFormElement> | undefined) => {
     e?.preventDefault()
+    setError(undefined)
     if (
       hostnameRef.current?.value &&
       nameRef.current?.value &&
@@ -113,34 +131,14 @@ const PlexSettings = () => {
         plex_ssl: +sslRef.current.checked, // not used, server derives this from https://
       }
 
-      if (plex_token) {
-        payload = {
-          ...payload,
-          plex_auth_token: plex_token.plex_auth_token,
-        }
-      }
-
-      const resp: { code: 0 | 1; message: string } = await PostApiHandler(
-        '/settings',
-        {
-          ...settingsCtx.settings,
-          ...payload,
-        },
-      )
-      if (resp.code) {
-        settingsCtx.addSettings({
-          ...settingsCtx.settings,
-          ...payload,
-        })
-        setError(false)
-        setChanged(true)
+      try {
+        await updateSettings(payload)
         toast.success('Settings successfully updated!')
-      } else {
-        setError(true)
+      } catch {
         toast.error('Failed to update settings')
       }
     } else {
-      setError(true)
+      setError('Please fill in all required fields.')
       toast.error('Please fill in all required fields.')
     }
   }
@@ -149,15 +147,7 @@ const PlexSettings = () => {
     plex_token?: { plex_auth_token: string } | undefined,
   ) => {
     if (plex_token) {
-      const resp: { code: 0 | 1; message: string } = await PostApiHandler(
-        '/settings/plex/token',
-        {
-          plex_auth_token: plex_token.plex_auth_token,
-        },
-      )
-      if (resp.code === 1) {
-        settingsCtx.settings.plex_auth_token = plex_token.plex_auth_token
-      }
+      await updatePlexAuth(plex_token.plex_auth_token)
     }
   }
 
@@ -181,34 +171,24 @@ const PlexSettings = () => {
   }, [availableServers])
 
   const authsuccess = (token: string) => {
+    setError(undefined)
     verifyToken(token)
     submitPlexToken({ plex_auth_token: token })
   }
 
   const authFailed = () => {
-    setError(true)
+    setError('Authentication failed')
     toast.error('Authentication failed')
   }
 
   const deleteToken = async () => {
-    const status = await DeleteApiHandler('/settings/plex/auth')
-
-    if (status.code) {
-      settingsCtx.addSettings({
-        ...settingsCtx.settings,
-        plex_auth_token: null,
-      })
-      setError(false)
-      setChanged(true)
-      setTokenValid(false)
-      setClearTokenClicked(false)
-    } else {
-      setError(true)
-    }
+    await deletePlexAuth()
+    setTokenValid(false)
+    setClearTokenClicked(false)
   }
 
   const verifyToken = (token?: string) => {
-    const authToken = token || settingsCtx.settings.plex_auth_token
+    const authToken = token || settings?.plex_auth_token
     if (authToken) {
       const controller = new AbortController()
 
@@ -237,8 +217,8 @@ const PlexSettings = () => {
   }
 
   useEffect(() => {
-    if (settingsCtx.settings.plex_auth_token) verifyToken()
-  }, [])
+    if (settings?.plex_auth_token) verifyToken()
+  }, [settings?.plex_auth_token])
 
   const appTest = (result: { status: boolean; message: string }) => {
     setTestbanner({ status: result.status, version: result.message })
@@ -284,6 +264,30 @@ const PlexSettings = () => {
     }
   }
 
+  if (settingsError) {
+    return (
+      <>
+        <Helmet>
+          <title>Maintainerr - Settings - Plex</title>
+        </Helmet>
+        <div className="flex">
+          <Alert type="error" title="There was a problem loading settings." />
+        </div>
+      </>
+    )
+  }
+
+  if (settingsLoading || !settings) {
+    return (
+      <>
+        <Helmet>
+          <title>Maintainerr - Settings - Plex</title>
+        </Helmet>
+        <LoadingSpinner />
+      </>
+    )
+  }
+
   return (
     <>
       <Helmet>
@@ -295,11 +299,25 @@ const PlexSettings = () => {
           <p className="description">Plex configuration</p>
         </div>
 
-        {error ? (
-          <Alert type="warning" title="Not all fields contain values" />
-        ) : changed ? (
+        {error && <Alert type="error" title={error} />}
+
+        {deletePlexAuthError && (
+          <Alert
+            type="error"
+            title="There was an error clearing Plex authentication."
+          />
+        )}
+
+        {updateSettingsError && (
+          <Alert
+            type="error"
+            title="There was an error updating Plex settings."
+          />
+        )}
+
+        {(deletePlexAuthSuccess || updateSettingsSuccess) && (
           <Alert type="info" title="Settings successfully updated" />
-        ) : undefined}
+        )}
 
         {tokenValid ? (
           ''
@@ -401,7 +419,7 @@ const PlexSettings = () => {
                     id="name"
                     type="text"
                     ref={nameRef}
-                    defaultValue={settingsCtx.settings.plex_name}
+                    defaultValue={settings.plex_name}
                   ></input>
                 </div>
               </div>
@@ -418,7 +436,7 @@ const PlexSettings = () => {
                     id="hostname"
                     type="text"
                     ref={hostnameRef}
-                    defaultValue={settingsCtx.settings.plex_hostname
+                    defaultValue={settings.plex_hostname
                       ?.replace('http://', '')
                       .replace('https://', '')}
                   ></input>
@@ -437,7 +455,7 @@ const PlexSettings = () => {
                     id="port"
                     type="number"
                     ref={portRef}
-                    defaultValue={settingsCtx.settings.plex_port}
+                    defaultValue={settings.plex_port}
                   ></input>
                 </div>
               </div>
@@ -453,7 +471,7 @@ const PlexSettings = () => {
                     type="checkbox"
                     name="ssl"
                     id="ssl"
-                    defaultChecked={Boolean(settingsCtx.settings.plex_ssl)}
+                    defaultChecked={Boolean(settings.plex_ssl)}
                     ref={sslRef}
                   ></input>
                 </div>
@@ -473,18 +491,17 @@ const PlexSettings = () => {
                   {tokenValid ? (
                     clearTokenClicked ? (
                       <Button
-                        onClick={(e: React.FormEvent) => {
-                          e.preventDefault()
-                          deleteToken()
-                        }}
+                        type="button"
+                        onClick={deleteToken}
                         buttonType="warning"
+                        disabled={deletePlexAuthPending}
                       >
                         Clear credentials?
                       </Button>
                     ) : (
                       <Button
-                        onClick={(e: React.FormEvent) => {
-                          e.preventDefault()
+                        type="button"
+                        onClick={() => {
                           setClearTokenClicked(true)
                         }}
                         buttonType="success"
@@ -517,7 +534,7 @@ const PlexSettings = () => {
                     <Button
                       buttonType="primary"
                       type="submit"
-                      // disabled={isSubmitting || !isValid}
+                      disabled={isPending}
                     >
                       <SaveIcon />
                       <span>Save Changes</span>
