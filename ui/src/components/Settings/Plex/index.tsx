@@ -112,7 +112,7 @@ const PlexSettings = () => {
       portRef.current?.value &&
       sslRef.current !== null
     ) {
-      let payload: {
+      const payload: {
         plex_hostname: string
         plex_port: number
         plex_name: string

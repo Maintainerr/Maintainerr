@@ -15,7 +15,7 @@ const CollectionDetailPage = () => {
   const [collection, setCollection] = useState<ICollection | undefined>()
   const [isLoading, setIsLoading] = useState(true)
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
-  
+
   // Determine current tab from URL path
   const getCurrentTab = () => {
     const path = location.pathname
@@ -23,7 +23,7 @@ const CollectionDetailPage = () => {
     if (path.endsWith('/info')) return 'info'
     return 'media'
   }
-  
+
   const currentTab = getCurrentTab()
 
   useEffect(() => {
