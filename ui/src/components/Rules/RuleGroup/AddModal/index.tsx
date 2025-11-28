@@ -7,8 +7,11 @@ import {
   UploadIcon,
 } from '@heroicons/react/solid'
 
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
+import { z } from 'zod'
 import { IRuleGroup } from '..'
 import { usePlexLibraries } from '../../../../api/plex'
 import { useRuleConstants } from '../../../../api/rules'
@@ -59,88 +62,186 @@ interface ICreateApiObject {
 
 const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
 
+const numberOrUndefined = (value: unknown): number | undefined => {
+  if (value === '' || value === null || value === undefined) {
+    return undefined
+  }
+
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? undefined : value
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? undefined : parsed
+  }
+
+  return value as number | undefined
+}
+
+const ruleGroupFormSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required'),
+    description: z.string().optional(),
+    libraryId: z.string().trim().min(1, 'Library is required'),
+    dataType: z.string().trim().min(1, 'Media type is required'),
+    arrAction: z
+      .preprocess(
+        numberOrUndefined,
+        z.number().int('Invalid action').optional(),
+      )
+      .optional(),
+    deleteAfterDays: z
+      .preprocess(
+        numberOrUndefined,
+        z
+          .number()
+          .int('Take action after days must be a whole number')
+          .min(1, 'Take action after days must be at least 1')
+          .optional(),
+      )
+      .optional(),
+    keepLogsForMonths: z.preprocess(
+      numberOrUndefined,
+      z
+        .number()
+        .int('Keep logs for months must be a whole number')
+        .min(0, 'Keep logs for months must be 0 or greater'),
+    ),
+    tautulliWatchedPercentOverride: z
+      .preprocess(
+        numberOrUndefined,
+        z
+          .number()
+          .int('Tautulli watched percent override must be a whole number')
+          .min(0, 'Minimum is 0')
+          .max(100, 'Maximum is 100')
+          .optional(),
+      )
+      .optional(),
+    showRecommended: z.boolean(),
+    showHome: z.boolean(),
+    listExclusions: z.boolean(),
+    forceOverseerr: z.boolean(),
+    manualCollection: z.boolean(),
+    manualCollectionName: z.string().optional(),
+    active: z.boolean(),
+    useRules: z.boolean(),
+    radarrSettingsId: z.number().int().nullable().optional(),
+    sonarrSettingsId: z.number().int().nullable().optional(),
+  })
+  .refine(
+    (data) =>
+      !data.manualCollection ||
+      (data.manualCollectionName ?? '').trim().length > 0,
+    {
+      path: ['manualCollectionName'],
+      message: 'Custom collection name is required',
+    },
+  )
+  .superRefine((data, ctx) => {
+    if (
+      data.radarrSettingsId === undefined &&
+      data.sonarrSettingsId === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['radarrSettingsId'],
+        message: 'Select a Radarr or Sonarr server',
+      })
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sonarrSettingsId'],
+        message: 'Select a Radarr or Sonarr server',
+      })
+    }
+  })
+  .refine(
+    (data) =>
+      data.arrAction === undefined ||
+      data.arrAction === 4 ||
+      data.deleteAfterDays !== undefined,
+    {
+      path: ['deleteAfterDays'],
+      message: 'Take action after days is required for this action',
+    },
+  )
+
+type RuleGroupFormValues = z.infer<typeof ruleGroupFormSchema>
+type RuleGroupFormInput = z.input<typeof ruleGroupFormSchema>
+type RuleGroupFormOutput = z.output<typeof ruleGroupFormSchema>
+
+const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
+  name: editData?.name ?? '',
+  description: editData?.description ?? '',
+  libraryId: editData?.libraryId ? editData.libraryId.toString() : '',
+  dataType: editData?.dataType ? editData.dataType.toString() : '',
+  arrAction: editData?.collection?.arrAction ?? undefined,
+  deleteAfterDays: editData?.collection?.deleteAfterDays ?? undefined,
+  keepLogsForMonths: editData?.collection?.keepLogsForMonths ?? 6,
+  tautulliWatchedPercentOverride:
+    editData?.collection?.tautulliWatchedPercentOverride ?? undefined,
+  showRecommended: editData?.collection?.visibleOnRecommended ?? true,
+  showHome: editData?.collection?.visibleOnHome ?? true,
+  listExclusions: editData?.collection?.listExclusions ?? true,
+  forceOverseerr: editData?.collection?.forceOverseerr ?? false,
+  manualCollection: editData?.collection?.manualCollection ?? false,
+  manualCollectionName:
+    editData?.collection?.manualCollectionName ??
+    DEFAULT_MANUAL_COLLECTION_NAME,
+  active: editData?.isActive ?? true,
+  useRules: editData?.useRules ?? true,
+  radarrSettingsId: editData
+    ? (editData.collection?.radarrSettingsId ?? null)
+    : undefined,
+  sonarrSettingsId: editData
+    ? (editData.collection?.sonarrSettingsId ?? null)
+    : undefined,
+})
+
 const AddModal = (props: AddModal) => {
-  const [selectedLibraryId, setSelectedLibraryId] = useState<string>(
-    props.editData?.libraryId ? props.editData.libraryId.toString() : '',
-  )
-  const [selectedType, setSelectedType] = useState<string>(
-    props.editData?.dataType ? props.editData.dataType.toString() : '',
-  )
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm<RuleGroupFormInput, any, RuleGroupFormOutput>({
+    resolver: zodResolver(ruleGroupFormSchema),
+    defaultValues: buildFormDefaults(props.editData),
+  })
+
+  const selectedLibraryId = watch('libraryId') ?? ''
+  const selectedType = watch('dataType') ?? ''
   const selectedLibraryType: undefined | 'movie' | 'show' = selectedType
-    ? selectedType === EPlexDataType.MOVIES.toString()
+    ? +selectedType === EPlexDataType.MOVIES
       ? 'movie'
       : 'show'
     : undefined
+  const manualCollectionEnabled = watch('manualCollection')
+  const useRulesEnabled = watch('useRules')
+  const arrActionValue = watch('arrAction') as number | undefined
+  const radarrSettingsId = watch('radarrSettingsId') as
+    | number
+    | null
+    | undefined
+  const sonarrSettingsId = watch('sonarrSettingsId') as
+    | number
+    | null
+    | undefined
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
     useState(false)
 
   const yaml = useRef<string>(undefined)
-  const collectionTypeRef = useRef<any>(undefined)
-  const [name, setName] = useState<string>(props.editData?.name ?? '')
-  const [description, setDescription] = useState<string>(
-    props.editData?.description ?? '',
-  )
-  const [manualCollectionName, setManualCollectionName] = useState<string>(
-    props.editData?.collection?.manualCollectionName ??
-      DEFAULT_MANUAL_COLLECTION_NAME,
-  )
-  const [keepLogsForMonths, setKeepLogsForMonths] = useState<string>(
-    props.editData?.collection?.keepLogsForMonths?.toString() ?? '6',
-  )
-  const [tautulliWatchedPercentOverride, setTautulliWatchedPercentOverride] =
-    useState<string>(
-      props.editData?.collection?.tautulliWatchedPercentOverride?.toString() ??
-        '',
-    )
-
-  const [showRecommended, setShowRecommended] = useState<boolean>(
-    props.editData?.collection?.visibleOnRecommended ?? true,
-  )
-  const [showHome, setShowHome] = useState<boolean>(
-    props.editData?.collection?.visibleOnHome ?? true,
-  )
-  const [listExclusion, setListExclusion] = useState<boolean>(
-    props.editData?.collection?.listExclusions ?? true,
-  )
-  const [forceOverseerr, setForceOverseerr] = useState<boolean>(
-    props.editData?.collection?.forceOverseerr ?? false,
-  )
-  const [manualCollection, setManualCollection] = useState<boolean>(
-    props.editData?.collection?.manualCollection ?? false,
-  )
-  const [deleteDays, setDeleteDays] = useState<number | undefined>(
-    props.editData?.collection?.deleteAfterDays ?? undefined,
-  )
   const [
     configuredNotificationConfigurations,
     setConfiguredNotificationConfigurations,
   ] = useState<AgentConfiguration[]>(
     props.editData?.notifications ? props.editData?.notifications : [],
-  )
-  const [useRules, setUseRules] = useState<boolean>(
-    props.editData ? (props.editData.useRules ?? true) : true,
-  )
-  const [arrOption, setArrOption] = useState<number | undefined>(
-    props.editData?.collection?.arrAction ?? undefined,
-  )
-  const [radarrSettingsId, setRadarrSettingsId] = useState<
-    number | null | undefined
-  >(
-    props.editData
-      ? (props.editData?.collection?.radarrSettingsId ?? null)
-      : undefined,
-  )
-  const [sonarrSettingsId, setSonarrSettingsId] = useState<
-    number | null | undefined
-  >(
-    props.editData
-      ? (props.editData?.collection?.sonarrSettingsId ?? null)
-      : undefined,
-  )
-  const [active, setActive] = useState<boolean>(
-    props.editData ? (props.editData.isActive ?? true) : true,
   )
   const [rules, setRules] = useState<IRule[]>(
     props.editData?.rules
@@ -157,69 +258,21 @@ const AddModal = (props: AddModal) => {
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
   useEffect(() => {
-    const editData = props.editData
+    register('arrAction')
+    register('radarrSettingsId')
+    register('sonarrSettingsId')
+  }, [register])
 
-    if (!editData) {
-      setSelectedLibraryId('')
-      setSelectedType('')
-      setName('')
-      setDescription('')
-      setShowRecommended(true)
-      setShowHome(true)
-      setListExclusion(true)
-      setForceOverseerr(false)
-      setManualCollection(false)
-      setDeleteDays(undefined)
-      setConfiguredNotificationConfigurations([])
-      setUseRules(true)
-      setArrOption(undefined)
-      setRadarrSettingsId(undefined)
-      setSonarrSettingsId(undefined)
-      setActive(true)
-      setRules([])
-      ruleCreatorVersion.current += 1
-      setManualCollectionName(DEFAULT_MANUAL_COLLECTION_NAME)
-      setKeepLogsForMonths('6')
-      setTautulliWatchedPercentOverride('')
-
-      return
-    }
-
-    setSelectedLibraryId(editData.libraryId?.toString() ?? '')
-    setSelectedType(editData.dataType?.toString() ?? '')
-    setName(editData.name ?? '')
-    setDescription(editData.description ?? '')
-    setShowRecommended(editData.collection?.visibleOnRecommended ?? true)
-    setShowHome(editData.collection?.visibleOnHome ?? true)
-    setListExclusion(editData.collection?.listExclusions ?? true)
-    setForceOverseerr(editData.collection?.forceOverseerr ?? false)
-    setManualCollection(editData.collection?.manualCollection ?? false)
-    setDeleteDays(editData.collection?.deleteAfterDays ?? undefined)
-    setConfiguredNotificationConfigurations(editData.notifications ?? [])
-    setUseRules(editData.useRules ?? true)
-    setArrOption(editData.collection?.arrAction ?? undefined)
-    setRadarrSettingsId(editData.collection?.radarrSettingsId ?? null)
-    setSonarrSettingsId(editData.collection?.sonarrSettingsId ?? null)
-    setActive(editData.isActive ?? true)
+  useEffect(() => {
+    reset(buildFormDefaults(props.editData))
+    setConfiguredNotificationConfigurations(props.editData?.notifications ?? [])
     setRules(
-      editData.rules
-        ? editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
+      props.editData?.rules
+        ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
         : [],
     )
     ruleCreatorVersion.current += 1
-    setManualCollectionName(
-      editData.collection?.manualCollectionName ??
-        DEFAULT_MANUAL_COLLECTION_NAME,
-    )
-    const months = editData.collection?.keepLogsForMonths
-    setKeepLogsForMonths(
-      months !== undefined && months !== null ? months.toString() : '6',
-    )
-    const override = editData.collection?.tautulliWatchedPercentOverride
-    setTautulliWatchedPercentOverride(
-      override !== undefined && override !== null ? override.toString() : '',
-    )
-  }, [props.editData])
+  }, [props.editData, reset])
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
@@ -234,32 +287,27 @@ const AddModal = (props: AddModal) => {
     const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
 
     if (lib) {
-      setSelectedLibraryId(lib.key)
-      setSelectedType(
+      setValue(
+        'dataType',
         lib.type === 'movie'
           ? EPlexDataType.MOVIES.toString()
           : EPlexDataType.SHOWS.toString(),
       )
     }
 
-    setRadarrSettingsId(undefined)
-    setSonarrSettingsId(undefined)
+    setValue('radarrSettingsId', undefined)
+    setValue('sonarrSettingsId', undefined)
     updateArrOption(0)
   }
 
-  function updateArrOption(value: number) {
-    setArrOption(value)
+  function updateArrOption(value: number | undefined) {
+    setValue('arrAction', value)
 
     if (value === undefined || value === 4) {
-      setDeleteDays(undefined)
-    } else if (deleteDays === undefined) {
-      setDeleteDays(30)
+      setValue('deleteAfterDays', undefined)
+    } else if (getValues('deleteAfterDays') === undefined) {
+      setValue('deleteAfterDays', 30)
     }
-  }
-
-  function setCollectionType(event: { target: { value: string } }) {
-    setSelectedType(event.target.value)
-    updateArrOption(0)
   }
 
   const handleUpdateArrAction = (
@@ -270,11 +318,11 @@ const AddModal = (props: AddModal) => {
     updateArrOption(arrAction)
 
     if (type === 'Radarr') {
-      setSonarrSettingsId(undefined)
-      setRadarrSettingsId(settingId)
+      setValue('sonarrSettingsId', undefined)
+      setValue('radarrSettingsId', settingId)
     } else if (type === 'Sonarr') {
-      setRadarrSettingsId(undefined)
-      setSonarrSettingsId(settingId)
+      setValue('radarrSettingsId', undefined)
+      setValue('sonarrSettingsId', settingId)
     }
   }
 
@@ -345,67 +393,61 @@ const AddModal = (props: AddModal) => {
     props.onCancel()
   }
 
-  const create = () => {
-    if (
-      name &&
-      selectedLibraryId &&
-      (radarrSettingsId !== undefined || sonarrSettingsId !== undefined) &&
-      ((useRules && rules.length > 0) || !useRules)
-    ) {
-      setFormIncomplete(false)
-      const tautulliOverrideValue =
-        tautulliWatchedPercentOverride !== ''
-          ? +tautulliWatchedPercentOverride
-          : undefined
-      const keepLogsForMonthsValue =
-        keepLogsForMonths !== '' ? +keepLogsForMonths : 0
-      const creationObj: ICreateApiObject = {
-        name,
-        description,
-        libraryId: +selectedLibraryId,
-        arrAction: arrOption ? arrOption : 0,
-        dataType: +selectedType,
-        isActive: active,
-        useRules: useRules,
-        listExclusions: listExclusion,
-        forceOverseerr: forceOverseerr,
-        tautulliWatchedPercentOverride: tautulliOverrideValue,
-        radarrSettingsId: radarrSettingsId ?? undefined,
-        sonarrSettingsId: sonarrSettingsId ?? undefined,
-        collection: {
-          visibleOnRecommended: showRecommended,
-          visibleOnHome: showHome,
-          deleteAfterDays:
-            arrOption === undefined || arrOption === 4 ? undefined : deleteDays,
-          manualCollection: manualCollection,
-          manualCollectionName,
-          keepLogsForMonths: keepLogsForMonthsValue,
-        },
-        rules: useRules ? rules : [],
-        notifications: configuredNotificationConfigurations,
-      }
-
-      if (!props.editData) {
-        PostApiHandler('/rules', creationObj)
-          .then((resp) => {
-            if (resp.code === 1) props.onSuccess()
-            else setError(true)
-          })
-          .catch(() => {
-            setError(true)
-          })
-      } else {
-        PutApiHandler('/rules', { id: props.editData?.id, ...creationObj })
-          .then((resp) => {
-            if (resp.code === 1) props.onSuccess()
-            else setError(true)
-          })
-          .catch(() => {
-            setError(true)
-          })
-      }
-    } else {
+  const onSubmit = (data: RuleGroupFormValues) => {
+    if (data.useRules && rules.length === 0) {
       setFormIncomplete(true)
+      return
+    }
+
+    setFormIncomplete(false)
+
+    const creationObj: ICreateApiObject = {
+      name: data.name,
+      description: data.description ?? '',
+      libraryId: +data.libraryId,
+      arrAction: data.arrAction ?? 0,
+      dataType: +data.dataType as EPlexDataType,
+      isActive: data.active,
+      useRules: data.useRules,
+      listExclusions: data.listExclusions,
+      forceOverseerr: data.forceOverseerr,
+      tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
+      radarrSettingsId: data.radarrSettingsId ?? undefined,
+      sonarrSettingsId: data.sonarrSettingsId ?? undefined,
+      collection: {
+        visibleOnRecommended: data.showRecommended,
+        visibleOnHome: data.showHome,
+        deleteAfterDays:
+          data.arrAction === undefined || data.arrAction === 4
+            ? undefined
+            : data.deleteAfterDays,
+        manualCollection: data.manualCollection,
+        manualCollectionName:
+          data.manualCollectionName ?? DEFAULT_MANUAL_COLLECTION_NAME,
+        keepLogsForMonths: data.keepLogsForMonths,
+      },
+      rules: data.useRules ? rules : [],
+      notifications: configuredNotificationConfigurations,
+    }
+
+    if (!props.editData) {
+      PostApiHandler('/rules', creationObj)
+        .then((resp) => {
+          if (resp.code === 1) props.onSuccess()
+          else setError(true)
+        })
+        .catch(() => {
+          setError(true)
+        })
+    } else {
+      PutApiHandler('/rules', { id: props.editData?.id, ...creationObj })
+        .then((resp) => {
+          if (resp.code === 1) props.onSuccess()
+          else setError(true)
+        })
+        .catch(() => {
+          setError(true)
+        })
     }
   }
 
@@ -448,7 +490,7 @@ const AddModal = (props: AddModal) => {
             is required
           </Alert>
         ) : undefined}
-        <form className="flex flex-col">
+        <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             {/* Start Left side of top section */}
             <div className="flex flex-col items-center">
@@ -467,13 +509,16 @@ const AddModal = (props: AddModal) => {
                     <div className="form-input">
                       <div className="form-input-field">
                         <input
-                          name="name"
                           id="name"
                           type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
+                          {...register('name')}
                         ></input>
                       </div>
+                      {errors.name ? (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.name.message}
+                        </p>
+                      ) : undefined}
                     </div>
                   </div>
 
@@ -484,11 +529,9 @@ const AddModal = (props: AddModal) => {
                     <div className="form-input">
                       <div className="form-input-field">
                         <textarea
-                          name="description"
                           id="description"
                           rows={5}
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
+                          {...register('description')}
                         ></textarea>
                       </div>
                     </div>
@@ -500,30 +543,42 @@ const AddModal = (props: AddModal) => {
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
-                        <select
-                          name="library"
-                          id="library"
-                          value={selectedLibraryId}
-                          onChange={(e) => updateLibraryId(e.target.value)}
-                        >
-                          {selectedLibraryId === '' && (
-                            <option value="" disabled></option>
-                          )}
-                          {plexLibraries?.map((data: ILibrary) => {
-                            return (
-                              <option key={data.key} value={data.key}>
-                                {data.title}
-                              </option>
-                            )
-                          })}
-                        </select>
+                        {(() => {
+                          const field = register('libraryId')
+                          return (
+                            <select
+                              id="library"
+                              {...field}
+                              onChange={(event) => {
+                                field.onChange(event)
+                                updateLibraryId(event.target.value)
+                              }}
+                            >
+                              {selectedLibraryId === '' && (
+                                <option value="" disabled></option>
+                              )}
+                              {plexLibraries?.map((data: ILibrary) => {
+                                return (
+                                  <option key={data.key} value={data.key}>
+                                    {data.title}
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          )
+                        })()}
                       </div>
+                      {errors.libraryId ? (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.libraryId.message}
+                        </p>
+                      ) : undefined}
                     </div>
                   </div>
                   {selectedLibraryType && selectedLibraryType === 'movie' && (
                     <ArrAction
                       type="Radarr"
-                      arrAction={arrOption}
+                      arrAction={arrActionValue}
                       settingId={radarrSettingsId}
                       onUpdate={(arrAction: number, settingId) => {
                         handleUpdateArrAction('Radarr', arrAction, settingId)
@@ -548,6 +603,12 @@ const AddModal = (props: AddModal) => {
                       ]}
                     />
                   )}
+                  {selectedLibraryType === 'movie' &&
+                  errors.radarrSettingsId ? (
+                    <p className="mt-1 text-xs text-red-400">
+                      {errors.radarrSettingsId.message}
+                    </p>
+                  ) : undefined}
 
                   {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
@@ -560,43 +621,54 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field">
-                            <select
-                              name="type"
-                              id="type"
-                              value={selectedType}
-                              onChange={setCollectionType}
-                              ref={collectionTypeRef}
-                            >
-                              {Object.keys(EPlexDataType)
-                                .filter((v) => isNaN(Number(v)))
-                                .filter((v) => v !== 'MOVIES') // We don't need movies here.
-                                .map((data: string) => {
-                                  return (
-                                    <option
-                                      key={
-                                        EPlexDataType[
-                                          data as keyof typeof EPlexDataType
-                                        ]
-                                      }
-                                      value={
-                                        EPlexDataType[
-                                          data as keyof typeof EPlexDataType
-                                        ]
-                                      }
-                                    >
-                                      {data[0].toUpperCase() +
-                                        data.slice(1).toLowerCase()}
-                                    </option>
-                                  )
-                                })}
-                            </select>
+                            {(() => {
+                              const field = register('dataType')
+                              return (
+                                <select
+                                  id="type"
+                                  {...field}
+                                  onChange={(event) => {
+                                    field.onChange(event)
+                                    updateArrOption(0)
+                                  }}
+                                >
+                                  {Object.keys(EPlexDataType)
+                                    .filter((v) => isNaN(Number(v)))
+                                    .filter((v) => v !== 'MOVIES')
+                                    .map((data: string) => {
+                                      return (
+                                        <option
+                                          key={
+                                            EPlexDataType[
+                                              data as keyof typeof EPlexDataType
+                                            ]
+                                          }
+                                          value={
+                                            EPlexDataType[
+                                              data as keyof typeof EPlexDataType
+                                            ]
+                                          }
+                                        >
+                                          {data[0].toUpperCase() +
+                                            data.slice(1).toLowerCase()}
+                                        </option>
+                                      )
+                                    })}
+                                </select>
+                              )
+                            })()}
                           </div>
+                          {errors.dataType ? (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.dataType.message}
+                            </p>
+                          ) : undefined}
                         </div>
                       </div>
 
                       <ArrAction
                         type="Sonarr"
-                        arrAction={arrOption}
+                        arrAction={arrActionValue}
                         settingId={sonarrSettingsId}
                         onUpdate={(e: number, settingId) => {
                           handleUpdateArrAction('Sonarr', e, settingId)
@@ -661,10 +733,15 @@ const AddModal = (props: AddModal) => {
                                 ]
                         }
                       />
+                      {errors.sonarrSettingsId ? (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.sonarrSettingsId.message}
+                        </p>
+                      ) : undefined}
                     </>
                   )}
 
-                  {arrOption !== undefined && arrOption !== 4 && (
+                  {arrActionValue !== undefined && arrActionValue !== 4 && (
                     <div className="form-row items-center">
                       <label
                         htmlFor="collection_deleteDays"
@@ -680,12 +757,15 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="number"
-                            name="collection_deleteDays"
                             id="collection_deleteDays"
-                            value={deleteDays}
-                            onChange={(e) => setDeleteDays(+e.target.value)}
+                            {...register('deleteAfterDays')}
                           />
                         </div>
+                        {errors.deleteAfterDays ? (
+                          <p className="mt-1 text-xs text-red-400">
+                            {errors.deleteAfterDays.message}
+                          </p>
+                        ) : undefined}
                       </div>
                     </div>
                   )}
@@ -712,13 +792,9 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            name="is_active"
                             id="is_active"
                             className=""
-                            defaultChecked={active}
-                            onChange={() => {
-                              setActive(!active)
-                            }}
+                            {...register('active')}
                           />
                         </div>
                       </div>
@@ -739,13 +815,9 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            name="collection_visible_library"
                             id="collection_visible_library"
                             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            defaultChecked={showRecommended}
-                            onChange={() => {
-                              setShowRecommended(!showRecommended)
-                            }}
+                            {...register('showRecommended')}
                           />
                         </div>
                       </div>
@@ -765,13 +837,9 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            name="collection_visible"
                             id="collection_visible"
                             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            defaultChecked={showHome}
-                            onChange={() => {
-                              setShowHome(!showHome)
-                            }}
+                            {...register('showHome')}
                           />
                         </div>
                       </div>
@@ -789,13 +857,9 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            name="list_exclusions"
                             id="list_exclusions"
                             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            defaultChecked={listExclusion}
-                            onChange={() => {
-                              setListExclusion(!listExclusion)
-                            }}
+                            {...register('listExclusions')}
                           />
                         </div>
                       </div>
@@ -814,13 +878,9 @@ const AddModal = (props: AddModal) => {
                           <div className="form-input-field">
                             <input
                               type="checkbox"
-                              name="force_overseerr"
                               id="force_overseerr"
                               className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                              defaultChecked={forceOverseerr}
-                              onChange={() => {
-                                setForceOverseerr(!forceOverseerr)
-                              }}
+                              {...register('forceOverseerr')}
                             />
                           </div>
                         </div>
@@ -838,13 +898,9 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            name="use_rules"
                             id="use_rules"
                             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            defaultChecked={useRules}
-                            onChange={() => {
-                              setUseRules(!useRules)
-                            }}
+                            {...register('useRules')}
                           />
                         </div>
                       </div>
@@ -860,19 +916,15 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            name="manual_collection"
                             id="manual_collection"
                             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            defaultChecked={manualCollection}
-                            onChange={() => {
-                              setManualCollection(!manualCollection)
-                            }}
+                            {...register('manualCollection')}
                           />
                         </div>
                       </div>
                     </div>
                     <div
-                      className={`flex flex-col ${manualCollection ? `` : `hidden`} `}
+                      className={`flex flex-col ${manualCollectionEnabled ? `` : `hidden`} `}
                     >
                       <label
                         htmlFor="manual_collection_name"
@@ -888,14 +940,15 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field">
                           <input
                             type="text"
-                            name="manual_collection_name"
                             id="manual_collection_name"
-                            value={manualCollectionName}
-                            onChange={(e) =>
-                              setManualCollectionName(e.target.value)
-                            }
+                            {...register('manualCollectionName')}
                           />
                         </div>
+                        {errors.manualCollectionName ? (
+                          <p className="mt-1 text-xs text-red-400">
+                            {errors.manualCollectionName.message}
+                          </p>
+                        ) : undefined}
                       </div>
                     </div>
                   </div>
@@ -943,15 +996,17 @@ const AddModal = (props: AddModal) => {
                         <div className="form-input-field w-20">
                           <input
                             type="number"
-                            name="collection_logs_months"
                             id="collection_logs_months"
-                            value={keepLogsForMonths}
-                            onChange={(e) =>
-                              setKeepLogsForMonths(e.target.value)
-                            }
+                            min={0}
+                            {...register('keepLogsForMonths')}
                           />
                         </div>
                       </div>
+                      {errors.keepLogsForMonths ? (
+                        <p className="mt-1 text-end text-xs text-red-400">
+                          {errors.keepLogsForMonths.message}
+                        </p>
+                      ) : undefined}
                     </div>
 
                     {tautulliEnabled && (
@@ -973,17 +1028,16 @@ const AddModal = (props: AddModal) => {
                               type="number"
                               min={0}
                               max={100}
-                              name="tautulli_watched_percent_override"
                               id="tautulli_watched_percent_override"
-                              value={tautulliWatchedPercentOverride}
-                              onChange={(e) =>
-                                setTautulliWatchedPercentOverride(
-                                  e.target.value,
-                                )
-                              }
+                              {...register('tautulliWatchedPercentOverride')}
                             />
                           </div>
                         </div>
+                        {errors.tautulliWatchedPercentOverride ? (
+                          <p className="mt-1 text-end text-xs text-red-400">
+                            {errors.tautulliWatchedPercentOverride.message}
+                          </p>
+                        ) : undefined}
                       </div>
                     )}
                   </div>
@@ -994,7 +1048,9 @@ const AddModal = (props: AddModal) => {
           <hr className="mt-6 h-px border-0 bg-gray-200 dark:bg-gray-700"></hr>
           <div className="grid grid-cols-1">
             <div className="flex justify-center">
-              <div className={`section ${useRules ? `` : `hidden`} md:w-3/4`}>
+              <div
+                className={`section ${useRulesEnabled ? `` : `hidden`} md:w-3/4`}
+              >
                 <div className="section max-w-full">
                   <div className="flex">
                     <div className="ml-0">
@@ -1101,8 +1157,7 @@ const AddModal = (props: AddModal) => {
             <div className="m-auto flex xl:m-0">
               <button
                 className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
-                onClick={create}
-                type="button"
+                type="submit"
               >
                 {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
