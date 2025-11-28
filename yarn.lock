@@ -2765,7 +2765,7 @@ __metadata:
     "@eslint/js": "npm:^9.39.1"
     "@faker-js/faker": "npm:^9.8.0"
     "@maintainerr/contracts": "workspace:^"
-    "@nestjs/cli": "npm:^11.0.13"
+    "@nestjs/cli": "npm:^11.0.14"
     "@nestjs/common": "npm:^11.1.9"
     "@nestjs/core": "npm:^11.1.9"
     "@nestjs/event-emitter": "npm:^3.0.1"
@@ -2974,9 +2974,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/cli@npm:^11.0.13":
-  version: 11.0.13
-  resolution: "@nestjs/cli@npm:11.0.13"
+"@nestjs/cli@npm:^11.0.14":
+  version: 11.0.14
+  resolution: "@nestjs/cli@npm:11.0.14"
   dependencies:
     "@angular-devkit/core": "npm:19.2.19"
     "@angular-devkit/schematics": "npm:19.2.19"
@@ -3006,7 +3006,7 @@ __metadata:
       optional: true
   bin:
     nest: bin/nest.js
-  checksum: 10c0/8dc6d9ee3cc25d6c7f2aebefa4b2ad4ec369d4ad86a8735bd79ee834d12e9b3c79bc97bdcb3ff9b7fcd4a4635fca36f23dbc27d87606ba83a9cce1747a04e9bf
+  checksum: 10c0/c3311db3fcb37d7192212f90943c561f6b0dd6d2a68b5d1e6131210eacae7be092d9bf361900d7e91f6c1d5f7484fe5b9c3c0e53a8fec19d671d1e87a911ebc6
   languageName: node
   linkType: hard
 
