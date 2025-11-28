@@ -691,7 +691,7 @@ const AddModal = (props: AddModal) => {
                       <label htmlFor="active" className="text-label">
                         Active
                         <p className="text-xs font-normal">
-                          Will this rule be included in rule runs.
+                          Will this rule be included in rule runs
                         </p>
                       </label>
                       <div className="form-input">
@@ -715,7 +715,7 @@ const AddModal = (props: AddModal) => {
                         htmlFor="collection_visible_library"
                         className="text-label"
                       >
-                        Show on library recommended
+                        Show on Plex library recommended
                         <p className="text-xs font-normal">
                           Show the collection on the Plex library recommended
                           screen
@@ -742,7 +742,7 @@ const AddModal = (props: AddModal) => {
                         htmlFor="collection_visible"
                         className="text-label"
                       >
-                        Show on home
+                        Show on Plex home
                         <p className="text-xs font-normal">
                           Show the collection on the Plex home screen
                         </p>
@@ -763,37 +763,49 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
 
-                    <div className="flex flex-row items-center justify-between py-4">
-                      <label htmlFor="list_exclusions" className="text-label">
-                        Add list exclusions
-                        <p className="text-xs font-normal">
-                          Prevent lists to re-add removed{' '}
-                          {selectedLibrary ? selectedLibrary.type : 'movie'}
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="checkbox"
-                            name="list_exclusions"
-                            id="list_exclusions"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            defaultChecked={listExclusion}
-                            onChange={() => {
-                              setListExclusion(!listExclusion)
-                            }}
-                          />
+                    {(radarrSettingsId != null ||
+                      (sonarrSettingsId != null &&
+                        arrOption === 0 &&
+                        (+selectedType as EPlexDataType) ===
+                          EPlexDataType.SHOWS)) && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label htmlFor="list_exclusions" className="text-label">
+                          Add import list exclusions
+                          <p className="text-xs font-normal">
+                            Prevents{' '}
+                            {radarrSettingsId
+                              ? 'Radarr '
+                              : sonarrSettingsId
+                                ? 'Sonarr '
+                                : ''}
+                            import lists re-adding removed{' '}
+                            {selectedLibrary?.type ?? 'media'}
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              name="list_exclusions"
+                              id="list_exclusions"
+                              className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                              defaultChecked={listExclusion}
+                              onChange={() => {
+                                setListExclusion(!listExclusion)
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {overseerrEnabled && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="force_overseerr" className="text-label">
-                          Force reset Overseerr record
+                          Force delete Overseerr request
                           <p className="text-xs font-normal">
-                            Resets the Overseerr record instead of relying on
-                            availability-sync
+                            Deletes the Overseerr request instead of relying on
+                            media availability sync
                           </p>
                         </label>
                         <div className="form-input">
@@ -938,7 +950,7 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
 
-                    {tautulliEnabled && (
+                    {tautulliEnabled && useRules && (
                       <div className="flex flex-row items-center justify-between py-2 md:py-4">
                         <label
                           htmlFor="tautulli_watched_percent_override"
