@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoveDefaultArrServers1733357722729
-  implements MigrationInterface
-{
+export class RemoveDefaultArrServers1733357722729 implements MigrationInterface {
   name = 'RemoveDefaultArrServers1733357722729';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

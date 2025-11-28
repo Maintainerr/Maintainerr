@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CollectionAddKeepLogsMonths1706016592389
-  implements MigrationInterface
-{
+export class CollectionAddKeepLogsMonths1706016592389 implements MigrationInterface {
   name = 'CollectionAddKeepLogsMonths1706016592389';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoveCacheImagesConfig1763331885670
-  implements MigrationInterface
-{
+export class RemoveCacheImagesConfig1763331885670 implements MigrationInterface {
   name = 'RemoveCacheImagesConfig1763331885670';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

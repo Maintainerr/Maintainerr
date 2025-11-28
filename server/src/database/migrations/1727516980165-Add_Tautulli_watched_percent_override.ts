@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddTautulliWatchedPercentOverride1727516980165
-  implements MigrationInterface
-{
+export class AddTautulliWatchedPercentOverride1727516980165 implements MigrationInterface {
   name = 'AddTautulliWatchedPercentOverride1727516980165';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
