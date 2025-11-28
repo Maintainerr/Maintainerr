@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class overseerrForceRemoveRequests1695310572854
-  implements MigrationInterface
-{
+export class overseerrForceRemoveRequests1695310572854 implements MigrationInterface {
   name = 'overseerrForceRemoveRequests1695310572854';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -267,6 +267,7 @@ export const createRadarrMovie = (
   sizeOnDisk: faker.number.int(),
   tags: [],
   titleSlug: faker.string.sample(10),
+  year: faker.number.int(),
   ...properties,
 });
 

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class NotificationSettingsAboutScale1732008945000
-  implements MigrationInterface
-{
+export class NotificationSettingsAboutScale1732008945000 implements MigrationInterface {
   name = 'NotificationSettingsAboutScale1732008945000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

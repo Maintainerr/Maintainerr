@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoveTautulliTrailingSlash1743978127555
-  implements MigrationInterface
-{
+export class RemoveTautulliTrailingSlash1743978127555 implements MigrationInterface {
   name = 'RemoveTautulliTrailingSlash1743978127555';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CollectionAddVisibleOnRecommendedField1733583643678
-  implements MigrationInterface
-{
+export class CollectionAddVisibleOnRecommendedField1733583643678 implements MigrationInterface {
   name = 'CollectionAddVisibleOnRecommendedField1733583643678';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

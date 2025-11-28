@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class OptionalManualCollection1674489541784
-  implements MigrationInterface
-{
+export class OptionalManualCollection1674489541784 implements MigrationInterface {
   name = 'OptionalManualCollection1674489541784';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

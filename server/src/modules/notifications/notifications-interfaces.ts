@@ -108,8 +108,7 @@ export interface NotificationAgentTelegram extends BaseNotificationAgentConfig {
   options: TelegramOptions;
 }
 
-export interface NotificationAgentPushbullet
-  extends BaseNotificationAgentConfig {
+export interface NotificationAgentPushbullet extends BaseNotificationAgentConfig {
   options: PushbulletOptions;
 }
 
