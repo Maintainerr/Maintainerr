@@ -125,7 +125,7 @@ export class ExternalApiService {
 
   public async post<T>(
     endpoint: string,
-    data?: string,
+    data?: any,
     config?: RawAxiosRequestConfig,
   ): Promise<T> {
     try {
