@@ -688,7 +688,7 @@ const AddModal = (props: AddModal) => {
                   {/* Checkbox Options */}
                   <div className="flex flex-col p-2 md:my-2 md:border-r-2 md:border-dashed md:border-zinc-700 md:p-4">
                     <div className="flex flex-row items-center justify-between py-4">
-                      <label htmlFor="active" className="text-label">
+                      <label htmlFor="is_active" className="text-label">
                         Active
                         <p className="text-xs font-normal">
                           Will this rule be included in rule runs
