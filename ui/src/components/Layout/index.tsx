@@ -2,7 +2,7 @@ import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash-es'
 import { useContext, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
@@ -14,6 +14,7 @@ const Layout: React.FC = () => {
   const SearchCtx = useContext(SearchContext)
   const navigate = useNavigate()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+  const location = useLocation()
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)
@@ -25,7 +26,7 @@ const Layout: React.FC = () => {
         navigate('/settings/plex')
       }
     })
-  }, [navigate])
+  }, [navigate, location.pathname])
 
   return (
     <section>
