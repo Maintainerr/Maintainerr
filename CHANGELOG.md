@@ -1,3 +1,18 @@
+# [2.22.0](https://github.com/maintainerr/Maintainerr/compare/v2.21.0...v2.22.0) (2025-11-29)
+
+
+### Bug Fixes
+
+* BASE_PATH support ([#2052](https://github.com/maintainerr/Maintainerr/issues/2052)) ([f0a2410](https://github.com/maintainerr/Maintainerr/commit/f0a24100f196fe2cfd844cb5335b9959234ca1c6))
+* Improve language for rule options & hide irrelevant ones ([#2097](https://github.com/maintainerr/Maintainerr/issues/2097)) ([91f3173](https://github.com/maintainerr/Maintainerr/commit/91f31730bc222b9ce61a92dba578f5855086c8ac))
+* Radarr import list exclusions missing for unmonitor actions ([#2098](https://github.com/maintainerr/Maintainerr/issues/2098)) ([05bd94c](https://github.com/maintainerr/Maintainerr/commit/05bd94cc379b112a58bfd97d4abac451b501bf9b))
+* Rule Group Active input not linked to label ([#2101](https://github.com/maintainerr/Maintainerr/issues/2101)) ([95196f4](https://github.com/maintainerr/Maintainerr/commit/95196f400225af7ac8ddd3420ca1fc31c84c6722))
+
+
+### Features
+
+* Serve UI statically from API ([#2044](https://github.com/maintainerr/Maintainerr/issues/2044)) ([dbd93fc](https://github.com/maintainerr/Maintainerr/commit/dbd93fcc92e5bd7264b6ecd808da88f101f4144e))
+
 # [2.21.0](https://github.com/maintainerr/Maintainerr/compare/v2.20.0...v2.21.0) (2025-11-16)
 
 
