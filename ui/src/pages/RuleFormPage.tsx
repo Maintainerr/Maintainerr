@@ -17,11 +17,11 @@ const RuleFormPage = () => {
     navigate('/rules')
   }
 
-  if (error) {
+  if (id && error) {
     return (
       <>
         <Helmet>
-          <title>Maintainerr - {id ? 'Edit' : 'New'} Rule</title>
+          <title>Maintainerr - Edit Rule</title>
         </Helmet>
         <div className="m-4 rounded-md bg-red-500/10 p-4 text-red-300">
           <h2 className="mb-2 text-lg font-bold">Error loading rule data</h2>
@@ -35,7 +35,7 @@ const RuleFormPage = () => {
     return (
       <>
         <Helmet>
-          <title>Maintainerr - {id ? 'Edit' : 'New'} Rule</title>
+          <title>Maintainerr - Edit Rule</title>
         </Helmet>
         <LoadingSpinner />
       </>
