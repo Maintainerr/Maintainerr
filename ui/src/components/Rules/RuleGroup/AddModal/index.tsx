@@ -97,7 +97,7 @@ const ruleGroupFormSchema = z
         z
           .number()
           .int('Take action after days must be a whole number')
-          .min(1, 'Take action after days must be at least 1')
+          .min(0, 'Take action after days must be 0 or greater')
           .optional(),
       )
       .optional(),
@@ -147,12 +147,12 @@ const ruleGroupFormSchema = z
       ctx.addIssue({
         code: "custom",
         path: ['radarrSettingsId'],
-        message: 'Select a Radarr or Sonarr server',
+        message: 'Select an *arr server',
       })
       ctx.addIssue({
         code: "custom",
         path: ['sonarrSettingsId'],
-        message: 'Select a Radarr or Sonarr server',
+        message: 'Select an *arr server',
       })
     }
   })
