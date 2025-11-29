@@ -145,12 +145,12 @@ const ruleGroupFormSchema = z
       data.sonarrSettingsId === undefined
     ) {
       ctx.addIssue({
-        code: "custom",
+        code: 'custom',
         path: ['radarrSettingsId'],
         message: 'Select an *arr server',
       })
       ctx.addIssue({
-        code: "custom",
+        code: 'custom',
         path: ['sonarrSettingsId'],
         message: 'Select an *arr server',
       })

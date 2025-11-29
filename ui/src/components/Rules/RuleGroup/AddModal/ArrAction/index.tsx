@@ -114,10 +114,8 @@ const ArrAction = (props: ArrActionProps) => {
             </select>
           </div>
           {props.settingIdError ? (
-                    <p className="mt-1 text-xs text-red-400">
-                      {props.settingIdError}
-                    </p>
-                  ) : undefined}
+            <p className="mt-1 text-xs text-red-400">{props.settingIdError}</p>
+          ) : undefined}
         </div>
       </div>
       <div className="form-row items-center">
@@ -144,10 +142,8 @@ const ArrAction = (props: ArrActionProps) => {
             </select>
           </div>
           {props.accActionError ? (
-                    <p className="mt-1 text-xs text-red-400">
-                      {props.accActionError}
-                    </p>
-                  ) : undefined}
+            <p className="mt-1 text-xs text-red-400">{props.accActionError}</p>
+          ) : undefined}
         </div>
       </div>
     </div>
