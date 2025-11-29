@@ -8,10 +8,12 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { BasicResponseDto } from './dto/basic-response.dto';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import { EPlexDataType } from './enums/plex-data-type-enum';
+import { PlexSetupGuard } from './guards/plex-setup.guard';
 import {
   CreateUpdateCollection,
   PlexCollection,
@@ -19,6 +21,7 @@ import {
 import { PlexHub, PlexLibraryItem } from './interfaces/library.interfaces';
 import { PlexApiService } from './plex-api.service';
 
+@UseGuards(PlexSetupGuard)
 @Controller('api/plex')
 export class PlexApiController {
   constructor(private readonly plexApiService: PlexApiService) {}
@@ -26,10 +29,12 @@ export class PlexApiController {
   getStatus(): any {
     return this.plexApiService.getStatus();
   }
+
   @Get('libraries')
-  getLibraries() {
+  async getLibraries() {
     return this.plexApiService.getLibraries();
   }
+
   @Get('library/:id/content{/:page}')
   getLibraryContent(
     @Param('id') id: string,
@@ -43,6 +48,7 @@ export class PlexApiController {
       size: size,
     });
   }
+
   @Get('library/:id/content/search/:query')
   searchibraryContent(
     @Param('id') id: string,
@@ -51,32 +57,39 @@ export class PlexApiController {
   ) {
     return this.plexApiService.searchLibraryContents(id, query, type);
   }
+
   @Get('meta/:id')
   getMetadata(@Param('id') id: string) {
     return this.plexApiService.getMetadata(id);
   }
+
   @Get('meta/:id/seen')
   getSeenBy(@Param('id') id: string) {
     return this.plexApiService.getWatchHistory(id);
   }
+
   @Get('users')
   getUser() {
     return this.plexApiService.getUsers();
   }
+
   @Get('meta/:id/children')
   getChildrenMetadata(@Param('id') id: string) {
     return this.plexApiService.getChildrenMetadata(id);
   }
+
   @Get('library/:id/recent')
   getRecentlyAdded(@Param('id', new ParseIntPipe()) id: number) {
     return this.plexApiService.getRecentlyAdded(id.toString());
   }
+
   @Get('library/:id/collections')
   async getCollections(@Param('id', new ParseIntPipe()) id: number) {
     const collection: PlexCollection[] =
       await this.plexApiService.getCollections(id.toString());
     return collection;
   }
+
   @Get('library/collection/:collectionId')
   async getCollection(
     @Param('collectionId', new ParseIntPipe()) collectionId: number,
@@ -86,6 +99,7 @@ export class PlexApiController {
     );
     return collection;
   }
+
   @Get('library/collection/:collectionId/children')
   async getCollectionChildren(
     @Param('collectionId', new ParseIntPipe()) collectionId: number,
@@ -94,10 +108,12 @@ export class PlexApiController {
       await this.plexApiService.getCollectionChildren(collectionId.toString());
     return collection;
   }
+
   @Get('/search/:input')
   async searchLibrary(@Param('input') input: string) {
     return await this.plexApiService.searchContent(input);
   }
+
   @Put('library/collection/:collectionId/child/:childId')
   async addChildToCollection(
     @Param('collectionId', new ParseIntPipe()) collectionId: number,
@@ -110,6 +126,7 @@ export class PlexApiController {
       );
     return collection;
   }
+
   @Delete('library/collection/:collectionId/child/:childId')
   async deleteChildFromCollection(
     @Param('collectionId', new ParseIntPipe()) collectionId: number,
@@ -122,6 +139,7 @@ export class PlexApiController {
       );
     return collection;
   }
+
   @Put('library/collection/update')
   async updateCollection(@Body() body: CreateUpdateCollection) {
     const collection: PlexCollection =
@@ -135,6 +153,7 @@ export class PlexApiController {
       await this.plexApiService.createCollection(body);
     return collection;
   }
+
   @Delete('library/collection/:collectionId')
   async deleteCollection(
     @Param('collectionId', new ParseIntPipe()) collectionId: number,
@@ -143,6 +162,7 @@ export class PlexApiController {
       await this.plexApiService.deleteCollection(collectionId.toString());
     return collection;
   }
+
   @Put('library/collection/settings')
   async UpdateCollectionSettings(@Body() body: CollectionHubSettingsDto) {
     if (

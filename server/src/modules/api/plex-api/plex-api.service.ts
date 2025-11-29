@@ -74,15 +74,23 @@ export class PlexApiService {
     };
   }
 
+  public isPlexSetup(): boolean {
+    return this.plexClient != null;
+  }
+
+  public uninitialize() {
+    this.plexClient = undefined;
+  }
+
   public async initialize({
     plexToken,
     timeout,
   }: {
     plexToken?: string;
-    // plexSettings?: PlexSettings;
     timeout?: number;
   }) {
     try {
+      this.plexClient = undefined;
       const settingsPlex = this.getDbSettings();
       plexToken = plexToken || settingsPlex.auth_token;
       if (settingsPlex.ip && plexToken) {

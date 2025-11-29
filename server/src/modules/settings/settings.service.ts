@@ -446,6 +446,7 @@ export class SettingsService implements SettingDto {
       );
 
       this.plex_auth_token = null;
+      this.plexApi.uninitialize();
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (err) {
