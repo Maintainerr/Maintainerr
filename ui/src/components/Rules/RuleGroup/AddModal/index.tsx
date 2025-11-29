@@ -145,12 +145,12 @@ const ruleGroupFormSchema = z
       data.sonarrSettingsId === undefined
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ['radarrSettingsId'],
         message: 'Select a Radarr or Sonarr server',
       })
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ['sonarrSettingsId'],
         message: 'Select a Radarr or Sonarr server',
       })
@@ -393,7 +393,7 @@ const AddModal = (props: AddModal) => {
     props.onCancel()
   }
 
-  const onSubmit = (data: RuleGroupFormValues) => {
+  const onSubmit = (data: RuleGroupFormOutput) => {
     if (data.useRules && rules.length === 0) {
       setFormIncomplete(true)
       return
@@ -578,7 +578,9 @@ const AddModal = (props: AddModal) => {
                   {selectedLibraryType && selectedLibraryType === 'movie' && (
                     <ArrAction
                       type="Radarr"
+                      accActionError={errors.arrAction?.message}
                       arrAction={arrActionValue}
+                      settingIdError={errors.radarrSettingsId?.message}
                       settingId={radarrSettingsId}
                       onUpdate={(arrAction: number, settingId) => {
                         handleUpdateArrAction('Radarr', arrAction, settingId)
@@ -603,12 +605,6 @@ const AddModal = (props: AddModal) => {
                       ]}
                     />
                   )}
-                  {selectedLibraryType === 'movie' &&
-                  errors.radarrSettingsId ? (
-                    <p className="mt-1 text-xs text-red-400">
-                      {errors.radarrSettingsId.message}
-                    </p>
-                  ) : undefined}
 
                   {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
