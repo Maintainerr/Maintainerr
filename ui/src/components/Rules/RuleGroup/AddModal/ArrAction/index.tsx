@@ -75,8 +75,6 @@ const ArrAction = (props: ArrActionProps) => {
       ]
     : props.options
 
-  // TODO Add error prop and display error state here, like a form input
-
   return (
     <div>
       <div className="form-row items-center">
