@@ -17,40 +17,9 @@ env:
   GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
-  semantic-release:
-    name: Tag and release latest version
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - name: Activate corepack
-        run: |
-          corepack install
-          corepack enable
-      - name: Install dependencies
-        run: yarn --immutable
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          if [ "${{ github.event.inputs.dry-run-semantic-release }}" == "true" ]; then
-          npx semantic-release --dry-run
-          else
-          npx semantic-release
-          fi
-
   build-docker-image:
     if: github.event.inputs.with-docker-images == 'true'
     name: Build ${{ matrix.platform }}
-    needs: semantic-release
     permissions:
       contents: read
       packages: write
@@ -113,7 +82,7 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           build-args: |
-            GIT_SHA=${{ github.sha }}
+            GIT_SHA=c34ad74f247ac28479a9a1ad5a08721637930ece
             VERSION_TAG=stable
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=true
@@ -177,12 +146,12 @@ jobs:
             ${{ env.GHCR_SLUG }}
           tags: |
             type=raw,value=latest
-            type=semver,pattern={{version}},value=${{ needs.build-docker-image.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.build-docker-image.outputs.version }}
-            type=semver,pattern={{major}},value=${{ needs.build-docker-image.outputs.version }}
+            type=semver,pattern={{version}},value=2.22.1
+            type=semver,pattern={{major}}.{{minor}},value=2.22.1
+            type=semver,pattern={{major}},value=2.22.1
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ needs.build-docker-image.outputs.version }}
+            org.opencontainers.image.revision=c34ad74f247ac28479a9a1ad5a08721637930ece
+            org.opencontainers.image.version=2.22.1
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -191,17 +160,3 @@ jobs:
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
-
-      - name: Mkdocs Deploy
-        if: ${{ success() }}
-        continue-on-error: true
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.DOCS_DEPLOY }}
-          repository: Maintainerr/Maintainerr_docs
-          event-type: maintainerr-release
-          client-payload: |
-            {
-              "ref": "refs/heads/main",
-              "versionInput": "${{ needs.build-docker-image.outputs.version }}"
-            }
