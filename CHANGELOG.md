@@ -1,3 +1,10 @@
+## [2.22.1](https://github.com/maintainerr/Maintainerr/compare/v2.22.0...v2.22.1) (2025-11-30)
+
+
+### Bug Fixes
+
+* All URLs redirect to /overview when navigating directly ([#2103](https://github.com/maintainerr/Maintainerr/issues/2103)) ([c34ad74](https://github.com/maintainerr/Maintainerr/commit/c34ad74f247ac28479a9a1ad5a08721637930ece))
+
 # [2.22.0](https://github.com/maintainerr/Maintainerr/compare/v2.21.0...v2.22.0) (2025-11-29)
 
 
