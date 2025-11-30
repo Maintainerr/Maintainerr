@@ -137,7 +137,7 @@ const TautulliSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Tautulli</title>
+      <title>Tautulli settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Tautulli Settings</h3>

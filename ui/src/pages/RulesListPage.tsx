@@ -75,7 +75,7 @@ const RulesListPage = () => {
   if (!data || isLoading) {
     return (
       <>
-        <title>Maintainerr - Rules</title>
+        <title>Rules - Maintainerr</title>
         <span>
           <LoadingSpinner />
         </span>
@@ -85,7 +85,7 @@ const RulesListPage = () => {
 
   return (
     <>
-      <title>Maintainerr - Rules</title>
+      <title>Rules - Maintainerr</title>
       <div className="w-full">
         <LibrarySwitcher onSwitch={onSwitchLibrary} />
 

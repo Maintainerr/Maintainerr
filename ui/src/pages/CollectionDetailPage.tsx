@@ -65,7 +65,7 @@ const CollectionDetailPage = () => {
   if (isLoading || !collection) {
     return (
       <>
-        <title>Maintainerr - Collection</title>
+        <title>Collection - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
@@ -73,7 +73,7 @@ const CollectionDetailPage = () => {
 
   return (
     <>
-      <title>Maintainerr - {collection.title}</title>
+      <title>{collection.title} - Maintainerr</title>
       <div className="w-full">
         <div className="m-auto mb-3 flex w-full">
           <h1 className="flex w-full justify-center overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-zinc-200 sm:m-0 sm:justify-start xl:m-0">

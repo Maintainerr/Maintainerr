@@ -139,7 +139,7 @@ const OverseerrSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Overseerr</title>
+      <title>Overseerr settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Overseerr Settings</h3>

@@ -52,7 +52,7 @@ const CollectionsListPage = () => {
   if (isLoading) {
     return (
       <>
-        <title>Maintainerr - Collections</title>
+        <title>Collections - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
@@ -60,7 +60,7 @@ const CollectionsListPage = () => {
 
   return (
     <>
-      <title>Maintainerr - Collections</title>
+      <title>Collections - Maintainerr</title>
       <div className="w-full">
         <CollectionOverview
           onSwitchLibrary={onSwitchLibrary}

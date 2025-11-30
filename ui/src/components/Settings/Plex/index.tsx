@@ -266,7 +266,7 @@ const PlexSettings = () => {
   if (settingsError) {
     return (
       <>
-        <title>Maintainerr - Settings - Plex</title>
+        <title>Plex settings - Maintainerr</title>
         <div className="flex">
           <Alert type="error" title="There was a problem loading settings." />
         </div>
@@ -277,7 +277,7 @@ const PlexSettings = () => {
   if (settingsLoading || !settings) {
     return (
       <>
-        <title>Maintainerr - Settings - Plex</title>
+        <title>Plex settings - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
@@ -285,7 +285,7 @@ const PlexSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Plex</title>
+      <title>Plex settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Plex Settings</h3>

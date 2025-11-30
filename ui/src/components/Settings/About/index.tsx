@@ -56,7 +56,7 @@ const AboutSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - About</title>
+      <title>About - Maintainerr</title>
       <div className="h-full w-full">
         <div className="mt-6 rounded-md border border-amber-600 bg-amber-500 bg-opacity-20 p-4 backdrop-blur">
           <div className="flex">

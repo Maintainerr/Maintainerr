@@ -139,7 +139,7 @@ const JellyseerrSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Jellyseerr</title>
+      <title>Jellyseerr settings - Maintainerr</title>
       <div className="mb-6">
         <h3 className="heading">Jellyseerr Settings</h3>
         <p className="description">Jellyseerr configuration</p>

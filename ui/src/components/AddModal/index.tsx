@@ -213,7 +213,6 @@ const AddModal = (props: IAddModal) => {
 
   return (
     <>
-      <title>Maintainerr - Overview</title>
       <Modal
         loading={loading}
         backgroundClickable={false}

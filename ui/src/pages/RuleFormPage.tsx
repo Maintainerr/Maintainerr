@@ -19,7 +19,7 @@ const RuleFormPage = () => {
   if (id && error) {
     return (
       <>
-        <title>Maintainerr - Edit Rule</title>
+        <title>Edit rule - Maintainerr</title>
         <div className="m-4 rounded-md bg-red-500/10 p-4 text-red-300">
           <h2 className="mb-2 text-lg font-bold">Error loading rule data</h2>
           <p>{error.message}</p>
@@ -31,7 +31,7 @@ const RuleFormPage = () => {
   if (id && (!data || isLoading)) {
     return (
       <>
-        <title>Maintainerr - Edit Rule</title>
+        <title>Edit rule - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
@@ -39,7 +39,7 @@ const RuleFormPage = () => {
 
   return (
     <>
-      <title>Maintainerr - {id ? 'Edit' : 'New'} Rule</title>
+      <title>{id ? 'Edit' : 'New'} rule - Maintainerr</title>
       <AddModal
         onSuccess={handleSuccess}
         editData={data}

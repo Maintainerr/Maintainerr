@@ -24,7 +24,7 @@ import { SelectGroup } from '../../Forms/Select'
 const LogSettings = () => {
   return (
     <>
-      <title>Maintainerr - Settings - Logs</title>
+      <title>Logs - Maintainerr</title>
       <div className="h-full w-full">
         <LogSettingsForm />
         <Logs />

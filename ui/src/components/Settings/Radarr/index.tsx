@@ -87,7 +87,7 @@ const RadarrSettings = () => {
   if (!loaded) {
     return (
       <>
-        <title>Maintainerr - Settings - Radarr</title>
+        <title>Radarr settings - Maintainerr</title>
         <div className="mt-6">
           <LoadingSpinner />
         </div>
@@ -97,7 +97,7 @@ const RadarrSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Radarr</title>
+      <title>Radarr settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Radarr Settings</h3>

@@ -47,7 +47,7 @@ const NotificationSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Notifications</title>
+      <title>Notification settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="mb-5 mt-6 h-full w-full text-white">
           <h3 className="heading flex items-center gap-2">

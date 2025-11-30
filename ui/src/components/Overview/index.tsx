@@ -133,7 +133,7 @@ const Overview = () => {
 
   return (
     <>
-      <title>Maintainerr - Overview</title>
+      <title>Overview - Maintainerr</title>
       <div className="w-full">
         {!searchUsed ? (
           <LibrarySwitcher allPossible={false} onSwitch={switchLib} />

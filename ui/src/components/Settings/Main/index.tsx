@@ -44,7 +44,7 @@ const MainSettings = () => {
   if (isLoading || !settings) {
     return (
       <>
-        <title>Maintainerr - Settings - General</title>
+        <title>General settings - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
@@ -52,7 +52,7 @@ const MainSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - General</title>
+      <title>General settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">General Settings</h3>

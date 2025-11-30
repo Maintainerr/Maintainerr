@@ -44,7 +44,7 @@ const JobSettings = () => {
   if (isLoading || !settings) {
     return (
       <>
-        <title>Maintainerr - Settings - Jobs</title>
+        <title>Job settings - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
@@ -52,7 +52,7 @@ const JobSettings = () => {
 
   return (
     <>
-      <title>Maintainerr - Settings - Jobs</title>
+      <title>Job settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Job Settings</h3>
