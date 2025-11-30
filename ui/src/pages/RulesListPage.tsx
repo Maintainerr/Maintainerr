@@ -1,15 +1,14 @@
 import { AxiosError } from 'axios'
 import { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { useTaskStatusContext } from '../contexts/taskstatus-context'
-import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
 import LibrarySwitcher from '../components/Common/LibrarySwitcher'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
+import { useTaskStatusContext } from '../contexts/taskstatus-context'
+import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const RulesListPage = () => {
   const navigate = useNavigate()
@@ -76,9 +75,7 @@ const RulesListPage = () => {
   if (!data || isLoading) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Rules</title>
-        </Helmet>
+        <title>Maintainerr - Rules</title>
         <span>
           <LoadingSpinner />
         </span>
@@ -88,9 +85,7 @@ const RulesListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Rules</title>
-      </Helmet>
+      <title>Maintainerr - Rules</title>
       <div className="w-full">
         <LibrarySwitcher onSwitch={onSwitchLibrary} />
 

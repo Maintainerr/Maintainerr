@@ -1,7 +1,6 @@
 import { InformationCircleIcon } from '@heroicons/react/solid'
 import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Releases from './Releases'
 
@@ -57,9 +56,7 @@ const AboutSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - About</title>
-      </Helmet>
+      <title>Maintainerr - Settings - About</title>
       <div className="h-full w-full">
         <div className="mt-6 rounded-md border border-amber-600 bg-amber-500 bg-opacity-20 p-4 backdrop-blur">
           <div className="flex">

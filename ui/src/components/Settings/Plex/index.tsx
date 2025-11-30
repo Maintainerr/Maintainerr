@@ -3,7 +3,6 @@ import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import {
   useDeletePlexAuth,
@@ -267,9 +266,7 @@ const PlexSettings = () => {
   if (settingsError) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Settings - Plex</title>
-        </Helmet>
+        <title>Maintainerr - Settings - Plex</title>
         <div className="flex">
           <Alert type="error" title="There was a problem loading settings." />
         </div>
@@ -280,9 +277,7 @@ const PlexSettings = () => {
   if (settingsLoading || !settings) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Settings - Plex</title>
-        </Helmet>
+        <title>Maintainerr - Settings - Plex</title>
         <LoadingSpinner />
       </>
     )
@@ -290,9 +285,7 @@ const PlexSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Plex</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Plex</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Plex Settings</h3>

@@ -36,8 +36,8 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 - **State Management**: TanStack Query (React Query)
 - **Forms**: React Hook Form with Zod validation
 - **UI Components**: Custom components with Heroicons
-- **Page Metadata**: React Helmet Async for declarative head management
-- **Environment Variables**: Vite environment variables (import.meta.env.VITE_*)
+- **Page Metadata**: React 19 Document Metadata support
+- **Environment Variables**: Vite environment variables (import.meta.env.VITE\_\*)
 
 ### Shared (`packages/contracts/`)
 

@@ -1,6 +1,5 @@
 import { clone } from 'lodash'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { usePlexLibraries } from '../../api/plex'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
@@ -134,9 +133,7 @@ const Overview = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Overview</title>
-      </Helmet>
+      <title>Maintainerr - Overview</title>
       <div className="w-full">
         {!searchUsed ? (
           <LibrarySwitcher allPossible={false} onSwitch={switchLib} />

@@ -1,7 +1,6 @@
 import { SaveIcon } from '@heroicons/react/solid'
 import { isValidCron } from 'cron-validator'
 import { useRef, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { usePatchSettings, useSettings } from '../../../api/settings'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
@@ -45,9 +44,7 @@ const JobSettings = () => {
   if (isLoading || !settings) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Settings - Jobs</title>
-        </Helmet>
+        <title>Maintainerr - Settings - Jobs</title>
         <LoadingSpinner />
       </>
     )
@@ -55,9 +52,7 @@ const JobSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Jobs</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Jobs</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Job Settings</h3>

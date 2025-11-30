@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
-import GetApiHandler from '../utils/ApiHandler'
-import LoadingSpinner from '../components/Common/LoadingSpinner'
-import { ICollection } from '../components/Collection'
 import { PlayIcon } from '@heroicons/react/solid'
-import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
+import { useEffect, useState } from 'react'
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ICollection } from '../components/Collection'
 import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
+import LoadingSpinner from '../components/Common/LoadingSpinner'
+import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
+import GetApiHandler from '../utils/ApiHandler'
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate()
@@ -66,9 +65,7 @@ const CollectionDetailPage = () => {
   if (isLoading || !collection) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Collection</title>
-        </Helmet>
+        <title>Maintainerr - Collection</title>
         <LoadingSpinner />
       </>
     )
@@ -76,9 +73,7 @@ const CollectionDetailPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - {collection.title}</title>
-      </Helmet>
+      <title>Maintainerr - {collection.title}</title>
       <div className="w-full">
         <div className="m-auto mb-3 flex w-full">
           <h1 className="flex w-full justify-center overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-zinc-200 sm:m-0 sm:justify-start xl:m-0">

@@ -1,6 +1,5 @@
 import { AxiosError } from 'axios'
 import { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
@@ -53,9 +52,7 @@ const CollectionsListPage = () => {
   if (isLoading) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Collections</title>
-        </Helmet>
+        <title>Maintainerr - Collections</title>
         <LoadingSpinner />
       </>
     )
@@ -63,9 +60,7 @@ const CollectionsListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Collections</title>
-      </Helmet>
+      <title>Maintainerr - Collections</title>
       <div className="w-full">
         <CollectionOverview
           onSwitchLibrary={onSwitchLibrary}

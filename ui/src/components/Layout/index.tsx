@@ -1,7 +1,6 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash-es'
 import { useContext, useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
@@ -30,10 +29,8 @@ const Layout: React.FC = () => {
 
   return (
     <section>
-      <Helmet>
-        <title>Maintainerr</title>
-        <link rel="icon" href={`${basePath}/favicon.ico`} />
-      </Helmet>
+      <title>Maintainerr</title>
+      <link rel="icon" href={`${basePath}/favicon.ico`} />
       <div className="flex h-full min-h-full min-w-0 bg-zinc-900">
         <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-zinc-700 md:border-t" />
         <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-zinc-800 to-zinc-900">

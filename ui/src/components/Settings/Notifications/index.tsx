@@ -1,4 +1,3 @@
-import { Helmet } from 'react-helmet-async'
 import {
   DocumentAddIcon,
   PlusCircleIcon,
@@ -48,9 +47,7 @@ const NotificationSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Notifications</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Notifications</title>
       <div className="h-full w-full">
         <div className="mb-5 mt-6 h-full w-full text-white">
           <h3 className="heading flex items-center gap-2">

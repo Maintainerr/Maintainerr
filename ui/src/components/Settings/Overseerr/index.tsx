@@ -6,7 +6,6 @@ import {
   overseerrSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
@@ -140,9 +139,7 @@ const OverseerrSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Overseerr</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Overseerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Overseerr Settings</h3>

@@ -1,6 +1,5 @@
 import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
 import React, { useRef, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { usePatchSettings, useSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
@@ -45,9 +44,7 @@ const MainSettings = () => {
   if (isLoading || !settings) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Settings - General</title>
-        </Helmet>
+        <title>Maintainerr - Settings - General</title>
         <LoadingSpinner />
       </>
     )
@@ -55,9 +52,7 @@ const MainSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - General</title>
-      </Helmet>
+      <title>Maintainerr - Settings - General</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">General Settings</h3>

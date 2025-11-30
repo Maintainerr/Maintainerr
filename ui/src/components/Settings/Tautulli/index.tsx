@@ -6,7 +6,6 @@ import {
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
@@ -138,9 +137,7 @@ const TautulliSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Tautulli</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Tautulli</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Tautulli Settings</h3>

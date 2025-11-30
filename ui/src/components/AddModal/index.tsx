@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import { EPlexDataType } from '../../utils/PlexDataType-enum'
 import Alert from '../Common/Alert'
@@ -214,9 +213,7 @@ const AddModal = (props: IAddModal) => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Overview</title>
-      </Helmet>
+      <title>Maintainerr - Overview</title>
       <Modal
         loading={loading}
         backgroundClickable={false}

@@ -4,7 +4,6 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
@@ -88,9 +87,7 @@ const RadarrSettings = () => {
   if (!loaded) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Settings - Radarr</title>
-        </Helmet>
+        <title>Maintainerr - Settings - Radarr</title>
         <div className="mt-6">
           <LoadingSpinner />
         </div>
@@ -100,9 +97,7 @@ const RadarrSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Radarr</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Radarr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Radarr Settings</h3>

@@ -1,4 +1,3 @@
-import { Helmet } from 'react-helmet-async'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useRuleGroup } from '../api/rules'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
@@ -20,9 +19,7 @@ const RuleFormPage = () => {
   if (id && error) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Edit Rule</title>
-        </Helmet>
+        <title>Maintainerr - Edit Rule</title>
         <div className="m-4 rounded-md bg-red-500/10 p-4 text-red-300">
           <h2 className="mb-2 text-lg font-bold">Error loading rule data</h2>
           <p>{error.message}</p>
@@ -34,9 +31,7 @@ const RuleFormPage = () => {
   if (id && (!data || isLoading)) {
     return (
       <>
-        <Helmet>
-          <title>Maintainerr - Edit Rule</title>
-        </Helmet>
+        <title>Maintainerr - Edit Rule</title>
         <LoadingSpinner />
       </>
     )
@@ -44,9 +39,7 @@ const RuleFormPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - {id ? 'Edit' : 'New'} Rule</title>
-      </Helmet>
+      <title>Maintainerr - {id ? 'Edit' : 'New'} Rule</title>
       <AddModal
         onSuccess={handleSuccess}
         editData={data}

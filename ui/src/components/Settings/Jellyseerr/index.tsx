@@ -6,7 +6,6 @@ import {
   jellyseerrSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
@@ -140,107 +139,103 @@ const JellyseerrSettings = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Jellyseerr</title>
-      </Helmet>
-      <>
-        <div className="mb-6">
-          <h3 className="heading">Jellyseerr Settings</h3>
-          <p className="description">Jellyseerr configuration</p>
-        </div>
-        {submitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : isSubmitSuccessful ? (
-          <Alert type="info" title="Jellyseerr settings successfully updated" />
-        ) : undefined}
+      <title>Maintainerr - Settings - Jellyseerr</title>
+      <div className="mb-6">
+        <h3 className="heading">Jellyseerr Settings</h3>
+        <p className="description">Jellyseerr configuration</p>
+      </div>
+      {submitError ? (
+        <Alert type="warning" title="Something went wrong" />
+      ) : isSubmitSuccessful ? (
+        <Alert type="info" title="Jellyseerr settings successfully updated" />
+      ) : undefined}
 
-        {testResult != null &&
-          (testResult?.status ? (
-            <Alert
-              type="info"
-              title={`Successfully connected to Jellyseerr (${testResult.message})`}
-            />
-          ) : (
-            <Alert type="error" title={testResult.message} />
-          ))}
+      {testResult != null &&
+        (testResult?.status ? (
+          <Alert
+            type="info"
+            title={`Successfully connected to Jellyseerr (${testResult.message})`}
+          />
+        ) : (
+          <Alert type="error" title={testResult.message} />
+        ))}
 
-        <div className="section">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Controller
-              name={'url'}
-              defaultValue=""
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label="URL"
-                  value={field.value}
-                  placeholder="http://localhost:5055"
-                  onChange={field.onChange}
-                  onBlur={(event) =>
-                    field.onChange(stripLeadingSlashes(event.target.value))
-                  }
-                  ref={field.ref}
-                  name={field.name}
-                  type="text"
-                  error={errors.url?.message}
-                  helpText={
-                    <>
-                      Example URL formats:{' '}
-                      <span className="whitespace-nowrap">
-                        http://localhost:5055
-                      </span>
-                      ,{' '}
-                      <span className="whitespace-nowrap">
-                        http://192.168.1.5/jellyseerr
-                      </span>
-                      ,{' '}
-                      <span className="whitespace-nowrap">
-                        https://jellyseerr.example.com
-                      </span>
-                    </>
-                  }
-                  required
-                />
-              )}
-            />
+      <div className="section">
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Controller
+            name={'url'}
+            defaultValue=""
+            control={control}
+            render={({ field }) => (
+              <InputGroup
+                label="URL"
+                value={field.value}
+                placeholder="http://localhost:5055"
+                onChange={field.onChange}
+                onBlur={(event) =>
+                  field.onChange(stripLeadingSlashes(event.target.value))
+                }
+                ref={field.ref}
+                name={field.name}
+                type="text"
+                error={errors.url?.message}
+                helpText={
+                  <>
+                    Example URL formats:{' '}
+                    <span className="whitespace-nowrap">
+                      http://localhost:5055
+                    </span>
+                    ,{' '}
+                    <span className="whitespace-nowrap">
+                      http://192.168.1.5/jellyseerr
+                    </span>
+                    ,{' '}
+                    <span className="whitespace-nowrap">
+                      https://jellyseerr.example.com
+                    </span>
+                  </>
+                }
+                required
+              />
+            )}
+          />
 
-            <InputGroup
-              label="API key"
-              type="password"
-              {...register('api_key')}
-              error={errors.api_key?.message}
-            />
+          <InputGroup
+            label="API key"
+            type="password"
+            {...register('api_key')}
+            error={errors.api_key?.message}
+          />
 
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
-                  <DocsButton page="Configuration/#jellyseerr" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+          <div className="actions mt-5 w-full">
+            <div className="flex w-full flex-wrap sm:flex-nowrap">
+              <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+                <DocsButton page="Configuration/#jellyseerr" />
+              </span>
+              <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+                <Button
+                  buttonType="success"
+                  onClick={performTest}
+                  className="ml-3"
+                  disabled={testing || isGoingToRemoveSetting}
+                >
+                  {testing ? 'Testing...' : 'Test'}
+                </Button>
+                <span className="ml-3 inline-flex rounded-md shadow-sm">
                   <Button
-                    buttonType="success"
-                    onClick={performTest}
-                    className="ml-3"
-                    disabled={testing || isGoingToRemoveSetting}
+                    buttonType="primary"
+                    type="submit"
+                    disabled={!canSaveSettings}
                   >
-                    {testing ? 'Testing...' : 'Test'}
+                    <SaveIcon />
+                    <span>Save Changes</span>
                   </Button>
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
-                      buttonType="primary"
-                      type="submit"
-                      disabled={!canSaveSettings}
-                    >
-                      <SaveIcon />
-                      <span>Save Changes</span>
-                    </Button>
-                  </span>
-                </div>
+                </span>
               </div>
             </div>
-          </form>
-        </div>
-      </>
+          </div>
+        </form>
+      </div>
     </>
   )
 }

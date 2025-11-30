@@ -9,7 +9,6 @@ import {
   LogSettingSchemaOutput,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
 import { useForm } from 'react-hook-form'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import GetApiHandler, {
@@ -25,9 +24,7 @@ import { SelectGroup } from '../../Forms/Select'
 const LogSettings = () => {
   return (
     <>
-      <Helmet>
-        <title>Maintainerr - Settings - Logs</title>
-      </Helmet>
+      <title>Maintainerr - Settings - Logs</title>
       <div className="h-full w-full">
         <LogSettingsForm />
         <Logs />
