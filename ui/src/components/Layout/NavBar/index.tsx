@@ -6,8 +6,8 @@ import {
   EyeIcon,
   XIcon,
 } from '@heroicons/react/outline'
-import { ReactNode, useContext, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { ReactNode, useContext, useRef } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
@@ -15,39 +15,39 @@ import VersionStatus from '../../VersionStatus'
 interface NavBarLink {
   key: string
   href: string
-  selected: boolean
   svgIcon: ReactNode
   name: string
+  matchPattern?: RegExp
 }
 
-let navBarItems: NavBarLink[] = [
+const navBarItems: NavBarLink[] = [
   {
     key: '0',
     href: '/overview',
-    selected: false,
     svgIcon: <EyeIcon className="mr-3 h-6 w-6" />,
     name: 'Overview',
+    matchPattern: /^\/(?:overview(?:\/.*)?|)$/,
   },
   {
     key: '1',
     href: '/rules',
-    selected: false,
     svgIcon: <ClipboardCheckIcon className="mr-3 h-6 w-6" />,
     name: 'Rules',
+    matchPattern: /^\/rules(?:\/.*)?$/,
   },
   {
     key: '2',
     href: '/collections',
-    selected: false,
     svgIcon: <ArchiveIcon className="mr-3 h-6 w-6" />,
     name: 'Collections',
+    matchPattern: /^\/collections(?:\/.*)?$/,
   },
   {
     key: '3',
     href: '/settings',
-    selected: false,
     svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
     name: 'Settings',
+    matchPattern: /^\/settings(?:\/.*)?$/,
   },
 ]
 
@@ -60,30 +60,14 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const navRef = useRef<HTMLDivElement>(null)
   const SearchCtx = useContext(SearchContext)
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+  const location = useLocation()
 
-  useEffect(() => {
-    setTimeout(() => {
-      if (window.location.pathname !== '/')
-        setHighlight(window.location.pathname)
-      else setHighlight(`/overview`)
-    }, 100)
-  }, [])
-
-  useEffect(() => {
-    if (SearchCtx.search.text !== '') {
-      setHighlight('/overview', true)
+  const linkIsActive = (link: NavBarLink) => {
+    if (link.matchPattern) {
+      return link.matchPattern.test(location.pathname)
     }
-  }, [SearchCtx.search.text])
 
-  const setHighlight = (href: string, closed = false) => {
-    navBarItems = navBarItems.map((el) => {
-      el.selected = href.includes(el.href)
-      return el
-    })
-
-    if (closed && open) {
-      setClosed()
-    }
+    return location.pathname === link.href
   }
 
   return (
@@ -130,20 +114,15 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                             if (link.href === '/overview') {
                               SearchCtx.removeText()
                             }
-                            setHighlight(link.href, true)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              setHighlight(link.href, true)
-                            }
+                            setClosed()
                           }}
                           role="button"
                           tabIndex={0}
-                          className={`flex items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out focus:outline-none ${
-                            link.selected
+                          className={`flex items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out ${
+                            linkIsActive(link)
                               ? 'bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700'
                               : 'hover:bg-zinc-700'
-                          }`}
+                          } focus:bg-amber-800 focus:outline-none`}
                         >
                           {link.svgIcon}
                           {link.name}
@@ -190,11 +169,9 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                         if (navBarLink.href === '/overview') {
                           SearchCtx.removeText()
                         }
-
-                        setHighlight(navBarLink.href)
                       }}
                       className={`group flex items-center rounded-md px-2 py-2 text-lg font-medium leading-6 text-white transition duration-150 ease-in-out ${
-                        navBarLink.selected
+                        linkIsActive(navBarLink)
                           ? 'bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700'
                           : 'hover:bg-zinc-700'
                       } focus:bg-amber-800 focus:outline-none`}
