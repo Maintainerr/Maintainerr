@@ -14,57 +14,57 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
     {
       text: 'General',
       route: '/settings/main',
-      regex: /^\/settings(\/main)?$/,
+      regex: /^\/settings\/main$/,
     },
     {
       text: 'Plex',
       route: '/settings/plex',
-      regex: /^\/settings(\/plex)?$/,
+      regex: /^\/settings\/plex$/,
     },
     {
       text: 'Overseerr',
       route: '/settings/overseerr',
-      regex: /^\/settings(\/overseerr)?$/,
+      regex: /^\/settings\/overseerr$/,
     },
     {
       text: 'Jellyseerr',
       route: '/settings/jellyseerr',
-      regex: /^\/settings(\/jellyseerr)?$/,
+      regex: /^\/settings\/jellyseerr$/,
     },
     {
       text: 'Radarr',
       route: '/settings/radarr',
-      regex: /^\/settings(\/radarr)?$/,
+      regex: /^\/settings\/radarr$/,
     },
     {
       text: 'Sonarr',
       route: '/settings/sonarr',
-      regex: /^\/settings(\/sonarr)?$/,
+      regex: /^\/settings\/sonarr$/,
     },
     {
       text: 'Tautulli',
       route: '/settings/tautulli',
-      regex: /^\/settings(\/tautulli)?$/,
+      regex: /^\/settings\/tautulli$/,
     },
     {
       text: 'Notifications',
       route: '/settings/notifications',
-      regex: /^\/settings(\/notifications)?$/,
+      regex: /^\/settings\/notifications$/,
     },
     {
       text: 'Logs',
       route: '/settings/logs',
-      regex: /^\/settings(\/logs)?$/,
+      regex: /^\/settings\/logs$/,
     },
     {
       text: 'Jobs',
       route: '/settings/jobs',
-      regex: /^\/settings(\/jobs)?$/,
+      regex: /^\/settings\/jobs$/,
     },
     {
       text: 'About',
       route: '/settings/about',
-      regex: /^\/settings(\/about)?$/,
+      regex: /^\/settings\/about$/,
     },
   ]
 
@@ -72,7 +72,7 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
     return (
       <>
         <div className="mt-6">
-          <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={true} />
+          <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={false} />
         </div>
         <div className="mt-10 flex">
           <Alert type="error" title="There was a problem loading settings." />
