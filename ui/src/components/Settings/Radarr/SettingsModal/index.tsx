@@ -300,7 +300,7 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
 
       <div className="form-row">
         <label htmlFor="apikey" className="text-label">
-          Api key
+          API key
         </label>
         <div className="form-input">
           <div className="form-input-field">

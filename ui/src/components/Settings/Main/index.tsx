@@ -93,7 +93,7 @@ const MainSettings = () => {
 
             <div className="form-row">
               <label htmlFor="name" className="text-label">
-                Api key
+                API key
               </label>
               <div className="form-input">
                 <div className="form-input-field">
