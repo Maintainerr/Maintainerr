@@ -146,7 +146,9 @@ export class PlexApiService {
       );
       const results = response.MediaContainer.Metadata
         ? Promise.all(
-            response.MediaContainer.Metadata.map(async (el: PlexMetadata) => {
+            response.MediaContainer.Metadata.filter(
+              (x) => x.type === 'movie' || x.type === 'show',
+            ).map(async (el: PlexMetadata) => {
               return el.grandparentRatingKey
                 ? await this.getMetadata(el.grandparentRatingKey.toString())
                 : el;
