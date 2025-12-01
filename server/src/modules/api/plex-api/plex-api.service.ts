@@ -565,6 +565,9 @@ export class PlexApiService {
       if (body.sortTitle) {
         // Lock sort title so Plex keeps the custom value.
         uri += `&titleSort.value=${encodeURIComponent(body.sortTitle)}&titleSort.locked=1`;
+      } else if (body.title) {
+        // Clear custom sort title and fall back to the regular title.
+        uri += `&titleSort.value=${encodeURIComponent(body.title)}&titleSort.locked=0`;
       }
       await this.plexClient.putQuery({ uri });
       return await this.getCollection(+body.collectionId);
