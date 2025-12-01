@@ -37,9 +37,11 @@ const RuleFormPage = () => {
     )
   }
 
+  const pageTitle = `${id ? 'Edit' : 'New'} rule - Maintainerr`
+
   return (
     <>
-      <title>{id ? 'Edit' : 'New'} rule - Maintainerr</title>
+      <title>{pageTitle}</title>
       <AddModal
         onSuccess={handleSuccess}
         editData={data}
