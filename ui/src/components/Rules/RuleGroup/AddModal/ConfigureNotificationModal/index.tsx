@@ -75,6 +75,11 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
                       }}
                     />
                   ))}
+                {!isLoading && notifications!.length === 0 && (
+                  <p className="text-zinc-400">
+                    No notification agents configured.
+                  </p>
+                )}
               </div>
             </div>
           </div>
