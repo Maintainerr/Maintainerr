@@ -16,7 +16,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
 
   return (
     <div>
-      <LibrarySwitcher onSwitch={props.onSwitchLibrary} />
+      <LibrarySwitcher onLibraryChange={props.onSwitchLibrary} />
 
       <div className="m-auto mb-3 flex">
         <div className="m-auto sm:m-0">

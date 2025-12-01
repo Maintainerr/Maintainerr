@@ -2,17 +2,17 @@ import { useEffect, useRef } from 'react'
 import { usePlexLibraries } from '../../../api/plex'
 
 interface ILibrarySwitcher {
-  onSwitch: (libraryId: number) => void
-  allPossible?: boolean
+  onLibraryChange: (libraryId: number) => void
+  shouldShowAllOption?: boolean
 }
 
 const LibrarySwitcher = (props: ILibrarySwitcher) => {
-  const { onSwitch, allPossible } = props
+  const { onLibraryChange, shouldShowAllOption } = props
   const { data: plexLibraries } = usePlexLibraries()
-  const lastAutoSelectedKey = useRef<number | null>(null)
+  const lastAutoSelectedLibraryKey = useRef<number | null>(null)
 
   const onSwitchLibrary = (event: { target: { value: string } }) => {
-    onSwitch(+event.target.value)
+    onLibraryChange(+event.target.value)
   }
 
   useEffect(() => {
@@ -20,17 +20,17 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
       return
     }
 
-    if (allPossible === false) {
+    if (shouldShowAllOption === false) {
       const firstKey = Number(plexLibraries[0].key)
 
-      if (!Number.isNaN(firstKey) && lastAutoSelectedKey.current !== firstKey) {
-        lastAutoSelectedKey.current = firstKey
-        onSwitch(firstKey)
+      if (!Number.isNaN(firstKey) && lastAutoSelectedLibraryKey.current !== firstKey) {
+        lastAutoSelectedLibraryKey.current = firstKey
+        onLibraryChange(firstKey)
       }
     } else {
-      lastAutoSelectedKey.current = null
+      lastAutoSelectedLibraryKey.current = null
     }
-  }, [plexLibraries, allPossible, onSwitch])
+  }, [plexLibraries, shouldShowAllOption, onLibraryChange])
 
   return (
     <>
@@ -40,7 +40,7 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
             onChange={onSwitchLibrary}
           >
-            {props.allPossible === undefined || props.allPossible ? (
+            {props.shouldShowAllOption === undefined || props.shouldShowAllOption ? (
               <option value={9999}>All</option>
             ) : undefined}
             {plexLibraries?.map((el) => {

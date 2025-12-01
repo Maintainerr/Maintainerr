@@ -87,7 +87,7 @@ const RulesListPage = () => {
     <>
       <title>Rules - Maintainerr</title>
       <div className="w-full">
-        <LibrarySwitcher onSwitch={onSwitchLibrary} />
+        <LibrarySwitcher onLibraryChange={onSwitchLibrary} />
 
         <div className="m-auto mb-3 flex">
           <div className="ml-auto sm:ml-0">

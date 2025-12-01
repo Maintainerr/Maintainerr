@@ -136,7 +136,7 @@ const Overview = () => {
       <title>Overview - Maintainerr</title>
       <div className="w-full">
         {!searchUsed ? (
-          <LibrarySwitcher allPossible={false} onSwitch={switchLib} />
+          <LibrarySwitcher shouldShowAllOption={false} onLibraryChange={switchLib} />
         ) : undefined}
         {selectedLibrary ? (
           <OverviewContent
