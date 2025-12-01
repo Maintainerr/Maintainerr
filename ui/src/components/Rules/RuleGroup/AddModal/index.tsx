@@ -14,10 +14,15 @@ import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
 import { usePlexLibraries } from '../../../../api/plex'
-import { useRuleConstants } from '../../../../api/rules'
+import {
+  RuleGroupCreatePayload,
+  useCreateRuleGroup,
+  useRuleConstants,
+  useUpdateRuleGroup,
+} from '../../../../api/rules'
 import { Application } from '../../../../contexts/constants-context'
 import { ILibrary } from '../../../../contexts/libraries-context'
-import { PostApiHandler, PutApiHandler } from '../../../../utils/ApiHandler'
+import { PostApiHandler } from '../../../../utils/ApiHandler'
 import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
@@ -33,31 +38,6 @@ interface AddModal {
   editData?: IRuleGroup
   onCancel: () => void
   onSuccess: () => void
-}
-
-interface ICreateApiObject {
-  name: string
-  description: string
-  libraryId: number
-  arrAction: number
-  isActive: boolean
-  useRules: boolean
-  listExclusions: boolean
-  forceOverseerr: boolean
-  tautulliWatchedPercentOverride?: number
-  radarrSettingsId?: number
-  sonarrSettingsId?: number
-  collection: {
-    visibleOnRecommended: boolean
-    visibleOnHome: boolean
-    deleteAfterDays?: number
-    manualCollection?: boolean
-    manualCollectionName?: string
-    keepLogsForMonths?: number
-  }
-  rules: IRule[]
-  dataType: EPlexDataType
-  notifications: AgentConfiguration[]
 }
 
 const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
@@ -213,6 +193,9 @@ const AddModal = (props: AddModal) => {
     defaultValues: buildFormDefaults(props.editData),
   })
 
+  const { mutateAsync: createRuleGroup, isError: isCreateError, isPending: isCreatePending } = useCreateRuleGroup()
+  const { mutateAsync: updateRuleGroup, isError: isUpdateError, isPending: isUpdatePending } = useUpdateRuleGroup()
+
   const selectedLibraryId = watch('libraryId') ?? ''
   const selectedType = watch('dataType') ?? ''
   const selectedLibraryType: undefined | 'movie' | 'show' = selectedType
@@ -248,7 +231,6 @@ const AddModal = (props: AddModal) => {
       ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
       : [],
   )
-  const [error, setError] = useState<boolean>(false)
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const ruleCreatorVersion = useRef<number>(1)
 
@@ -393,7 +375,7 @@ const AddModal = (props: AddModal) => {
     props.onCancel()
   }
 
-  const onSubmit = (data: RuleGroupFormOutput) => {
+  const onSubmit = async (data: RuleGroupFormOutput) => {
     if (data.useRules && rules.length === 0) {
       setFormIncomplete(true)
       return
@@ -401,7 +383,7 @@ const AddModal = (props: AddModal) => {
 
     setFormIncomplete(false)
 
-    const creationObj: ICreateApiObject = {
+    const creationObj: RuleGroupCreatePayload = {
       name: data.name,
       description: data.description ?? '',
       libraryId: +data.libraryId,
@@ -430,24 +412,19 @@ const AddModal = (props: AddModal) => {
       notifications: configuredNotificationConfigurations,
     }
 
-    if (!props.editData) {
-      PostApiHandler('/rules', creationObj)
-        .then((resp) => {
-          if (resp.code === 1) props.onSuccess()
-          else setError(true)
-        })
-        .catch(() => {
-          setError(true)
-        })
-    } else {
-      PutApiHandler('/rules', { id: props.editData?.id, ...creationObj })
-        .then((resp) => {
-          if (resp.code === 1) props.onSuccess()
-          else setError(true)
-        })
-        .catch(() => {
-          setError(true)
-        })
+    try {
+      if (props.editData) {
+        await updateRuleGroup({
+            id: props.editData.id,
+            ...creationObj,
+          })
+      } else {
+        await createRuleGroup(creationObj)
+      }
+
+      props.onSuccess()
+    } catch (mutationError) {
+      console.error('Failed to save rule group', mutationError)
     }
   }
 
@@ -478,12 +455,13 @@ const AddModal = (props: AddModal) => {
           </div>
         </div>
 
-        {error ? (
+        {(isCreateError || isUpdateError) && (
           <Alert>
             Something went wrong saving the group.. Please verify that all
             values are valid
           </Alert>
-        ) : undefined}
+        )}
+
         {formIncomplete ? (
           <Alert>
             Not all required (*) fields contain values and at least 1 valid rule
@@ -1168,6 +1146,7 @@ const AddModal = (props: AddModal) => {
               <button
                 className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
                 type="submit"
+                disabled={isCreatePending || isUpdatePending}
               >
                 {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
@@ -1179,6 +1158,7 @@ const AddModal = (props: AddModal) => {
                 className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
                 onClick={cancel}
                 type="button"
+                disabled={isCreatePending || isUpdatePending}
               >
                 {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
