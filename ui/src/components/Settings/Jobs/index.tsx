@@ -1,10 +1,10 @@
 import { SaveIcon } from '@heroicons/react/solid'
 import { isValidCron } from 'cron-validator'
 import { useRef, useState } from 'react'
-import { usePatchSettings, useSettings } from '../../../api/settings'
+import { useSettingsOutletContext } from '..'
+import { usePatchSettings } from '../../../api/settings'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
-import LoadingSpinner from '../../Common/LoadingSpinner'
 
 const JobSettings = () => {
   const rulehanderRef = useRef<HTMLInputElement>(null)
@@ -18,7 +18,7 @@ const JobSettings = () => {
     isPending: updateSettingsPending,
     isSuccess: updateSettingsSuccess,
   } = usePatchSettings()
-  const { data: settings, isLoading } = useSettings()
+  const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -39,15 +39,6 @@ const JobSettings = () => {
     } else {
       setMissingValuesError(true)
     }
-  }
-
-  if (isLoading || !settings) {
-    return (
-      <>
-        <title>Job settings - Maintainerr</title>
-        <LoadingSpinner />
-      </>
-    )
   }
 
   return (

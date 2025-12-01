@@ -1,13 +1,17 @@
-import { ReactNode } from 'react'
-import { Outlet } from 'react-router-dom'
-import { useSettings } from '../../api/settings'
+import { Outlet, useOutletContext } from 'react-router-dom'
+import { useSettings, type UseSettingsResult } from '../../api/settings'
 import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from './Tabs'
 
-const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
-  children?: ReactNode
-}) => {
+export type SettingsOutletContext = {
+  settings: NonNullable<UseSettingsResult['data']>
+}
+
+export const useSettingsOutletContext = () =>
+  useOutletContext<SettingsOutletContext>()
+
+const SettingsWrapper = () => {
   const { data: settings, isLoading, error } = useSettings()
 
   const settingsRoutes: SettingsRoute[] = [
@@ -83,9 +87,12 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
 
   if (isLoading) {
     return (
-      <div className="mt-6">
+      <>
+        <div className="mt-6">
+          <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={false} />
+        </div>
         <LoadingSpinner />
-      </div>
+      </>
     )
   }
 
@@ -98,9 +105,13 @@ const SettingsWrapper: React.FC<{ children?: ReactNode }> = (props: {
             allEnabled={settings.plex_auth_token !== null}
           />
         </div>
-        <div className="mt-10 text-white">{props.children || <Outlet />}</div>
+        <div className="mt-10 text-white">
+          <Outlet context={{ settings }} />
+        </div>
       </>
     )
   }
+
+  return null
 }
 export default SettingsWrapper

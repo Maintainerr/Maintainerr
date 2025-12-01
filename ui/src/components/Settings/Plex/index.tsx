@@ -4,17 +4,16 @@ import axios from 'axios'
 import { orderBy } from 'lodash-es'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
+import { useSettingsOutletContext } from '..'
 import {
-  useDeletePlexAuth,
-  usePatchSettings,
-  useSettings,
-  useUpdatePlexAuth,
+    useDeletePlexAuth,
+    usePatchSettings,
+    useUpdatePlexAuth,
 } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import LoadingSpinner from '../../Common/LoadingSpinner'
 import TestButton from '../../Common/TestButton'
 import PlexLoginButton from '../../Login/Plex'
 
@@ -96,11 +95,7 @@ const PlexSettings = () => {
     isPending: deletePlexAuthPending,
   } = useDeletePlexAuth()
   const { mutateAsync: updatePlexAuth } = useUpdatePlexAuth()
-  const {
-    data: settings,
-    error: settingsError,
-    isLoading: settingsLoading,
-  } = useSettings()
+  const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement> | undefined) => {
     e?.preventDefault()
@@ -261,26 +256,6 @@ const PlexSettings = () => {
     } finally {
       setIsRefreshingPresets(false)
     }
-  }
-
-  if (settingsError) {
-    return (
-      <>
-        <title>Plex settings - Maintainerr</title>
-        <div className="flex">
-          <Alert type="error" title="There was a problem loading settings." />
-        </div>
-      </>
-    )
-  }
-
-  if (settingsLoading || !settings) {
-    return (
-      <>
-        <title>Plex settings - Maintainerr</title>
-        <LoadingSpinner />
-      </>
-    )
   }
 
   return (

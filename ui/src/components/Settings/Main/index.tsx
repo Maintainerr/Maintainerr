@@ -1,17 +1,17 @@
 import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
 import React, { useRef, useState } from 'react'
-import { usePatchSettings, useSettings } from '../../../api/settings'
+import { useSettingsOutletContext } from '..'
+import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import LoadingSpinner from '../../Common/LoadingSpinner'
 
 const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
   const apiKeyRef = useRef<HTMLInputElement>(null)
   const [missingValuesError, setMissingValuesError] = useState<boolean>()
-  const { data: settings, isLoading, isError } = useSettings()
+  const { settings } = useSettingsOutletContext()
   const {
     mutateAsync: updateSettings,
     isSuccess,
@@ -41,15 +41,6 @@ const MainSettings = () => {
     })
   }
 
-  if (isLoading || !settings) {
-    return (
-      <>
-        <title>General settings - Maintainerr</title>
-        <LoadingSpinner />
-      </>
-    )
-  }
-
   return (
     <>
       <title>General settings - Maintainerr</title>
@@ -60,13 +51,6 @@ const MainSettings = () => {
         </div>
         {missingValuesError && (
           <Alert type="error" title="Not all fields contain values" />
-        )}
-
-        {isError && (
-          <Alert
-            type="error"
-            title="Something went wrong, please check your values"
-          />
         )}
 
         {isSuccess && (
