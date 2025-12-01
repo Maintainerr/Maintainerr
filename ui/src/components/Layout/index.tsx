@@ -108,7 +108,9 @@ const Layout: React.FC = () => {
   )
 }
 
-const describeRouteError = (error: unknown): { title: string; message: string } => {
+const describeRouteError = (
+  error: unknown,
+): { title: string; message: string } => {
   if (!error) {
     return {
       title: 'Unknown error',
@@ -120,7 +122,7 @@ const describeRouteError = (error: unknown): { title: string; message: string } 
     const dataMessage =
       typeof error.data === 'string'
         ? error.data
-        : error.data?.message ?? error.data?.error
+        : (error.data?.message ?? error.data?.error)
 
     return {
       title: `${error.status} ${error.statusText}`.trim(),
@@ -155,8 +157,8 @@ export const LayoutErrorBoundary: React.FC = () => {
         <h2 className="text-lg font-semibold text-red-200">{title}</h2>
         <p className="mt-2 text-sm text-red-100">{message}</p>
         <p className="mt-4 text-xs text-red-200/80">
-          You can try going back or reloading the page. If the problem persists, please
-          check the browser console for more details.
+          You can try going back or reloading the page. If the problem persists,
+          please check the browser console for more details.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
