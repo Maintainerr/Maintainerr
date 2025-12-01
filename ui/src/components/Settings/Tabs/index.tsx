@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
 import React, { ReactNode, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 export interface SettingsRoute {
   text: string
@@ -76,6 +76,10 @@ const SettingsTabs: React.FC<{
     }
   }, [allEnabled])
 
+  const currentRoute =
+    settingsRoutes.find((route) => route.regex.test(location.pathname))
+      ?.route ?? ''
+
   return (
     <>
       <div className="sm:hidden">
@@ -83,17 +87,13 @@ const SettingsTabs: React.FC<{
           Select a Tab
         </label>
         <select
+          value={currentRoute}
           onChange={(e) => {
             navigate(e.target.value)
           }}
           onBlur={(e) => {
             navigate(e.target.value)
           }}
-          defaultValue={
-            settingsRoutes.find(
-              (route) => !!location.pathname.match(route.route),
-            )?.route
-          }
           aria-label="Selected Tab"
         >
           {settingsRoutes.map((route, index) => (
