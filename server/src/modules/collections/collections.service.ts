@@ -264,6 +264,7 @@ export class CollectionsService {
           type: collection.type,
           title: collection.title,
           summary: collection?.description,
+          sortTitle: collection?.sortTitle,
         };
         plexCollection = await this.createPlexCollection(collectionObj);
         await this.plexApi.UpdateCollectionSettings({
@@ -365,6 +366,7 @@ export class CollectionsService {
           type: collection.type,
           collectionId: +dbCollection.plexId,
           summary: collection?.description,
+          sortTitle: collection?.sortTitle,
         };
 
         // is the type the same & is it an automatic collection, then update
@@ -568,6 +570,7 @@ export class CollectionsService {
                 type: collection.type,
                 title: collection.title,
                 summary: collection.description,
+                sortTitle: collection.sortTitle,
               });
             }
             if (newColl) {
@@ -971,6 +974,7 @@ export class CollectionsService {
                     : '',
                 sonarrSettingsId: collection.sonarrSettingsId,
                 radarrSettingsId: collection.radarrSettingsId,
+                sortTitle: collection.sortTitle,
               },
             ])
             .execute()

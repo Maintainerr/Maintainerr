@@ -259,6 +259,7 @@ export class RulesService {
           manualCollection: params.collection?.manualCollection,
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
+          sortTitle: params.collection?.sortTitle,
         })
       )?.dbCollection;
 
@@ -390,6 +391,7 @@ export class RulesService {
             manualCollection: params.collection.manualCollection,
             manualCollectionName: params.collection.manualCollectionName,
             keepLogsForMonths: +params.collection.keepLogsForMonths,
+            sortTitle: params.collection?.sortTitle,
           })
         ).dbCollection;
 

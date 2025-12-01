@@ -57,6 +57,7 @@ interface ICreateApiObject {
     manualCollection?: boolean
     manualCollectionName?: string
     keepLogsForMonths?: number
+    sortTitle?: string
   }
   rules: IRule[]
   dataType: EPlexDataType
@@ -87,6 +88,7 @@ const AddModal = (props: AddModal) => {
   const keepLogsForMonthsRef = useRef<any>(undefined)
   const tautulliWatchedPercentOverrideRef = useRef<any>(undefined)
   const manualCollectionNameRef = useRef<any>('My custom collection')
+  const sortTitleRef = useRef<any>(undefined)
   const [showRecommended, setShowRecommended] = useState<boolean>(true)
   const [showHome, setShowHome] = useState<boolean>(true)
   const [listExclusion, setListExclusion] = useState<boolean>(true)
@@ -350,6 +352,10 @@ const AddModal = (props: AddModal) => {
           manualCollection: manualCollection,
           manualCollectionName: manualCollectionNameRef.current.value,
           keepLogsForMonths: +keepLogsForMonthsRef.current.value,
+          sortTitle:
+            sortTitleRef.current && sortTitleRef.current.value !== ''
+              ? sortTitleRef.current.value
+              : undefined,
         },
         rules: useRules ? rules : [],
         notifications: configuredNotificationConfigurations,
@@ -926,6 +932,30 @@ const AddModal = (props: AddModal) => {
                               collection ? collection.keepLogsForMonths : 6
                             }
                             ref={keepLogsForMonthsRef}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-row items-center justify-between py-2 md:py-4">
+                      <label
+                        htmlFor="sort_title"
+                        className="text-label text-left"
+                      >
+                        Sort title
+                        <p className="text-xs font-normal">
+                          Custom sort title for the collection in Plex (optional)
+                        </p>
+                      </label>
+                      <div className="flex justify-end px-2 py-2">
+                        <div className="form-input-field w-full">
+                          <input
+                            type="text"
+                            name="sort_title"
+                            id="sort_title"
+                            placeholder="e.g., 001 My Collection"
+                            defaultValue={collection ? collection.sortTitle : ''}
+                            ref={sortTitleRef}
                           />
                         </div>
                       </div>

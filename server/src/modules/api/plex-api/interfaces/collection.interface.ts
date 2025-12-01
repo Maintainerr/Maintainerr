@@ -17,6 +17,7 @@ export class PlexCollection {
   maxYear: string;
   minYear: string;
   smart?: boolean;
+  sortTitle?: string;
 }
 
 export interface CreateUpdateCollection {
@@ -26,6 +27,7 @@ export interface CreateUpdateCollection {
   title?: string;
   summary?: string;
   child?: string;
+  sortTitle?: string;
 }
 
 export interface PlexPlaylist {

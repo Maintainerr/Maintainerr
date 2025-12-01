@@ -538,7 +538,7 @@ export class PlexApiService {
       });
       const collection: PlexCollection = response.MediaContainer
         .Metadata[0] as PlexCollection;
-      if (params.summary) {
+      if (params.summary || params.sortTitle) {
         params.collectionId = collection.ratingKey;
         return this.updateCollection(params);
       }
@@ -554,14 +554,19 @@ export class PlexApiService {
 
   public async updateCollection(body: CreateUpdateCollection) {
     try {
-      await this.plexClient.putQuery({
-        uri: `/library/sections/${body.libraryId}/all?type=18&id=${
-          body.collectionId
-        }&title.value=${encodeURIComponent(
-          body.title,
-        )}&summary.value=${encodeURIComponent(body.summary)}`,
-        // &titleSort.value=&summary.value=&contentRating.value=&title.locked=1&titleSort.locked=1&contentRating.locked=1`,
-      });
+      let uri = `/library/sections/${body.libraryId}/all?type=18&id=${body.collectionId}`;
+
+      if (body.title) {
+        uri += `&title.value=${encodeURIComponent(body.title)}`;
+      }
+      if (body.summary) {
+        uri += `&summary.value=${encodeURIComponent(body.summary)}`;
+      }
+      if (body.sortTitle) {
+        // Lock sort title so Plex keeps the custom value.
+        uri += `&titleSort.value=${encodeURIComponent(body.sortTitle)}&titleSort.locked=1`;
+      }
+      await this.plexClient.putQuery({ uri });
       return await this.getCollection(+body.collectionId);
     } catch (err) {
       this.logger.warn(

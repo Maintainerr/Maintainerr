@@ -33,6 +33,7 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number
+  sortTitle?: string
 }
 
 export interface ICollectionMedia {
