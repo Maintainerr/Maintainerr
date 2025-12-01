@@ -1,14 +1,24 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash-es'
-import { useContext, useEffect, useState } from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ReactNode, useContext, useEffect, useState } from 'react'
+import {
+  isRouteErrorResponse,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useRouteError,
+} from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
 
-const Layout: React.FC = () => {
+type LayoutShellProps = {
+  children: ReactNode
+}
+
+const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
   const navigate = useNavigate()
@@ -81,12 +91,89 @@ const Layout: React.FC = () => {
                 theme="dark"
                 closeOnClick
               />
-              <Outlet />
+              {children}
             </div>
           </div>
         </main>
       </div>
     </section>
+  )
+}
+
+const Layout: React.FC = () => {
+  return (
+    <LayoutShell>
+      <Outlet />
+    </LayoutShell>
+  )
+}
+
+const describeRouteError = (error: unknown): { title: string; message: string } => {
+  if (!error) {
+    return {
+      title: 'Unknown error',
+      message: 'An unexpected error occurred.',
+    }
+  }
+
+  if (isRouteErrorResponse(error)) {
+    const dataMessage =
+      typeof error.data === 'string'
+        ? error.data
+        : error.data?.message ?? error.data?.error
+
+    return {
+      title: `${error.status} ${error.statusText}`.trim(),
+      message: dataMessage ?? 'The server returned an unexpected response.',
+    }
+  }
+
+  if (error instanceof Error) {
+    return {
+      title: error.name ?? 'Error',
+      message: error.message,
+    }
+  }
+
+  return {
+    title: 'Unexpected error',
+    message: String(error),
+  }
+}
+
+export const LayoutErrorBoundary: React.FC = () => {
+  const error = useRouteError()
+  const navigate = useNavigate()
+  const { title, message } = describeRouteError(error)
+
+  return (
+    <LayoutShell>
+      <div
+        role="alert"
+        className="rounded border border-red-500/60 bg-red-500/10 p-6 text-red-100 shadow-lg"
+      >
+        <h2 className="text-lg font-semibold text-red-200">{title}</h2>
+        <p className="mt-2 text-sm text-red-100">{message}</p>
+        <p className="mt-4 text-xs text-red-200/80">
+          You can try going back or reloading the page. If the problem persists, please
+          check the browser console for more details.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            className="rounded bg-red-500/30 px-4 py-2 text-sm font-medium text-red-50 transition hover:bg-red-500/40 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+            onClick={() => navigate(-1)}
+          >
+            Go Back
+          </button>
+          <button
+            className="rounded bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500/60"
+            onClick={() => navigate('/overview')}
+          >
+            Go To Overview
+          </button>
+        </div>
+      </div>
+    </LayoutShell>
   )
 }
 

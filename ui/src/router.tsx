@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
-import Layout from './components/Layout'
+import Layout, { LayoutErrorBoundary } from './components/Layout'
 import Overview from './components/Overview'
 import Settings from './components/Settings'
 import SettingsAbout from './components/Settings/About'
@@ -13,15 +13,15 @@ import SettingsPlex from './components/Settings/Plex'
 import SettingsRadarr from './components/Settings/Radarr'
 import SettingsSonarr from './components/Settings/Sonarr'
 import SettingsTautulli from './components/Settings/Tautulli'
-import DocsPage from './pages/DocsPage'
-import PlexLoadingPage from './pages/PlexLoadingPage'
-import RulesListPage from './pages/RulesListPage'
-import RuleFormPage from './pages/RuleFormPage'
-import CollectionsListPage from './pages/CollectionsListPage'
 import CollectionDetailPage from './pages/CollectionDetailPage'
-import CollectionMediaPage from './pages/CollectionMediaPage'
 import CollectionExclusionsPage from './pages/CollectionExclusionsPage'
 import CollectionInfoPage from './pages/CollectionInfoPage'
+import CollectionMediaPage from './pages/CollectionMediaPage'
+import CollectionsListPage from './pages/CollectionsListPage'
+import DocsPage from './pages/DocsPage'
+import PlexLoadingPage from './pages/PlexLoadingPage'
+import RuleFormPage from './pages/RuleFormPage'
+import RulesListPage from './pages/RulesListPage'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
 
@@ -30,6 +30,7 @@ export const router = createBrowserRouter(
     {
       path: '/',
       element: <Layout />,
+      errorElement: <LayoutErrorBoundary />,
       children: [
         {
           index: true,
