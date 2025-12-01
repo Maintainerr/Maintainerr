@@ -242,6 +242,13 @@ export class RulesService {
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
+        if (state.code === 1) {
+          state = this.validateRuleServerSelection(
+            rule,
+            params.radarrSettingsId,
+            params.sonarrSettingsId,
+          );
+        }
       }, this);
 
       if (state.code !== 1) {
@@ -335,6 +342,13 @@ export class RulesService {
       params.rules.forEach((rule) => {
         if (state.code === 1) {
           state = this.validateRule(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleServerSelection(
+            rule,
+            params.radarrSettingsId,
+            params.sonarrSettingsId,
+          );
         }
       }, this);
 
@@ -792,6 +806,59 @@ export class RulesService {
       this.logger.debug(e);
       return this.createReturnStatus(false, 'Unexpected error occurred');
     }
+  }
+
+  private validateRuleServerSelection(
+    rule: RuleDto,
+    radarrSettingsId?: number,
+    sonarrSettingsId?: number,
+  ): ReturnStatus {
+    // Check if rule references Radarr (Application.RADARR = 1) without a server
+    if (
+      rule.firstVal[0] === Application.RADARR &&
+      (radarrSettingsId === undefined || radarrSettingsId === null)
+    ) {
+      return this.createReturnStatus(
+        false,
+        'Radarr rules require a Radarr server to be selected',
+      );
+    }
+
+    // Check if rule references Sonarr (Application.SONARR = 2) without a server
+    if (
+      rule.firstVal[0] === Application.SONARR &&
+      (sonarrSettingsId === undefined || sonarrSettingsId === null)
+    ) {
+      return this.createReturnStatus(
+        false,
+        'Sonarr rules require a Sonarr server to be selected',
+      );
+    }
+
+    // Check second value if it exists
+    if (rule.lastVal) {
+      if (
+        rule.lastVal[0] === Application.RADARR &&
+        (radarrSettingsId === undefined || radarrSettingsId === null)
+      ) {
+        return this.createReturnStatus(
+          false,
+          'Radarr rules require a Radarr server to be selected',
+        );
+      }
+
+      if (
+        rule.lastVal[0] === Application.SONARR &&
+        (sonarrSettingsId === undefined || sonarrSettingsId === null)
+      ) {
+        return this.createReturnStatus(
+          false,
+          'Sonarr rules require a Sonarr server to be selected',
+        );
+      }
+    }
+
+    return this.createReturnStatus(true, 'Success');
   }
 
   private createReturnStatus(success: boolean, result: string): ReturnStatus {

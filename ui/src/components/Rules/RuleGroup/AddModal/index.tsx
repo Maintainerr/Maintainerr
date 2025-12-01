@@ -264,6 +264,49 @@ const AddModal = (props: AddModal) => {
     ruleCreatorVersion.current += 1
   }, [props.editData, reset])
 
+  // Filter out Radarr/Sonarr rules when servers are deselected
+  useEffect(() => {
+    const filteredRules = rules.filter((rule) => {
+      const appId = rule.firstVal[0]
+      // Filter out Radarr rules if no Radarr server is selected
+      if (
+        +appId === 1 &&
+        (radarrSettingsId === undefined || radarrSettingsId === null)
+      ) {
+        return false
+      }
+      // Filter out Sonarr rules if no Sonarr server is selected
+      if (
+        +appId === 2 &&
+        (sonarrSettingsId === undefined || sonarrSettingsId === null)
+      ) {
+        return false
+      }
+      // Also check secondVal if it references an application
+      if (rule.lastVal) {
+        const secondAppId = rule.lastVal[0]
+        if (
+          +secondAppId === 1 &&
+          (radarrSettingsId === undefined || radarrSettingsId === null)
+        ) {
+          return false
+        }
+        if (
+          +secondAppId === 2 &&
+          (sonarrSettingsId === undefined || sonarrSettingsId === null)
+        ) {
+          return false
+        }
+      }
+      return true
+    })
+
+    if (filteredRules.length !== rules.length) {
+      setRules(filteredRules)
+      ruleCreatorVersion.current += 1
+    }
+  }, [radarrSettingsId, sonarrSettingsId])
+
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
   const overseerrEnabled =
@@ -1143,6 +1186,8 @@ const AddModal = (props: AddModal) => {
                   }
                   dataType={+selectedType as EPlexDataType}
                   editData={{ rules: rules }}
+                  radarrSettingsId={radarrSettingsId}
+                  sonarrSettingsId={sonarrSettingsId}
                   onCancel={cancel}
                   onUpdate={updateRules}
                 />

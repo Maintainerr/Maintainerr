@@ -31,6 +31,8 @@ interface iRuleCreator {
   editData?: { rules: IRule[] }
   onUpdate: (rules: IRule[]) => void
   onCancel: () => void
+  radarrSettingsId?: number | null
+  sonarrSettingsId?: number | null
 }
 
 const calculateRuleAmount = (
@@ -250,6 +252,8 @@ const RuleCreator = (props: iRuleCreator) => {
                         newlyAdded={added.current}
                         mediaType={props.mediaType}
                         dataType={props.dataType}
+                        radarrSettingsId={props.radarrSettingsId}
+                        sonarrSettingsId={props.sonarrSettingsId}
                         onCommit={ruleCommited}
                         onIncomplete={ruleOmitted}
                         onDelete={ruleDeleted}
