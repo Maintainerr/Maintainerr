@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
   Put,
@@ -100,6 +101,47 @@ export class RulesController {
     }
 
     this.ruleExecutorService.execute().catch((e) => console.error(e));
+  }
+
+  @Post('/:id/execute')
+  @HttpCode(202)
+  @ApiResponse({
+    status: 202,
+    description: 'The rule group execution has been initiated.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Rule group not found.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'The rule executor is already running.',
+  })
+  async executeRuleGroup(@Param('id') id: string, @Res() res: Response) {
+    const ruleGroupId = Number(id);
+
+    if (Number.isNaN(ruleGroupId)) {
+      throw new NotFoundException('Rule group not found');
+    }
+
+    const ruleGroup = await this.rulesService.getRuleGroupById(ruleGroupId);
+
+    if (!ruleGroup) {
+      throw new NotFoundException('Rule group not found');
+    }
+
+    if (await this.ruleExecutorService.isRunning()) {
+      throw new HttpException(
+        'The rule executor is already running',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    this.ruleExecutorService
+      .executeRuleGroup(ruleGroupId)
+      .catch((e) => console.error(e));
+
+    res.status(HttpStatus.ACCEPTED).send();
   }
 
   @Post('/execute/stop')

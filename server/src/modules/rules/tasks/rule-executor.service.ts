@@ -48,6 +48,7 @@ export class RuleExecutorService extends TaskBase {
   resultData: PlexLibraryItem[];
   statisticsData: IComparisonStatistics[];
   Data: PlexLibraryItem[];
+  private ruleGroupOverrides?: number[];
 
   startTime: Date;
 
@@ -71,27 +72,52 @@ export class RuleExecutorService extends TaskBase {
     this.cronSchedule = this.settings.rules_handler_job_cron;
   }
 
-  protected async executeTask(abortSignal: AbortSignal) {
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandler_Started,
-      new RuleHandlerStartedEventDto('Started execution of all active rules'),
-    );
+  public async executeRuleGroup(ruleGroupId: number) {
+    this.ruleGroupOverrides = [ruleGroupId];
 
     try {
-      this.logger.log('Starting execution of all active rules');
+      await this.execute();
+    } finally {
+      this.ruleGroupOverrides = undefined;
+    }
+  }
+
+  protected async executeTask(abortSignal: AbortSignal) {
+    let executionScopeDescription = 'all active rules';
+
+    try {
+      const ruleGroups = await this.getRuleGroupsForExecution();
+      executionScopeDescription =
+        this.buildExecutionScopeDescription(ruleGroups);
+
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandler_Started,
+        new RuleHandlerStartedEventDto(
+          `Started execution of ${executionScopeDescription}`,
+        ),
+      );
+
+      if (executionScopeDescription === 'all active rules') {
+        this.logger.log('Starting execution of all active rules');
+      } else {
+        this.logger.log(`Starting execution of ${executionScopeDescription}`);
+      }
+
       const appStatus = await this.settings.testConnections();
 
       // reset API caches, make sure latest data is used
       cacheManager.flushAll();
 
       if (appStatus) {
-        const ruleGroups = await this.getAllActiveRuleGroups();
-        if (ruleGroups) {
+        if (ruleGroups.length > 0) {
           const comparator = this.comparatorFactory.create();
 
           let totalEvaluations = 0;
-          const ruleGroupTotals: { [key: string]: number } = {};
+          const ruleGroupTotals: Record<number, number> = {};
           for (const rulegroup of ruleGroups) {
+            if (rulegroup.id === undefined) {
+              continue;
+            }
             const mediaItemCount = await this.plexApi.getLibraryContentCount(
               rulegroup.libraryId,
               rulegroup.dataType,
@@ -115,12 +141,16 @@ export class RuleExecutorService extends TaskBase {
           for (let i = 0; i < ruleGroups.length; i++) {
             const rulegroup = ruleGroups[i];
 
+            if (rulegroup.id === undefined) {
+              continue;
+            }
+
             progressedEvent.processingRuleGroup = {
               name: rulegroup.name,
               number: i + 1,
               processedEvaluations: 0,
               totalEvaluations:
-                ruleGroupTotals[rulegroup.id] * rulegroup.rules.length,
+                (ruleGroupTotals[rulegroup.id] ?? 0) * rulegroup.rules.length,
             };
             emitProgressedEvent();
 
@@ -178,6 +208,10 @@ export class RuleExecutorService extends TaskBase {
               await this.rulesService.getRuleGroupById(rulegroup.id), // refetch to get latest changes
             );
           }
+        } else {
+          this.logger.log(
+            'No rule groups available for execution. Skipping run.',
+          );
         }
       } else {
         this.logger.log(
@@ -199,7 +233,9 @@ export class RuleExecutorService extends TaskBase {
 
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Finished,
-      new RuleHandlerFinishedEventDto('Finished execution of all active rules'),
+      new RuleHandlerFinishedEventDto(
+        `Finished execution of ${executionScopeDescription}`,
+      ),
     );
   }
 
@@ -454,6 +490,36 @@ export class RuleExecutorService extends TaskBase {
         }),
       );
     }
+  }
+
+  private async getRuleGroupsForExecution(): Promise<RulesDto[]> {
+    if (this.ruleGroupOverrides && this.ruleGroupOverrides.length > 0) {
+      const ruleGroups = await this.rulesService.getRuleGroups(false);
+      if (!ruleGroups) {
+        return [];
+      }
+
+      return ruleGroups.filter(
+        (group) =>
+          group.id !== undefined &&
+          this.ruleGroupOverrides?.includes(group.id) === true,
+      );
+    }
+
+    const ruleGroups = await this.getAllActiveRuleGroups();
+    return ruleGroups ?? [];
+  }
+
+  private buildExecutionScopeDescription(ruleGroups: RulesDto[]): string {
+    if (this.ruleGroupOverrides && this.ruleGroupOverrides.length > 0) {
+      if (ruleGroups.length === 1) {
+        return `rule group '${ruleGroups[0].name}'`;
+      }
+
+      return 'selected rule groups';
+    }
+
+    return 'all active rules';
   }
 
   private async getAllActiveRuleGroups(): Promise<RulesDto[]> {
