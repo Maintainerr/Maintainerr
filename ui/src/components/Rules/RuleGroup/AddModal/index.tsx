@@ -270,14 +270,14 @@ const AddModal = (props: AddModal) => {
       const appId = rule.firstVal[0]
       // Filter out Radarr rules if no Radarr server is selected
       if (
-        +appId === 1 &&
+        +appId === Application.RADARR &&
         (radarrSettingsId === undefined || radarrSettingsId === null)
       ) {
         return false
       }
       // Filter out Sonarr rules if no Sonarr server is selected
       if (
-        +appId === 2 &&
+        +appId === Application.SONARR &&
         (sonarrSettingsId === undefined || sonarrSettingsId === null)
       ) {
         return false
@@ -286,13 +286,13 @@ const AddModal = (props: AddModal) => {
       if (rule.lastVal) {
         const secondAppId = rule.lastVal[0]
         if (
-          +secondAppId === 1 &&
+          +secondAppId === Application.RADARR &&
           (radarrSettingsId === undefined || radarrSettingsId === null)
         ) {
           return false
         }
         if (
-          +secondAppId === 2 &&
+          +secondAppId === Application.SONARR &&
           (sonarrSettingsId === undefined || sonarrSettingsId === null)
         ) {
           return false
@@ -305,7 +305,7 @@ const AddModal = (props: AddModal) => {
       setRules(filteredRules)
       ruleCreatorVersion.current += 1
     }
-  }, [radarrSettingsId, sonarrSettingsId])
+  }, [radarrSettingsId, sonarrSettingsId, rules])
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false

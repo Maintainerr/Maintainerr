@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { IRule } from '../'
 import { useRuleConstants } from '../../../../../api/rules'
 import {
+  Application,
   IProperty,
   MediaType,
   RulePossibility,
@@ -387,7 +388,7 @@ const RuleInput = (props: IRuleInput) => {
               ?.filter((app) => {
                 // Filter out Radarr if no Radarr server is selected
                 if (
-                  app.id === 1 &&
+                  app.id === Application.RADARR &&
                   (props.radarrSettingsId === undefined ||
                     props.radarrSettingsId === null)
                 ) {
@@ -395,7 +396,7 @@ const RuleInput = (props: IRuleInput) => {
                 }
                 // Filter out Sonarr if no Sonarr server is selected
                 if (
-                  app.id === 2 &&
+                  app.id === Application.SONARR &&
                   (props.sonarrSettingsId === undefined ||
                     props.sonarrSettingsId === null)
                 ) {
@@ -498,7 +499,7 @@ const RuleInput = (props: IRuleInput) => {
               ?.filter((app) => {
                 // Filter out Radarr if no Radarr server is selected
                 if (
-                  app.id === 1 &&
+                  app.id === Application.RADARR &&
                   (props.radarrSettingsId === undefined ||
                     props.radarrSettingsId === null)
                 ) {
@@ -506,7 +507,7 @@ const RuleInput = (props: IRuleInput) => {
                 }
                 // Filter out Sonarr if no Sonarr server is selected
                 if (
-                  app.id === 2 &&
+                  app.id === Application.SONARR &&
                   (props.sonarrSettingsId === undefined ||
                     props.sonarrSettingsId === null)
                 ) {
