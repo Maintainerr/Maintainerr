@@ -10,7 +10,10 @@ import type { IRule } from '../components/Rules/Rule/RuleCreator'
 import type { IRuleGroup } from '../components/Rules/RuleGroup'
 import { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
 import { IConstants } from '../contexts/constants-context'
-import GetApiHandler, { PostApiHandler, PutApiHandler } from '../utils/ApiHandler'
+import GetApiHandler, {
+  PostApiHandler,
+  PutApiHandler,
+} from '../utils/ApiHandler'
 import { EPlexDataType } from '../utils/PlexDataType-enum'
 
 export interface RuleGroupCollectionPayload {
@@ -102,7 +105,7 @@ export const useCreateRuleGroup = (options?: UseCreateRuleGroupOptions) => {
   return useMutation<BasicResponseDto, Error, RuleGroupCreatePayload>({
     mutationKey: ['rules', 'groups', 'create'],
     mutationFn: async (payload) => {
-      const response =  await PostApiHandler<BasicResponseDto>('/rules', payload)
+      const response = await PostApiHandler<BasicResponseDto>('/rules', payload)
 
       if (response.code !== 1) {
         throw new Error(response.message ?? 'Failed to create rule group')
@@ -137,7 +140,11 @@ export const useUpdateRuleGroup = (options?: UseUpdateRuleGroupOptions) => {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: (['rules', 'group', String(variables.id)] satisfies UseRuleGroupQueryKey),
+        queryKey: [
+          'rules',
+          'group',
+          String(variables.id),
+        ] satisfies UseRuleGroupQueryKey,
       })
     },
     ...options,

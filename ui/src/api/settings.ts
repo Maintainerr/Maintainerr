@@ -71,7 +71,9 @@ export const usePatchSettings = (options?: UsePatchSettingsOptions) => {
       return await PatchApiHandler<BasicResponseDto>('/settings', payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: (['settings'] satisfies UseSettingsQueryKey) })
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
     },
     ...options,
   })
@@ -93,7 +95,9 @@ export const useDeletePlexAuth = (options?: UseDeletePlexAuthOptions) => {
       return await DeleteApiHandler<BasicResponseDto>('/settings/plex/auth')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: (['settings'] satisfies UseSettingsQueryKey) })
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
     },
     ...options,
   })
@@ -117,7 +121,9 @@ export const useUpdatePlexAuth = (options?: UseUpdatePlexAuthOptions) => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: (['settings'] satisfies UseSettingsQueryKey) })
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
     },
     ...options,
   })

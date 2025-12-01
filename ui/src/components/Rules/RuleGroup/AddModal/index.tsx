@@ -193,8 +193,16 @@ const AddModal = (props: AddModal) => {
     defaultValues: buildFormDefaults(props.editData),
   })
 
-  const { mutateAsync: createRuleGroup, isError: isCreateError, isPending: isCreatePending } = useCreateRuleGroup()
-  const { mutateAsync: updateRuleGroup, isError: isUpdateError, isPending: isUpdatePending } = useUpdateRuleGroup()
+  const {
+    mutateAsync: createRuleGroup,
+    isError: isCreateError,
+    isPending: isCreatePending,
+  } = useCreateRuleGroup()
+  const {
+    mutateAsync: updateRuleGroup,
+    isError: isUpdateError,
+    isPending: isUpdatePending,
+  } = useUpdateRuleGroup()
 
   const selectedLibraryId = watch('libraryId') ?? ''
   const selectedType = watch('dataType') ?? ''
@@ -415,9 +423,9 @@ const AddModal = (props: AddModal) => {
     try {
       if (props.editData) {
         await updateRuleGroup({
-            id: props.editData.id,
-            ...creationObj,
-          })
+          id: props.editData.id,
+          ...creationObj,
+        })
       } else {
         await createRuleGroup(creationObj)
       }
