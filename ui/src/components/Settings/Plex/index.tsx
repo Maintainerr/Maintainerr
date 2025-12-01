@@ -6,9 +6,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useSettingsOutletContext } from '..'
 import {
-    useDeletePlexAuth,
-    usePatchSettings,
-    useUpdatePlexAuth,
+  useDeletePlexAuth,
+  usePatchSettings,
+  useUpdatePlexAuth,
 } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'

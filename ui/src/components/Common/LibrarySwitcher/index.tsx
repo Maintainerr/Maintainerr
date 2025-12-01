@@ -23,7 +23,10 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
     if (shouldShowAllOption === false) {
       const firstKey = Number(plexLibraries[0].key)
 
-      if (!Number.isNaN(firstKey) && lastAutoSelectedLibraryKey.current !== firstKey) {
+      if (
+        !Number.isNaN(firstKey) &&
+        lastAutoSelectedLibraryKey.current !== firstKey
+      ) {
         lastAutoSelectedLibraryKey.current = firstKey
         onLibraryChange(firstKey)
       }
@@ -40,7 +43,8 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
             onChange={onSwitchLibrary}
           >
-            {props.shouldShowAllOption === undefined || props.shouldShowAllOption ? (
+            {props.shouldShowAllOption === undefined ||
+            props.shouldShowAllOption ? (
               <option value={9999}>All</option>
             ) : undefined}
             {plexLibraries?.map((el) => {
