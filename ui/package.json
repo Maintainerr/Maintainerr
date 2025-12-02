@@ -22,7 +22,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.90.11",
     "axios": "^1.13.2",
-    "bowser": "^2.13.0",
+    "bowser": "^2.13.1",
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",
     "cron-validator": "^1.4.0",
