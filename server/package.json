@@ -71,7 +71,7 @@
     "@suites/unit": "^3.0.1",
     "@types/email-templates": "^10.0.4",
     "@types/jest": "^30.0.0",
-    "@types/lodash": "^4.17.20",
+    "@types/lodash": "^4.17.21",
     "@types/mime-types": "^3",
     "@types/node": "^22",
     "@types/xml2js": "^0.4.14",
