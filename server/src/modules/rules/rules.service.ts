@@ -808,14 +808,14 @@ export class RulesService {
     }
   }
 
-  private validateRuleServerSelection(
-    rule: RuleDto,
-    radarrSettingsId?: number,
-    sonarrSettingsId?: number,
-  ): ReturnStatus {
-    // Check if rule references Radarr (Application.RADARR = 1) without a server
+  private validateApplicationServerSelection(
+    appId: number,
+    radarrSettingsId: number | undefined,
+    sonarrSettingsId: number | undefined,
+  ): ReturnStatus | null {
+    // Check if rule references Radarr without a server
     if (
-      rule.firstVal[0] === Application.RADARR &&
+      appId === Application.RADARR &&
       (radarrSettingsId === undefined || radarrSettingsId === null)
     ) {
       return this.createReturnStatus(
@@ -824,9 +824,9 @@ export class RulesService {
       );
     }
 
-    // Check if rule references Sonarr (Application.SONARR = 2) without a server
+    // Check if rule references Sonarr without a server
     if (
-      rule.firstVal[0] === Application.SONARR &&
+      appId === Application.SONARR &&
       (sonarrSettingsId === undefined || sonarrSettingsId === null)
     ) {
       return this.createReturnStatus(
@@ -835,26 +835,33 @@ export class RulesService {
       );
     }
 
+    return null;
+  }
+
+  private validateRuleServerSelection(
+    rule: RuleDto,
+    radarrSettingsId?: number,
+    sonarrSettingsId?: number,
+  ): ReturnStatus {
+    // Check first value
+    const firstValResult = this.validateApplicationServerSelection(
+      rule.firstVal[0],
+      radarrSettingsId,
+      sonarrSettingsId,
+    );
+    if (firstValResult) {
+      return firstValResult;
+    }
+
     // Check second value if it exists
     if (rule.lastVal) {
-      if (
-        rule.lastVal[0] === Application.RADARR &&
-        (radarrSettingsId === undefined || radarrSettingsId === null)
-      ) {
-        return this.createReturnStatus(
-          false,
-          'Radarr rules require a Radarr server to be selected',
-        );
-      }
-
-      if (
-        rule.lastVal[0] === Application.SONARR &&
-        (sonarrSettingsId === undefined || sonarrSettingsId === null)
-      ) {
-        return this.createReturnStatus(
-          false,
-          'Sonarr rules require a Sonarr server to be selected',
-        );
+      const lastValResult = this.validateApplicationServerSelection(
+        rule.lastVal[0],
+        radarrSettingsId,
+        sonarrSettingsId,
+      );
+      if (lastValResult) {
+        return lastValResult;
       }
     }
 

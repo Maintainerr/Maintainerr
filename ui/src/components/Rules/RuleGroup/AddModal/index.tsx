@@ -272,10 +272,10 @@ const AddModal = (props: AddModal) => {
       radarrId: number | null | undefined,
       sonarrId: number | null | undefined,
     ): boolean => {
-      if (+appId === Application.RADARR && (radarrId === undefined || radarrId === null)) {
+      if (appId === Application.RADARR && (radarrId === undefined || radarrId === null)) {
         return true
       }
-      if (+appId === Application.SONARR && (sonarrId === undefined || sonarrId === null)) {
+      if (appId === Application.SONARR && (sonarrId === undefined || sonarrId === null)) {
         return true
       }
       return false
