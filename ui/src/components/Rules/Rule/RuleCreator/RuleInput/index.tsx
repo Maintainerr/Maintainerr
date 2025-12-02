@@ -411,12 +411,13 @@ const RuleInput = (props: IRuleInput) => {
               Select First Value...
             </option>
             {constants.applications
-              ?.filter((app) =>
-                !shouldFilterApplication(
-                  app.id,
-                  props.radarrSettingsId,
-                  props.sonarrSettingsId,
-                ),
+              ?.filter(
+                (app) =>
+                  !shouldFilterApplication(
+                    app.id,
+                    props.radarrSettingsId,
+                    props.sonarrSettingsId,
+                  ),
               )
               .map((app) =>
                 app.mediaType === MediaType.BOTH ||
@@ -510,12 +511,13 @@ const RuleInput = (props: IRuleInput) => {
               <MaybeTextListOptions ruleType={ruleType} action={action} />
             </optgroup>
             {constants.applications
-              ?.filter((app) =>
-                !shouldFilterApplication(
-                  app.id,
-                  props.radarrSettingsId,
-                  props.sonarrSettingsId,
-                ),
+              ?.filter(
+                (app) =>
+                  !shouldFilterApplication(
+                    app.id,
+                    props.radarrSettingsId,
+                    props.sonarrSettingsId,
+                  ),
               )
               .map((app) => {
                 return (app.mediaType === MediaType.BOTH ||

@@ -272,10 +272,16 @@ const AddModal = (props: AddModal) => {
       radarrId: number | null | undefined,
       sonarrId: number | null | undefined,
     ): boolean => {
-      if (appId === Application.RADARR && (radarrId === undefined || radarrId === null)) {
+      if (
+        appId === Application.RADARR &&
+        (radarrId === undefined || radarrId === null)
+      ) {
         return true
       }
-      if (appId === Application.SONARR && (sonarrId === undefined || sonarrId === null)) {
+      if (
+        appId === Application.SONARR &&
+        (sonarrId === undefined || sonarrId === null)
+      ) {
         return true
       }
       return false
@@ -284,11 +290,16 @@ const AddModal = (props: AddModal) => {
     setRules((prevRules) => {
       const filteredRules = prevRules.filter((rule) => {
         // Check first value
-        if (shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)) {
+        if (
+          shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)
+        ) {
           return false
         }
         // Check second value if it exists
-        if (rule.lastVal && shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)) {
+        if (
+          rule.lastVal &&
+          shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)
+        ) {
           return false
         }
         return true
