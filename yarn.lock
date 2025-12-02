@@ -1459,6 +1459,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@eslint/eslintrc@npm:^3.3.3":
+  version: 3.3.3
+  resolution: "@eslint/eslintrc@npm:3.3.3"
+  dependencies:
+    ajv: "npm:^6.12.4"
+    debug: "npm:^4.3.2"
+    espree: "npm:^10.0.1"
+    globals: "npm:^14.0.0"
+    ignore: "npm:^5.2.0"
+    import-fresh: "npm:^3.2.1"
+    js-yaml: "npm:^4.1.1"
+    minimatch: "npm:^3.1.2"
+    strip-json-comments: "npm:^3.1.1"
+  checksum: 10c0/532c7acc7ddd042724c28b1f020bd7bf148fcd4653bb44c8314168b5f772508c842ce4ee070299cac51c5c5757d2124bdcfcef5551c8c58ff9986e3e17f2260d
+  languageName: node
+  linkType: hard
+
 "@eslint/js@npm:9.39.1, @eslint/js@npm:^9.39.1":
   version: 9.39.1
   resolution: "@eslint/js@npm:9.39.1"
@@ -2883,7 +2900,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@maintainerr/server@workspace:server"
   dependencies:
-    "@eslint/eslintrc": "npm:^3.3.1"
+    "@eslint/eslintrc": "npm:^3.3.3"
     "@eslint/js": "npm:^9.39.1"
     "@faker-js/faker": "npm:^9.8.0"
     "@maintainerr/contracts": "workspace:^"
@@ -2952,7 +2969,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@maintainerr/ui@workspace:ui"
   dependencies:
-    "@eslint/eslintrc": "npm:^3.3.1"
+    "@eslint/eslintrc": "npm:^3.3.3"
     "@eslint/js": "npm:^9.39.1"
     "@headlessui/react": "npm:^2.2.9"
     "@heroicons/react": "npm:^1.0.6"
