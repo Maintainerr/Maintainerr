@@ -266,46 +266,42 @@ const AddModal = (props: AddModal) => {
 
   // Filter out Radarr/Sonarr rules when servers are deselected
   useEffect(() => {
-    const filteredRules = rules.filter((rule) => {
-      const appId = rule.firstVal[0]
-      // Filter out Radarr rules if no Radarr server is selected
-      if (
-        +appId === Application.RADARR &&
-        (radarrSettingsId === undefined || radarrSettingsId === null)
-      ) {
-        return false
+    // Helper function to check if an app should be filtered
+    const shouldFilterApp = (
+      appId: number,
+      radarrId: number | null | undefined,
+      sonarrId: number | null | undefined,
+    ): boolean => {
+      if (+appId === Application.RADARR && (radarrId === undefined || radarrId === null)) {
+        return true
       }
-      // Filter out Sonarr rules if no Sonarr server is selected
-      if (
-        +appId === Application.SONARR &&
-        (sonarrSettingsId === undefined || sonarrSettingsId === null)
-      ) {
-        return false
+      if (+appId === Application.SONARR && (sonarrId === undefined || sonarrId === null)) {
+        return true
       }
-      // Also check secondVal if it references an application
-      if (rule.lastVal) {
-        const secondAppId = rule.lastVal[0]
-        if (
-          +secondAppId === Application.RADARR &&
-          (radarrSettingsId === undefined || radarrSettingsId === null)
-        ) {
-          return false
-        }
-        if (
-          +secondAppId === Application.SONARR &&
-          (sonarrSettingsId === undefined || sonarrSettingsId === null)
-        ) {
-          return false
-        }
-      }
-      return true
-    })
-
-    if (filteredRules.length !== rules.length) {
-      setRules(filteredRules)
-      ruleCreatorVersion.current += 1
+      return false
     }
-  }, [radarrSettingsId, sonarrSettingsId, rules])
+
+    setRules((prevRules) => {
+      const filteredRules = prevRules.filter((rule) => {
+        // Check first value
+        if (shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)) {
+          return false
+        }
+        // Check second value if it exists
+        if (rule.lastVal && shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)) {
+          return false
+        }
+        return true
+      })
+
+      // Only update if rules actually changed
+      if (filteredRules.length !== prevRules.length) {
+        ruleCreatorVersion.current += 1
+        return filteredRules
+      }
+      return prevRules
+    })
+  }, [radarrSettingsId, sonarrSettingsId])
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false

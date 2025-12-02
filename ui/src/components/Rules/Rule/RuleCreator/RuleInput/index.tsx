@@ -50,6 +50,32 @@ interface IRuleInput {
   sonarrSettingsId?: number | null
 }
 
+/**
+ * Helper function to determine if an application should be filtered out
+ * based on server selection
+ */
+const shouldFilterApplication = (
+  appId: number,
+  radarrSettingsId: number | null | undefined,
+  sonarrSettingsId: number | null | undefined,
+): boolean => {
+  // Filter out Radarr if no Radarr server is selected
+  if (
+    appId === Application.RADARR &&
+    (radarrSettingsId === undefined || radarrSettingsId === null)
+  ) {
+    return true
+  }
+  // Filter out Sonarr if no Sonarr server is selected
+  if (
+    appId === Application.SONARR &&
+    (sonarrSettingsId === undefined || sonarrSettingsId === null)
+  ) {
+    return true
+  }
+  return false
+}
+
 const RuleInput = (props: IRuleInput) => {
   const [operator, setOperator] = useState<string>()
   const [firstval, setFirstVal] = useState<string>()
@@ -385,25 +411,13 @@ const RuleInput = (props: IRuleInput) => {
               Select First Value...
             </option>
             {constants.applications
-              ?.filter((app) => {
-                // Filter out Radarr if no Radarr server is selected
-                if (
-                  app.id === Application.RADARR &&
-                  (props.radarrSettingsId === undefined ||
-                    props.radarrSettingsId === null)
-                ) {
-                  return false
-                }
-                // Filter out Sonarr if no Sonarr server is selected
-                if (
-                  app.id === Application.SONARR &&
-                  (props.sonarrSettingsId === undefined ||
-                    props.sonarrSettingsId === null)
-                ) {
-                  return false
-                }
-                return true
-              })
+              ?.filter((app) =>
+                !shouldFilterApplication(
+                  app.id,
+                  props.radarrSettingsId,
+                  props.sonarrSettingsId,
+                ),
+              )
               .map((app) =>
                 app.mediaType === MediaType.BOTH ||
                 props.mediaType === app.mediaType ? (
@@ -496,25 +510,13 @@ const RuleInput = (props: IRuleInput) => {
               <MaybeTextListOptions ruleType={ruleType} action={action} />
             </optgroup>
             {constants.applications
-              ?.filter((app) => {
-                // Filter out Radarr if no Radarr server is selected
-                if (
-                  app.id === Application.RADARR &&
-                  (props.radarrSettingsId === undefined ||
-                    props.radarrSettingsId === null)
-                ) {
-                  return false
-                }
-                // Filter out Sonarr if no Sonarr server is selected
-                if (
-                  app.id === Application.SONARR &&
-                  (props.sonarrSettingsId === undefined ||
-                    props.sonarrSettingsId === null)
-                ) {
-                  return false
-                }
-                return true
-              })
+              ?.filter((app) =>
+                !shouldFilterApplication(
+                  app.id,
+                  props.radarrSettingsId,
+                  props.sonarrSettingsId,
+                ),
+              )
               .map((app) => {
                 return (app.mediaType === MediaType.BOTH ||
                   props.mediaType === app.mediaType) &&
