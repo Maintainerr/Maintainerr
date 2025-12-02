@@ -2,7 +2,6 @@ import {
   IComparisonStatistics,
   MaintainerrEvent,
   RuleHandlerFinishedEventDto,
-  RuleHandlerProgressedEventDto,
   RuleHandlerStartedEventDto,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
@@ -28,6 +27,7 @@ import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
+import { RuleExecutorProgressService } from './rule-executor-progress.service';
 
 interface PlexData {
   page: number;
@@ -59,6 +59,7 @@ export class RuleExecutorService extends TaskBase {
     private readonly settings: SettingsService,
     private readonly comparatorFactory: RuleComparatorServiceFactory,
     private readonly eventEmitter: EventEmitter2,
+    private readonly progressManager: RuleExecutorProgressService,
     protected readonly logger: MaintainerrLogger,
   ) {
     super(taskService, logger);
@@ -101,28 +102,17 @@ export class RuleExecutorService extends TaskBase {
             ruleGroupTotals[rulegroup.id] = mediaItemCount;
           }
 
-          const progressedEvent = new RuleHandlerProgressedEventDto();
-          const emitProgressedEvent = () => {
-            progressedEvent.time = new Date();
-            this.eventEmitter.emit(
-              MaintainerrEvent.CollectionHandler_Progressed,
-              progressedEvent,
-            );
-          };
-          progressedEvent.totalRuleGroups = ruleGroups.length;
-          progressedEvent.totalEvaluations = totalEvaluations;
+          this.progressManager.initialize(ruleGroups.length, totalEvaluations);
 
           for (let i = 0; i < ruleGroups.length; i++) {
             const rulegroup = ruleGroups[i];
 
-            progressedEvent.processingRuleGroup = {
+            this.progressManager.startRuleGroup({
               name: rulegroup.name,
               number: i + 1,
-              processedEvaluations: 0,
               totalEvaluations:
                 ruleGroupTotals[rulegroup.id] * rulegroup.rules.length,
-            };
-            emitProgressedEvent();
+            });
 
             if (rulegroup.useRules) {
               this.logger.log(`Executing rules for '${rulegroup.name}'`);
@@ -151,11 +141,9 @@ export class RuleExecutorService extends TaskBase {
                   rulegroup,
                   this.plexData.data,
                   () => {
-                    progressedEvent.processedEvaluations +=
-                      this.plexData.data.length;
-                    progressedEvent.processingRuleGroup.processedEvaluations +=
-                      this.plexData.data.length;
-                    emitProgressedEvent();
+                    this.progressManager.incrementProcessed(
+                      this.plexData.data.length,
+                    );
                   },
                   abortSignal,
                 );
@@ -197,6 +185,7 @@ export class RuleExecutorService extends TaskBase {
       }
     }
 
+    this.progressManager.reset();
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Finished,
       new RuleHandlerFinishedEventDto('Finished execution of all active rules'),
