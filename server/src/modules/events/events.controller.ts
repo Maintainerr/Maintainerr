@@ -20,10 +20,12 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Response } from 'express';
 import { IncomingMessage } from 'http';
 import { interval, map, Subject } from 'rxjs';
+import { EventsBufferService } from './events-buffer.service';
 
 @Controller('/api/events')
 export class EventsController implements BeforeApplicationShutdown {
   private mostRecentEvent: NestMessageEvent | null = null;
+  constructor(private readonly eventsBufferService: EventsBufferService) {}
 
   connectedClients = new Map<
     string,
@@ -42,6 +44,8 @@ export class EventsController implements BeforeApplicationShutdown {
     @Res() response: Response,
     @Req() request: RawBodyRequest<IncomingMessage>,
   ) {
+    const lastEventId = this.eventsBufferService.parseLastEventId(request);
+
     if (request?.socket) {
       request.socket.setKeepAlive(true);
       request.socket.setNoDelay(true);
@@ -69,6 +73,11 @@ export class EventsController implements BeforeApplicationShutdown {
       subject,
     });
 
+    // Send data to the client every 30s to keep the connection alive
+    const pingSubscription = interval(30 * 1000)
+      .pipe(map(() => response.write(': ping\n\n')))
+      .subscribe();
+
     response.on('close', () => {
       subject.complete();
       pingSubscription.unsubscribe();
@@ -86,22 +95,21 @@ export class EventsController implements BeforeApplicationShutdown {
     response.flushHeaders();
     response.write('\n');
 
-    // Send data to the client every 30s to keep the connection alive
-    const pingSubscription = interval(30 * 1000)
-      .pipe(map(() => response.write(': ping\n\n')))
-      .subscribe();
+    const bufferedEvents = this.eventsBufferService.getEventsAfter(lastEventId);
+
+    if (bufferedEvents.length) {
+      for (const event of bufferedEvents) {
+        this.sendDataToClient(clientKey, event);
+      }
+      return;
+    }
 
     if (this.mostRecentEvent) {
       const eventTime = (this.mostRecentEvent.data as BaseEventDto).time;
       if (eventTime > new Date(Date.now() - 5000)) {
         this.sendDataToClient(clientKey, this.mostRecentEvent);
-        return;
       }
     }
-
-    // TODO Handle the Last-Event-Id header.
-    // We should send all events that are newer than the Last-Event-Id header.
-    // An array with a TTL per event is probably sufficient.
   }
 
   @OnEvent('rule_handler.started')
@@ -119,10 +127,10 @@ export class EventsController implements BeforeApplicationShutdown {
       | CollectionHandlerProgressedEventDto
       | CollectionHandlerFinishedEventDto,
   ) {
-    const eventMessage: NestMessageEvent = {
+    const eventMessage = this.eventsBufferService.buildBufferedEvent({
       type: payload.type,
       data: payload,
-    };
+    });
 
     for (const [, client] of this.connectedClients) {
       client.subject.next(eventMessage);
