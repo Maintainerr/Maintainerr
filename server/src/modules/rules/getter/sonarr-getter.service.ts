@@ -285,7 +285,7 @@ export class SonarrGetterService {
         case 'seriesFinale': {
           const episodes = await sonarrApiClient.getEpisodes(
             showResponse.id,
-            origLibItem.index,
+            dataType === EPlexDataType.SEASONS ? origLibItem.index : undefined,
           );
 
           if (!episodes) {

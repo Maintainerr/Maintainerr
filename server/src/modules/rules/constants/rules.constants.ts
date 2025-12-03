@@ -790,7 +790,7 @@ export class RuleConstants {
           humanName: 'Has series finale episode',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SEASONS],
+          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
         },
         {
           id: 18,
