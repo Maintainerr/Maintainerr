@@ -20,7 +20,6 @@ import {
 } from '../../events/events.dto';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
-import { TaskBase } from '../../tasks/task.base';
 import { TasksService } from '../../tasks/tasks.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
@@ -36,9 +35,8 @@ interface PlexData {
 }
 
 @Injectable()
-export class RuleExecutorService extends TaskBase {
+export class RuleExecutorService {
   protected name = 'Rule Handler';
-  protected cronSchedule = ''; // overriden in onBootstrapHook
 
   ruleConstants: RuleConstants;
   userId: string;
@@ -48,7 +46,6 @@ export class RuleExecutorService extends TaskBase {
   resultData: PlexLibraryItem[];
   statisticsData: IComparisonStatistics[];
   Data: PlexLibraryItem[];
-
   startTime: Date;
 
   constructor(
@@ -62,17 +59,15 @@ export class RuleExecutorService extends TaskBase {
     private readonly progressManager: RuleExecutorProgressService,
     protected readonly logger: MaintainerrLogger,
   ) {
-    super(taskService, logger);
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
     this.plexData = { page: 1, finished: false, data: [] };
   }
 
-  protected onBootstrapHook(): void {
-    this.cronSchedule = this.settings.rules_handler_job_cron;
-  }
-
-  protected async executeTask(abortSignal: AbortSignal) {
+  public async executeForRuleGroups(
+    ruleGroupIds: number[],
+    abortSignal: AbortSignal,
+  ) {
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Started,
       new RuleHandlerStartedEventDto('Started execution of all active rules'),
@@ -86,13 +81,16 @@ export class RuleExecutorService extends TaskBase {
       cacheManager.flushAll();
 
       if (appStatus) {
-        const ruleGroups = await this.getAllActiveRuleGroups();
+        const ruleGroups =
+          await this.rulesService.getRuleGroupsByIds(ruleGroupIds);
         if (ruleGroups) {
           const comparator = this.comparatorFactory.create();
 
           let totalEvaluations = 0;
           const ruleGroupTotals: { [key: string]: number } = {};
           for (const rulegroup of ruleGroups) {
+            if (!rulegroup.isActive) continue;
+
             const mediaItemCount = await this.plexApi.getLibraryContentCount(
               rulegroup.libraryId,
               rulegroup.dataType,

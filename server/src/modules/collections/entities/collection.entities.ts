@@ -1,19 +1,19 @@
-import { RulesDto } from '../../rules/dtos/rules.dto';
-import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import {
-  Entity,
   Column,
-  PrimaryGeneratedColumn,
-  OneToMany,
-  OneToOne,
+  Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
-import { CollectionMedia } from './collection_media.entities';
 import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { CollectionLog } from '../../collections/entities/collection_log.entities';
+import { RulesDto } from '../../rules/dtos/rules.dto';
+import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { RadarrSettings } from '../../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../../settings/entities/sonarr_settings.entities';
+import { CollectionMedia } from './collection_media.entities';
 
 @Entity()
 export class Collection {
