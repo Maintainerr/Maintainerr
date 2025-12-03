@@ -1,16 +1,17 @@
 import axios from 'axios'
 
-export const API_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+export const API_BASE_PATH =
+  import.meta.env.VITE_API_BASE_PATH ?? import.meta.env.VITE_BASE_PATH ?? ''
 
 const ApiHandler = async <Response,>(
   url: string,
   payload: any = '',
-  method: 'get' | 'post' | 'delete' | 'put' = 'get',
+  method: 'get' | 'post' | 'delete' | 'put' | 'patch' = 'get',
 ): Promise<Response> => {
   const fetcher = async (
     url: string,
     payload?: any,
-    method: 'get' | 'post' | 'delete' | 'put' = 'get',
+    method: 'get' | 'post' | 'delete' | 'put' | 'patch' = 'get',
   ) => {
     switch (method) {
       case 'get':
@@ -22,6 +23,10 @@ const ApiHandler = async <Response,>(
       case 'put':
         return (
           await axios.put<Response>(`${API_BASE_PATH}/api${url}`, payload)
+        ).data
+      case 'patch':
+        return (
+          await axios.patch<Response>(`${API_BASE_PATH}/api${url}`, payload)
         ).data
       case 'delete':
         return (
@@ -58,6 +63,13 @@ export const PutApiHandler = async <Response = any,>(
   payload: any,
 ) => {
   return await ApiHandler<Response>(url, payload, 'put')
+}
+
+export const PatchApiHandler = async <Response = any,>(
+  url: string,
+  payload: any,
+) => {
+  return await ApiHandler<Response>(url, payload, 'patch')
 }
 
 export default GetApiHandler

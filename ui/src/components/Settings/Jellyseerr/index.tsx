@@ -5,7 +5,7 @@ import {
   JellyseerrSettingDto,
   jellyseerrSettingSchema,
 } from '@maintainerr/contracts'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
@@ -45,10 +45,6 @@ const JellyseerrSettings = () => {
   const [testResult, setTestResult] = useState<TestStatus>()
   const [submitError, setSubmitError] = useState<boolean>(false)
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
-
-  useEffect(() => {
-    document.title = 'Maintainerr - Settings - Jellyseerr'
-  }, [])
 
   const {
     register,
@@ -130,7 +126,7 @@ const JellyseerrSettings = () => {
           })
         }
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           message: 'Unknown error',
@@ -143,6 +139,7 @@ const JellyseerrSettings = () => {
 
   return (
     <>
+      <title>Jellyseerr settings - Maintainerr</title>
       <div className="mb-6">
         <h3 className="heading">Jellyseerr Settings</h3>
         <p className="description">Jellyseerr configuration</p>
@@ -242,5 +239,4 @@ const JellyseerrSettings = () => {
     </>
   )
 }
-
 export default JellyseerrSettings

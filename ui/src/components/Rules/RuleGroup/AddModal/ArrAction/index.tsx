@@ -11,6 +11,8 @@ interface ArrActionProps {
   settingId?: number | null // null for when the user has selected 'None', undefined for when this is a new rule
   options: Option[]
   onUpdate: (arrAction: number, settingId?: number | null) => void
+  accActionError?: string
+  settingIdError?: string
 }
 
 interface Option {
@@ -109,6 +111,9 @@ const ArrAction = (props: ArrActionProps) => {
               )}
             </select>
           </div>
+          {props.settingIdError ? (
+            <p className="mt-1 text-xs text-red-400">{props.settingIdError}</p>
+          ) : undefined}
         </div>
       </div>
       <div className="form-row items-center">
@@ -134,6 +139,9 @@ const ArrAction = (props: ArrActionProps) => {
               })}
             </select>
           </div>
+          {props.accActionError ? (
+            <p className="mt-1 text-xs text-red-400">{props.accActionError}</p>
+          ) : undefined}
         </div>
       </div>
     </div>

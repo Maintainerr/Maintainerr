@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
-import Modal from '../Common/Modal'
-import FormItem from '../Common/FormItem'
 import { EPlexDataType } from '../../utils/PlexDataType-enum'
-import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 import Alert from '../Common/Alert'
+import FormItem from '../Common/FormItem'
+import Modal from '../Common/Modal'
+import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 
 const AddModal = (props: IAddModal) => {
   const [selectedCollection, setSelectedCollection] = useState<number>()
@@ -106,14 +106,11 @@ const AddModal = (props: IAddModal) => {
         collectionId: undefined,
         action: 1,
       })
-    } else {
     }
     props.onSubmit()
   }
 
   useEffect(() => {
-    document.title = 'Maintainerr - Overview'
-
     setSelectedSeasons(-1)
     setSelectedEpisodes(-1)
 
@@ -215,128 +212,132 @@ const AddModal = (props: IAddModal) => {
   }, [selectedSeasons, selectedEpisodes])
 
   return (
-    <Modal
-      loading={loading}
-      backgroundClickable={false}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      okDisabled={false}
-      title={props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'}
-      okText={'Submit'}
-      okButtonType={'primary'}
-      onSecondary={() => {}}
-      specialButtonType="warning"
-      specialDisabled={props.modalType !== 'add'}
-      specialText={'Remove from all collections'}
-      onSpecial={
-        props.modalType === 'add'
-          ? () => {
-              setForceRemovalCheck(true)
-            }
-          : undefined
-      }
-      iconSvg={''}
-    >
-      {forceRemovalcheck ? (
-        <Modal
-          loading={loading}
-          backgroundClickable={false}
-          onCancel={() => setForceRemovalCheck(false)}
-          onOk={handleForceRemoval}
-          okDisabled={false}
-          title={'Confirmation Required'}
-          okText={'Submit'}
-        >
-          Are you certain you want to proceed? This action will remove the{' '}
-          {props.modalType === 'add' ? 'media ' : 'exclusion '}
-          from all collections. For shows, this entails removing all associated{' '}
-          {props.modalType === 'add' ? '' : 'exclusions for '}
-          seasons and episodes as well.
-        </Modal>
-      ) : undefined}
-
-      {alert ? (
-        <Alert title="Please select a collection" type="warning" />
-      ) : undefined}
-
-      <div className="mt-6">
-        <FormItem label="Action">
-          <select
-            name={`Action-field`}
-            id={`Action-field`}
-            value={selectedAction}
-            onChange={(e: { target: { value: string } }) => {
-              setSelectedAction(+e.target.value)
-            }}
+    <>
+      <Modal
+        loading={loading}
+        backgroundClickable={false}
+        onCancel={handleCancel}
+        onOk={handleOk}
+        okDisabled={false}
+        title={
+          props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'
+        }
+        okText={'Submit'}
+        okButtonType={'primary'}
+        onSecondary={() => {}}
+        specialButtonType="warning"
+        specialDisabled={props.modalType !== 'add'}
+        specialText={'Remove from all collections'}
+        onSpecial={
+          props.modalType === 'add'
+            ? () => {
+                setForceRemovalCheck(true)
+              }
+            : undefined
+        }
+        iconSvg={''}
+      >
+        {forceRemovalcheck ? (
+          <Modal
+            loading={loading}
+            backgroundClickable={false}
+            onCancel={() => setForceRemovalCheck(false)}
+            onOk={handleForceRemoval}
+            okDisabled={false}
+            title={'Confirmation Required'}
+            okText={'Submit'}
           >
-            <option value={0}>Add</option>
-            <option value={1}>Remove</option>
-          </select>
-        </FormItem>
+            Are you certain you want to proceed? This action will remove the{' '}
+            {props.modalType === 'add' ? 'media ' : 'exclusion '}
+            from all collections. For shows, this entails removing all
+            associated {props.modalType === 'add' ? '' : 'exclusions for '}
+            seasons and episodes as well.
+          </Modal>
+        ) : undefined}
 
-        {/* For shows */}
-        {props.type === 2 ? (
-          <FormItem label="Seasons">
+        {alert ? (
+          <Alert title="Please select a collection" type="warning" />
+        ) : undefined}
+
+        <div className="mt-6">
+          <FormItem label="Action">
             <select
-              name={`Seasons-field`}
-              id={`Seasons-field`}
-              value={selectedSeasons}
+              name={`Action-field`}
+              id={`Action-field`}
+              value={selectedAction}
               onChange={(e: { target: { value: string } }) => {
-                setSelectedSeasons(+e.target.value)
+                setSelectedAction(+e.target.value)
               }}
             >
-              {seasonOptions.map((e: ICollectionMedia) => {
+              <option value={0}>Add</option>
+              <option value={1}>Remove</option>
+            </select>
+          </FormItem>
+
+          {/* For shows */}
+          {props.type === 2 ? (
+            <FormItem label="Seasons">
+              <select
+                name={`Seasons-field`}
+                id={`Seasons-field`}
+                value={selectedSeasons}
+                onChange={(e: { target: { value: string } }) => {
+                  setSelectedSeasons(+e.target.value)
+                }}
+              >
+                {seasonOptions.map((e: ICollectionMedia) => {
+                  return (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  )
+                })}
+              </select>
+            </FormItem>
+          ) : undefined}
+          {/* For shows and specific seasons */}
+          {props.type === 2 && selectedSeasons !== -1 ? (
+            <FormItem label="Episodes">
+              <select
+                name={`Episodes-field`}
+                id={`Episodes-field`}
+                value={selectedEpisodes}
+                onChange={(e: { target: { value: string } }) => {
+                  setSelectedEpisodes(+e.target.value)
+                }}
+              >
+                {episodeOptions.map((e: ICollectionMedia) => {
+                  return (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  )
+                })}
+              </select>
+            </FormItem>
+          ) : undefined}
+
+          <FormItem label="Collection">
+            <select
+              name={`Collection-field`}
+              id={`Collection-field`}
+              value={selectedCollection}
+              onChange={(e: { target: { value: string } }) => {
+                setSelectedCollection(+e.target.value)
+              }}
+            >
+              {collectionOptions?.map((e: ICollectionMedia) => {
                 return (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
+                  <option key={e?.id} value={e?.id}>
+                    {e?.title}
                   </option>
                 )
               })}
             </select>
           </FormItem>
-        ) : undefined}
-        {/* For shows and specific seasons */}
-        {props.type === 2 && selectedSeasons !== -1 ? (
-          <FormItem label="Episodes">
-            <select
-              name={`Episodes-field`}
-              id={`Episodes-field`}
-              value={selectedEpisodes}
-              onChange={(e: { target: { value: string } }) => {
-                setSelectedEpisodes(+e.target.value)
-              }}
-            >
-              {episodeOptions.map((e: ICollectionMedia) => {
-                return (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
-                )
-              })}
-            </select>
-          </FormItem>
-        ) : undefined}
-
-        <FormItem label="Collection">
-          <select
-            name={`Collection-field`}
-            id={`Collection-field`}
-            value={selectedCollection}
-            onChange={(e: { target: { value: string } }) => {
-              setSelectedCollection(+e.target.value)
-            }}
-          >
-            {collectionOptions?.map((e: ICollectionMedia) => {
-              return (
-                <option key={e?.id} value={e?.id}>
-                  {e?.title}
-                </option>
-              )
-            })}
-          </select>
-        </FormItem>
-      </div>
-    </Modal>
+        </div>
+      </Modal>
+    </>
   )
 }
 export default AddModal

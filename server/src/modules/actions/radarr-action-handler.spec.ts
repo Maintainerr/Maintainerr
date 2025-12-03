@@ -104,61 +104,76 @@ describe('RadarrActionHandler', () => {
         true,
         collection.listExclusions,
       );
-      expect(mockedRadarrApi.unmonitorMovie).not.toHaveBeenCalled();
+      expect(mockedRadarrApi.updateMovie).not.toHaveBeenCalled();
     },
   );
 
-  it('should unmonitor movie when action is UNMONITOR', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.UNMONITOR,
-      radarrSettingsId: 1,
-      type: EPlexDataType.MOVIES,
-    });
-    const collectionMedia = createCollectionMedia(collection, {
-      tmdbId: 1,
-    });
+  it.each([{ listExclusions: true }, { listExclusions: false }])(
+    'should unmonitor movie when action is UNMONITOR',
+    async ({ listExclusions }) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR,
+        radarrSettingsId: 1,
+        type: EPlexDataType.MOVIES,
+        listExclusions,
+      });
+      const collectionMedia = createCollectionMedia(collection, {
+        tmdbId: 1,
+      });
 
-    const mockedRadarrApi = mockRadarrApi();
-    jest
-      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-      .mockResolvedValue(createRadarrMovie({ id: 5 }));
+      const mockedRadarrApi = mockRadarrApi();
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5 }));
 
-    await radarrActionHandler.handleAction(collection, collectionMedia);
+      await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(mockedRadarrApi.unmonitorMovie).toHaveBeenCalledWith(5, false);
-    expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
-  });
+      expect(mockedRadarrApi.updateMovie).toHaveBeenCalledWith(5, {
+        monitored: false,
+        addImportExclusion: listExclusions,
+      });
+      expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
+    },
+  );
 
-  it('should unmonitor and delete movie when action is UNMONITOR_DELETE_ALL', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
-      radarrSettingsId: 1,
-      type: EPlexDataType.MOVIES,
-    });
-    const collectionMedia = createCollectionMedia(collection, {
-      tmdbId: 1,
-    });
+  it.each([{ listExclusions: true }, { listExclusions: false }])(
+    'should unmonitor and delete movie when action is UNMONITOR_DELETE_ALL',
+    async ({ listExclusions }) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+        radarrSettingsId: 1,
+        type: EPlexDataType.MOVIES,
+        listExclusions,
+      });
+      const collectionMedia = createCollectionMedia(collection, {
+        tmdbId: 1,
+      });
 
-    const mockedRadarrApi = mockRadarrApi();
-    jest
-      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-      .mockResolvedValue(createRadarrMovie({ id: 5 }));
+      const mockedRadarrApi = mockRadarrApi();
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5 }));
 
-    await radarrActionHandler.handleAction(collection, collectionMedia);
+      await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(mockedRadarrApi.unmonitorMovie).toHaveBeenCalledWith(5, true);
-    expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
-  });
+      expect(mockedRadarrApi.updateMovie).toHaveBeenCalledWith(5, {
+        deleteFiles: true,
+        monitored: false,
+        addImportExclusion: listExclusions,
+      });
+      expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
+    },
+  );
 
   const validateNoRadarrActionsTaken = (radarrApi: RadarrApi) => {
-    expect(radarrApi.unmonitorMovie).not.toHaveBeenCalled();
+    expect(radarrApi.updateMovie).not.toHaveBeenCalled();
     expect(radarrApi.deleteMovie).not.toHaveBeenCalled();
   };
 
   const mockRadarrApi = () => {
     const mockedRadarrApi = new RadarrApi({} as any, logger as any);
     jest.spyOn(mockedRadarrApi, 'deleteMovie').mockImplementation(jest.fn());
-    jest.spyOn(mockedRadarrApi, 'unmonitorMovie').mockImplementation(jest.fn());
+    jest.spyOn(mockedRadarrApi, 'updateMovie').mockImplementation(jest.fn());
 
     servarrService.getRadarrApiClient.mockResolvedValue(mockedRadarrApi);
 

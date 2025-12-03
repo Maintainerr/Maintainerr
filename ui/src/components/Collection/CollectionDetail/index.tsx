@@ -1,6 +1,5 @@
 import { PlayIcon } from '@heroicons/react/solid'
-import _ from 'lodash'
-import Router from 'next/router'
+import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection, ICollectionMedia } from '..'
 import GetApiHandler from '../../../utils/ApiHandler'
@@ -61,7 +60,7 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   }, [page])
 
   useEffect(() => {
-    const debouncedScroll = _.debounce(handleScroll, 200)
+    const debouncedScroll = debounce(handleScroll, 200)
     window.addEventListener('scroll', debouncedScroll)
     return () => {
       window.removeEventListener('scroll', debouncedScroll)
@@ -121,20 +120,6 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   useEffect(() => {
     totalSizeRef.current = totalSize
   }, [totalSize])
-
-  useEffect(() => {
-    // trapping next router before-pop-state to manipulate router change on browser back button
-    Router.beforePopState(() => {
-      props.onBack()
-      window.history.forward()
-      return false
-    })
-    return () => {
-      Router.beforePopState(() => {
-        return true
-      })
-    }
-  }, [])
 
   const tabbedRoutes: TabbedRoute[] = [
     {

@@ -39,54 +39,53 @@ export class NotificationTimerService extends TaskBase {
     await Promise.allSettled(
       activeAgents.map(async (agent) => {
         const notification = allNotificationConfigurations.find(
-          (n) =>
-            n.id === agent.getNotification().id &&
-            n.enabled &&
-            n.rulegroups?.length > 0,
+          (n) => n.id === agent.getNotification().id,
         );
 
-        if (notification) {
-          const itemsToNotify = (
-            await Promise.all(
-              notification.rulegroups.map(async (group) => {
-                const notifyDate = new Date(
-                  new Date().getTime() -
-                    group.collection.deleteAfterDays * 86400000 +
-                    notification.aboutScale * 86400000,
+        if (!notification?.enabled || !notification.rulegroups?.length) {
+          return;
+        }
+
+        const itemsToNotify = (
+          await Promise.all(
+            notification.rulegroups.map(async (group) => {
+              const notifyDate = new Date(
+                new Date().getTime() -
+                  group.collection.deleteAfterDays * 86400000 +
+                  notification.aboutScale * 86400000,
+              );
+
+              const collectionMedia =
+                await this.collectionService.getCollectionMedia(
+                  group.collection?.id,
                 );
 
-                const collectionMedia =
-                  await this.collectionService.getCollectionMedia(
-                    group.collection?.id,
+              return (
+                collectionMedia?.filter((media) => {
+                  const mediaDate = new Date(media.addDate);
+                  return (
+                    getDayStart(mediaDate).getTime() ===
+                    getDayStart(notifyDate).getTime()
                   );
+                }) || []
+              );
+            }),
+          )
+        ).flat();
 
-                return (
-                  collectionMedia?.filter((media) => {
-                    const mediaDate = new Date(media.addDate);
-                    return (
-                      getDayStart(mediaDate).getTime() ===
-                      getDayStart(notifyDate).getTime()
-                    );
-                  }) || []
-                );
-              }),
-            )
-          ).flat();
+        const transformedItems = itemsToNotify.map((i) => ({
+          plexId: i.plexId,
+        }));
 
-          const transformedItems = itemsToNotify.map((i) => ({
-            plexId: i.plexId,
-          }));
-
-          // send the notification if required
-          if (transformedItems.length > 0) {
-            await this.notificationService.handleNotification(
-              this.type,
-              transformedItems,
-              undefined,
-              notification.aboutScale,
-              agent,
-            );
-          }
+        // send the notification if required
+        if (transformedItems.length > 0) {
+          await this.notificationService.handleNotification(
+            this.type,
+            transformedItems,
+            undefined,
+            notification.aboutScale,
+            agent,
+          );
         }
       }),
     );

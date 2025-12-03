@@ -86,31 +86,33 @@ export class NotificationService {
     return this.activeAgents;
   };
 
-  public sendNotification(
+  public async sendNotification(
     type: NotificationType,
     payload: NotificationPayload,
     rulegroup?: RuleGroup,
-  ): void {
-    this.activeAgents.forEach((agent) => {
-      // if rulegroup is supplied, then only send the notification if configured
-      if (
-        rulegroup == undefined ||
-        rulegroup?.notifications?.find(
-          (n) => n.id === agent.getNotification().id,
+  ): Promise<void> {
+    await Promise.allSettled(
+      this.activeAgents.map(async (agent) => {
+        // if rulegroup is supplied, then only send the notification if configured
+        if (
+          rulegroup == undefined ||
+          rulegroup?.notifications?.find(
+            (n) => n.id === agent.getNotification().id,
+          )
         )
-      )
-        this.sendNotificationToAgent(type, payload, agent);
-    });
+          await this.sendNotificationToAgent(type, payload, agent);
+      }),
+    );
   }
 
-  public sendNotificationToAgent(
+  public async sendNotificationToAgent(
     type: NotificationType,
     payload: NotificationPayload,
     agent: NotificationAgent,
   ): Promise<string> {
     if (agent.shouldSend()) {
       if (agent.getSettings().types?.includes(type))
-        return agent.send(type, payload);
+        return await agent.send(type, payload);
     }
     return Promise.resolve('Agent is not allowed to send this message.');
   }
@@ -399,7 +401,7 @@ export class NotificationService {
       await this.notificationRepo.delete(notificationId);
 
       // reset & reload notification agents
-      this.registerConfiguredAgents(true);
+      await this.registerConfiguredAgents(true);
 
       return { code: 1, result: 'success' };
     } catch (err) {
@@ -652,7 +654,7 @@ export class NotificationService {
     if (agent) {
       return this.sendNotificationToAgent(type, payload, agent);
     } else {
-      this.sendNotification(type, payload, rulegroup);
+      await this.sendNotification(type, payload, rulegroup);
       return 'Success';
     }
   }
@@ -686,7 +688,7 @@ export class NotificationService {
         case NotificationType.MEDIA_ABOUT_TO_BE_HANDLED:
           subject = 'Media About to be Handled';
           message =
-            "⏰ Reminder: {media_title} will be handled in {days} days. If you want to keep it, make sure to take action before it's gone. Don’t miss out!";
+            "⏰ Reminder: '{media_title}' will be handled in {days} days. If you want to keep it, make sure to take action before it's gone. Don’t miss out!";
           break;
         case NotificationType.MEDIA_ADDED_TO_COLLECTION:
           subject = 'Media Added to Collection';
@@ -713,16 +715,16 @@ export class NotificationService {
         case NotificationType.MEDIA_ABOUT_TO_BE_HANDLED:
           subject = 'Media About to be Handled';
           message =
-            "⏰ Reminder: These media items will be handled in {days} days. If you want to keep them, make sure to take action before they're gone. Don’t miss out! \n \n {media_items}";
+            "⏰ Reminder: These media items will be handled in {days} days. If you want to keep them, make sure to take action before they're gone. Don’t miss out!\n\n{media_items}";
           break;
         case NotificationType.MEDIA_ADDED_TO_COLLECTION:
           subject = 'Media Added to Collection';
           message = `\uD83D\uDCC2 These media items have been added to '{collection_name}'.`;
           if (dayAmount != null) {
             message +=
-              ' The items will be handled in {days} days. \n \n {media_items}';
+              ' The items will be handled in {days} days.\n\n{media_items}';
           } else {
-            message += ' \n \n {media_items}';
+            message += '\n\n{media_items}';
           }
           break;
         case NotificationType.MEDIA_REMOVED_FROM_COLLECTION:
@@ -730,15 +732,15 @@ export class NotificationService {
           message = `\uD83D\uDCC2 These media items have been removed from '{collection_name}'.`;
           if (dayAmount != null) {
             message +=
-              ' The items will not be handled anymore. \n \n {media_items}';
+              ' The items will not be handled anymore.\n\n{media_items}';
           } else {
-            message += ' \n \n {media_items}';
+            message += '\n\n{media_items}';
           }
           break;
         case NotificationType.MEDIA_HANDLED:
           subject = 'Media Handled';
           message =
-            "✅ These media items have been handled by '{collection_name}'. \n \n {media_items}";
+            "✅ These media items have been handled by '{collection_name}'.\n\n{media_items}";
           break;
       }
     }
@@ -760,11 +762,24 @@ export class NotificationService {
         if (items.length > 1) {
           // if multiple items
           const titles = [];
+          let numUnknownItems = 0;
 
           for (const i of items) {
             const item = await this.plexApi.getMetadata(i.plexId.toString());
 
-            titles.push(item ? this.getTitle(item) : 'Unknown media item');
+            if (item) {
+              titles.push(this.getTitle(item));
+            } else {
+              numUnknownItems++;
+            }
+          }
+
+          if (numUnknownItems > 0) {
+            titles.push(
+              `${numUnknownItems} item${
+                numUnknownItems > 1 ? 's' : ''
+              } that no longer exist${numUnknownItems > 1 ? '' : 's'} in Plex`,
+            );
           }
 
           const result = titles
@@ -779,7 +794,7 @@ export class NotificationService {
           );
           message = message.replace(
             '{media_title}',
-            item ? this.getTitle(item) : 'Unknown media item',
+            item ? this.getTitle(item) : '1 item that no longer exists in Plex',
           );
         }
       }
@@ -810,8 +825,8 @@ export class NotificationService {
   // OnEvent handlers
 
   @OnEvent(MaintainerrEvent.RuleHandler_Failed)
-  private ruleHandlerFailed(data: RuleHandlerFailedDto) {
-    this.handleNotification(
+  private async ruleHandlerFailed(data: RuleHandlerFailedDto) {
+    await this.handleNotification(
       NotificationType.RULE_HANDLING_FAILED,
       undefined,
       data?.collectionName,
@@ -822,13 +837,13 @@ export class NotificationService {
   }
 
   @OnEvent(MaintainerrEvent.CollectionHandler_Failed)
-  private collectionHandlerFailed() {
-    this.handleNotification(NotificationType.COLLECTION_HANDLING_FAILED);
+  private async collectionHandlerFailed() {
+    await this.handleNotification(NotificationType.COLLECTION_HANDLING_FAILED);
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Added)
-  private collectionMediaAdded(data: CollectionMediaAddedDto) {
-    this.handleNotification(
+  private async collectionMediaAdded(data: CollectionMediaAddedDto) {
+    await this.handleNotification(
       NotificationType.MEDIA_ADDED_TO_COLLECTION,
       data.mediaItems,
       data.collectionName,
@@ -839,8 +854,8 @@ export class NotificationService {
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Removed)
-  private collectionMediaRemoved(data: CollectionMediaRemovedDto) {
-    this.handleNotification(
+  private async collectionMediaRemoved(data: CollectionMediaRemovedDto) {
+    await this.handleNotification(
       NotificationType.MEDIA_REMOVED_FROM_COLLECTION,
       data.mediaItems,
       data.collectionName,
@@ -851,8 +866,8 @@ export class NotificationService {
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Handled)
-  private collectionMediaHandled(data: CollectionMediaHandledDto) {
-    this.handleNotification(
+  private async collectionMediaHandled(data: CollectionMediaHandledDto) {
+    await this.handleNotification(
       NotificationType.MEDIA_HANDLED,
       data.mediaItems,
       data.collectionName,

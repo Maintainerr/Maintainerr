@@ -1,6 +1,7 @@
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
+  RadarrImportListExclusion,
   RadarrInfo,
   RadarrMovie,
   RadarrMovieFile,
@@ -87,19 +88,37 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     }
   }
 
-  public async unmonitorMovie(movieId: number, deleteFiles = true) {
+  public async updateMovie(
+    movieId: number,
+    options: {
+      deleteFiles?: boolean;
+      monitored?: boolean;
+      addImportExclusion?: boolean;
+    },
+  ) {
     try {
       const movieData: RadarrMovie = await this.get(`movie/${movieId}`);
-      movieData.monitored = false;
+      if (options?.monitored !== undefined) {
+        movieData.monitored = options.monitored;
+      }
       await this.runPut(`movie/${movieId}`, JSON.stringify(movieData));
 
-      if (deleteFiles) {
+      if (options?.deleteFiles) {
         const movieFiles: RadarrMovieFile[] = await this.get(
           `moviefile?movieId=${movieId}`,
         );
-        movieFiles.forEach(
-          async (e) => await this.runDelete(`moviefile/${e.id}`),
-        );
+        for (const movieFile of movieFiles) {
+          await this.runDelete(`moviefile/${movieFile.id}`);
+        }
+      }
+
+      if (options?.addImportExclusion) {
+        const res = await this.post(`/exclusions`, {
+          tmdbId: movieData.tmdbId,
+          movieTitle: movieData.title,
+          movieYear: movieData.year,
+        } satisfies RadarrImportListExclusion);
+        console.log({ res });
       }
     } catch (e) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");

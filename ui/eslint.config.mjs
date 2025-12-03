@@ -1,7 +1,10 @@
 import { FlatCompat } from '@eslint/eslintrc'
+import js from '@eslint/js'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import eslintConfigPrettier from 'eslint-config-prettier'
+import globals from 'globals'
 import path from 'path'
+import tseslint from 'typescript-eslint'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -13,14 +16,39 @@ const compat = new FlatCompat({
 
 /** @type {import('eslint').Linter.Config[]} */
 const configs = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
+    ignores: ['dist/**', '*.config.js', '*.config.mjs', '*.config.ts'],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  ...compat.extends(
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+  ),
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: { ...globals.browser },
+    },
+    settings: {
+      react: {
+        version: 'detect',
+      },
+    },
     rules: {
-      '@next/next/no-html-link-for-pages': 'off',
-      'react-hooks/exhaustive-deps': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/incompatible-library': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/refs': 'warn',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
+      'react/prop-types': 'off',
     },
   },
   ...pluginQuery.configs['flat/recommended'],

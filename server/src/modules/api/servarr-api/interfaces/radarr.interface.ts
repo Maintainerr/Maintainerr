@@ -33,6 +33,7 @@ export interface RadarrMovie {
   inCinemas?: string;
   tags: number[];
   ratings: RadarrRatings;
+  year: number;
 }
 
 export interface RadarrLanguage {
@@ -121,4 +122,10 @@ export interface RadarrQuality {
   source: string;
   resolution: number;
   modifier: string;
+}
+
+export interface RadarrImportListExclusion {
+  tmdbId: number;
+  movieTitle: string;
+  movieYear: number;
 }

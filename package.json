@@ -1,11 +1,11 @@
 {
   "name": "maintainerr",
-  "version": "2.18.2",
+  "version": "2.22.1",
   "private": true,
-  "packageManager": "yarn@4.5.1",
+  "packageManager": "yarn@4.11.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jorenn92/Maintainerr.git"
+    "url": "https://github.com/maintainerr/Maintainerr.git"
   },
   "license": "MIT",
   "scripts": {
@@ -30,13 +30,13 @@
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
-    "@semantic-release/exec": "^7.0.3",
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
-    "@types/node": "^22.16.2",
-    "knip": "^5.61.3",
-    "semantic-release": "^24.2.7",
-    "turbo": "^2.5.4",
-    "typescript": "^5.8.3"
+    "@types/node": "^22.19.1",
+    "knip": "^5.70.2",
+    "semantic-release": "^25.0.2",
+    "turbo": "^2.6.1",
+    "typescript": "^5.9.3"
   },
   "release": {
     "plugins": [

@@ -186,7 +186,7 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
 
         setTesting(false)
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           version: '0',
@@ -300,7 +300,7 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
 
       <div className="form-row">
         <label htmlFor="apikey" className="text-label">
-          Api key
+          API key
         </label>
         <div className="form-input">
           <div className="form-input-field">

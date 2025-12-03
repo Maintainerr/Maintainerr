@@ -163,6 +163,24 @@ export class RulesService {
     }
   }
 
+  async getRuleGroup(id: number): Promise<RulesDto> {
+    try {
+      const rulegroup = await this.connection
+        .createQueryBuilder('rule_group', 'rg')
+        .innerJoinAndSelect('rg.rules', 'r')
+        .innerJoinAndSelect('rg.collection', 'c')
+        .leftJoinAndSelect('rg.notifications', 'n')
+        .andWhere(`rg.id = ${id}`)
+        .orderBy('r.id')
+        .getOne();
+      return rulegroup as RulesDto;
+    } catch (e) {
+      this.logger.warn(`Rules - Action failed : ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
   async getRuleGroupCount(): Promise<number> {
     return this.ruleGroupRepository.count();
   }
@@ -223,6 +241,13 @@ export class RulesService {
       params.rules.forEach((rule) => {
         if (state.code === 1) {
           state = this.validateRule(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleServerSelection(
+            rule,
+            params.radarrSettingsId,
+            params.sonarrSettingsId,
+          );
         }
       }, this);
 
@@ -318,6 +343,13 @@ export class RulesService {
       params.rules.forEach((rule) => {
         if (state.code === 1) {
           state = this.validateRule(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleServerSelection(
+            rule,
+            params.radarrSettingsId,
+            params.sonarrSettingsId,
+          );
         }
       }, this);
 
@@ -776,6 +808,66 @@ export class RulesService {
       this.logger.debug(e);
       return this.createReturnStatus(false, 'Unexpected error occurred');
     }
+  }
+
+  private validateApplicationServerSelection(
+    appId: number,
+    radarrSettingsId: number | undefined,
+    sonarrSettingsId: number | undefined,
+  ): ReturnStatus | null {
+    // Check if rule references Radarr without a server
+    if (
+      appId === Application.RADARR &&
+      (radarrSettingsId === undefined || radarrSettingsId === null)
+    ) {
+      return this.createReturnStatus(
+        false,
+        'Radarr rules require a Radarr server to be selected',
+      );
+    }
+
+    // Check if rule references Sonarr without a server
+    if (
+      appId === Application.SONARR &&
+      (sonarrSettingsId === undefined || sonarrSettingsId === null)
+    ) {
+      return this.createReturnStatus(
+        false,
+        'Sonarr rules require a Sonarr server to be selected',
+      );
+    }
+
+    return null;
+  }
+
+  private validateRuleServerSelection(
+    rule: RuleDto,
+    radarrSettingsId?: number,
+    sonarrSettingsId?: number,
+  ): ReturnStatus {
+    // Check first value
+    const firstValResult = this.validateApplicationServerSelection(
+      rule.firstVal[0],
+      radarrSettingsId,
+      sonarrSettingsId,
+    );
+    if (firstValResult) {
+      return firstValResult;
+    }
+
+    // Check second value if it exists
+    if (rule.lastVal) {
+      const lastValResult = this.validateApplicationServerSelection(
+        rule.lastVal[0],
+        radarrSettingsId,
+        sonarrSettingsId,
+      );
+      if (lastValResult) {
+        return lastValResult;
+      }
+    }
+
+    return this.createReturnStatus(true, 'Success');
   }
 
   private createReturnStatus(success: boolean, result: string): ReturnStatus {

@@ -37,7 +37,7 @@ export class RadarrActionHandler {
 
     if (tmdbid) {
       const radarrMedia = await radarrApiClient.getMovieByTmdbId(tmdbid);
-      if (radarrMedia && radarrMedia.id) {
+      if (radarrMedia?.id) {
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
           case ServarrAction.UNMONITOR_DELETE_EXISTING:
@@ -46,15 +46,28 @@ export class RadarrActionHandler {
               true,
               collection.listExclusions,
             );
-            this.logger.log('Removed movie from filesystem & Radarr');
+            this.logger.log(
+              `Removed movie with tmdb id ${tmdbid} from filesystem & Radarr`,
+            );
             break;
           case ServarrAction.UNMONITOR:
-            await radarrApiClient.unmonitorMovie(radarrMedia.id, false);
-            this.logger.log('Unmonitored movie in Radarr');
+            await radarrApiClient.updateMovie(radarrMedia.id, {
+              monitored: false,
+              addImportExclusion: collection.listExclusions,
+            });
+            this.logger.log(
+              `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
+            );
             break;
           case ServarrAction.UNMONITOR_DELETE_ALL:
-            await radarrApiClient.unmonitorMovie(radarrMedia.id, true);
-            this.logger.log('Unmonitored movie in Radarr & removed files');
+            await radarrApiClient.updateMovie(radarrMedia.id, {
+              monitored: false,
+              deleteFiles: true,
+              addImportExclusion: collection.listExclusions,
+            });
+            this.logger.log(
+              `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
+            );
             break;
         }
       } else {

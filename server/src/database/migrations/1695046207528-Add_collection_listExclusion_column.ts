@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCollectionListExclusionColumn1695046207528
-  implements MigrationInterface
-{
+export class AddCollectionListExclusionColumn1695046207528 implements MigrationInterface {
   name = 'AddCollectionListExclusionColumn1695046207528';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

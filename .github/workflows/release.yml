@@ -14,7 +14,7 @@ on:
 
 env:
   DOCKERHUB_SLUG: jorenn92/maintainerr
-  GHCR_SLUG: ghcr.io/jorenn92/maintainerr
+  GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
   semantic-release:
@@ -22,15 +22,15 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
       - name: Activate corepack
         run: |
           corepack install
@@ -51,6 +51,9 @@ jobs:
     if: github.event.inputs.with-docker-images == 'true'
     name: Build ${{ matrix.platform }}
     needs: semantic-release
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -67,7 +70,7 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Pull latest changes
         run: git pull
@@ -105,7 +108,7 @@ jobs:
 
       - name: Build & push by digest
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -122,7 +125,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
@@ -136,11 +139,14 @@ jobs:
     name: Merge Docker digests and push
     if: github.event.inputs.with-docker-images == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     needs:
       - build-docker-image
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-*
@@ -174,7 +180,9 @@ jobs:
             type=semver,pattern={{version}},value=${{ needs.build-docker-image.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.build-docker-image.outputs.version }}
             type=semver,pattern={{major}},value=${{ needs.build-docker-image.outputs.version }}
-          labels: org.opencontainers.image.revision=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.build-docker-image.outputs.version }}
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -187,10 +195,10 @@ jobs:
       - name: Mkdocs Deploy
         if: ${{ success() }}
         continue-on-error: true
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.DOCS_DEPLOY }}
-          repository: ydkmlt84/Maintainerr_docs
+          repository: Maintainerr/Maintainerr_docs
           event-type: maintainerr-release
           client-payload: |
             {

@@ -1,0 +1,18 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: maintainerr-proxy
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/maintainerr.conf
+    network_mode: host
+    depends_on:
+      - maintainerr
+
+  maintainerr:
+    build:
+      context: ../../
+    container_name: maintainerr
+    user: 1000:1000
+    environment:
+      - BASE_PATH=/maintainerr
+    network_mode: host

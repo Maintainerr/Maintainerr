@@ -1,17 +1,48 @@
 # Contributing to Maintainerr
 
-All help is welcome and greatly appreciated! If you would like to contribute to the project, the following instructions should get you started... (The below is specific to a Windows Development environment.)
+All help is welcome and greatly appreciated! If you would like to contribute to the project, the following instructions should get you started...
 
 ## Development
 
-### Tools Required
+### Quick Start with Dev Containers (Recommended)
+
+The easiest way to start developing is using VS Code Dev Containers or GitHub Codespaces. This provides a pre-configured environment with all dependencies and tools ready to go.
+
+**Prerequisites:**
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Visual Studio Code](https://code.visualstudio.com/)
+- [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+**Steps:**
+
+1. Clone or fork the repository
+2. Open in VS Code
+3. Click "Reopen in Container" when prompted (or press F1 → "Dev Containers: Reopen in Container")
+4. Wait for the container to build and dependencies to install (5-10 minutes first time)
+5. Run `yarn dev` to start developing
+
+For detailed information, see the [Dev Container README](.devcontainer/README.md).
+
+**Using GitHub Codespaces:**
+
+1. Click the "Code" button on GitHub
+2. Select "Codespaces" → "Create codespace on main"
+3. Wait for the environment to build
+4. Start developing!
+
+### Manual Setup (Alternative)
+
+If you prefer to set up your development environment manually (specific to a Windows Development environment):
+
+#### Tools Required
 
 - HTML/TypeScript/JavaScript editor
 - [VSCode](https://code.visualstudio.com/) is recommended. Upon opening the project, a few extensions will be automatically recommended for install.
 - [NodeJS](https://nodejs.org/en/download/) (Node 20.x or higher)
 - [Git](https://git-scm.com/downloads)
 
-### Getting Started
+#### Getting Started
 
 1. [Fork](https://help.github.com/articles/fork-a-repo/) the repository to your own GitHub account and [clone](https://help.github.com/articles/cloning-a-repository/) the fork to your local device:
 
@@ -23,7 +54,7 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
 2. Add the remote `upstream`:
 
    ```bash
-   git remote add upstream https://github.com/jorenn92/Maintainerr.git
+   git remote add upstream https://github.com/Maintainerr/Maintainerr.git
    ```
 
 3. Create a new branch:
@@ -73,7 +104,6 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
    - If the build fails with PowerShell, try to use cmd instead.
 
 8. Make your code changes/improvements and test that they work as intended.
-
    - Be sure to follow both the [code](#contributing-code) and [UI text](#ui-text-style) guidelines.
    - Should you need to update your fork (from any recent ORIGIN changes), you can do so by rebasing from `upstream`:
 
@@ -85,8 +115,8 @@ All help is welcome and greatly appreciated! If you would like to contribute to 
 
 ### Contributing Code
 
-- If you are taking on an existing bug or feature ticket, please comment on the [issue](https://github.com/jorenn92/Maintainerr/issues) to avoid multiple people working on the same thing.
-- If you have a major change or large feature to contribute, reach out via [Discussions](https://github.com/jorenn92/Maintainerr/discussions) or our [Discord server](https://discord.gg/WP4ZW2QYwk) first to align with us! It'll save us all time, as the review will be quicker, and we will have more context about your change, allowing us to guide you in the right direction.
+- If you are taking on an existing bug or feature ticket, please comment on the [issue](https://github.com/Maintainerr/Maintainerr/issues) to avoid multiple people working on the same thing.
+- If you have a major change or large feature to contribute, reach out via [Discussions](https://github.com/Maintainerr/Maintainerr/discussions) or our [Discord server](https://discord.gg/WP4ZW2QYwk) first to align with us! It'll save us all time, as the review will be quicker, and we will have more context about your change, allowing us to guide you in the right direction.
   - You can create a "draft" pull request early to get feedback on your work.
 - Large PRs (>500 lines changed, excluding tests) should be split into smaller, manageable parts by stacking your PRs sequentially. This approach makes the review process significantly easier when done in order.
 - Each PR should target one major meaningful change, which allows us to review independent changes separately, rather than having everything blocked on a single review.

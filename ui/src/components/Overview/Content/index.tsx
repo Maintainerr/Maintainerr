@@ -1,4 +1,4 @@
-import _ from 'lodash'
+import { debounce } from 'lodash-es'
 import { useEffect } from 'react'
 import { ICollectionMedia } from '../../Collection'
 import LoadingSpinner, {
@@ -86,7 +86,7 @@ const OverviewContent = (props: IOverviewContent) => {
   }
 
   useEffect(() => {
-    const debouncedScroll = _.debounce(handleScroll, 200)
+    const debouncedScroll = debounce(handleScroll, 200)
     window.addEventListener('scroll', debouncedScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', debouncedScroll)

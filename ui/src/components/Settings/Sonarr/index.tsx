@@ -5,11 +5,11 @@ import {
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
 import LoadingSpinner from '../../Common/LoadingSpinner'
-import SonarrSettingsModal from './SettingsModal'
-import { ICollection } from '../../Collection'
 import Modal from '../../Common/Modal'
+import SonarrSettingsModal from './SettingsModal'
 
 type DeleteSonarrSettingResponseDto =
   | {
@@ -80,10 +80,6 @@ const SonarrSettings = () => {
     })
   }, [])
 
-  useEffect(() => {
-    document.title = 'Maintainerr - Settings - Sonarr'
-  }, [])
-
   const showAddModal = () => {
     setSettingsModalActive(true)
   }
@@ -91,6 +87,7 @@ const SonarrSettings = () => {
   if (!loaded) {
     return (
       <>
+        <title>Sonarr settings - Maintainerr</title>
         <div className="mt-6">
           <LoadingSpinner />
         </div>
@@ -100,6 +97,7 @@ const SonarrSettings = () => {
 
   return (
     <>
+      <title>Sonarr settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Sonarr Settings</h3>

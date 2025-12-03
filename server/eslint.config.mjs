@@ -33,11 +33,13 @@ export default [
 
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: '.',
+        tsconfigRootDir: import.meta.dirname,
       },
     },
 
     rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',

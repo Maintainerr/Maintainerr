@@ -5,11 +5,11 @@ import {
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
 import LoadingSpinner from '../../Common/LoadingSpinner'
-import RadarrSettingsModal from './SettingsModal'
-import { ICollection } from '../../Collection'
 import Modal from '../../Common/Modal'
+import RadarrSettingsModal from './SettingsModal'
 
 type DeleteRadarrSettingResponseDto =
   | {
@@ -80,10 +80,6 @@ const RadarrSettings = () => {
     })
   }, [])
 
-  useEffect(() => {
-    document.title = 'Maintainerr - Settings - Radarr'
-  }, [])
-
   const showAddModal = () => {
     setSettingsModalActive(true)
   }
@@ -91,6 +87,7 @@ const RadarrSettings = () => {
   if (!loaded) {
     return (
       <>
+        <title>Radarr settings - Maintainerr</title>
         <div className="mt-6">
           <LoadingSpinner />
         </div>
@@ -100,6 +97,7 @@ const RadarrSettings = () => {
 
   return (
     <>
+      <title>Radarr settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Radarr Settings</h3>

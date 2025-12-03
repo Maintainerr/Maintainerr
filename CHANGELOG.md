@@ -1,3 +1,71 @@
+## [2.22.1](https://github.com/maintainerr/Maintainerr/compare/v2.22.0...v2.22.1) (2025-11-30)
+
+
+### Bug Fixes
+
+* All URLs redirect to /overview when navigating directly ([#2103](https://github.com/maintainerr/Maintainerr/issues/2103)) ([c34ad74](https://github.com/maintainerr/Maintainerr/commit/c34ad74f247ac28479a9a1ad5a08721637930ece))
+
+# [2.22.0](https://github.com/maintainerr/Maintainerr/compare/v2.21.0...v2.22.0) (2025-11-29)
+
+
+### Bug Fixes
+
+* BASE_PATH support ([#2052](https://github.com/maintainerr/Maintainerr/issues/2052)) ([f0a2410](https://github.com/maintainerr/Maintainerr/commit/f0a24100f196fe2cfd844cb5335b9959234ca1c6))
+* Improve language for rule options & hide irrelevant ones ([#2097](https://github.com/maintainerr/Maintainerr/issues/2097)) ([91f3173](https://github.com/maintainerr/Maintainerr/commit/91f31730bc222b9ce61a92dba578f5855086c8ac))
+* Radarr import list exclusions missing for unmonitor actions ([#2098](https://github.com/maintainerr/Maintainerr/issues/2098)) ([05bd94c](https://github.com/maintainerr/Maintainerr/commit/05bd94cc379b112a58bfd97d4abac451b501bf9b))
+* Rule Group Active input not linked to label ([#2101](https://github.com/maintainerr/Maintainerr/issues/2101)) ([95196f4](https://github.com/maintainerr/Maintainerr/commit/95196f400225af7ac8ddd3420ca1fc31c84c6722))
+
+
+### Features
+
+* Serve UI statically from API ([#2044](https://github.com/maintainerr/Maintainerr/issues/2044)) ([dbd93fc](https://github.com/maintainerr/Maintainerr/commit/dbd93fcc92e5bd7264b6ecd808da88f101f4144e))
+
+# [2.21.0](https://github.com/maintainerr/Maintainerr/compare/v2.20.0...v2.21.0) (2025-11-16)
+
+
+### Bug Fixes
+
+* Always get fresh Plex collection children when syncing ([#2009](https://github.com/maintainerr/Maintainerr/issues/2009)) ([c8f1770](https://github.com/maintainerr/Maintainerr/commit/c8f1770018e02c807076f7790cf7be2152dcf0e1)), closes [#1705](https://github.com/maintainerr/Maintainerr/issues/1705)
+* Clear Plex authentication throwing error ([#2035](https://github.com/maintainerr/Maintainerr/issues/2035)) ([81dd149](https://github.com/maintainerr/Maintainerr/commit/81dd149b0ff616f7e38898a14c36a775fe43cc73))
+* Collection info loader using incorrect colspan ([0618fe7](https://github.com/maintainerr/Maintainerr/commit/0618fe72f42cd35ad530269c66c72f86af1160f1))
+* Collection Plex ID not being reset in rare circumstances ([#2010](https://github.com/maintainerr/Maintainerr/issues/2010)) ([fae3df5](https://github.com/maintainerr/Maintainerr/commit/fae3df5cb3e0fafc802444e5639f869fad0aa470))
+* ES Module import error for octokit packages ([#2012](https://github.com/maintainerr/Maintainerr/issues/2012)) ([efa35c6](https://github.com/maintainerr/Maintainerr/commit/efa35c68ae2c984a6509f67d09dd3f77bba45891))
+* Improve notification msg when Plex item non-existent ([#1998](https://github.com/maintainerr/Maintainerr/issues/1998)) ([b86cf79](https://github.com/maintainerr/Maintainerr/commit/b86cf799f107a7221699f862af954fc0240f7643))
+* Improve promise usage ([#2004](https://github.com/maintainerr/Maintainerr/issues/2004)) ([ae11068](https://github.com/maintainerr/Maintainerr/commit/ae11068a97b17c24c7d22abba544533fb7420285))
+* prevent media modal from opening on global exclusion removal confirmation ([#2008](https://github.com/maintainerr/Maintainerr/issues/2008)) ([b45bcec](https://github.com/maintainerr/Maintainerr/commit/b45bcec19eb74ac4263d83a9113c0ce30f180ce9))
+* Remove erroneous whitespace in notification message ([#2015](https://github.com/maintainerr/Maintainerr/issues/2015)) ([afbc273](https://github.com/maintainerr/Maintainerr/commit/afbc27362f31282f66d2441fa39befa16ae7ba4e))
+* Respect GitHub API rate limits ([#2007](https://github.com/maintainerr/Maintainerr/issues/2007)) ([ade0469](https://github.com/maintainerr/Maintainerr/commit/ade04690fe492953b5aaeebcb8fb18aafaf78f29))
+* Take action after days not resetting back to default ([#2017](https://github.com/maintainerr/Maintainerr/issues/2017)) ([232687b](https://github.com/maintainerr/Maintainerr/commit/232687b6e1026a0435889d2df480f99e64b99522))
+* Wrap media title in quotes in reminder notification ([#2016](https://github.com/maintainerr/Maintainerr/issues/2016)) ([a755c94](https://github.com/maintainerr/Maintainerr/commit/a755c94748bd97c3784f2a736918d31307b917f0))
+
+
+### Features
+
+* Disallow crawlers in robots.txt ([#2042](https://github.com/maintainerr/Maintainerr/issues/2042)) ([99f4c61](https://github.com/maintainerr/Maintainerr/commit/99f4c61929d4ee3b1eed522867a8410e1af10db9))
+* Reduce Docker image size by 40%~ ([#2018](https://github.com/maintainerr/Maintainerr/issues/2018)) ([e157805](https://github.com/maintainerr/Maintainerr/commit/e1578055acefc5e787889b6ac7534d4250d1823a))
+* Upgrade Node.js from v20 to v24 ([#2021](https://github.com/maintainerr/Maintainerr/issues/2021)) ([5bdc189](https://github.com/maintainerr/Maintainerr/commit/5bdc189ad4b635f34c35600f4efd417bbefa4328))
+
+# [2.20.0](https://github.com/maintainerr/Maintainerr/compare/v2.19.0...v2.20.0) (2025-10-27)
+
+
+### Bug Fixes
+
+* Improve email rendering ([#1968](https://github.com/maintainerr/Maintainerr/issues/1968)) ([f2cfcb9](https://github.com/maintainerr/Maintainerr/commit/f2cfcb90be2b77247c47b33acf4407d404163843))
+
+
+### Features
+
+* Add Sonarr & Radarr audio languages rule options ([#1886](https://github.com/maintainerr/Maintainerr/issues/1886)) ([60f1756](https://github.com/maintainerr/Maintainerr/commit/60f1756963236e74f3ca8a47868268080f609220))
+
+# [2.19.0](https://github.com/jorenn92/Maintainerr/compare/v2.18.2...v2.19.0) (2025-08-17)
+
+
+### Features
+
+* add comprehensive Copilot instructions ([#1888](https://github.com/jorenn92/Maintainerr/issues/1888)) ([5053168](https://github.com/jorenn92/Maintainerr/commit/5053168d532a52c141899373c0ed6fa7afe45e2d))
+* Improve Jellyseerr settings UX ([#1872](https://github.com/jorenn92/Maintainerr/issues/1872)) ([2c7e7c3](https://github.com/jorenn92/Maintainerr/commit/2c7e7c300dfc9e031db306f90a80a39e28ef53d8))
+* Improve Overseerr settings UX ([#1871](https://github.com/jorenn92/Maintainerr/issues/1871)) ([0c484fb](https://github.com/jorenn92/Maintainerr/commit/0c484fbbabf0e127b3cc189c8a7d6b84428178f1))
+
 ## [2.18.2](https://github.com/jorenn92/Maintainerr/compare/v2.18.1...v2.18.2) (2025-07-12)
 
 

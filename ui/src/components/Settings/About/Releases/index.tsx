@@ -1,14 +1,12 @@
-import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import GetApiHandler from '../../../../utils/ApiHandler'
 import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 
 // Dynamic import for markdown
-const ReactMarkdown = dynamic(() => import('react-markdown'), {
-  ssr: false,
-})
+const ReactMarkdown = lazy(() => import('react-markdown'))
 
 const messages = {
   releases: 'Releases',
@@ -20,9 +18,6 @@ const messages = {
   viewchangelog: 'View Changelog',
   close: 'Close',
 }
-
-const REPO_RELEASE_API =
-  'https://api.github.com/repos/jorenn92/maintainerr/releases?per_page=10'
 
 interface GitHubRelease {
   url: string
@@ -42,19 +37,11 @@ interface GitHubRelease {
   zipball_url: string
   body: string
 }
+
 interface ReleaseProps {
   release: GitHubRelease
   isLatest: boolean
   currentVersion: string
-}
-interface ModalProps {
-  title: string
-  children: React.ReactNode
-  isOpen: boolean
-  onCancel: () => void
-  onOk?: () => void
-  cancelText?: string
-  okText?: string
 }
 
 const calculateRelativeTime = (dateString: string): string => {
@@ -88,7 +75,9 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
             }}
           >
             <div className="prose:sm prose">
-              <ReactMarkdown>{release.body}</ReactMarkdown>
+              <Suspense fallback={<LoadingSpinner />}>
+                <ReactMarkdown>{release.body}</ReactMarkdown>
+              </Suspense>
             </div>
           </Modal>
         </div>
@@ -125,12 +114,8 @@ const Releases = ({ currentVersion }: ReleasesProps) => {
   useEffect(() => {
     const fetchReleases = async () => {
       try {
-        const response = await fetch(REPO_RELEASE_API)
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`)
-        }
-        const releases = await response.json()
-        setData(releases)
+        const response = await GetApiHandler<GitHubRelease[]>(`/app/releases`)
+        setData(response)
       } catch (err) {
         setError(
           err instanceof Error && err.message

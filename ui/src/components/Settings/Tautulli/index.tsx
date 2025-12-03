@@ -5,7 +5,7 @@ import {
   TautulliSettingDto,
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
@@ -45,10 +45,6 @@ const TautulliSettings = () => {
   const [testResult, setTestResult] = useState<TestStatus>()
   const [submitError, setSubmitError] = useState<boolean>(false)
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
-
-  useEffect(() => {
-    document.title = 'Maintainerr - Settings - Tautulli'
-  }, [])
 
   const {
     register,
@@ -128,7 +124,7 @@ const TautulliSettings = () => {
           })
         }
       })
-      .catch((e) => {
+      .catch(() => {
         setTestResult({
           status: false,
           message: 'Unknown error',
@@ -140,105 +136,107 @@ const TautulliSettings = () => {
   }
 
   return (
-    <div className="h-full w-full">
-      <div className="section h-full w-full">
-        <h3 className="heading">Tautulli Settings</h3>
-        <p className="description">Tautulli configuration</p>
-      </div>
-      {submitError ? (
-        <Alert type="warning" title="Something went wrong" />
-      ) : isSubmitSuccessful ? (
-        <Alert type="info" title="Tautulli settings successfully updated" />
-      ) : undefined}
+    <>
+      <title>Tautulli settings - Maintainerr</title>
+      <div className="h-full w-full">
+        <div className="section h-full w-full">
+          <h3 className="heading">Tautulli Settings</h3>
+          <p className="description">Tautulli configuration</p>
+        </div>
+        {submitError ? (
+          <Alert type="warning" title="Something went wrong" />
+        ) : isSubmitSuccessful ? (
+          <Alert type="info" title="Tautulli settings successfully updated" />
+        ) : undefined}
 
-      {testResult != null &&
-        (testResult?.status ? (
-          <Alert
-            type="info"
-            title={`Successfully connected to Tautulli (${testResult.message})`}
-          />
-        ) : (
-          <Alert type="error" title={testResult.message} />
-        ))}
+        {testResult != null &&
+          (testResult?.status ? (
+            <Alert
+              type="info"
+              title={`Successfully connected to Tautulli (${testResult.message})`}
+            />
+          ) : (
+            <Alert type="error" title={testResult.message} />
+          ))}
 
-      <div className="section">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Controller
-            name={'url'}
-            defaultValue=""
-            control={control}
-            render={({ field }) => (
-              <InputGroup
-                label="URL"
-                value={field.value}
-                placeholder="http://localhost:8181"
-                onChange={field.onChange}
-                onBlur={(event) =>
-                  field.onChange(stripLeadingSlashes(event.target.value))
-                }
-                ref={field.ref}
-                name={field.name}
-                type="text"
-                error={errors.url?.message}
-                helpText={
-                  <>
-                    Example URL formats:{' '}
-                    <span className="whitespace-nowrap">
-                      http://localhost:8181
-                    </span>
-                    ,{' '}
-                    <span className="whitespace-nowrap">
-                      http://192.168.1.5/tautulli
-                    </span>
-                    ,{' '}
-                    <span className="whitespace-nowrap">
-                      https://tautulli.example.com
-                    </span>
-                  </>
-                }
-                required
-              />
-            )}
-          />
+        <div className="section">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <Controller
+              name={'url'}
+              defaultValue=""
+              control={control}
+              render={({ field }) => (
+                <InputGroup
+                  label="URL"
+                  value={field.value}
+                  placeholder="http://localhost:8181"
+                  onChange={field.onChange}
+                  onBlur={(event) =>
+                    field.onChange(stripLeadingSlashes(event.target.value))
+                  }
+                  ref={field.ref}
+                  name={field.name}
+                  type="text"
+                  error={errors.url?.message}
+                  helpText={
+                    <>
+                      Example URL formats:{' '}
+                      <span className="whitespace-nowrap">
+                        http://localhost:8181
+                      </span>
+                      ,{' '}
+                      <span className="whitespace-nowrap">
+                        http://192.168.1.5/tautulli
+                      </span>
+                      ,{' '}
+                      <span className="whitespace-nowrap">
+                        https://tautulli.example.com
+                      </span>
+                    </>
+                  }
+                  required
+                />
+              )}
+            />
 
-          <InputGroup
-            label="API key"
-            type="password"
-            {...register('api_key')}
-            error={errors.api_key?.message}
-          />
+            <InputGroup
+              label="API key"
+              type="password"
+              {...register('api_key')}
+              error={errors.api_key?.message}
+            />
 
-          <div className="actions mt-5 w-full">
-            <div className="flex w-full flex-wrap sm:flex-nowrap">
-              <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
-                <DocsButton page="Configuration/#tautulli" />
-              </span>
-              <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                <Button
-                  buttonType="success"
-                  onClick={performTest}
-                  className="ml-3"
-                  disabled={testing || isGoingToRemoveSetting}
-                >
-                  {testing ? 'Testing...' : 'Test'}
-                </Button>
-                <span className="ml-3 inline-flex rounded-md shadow-sm">
-                  <Button
-                    buttonType="primary"
-                    type="submit"
-                    disabled={!canSaveSettings}
-                  >
-                    <SaveIcon />
-                    <span>Save Changes</span>
-                  </Button>
+            <div className="actions mt-5 w-full">
+              <div className="flex w-full flex-wrap sm:flex-nowrap">
+                <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+                  <DocsButton page="Configuration/#tautulli" />
                 </span>
+                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+                  <Button
+                    buttonType="success"
+                    onClick={performTest}
+                    className="ml-3"
+                    disabled={testing || isGoingToRemoveSetting}
+                  >
+                    {testing ? 'Testing...' : 'Test'}
+                  </Button>
+                  <span className="ml-3 inline-flex rounded-md shadow-sm">
+                    <Button
+                      buttonType="primary"
+                      type="submit"
+                      disabled={!canSaveSettings}
+                    >
+                      <SaveIcon />
+                      <span>Save Changes</span>
+                    </Button>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
-
 export default TautulliSettings

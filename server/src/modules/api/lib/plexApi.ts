@@ -27,12 +27,16 @@ class PlexApi {
     this.options = options;
     this.cache = cacheManager.getCache('plexguid');
 
-    const serverUrl =
+    const baseURL =
       this.getServerScheme() + options.hostname + ':' + options.port;
 
     this.axios = axios.create({
-      baseURL: serverUrl,
+      baseURL,
       timeout: options.timeout,
+      headers: {
+        Accept: 'application/json',
+        'X-Plex-Token': this.options.token,
+      },
     });
     axiosRetry(this.axios, {
       retries: 3,
@@ -48,18 +52,36 @@ class PlexApi {
 
   async query<T>(
     options: RequestOptions | string,
-    docache: boolean = true,
+    useCache: boolean = true,
   ): Promise<T> {
-    return this.queryWithCache(options, docache);
+    if (typeof options === 'string') {
+      options = {
+        uri: options,
+      };
+    }
+
+    const cacheKey = this.serializeCacheKey(options);
+
+    if (useCache && this.cache.data.has(cacheKey)) {
+      return this.cache.data.get<T>(cacheKey);
+    } else {
+      const response = await this.getQuery<T>(options);
+      if (useCache && response) this.cache.data.set(cacheKey, response);
+      return response;
+    }
   }
 
   /**
    * Queries all items with the given options, will fetch all pages.
    *
    * @param {RequestOptions} options - The options for the query.
+   * @param {boolean} [useCache=true] - Whether to use the cache for the query.
    * @return {Promise<T[]>} - A promise that resolves to an array of T.
    */
-  async queryAll<T>(options: RequestOptions): Promise<T> {
+  async queryAll<T>(
+    options: RequestOptions,
+    useCache: boolean = true,
+  ): Promise<T> {
     // vars
     let result = undefined;
     let next = true;
@@ -76,10 +98,7 @@ class PlexApi {
 
     // loop responses
     while (next) {
-      const query: PlexLibraryResponse = await this.queryWithCache(
-        options,
-        true,
-      );
+      const query: PlexLibraryResponse = await this.query(options, useCache);
       if (result === undefined) {
         // if first response, replace result
         result = query;
@@ -102,28 +121,6 @@ class PlexApi {
       }
     }
     return result as unknown as T;
-  }
-
-  async queryWithCache<T>(
-    options: RequestOptions | string,
-    doCache: boolean = true,
-  ): Promise<T> {
-    if (typeof options === 'string') {
-      options = {
-        uri: options,
-      };
-    }
-
-    const cacheKey = this.serializeCacheKey(options);
-    const cachedItem = this.cache.data.get<T>(cacheKey);
-
-    if (cachedItem && doCache) {
-      return cachedItem;
-    } else {
-      const response = await this.getQuery<T>(options);
-      if (doCache) this.cache.data.set(cacheKey, response);
-      return response;
-    }
   }
 
   private getQuery<T>(options: RequestOptions) {
@@ -150,15 +147,10 @@ class PlexApi {
   }
 
   private async _request<T>(method: string, options: RequestOptions) {
-    const extraHeaders = options.extraHeaders || {};
     const requestConfig: AxiosRequestConfig = {
       url: options.uri,
       method,
-      headers: {
-        Accept: 'application/json',
-        'X-Plex-Token': this.options.token,
-        ...extraHeaders,
-      },
+      headers: options.extraHeaders,
     };
 
     try {
@@ -169,29 +161,32 @@ class PlexApi {
 
       if (err instanceof AxiosError) {
         if (err.response?.status === 403) {
-          this.logger.debug(
+          throw new Error(
             `${requestConfig.method} ${url} failed: Plex Server denied request due to lack of managed user permissions! In case of a delete request, delete content must be allowed in plex-media-server options.`,
+            { cause: err },
           );
         } else if (err.response?.status === 401) {
-          this.logger.debug(
+          throw new Error(
             `${requestConfig.method} ${url} failed: Plex Server denied request`,
+            { cause: err },
           );
         } else if (err.response?.status) {
-          this.logger.debug(
-            `${requestConfig.method} ${url} failed: Plex Server didnt respond with a valid 2xx status code, response code: ${err.response?.status}`,
+          throw new Error(
+            `${requestConfig.method} ${url} failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: ${err.response?.status}`,
+            { cause: err },
           );
         } else {
-          this.logger.debug(
+          throw new Error(
             `${requestConfig.method} ${url} failed with exception: ${err}`,
+            { cause: err },
           );
         }
       } else {
-        this.logger.debug(
+        throw new Error(
           `${requestConfig.method} ${url} failed with exception: ${err}${err.cause?.code ? `, error code: ${err.cause.code}` : ''}`,
+          { cause: err },
         );
       }
-
-      throw err;
     }
   }
 

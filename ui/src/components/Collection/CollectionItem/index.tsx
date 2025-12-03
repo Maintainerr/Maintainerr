@@ -1,7 +1,5 @@
-import { useContext } from 'react'
 import { ICollection } from '..'
-import LibrariesContext from '../../../contexts/libraries-context'
-import CachedImage from '../../Common/CachedImage'
+import { usePlexLibraries } from '../../../api/plex'
 
 interface ICollectionItem {
   collection: ICollection
@@ -9,7 +7,7 @@ interface ICollectionItem {
 }
 
 const CollectionItem = (props: ICollectionItem) => {
-  const LibrariesCtx = useContext(LibrariesContext)
+  const { data: plexLibraries } = usePlexLibraries()
 
   return (
     <>
@@ -21,14 +19,14 @@ const CollectionItem = (props: ICollectionItem) => {
       >
         {props.collection.media && props.collection.media.length > 1 ? (
           <div className="absolute inset-0 z-[-100] flex flex-row overflow-hidden">
-            <CachedImage
+            <img
               className="backdrop-image"
               width="600"
               height="800"
               src={`https://image.tmdb.org/t/p/w500${props.collection.media[0].image_path}`}
               alt="img"
             />
-            <CachedImage
+            <img
               className="backdrop-image"
               width="600"
               height="800"
@@ -58,7 +56,7 @@ const CollectionItem = (props: ICollectionItem) => {
             <div className="mb-5 mr-5 sm:mr-0">
               <p className="font-bold">Library</p>
               <p className="text-amber-500">
-                {LibrariesCtx.libraries.find(
+                {plexLibraries?.find(
                   (el) => +el.key === +props.collection.libraryId,
                 )?.title ?? <>&nbsp;</>}
               </p>

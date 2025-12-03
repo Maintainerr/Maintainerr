@@ -1,6 +1,5 @@
-import Link from 'next/link'
-import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 export interface SettingsRoute {
   text: string
@@ -44,7 +43,7 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
 
   return (
     <Link
-      href={props.route}
+      to={props.route}
       className={`${linkClasses} ${
         props.currentPath.match(props.regex)
           ? activeLinkColor
@@ -62,7 +61,8 @@ const SettingsTabs: React.FC<{
   settingsRoutes: SettingsRoute[]
   allEnabled?: boolean
 }> = ({ tabType = 'default', settingsRoutes, allEnabled = true }) => {
-  const router = useRouter()
+  const location = useLocation()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
@@ -76,6 +76,10 @@ const SettingsTabs: React.FC<{
     }
   }, [allEnabled])
 
+  const currentRoute =
+    settingsRoutes.find((route) => route.regex.test(location.pathname))
+      ?.route ?? ''
+
   return (
     <>
       <div className="sm:hidden">
@@ -83,23 +87,20 @@ const SettingsTabs: React.FC<{
           Select a Tab
         </label>
         <select
+          value={currentRoute}
           onChange={(e) => {
-            router.push(e.target.value)
+            navigate(e.target.value)
           }}
           onBlur={(e) => {
-            router.push(e.target.value)
+            navigate(e.target.value)
           }}
-          defaultValue={
-            settingsRoutes.find((route) => !!router.pathname.match(route.route))
-              ?.route
-          }
           aria-label="Selected Tab"
         >
           {settingsRoutes.map((route, index) => (
             <SettingsLink
               disabled={!allEnabled}
               tabType={tabType}
-              currentPath={router.pathname}
+              currentPath={location.pathname}
               route={route.route}
               regex={route.regex}
               isMobile
@@ -117,7 +118,7 @@ const SettingsTabs: React.FC<{
               <SettingsLink
                 disabled={!allEnabled}
                 tabType={tabType}
-                currentPath={router.pathname}
+                currentPath={location.pathname}
                 route={route.route}
                 regex={route.regex}
                 key={`button-settings-link-${index}`}
@@ -134,7 +135,7 @@ const SettingsTabs: React.FC<{
               <SettingsLink
                 disabled={!allEnabled}
                 tabType={tabType}
-                currentPath={router.pathname}
+                currentPath={location.pathname}
                 route={route.route}
                 regex={route.regex}
                 key={`standard-settings-link-${index}`}

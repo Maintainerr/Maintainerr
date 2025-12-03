@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class TasksAddTaskRunningTable1706275100801
-  implements MigrationInterface
-{
+export class TasksAddTaskRunningTable1706275100801 implements MigrationInterface {
   name = 'TasksAddTaskRunningTable1706275100801';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,10 +1,13 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GracefulShutdownModule } from 'nestjs-graceful-shutdown';
+import { GracefulShutdownModule } from '@tygra/nestjs-graceful-shutdown';
 import { ZodValidationPipe } from 'nestjs-zod';
+import { join } from 'path';
 import { ExternalApiModule } from '../modules/api/external-api/external-api.module';
+import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
 import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';
 import { JellyseerrApiService } from '../modules/api/jellyseerr-api/jellyseerr-api.service';
 import { OverseerrApiModule } from '../modules/api/overseerr-api/overseerr-api.module';
@@ -38,6 +41,7 @@ import ormConfig from './config/typeOrmConfig';
     SettingsModule,
     PlexApiModule,
     ExternalApiModule,
+    GitHubApiModule,
     TmdbApiModule,
     ServarrApiModule,
     OverseerrApiModule,
@@ -47,6 +51,23 @@ import ormConfig from './config/typeOrmConfig';
     CollectionsModule,
     NotificationsModule,
     EventsModule,
+    ServeStaticModule.forRootAsync({
+      useFactory: () => {
+        if (process.env.NODE_ENV !== 'production') {
+          return [];
+        }
+
+        return [
+          {
+            rootPath: join(__dirname, '..', 'ui'),
+            serveRoot: process.env.BASE_PATH || undefined,
+            serveStaticOptions: {
+              extensions: ['html'],
+            },
+          },
+        ];
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [
@@ -70,9 +91,9 @@ export class AppModule implements OnModuleInit {
     // Initialize modules requiring settings
     await this.settings.init();
     await this.plexApi.initialize({});
-    await this.overseerApi.init();
-    await this.tautulliApi.init();
-    await this.jellyseerrApi.init();
+    this.overseerApi.init();
+    this.tautulliApi.init();
+    this.jellyseerrApi.init();
 
     // intialize notification agents
     await this.notificationService.registerConfiguredAgents();

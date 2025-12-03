@@ -662,7 +662,7 @@ export class CollectionsService {
           );
 
           if (resp.code === 1) {
-            await this.collectionRepo.save({
+            collection = await this.collectionRepo.save({
               ...collection,
               plexId: null,
             });
@@ -683,8 +683,10 @@ export class CollectionsService {
 
   async removeFromAllCollections(media: AddRemoveCollectionMedia[]) {
     try {
-      const collection = await this.collectionRepo.find();
-      collection.forEach((c) => this.removeFromCollection(c.id, media));
+      const collections = await this.collectionRepo.find();
+      for (const collection of collections) {
+        await this.removeFromCollection(collection.id, media);
+      }
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
       this.logger.warn(

@@ -12,7 +12,7 @@ import {
   isMetaActionedByRule,
 } from '@maintainerr/contracts'
 import { Editor } from '@monaco-editor/react'
-import _ from 'lodash'
+import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
@@ -109,7 +109,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }
 
   useEffect(() => {
-    const debouncedScroll = _.debounce(handleScroll, 200)
+    const debouncedScroll = debounce(handleScroll, 200)
     window.addEventListener('scroll', debouncedScroll)
     return () => {
       window.removeEventListener('scroll', debouncedScroll)
@@ -286,7 +286,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
             <Table.TBody>
               {loadingRef.current ? (
                 <tr>
-                  <Table.TD colSpan={3} noPadding>
+                  <Table.TD colSpan={4} noPadding>
                     <LoadingSpinner />
                   </Table.TD>
                 </tr>
@@ -412,7 +412,7 @@ interface LogMetaModalProps {
 const LogMetaModal = (props: LogMetaModalProps) => {
   const editorRef = useRef(undefined)
 
-  function handleEditorDidMount(editor: any, monaco: any) {
+  function handleEditorDidMount(editor: any) {
     editorRef.current = editor
   }
 

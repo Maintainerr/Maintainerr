@@ -5,8 +5,8 @@ import {
   ServerIcon,
 } from '@heroicons/react/outline'
 import { type VersionResponse } from '@maintainerr/contracts'
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import GetApiHandler from '../../utils/ApiHandler'
 
 enum messages {
@@ -47,7 +47,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
     <>
       {!loading ? (
         <Link
-          href="/settings/about"
+          to="/settings/about"
           onClick={onClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && onClick) {

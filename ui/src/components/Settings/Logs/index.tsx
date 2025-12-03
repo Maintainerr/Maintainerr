@@ -22,16 +22,15 @@ import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
 
 const LogSettings = () => {
-  useEffect(() => {
-    document.title = 'Maintainerr - Settings - Logs'
-  }, [])
-
   return (
-    <div className="h-full w-full">
-      <LogSettingsForm />
-      <Logs />
-      <LogFiles />
-    </div>
+    <>
+      <title>Logs - Maintainerr</title>
+      <div className="h-full w-full">
+        <LogSettingsForm />
+        <Logs />
+        <LogFiles />
+      </div>
+    </>
   )
 }
 
@@ -134,8 +133,7 @@ const Logs = () => {
 
   useEffect(() => {
     const MAX_LOG_LINES = 1000
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
-    const es = new ReconnectingEventSource(`${basePath}/api/logs/stream`)
+    const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/logs/stream`)
 
     const handleLog = (event: MessageEvent) => {
       const message: LogEvent = JSON.parse(event.data)
@@ -339,5 +337,4 @@ const LogFiles = () => {
     </div>
   )
 }
-
 export default LogSettings

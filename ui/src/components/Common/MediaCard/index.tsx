@@ -6,7 +6,6 @@ import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
-import CachedImage from '../CachedImage'
 import MediaModalContent from './MediaModal'
 
 interface IMediaCard {
@@ -17,7 +16,6 @@ interface IMediaCard {
   mediaType: 'movie' | 'show' | 'season' | 'episode'
   title: string
   userScore: number
-  canExpand?: boolean
   inProgress?: boolean
   tmdbid?: string
   libraryId?: number
@@ -44,11 +42,10 @@ const MediaCard: React.FC<IMediaCard> = ({
   exclusionId = undefined,
   tmdbid = undefined,
   userScore,
-  canExpand = false,
   collectionPage = false,
   exclusionType = undefined,
   isManual = false,
-  onRemove = (id: string) => {},
+  onRemove = () => {},
 }) => {
   const isTouch = useIsTouch()
   const [showDetail, setShowDetail] = useState(false)
@@ -127,13 +124,10 @@ const MediaCard: React.FC<IMediaCard> = ({
       >
         <div className="absolute inset-0 h-full w-full overflow-hidden">
           {image ? (
-            <CachedImage
-              className="absolute inset-0 h-full w-full"
+            <img
+              className="absolute inset-0 h-full w-full object-cover"
               alt=""
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
-              fill
-              sizes="100vw"
-              style={{ objectFit: 'cover' }}
             />
           ) : undefined}
           <div className="absolute left-0 right-0 flex items-center justify-between p-2">

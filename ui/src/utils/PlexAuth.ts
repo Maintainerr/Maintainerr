@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getParser } from 'bowser'
+import Bowser from 'bowser'
 
 interface PlexHeaders extends Record<string, string> {
   Accept: string
@@ -34,17 +34,17 @@ class PlexOAuth {
         'Window is not defined. Are you calling this in the browser?',
       )
     }
-    const browser = getParser(window.navigator.userAgent)
+    const browser = Bowser.getParser(window.navigator.userAgent)
     this.plexHeaders = {
       Accept: 'application/json',
       'X-Plex-Product': 'Maintainerr',
       'X-Plex-Version': '2.0',
       'X-Plex-Client-Identifier': '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
       'X-Plex-Model': 'Plex OAuth',
-      'X-Plex-Platform': browser.getOSName(),
-      'X-Plex-Platform-Version': browser.getOSVersion(),
-      'X-Plex-Device': browser.getBrowserName(),
-      'X-Plex-Device-Name': browser.getBrowserVersion(),
+      'X-Plex-Platform': browser.getOSName() ?? 'Unknown',
+      'X-Plex-Platform-Version': browser.getOSVersion() ?? 'Unknown',
+      'X-Plex-Device': browser.getBrowserName() ?? 'Unknown',
+      'X-Plex-Device-Name': `${browser.getBrowserVersion() ?? 'Unknown'} (Maintainerr)`,
       'X-Plex-Device-Screen-Resolution':
         window.screen.width + 'x' + window.screen.height,
       'X-Plex-Language': 'en',
@@ -157,6 +157,8 @@ class PlexOAuth {
         'Window is undefined. Are you running this in the browser?',
       )
     }
+    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+
     // Fixes dual-screen position                         Most browsers      Firefox
     const dualScreenLeft =
       window.screenLeft != undefined ? window.screenLeft : window.screenX
@@ -177,7 +179,7 @@ class PlexOAuth {
 
     //Set url to login/plex/loading so browser doesn't block popup
     const newWindow = window.open(
-      '/login/plex/loading',
+      `${basePath}/login/plex/loading`,
       title,
       'scrollbars=yes, width=' +
         w +

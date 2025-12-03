@@ -16,7 +16,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
   const editorRef = useRef(undefined)
   const uploadRef = useRef<HTMLInputElement>(null)
 
-  function handleEditorDidMount(editor: any, monaco: any) {
+  function handleEditorDidMount(editor: any) {
     editorRef.current = editor
   }
 

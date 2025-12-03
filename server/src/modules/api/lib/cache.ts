@@ -7,7 +7,8 @@ type AvailableCacheIds =
   | 'overseerr'
   | 'plexcommunity'
   | 'tautulli'
-  | 'jellyseerr';
+  | 'jellyseerr'
+  | 'github';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr';
 
@@ -65,6 +66,10 @@ class CacheManager {
     ),
     tautulli: new Cache('tautulli', 'Tautulli API', 'tautulli'),
     jellyseerr: new Cache('jellyseerr', 'Jellyseerr API', 'jellyseerr'),
+    github: new Cache('github', 'GitHub API', 'github', {
+      stdTtl: 86400, // 24 hours
+      checkPeriod: 60 * 60, // Check every hour
+    }),
   };
 
   public createCache(

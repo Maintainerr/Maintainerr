@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import GetApiHandler from '../../../../utils/ApiHandler'
 
@@ -32,7 +31,7 @@ interface Metadata {
   Guid: { id: string }[]
 }
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 const iconMap: Record<string, Record<string, string>> = {
   imdb: {
     audience: `${basePath}/icons_logos/imdb_icon.svg`,
@@ -62,7 +61,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       [mediaType],
     )
 
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
     useEffect(() => {
       GetApiHandler('/plex').then((resp) =>
@@ -166,7 +165,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           key={index}
                           className="flex items-center justify-center space-x-1.5 rounded-lg bg-black bg-opacity-70 px-3 py-1 text-white shadow-lg"
                         >
-                          <Image
+                          <img
                             src={icon}
                             alt={`${prefix} ${type} Icon`}
                             width={24}
@@ -192,8 +191,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       <a
                         href={`https://themoviedb.org/${mediaTypeOf}/${tmdbid}`}
                         target="_blank"
+                        rel="noreferrer"
                       >
-                        <Image
+                        <img
                           src={`${basePath}/icons_logos/tmdb_logo.svg`}
                           alt="TMDB Logo"
                           width={128}
@@ -207,8 +207,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     <a
                       href={`https://app.plex.tv/desktop#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${id}`}
                       target="_blank"
+                      rel="noreferrer"
                     >
-                      <Image
+                      <img
                         src={`${basePath}/icons_logos/plex_logo.svg`}
                         alt="Plex Logo"
                         width={128}
@@ -222,8 +223,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       <a
                         href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
                         target="_blank"
+                        rel="noreferrer"
                       >
-                        <Image
+                        <img
                           src={`${basePath}/icons_logos/tautulli_logo.svg`}
                           alt="Plex Logo"
                           width={128}

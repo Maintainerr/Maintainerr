@@ -1,23 +1,29 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
-import { debounce } from 'lodash'
-import Head from 'next/head'
-import router from 'next/router'
+import { debounce } from 'lodash-es'
 import { ReactNode, useContext, useEffect, useState } from 'react'
+import {
+  isRouteErrorResponse,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useRouteError,
+} from 'react-router-dom'
+import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import SettingsContext from '../../contexts/settings-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
 
-const Layout: React.FC<{ children?: ReactNode }> = (props: {
-  children?: ReactNode
-}) => {
-  const [isScrolled, setIsScrolled] = useState(false)
+type LayoutShellProps = {
+  children: ReactNode
+}
 
+const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
-  const SettingsCtx = useContext(SettingsContext)
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  const navigate = useNavigate()
+  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+  const location = useLocation()
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)
@@ -26,17 +32,15 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
   useEffect(() => {
     GetApiHandler('/settings/test/setup').then((setupDone) => {
       if (!setupDone) {
-        router.push('/settings/plex')
+        navigate('/settings/plex')
       }
     })
-  }, [])
+  }, [navigate, location.pathname])
 
   return (
     <section>
-      <Head>
-        <title>Maintainerr</title>
-        <link rel="icon" href={`${basePath}/favicon.ico`} />
-      </Head>
+      <title>Maintainerr</title>
+      <link rel="icon" href={`${basePath}/favicon.ico`} />
       <div className="flex h-full min-h-full min-w-0 bg-zinc-900">
         <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-zinc-700 md:border-t" />
         <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-zinc-800 to-zinc-900">
@@ -45,29 +49,19 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
         <NavBar open={navBarOpen} setClosed={handleNavbar}></NavBar>
         <div className="relative mb-16 flex w-0 min-w-0 flex-1 flex-col lg:ml-64"></div>
         <div
-          className={`searchbar fixed left-0 right-0 top-0 z-10 flex flex-shrink-0 bg-opacity-80 transition duration-300 ${
-            isScrolled ? 'bg-zinc-700' : 'bg-transparent'
-          } lg:ml-64`}
-          style={{
-            backdropFilter: isScrolled ? 'blur(5px)' : undefined,
-            WebkitBackdropFilter: isScrolled ? 'blur(5px)' : undefined,
-          }}
+          className={`searchbar fixed left-0 right-0 top-0 z-10 flex flex-shrink-0 bg-transparent bg-opacity-80 transition duration-300 lg:ml-64`}
         >
           <div className="transparent-glass-bg flex flex-1 items-center justify-between pr-4 md:pl-4 md:pr-4">
             <button
-              className={`px-4 text-white ${
-                isScrolled ? 'opacity-90' : 'opacity-70'
-              } transition duration-300 focus:outline-none lg:hidden`}
+              className={`px-4 text-white opacity-70 transition duration-300 focus:outline-none lg:hidden`}
               aria-label="Open sidebar"
               onClick={() => setNavBarOpen(true)}
             >
               <MenuAlt2Icon className="h-6 w-6" />
             </button>
             <button
-              className={`mr-2 text-white ${
-                isScrolled ? 'opacity-90' : 'opacity-70'
-              } transition duration-300 hover:text-white focus:text-white focus:outline-none`}
-              onClick={() => router.back()}
+              className={`mr-2 text-white opacity-70 transition duration-300 hover:text-white focus:text-white focus:outline-none`}
+              onClick={() => navigate(-1)}
             >
               <ArrowLeftIcon className="w-7" />
             </button>
@@ -76,7 +70,7 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
                 SearchCtx.addText(text)
 
                 if (text !== '') {
-                  router.push('/overview')
+                  navigate('/overview')
                 }
               }, 1000)}
             />
@@ -88,11 +82,100 @@ const Layout: React.FC<{ children?: ReactNode }> = (props: {
           tabIndex={0}
         >
           <div className="mb-6">
-            <div className="max-w-8xl mx-auto px-4">{props.children}</div>
+            <div className="max-w-8xl mx-auto px-4">
+              <ToastContainer
+                stacked
+                position="top-right"
+                autoClose={4500}
+                hideProgressBar={false}
+                theme="dark"
+                closeOnClick
+              />
+              {children}
+            </div>
           </div>
         </main>
       </div>
     </section>
+  )
+}
+
+const Layout: React.FC = () => {
+  return (
+    <LayoutShell>
+      <Outlet />
+    </LayoutShell>
+  )
+}
+
+const describeRouteError = (
+  error: unknown,
+): { title: string; message: string } => {
+  if (!error) {
+    return {
+      title: 'Unknown error',
+      message: 'An unexpected error occurred.',
+    }
+  }
+
+  if (isRouteErrorResponse(error)) {
+    const dataMessage =
+      typeof error.data === 'string'
+        ? error.data
+        : (error.data?.message ?? error.data?.error)
+
+    return {
+      title: `${error.status} ${error.statusText}`.trim(),
+      message: dataMessage ?? 'The server returned an unexpected response.',
+    }
+  }
+
+  if (error instanceof Error) {
+    return {
+      title: error.name ?? 'Error',
+      message: error.message,
+    }
+  }
+
+  return {
+    title: 'Unexpected error',
+    message: String(error),
+  }
+}
+
+export const LayoutErrorBoundary: React.FC = () => {
+  const error = useRouteError()
+  const navigate = useNavigate()
+  const { title, message } = describeRouteError(error)
+
+  return (
+    <LayoutShell>
+      <div
+        role="alert"
+        className="rounded border border-red-500/60 bg-red-500/10 p-6 text-red-100 shadow-lg"
+      >
+        <h2 className="text-lg font-semibold text-red-200">{title}</h2>
+        <p className="mt-2 text-sm text-red-100">{message}</p>
+        <p className="mt-4 text-xs text-red-200/80">
+          You can try going back or reloading the page. If the problem persists,
+          please check the browser console for more details.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            className="rounded bg-red-500/30 px-4 py-2 text-sm font-medium text-red-50 transition hover:bg-red-500/40 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+            onClick={() => navigate(-1)}
+          >
+            Go Back
+          </button>
+          <button
+            className="rounded bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500/60"
+            onClick={() => navigate('/overview')}
+          >
+            Go To Overview
+          </button>
+        </div>
+      </div>
+    </LayoutShell>
   )
 }
 

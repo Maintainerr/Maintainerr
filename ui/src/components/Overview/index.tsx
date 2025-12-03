@@ -1,6 +1,6 @@
 import { clone } from 'lodash'
 import { useContext, useEffect, useRef, useState } from 'react'
-import LibrariesContext from '../../contexts/libraries-context'
+import { usePlexLibraries } from '../../api/plex'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
@@ -20,11 +20,12 @@ const Overview = () => {
 
   const [selectedLibrary, setSelectedLibrary] = useState<number>()
   const selectedLibraryRef = useRef<number>(undefined)
-  const [searchUsed, setsearchUsed] = useState<boolean>(false)
+  const [searchUsed, setSearchUsed] = useState<boolean>(false)
 
   const pageData = useRef<number>(0)
   const SearchCtx = useContext(SearchContext)
-  const LibrariesCtx = useContext(LibrariesContext)
+
+  const { data: plexLibraries } = usePlexLibraries()
 
   const fetchAmount = 30
 
@@ -33,17 +34,15 @@ const Overview = () => {
   }
 
   useEffect(() => {
-    document.title = 'Maintainerr - Overview'
+    if (!plexLibraries || plexLibraries.length === 0) return
+
     setTimeout(() => {
       if (
         loadingRef.current &&
         data.length === 0 &&
-        SearchCtx.search.text === '' &&
-        LibrariesCtx.libraries.length > 0
+        SearchCtx.search.text === ''
       ) {
-        switchLib(
-          selectedLibrary ? selectedLibrary : +LibrariesCtx.libraries[0].key,
-        )
+        switchLib(selectedLibrary ? selectedLibrary : +plexLibraries[0].key)
       }
     }, 300)
 
@@ -54,22 +53,24 @@ const Overview = () => {
       totalSizeRef.current = 999
       pageData.current = 0
     }
-  }, [])
+  }, [plexLibraries])
 
   useEffect(() => {
+    if (!plexLibraries || plexLibraries.length === 0) return
+
     if (SearchCtx.search.text !== '') {
       GetApiHandler(`/plex/search/${SearchCtx.search.text}`).then(
         (resp: IPlexMetadata[]) => {
-          setsearchUsed(true)
+          setSearchUsed(true)
           setTotalSize(resp.length)
           pageData.current = resp.length * 50
           setData(resp ? resp : [])
           setIsLoading(false)
         },
       )
-      setSelectedLibrary(+LibrariesCtx.libraries[0]?.key)
+      setSelectedLibrary(+plexLibraries[0]?.key)
     } else {
-      setsearchUsed(false)
+      setSearchUsed(false)
       setData([])
       setTotalSize(999)
       pageData.current = 0
@@ -98,7 +99,7 @@ const Overview = () => {
     setTotalSize(999)
     setData([])
     dataRef.current = []
-    setsearchUsed(false)
+    setSearchUsed(false)
     setSelectedLibrary(libraryId)
   }
 
@@ -131,30 +132,36 @@ const Overview = () => {
   }
 
   return (
-    <div className="w-full">
-      {!searchUsed ? (
-        <LibrarySwitcher allPossible={false} onSwitch={switchLib} />
-      ) : undefined}
-      {selectedLibrary ? (
-        <OverviewContent
-          dataFinished={
-            !(totalSizeRef.current >= pageData.current * fetchAmount)
-          }
-          fetchData={() => {
-            setLoadingExtra(true)
-            fetchData()
-          }}
-          loading={loadingRef.current}
-          extrasLoading={
-            loadingExtra &&
-            !loadingRef.current &&
-            totalSizeRef.current >= pageData.current * fetchAmount
-          }
-          data={data}
-          libraryId={selectedLibrary}
-        />
-      ) : undefined}
-    </div>
+    <>
+      <title>Overview - Maintainerr</title>
+      <div className="w-full">
+        {!searchUsed ? (
+          <LibrarySwitcher
+            shouldShowAllOption={false}
+            onLibraryChange={switchLib}
+          />
+        ) : undefined}
+        {selectedLibrary ? (
+          <OverviewContent
+            dataFinished={
+              !(totalSizeRef.current >= pageData.current * fetchAmount)
+            }
+            fetchData={() => {
+              setLoadingExtra(true)
+              fetchData()
+            }}
+            loading={loadingRef.current}
+            extrasLoading={
+              loadingExtra &&
+              !loadingRef.current &&
+              totalSizeRef.current >= pageData.current * fetchAmount
+            }
+            data={data}
+            libraryId={selectedLibrary}
+          />
+        ) : undefined}
+      </div>
+    </>
   )
 }
 export default Overview

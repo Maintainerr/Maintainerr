@@ -1,6 +1,7 @@
 export * from './app'
 export * from './collections'
 export * from './events'
+export * from './plex'
 export * from './rules'
 export * from './settings/jellyseerr'
 export * from './settings/logs'

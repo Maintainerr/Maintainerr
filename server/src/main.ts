@@ -1,9 +1,9 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { setupGracefulShutdown } from '@tygra/nestjs-graceful-shutdown';
 import * as fs from 'fs';
-import { setupGracefulShutdown } from 'nestjs-graceful-shutdown';
-import { patchNestJsSwagger } from 'nestjs-zod';
+import { cleanupOpenApiDoc } from 'nestjs-zod';
 import path from 'path';
 import { AppModule } from './app/app.module';
 import { MaintainerrLogger } from './modules/logging/logs.service';
@@ -13,8 +13,6 @@ const dataDir =
     ? '/opt/data'
     : path.join(__dirname, '../../data');
 
-patchNestJsSwagger();
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
@@ -22,15 +20,29 @@ async function bootstrap() {
 
   setupGracefulShutdown({ app });
 
+  const basePathEnv = process.env.BASE_PATH?.trim();
+  if (basePathEnv && basePathEnv !== '/') {
+    const normalizedBasePath = basePathEnv
+      .replace(/\/+$/, '')
+      .replace(/^\/+/, '');
+
+    if (normalizedBasePath.length > 0) {
+      app.setGlobalPrefix(normalizedBasePath);
+    }
+  }
+
   const config = new DocumentBuilder().setTitle('Maintainerr').build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/swagger', app, documentFactory);
+  const document = documentFactory();
+  cleanupOpenApiDoc(document);
+  SwaggerModule.setup('api/swagger', app, document);
 
   app.useLogger(await app.resolve(MaintainerrLogger));
   app.enableCors({ origin: true });
 
-  const apiPort = process.env.API_PORT || 3001;
-  await app.listen(apiPort);
+  const apiPort = process.env.UI_PORT || 6246;
+  const apiHostname = process.env.UI_HOSTNAME || '0.0.0.0';
+  await app.listen(apiPort, apiHostname);
 }
 
 function createDataDirectoryStructure() {
@@ -54,7 +66,7 @@ function createDataDirectoryStructure() {
     }
   } catch (err) {
     console.warn(
-      `THE CONTAINER NO LONGER OPERATES WITH PRIVILEGED USER PERMISSIONS. PLEASE UPDATE YOUR CONFIGURATION ACCORDINGLY: https://github.com/jorenn92/Maintainerr/releases/tag/v2.0.0`,
+      `THE CONTAINER NO LONGER OPERATES WITH PRIVILEGED USER PERMISSIONS. PLEASE UPDATE YOUR CONFIGURATION ACCORDINGLY: https://github.com/Maintainerr/Maintainerr/releases/tag/v2.0.0`,
     );
     console.error(
       'Could not create or access (files in) the data directory. Please make sure the necessary permissions are set',
@@ -64,7 +76,13 @@ function createDataDirectoryStructure() {
 }
 
 createDataDirectoryStructure();
-bootstrap();
+bootstrap().catch((error) => {
+  console.error(
+    'A fatal error occurred starting the server. This is likely a bug, please report this issue on GitHub.',
+    { error },
+  );
+  process.exit(1);
+});
 
 process
   .on('unhandledRejection', (err) => {
@@ -79,5 +97,5 @@ process
       'The server has crashed because of an uncaughtException. This is likely a bug, please report this issue on GitHub.',
       err,
     );
-    process.exit(1);
+    process.exit(2);
   });
