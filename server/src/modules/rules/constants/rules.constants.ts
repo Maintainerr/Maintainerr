@@ -854,6 +854,13 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
+        {
+          id: 27,
+          name: 'seriesType',
+          humanName: 'Series type',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
+        },
       ],
     },
     {

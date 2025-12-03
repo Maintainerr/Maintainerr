@@ -323,6 +323,9 @@ export class SonarrGetterService {
         case 'fileAudioLanguages': {
           return episodeFile?.mediaInfo?.audioLanguages ?? null;
         }
+        case 'seriesType': {
+          return showResponse.seriesType ?? null;
+        }
       }
     } catch (e) {
       this.logger.warn(
