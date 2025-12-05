@@ -1222,26 +1222,27 @@ const AddModal = (props: AddModal) => {
               </div>
             </div>
           </div>
-          <div className="mt-5 flex h-full w-full">
-            <div className="m-auto flex xl:m-0">
+          {/* Floating Save/Cancel bar */}
+          <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center">
+            <div className="mb-4 flex gap-3 rounded-lg bg-zinc-900/95 px-4 py-2 shadow-lg">
               <button
-                className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
+                className="flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"
                 type="submit"
                 disabled={isCreatePending || isUpdatePending}
               >
-                {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
+                <SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
                   Save
                 </p>
               </button>
 
               <button
-                className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
-                onClick={cancel}
+                className="flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60"
                 type="button"
+                onClick={cancel}
                 disabled={isCreatePending || isUpdatePending}
               >
-                {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
+                <BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
                   Cancel
                 </p>
