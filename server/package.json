@@ -52,7 +52,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "sqlite3": "^5.1.6",
-    "typeorm": "^0.3.26",
+    "typeorm": "^0.3.28",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
     "xml2js": "^0.6.2",
