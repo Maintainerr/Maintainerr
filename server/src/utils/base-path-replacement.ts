@@ -20,27 +20,30 @@ export function createBasePathReplacementMiddleware() {
       return next();
     }
 
-    // Only intercept HTML and JS files
-    const isHtmlOrJs = req.path.endsWith('.html') || req.path.endsWith('.js');
-    if (!isHtmlOrJs) {
-      return next();
-    }
-
     // Store original send function
     const originalSend = res.send;
 
     // Override send function to replace placeholder
     res.send = function (data: any): Response {
-      // Only process string/buffer data
-      if (typeof data === 'string') {
-        data = data.replace(placeholderRegex, basePath);
-      } else if (Buffer.isBuffer(data)) {
-        const content = data.toString('utf-8');
-        if (content.includes('__PATH_PREFIX__')) {
-          data = Buffer.from(
-            content.replace(placeholderRegex, basePath),
-            'utf-8',
-          );
+      // Check if this is an HTML or JS file based on Content-Type header
+      const contentType = res.getHeader('Content-Type')?.toString() || '';
+      const isHtmlOrJs =
+        contentType.includes('text/html') ||
+        contentType.includes('application/javascript') ||
+        contentType.includes('text/javascript');
+
+      if (isHtmlOrJs) {
+        // Only process string/buffer data
+        if (typeof data === 'string') {
+          data = data.replace(placeholderRegex, basePath);
+        } else if (Buffer.isBuffer(data)) {
+          const content = data.toString('utf-8');
+          if (content.includes('__PATH_PREFIX__')) {
+            data = Buffer.from(
+              content.replace(placeholderRegex, basePath),
+              'utf-8',
+            );
+          }
         }
       }
 

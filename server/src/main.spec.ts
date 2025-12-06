@@ -20,12 +20,22 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     return req;
   };
 
+  const createMockResponse = (contentType?: string): Partial<Response> => {
+    return {
+      send: jest.fn(),
+      getHeader: jest.fn((name: string) => {
+        if (name === 'Content-Type') {
+          return contentType;
+        }
+        return undefined;
+      }),
+    };
+  };
+
   beforeEach(() => {
     process.env = { ...originalEnv };
     mockRequest = {};
-    mockResponse = {
-      send: jest.fn(),
-    };
+    mockResponse = createMockResponse();
     nextFunction = jest.fn();
   });
 
@@ -49,7 +59,6 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
         nextFunction,
       );
       expect(nextFunction).toHaveBeenCalled();
-      expect(mockResponse.send).not.toHaveBeenCalled();
     });
   });
 
@@ -99,18 +108,21 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     it('should not intercept non-HTML/JS files', () => {
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/image.png');
+      mockResponse = createMockResponse('image/png');
+      
       middleware(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction,
       );
       expect(nextFunction).toHaveBeenCalled();
-      // The response.send should not be overridden for non-HTML/JS files
     });
 
     it('should intercept HTML files', () => {
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
+      mockResponse = createMockResponse('text/html');
+      
       middleware(
         mockRequest as Request,
         mockResponse as Response,
@@ -126,6 +138,8 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     it('should intercept JS files', () => {
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/main.js');
+      mockResponse = createMockResponse('application/javascript');
+      
       middleware(
         mockRequest as Request,
         mockResponse as Response,
@@ -134,11 +148,12 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       expect(nextFunction).toHaveBeenCalled();
     });
 
-    it('should replace __PATH_PREFIX__ in string content', () => {
+    it('should replace __PATH_PREFIX__ in HTML string content', () => {
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       const originalSend = jest.fn();
 
+      mockResponse = createMockResponse('text/html; charset=utf-8');
       mockResponse.send = originalSend;
 
       middleware(
@@ -168,6 +183,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       mockRequest = createMockRequest('/index.html');
       const originalSend = jest.fn();
 
+      mockResponse = createMockResponse('text/html');
       mockResponse.send = originalSend;
 
       middleware(
@@ -187,11 +203,12 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       expect(originalSend).toHaveBeenCalledWith(expectedContent);
     });
 
-    it('should replace __PATH_PREFIX__ in buffer content', () => {
+    it('should replace __PATH_PREFIX__ in JS buffer content', () => {
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/main.js');
       const originalSend = jest.fn();
 
+      mockResponse = createMockResponse('application/javascript');
       mockResponse.send = originalSend;
 
       middleware(
@@ -221,6 +238,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       mockRequest = createMockRequest('/main.js');
       const originalSend = jest.fn();
 
+      mockResponse = createMockResponse('application/javascript');
       mockResponse.send = originalSend;
 
       middleware(
@@ -245,6 +263,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       mockRequest = createMockRequest('/index.html');
       const originalSend = jest.fn();
 
+      mockResponse = createMockResponse('text/html');
       mockResponse.send = originalSend;
 
       middleware(
@@ -261,6 +280,30 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       capturedSendFn.call(mockResponse, testContent);
 
       expect(originalSend).toHaveBeenCalledWith(expectedContent);
+    });
+
+    it('should not replace content if Content-Type is not HTML/JS', () => {
+      const middleware = createBasePathReplacementMiddleware();
+      mockRequest = createMockRequest('/data.json');
+      const originalSend = jest.fn();
+
+      mockResponse = createMockResponse('application/json');
+      mockResponse.send = originalSend;
+
+      middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        nextFunction,
+      );
+
+      const capturedSendFn = mockResponse.send as (data: string) => Response;
+
+      const testContent = '{"path": "/__PATH_PREFIX__/"}';
+
+      capturedSendFn.call(mockResponse, testContent);
+
+      // Should not replace in non-HTML/JS content
+      expect(originalSend).toHaveBeenCalledWith(testContent);
     });
   });
 });
