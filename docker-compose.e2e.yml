@@ -7,7 +7,7 @@ services:
     ports:
       - "6246:6246"
     volumes:
-      - ./e2e/data:/opt/data
+      - data:/opt/data
     environment:
       - NODE_ENV=production
       - DEBUG=false
@@ -17,3 +17,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+volumes:
+  data:
