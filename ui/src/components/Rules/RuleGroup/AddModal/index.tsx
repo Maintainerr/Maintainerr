@@ -36,6 +36,7 @@ import ConfigureNotificationModal from './ConfigureNotificationModal'
 
 interface AddModal {
   editData?: IRuleGroup
+  isCloneMode?: boolean
   onCancel: () => void
   onSuccess: () => void
 }
@@ -471,7 +472,7 @@ const AddModal = (props: AddModal) => {
     }
 
     try {
-      if (props.editData) {
+      if (props.editData && !props.isCloneMode) {
         await updateRuleGroup({
           id: props.editData.id,
           ...creationObj,

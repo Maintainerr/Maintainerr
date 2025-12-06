@@ -45,6 +45,10 @@ const RulesListPage = () => {
     navigate(`/rules/edit/${group.id}`)
   }
 
+  const cloneHandler = (group: IRuleGroup): void => {
+    navigate(`/rules/clone/${group.id}`)
+  }
+
   const sync = async () => {
     try {
       await PostApiHandler(`/rules/execute`, {})
@@ -117,6 +121,7 @@ const RulesListPage = () => {
               <RuleGroup
                 onDelete={refreshData}
                 onEdit={editHandler}
+                onClone={cloneHandler}
                 group={el}
               />
             </li>

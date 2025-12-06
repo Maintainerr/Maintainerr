@@ -1,11 +1,13 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useRuleGroup } from '../api/rules'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import AddModal from '../components/Rules/RuleGroup/AddModal'
 
 const RuleFormPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
+  const isCloneMode = location.pathname.includes('/clone/')
   const { data, isLoading, error } = useRuleGroup(id)
 
   const handleSuccess = () => {
@@ -19,7 +21,7 @@ const RuleFormPage = () => {
   if (id && error) {
     return (
       <>
-        <title>Edit rule - Maintainerr</title>
+        <title>{isCloneMode ? 'Clone' : 'Edit'} rule - Maintainerr</title>
         <div className="m-4 rounded-md bg-red-500/10 p-4 text-red-300">
           <h2 className="mb-2 text-lg font-bold">Error loading rule data</h2>
           <p>{error.message}</p>
@@ -31,13 +33,13 @@ const RuleFormPage = () => {
   if (id && (!data || isLoading)) {
     return (
       <>
-        <title>Edit rule - Maintainerr</title>
+        <title>{isCloneMode ? 'Clone' : 'Edit'} rule - Maintainerr</title>
         <LoadingSpinner />
       </>
     )
   }
 
-  const pageTitle = `${id ? 'Edit' : 'New'} rule - Maintainerr`
+  const pageTitle = `${id ? (isCloneMode ? 'Clone' : 'Edit') : 'New'} rule - Maintainerr`
 
   return (
     <>
@@ -45,6 +47,7 @@ const RuleFormPage = () => {
       <AddModal
         onSuccess={handleSuccess}
         editData={data}
+        isCloneMode={isCloneMode}
         onCancel={handleCancel}
       />
     </>
