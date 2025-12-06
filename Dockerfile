@@ -5,8 +5,6 @@ FROM base AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache python3 py3-setuptools py3-pip make g++
-
 RUN yarn global add turbo@^2
 COPY . .
 
