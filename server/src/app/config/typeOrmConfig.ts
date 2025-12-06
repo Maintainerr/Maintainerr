@@ -1,7 +1,7 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 const ormConfig: TypeOrmModuleOptions = {
-  type: 'sqlite',
+  type: 'better-sqlite3',
   logging: false,
   database:
     process.env.NODE_ENV === 'production'

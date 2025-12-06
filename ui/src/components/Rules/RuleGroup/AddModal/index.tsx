@@ -1,6 +1,7 @@
 import { CloudDownloadIcon } from '@heroicons/react/outline'
 import {
   BanIcon,
+  DocumentDuplicateIcon,
   DownloadIcon,
   QuestionMarkCircleIcon,
   SaveIcon,
@@ -10,6 +11,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
@@ -36,6 +38,7 @@ import ConfigureNotificationModal from './ConfigureNotificationModal'
 
 interface AddModal {
   editData?: IRuleGroup
+  isCloneMode?: boolean
   onCancel: () => void
   onSuccess: () => void
 }
@@ -180,6 +183,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
 })
 
 const AddModal = (props: AddModal) => {
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
@@ -471,7 +475,7 @@ const AddModal = (props: AddModal) => {
     }
 
     try {
-      if (props.editData) {
+      if (props.editData && !props.isCloneMode) {
         await updateRuleGroup({
           id: props.editData.id,
           ...creationObj,
@@ -486,6 +490,12 @@ const AddModal = (props: AddModal) => {
     }
   }
 
+  const handleClone = () => {
+    if (props.editData && !props.isCloneMode) {
+      navigate(`/rules/clone/${props.editData.id}`)
+    }
+  }
+
   if (plexLibrariesLoading || constantsLoading) {
     return <LoadingSpinner />
   }
@@ -493,13 +503,18 @@ const AddModal = (props: AddModal) => {
   return (
     <>
       <div className="h-full w-full">
-        <div className="flex">
+        <div className="mb-5 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-start sm:text-left">
           <div className="ml-0">
-            <h3 className="heading mb-5">Rule Group Settings</h3>
+            <h3 className="heading">Rule Group Settings</h3>
           </div>
-          <div className="ml-auto">
+          <div className="flex flex-wrap justify-center gap-2">
+            {props.editData && !props.isCloneMode && (
+              <Button buttonType="primary" type="button" onClick={handleClone}>
+                <DocumentDuplicateIcon />
+                <span>Clone</span>
+              </Button>
+            )}
             <Button
-              className="ml-3"
               buttonType="default"
               type="button"
               as="a"
@@ -512,6 +527,12 @@ const AddModal = (props: AddModal) => {
             </Button>
           </div>
         </div>
+
+        {props.editData && props.isCloneMode && (
+          <Alert type="info">
+            You are cloning the rule group &apos;{props.editData.name}&apos;.
+          </Alert>
+        )}
 
         {(isCreateError || isUpdateError) && (
           <Alert>
@@ -1107,7 +1128,7 @@ const AddModal = (props: AddModal) => {
                     </div>
                     <div className="ml-auto">
                       <button
-                        className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-zinc-900 shadow-md hover:bg-amber-800 md:h-10"
+                        className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-sm text-zinc-900 shadow-md hover:bg-amber-800 md:h-10 md:text-base"
                         onClick={toggleCommunityRuleModal}
                         type="button"
                       >
