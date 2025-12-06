@@ -1,6 +1,7 @@
 import { CloudDownloadIcon } from '@heroicons/react/outline'
 import {
   BanIcon,
+  DocumentDuplicateIcon,
   DownloadIcon,
   QuestionMarkCircleIcon,
   SaveIcon,
@@ -10,6 +11,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
@@ -181,6 +183,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
 })
 
 const AddModal = (props: AddModal) => {
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
@@ -487,6 +490,12 @@ const AddModal = (props: AddModal) => {
     }
   }
 
+  const handleClone = () => {
+    if (props.editData && !props.isCloneMode) {
+      navigate(`/rules/clone/${props.editData.id}`)
+    }
+  }
+
   if (plexLibrariesLoading || constantsLoading) {
     return <LoadingSpinner />
   }
@@ -498,9 +507,18 @@ const AddModal = (props: AddModal) => {
           <div className="ml-0">
             <h3 className="heading mb-5">Rule Group Settings</h3>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex gap-2">
+            {props.editData && !props.isCloneMode && (
+              <Button
+                buttonType="primary"
+                type="button"
+                onClick={handleClone}
+              >
+                <DocumentDuplicateIcon />
+                <span>Clone</span>
+              </Button>
+            )}
             <Button
-              className="ml-3"
               buttonType="default"
               type="button"
               as="a"

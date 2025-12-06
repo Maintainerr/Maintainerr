@@ -1,10 +1,9 @@
-import { DocumentDuplicateIcon, PencilIcon, TrashIcon } from '@heroicons/react/solid'
+import { PencilIcon, TrashIcon } from '@heroicons/react/solid'
 import { EPlexDataType } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { usePlexLibraries } from '../../../api/plex'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { ICollection } from '../../Collection'
-import CloneButton from '../../Common/CloneButton'
 import DeleteButton from '../../Common/DeleteButton'
 import EditButton from '../../Common/EditButton'
 import { AgentConfiguration } from '../../Settings/Notifications/CreateNotificationModal'
@@ -28,7 +27,6 @@ const RuleGroup = (props: {
   group: IRuleGroup
   onDelete: () => void
   onEdit: (group: IRuleGroup) => void
-  onClone: (group: IRuleGroup) => void
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
   const { data: plexLibraries } = usePlexLibraries()
@@ -39,10 +37,6 @@ const RuleGroup = (props: {
 
   const onEdit = () => {
     props.onEdit(props.group)
-  }
-
-  const onClone = () => {
-    props.onClone(props.group)
   }
 
   const confirmedDelete = () => {
@@ -104,19 +98,12 @@ const RuleGroup = (props: {
             </div>
           </div>
         </div>
-        <div className="grid w-full grid-cols-1 xl:grid-cols-3">
+        <div className="grid w-full grid-cols-1 xl:grid-cols-2">
           <div>
             <EditButton
               onClick={onEdit}
               text="Edit"
               svgIcon={<PencilIcon className="m-auto h-5 text-zinc-200" />}
-            />
-          </div>
-          <div>
-            <CloneButton
-              onClick={onClone}
-              text="Clone"
-              svgIcon={<DocumentDuplicateIcon className="m-auto h-5 text-zinc-200" />}
             />
           </div>
           <div>
