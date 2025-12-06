@@ -23,6 +23,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
   const createMockResponse = (contentType?: string): Partial<Response> => {
     return {
       send: jest.fn(),
+      end: jest.fn(),
       getHeader: jest.fn((name: string) => {
         if (name === 'Content-Type') {
           return contentType;
@@ -304,6 +305,33 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
 
       // Should not replace in non-HTML/JS content
       expect(originalSend).toHaveBeenCalledWith(testContent);
+    });
+
+    it('should replace __PATH_PREFIX__ when using res.end()', () => {
+      const middleware = createBasePathReplacementMiddleware();
+      mockRequest = createMockRequest('/index.html');
+      const originalEnd = jest.fn();
+
+      mockResponse = createMockResponse('text/html');
+      mockResponse.end = originalEnd;
+
+      middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        nextFunction,
+      );
+
+      const capturedEndFn = mockResponse.end as (data: string) => Response;
+
+      const testContent =
+        '<html><script src="/__PATH_PREFIX__/main.js"></script></html>';
+      const expectedContent =
+        '<html><script src="/my-base-path/main.js"></script></html>';
+
+      capturedEndFn.call(mockResponse, testContent);
+
+      // res.end() is called with the processed content and encoding (undefined in this case)
+      expect(originalEnd).toHaveBeenCalledWith(expectedContent, undefined);
     });
   });
 });

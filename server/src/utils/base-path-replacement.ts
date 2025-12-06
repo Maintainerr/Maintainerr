@@ -20,11 +20,12 @@ export function createBasePathReplacementMiddleware() {
       return next();
     }
 
-    // Store original send function
+    // Store original send and end functions
     const originalSend = res.send;
+    const originalEnd = res.end;
 
-    // Override send function to replace placeholder
-    res.send = function (data: any): Response {
+    // Helper function to process and replace content
+    const processContent = (data: any): any => {
       // Check if this is an HTML or JS file based on Content-Type header
       const contentType = res.getHeader('Content-Type')?.toString() || '';
       const isHtmlOrJs =
@@ -35,21 +36,40 @@ export function createBasePathReplacementMiddleware() {
       if (isHtmlOrJs) {
         // Only process string/buffer data
         if (typeof data === 'string') {
-          data = data.replace(placeholderRegex, basePath);
+          return data.replace(placeholderRegex, basePath);
         } else if (Buffer.isBuffer(data)) {
           const content = data.toString('utf-8');
           if (content.includes('__PATH_PREFIX__')) {
-            data = Buffer.from(
+            return Buffer.from(
               content.replace(placeholderRegex, basePath),
               'utf-8',
             );
           }
         }
       }
+      return data;
+    };
 
-      // Call original send
+    // Override send function to replace placeholder
+    res.send = function (data: any): Response {
+      data = processContent(data);
       return originalSend.call(this, data);
     };
+
+    // Override end function to catch sendFile and other cases
+    res.end = function (chunk?: any, encoding?: any, callback?: any): Response {
+      if (chunk) {
+        chunk = processContent(chunk);
+      }
+      // Handle the different signatures of res.end()
+      if (typeof encoding === 'function') {
+        return originalEnd.call(this, chunk, encoding);
+      } else if (typeof callback === 'function') {
+        return originalEnd.call(this, chunk, encoding, callback);
+      } else {
+        return originalEnd.call(this, chunk, encoding);
+      }
+    } as any;
 
     next();
   };
