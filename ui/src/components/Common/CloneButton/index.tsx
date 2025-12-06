@@ -9,7 +9,7 @@ interface ICloneButton {
 const CloneButton = (props: ICloneButton) => {
   return (
     <button
-      className="right-5 m-auto flex h-8 w-full rounded-t bg-blue-600 text-zinc-200 shadow-md hover:bg-blue-500 xl:rounded-l xl:rounded-r-none"
+      className="right-5 m-auto flex h-8 w-full bg-blue-600 text-zinc-200 shadow-md hover:bg-blue-500 xl:rounded-none"
       onClick={props.onClick}
     >
       <div className="m-auto ml-auto flex">
