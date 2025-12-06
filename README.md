@@ -95,6 +95,7 @@ services:
         environment:
           - TZ=Europe/Brussels
 #      - BASE_PATH=/maintainerr # uncomment if you're serving maintainerr from a subdirectory
+#      - ENABLE_DYNAMIC_BASE_PATH=true # uncomment for read-only filesystems with subfolder hosting
 #      - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
 #      - UI_PORT=6247 # uncomment to change the UI port (default 6246)
 #      - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
