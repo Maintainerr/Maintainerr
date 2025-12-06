@@ -94,6 +94,9 @@ export class Collection {
   @JoinColumn({ name: 'sonarrSettingsId', referencedColumnName: 'id' })
   sonarrSettings: SonarrSettings;
 
+  @Column({ nullable: true })
+  sortTitle: string;
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,

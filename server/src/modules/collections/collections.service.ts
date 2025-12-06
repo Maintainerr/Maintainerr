@@ -264,6 +264,7 @@ export class CollectionsService {
           type: collection.type,
           title: collection.title,
           summary: collection?.description,
+          sortTitle: collection?.sortTitle,
         };
         plexCollection = await this.createPlexCollection(collectionObj);
         await this.plexApi.UpdateCollectionSettings({
@@ -357,6 +358,10 @@ export class CollectionsService {
       });
 
       let plexColl: PlexCollection;
+      const sanitizedSortTitle =
+        collection?.sortTitle && collection.sortTitle.trim() !== ''
+          ? collection.sortTitle
+          : null;
 
       if (dbCollection?.plexId) {
         const collectionObj: CreateUpdateCollection = {
@@ -365,6 +370,7 @@ export class CollectionsService {
           type: collection.type,
           collectionId: +dbCollection.plexId,
           summary: collection?.description,
+          sortTitle: sanitizedSortTitle ?? undefined,
         };
 
         // is the type the same & is it an automatic collection, then update
@@ -403,6 +409,7 @@ export class CollectionsService {
       const dbResp: ICollection = await this.collectionRepo.save({
         ...dbCollection,
         ...collection,
+        sortTitle: sanitizedSortTitle,
       });
 
       await this.addLogRecord(
@@ -568,6 +575,7 @@ export class CollectionsService {
                 type: collection.type,
                 title: collection.title,
                 summary: collection.description,
+                sortTitle: collection.sortTitle,
               });
             }
             if (newColl) {
@@ -973,6 +981,7 @@ export class CollectionsService {
                     : '',
                 sonarrSettingsId: collection.sonarrSettingsId,
                 radarrSettingsId: collection.radarrSettingsId,
+                sortTitle: collection.sortTitle,
               },
             ])
             .execute()
