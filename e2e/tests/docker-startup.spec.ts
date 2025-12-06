@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Docker Container Startup', () => {
   test('should have working API health endpoint', async ({ request }) => {
     // Check if the API is responding
-    const response = await request.get('/api/health');
+    const response = await request.get('/api/app/health');
     
     // The health endpoint should return 200 OK
     expect(response.ok()).toBeTruthy();

@@ -21,7 +21,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:docker": "docker-compose -f docker-compose.e2e.yml up -d && yarn test:e2e:wait && yarn test:e2e; EXIT_CODE=$?; docker-compose -f docker-compose.e2e.yml down; exit $EXIT_CODE",
-    "test:e2e:wait": "timeout 120 sh -c 'until curl -f http://localhost:6246/api/health > /dev/null 2>&1; do sleep 2; done' || exit 1"
+    "test:e2e:wait": "timeout 120 sh -c 'until curl -f http://localhost:6246/api/app/health > /dev/null 2>&1; do sleep 2; done' || exit 1"
   },
   "workspaces": [
     "ui",

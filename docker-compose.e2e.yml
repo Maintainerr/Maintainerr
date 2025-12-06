@@ -12,7 +12,7 @@ services:
       - NODE_ENV=production
       - DEBUG=false
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6246/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:6246/api/app/health"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -66,7 +66,7 @@ docker run -d \
   maintainerr-e2e:test
 
 # 4. Wait for the container to be ready
-timeout 120 sh -c 'until curl -f http://localhost:6246/api/health > /dev/null 2>&1; do sleep 2; done'
+timeout 120 sh -c 'until curl -f http://localhost:6246/api/app/health > /dev/null 2>&1; do sleep 2; done'
 
 # 5. Run the tests
 yarn test:e2e
@@ -153,7 +153,7 @@ docker inspect maintainerr-e2e-test | grep -A 10 Mounts
 ### Tests timeout
 
 - Increase the timeout in `playwright.config.ts`
-- Check if the container is actually healthy: `curl http://localhost:6246/api/health`
+- Check if the container is actually healthy: `curl http://localhost:6246/api/app/health`
 
 ### Port already in use
 

@@ -28,10 +28,7 @@ export class AppController {
     );
     return releases || [];
   }
-}
 
-@Controller('/api')
-export class HealthController {
   @Get('/health')
   health() {
     return { status: 'ok' };

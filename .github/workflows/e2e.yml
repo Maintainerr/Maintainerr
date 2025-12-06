@@ -74,7 +74,7 @@ jobs:
       - name: Wait for container to be healthy
         run: |
           echo "Waiting for Maintainerr to be ready..."
-          timeout 120 sh -c 'until curl -f http://localhost:6246/api/health > /dev/null 2>&1; do 
+          timeout 120 sh -c 'until curl -f http://localhost:6246/api/app/health > /dev/null 2>&1; do 
             echo "Waiting for health endpoint..."; 
             sleep 2; 
           done' || (docker logs maintainerr-e2e-test && exit 1)
