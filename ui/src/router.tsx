@@ -82,6 +82,10 @@ export const router = createBrowserRouter(
               path: 'edit/:id',
               element: <RuleFormPage />,
             },
+            {
+              path: 'clone/:id',
+              element: <RuleFormPage />,
+            },
           ],
         },
         {
