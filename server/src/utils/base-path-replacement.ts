@@ -1,4 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+import { promisify } from 'util';
+
+const readFile = promisify(fs.readFile);
 
 /**
  * Creates middleware that dynamically replaces __PATH_PREFIX__ placeholder in HTML and JS files
@@ -20,54 +25,71 @@ export function createBasePathReplacementMiddleware() {
       return next();
     }
 
-    // Store original send and end functions
-    const originalSend = res.send;
-    const originalEnd = res.end;
+    // Store original sendFile function
+    const originalSendFile = res.sendFile.bind(res);
 
-    // Helper function to process and replace content
-    const processContent = (data: any): any => {
-      // Check if this is an HTML or JS file based on Content-Type header
-      const contentType = res.getHeader('Content-Type')?.toString() || '';
+    // Override sendFile to intercept static file serving
+    res.sendFile = function (
+      filePath: string,
+      options?: any,
+      callback?: any,
+    ): void {
+      // Determine the actual file path
+      const resolvedPath =
+        typeof options === 'object' && options?.root
+          ? path.join(options.root, filePath)
+          : filePath;
+
+      // Check if this is an HTML or JS file
       const isHtmlOrJs =
-        contentType.includes('text/html') ||
-        contentType.includes('application/javascript') ||
-        contentType.includes('text/javascript');
+        resolvedPath.endsWith('.html') ||
+        resolvedPath.endsWith('.js') ||
+        resolvedPath.endsWith('.mjs');
 
       if (isHtmlOrJs) {
-        // Only process string/buffer data
-        if (typeof data === 'string') {
-          return data.replace(placeholderRegex, basePath);
-        } else if (Buffer.isBuffer(data)) {
-          const content = data.toString('utf-8');
-          if (content.includes('__PATH_PREFIX__')) {
-            return Buffer.from(
-              content.replace(placeholderRegex, basePath),
-              'utf-8',
-            );
-          }
-        }
-      }
-      return data;
-    };
+        // Read the file and replace the placeholder
+        readFile(resolvedPath, 'utf-8')
+          .then((content) => {
+            const replacedContent = content.replace(placeholderRegex, basePath);
 
-    // Override send function to replace placeholder
-    res.send = function (data: any): Response {
-      data = processContent(data);
-      return originalSend.call(this, data);
-    };
+            // Set appropriate content type
+            if (resolvedPath.endsWith('.html')) {
+              res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            } else {
+              res.setHeader(
+                'Content-Type',
+                'application/javascript; charset=utf-8',
+              );
+            }
 
-    // Override end function to catch sendFile and other cases
-    res.end = function (chunk?: any, encoding?: any, callback?: any): Response {
-      if (chunk) {
-        chunk = processContent(chunk);
-      }
-      // Handle the different signatures of res.end()
-      if (typeof encoding === 'function') {
-        return originalEnd.call(this, chunk, encoding);
-      } else if (typeof callback === 'function') {
-        return originalEnd.call(this, chunk, encoding, callback);
+            res.send(replacedContent);
+
+            // Call the callback if provided
+            if (typeof callback === 'function') {
+              callback(null);
+            } else if (typeof options === 'function') {
+              options(null);
+            }
+          })
+          .catch(() => {
+            // If reading fails, fall back to original sendFile
+            if (typeof callback === 'function') {
+              originalSendFile(filePath, options, callback);
+            } else if (typeof options === 'function') {
+              originalSendFile(filePath, options);
+            } else {
+              originalSendFile(filePath, options);
+            }
+          });
       } else {
-        return originalEnd.call(this, chunk, encoding);
+        // For non-HTML/JS files, use original sendFile
+        if (typeof callback === 'function') {
+          originalSendFile(filePath, options, callback);
+        } else if (typeof options === 'function') {
+          originalSendFile(filePath, options);
+        } else {
+          originalSendFile(filePath, options);
+        }
       }
     } as any;
 

@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
+import * as fs from 'fs';
 import { createBasePathReplacementMiddleware } from './utils/base-path-replacement';
+
+// Mock fs.readFile
+jest.mock('fs');
 
 // Mock environment variables
 const originalEnv = process.env;
@@ -20,16 +24,11 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     return req;
   };
 
-  const createMockResponse = (contentType?: string): Partial<Response> => {
+  const createMockResponse = (): Partial<Response> => {
     return {
-      send: jest.fn(),
-      end: jest.fn(),
-      getHeader: jest.fn((name: string) => {
-        if (name === 'Content-Type') {
-          return contentType;
-        }
-        return undefined;
-      }),
+      send: jest.fn().mockReturnThis(),
+      sendFile: jest.fn(),
+      setHeader: jest.fn(),
     };
   };
 
@@ -38,6 +37,15 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     mockRequest = {};
     mockResponse = createMockResponse();
     nextFunction = jest.fn();
+    
+    // Mock fs.readFile to work with promisify
+    (fs.readFile as unknown as jest.Mock).mockImplementation((path, encoding, callback) => {
+      if (typeof encoding === 'function') {
+        callback = encoding;
+      }
+      // We'll set up specific mocks in individual tests
+      callback(new Error('Not mocked'), null);
+    });
   });
 
   afterEach(() => {
@@ -106,232 +114,143 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       process.env.BASE_PATH = '/my-base-path';
     });
 
-    it('should not intercept non-HTML/JS files', () => {
+    it('should override sendFile method', () => {
       const middleware = createBasePathReplacementMiddleware();
+      const originalSendFile = mockResponse.sendFile;
+      mockRequest = createMockRequest('/index.html');
+      
+      middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        nextFunction,
+      );
+      
+      expect(nextFunction).toHaveBeenCalled();
+      // sendFile should be overridden
+      expect(mockResponse.sendFile).not.toBe(originalSendFile);
+    });
+
+    it('should replace __PATH_PREFIX__ in HTML files served via sendFile', async () => {
+      // Mock fs.readFile to return HTML with placeholder
+      (fs.readFile as unknown as jest.Mock).mockImplementation((path, encoding, callback) => {
+        callback(null, '<html><script src="/__PATH_PREFIX__/main.js"></script></html>');
+      });
+
+      const middleware = createBasePathReplacementMiddleware();
+      mockRequest = createMockRequest('/index.html');
+      
+      middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        nextFunction,
+      );
+
+      // Call the overridden sendFile
+      const sendFileFn = mockResponse.sendFile as jest.Mock;
+      sendFileFn('/path/to/index.html');
+
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'text/html; charset=utf-8');
+      expect(mockResponse.send).toHaveBeenCalledWith('<html><script src="/my-base-path/main.js"></script></html>');
+    });
+
+    it('should replace __PATH_PREFIX__ in JS files served via sendFile', async () => {
+      // Mock fs.readFile to return JS with placeholder
+      (fs.readFile as unknown as jest.Mock).mockImplementation((path, encoding, callback) => {
+        callback(null, 'const path = "/__PATH_PREFIX__/";');
+      });
+
+      const middleware = createBasePathReplacementMiddleware();
+      mockRequest = createMockRequest('/main.js');
+      
+      middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        nextFunction,
+      );
+
+      // Call the overridden sendFile
+      const sendFileFn = mockResponse.sendFile as jest.Mock;
+      sendFileFn('/path/to/main.js');
+
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'application/javascript; charset=utf-8');
+      expect(mockResponse.send).toHaveBeenCalledWith('const path = "/my-base-path/";');
+    });
+
+    it('should not process non-HTML/JS files', async () => {
+      const middleware = createBasePathReplacementMiddleware();
+      const originalSendFile = jest.fn();
+      mockResponse.sendFile = originalSendFile;
       mockRequest = createMockRequest('/image.png');
-      mockResponse = createMockResponse('image/png');
       
       middleware(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction,
       );
-      expect(nextFunction).toHaveBeenCalled();
+
+      // Call the overridden sendFile with a non-HTML/JS file
+      const sendFileFn = mockResponse.sendFile as jest.Mock;
+      sendFileFn('/path/to/image.png');
+
+      // Wait for any async operations
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Should have called original sendFile
+      expect(originalSendFile).toHaveBeenCalled();
     });
 
-    it('should intercept HTML files', () => {
+    it('should handle multiple occurrences of __PATH_PREFIX__', async () => {
+      // Mock fs.readFile to return content with multiple occurrences
+      (fs.readFile as unknown as jest.Mock).mockImplementation((path, encoding, callback) => {
+        callback(null, 'first: /__PATH_PREFIX__/, second: /__PATH_PREFIX__/');
+      });
+
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
-      mockResponse = createMockResponse('text/html');
       
       middleware(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction,
       );
-      expect(nextFunction).toHaveBeenCalled();
 
-      // Verify response.send was overridden - the middleware modifies it
-      expect(mockResponse.send).toBeDefined();
-      expect(mockResponse.send).not.toBe(jest.fn());
+      const sendFileFn = mockResponse.sendFile as jest.Mock;
+      sendFileFn('/path/to/index.html');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockResponse.send).toHaveBeenCalledWith('first: /my-base-path/, second: /my-base-path/');
     });
 
-    it('should intercept JS files', () => {
-      const middleware = createBasePathReplacementMiddleware();
-      mockRequest = createMockRequest('/main.js');
-      mockResponse = createMockResponse('application/javascript');
-      
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-      expect(nextFunction).toHaveBeenCalled();
-    });
-
-    it('should replace __PATH_PREFIX__ in HTML string content', () => {
-      const middleware = createBasePathReplacementMiddleware();
-      mockRequest = createMockRequest('/index.html');
-      const originalSend = jest.fn();
-
-      mockResponse = createMockResponse('text/html; charset=utf-8');
-      mockResponse.send = originalSend;
-
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      // Capture the overridden send function
-      const capturedSendFn = mockResponse.send as (data: string) => Response;
-
-      // Test string replacement
-      const testContent =
-        '<html><script src="/__PATH_PREFIX__/main.js"></script></html>';
-      const expectedContent =
-        '<html><script src="/my-base-path/main.js"></script></html>';
-
-      // Call the overridden send
-      capturedSendFn.call(mockResponse, testContent);
-
-      // Verify original send was called with replaced content
-      expect(originalSend).toHaveBeenCalledWith(expectedContent);
-    });
-
-    it('should replace multiple occurrences of __PATH_PREFIX__', () => {
-      const middleware = createBasePathReplacementMiddleware();
-      mockRequest = createMockRequest('/index.html');
-      const originalSend = jest.fn();
-
-      mockResponse = createMockResponse('text/html');
-      mockResponse.send = originalSend;
-
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      const capturedSendFn = mockResponse.send as (data: string) => Response;
-
-      const testContent =
-        'first: /__PATH_PREFIX__/, second: /__PATH_PREFIX__/';
-      const expectedContent = 'first: /my-base-path/, second: /my-base-path/';
-
-      capturedSendFn.call(mockResponse, testContent);
-
-      expect(originalSend).toHaveBeenCalledWith(expectedContent);
-    });
-
-    it('should replace __PATH_PREFIX__ in JS buffer content', () => {
-      const middleware = createBasePathReplacementMiddleware();
-      mockRequest = createMockRequest('/main.js');
-      const originalSend = jest.fn();
-
-      mockResponse = createMockResponse('application/javascript');
-      mockResponse.send = originalSend;
-
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      const capturedSendFn = mockResponse.send as (data: Buffer) => Response;
-
-      const testContent = Buffer.from(
-        'const path = "/__PATH_PREFIX__/";',
-        'utf-8',
-      );
-      const expectedContent = Buffer.from(
-        'const path = "/my-base-path/";',
-        'utf-8',
-      );
-
-      capturedSendFn.call(mockResponse, testContent);
-
-      expect(originalSend).toHaveBeenCalledWith(expectedContent);
-    });
-
-    it('should not modify buffer content without __PATH_PREFIX__', () => {
-      const middleware = createBasePathReplacementMiddleware();
-      mockRequest = createMockRequest('/main.js');
-      const originalSend = jest.fn();
-
-      mockResponse = createMockResponse('application/javascript');
-      mockResponse.send = originalSend;
-
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      const capturedSendFn = mockResponse.send as (data: Buffer) => Response;
-
-      const testContent = Buffer.from('const path = "/normal/path";', 'utf-8');
-
-      capturedSendFn.call(mockResponse, testContent);
-
-      expect(originalSend).toHaveBeenCalledWith(testContent);
-    });
-
-    it('should use empty string when BASE_PATH is not set', () => {
+    it('should use empty string when BASE_PATH is not set', async () => {
       process.env.BASE_PATH = undefined;
-      const middleware = createBasePathReplacementMiddleware();
+      
+      // Mock fs.readFile
+      (fs.readFile as unknown as jest.Mock).mockImplementation((path, encoding, callback) => {
+        callback(null, '<base href="/__PATH_PREFIX__/">');
+      });
 
-      mockRequest = createMockRequest('/index.html');
-      const originalSend = jest.fn();
-
-      mockResponse = createMockResponse('text/html');
-      mockResponse.send = originalSend;
-
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      const capturedSendFn = mockResponse.send as (data: string) => Response;
-
-      const testContent = '<base href="/__PATH_PREFIX__/">';
-      const expectedContent = '<base href="/">';
-
-      capturedSendFn.call(mockResponse, testContent);
-
-      expect(originalSend).toHaveBeenCalledWith(expectedContent);
-    });
-
-    it('should not replace content if Content-Type is not HTML/JS', () => {
-      const middleware = createBasePathReplacementMiddleware();
-      mockRequest = createMockRequest('/data.json');
-      const originalSend = jest.fn();
-
-      mockResponse = createMockResponse('application/json');
-      mockResponse.send = originalSend;
-
-      middleware(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      const capturedSendFn = mockResponse.send as (data: string) => Response;
-
-      const testContent = '{"path": "/__PATH_PREFIX__/"}';
-
-      capturedSendFn.call(mockResponse, testContent);
-
-      // Should not replace in non-HTML/JS content
-      expect(originalSend).toHaveBeenCalledWith(testContent);
-    });
-
-    it('should replace __PATH_PREFIX__ when using res.end()', () => {
       const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
-      const originalEnd = jest.fn();
-
-      mockResponse = createMockResponse('text/html');
-      mockResponse.end = originalEnd;
-
+      
       middleware(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction,
       );
 
-      const capturedEndFn = mockResponse.end as (data: string) => Response;
+      const sendFileFn = mockResponse.sendFile as jest.Mock;
+      sendFileFn('/path/to/index.html');
 
-      const testContent =
-        '<html><script src="/__PATH_PREFIX__/main.js"></script></html>';
-      const expectedContent =
-        '<html><script src="/my-base-path/main.js"></script></html>';
+      await new Promise(resolve => setTimeout(resolve, 10));
 
-      capturedEndFn.call(mockResponse, testContent);
-
-      // res.end() is called with the processed content and encoding (undefined in this case)
-      expect(originalEnd).toHaveBeenCalledWith(expectedContent, undefined);
+      expect(mockResponse.send).toHaveBeenCalledWith('<base href="/">');
     });
   });
 });
