@@ -1,13 +1,12 @@
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useMatch, useNavigate, useParams } from 'react-router-dom'
 import { useRuleGroup } from '../api/rules'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import AddModal from '../components/Rules/RuleGroup/AddModal'
 
 const RuleFormPage = () => {
   const navigate = useNavigate()
-  const location = useLocation()
   const { id } = useParams<{ id: string }>()
-  const isCloneMode = location.pathname.includes('/clone/')
+  const isCloneMode = !!useMatch('/rules/clone/:id')
   const { data, isLoading, error } = useRuleGroup(id)
 
   const handleSuccess = () => {
