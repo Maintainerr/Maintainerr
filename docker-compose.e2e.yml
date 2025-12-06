@@ -1,0 +1,19 @@
+services:
+  maintainerr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maintainerr-e2e-test
+    ports:
+      - "6246:6246"
+    volumes:
+      - ./e2e/data:/opt/data
+    environment:
+      - NODE_ENV=production
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6246/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

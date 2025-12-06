@@ -1,0 +1,100 @@
+name: "E2E Tests"
+
+on:
+  pull_request:
+    branches:
+      - "main"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e_test:
+    name: E2E Test - ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux/amd64
+          - os: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          load: true
+          tags: maintainerr-e2e:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Activate corepack
+        run: |
+          corepack install
+          corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Create e2e data directory
+        run: mkdir -p e2e/data
+
+      - name: Start Docker container
+        run: |
+          docker run -d \
+            --name maintainerr-e2e-test \
+            -p 6246:6246 \
+            -v ${{ github.workspace }}/e2e/data:/opt/data \
+            -e NODE_ENV=production \
+            -e DEBUG=false \
+            maintainerr-e2e:test
+
+      - name: Wait for container to be healthy
+        run: |
+          echo "Waiting for Maintainerr to be ready..."
+          timeout 120 sh -c 'until curl -f http://localhost:6246/api/health > /dev/null 2>&1; do 
+            echo "Waiting for health endpoint..."; 
+            sleep 2; 
+          done' || (docker logs maintainerr-e2e-test && exit 1)
+          echo "Maintainerr is ready!"
+
+      - name: Run Playwright tests
+        run: yarn test:e2e
+        env:
+          BASE_URL: http://localhost:6246
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report-${{ matrix.platform }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs maintainerr-e2e-test
+
+      - name: Stop Docker container
+        if: always()
+        run: docker stop maintainerr-e2e-test && docker rm maintainerr-e2e-test

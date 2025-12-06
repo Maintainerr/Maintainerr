@@ -17,7 +17,11 @@
     "knip": "knip",
     "check-types": "turbo check-types",
     "test": "turbo test --",
-    "test:watch": "turbo test:watch"
+    "test:watch": "turbo test:watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:docker": "docker-compose -f docker-compose.e2e.yml up -d && yarn test:e2e:wait && yarn test:e2e; EXIT_CODE=$?; docker-compose -f docker-compose.e2e.yml down; exit $EXIT_CODE",
+    "test:e2e:wait": "timeout 120 sh -c 'until curl -f http://localhost:6246/api/health > /dev/null 2>&1; do sleep 2; done' || exit 1"
   },
   "workspaces": [
     "ui",
@@ -28,6 +32,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
