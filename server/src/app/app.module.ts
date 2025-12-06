@@ -87,6 +87,7 @@ export class AppModule implements OnModuleInit {
     private readonly notificationService: NotificationService,
     private readonly jellyseerrApi: JellyseerrApiService,
   ) {}
+
   async onModuleInit() {
     // Initialize modules requiring settings
     await this.settings.init();

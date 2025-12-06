@@ -7,6 +7,7 @@ import { cleanupOpenApiDoc } from 'nestjs-zod';
 import path from 'path';
 import { AppModule } from './app/app.module';
 import { MaintainerrLogger } from './modules/logging/logs.service';
+import { createBasePathReplacementMiddleware } from './utils/base-path-replacement';
 
 const dataDir =
   process.env.NODE_ENV === 'production'
@@ -19,6 +20,9 @@ async function bootstrap() {
   });
 
   setupGracefulShutdown({ app });
+
+  // Apply base path replacement middleware before static file serving
+  app.use(createBasePathReplacementMiddleware());
 
   const basePathEnv = process.env.BASE_PATH?.trim();
   if (basePathEnv && basePathEnv !== '/') {
