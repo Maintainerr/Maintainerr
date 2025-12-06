@@ -14,7 +14,7 @@ import { Request, Response, NextFunction } from 'express';
 export class BasePathReplacementMiddleware implements NestMiddleware {
   private readonly enabled: boolean;
   private readonly basePath: string;
-  private readonly placeholder = '/__PATH_PREFIX__';
+  private readonly placeholderRegex = /\/__PATH_PREFIX__/g;
 
   constructor() {
     this.enabled = process.env.ENABLE_DYNAMIC_BASE_PATH === 'true';
@@ -35,28 +35,24 @@ export class BasePathReplacementMiddleware implements NestMiddleware {
 
     // Store original send function
     const originalSend = res.send;
+    const basePath = this.basePath;
+    const placeholderRegex = this.placeholderRegex;
 
     // Override send function to replace placeholder
     res.send = function (data: any): Response {
       // Only process string/buffer data
       if (typeof data === 'string') {
-        data = data.replace(
-          new RegExp('/__PATH_PREFIX__', 'g'),
-          this.basePath,
-        );
+        data = data.replace(placeholderRegex, basePath);
       } else if (Buffer.isBuffer(data)) {
         const content = data.toString('utf-8');
-        if (content.includes('/__PATH_PREFIX__')) {
-          data = Buffer.from(
-            content.replace(new RegExp('/__PATH_PREFIX__', 'g'), this.basePath),
-            'utf-8',
-          );
+        if (content.includes('__PATH_PREFIX__')) {
+          data = Buffer.from(content.replace(placeholderRegex, basePath), 'utf-8');
         }
       }
 
       // Call original send
       return originalSend.call(this, data);
-    }.bind({ basePath: this.basePath });
+    };
 
     next();
   }
