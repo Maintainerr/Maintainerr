@@ -57,7 +57,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Create e2e data directory
-        run: mkdir -p e2e/data
+        run: |
+          mkdir -p e2e/data
+          chmod -R 777 e2e/data
 
       - name: Start Docker container
         run: |

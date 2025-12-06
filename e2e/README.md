@@ -53,7 +53,11 @@ If you prefer to run each step manually:
 # 1. Build the Docker image
 docker build -t maintainerr-e2e:test .
 
-# 2. Start the container
+# 2. Create and prepare the data directory with proper permissions
+mkdir -p e2e/data
+chmod -R 777 e2e/data
+
+# 3. Start the container with a writable volume mounted to /opt/data
 docker run -d \
   --name maintainerr-e2e-test \
   -p 6246:6246 \
@@ -61,16 +65,18 @@ docker run -d \
   -e NODE_ENV=production \
   maintainerr-e2e:test
 
-# 3. Wait for the container to be ready
+# 4. Wait for the container to be ready
 timeout 120 sh -c 'until curl -f http://localhost:6246/api/health > /dev/null 2>&1; do sleep 2; done'
 
-# 4. Run the tests
+# 5. Run the tests
 yarn test:e2e
 
-# 5. Clean up
+# 6. Clean up
 docker stop maintainerr-e2e-test
 docker rm maintainerr-e2e-test
 ```
+
+**Important**: The Docker container requires a writable volume mounted to `/opt/data`. The container runs as the `node` user, so ensure the directory has proper write permissions (e.g., `chmod -R 777 e2e/data`).
 
 ## CI/CD Integration
 
@@ -125,13 +131,24 @@ Playwright configuration is in `playwright.config.ts` at the project root. Key s
 
 ### Container won't start
 
+The most common issue is insufficient permissions on the data directory. The container runs as the `node` user and requires write access to `/opt/data`.
+
 ```bash
 # Check container logs
 docker logs maintainerr-e2e-test
 
 # Verify data directory permissions
 ls -la e2e/data
+
+# Fix permissions if needed
+chmod -R 777 e2e/data
+
+# Ensure the volume is mounted correctly
+docker inspect maintainerr-e2e-test | grep -A 10 Mounts
 ```
+
+**Common error**: "Could not create or access (files in) the data directory"
+- **Solution**: Ensure the `e2e/data` directory exists and has write permissions: `chmod -R 777 e2e/data`
 
 ### Tests timeout
 
