@@ -182,7 +182,33 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
       expect(mockResponse.send).toHaveBeenCalledWith('const path = "/my-base-path/";');
     });
 
-    it('should not process non-HTML/JS files', async () => {
+    it('should replace __PATH_PREFIX__ in CSS files served via sendFile', async () => {
+      // Mock fs.readFile to return CSS with placeholder
+      (fs.readFile as unknown as jest.Mock).mockImplementation((path, encoding, callback) => {
+        callback(null, '.icon { background: url(/__PATH_PREFIX__/logo.png); }');
+      });
+
+      const middleware = createBasePathReplacementMiddleware();
+      mockRequest = createMockRequest('/styles.css');
+      
+      middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        nextFunction,
+      );
+
+      // Call the overridden sendFile
+      const sendFileFn = mockResponse.sendFile as jest.Mock;
+      sendFileFn('/path/to/styles.css');
+
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'text/css; charset=utf-8');
+      expect(mockResponse.send).toHaveBeenCalledWith('.icon { background: url(/my-base-path/logo.png); }');
+    });
+
+    it('should not process non-HTML/JS/CSS files', async () => {
       const middleware = createBasePathReplacementMiddleware();
       const originalSendFile = jest.fn();
       mockResponse.sendFile = originalSendFile;
@@ -194,7 +220,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
         nextFunction,
       );
 
-      // Call the overridden sendFile with a non-HTML/JS file
+      // Call the overridden sendFile with a non-text file
       const sendFileFn = mockResponse.sendFile as jest.Mock;
       sendFileFn('/path/to/image.png');
 

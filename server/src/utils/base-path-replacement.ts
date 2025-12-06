@@ -6,7 +6,7 @@ import { promisify } from 'util';
 const readFile = promisify(fs.readFile);
 
 /**
- * Creates middleware that dynamically replaces __PATH_PREFIX__ placeholder in HTML and JS files
+ * Creates middleware that dynamically replaces __PATH_PREFIX__ placeholder in HTML, JS, and CSS files
  * with the actual BASE_PATH environment variable value.
  *
  * This allows the application to work on read-only file systems where the start.sh script
@@ -40,13 +40,14 @@ export function createBasePathReplacementMiddleware() {
           ? path.join(options.root, filePath)
           : filePath;
 
-      // Check if this is an HTML or JS file
-      const isHtmlOrJs =
+      // Check if this is an HTML, JS, or CSS file
+      const isTextFile =
         resolvedPath.endsWith('.html') ||
         resolvedPath.endsWith('.js') ||
-        resolvedPath.endsWith('.mjs');
+        resolvedPath.endsWith('.mjs') ||
+        resolvedPath.endsWith('.css');
 
-      if (isHtmlOrJs) {
+      if (isTextFile) {
         // Read the file and replace the placeholder
         readFile(resolvedPath, 'utf-8')
           .then((content) => {
@@ -55,6 +56,8 @@ export function createBasePathReplacementMiddleware() {
             // Set appropriate content type
             if (resolvedPath.endsWith('.html')) {
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            } else if (resolvedPath.endsWith('.css')) {
+              res.setHeader('Content-Type', 'text/css; charset=utf-8');
             } else {
               res.setHeader(
                 'Content-Type',
