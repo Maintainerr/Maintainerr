@@ -1,51 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
+import { createBasePathReplacementMiddleware } from './utils/base-path-replacement';
 
 // Mock environment variables
 const originalEnv = process.env;
-
-// Since we can't easily import from main.ts, we'll recreate the function for testing
-function createTestBasePathReplacementMiddleware() {
-  const enabled = process.env.ENABLE_DYNAMIC_BASE_PATH === 'true';
-  const basePath = process.env.BASE_PATH?.trim() || '';
-  const placeholderRegex = /\/__PATH_PREFIX__/g;
-
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Skip if not enabled or not in production
-    if (!enabled || process.env.NODE_ENV !== 'production') {
-      return next();
-    }
-
-    // Only intercept HTML and JS files
-    const isHtmlOrJs = req.path.endsWith('.html') || req.path.endsWith('.js');
-    if (!isHtmlOrJs) {
-      return next();
-    }
-
-    // Store original send function
-    const originalSend = res.send;
-
-    // Override send function to replace placeholder
-    res.send = function (data: any): Response {
-      // Only process string/buffer data
-      if (typeof data === 'string') {
-        data = data.replace(placeholderRegex, basePath);
-      } else if (Buffer.isBuffer(data)) {
-        const content = data.toString('utf-8');
-        if (content.includes('__PATH_PREFIX__')) {
-          data = Buffer.from(
-            content.replace(placeholderRegex, basePath),
-            'utf-8',
-          );
-        }
-      }
-
-      // Call original send
-      return originalSend.call(this, data);
-    };
-
-    next();
-  };
-}
 
 describe('BasePathReplacementMiddleware (main.ts)', () => {
   let mockRequest: Partial<Request>;
@@ -84,7 +41,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should call next without modifying response', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       middleware(
         mockRequest as Request,
@@ -103,7 +60,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should call next without modifying response', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       middleware(
         mockRequest as Request,
@@ -121,7 +78,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should call next without modifying response', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       middleware(
         mockRequest as Request,
@@ -140,7 +97,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should not intercept non-HTML/JS files', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/image.png');
       middleware(
         mockRequest as Request,
@@ -152,7 +109,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should intercept HTML files', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       middleware(
         mockRequest as Request,
@@ -167,7 +124,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should intercept JS files', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/main.js');
       middleware(
         mockRequest as Request,
@@ -178,7 +135,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should replace __PATH_PREFIX__ in string content', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       const originalSend = jest.fn();
 
@@ -207,7 +164,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should replace multiple occurrences of __PATH_PREFIX__', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/index.html');
       const originalSend = jest.fn();
 
@@ -231,7 +188,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should replace __PATH_PREFIX__ in buffer content', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/main.js');
       const originalSend = jest.fn();
 
@@ -260,7 +217,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
     });
 
     it('should not modify buffer content without __PATH_PREFIX__', () => {
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
       mockRequest = createMockRequest('/main.js');
       const originalSend = jest.fn();
 
@@ -283,7 +240,7 @@ describe('BasePathReplacementMiddleware (main.ts)', () => {
 
     it('should use empty string when BASE_PATH is not set', () => {
       process.env.BASE_PATH = undefined;
-      const middleware = createTestBasePathReplacementMiddleware();
+      const middleware = createBasePathReplacementMiddleware();
 
       mockRequest = createMockRequest('/index.html');
       const originalSend = jest.fn();
