@@ -1239,37 +1239,29 @@ const AddModal = (props: AddModal) => {
             </div>
           </div>
           <div className="mt-5 hidden h-full w-full md:flex">
-            {' '}
             <div className="m-auto flex xl:m-0">
-              {' '}
               <button
                 className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
                 type="submit"
                 disabled={isCreatePending || isUpdatePending}
               >
-                {' '}
-                {
-                  <SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />
-                }{' '}
+                {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
-                  {' '}
-                  Save{' '}
-                </p>{' '}
-              </button>{' '}
+                  Save
+                </p>
+              </button>
               <button
                 className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
                 onClick={cancel}
                 type="button"
                 disabled={isCreatePending || isUpdatePending}
               >
-                {' '}
-                {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}{' '}
+                {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
-                  {' '}
-                  Cancel{' '}
-                </p>{' '}
-              </button>{' '}
-            </div>{' '}
+                  Cancel
+                </p>
+              </button>
+            </div>
           </div>
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
             <div className="flex justify-center gap-3">
