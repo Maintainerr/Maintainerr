@@ -11,22 +11,13 @@ export class RuleHandlerStartedEventDto extends BaseEventDto {
 }
 
 export class RuleHandlerProgressedEventDto extends BaseEventDto {
-  totalRuleGroups: number
+  ruleGroupName: string
   totalEvaluations: number
-  processingRuleGroup:
-    | {
-        number: number
-        name: string
-        processedEvaluations: number
-        totalEvaluations: number
-      }
-    | undefined
   processedEvaluations: number
 
-  constructor() {
+  constructor(ruleGroupName: string) {
     super(MaintainerrEvent.RuleHandler_Progressed)
-    this.totalRuleGroups = 0
-    this.processingRuleGroup = undefined
+    this.ruleGroupName = ruleGroupName
     this.totalEvaluations = 0
     this.processedEvaluations = 0
   }

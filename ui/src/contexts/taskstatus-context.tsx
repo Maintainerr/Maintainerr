@@ -2,6 +2,7 @@ import {
   CollectionHandlerFinishedEventDto,
   CollectionHandlerStartedEventDto,
   MaintainerrEvent,
+  RuleExecuteStatusDto,
   RuleHandlerFinishedEventDto,
   RuleHandlerStartedEventDto,
   TaskStatusDto,
@@ -27,9 +28,9 @@ export const TaskStatusProvider = (props: any) => {
 
   // Rule handler
   const ruleHandlerStatusQuery = useQuery({
-    queryKey: ['taskstatus_rulehandler'],
+    queryKey: ['rules', 'execute', 'status'],
     queryFn: async () => {
-      return await GetApiHandler<TaskStatusDto>('/tasks/Rule Handler/status')
+      return await GetApiHandler<RuleExecuteStatusDto>('/rules/execute/status')
     },
   })
 
@@ -63,8 +64,8 @@ export const TaskStatusProvider = (props: any) => {
   useEffect(() => {
     if (ruleHandlerStatusQuery.data) {
       updateRuleExecutorRunning(
-        ruleHandlerStatusQuery.data.running,
-        ruleHandlerStatusQuery.data.time,
+        ruleHandlerStatusQuery.data.processingQueue,
+        new Date(),
       )
     }
   }, [ruleHandlerStatusQuery.data])

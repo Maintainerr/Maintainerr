@@ -21,6 +21,7 @@ export interface IRuleGroup {
   dataType: EPlexDataType
   notifications?: AgentConfiguration[]
   collection?: ICollection
+  ruleHandlerCronSchedule?: string | null
 }
 
 const RuleGroup = (props: {

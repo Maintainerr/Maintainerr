@@ -106,22 +106,12 @@ const RuleHandlerMessages = () => {
             <SmallLoadingSpinner className="m-auto h-4 px-0.5" />
           </div>
           {event && isStartedOrFinishedEvent(event) && <>{event.message}</>}
-          {event &&
-            isRuleHandlerProgressedEvent(event) &&
-            event.processingRuleGroup && (
-              <div>Processing: {event.processingRuleGroup.name}</div>
-            )}
+          {event && isRuleHandlerProgressedEvent(event) && (
+            <div>Processing: {event.ruleGroupName}</div>
+          )}
         </div>
         {event && isRuleHandlerProgressedEvent(event) && (
           <div className="ml-8 mt-2 bg-zinc-800">
-            {event.totalRuleGroups > 1 && (
-              <div
-                className={`h-1.5 bg-amber-500 transition-width ease-in-out ${event.processingRuleGroup?.processedEvaluations === 0 ? 'duration-0' : 'duration-150'}`}
-                style={{
-                  width: `${(event.processingRuleGroup ? event.processingRuleGroup?.processedEvaluations / event.processingRuleGroup?.totalEvaluations : 0) * 100}%`,
-                }}
-              />
-            )}
             <div
               className="h-1.5 bg-amber-700 transition-width duration-150 ease-in-out"
               style={{

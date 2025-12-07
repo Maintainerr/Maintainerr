@@ -7,15 +7,15 @@ import {
   SaveIcon,
   UploadIcon,
 } from '@heroicons/react/solid'
-
 import { zodResolver } from '@hookform/resolvers/zod'
+import { isValidCron } from 'cron-validator'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
-import { usePlexLibraries } from '../../../../api/plex'
+import { ILibrary, usePlexLibraries } from '../../../../api/plex'
 import {
   RuleGroupCreatePayload,
   useCreateRuleGroup,
@@ -23,7 +23,6 @@ import {
   useUpdateRuleGroup,
 } from '../../../../api/rules'
 import { Application } from '../../../../contexts/constants-context'
-import { ILibrary } from '../../../../contexts/libraries-context'
 import { PostApiHandler } from '../../../../utils/ApiHandler'
 import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
@@ -112,6 +111,12 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    ruleHandlerCronSchedule: z
+      .string()
+      .refine((val) => (val !== '' ? isValidCron(val) : true), {
+        message: 'Invalid cron schedule',
+      })
+      .optional(),
   })
   .refine(
     (data) =>
@@ -180,6 +185,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
     : undefined,
+  ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? undefined,
 })
 
 const AddModal = (props: AddModal) => {
@@ -472,6 +478,7 @@ const AddModal = (props: AddModal) => {
       },
       rules: data.useRules ? rules : [],
       notifications: configuredNotificationConfigurations,
+      ruleHandlerCronSchedule: data.ruleHandlerCronSchedule,
     }
 
     try {
@@ -541,12 +548,12 @@ const AddModal = (props: AddModal) => {
           </Alert>
         )}
 
-        {formIncomplete ? (
+        {formIncomplete && (
           <Alert>
             Not all required (*) fields contain values and at least 1 valid rule
             is required
           </Alert>
-        ) : undefined}
+        )}
         <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             {/* Start Left side of top section */}
@@ -571,11 +578,11 @@ const AddModal = (props: AddModal) => {
                           {...register('name')}
                         ></input>
                       </div>
-                      {errors.name ? (
+                      {errors.name && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.name.message}
                         </p>
-                      ) : undefined}
+                      )}
                     </div>
                   </div>
 
@@ -625,11 +632,11 @@ const AddModal = (props: AddModal) => {
                           )
                         })()}
                       </div>
-                      {errors.libraryId ? (
+                      {errors.libraryId && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.libraryId.message}
                         </p>
-                      ) : undefined}
+                      )}
                     </div>
                   </div>
                   {selectedLibraryType && selectedLibraryType === 'movie' && (
@@ -711,11 +718,11 @@ const AddModal = (props: AddModal) => {
                               )
                             })()}
                           </div>
-                          {errors.dataType ? (
+                          {errors.dataType && (
                             <p className="mt-1 text-xs text-red-400">
                               {errors.dataType.message}
                             </p>
-                          ) : undefined}
+                          )}
                         </div>
                       </div>
 
@@ -786,11 +793,11 @@ const AddModal = (props: AddModal) => {
                                 ]
                         }
                       />
-                      {errors.sonarrSettingsId ? (
+                      {errors.sonarrSettingsId && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.sonarrSettingsId.message}
                         </p>
-                      ) : undefined}
+                      )}
                     </>
                   )}
 
@@ -814,11 +821,11 @@ const AddModal = (props: AddModal) => {
                             {...register('deleteAfterDays')}
                           />
                         </div>
-                        {errors.deleteAfterDays ? (
+                        {errors.deleteAfterDays && (
                           <p className="mt-1 text-xs text-red-400">
                             {errors.deleteAfterDays.message}
                           </p>
-                        ) : undefined}
+                        )}
                       </div>
                     </div>
                   )}
@@ -1011,11 +1018,11 @@ const AddModal = (props: AddModal) => {
                             {...register('manualCollectionName')}
                           />
                         </div>
-                        {errors.manualCollectionName ? (
+                        {errors.manualCollectionName && (
                           <p className="mt-1 text-xs text-red-400">
                             {errors.manualCollectionName.message}
                           </p>
-                        ) : undefined}
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1023,14 +1030,17 @@ const AddModal = (props: AddModal) => {
                   {/* Form Input Options */}
                   <div className="flex flex-col p-2 md:p-4">
                     <div className="flex flex-row items-center justify-between py-2 md:py-4">
-                      <label htmlFor="notifications" className="text-label">
+                      <label
+                        htmlFor="notifications"
+                        className="text-label flex flex-wrap gap-1"
+                      >
                         Notifications
                         <span className="ml-1.5 rounded-full bg-amber-600 px-3 text-white">
                           BETA
                         </span>
                       </label>
                       <div className="flex justify-end px-2 py-2">
-                        <div className="form-input-field w-20">
+                        <div className="form-input-field w-32">
                           <Button
                             buttonType="default"
                             type="button"
@@ -1059,21 +1069,21 @@ const AddModal = (props: AddModal) => {
                           measured in months (0 = forever)
                         </p>
                       </label>
-                      <div className="flex justify-end px-2 py-2">
-                        <div className="form-input-field w-20">
+                      <div className="form-input">
+                        <div className="form-input-field flex w-32 flex-col">
                           <input
                             type="number"
                             id="collection_logs_months"
                             min={0}
                             {...register('keepLogsForMonths')}
                           />
+                          {errors.keepLogsForMonths && (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.keepLogsForMonths.message}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      {errors.keepLogsForMonths ? (
-                        <p className="mt-1 text-end text-xs text-red-400">
-                          {errors.keepLogsForMonths.message}
-                        </p>
-                      ) : undefined}
                     </div>
 
                     {tautulliEnabled && useRulesEnabled && (
@@ -1089,8 +1099,8 @@ const AddModal = (props: AddModal) => {
                             counted as watched
                           </p>
                         </label>
-                        <div className="flex justify-end px-2 py-2">
-                          <div className="form-input-field w-20">
+                        <div className="form-input">
+                          <div className="form-input-field flex w-32 flex-col">
                             <input
                               type="number"
                               min={0}
@@ -1098,15 +1108,49 @@ const AddModal = (props: AddModal) => {
                               id="tautulli_watched_percent_override"
                               {...register('tautulliWatchedPercentOverride')}
                             />
+                            {errors.tautulliWatchedPercentOverride && (
+                              <p className="mt-1 text-xs text-red-400">
+                                {errors.tautulliWatchedPercentOverride.message}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        {errors.tautulliWatchedPercentOverride ? (
-                          <p className="mt-1 text-end text-xs text-red-400">
-                            {errors.tautulliWatchedPercentOverride.message}
-                          </p>
-                        ) : undefined}
                       </div>
                     )}
+
+                    <div className="flex flex-row items-center justify-between py-2 md:py-4">
+                      <label
+                        htmlFor="rule_handler_cron_schedule"
+                        className="text-label text-left"
+                      >
+                        Rule handler schedule override
+                        <p className="text-xs font-normal">
+                          Supports all standard{' '}
+                          <a
+                            href="http://crontab.org/"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            cron
+                          </a>{' '}
+                          patterns
+                        </p>
+                      </label>
+                      <div className="form-input">
+                        <div className="form-input-field flex w-32 flex-col">
+                          <input
+                            type="text"
+                            id="rule_handler_cron_schedule"
+                            {...register('ruleHandlerCronSchedule')}
+                          />
+                          {errors.ruleHandlerCronSchedule && (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.ruleHandlerCronSchedule.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1190,7 +1234,7 @@ const AddModal = (props: AddModal) => {
                   />
                 )}
 
-                {configureNotificionModal ? (
+                {configureNotificionModal && (
                   <ConfigureNotificationModal
                     onSuccess={(selection) => {
                       setConfiguredNotificationConfigurations(selection)
@@ -1201,7 +1245,7 @@ const AddModal = (props: AddModal) => {
                     }}
                     selectedAgents={configuredNotificationConfigurations}
                   />
-                ) : undefined}
+                )}
 
                 <RuleCreator
                   key={ruleCreatorVersion.current}

@@ -1,4 +1,4 @@
-import { useLocation, useMatch, useNavigate, useParams } from 'react-router-dom'
+import { useMatch, useNavigate, useParams } from 'react-router-dom'
 import { useRuleGroup } from '../api/rules'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import AddModal from '../components/Rules/RuleGroup/AddModal'

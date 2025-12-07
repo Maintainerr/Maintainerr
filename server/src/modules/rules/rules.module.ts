@@ -33,7 +33,9 @@ import { RuleYamlService } from './helpers/yaml.service';
 import { RulesController } from './rules.controller';
 import { RulesService } from './rules.service';
 import { ExclusionTypeCorrectorService } from './tasks/exclusion-corrector.service';
+import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
 import { RuleExecutorProgressService } from './tasks/rule-executor-progress.service';
+import { RuleExecutorSchedulerService } from './tasks/rule-executor-scheduler.service';
 import { RuleExecutorService } from './tasks/rule-executor.service';
 import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
 
@@ -62,8 +64,10 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
   providers: [
     RulesService,
     RuleExecutorService,
+    RuleExecutorSchedulerService,
     RuleMaintenanceService,
     RuleExecutorProgressService,
+    RuleExecutorJobManagerService,
     ExclusionTypeCorrectorService,
     PlexGetterService,
     RadarrGetterService,

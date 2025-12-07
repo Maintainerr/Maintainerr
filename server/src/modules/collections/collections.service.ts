@@ -1,5 +1,10 @@
-import { CollectionLogMeta, ECollectionLogType } from '@maintainerr/contracts';
+import {
+  CollectionLogMeta,
+  ECollectionLogType,
+  MaintainerrEvent,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
@@ -55,6 +60,7 @@ export class CollectionsService {
     private readonly plexApi: PlexApiService,
     private readonly tmdbApi: TmdbApiService,
     private readonly tmdbIdHelper: TmdbIdService,
+    private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -395,12 +401,12 @@ export class CollectionsService {
                 dbCollection.plexId.toString(),
               );
             }
-            dbCollection.plexId = null;
+            collection.plexId = null;
           }
         }
       }
 
-      const dbResp: ICollection = await this.collectionRepo.save({
+      const dbResp: ICollection = await this.saveCollection({
         ...dbCollection,
         ...collection,
       });
@@ -426,9 +432,28 @@ export class CollectionsService {
   }
 
   public async saveCollection(collection: Collection): Promise<Collection> {
-    return await this.collectionRepo.save({
-      ...collection,
-    });
+    if (collection.id) {
+      const oldCollection = await this.collectionRepo.findOne({
+        where: { id: collection.id },
+      });
+
+      const response = await this.collectionRepo.save(collection);
+
+      this.eventEmitter.emit(MaintainerrEvent.Collection_Updated, {
+        collection: response,
+        oldCollection: oldCollection,
+      });
+
+      return response;
+    } else {
+      const response = await this.collectionRepo.save(collection);
+
+      this.eventEmitter.emit(MaintainerrEvent.Collection_Created, {
+        collection: response,
+      });
+
+      return response;
+    }
   }
 
   public async relinkManualCollection(
@@ -725,7 +750,7 @@ export class CollectionsService {
       }
 
       await this.CollectionMediaRepo.delete({ collectionId: collection.id });
-      await this.collectionRepo.save({
+      await this.saveCollection({
         ...collection,
         isActive: false,
         plexId: null,
@@ -762,7 +787,7 @@ export class CollectionsService {
         where: { id: collectionDbId },
       });
 
-      await this.collectionRepo.save({
+      await this.saveCollection({
         ...collection,
         isActive: true,
       });
@@ -1009,6 +1034,10 @@ export class CollectionsService {
         await this.CollectionMediaRepo.delete({ collectionId: collection.id }); // cascade delete doesn't work for some reason..
         await this.CollectionLogRepo.delete({ collection: collection }); // cascade delete doesn't work for some reason..
         await this.collectionRepo.delete(collection.id);
+
+        this.eventEmitter.emit(MaintainerrEvent.Collection_Deleted, {
+          collection,
+        });
 
         await this.addLogRecord(
           { id: collection.id } as Collection,

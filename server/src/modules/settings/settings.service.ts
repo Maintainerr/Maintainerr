@@ -1,9 +1,11 @@
 import {
   JellyseerrSettingDto,
+  MaintainerrEvent,
   OverseerrSettingDto,
   TautulliSettingDto,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
 import { randomUUID } from 'crypto';
@@ -90,6 +92,7 @@ export class SettingsService implements SettingDto {
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
+    private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SettingsService.name);
@@ -124,6 +127,7 @@ export class SettingsService implements SettingDto {
       this.logger.log('Settings not found.. Creating initial settings');
       await this.settingsRepo.insert({
         apikey: this.generateApiKey(),
+        clientId: randomUUID(),
       });
       await this.init();
     }
@@ -269,7 +273,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
+      await this.saveSettings({
         ...settingsDb,
         tautulli_url: null,
         tautulli_api_key: null,
@@ -292,7 +296,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
+      await this.saveSettings({
         ...settingsDb,
         tautulli_url: settings.url,
         tautulli_api_key: settings.api_key,
@@ -313,7 +317,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
+      await this.saveSettings({
         ...settingsDb,
         overseerr_url: null,
         overseerr_api_key: null,
@@ -336,7 +340,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
+      await this.saveSettings({
         ...settingsDb,
         overseerr_url: settings.url,
         overseerr_api_key: settings.api_key,
@@ -502,14 +506,43 @@ export class SettingsService implements SettingDto {
     return this.updateSettings(mergedSettings);
   }
 
+  private async saveSettings(settings: Settings): Promise<Settings> {
+    const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+    const updatedSettings = await this.settingsRepo.save({
+      ...settingsDb,
+      ...settings,
+    });
+
+    this.eventEmitter.emit(MaintainerrEvent.Settings_Updated, {
+      oldSettings: settingsDb,
+      settings: updatedSettings,
+    });
+
+    return updatedSettings;
+  }
+
   public async updateSettings(settings: Settings): Promise<BasicResponseDto> {
+    if (
+      !this.cronIsValid(settings.collection_handler_job_cron) ||
+      !this.cronIsValid(settings.rules_handler_job_cron)
+    ) {
+      this.logger.error(
+        'Invalid CRON configuration found, settings update aborted.',
+      );
+      return {
+        status: 'NOK',
+        code: 0,
+        message: 'Update failed, invalid CRON value was found',
+      };
+    }
+
     try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
       settings.plex_hostname = settings.plex_hostname?.toLowerCase();
       settings.overseerr_url = settings.overseerr_url?.toLowerCase();
       settings.tautulli_url = settings.tautulli_url?.toLowerCase();
-
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
       settings.plex_ssl =
         settings.plex_hostname?.includes('https://') ||
         settings.plex_port == 443
@@ -519,64 +552,41 @@ export class SettingsService implements SettingDto {
         ?.replace('https://', '')
         ?.replace('http://', '');
 
+      const updatedSettings = await this.saveSettings({
+        ...settingsDb,
+        ...settings,
+      });
+
+      await this.init();
+      this.logger.log('Settings updated');
+      await this.plexApi.initialize({});
+      this.overseerr.init();
+      this.tautulli.init();
+      this.internalApi.init();
+      this.jellyseerr.init();
+
+      this.eventEmitter.emit(MaintainerrEvent.Settings_Updated, {
+        oldSettings: settingsDb,
+        settings: updatedSettings,
+      });
+
+      // reload Collection handler job if changed
       if (
-        this.cronIsValid(settings.collection_handler_job_cron) &&
-        this.cronIsValid(settings.rules_handler_job_cron)
+        settingsDb.collection_handler_job_cron !==
+        settings.collection_handler_job_cron
       ) {
-        await this.settingsRepo.save({
-          ...settingsDb,
-          ...settings,
-        });
-        await this.init();
-        this.logger.log('Settings updated');
-        await this.plexApi.initialize({});
-        this.overseerr.init();
-        this.tautulli.init();
-        this.internalApi.init();
-        this.jellyseerr.init();
-
-        // reload Rule handler job if changed
-        if (
-          settingsDb.rules_handler_job_cron !== settings.rules_handler_job_cron
-        ) {
-          this.logger.log(
-            `Rule Handler cron schedule changed.. Reloading job.`,
-          );
-          await this.internalApi
-            .getApi()
-            .put(
-              '/rules/schedule/update',
-              `{"schedule": "${settings.rules_handler_job_cron}"}`,
-            );
-        }
-
-        // reload Collection handler job if changed
-        if (
-          settingsDb.collection_handler_job_cron !==
-          settings.collection_handler_job_cron
-        ) {
-          this.logger.log(
-            `Collection Handler cron schedule changed.. Reloading job.`,
-          );
-          await this.internalApi
-            .getApi()
-            .put(
-              '/collections/schedule/update',
-              `{"schedule": "${settings.collection_handler_job_cron}"}`,
-            );
-        }
-
-        return { status: 'OK', code: 1, message: 'Success' };
-      } else {
-        this.logger.error(
-          'Invalid CRON configuration found, settings update aborted.',
+        this.logger.log(
+          `Collection Handler cron schedule changed.. Reloading job.`,
         );
-        return {
-          status: 'NOK',
-          code: 0,
-          message: 'Update failed, invalid CRON value was found',
-        };
+        await this.internalApi
+          .getApi()
+          .put(
+            '/collections/schedule/update',
+            `{"schedule": "${settings.collection_handler_job_cron}"}`,
+          );
       }
+
+      return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
       this.logger.error('Error while updating settings: ', e);
       return { status: 'NOK', code: 0, message: 'Failure' };
@@ -619,7 +629,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
+      await this.saveSettings({
         ...settingsDb,
         jellyseerr_url: null,
         jellyseerr_api_key: null,
@@ -642,7 +652,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsRepo.save({
+      await this.saveSettings({
         ...settingsDb,
         jellyseerr_url: settings.url,
         jellyseerr_api_key: settings.api_key,

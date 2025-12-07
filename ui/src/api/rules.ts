@@ -41,6 +41,7 @@ export interface RuleGroupCreatePayload {
   rules: IRule[]
   dataType: EPlexDataType
   notifications: AgentConfiguration[]
+  ruleHandlerCronSchedule?: string
 }
 
 export type RuleGroupUpdatePayload = RuleGroupCreatePayload & { id: number }

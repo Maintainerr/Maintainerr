@@ -1,5 +1,6 @@
-import { ECollectionLogType } from '@maintainerr/contracts';
+import { ECollectionLogType, MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
@@ -69,6 +70,7 @@ export class RulesService {
     private readonly connection: DataSource,
     private readonly ruleYamlService: RuleYamlService,
     private readonly ruleComparatorServiceFactory: RuleComparatorServiceFactory,
+    private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RulesService.name);
@@ -132,6 +134,7 @@ export class RulesService {
       return undefined;
     }
   }
+
   async getRuleGroups(
     activeOnly = false,
     libraryId?: number,
@@ -153,6 +156,28 @@ export class RulesService {
               ? `c.type = ${typeId}`
               : 'rg.libraryId != -1',
         )
+        .orderBy('rg.id, r.id')
+        .getMany();
+      return rulegroups as RulesDto[];
+    } catch (e) {
+      this.logger.warn(`Rules - Action failed : ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
+  async getRuleGroupsByIds(ids: number[]): Promise<RulesDto[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    try {
+      const rulegroups = await this.connection
+        .createQueryBuilder('rule_group', 'rg')
+        .innerJoinAndSelect('rg.rules', 'r')
+        .innerJoinAndSelect('rg.collection', 'c')
+        .leftJoinAndSelect('rg.notifications', 'n')
+        .where(`rg.id IN (${ids.join(',')})`)
         .orderBy('rg.id, r.id')
         .getMany();
       return rulegroups as RulesDto[];
@@ -219,6 +244,10 @@ export class RulesService {
 
       await this.exclusionRepo.delete({ ruleGroupId: ruleGroupId });
       await this.ruleGroupRepository.delete(ruleGroupId);
+
+      this.eventEmitter.emit(MaintainerrEvent.RuleGroup_Deleted, {
+        ruleGroup: group,
+      });
 
       if (group.collectionId) {
         // DB cascade doesn't work.. So do it manually
@@ -302,6 +331,7 @@ export class RulesService {
         params.dataType !== undefined ? params.dataType : undefined,
         undefined,
         params.notifications,
+        params.ruleHandlerCronSchedule,
       );
       // create rules
       if (params.useRules) {
@@ -436,6 +466,7 @@ export class RulesService {
           params.dataType !== undefined ? params.dataType : undefined,
           group.id,
           params.notifications,
+          params.ruleHandlerCronSchedule,
         );
 
         // remove previous rules
@@ -882,6 +913,7 @@ export class RulesService {
     dataType = undefined,
     id?: number,
     notifications?: Notification[],
+    ruleHandlerCronSchedule?: string,
   ): Promise<number> {
     try {
       const values = {
@@ -892,6 +924,7 @@ export class RulesService {
         isActive: isActive,
         useRules: useRules,
         dataType: dataType,
+        ruleHandlerCronSchedule: ruleHandlerCronSchedule,
       };
       const connection = this.connection.createQueryBuilder();
 
@@ -903,12 +936,29 @@ export class RulesService {
           .execute();
 
         id = groupId.identifiers[0].id;
+
+        this.eventEmitter.emit(MaintainerrEvent.RuleGroup_Created, {
+          ruleGroup: {
+            id: id,
+            ...values,
+          },
+        });
       } else {
+        const oldRuleGroup = await this.getRuleGroupById(id);
+
         await connection
           .update(RuleGroup)
           .set(values)
           .where({ id: id })
           .execute();
+
+        this.eventEmitter.emit(MaintainerrEvent.RuleGroup_Updated, {
+          oldRuleGroup,
+          ruleGroup: {
+            id: id,
+            ...values,
+          },
+        });
       }
 
       // Remove all existing notifications from the RuleGroup
