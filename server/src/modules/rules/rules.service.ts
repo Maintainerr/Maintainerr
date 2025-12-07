@@ -177,7 +177,7 @@ export class RulesService {
         .innerJoinAndSelect('rg.rules', 'r')
         .innerJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
-        .where(`rg.id IN (${ids.join(',')})`)
+        .where('rg.id IN (:...ids)', { ids })
         .orderBy('rg.id, r.id')
         .getMany();
       return rulegroups as RulesDto[];

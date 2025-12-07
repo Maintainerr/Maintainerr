@@ -552,7 +552,7 @@ export class SettingsService implements SettingDto {
         ?.replace('https://', '')
         ?.replace('http://', '');
 
-      const updatedSettings = await this.saveSettings({
+      await this.saveSettings({
         ...settingsDb,
         ...settings,
       });
@@ -564,11 +564,6 @@ export class SettingsService implements SettingDto {
       this.tautulli.init();
       this.internalApi.init();
       this.jellyseerr.init();
-
-      this.eventEmitter.emit(MaintainerrEvent.Settings_Updated, {
-        oldSettings: settingsDb,
-        settings: updatedSettings,
-      });
 
       // reload Collection handler job if changed
       if (
