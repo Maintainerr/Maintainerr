@@ -913,7 +913,7 @@ export class RulesService {
     dataType = undefined,
     id?: number,
     notifications?: Notification[],
-    ruleHandlerCronSchedule?: string,
+    ruleHandlerCronSchedule?: string | null,
   ): Promise<number> {
     try {
       const values = {
