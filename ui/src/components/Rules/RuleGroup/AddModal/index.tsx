@@ -111,12 +111,15 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
-    ruleHandlerCronSchedule: z
-      .string()
-      .refine((val) => (val !== '' ? isValidCron(val) : true), {
-        message: 'Invalid cron schedule',
-      })
-      .optional(),
+    ruleHandlerCronSchedule: z.preprocess(
+      (val) => (val === '' ? null : val),
+      z
+        .string()
+        .refine((val) => (val != null ? isValidCron(val) : true), {
+          message: 'Invalid cron schedule',
+        })
+        .nullable(),
+    ),
   })
   .refine(
     (data) =>
@@ -185,7 +188,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
     : undefined,
-  ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? undefined,
+  ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
 const AddModal = (props: AddModal) => {
