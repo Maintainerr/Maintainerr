@@ -89,7 +89,7 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
     queryFn: async () => {
       return await GetApiHandler<IConstants>(`/rules/constants`)
     },
-    staleTime: Infinity,
+    staleTime: 0,
     ...options,
   })
 }

@@ -1,3 +1,15 @@
+# [2.24.0](https://github.com/maintainerr/Maintainerr/compare/v2.23.0...v2.24.0) (2025-12-07)
+
+
+### Bug Fixes
+
+* Unselecting options in rule editor throws error ([#2142](https://github.com/maintainerr/Maintainerr/issues/2142)) ([9c11b01](https://github.com/maintainerr/Maintainerr/commit/9c11b01c4c772e73065909d7dec33a863494a5a4))
+
+
+### Features
+
+* Add clone feature to rule group editor ([#2140](https://github.com/maintainerr/Maintainerr/issues/2140)) ([d8aee79](https://github.com/maintainerr/Maintainerr/commit/d8aee79abcc79d422cf29010d106bf0911f09042))
+
 # [2.23.0](https://github.com/maintainerr/Maintainerr/compare/v2.22.1...v2.23.0) (2025-12-06)
 
 
