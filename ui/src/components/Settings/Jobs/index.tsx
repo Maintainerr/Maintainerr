@@ -79,7 +79,7 @@ const JobSettings = () => {
                   >
                     cron
                   </a>{' '}
-                  patterns
+                  patterns. Can be overridden by individual rule groups.
                 </p>
               </label>
               <div className="form-input">

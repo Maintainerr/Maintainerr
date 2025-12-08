@@ -5,7 +5,7 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Interval, SchedulerRegistry } from '@nestjs/schedule';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
@@ -45,20 +45,11 @@ export class RuleExecutorSchedulerService
     );
 
     for (const ruleGroup of ruleGroupsWithCronSchedule) {
-      if (ruleGroup.ruleHandlerCronSchedule) {
-        this.createRuleGroupCronJob(ruleGroup);
-        this.logger.log(
-          `Created cron job for rule group ${ruleGroup.id}: ${ruleGroup.ruleHandlerCronSchedule}`,
-        );
-      }
+      this.createRuleGroupCronJob(ruleGroup);
     }
 
     this.registerOrUpdateGlobalSchedule(
       this.settingsService.rules_handler_job_cron,
-    );
-
-    this.logger.log(
-      `Created global schedule cron job: ${this.settingsService.rules_handler_job_cron}`,
     );
   }
 
@@ -73,9 +64,6 @@ export class RuleExecutorSchedulerService
   public async enqueueAllActiveRuleGroups() {
     const ruleGroups = await this.rulesService.getRuleGroups(true);
     for (const rg of ruleGroups) {
-      this.logger.log(
-        `Enqueuing rule group ${rg.id} for execution as part of enqueueAllActiveRuleGroups`,
-      );
       this.queueManager.enqueue({
         ruleGroupId: rg.id,
       });
@@ -87,19 +75,6 @@ export class RuleExecutorSchedulerService
     if (data.ruleGroup.isActive && data.ruleGroup.ruleHandlerCronSchedule) {
       this.createRuleGroupCronJob(data.ruleGroup);
     }
-  }
-
-  @Interval(2000)
-  public debugLogs() {
-    this.schedulerRegistry.getCronJobs().forEach((job, jobName) => {
-      this.logger.debug(`${jobName} next scheduled run: ${job.nextDate()}`);
-    });
-    this.logger.debug(
-      `Current execution queue: ${this.queueManager
-        .getQueuedRuleGroupIds()
-        .map((id) => `Rule Group ID: ${id}`)
-        .join(', ')}`,
-    );
   }
 
   @OnEvent(MaintainerrEvent.RuleGroup_Updated)
@@ -123,9 +98,6 @@ export class RuleExecutorSchedulerService
         );
         this.createRuleGroupCronJob(data.ruleGroup);
       } else if (!shouldHaveJob && existingJob) {
-        this.logger.log(
-          `Rule group ${data.ruleGroup.id} no longer requires cron job; removing stray job`,
-        );
         this.schedulerRegistry.deleteCronJob(jobName);
         this.queueManager.removeFromQueue(data.ruleGroup.id);
       }
@@ -288,17 +260,12 @@ export class RuleExecutorSchedulerService
   }
 
   private async executeGlobalSchedule() {
-    this.logger.log(`Executing global schedule cron job`);
     const ruleGroups = await this.rulesService.getRuleGroups(true);
     const ruleGroupsFollowingGlobalSchedule = ruleGroups.filter(
       (rg) => !rg.ruleHandlerCronSchedule,
     );
 
     for (const ruleGroup of ruleGroupsFollowingGlobalSchedule) {
-      this.logger.log(
-        `Scheduling rule group ${ruleGroup.id} as part of global schedule execution`,
-      );
-
       this.queueManager.enqueue({
         ruleGroupId: ruleGroup.id,
       });
