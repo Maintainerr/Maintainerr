@@ -315,6 +315,47 @@ namespace Maintainerr.Installer.CustomActions
                 string installFolder = session["INSTALLFOLDER"];
                 session.Log($"Running yarn install in: {installFolder}");
 
+                // Validate install folder path to prevent path injection
+                if (string.IsNullOrWhiteSpace(installFolder))
+                {
+                    session.Log("Install folder is empty");
+                    return ActionResult.Failure;
+                }
+
+                // Ensure path doesn't contain suspicious characters
+                if (installFolder.Contains("&") || installFolder.Contains("|") || 
+                    installFolder.Contains(">") || installFolder.Contains("<") ||
+                    installFolder.Contains("\"") || installFolder.Contains("'"))
+                {
+                    session.Log("Install folder contains invalid characters");
+                    using (var record = new Record(0))
+                    {
+                        record.FormatString = "Installation folder path contains invalid characters.";
+                        session.Message(InstallMessage.Error, record);
+                    }
+                    return ActionResult.Failure;
+                }
+
+                // Normalize and validate the path
+                try
+                {
+                    string normalizedPath = Path.GetFullPath(installFolder);
+                    if (!normalizedPath.Equals(installFolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                    {
+                        session.Log($"Path normalization mismatch: {installFolder} vs {normalizedPath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    session.Log($"Invalid install folder path: {ex.Message}");
+                    using (var record = new Record(0))
+                    {
+                        record.FormatString = "Invalid installation folder path.";
+                        session.Message(InstallMessage.Error, record);
+                    }
+                    return ActionResult.Failure;
+                }
+
                 // Check if yarn is available
                 var processStartInfo = new ProcessStartInfo
                 {

@@ -235,11 +235,13 @@ GIT_SHA=
 # Create placeholder icon if it doesn't exist
 $iconPath = Join-Path $ResourcesDir "maintainerr.ico"
 if (-not (Test-Path $iconPath)) {
-    Write-Host "Note: maintainerr.ico not found in Resources directory." -ForegroundColor Yellow
-    Write-Host "      A default icon will be used. You can replace it with your own icon." -ForegroundColor Yellow
+    Write-Host "WARNING: maintainerr.ico not found in Resources directory." -ForegroundColor Yellow
+    Write-Host "         Creating a minimal placeholder icon for build purposes." -ForegroundColor Yellow
+    Write-Host "         For production builds, provide a proper icon file at:" -ForegroundColor Yellow
+    Write-Host "         $iconPath" -ForegroundColor Yellow
     
     # Create a minimal 1x1 pixel ico file as placeholder
-    # In a real scenario, you would provide an actual icon
+    # This should be replaced with a proper icon for production builds
     $iconBytes = @(0,0,1,0,1,0,1,1,0,0,1,0,24,0,48,0,0,0,22,0,0,0,40,0,0,0,1,0,0,0,2,0,0,0,1,0,24,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,0,0,0)
     [System.IO.File]::WriteAllBytes($iconPath, $iconBytes)
     

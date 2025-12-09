@@ -195,7 +195,7 @@
         Description="Maintainerr - Maintenance tool for the Plex ecosystem"
         Type="ownProcess"
         Start="auto"
-        Account="LocalSystem"
+        Account="NT AUTHORITY\LocalService"
         ErrorControl="normal"
         Interactive="no">
         <util:ServiceConfig
