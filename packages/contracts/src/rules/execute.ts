@@ -1,5 +1,5 @@
 export type RuleExecuteStatusDto = {
   processingQueue: boolean
-  executingRuleGroupId?: number
+  executingRuleGroupId: number | null
   queueLength: number
 }
