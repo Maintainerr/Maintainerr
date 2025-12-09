@@ -20,7 +20,6 @@ import {
 } from '../../events/events.dto';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
-import { TasksService } from '../../tasks/tasks.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
@@ -50,12 +49,11 @@ export class RuleExecutorService {
     private readonly rulesService: RulesService,
     private readonly plexApi: PlexApiService,
     private readonly collectionService: CollectionsService,
-    protected readonly taskService: TasksService,
     private readonly settings: SettingsService,
     private readonly comparatorFactory: RuleComparatorServiceFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly progressManager: RuleExecutorProgressService,
-    protected readonly logger: MaintainerrLogger,
+    private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
