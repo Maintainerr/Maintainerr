@@ -210,6 +210,8 @@ jobs:
     name: Build Windows Installer
     needs: semantic-release
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out the repo
         uses: actions/checkout@v6
