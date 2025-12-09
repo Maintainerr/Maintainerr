@@ -1,5 +1,6 @@
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { ExecutionLockService } from '../../tasks/execution-lock.service';
 import { RuleExecutorService } from './rule-executor.service';
 
 type QueueItem = {
@@ -19,9 +20,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   private processingQueue = false; // true while the internal queue is being processed
   private processQueuePromise: Promise<void> | null = null;
   private isShuttingDown = false;
+  private readonly reservedRuleGroupIds = new Set<number>();
 
   constructor(
     private readonly ruleExecutorService: RuleExecutorService,
+    private readonly executionLock: ExecutionLockService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RuleExecutorJobManagerService.name);
@@ -56,7 +59,10 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   }
 
   public isRuleGroupProcessingOrQueued(ruleGroupId: number): boolean {
-    if (this.executingRuleGroupId === ruleGroupId) {
+    if (
+      this.executingRuleGroupId === ruleGroupId ||
+      this.reservedRuleGroupIds.has(ruleGroupId)
+    ) {
       return true;
     }
 
@@ -71,6 +77,10 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       (q) => q.ruleGroupId === request.ruleGroupId,
     );
     if (indexInQueue !== -1) return true; // already queued
+
+    if (this.reservedRuleGroupIds.has(request.ruleGroupId)) {
+      return true; // reserved for execution
+    }
 
     if (this.executingRuleGroupId === request.ruleGroupId) {
       return true; // already executing
@@ -135,6 +145,8 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   }
 
   private async executeJob(request: QueueItem) {
+    this.reservedRuleGroupIds.add(request.ruleGroupId);
+    const release = await this.executionLock.acquire('rules-collections-lock');
     this.executingRuleGroupId = request.ruleGroupId;
     this.abortController = new AbortController();
 
@@ -149,8 +161,10 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
         e,
       );
     } finally {
+      release();
       this.executingRuleGroupId = null;
       this.abortController = undefined;
+      this.reservedRuleGroupIds.delete(request.ruleGroupId);
     }
   }
 

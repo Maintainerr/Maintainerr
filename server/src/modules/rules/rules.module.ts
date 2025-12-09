@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JellyseerrApiModule } from '../api/jellyseerr-api/jellyseerr-api.module';
 import { OverseerrApiModule } from '../api/overseerr-api/overseerr-api.module';
@@ -58,7 +58,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     TautulliApiModule,
     JellyseerrApiModule,
     TmdbApiModule,
-    CollectionsModule,
+    forwardRef(() => CollectionsModule),
     TasksModule,
   ],
   providers: [
@@ -82,5 +82,6 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     RuleComparatorServiceFactory,
   ],
   controllers: [RulesController],
+  exports: [RuleExecutorJobManagerService],
 })
 export class RulesModule {}

@@ -7,6 +7,9 @@ export class AddRuleHandlerCronSchedule1764888122429 implements MigrationInterfa
     await queryRunner.query(`
             ALTER TABLE "rule_group" ADD "ruleHandlerCronSchedule" varchar
         `);
+    await queryRunner.query(`
+            DELETE FROM "task_running" WHERE "name" = 'Rule Handler'
+        `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

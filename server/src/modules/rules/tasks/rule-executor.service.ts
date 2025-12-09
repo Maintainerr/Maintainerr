@@ -36,8 +36,6 @@ interface PlexData {
 
 @Injectable()
 export class RuleExecutorService {
-  protected name = 'Rule Handler';
-
   ruleConstants: RuleConstants;
   userId: string;
   plexData: PlexData;

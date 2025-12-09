@@ -1,3 +1,4 @@
+import { ExecutionLockService } from '../../tasks/execution-lock.service';
 import { RuleExecutorJobManagerService } from './rule-executor-job-manager.service';
 
 type ExecuteMock = jest.Mock<Promise<void>, [number, AbortSignal]>;
@@ -26,16 +27,24 @@ describe('RuleExecutorJobManagerService', () => {
         executeMock ?? (jest.fn().mockResolvedValue(undefined) as ExecuteMock),
     };
 
+    const executionLock = {
+      acquire: jest.fn().mockResolvedValue(jest.fn()),
+    } as unknown as ExecutionLockService;
+
     return {
       service: new RuleExecutorJobManagerService(
         ruleExecutorService as any,
+        executionLock,
         logger as any,
       ),
       ruleExecutorService,
+      executionLock,
     };
   };
 
   const flushMicrotasks = async () => Promise.resolve();
+  const waitForNextTick = async () =>
+    new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   it('enqueues without duplicates and processes sequentially', async () => {
     const first = createDeferred();
@@ -66,6 +75,9 @@ describe('RuleExecutorJobManagerService', () => {
 
     first.resolve();
     await flushMicrotasks();
+    await waitForNextTick();
+    await flushMicrotasks();
+    await waitForNextTick();
     expect(executeMock).toHaveBeenCalledTimes(2);
     expect(inFlight).toEqual([2]);
 
