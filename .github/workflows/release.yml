@@ -205,3 +205,72 @@ jobs:
               "ref": "refs/heads/main",
               "versionInput": "${{ needs.build-docker-image.outputs.version }}"
             }
+
+  build-windows-installer:
+    name: Build Windows Installer
+    needs: semantic-release
+    runs-on: windows-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+
+      - name: Pull latest changes
+        run: git pull
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install WiX Toolset
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Activate corepack
+        run: |
+          corepack install
+          corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build Maintainerr
+        run: yarn build
+
+      - name: Build Windows Installer
+        shell: pwsh
+        run: |
+          cd installer/windows
+          .\Build.ps1 -Configuration Release
+
+      - name: Get version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Rename installer with version
+        shell: pwsh
+        run: |
+          $version = "${{ steps.package-version.outputs.current-version }}"
+          $msiPath = "installer/windows/bin/Release/Maintainerr.msi"
+          $newMsiPath = "installer/windows/bin/Release/Maintainerr-$version-win-x64.msi"
+          Move-Item -Path $msiPath -Destination $newMsiPath
+          echo "MSI_PATH=$newMsiPath" >> $env:GITHUB_ENV
+
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v5
+        with:
+          name: windows-installer
+          path: ${{ env.MSI_PATH }}
+          retention-days: 7
+
+      - name: Upload to Release
+        if: github.event.inputs.dry-run-semantic-release != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.MSI_PATH }}
+          tag_name: v${{ steps.package-version.outputs.current-version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
