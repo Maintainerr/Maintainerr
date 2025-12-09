@@ -36,10 +36,50 @@ namespace Maintainerr.Service
         private Process? _uiProcess;
         private string _installFolder = string.Empty;
         private string _dataFolder = string.Empty;
+        private string? _nodeExePath = null;
 
         public MaintainerrWorker(ILogger<MaintainerrWorker> logger)
         {
             _logger = logger;
+        }
+
+        private string GetNodeExecutablePath()
+        {
+            // Return cached path if already found
+            if (!string.IsNullOrEmpty(_nodeExePath))
+            {
+                return _nodeExePath;
+            }
+
+            // Get Node.js path from environment or use default
+            string nodeExe = Environment.GetEnvironmentVariable("NODE_PATH") ?? "node";
+            
+            // Validate Node.js executable exists
+            if (!File.Exists(nodeExe) && nodeExe == "node")
+            {
+                // Try to find node.exe in common locations
+                var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+                
+                var possiblePaths = new[]
+                {
+                    Path.Combine(programFiles, "nodejs", "node.exe"),
+                    Path.Combine(programFilesX86, "nodejs", "node.exe"),
+                };
+                
+                foreach (var path in possiblePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        nodeExe = path;
+                        _logger.LogInformation($"Found Node.js at: {nodeExe}");
+                        break;
+                    }
+                }
+            }
+
+            _nodeExePath = nodeExe;
+            return nodeExe;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -151,34 +191,7 @@ namespace Maintainerr.Service
                 _logger.LogInformation("Starting Maintainerr server...");
 
                 string serverPath = Path.Combine(_installFolder, "server");
-                
-                // Get Node.js path from environment or use default
-                string nodeExe = Environment.GetEnvironmentVariable("NODE_PATH") ?? "node";
-                
-                // Validate Node.js executable exists
-                if (!File.Exists(nodeExe) && nodeExe == "node")
-                {
-                    // Try to find node.exe in common locations
-                    var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                    var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-                    
-                    var possiblePaths = new[]
-                    {
-                        Path.Combine(programFiles, "nodejs", "node.exe"),
-                        Path.Combine(programFilesX86, "nodejs", "node.exe"),
-                    };
-                    
-                    foreach (var path in possiblePaths)
-                    {
-                        if (File.Exists(path))
-                        {
-                            nodeExe = path;
-                            _logger.LogInformation($"Found Node.js at: {nodeExe}");
-                            break;
-                        }
-                    }
-                }
-                
+                string nodeExe = GetNodeExecutablePath();
                 string serverMain = Path.Combine(serverPath, "dist", "main.js");
 
                 if (!File.Exists(serverMain))
@@ -245,34 +258,7 @@ namespace Maintainerr.Service
                 _logger.LogInformation("Starting Maintainerr UI...");
 
                 string uiPath = Path.Combine(_installFolder, "ui");
-                
-                // Get Node.js path from environment or use default
-                string nodeExe = Environment.GetEnvironmentVariable("NODE_PATH") ?? "node";
-                
-                // Validate Node.js executable exists
-                if (!File.Exists(nodeExe) && nodeExe == "node")
-                {
-                    // Try to find node.exe in common locations
-                    var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                    var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-                    
-                    var possiblePaths = new[]
-                    {
-                        Path.Combine(programFiles, "nodejs", "node.exe"),
-                        Path.Combine(programFilesX86, "nodejs", "node.exe"),
-                    };
-                    
-                    foreach (var path in possiblePaths)
-                    {
-                        if (File.Exists(path))
-                        {
-                            nodeExe = path;
-                            _logger.LogInformation($"Found Node.js at: {nodeExe}");
-                            break;
-                        }
-                    }
-                }
-                
+                string nodeExe = GetNodeExecutablePath();
                 string uiServer = Path.Combine(uiPath, "server.js");
 
                 if (!File.Exists(uiServer))

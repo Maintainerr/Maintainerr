@@ -217,8 +217,31 @@ namespace Maintainerr.Installer.CustomActions
                 // Ensure data directory exists
                 if (!Directory.Exists(dataFolder))
                 {
-                    Directory.CreateDirectory(dataFolder);
+                    var dirInfo = Directory.CreateDirectory(dataFolder);
                     session.Log($"Created data directory: {dataFolder}");
+                    
+                    // Set permissions to allow the service account (LocalService) to access the directory
+                    try
+                    {
+                        var dirSecurity = dirInfo.GetAccessControl();
+                        // Allow LocalService full control
+                        var localServiceSid = new System.Security.Principal.SecurityIdentifier(
+                            System.Security.Principal.WellKnownSidType.LocalServiceSid, null);
+                        dirSecurity.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                            localServiceSid,
+                            System.Security.AccessControl.FileSystemRights.FullControl,
+                            System.Security.AccessControl.InheritanceFlags.ContainerInherit | 
+                            System.Security.AccessControl.InheritanceFlags.ObjectInherit,
+                            System.Security.AccessControl.PropagationFlags.None,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                        dirInfo.SetAccessControl(dirSecurity);
+                        session.Log("Set LocalService permissions on data directory");
+                    }
+                    catch (Exception ex)
+                    {
+                        session.Log($"Warning: Could not set directory permissions: {ex.Message}");
+                        // Don't fail installation if we can't set permissions
+                    }
                 }
 
                 string envFilePath = Path.Combine(dataFolder, ".env");
@@ -303,6 +326,36 @@ namespace Maintainerr.Installer.CustomActions
         }
 
         /// <summary>
+        /// Validates that a path is safe and doesn't contain command injection characters
+        /// </summary>
+        private static bool IsPathSafe(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            // Check for command injection characters
+            char[] dangerousChars = { '&', '|', '>', '<', '"', '\'', ';', '$', '`', '\n', '\r' };
+            if (path.IndexOfAny(dangerousChars) >= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Checks if path normalization is consistent (path hasn't been tampered with)
+        /// </summary>
+        private static bool IsPathNormalizationConsistent(string originalPath, string normalizedPath)
+        {
+            return normalizedPath.Equals(
+                originalPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Runs yarn install to install dependencies
         /// </summary>
         [CustomAction]
@@ -316,18 +369,9 @@ namespace Maintainerr.Installer.CustomActions
                 session.Log($"Running yarn install in: {installFolder}");
 
                 // Validate install folder path to prevent path injection
-                if (string.IsNullOrWhiteSpace(installFolder))
+                if (!IsPathSafe(installFolder))
                 {
-                    session.Log("Install folder is empty");
-                    return ActionResult.Failure;
-                }
-
-                // Ensure path doesn't contain suspicious characters
-                if (installFolder.Contains("&") || installFolder.Contains("|") || 
-                    installFolder.Contains(">") || installFolder.Contains("<") ||
-                    installFolder.Contains("\"") || installFolder.Contains("'"))
-                {
-                    session.Log("Install folder contains invalid characters");
+                    session.Log("Install folder contains invalid or dangerous characters");
                     using (var record = new Record(0))
                     {
                         record.FormatString = "Installation folder path contains invalid characters.";
@@ -340,7 +384,7 @@ namespace Maintainerr.Installer.CustomActions
                 try
                 {
                     string normalizedPath = Path.GetFullPath(installFolder);
-                    if (!normalizedPath.Equals(installFolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                    if (!IsPathNormalizationConsistent(installFolder, normalizedPath))
                     {
                         session.Log($"Path normalization mismatch: {installFolder} vs {normalizedPath}");
                     }
