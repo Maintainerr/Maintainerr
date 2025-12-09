@@ -1,0 +1,32 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <OutputName>Maintainerr</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Product.wxs" />
+    <Compile Include="DataFolderDialog.wxs" />
+    <Compile Include="Components.wxs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CustomActions\CustomActions.csproj" />
+  </ItemGroup>
+
+  <!-- Copy CustomActions DLL to output -->
+  <Target Name="CopyCustomActionsDll" BeforeTargets="Compile">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\CustomActions\bin\$(Configuration)\net8.0\CustomActions.CA.dll" 
+          DestinationFolder="$(MSBuildProjectDirectory)" 
+          Condition="Exists('$(MSBuildProjectDirectory)\CustomActions\bin\$(Configuration)\net8.0\CustomActions.CA.dll')" />
+  </Target>
+
+</Project>

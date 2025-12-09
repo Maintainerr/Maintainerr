@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  
+  <?define ProductName = "Maintainerr" ?>
+  <?define ProductVersion = "2.24.0" ?>
+  <?define Manufacturer = "Maintainerr" ?>
+  <?define UpgradeCode = "3F8D6C7E-9A5B-4E1C-8D2F-1A3B5C7D9E0F" ?>
+  
+  <Package Name="$(var.ProductName)" 
+           Version="$(var.ProductVersion)"
+           Manufacturer="$(var.Manufacturer)" 
+           UpgradeCode="$(var.UpgradeCode)"
+           Language="1033"
+           Compressed="yes"
+           InstallerVersion="500"
+           InstallScope="perMachine">
+    
+    <SummaryInformation
+      Description="Maintainerr - Maintenance tool for the Plex ecosystem"
+      Manufacturer="$(var.Manufacturer)"
+      Keywords="Plex,Media,Maintenance" />
+
+    <!-- Major upgrade rule -->
+    <MajorUpgrade 
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      AllowSameVersionUpgrades="yes" 
+      Schedule="afterInstallExecute" />
+    
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Properties -->
+    <Property Id="ARPPRODUCTICON" Value="MaintainerrIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://maintainerr.info" />
+    <Property Id="ARPHELPLINK" Value="https://docs.maintainerr.info" />
+    <Property Id="ARPNOMODIFY" Value="yes" Secure="yes" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    
+    <!-- Custom properties for directories -->
+    <Property Id="INSTALLFOLDER" Secure="yes">
+      <RegistrySearch Id="InstallFolderRegistry" 
+                      Root="HKLM" 
+                      Key="Software\Maintainerr" 
+                      Name="InstallFolder" 
+                      Type="raw" />
+    </Property>
+    
+    <Property Id="DATAFOLDER" Secure="yes">
+      <RegistrySearch Id="DataFolderRegistry" 
+                      Root="HKLM" 
+                      Key="Software\Maintainerr" 
+                      Name="DataFolder" 
+                      Type="raw" />
+    </Property>
+
+    <!-- Directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="Maintainerr">
+          <Directory Id="ServerFolder" Name="server">
+            <Directory Id="ServerDistFolder" Name="dist" />
+            <Directory Id="ServerNodeModulesFolder" Name="node_modules" />
+          </Directory>
+          <Directory Id="UiFolder" Name="ui">
+            <Directory Id="UiDistFolder" Name="dist" />
+            <Directory Id="UiPublicFolder" Name="public" />
+            <Directory Id="UiNodeModulesFolder" Name="node_modules" />
+          </Directory>
+          <Directory Id="PackagesFolder" Name="packages">
+            <Directory Id="ContractsFolder" Name="contracts">
+              <Directory Id="ContractsDistFolder" Name="dist" />
+              <Directory Id="ContractsNodeModulesFolder" Name="node_modules" />
+            </Directory>
+          </Directory>
+          <Directory Id="RootNodeModulesFolder" Name="node_modules" />
+        </Directory>
+      </Directory>
+      
+      <!-- Data folder - user customizable location -->
+      <Directory Id="CommonAppDataFolder">
+        <Directory Id="DATAFOLDER" Name="MaintainerrData" />
+      </Directory>
+    </Directory>
+
+    <!-- Features -->
+    <Feature Id="MainApplication" 
+             Title="Maintainerr Application" 
+             Level="1" 
+             ConfigurableDirectory="INSTALLFOLDER"
+             AllowAbsent="no"
+             Display="expand"
+             Description="The main Maintainerr application files.">
+      
+      <ComponentGroupRef Id="ServerComponents" />
+      <ComponentGroupRef Id="UiComponents" />
+      <ComponentGroupRef Id="PackagesComponents" />
+      <ComponentGroupRef Id="RootComponents" />
+      <ComponentRef Id="RegistryEntries" />
+      <ComponentRef Id="WindowsServiceComponent" />
+      <ComponentRef Id="EnvironmentFiles" />
+    </Feature>
+
+    <!-- Icons -->
+    <Icon Id="MaintainerrIcon" SourceFile="Resources\maintainerr.ico" />
+
+    <!-- UI -->
+    <UI>
+      <UIRef Id="WixUI_InstallDir" />
+      <UIRef Id="WixUI_ErrorProgressText" />
+      
+      <!-- Custom dialogs -->
+      <DialogRef Id="DataFolderDlg" />
+      
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="DataFolderDlg" Order="2">LicenseAccepted = "1"</Publish>
+      <Publish Dialog="DataFolderDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
+      <Publish Dialog="DataFolderDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2">1</Publish>
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="DataFolderDlg">1</Publish>
+    </UI>
+
+    <!-- Custom Actions -->
+    <CustomAction Id="ValidateNodeJs" 
+                  BinaryRef="CustomActionsDll" 
+                  DllEntry="ValidateNodeJsVersion" 
+                  Execute="immediate" 
+                  Return="check" />
+    
+    <CustomAction Id="ValidateDataFolder" 
+                  BinaryRef="CustomActionsDll" 
+                  DllEntry="ValidateDataFolderPath" 
+                  Execute="immediate" 
+                  Return="check" />
+    
+    <CustomAction Id="CreateEnvFiles" 
+                  BinaryRef="CustomActionsDll" 
+                  DllEntry="CreateEnvironmentFiles" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="check" />
+    
+    <CustomAction Id="InstallYarnDependencies" 
+                  BinaryRef="CustomActionsDll" 
+                  DllEntry="RunYarnInstall" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="check" />
+    
+    <CustomAction Id="ConfigureWindowsService" 
+                  BinaryRef="CustomActionsDll" 
+                  DllEntry="SetupWindowsService" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="check" />
+    
+    <CustomAction Id="RemoveWindowsService" 
+                  BinaryRef="CustomActionsDll" 
+                  DllEntry="RemoveWindowsService" 
+                  Execute="deferred" 
+                  Impersonate="no" 
+                  Return="check" />
+
+    <Binary Id="CustomActionsDll" SourceFile="CustomActions.CA.dll" />
+
+    <!-- Install sequence -->
+    <InstallExecuteSequence>
+      <Custom Action="ValidateNodeJs" Before="LaunchConditions">NOT Installed OR WixUI_Sequence = "InstallUISequence"</Custom>
+      <Custom Action="ValidateDataFolder" After="CostFinalize">NOT Installed</Custom>
+      <Custom Action="CreateEnvFiles" After="InstallFiles">NOT Installed OR REINSTALL</Custom>
+      <Custom Action="InstallYarnDependencies" After="CreateEnvFiles">NOT Installed OR REINSTALL</Custom>
+      <Custom Action="ConfigureWindowsService" After="InstallYarnDependencies">NOT Installed OR REINSTALL</Custom>
+      <Custom Action="RemoveWindowsService" Before="RemoveFiles">Installed AND NOT REINSTALL</Custom>
+    </InstallExecuteSequence>
+
+  </Package>
+
+  <!-- Registry Component -->
+  <Fragment>
+    <Component Id="RegistryEntries" Directory="INSTALLFOLDER" Guid="4A8E7D9F-2B6C-5E3D-9F1A-3C5D7E9F2B4A">
+      <RegistryKey Root="HKLM" Key="Software\Maintainerr">
+        <RegistryValue Type="string" Name="InstallFolder" Value="[INSTALLFOLDER]" KeyPath="yes" />
+        <RegistryValue Type="string" Name="DataFolder" Value="[DATAFOLDER]" />
+        <RegistryValue Type="string" Name="Version" Value="$(var.ProductVersion)" />
+      </RegistryKey>
+    </Component>
+  </Fragment>
+
+  <!-- Windows Service Component -->
+  <Fragment>
+    <Component Id="WindowsServiceComponent" Directory="INSTALLFOLDER" Guid="5B9F8E0A-3C7D-6F4E-0A2B-4D6E8F0A3C5B">
+      <File Id="ServiceWrapperExe" Source="Resources\MaintainerrService.exe" KeyPath="yes" />
+      
+      <ServiceInstall
+        Id="MaintainerrService"
+        Name="Maintainerr"
+        DisplayName="Maintainerr Service"
+        Description="Maintainerr - Maintenance tool for the Plex ecosystem"
+        Type="ownProcess"
+        Start="auto"
+        Account="LocalSystem"
+        ErrorControl="normal"
+        Interactive="no">
+        <util:ServiceConfig
+          FirstFailureActionType="restart"
+          SecondFailureActionType="restart"
+          ThirdFailureActionType="restart"
+          RestartServiceDelayInSeconds="60" />
+      </ServiceInstall>
+      
+      <ServiceControl
+        Id="StartMaintainerrService"
+        Name="Maintainerr"
+        Start="install"
+        Stop="both"
+        Remove="uninstall"
+        Wait="yes" />
+    </Component>
+  </Fragment>
+
+  <!-- Environment Files Component -->
+  <Fragment>
+    <Component Id="EnvironmentFiles" Directory="DATAFOLDER" Guid="6C0A9F1B-4D8E-7A5F-1B3C-5E7F9A1B4D6C">
+      <File Id="ServerEnvFile" Source="Resources\.env.server" Name=".env" KeyPath="yes" />
+      <IniFile Id="ServerEnvAppDir" 
+               Action="createLine" 
+               Directory="DATAFOLDER" 
+               Name=".env" 
+               Section="" 
+               Key="APP_DIR" 
+               Value="[INSTALLFOLDER]" />
+      <IniFile Id="ServerEnvDataDir" 
+               Action="createLine" 
+               Directory="DATAFOLDER" 
+               Name=".env" 
+               Section="" 
+               Key="DATA_DIR" 
+               Value="[DATAFOLDER]" />
+    </Component>
+  </Fragment>
+
+</Wix>
