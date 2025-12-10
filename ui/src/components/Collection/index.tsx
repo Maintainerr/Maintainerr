@@ -25,6 +25,7 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number
+  syncToPlexCollection?: boolean
 }
 
 export interface ICollectionMedia {

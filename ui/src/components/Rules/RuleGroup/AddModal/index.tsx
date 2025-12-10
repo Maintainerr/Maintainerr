@@ -107,6 +107,7 @@ const ruleGroupFormSchema = z
     forceOverseerr: z.boolean(),
     manualCollection: z.boolean(),
     manualCollectionName: z.string().optional(),
+    syncToPlexCollection: z.boolean(),
     active: z.boolean(),
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
@@ -180,6 +181,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   manualCollectionName:
     editData?.collection?.manualCollectionName ??
     DEFAULT_MANUAL_COLLECTION_NAME,
+  syncToPlexCollection: editData?.collection?.syncToPlexCollection ?? true,
   active: editData?.isActive ?? true,
   useRules: editData?.useRules ?? true,
   radarrSettingsId: editData
@@ -225,6 +227,7 @@ const AddModal = (props: AddModal) => {
       : 'show'
     : undefined
   const manualCollectionEnabled = watch('manualCollection')
+  const syncToPlexCollectionEnabled = watch('syncToPlexCollection')
   const useRulesEnabled = watch('useRules')
   const arrActionValue = watch('arrAction') as number | undefined
   const radarrSettingsId = watch('radarrSettingsId') as
@@ -478,6 +481,7 @@ const AddModal = (props: AddModal) => {
         manualCollectionName:
           data.manualCollectionName ?? DEFAULT_MANUAL_COLLECTION_NAME,
         keepLogsForMonths: data.keepLogsForMonths,
+        syncToPlexCollection: data.syncToPlexCollection,
       },
       rules: data.useRules ? rules : [],
       notifications: configuredNotificationConfigurations,
@@ -863,50 +867,54 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
 
-                    <div className="flex flex-row items-center justify-between py-4">
-                      <label
-                        htmlFor="collection_visible_library"
-                        className="text-label"
-                      >
-                        Show on Plex library recommended
-                        <p className="text-xs font-normal">
-                          Show the collection on the Plex library recommended
-                          screen
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="checkbox"
-                            id="collection_visible_library"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            {...register('showRecommended')}
-                          />
+                    {syncToPlexCollectionEnabled && (
+                      <>
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="collection_visible_library"
+                            className="text-label"
+                          >
+                            Show on Plex library recommended
+                            <p className="text-xs font-normal">
+                              Show the collection on the Plex library recommended
+                              screen
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="collection_visible_library"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('showRecommended')}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="flex flex-row items-center justify-between py-4">
-                      <label
-                        htmlFor="collection_visible"
-                        className="text-label"
-                      >
-                        Show on Plex home
-                        <p className="text-xs font-normal">
-                          Show the collection on the Plex home screen
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="checkbox"
-                            id="collection_visible"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            {...register('showHome')}
-                          />
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="collection_visible"
+                            className="text-label"
+                          >
+                            Show on Plex home
+                            <p className="text-xs font-normal">
+                              Show the collection on the Plex home screen
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="collection_visible"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('showHome')}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
 
                     {(radarrSettingsId != null ||
                       (sonarrSettingsId != null &&
@@ -983,51 +991,73 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
                     <div className="flex flex-row items-center justify-between py-4">
-                      <label htmlFor="manual_collection" className="text-label">
-                        Custom collection
+                      <label htmlFor="sync_to_plex" className="text-label">
+                        Sync to Plex
                         <p className="text-xs font-normal">
-                          Toggle internal collection system
+                          Sync collection with Plex or keep it Maintainerr-only
                         </p>
                       </label>
                       <div className="form-input">
                         <div className="form-input-field">
                           <input
                             type="checkbox"
-                            id="manual_collection"
+                            id="sync_to_plex"
                             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            {...register('manualCollection')}
+                            {...register('syncToPlexCollection')}
                           />
                         </div>
                       </div>
                     </div>
-                    <div
-                      className={`flex flex-col ${manualCollectionEnabled ? `` : `hidden`} `}
-                    >
-                      <label
-                        htmlFor="manual_collection_name"
-                        className="text-label"
-                      >
-                        Custom collection name
-                        <p className="text-xs font-normal">
-                          Collection must exist in Plex
-                        </p>
-                      </label>
+                    {syncToPlexCollectionEnabled && (
+                      <>
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label htmlFor="manual_collection" className="text-label">
+                            Custom collection
+                            <p className="text-xs font-normal">
+                              Toggle internal collection system
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="manual_collection"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('manualCollection')}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          className={`flex flex-col ${manualCollectionEnabled ? `` : `hidden`} `}
+                        >
+                          <label
+                            htmlFor="manual_collection_name"
+                            className="text-label"
+                          >
+                            Custom collection name
+                            <p className="text-xs font-normal">
+                              Collection must exist in Plex
+                            </p>
+                          </label>
 
-                      <div className="py-2">
-                        <div className="form-input-field">
-                          <input
-                            type="text"
-                            id="manual_collection_name"
-                            {...register('manualCollectionName')}
-                          />
+                          <div className="py-2">
+                            <div className="form-input-field">
+                              <input
+                                type="text"
+                                id="manual_collection_name"
+                                {...register('manualCollectionName')}
+                              />
+                            </div>
+                            {errors.manualCollectionName && (
+                              <p className="mt-1 text-xs text-red-400">
+                                {errors.manualCollectionName.message}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        {errors.manualCollectionName && (
-                          <p className="mt-1 text-xs text-red-400">
-                            {errors.manualCollectionName.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Form Input Options */}
