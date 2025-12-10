@@ -559,7 +559,7 @@ export class SettingsService implements SettingDto {
 
       await this.init();
       this.logger.log('Settings updated');
-      await this.plexApi.initialize({});
+      await this.plexApi.initialize();
       this.overseerr.init();
       this.tautulli.init();
       this.internalApi.init();

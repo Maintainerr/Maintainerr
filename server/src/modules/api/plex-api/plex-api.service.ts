@@ -58,7 +58,7 @@ export class PlexApiService {
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
     this.logger.setContext(PlexApiService.name);
-    void this.initialize({});
+    void this.initialize();
   }
 
   private getDbSettings(): PlexSettings {
@@ -80,25 +80,23 @@ export class PlexApiService {
 
   public uninitialize() {
     this.plexClient = undefined;
+    this.plexCommunityClient = undefined;
+    this.plexTvClient = undefined;
+    cacheManager.getCache('plexguid').data.flushAll();
+    cacheManager.getCache('plextv').data.flushAll();
+    cacheManager.getCache('plexcommunity').data.flushAll();
   }
 
-  public async initialize({
-    plexToken,
-    timeout,
-  }: {
-    plexToken?: string;
-    timeout?: number;
-  }) {
+  public async initialize() {
     try {
-      this.plexClient = undefined;
+      this.uninitialize();
       const settingsPlex = this.getDbSettings();
-      plexToken = plexToken || settingsPlex.auth_token;
+      const plexToken = settingsPlex.auth_token;
       if (settingsPlex.ip && plexToken) {
         this.plexClient = new PlexApi({
           hostname: settingsPlex.ip,
           port: settingsPlex.port,
           https: settingsPlex.useSsl,
-          timeout: timeout,
           token: plexToken,
         });
 
@@ -211,9 +209,11 @@ export class PlexApiService {
         uri: '/library/sections',
       });
 
-      return response.MediaContainer.Directory.filter(
-        (x) => x.type == 'movie' || x.type == 'show',
-      ) as PlexLibrary[];
+      return (
+        response.MediaContainer.Directory?.filter(
+          (x) => x.type == 'movie' || x.type == 'show',
+        ) ?? []
+      );
     } catch (err) {
       this.logger.warn(
         'Plex api communication failure.. Is the application running?',
