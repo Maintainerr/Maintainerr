@@ -17,6 +17,7 @@ import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsController } from './collections.controller';
 import { CollectionsService } from './collections.service';
+import { PlexCollectionSyncService } from './plex-collection-sync.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
 
@@ -41,6 +42,7 @@ import { CollectionMedia } from './entities/collection_media.entities';
   ],
   providers: [
     CollectionsService,
+    PlexCollectionSyncService,
     CollectionWorkerService,
     CollectionLogCleanerService,
     CollectionHandler,

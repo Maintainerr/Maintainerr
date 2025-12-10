@@ -22,6 +22,7 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number;
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
+  syncToPlexCollection?: boolean;
 }
 
 export enum ServarrAction {

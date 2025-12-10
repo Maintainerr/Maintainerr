@@ -80,6 +80,9 @@ export class Collection {
   @Column({ nullable: true, default: null })
   tautulliWatchedPercentOverride: number;
 
+  @Column({ nullable: false, default: true })
+  syncToPlexCollection: boolean;
+
   @Column({ nullable: true })
   radarrSettingsId: number;
 

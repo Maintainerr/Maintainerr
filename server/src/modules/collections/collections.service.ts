@@ -23,6 +23,7 @@ import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
+import { PlexCollectionSyncService } from './plex-collection-sync.service';
 import { Collection } from './entities/collection.entities';
 import {
   CollectionMedia,
@@ -61,6 +62,7 @@ export class CollectionsService {
     private readonly tmdbApi: TmdbApiService,
     private readonly tmdbIdHelper: TmdbIdService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly plexSyncService: PlexCollectionSyncService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -260,49 +262,56 @@ export class CollectionsService {
   }> {
     try {
       let plexCollection: PlexCollection;
-      if (
-        !empty &&
-        (collection.manualCollection == undefined ||
-          !collection.manualCollection)
-      ) {
-        const collectionObj: CreateUpdateCollection = {
-          libraryId: collection.libraryId.toString(),
-          type: collection.type,
-          title: collection.title,
-          summary: collection?.description,
-        };
-        plexCollection = await this.createPlexCollection(collectionObj);
-        await this.plexApi.UpdateCollectionSettings({
-          libraryId: collectionObj.libraryId,
-          collectionId: plexCollection.ratingKey,
-          recommended: collection.visibleOnRecommended,
-          ownHome: collection.visibleOnHome,
-          sharedHome: collection.visibleOnHome,
-        });
-      }
-      // in case of manual, just fetch the collection plex ID
-      if (collection.manualCollection) {
-        plexCollection = await this.findPlexCollection(
-          collection.manualCollectionName,
-          collection.libraryId,
-        );
-        if (plexCollection && plexCollection.ratingKey) {
-          await this.plexApi.UpdateCollectionSettings({
-            libraryId: collection.libraryId,
-            collectionId: plexCollection.ratingKey,
+      
+      // Only sync to Plex if enabled
+      const shouldSync = collection.syncToPlexCollection !== false;
+      
+      if (shouldSync) {
+        if (
+          !empty &&
+          (collection.manualCollection == undefined ||
+            !collection.manualCollection)
+        ) {
+          const collectionObj: CreateUpdateCollection = {
+            libraryId: collection.libraryId.toString(),
+            type: collection.type,
+            title: collection.title,
+            summary: collection?.description,
+          };
+          plexCollection = await this.plexSyncService.createPlexCollection(collectionObj);
+          await this.plexSyncService.updatePlexCollectionSettings({
+            libraryId: +collectionObj.libraryId,
+            collectionId: +plexCollection.ratingKey,
             recommended: collection.visibleOnRecommended,
             ownHome: collection.visibleOnHome,
             sharedHome: collection.visibleOnHome,
           });
-
-          collection.plexId = +plexCollection.ratingKey;
-        } else {
-          this.logger.error(
-            `Manual Plex collection not found.. Is the spelling correct? `,
+        }
+        // in case of manual, just fetch the collection plex ID
+        if (collection.manualCollection) {
+          plexCollection = await this.plexSyncService.findPlexCollection(
+            collection.manualCollectionName,
+            collection.libraryId,
           );
-          return undefined;
+          if (plexCollection && plexCollection.ratingKey) {
+            await this.plexSyncService.updatePlexCollectionSettings({
+              libraryId: collection.libraryId,
+              collectionId: +plexCollection.ratingKey,
+              recommended: collection.visibleOnRecommended,
+              ownHome: collection.visibleOnHome,
+              sharedHome: collection.visibleOnHome,
+            });
+
+            collection.plexId = +plexCollection.ratingKey;
+          } else {
+            this.logger.error(
+              `Manual Plex collection not found.. Is the spelling correct? `,
+            );
+            return undefined;
+          }
         }
       }
+      
       // create collection in db
       const collectionDb: addCollectionDbResponse =
         await this.addCollectionToDB(
@@ -363,8 +372,21 @@ export class CollectionsService {
       });
 
       let plexColl: PlexCollection;
+      
+      // Only sync to Plex if enabled
+      const shouldSync = collection.syncToPlexCollection !== false;
+      const wasSyncing = dbCollection.syncToPlexCollection !== false;
+      
+      // Handle transition from syncing to not syncing
+      if (wasSyncing && !shouldSync && dbCollection?.plexId && !dbCollection.manualCollection) {
+        // Remove the Plex collection when disabling sync
+        await this.plexSyncService.deletePlexCollection(
+          dbCollection.plexId.toString(),
+        );
+        collection.plexId = null;
+      }
 
-      if (dbCollection?.plexId) {
+      if (shouldSync && dbCollection?.plexId) {
         const collectionObj: CreateUpdateCollection = {
           libraryId: collection.libraryId.toString(),
           title: collection.title,
@@ -379,8 +401,8 @@ export class CollectionsService {
           !dbCollection.manualCollection &&
           !collection.manualCollection
         ) {
-          plexColl = await this.plexApi.updateCollection(collectionObj);
-          await this.plexApi.UpdateCollectionSettings({
+          plexColl = await this.plexSyncService.updatePlexCollection(collectionObj);
+          await this.plexSyncService.updatePlexCollectionSettings({
             libraryId: dbCollection.libraryId,
             collectionId: dbCollection.plexId,
             recommended: collection.visibleOnRecommended,
@@ -397,7 +419,7 @@ export class CollectionsService {
           ) {
             if (!dbCollection.manualCollection) {
               // Don't remove the collections if it was a manual one
-              await this.plexApi.deleteCollection(
+              await this.plexSyncService.deletePlexCollection(
                 dbCollection.plexId.toString(),
               );
             }
@@ -459,57 +481,32 @@ export class CollectionsService {
   public async relinkManualCollection(
     collection: Collection,
   ): Promise<Collection> {
-    // refetch manual collection, in case it's ID changed
-    if (collection.manualCollection) {
-      const plexColl = await this.findPlexCollection(
-        collection.manualCollectionName,
-        +collection.libraryId,
+    // Delegate to PlexCollectionSyncService
+    const result = await this.plexSyncService.relinkManualCollection(collection);
+    
+    // Add log records
+    if (result.plexId && collection.manualCollection && collection.syncToPlexCollection) {
+      await this.addLogRecord(
+        { id: collection.id } as Collection,
+        'Successfully relinked the manual Plex collection',
+        ECollectionLogType.COLLECTION,
       );
-      if (plexColl) {
-        collection.plexId = +plexColl.ratingKey;
-        collection = await this.saveCollection(collection);
-
-        await this.addLogRecord(
-          { id: collection.id } as Collection,
-          'Successfully relinked the manual Plex collection',
-          ECollectionLogType.COLLECTION,
-        );
-      } else {
-        this.logger.error(
-          'Manual Plex collection not found.. Is it still available in Plex?',
-        );
-        await this.addLogRecord(
-          { id: collection.id } as Collection,
-          'Failed to relink the manual Plex collection',
-          ECollectionLogType.COLLECTION,
-        );
-      }
+    } else if (collection.manualCollection && collection.syncToPlexCollection && !result.plexId) {
+      await this.addLogRecord(
+        { id: collection.id } as Collection,
+        'Failed to relink the manual Plex collection',
+        ECollectionLogType.COLLECTION,
+      );
     }
-    return collection;
+    
+    return result;
   }
 
   public async checkAutomaticPlexLink(
     collection: Collection,
   ): Promise<Collection> {
-    // checks and fixes automatic collection link
-    if (!collection.manualCollection) {
-      let plexColl: PlexCollection = undefined;
-
-      if (collection.plexId) {
-        plexColl = await this.findPlexCollectionByID(collection.plexId);
-      }
-
-      if (!plexColl) {
-        plexColl = await this.findPlexCollection(
-          collection.title,
-          +collection.libraryId,
-        );
-
-        if (plexColl) {
-          collection.plexId = +plexColl.ratingKey;
-          collection = await this.saveCollection(collection);
-        }
-      }
+    // Delegate to PlexCollectionSyncService
+    return await this.plexSyncService.checkAutomaticPlexLink(collection);
 
       // If the collection is empty in Plex, remove it. Otherwise issues when adding media
       if (plexColl && collection.plexId !== null && +plexColl.childCount <= 0) {
@@ -580,15 +577,16 @@ export class CollectionsService {
       if (collection) {
         collection = await this.checkAutomaticPlexLink(collection);
         if (media.length > 0) {
-          if (!collection.plexId) {
+          // Only create/find Plex collection if syncing is enabled
+          if (!collection.plexId && this.plexSyncService.shouldSyncToPlex(collection)) {
             let newColl: PlexCollection = undefined;
             if (collection.manualCollection) {
-              newColl = await this.findPlexCollection(
+              newColl = await this.plexSyncService.findPlexCollection(
                 collection.manualCollectionName,
                 +collection.libraryId,
               );
             } else {
-              newColl = await this.createPlexCollection({
+              newColl = await this.plexSyncService.createPlexCollection({
                 libraryId: collection.libraryId.toString(),
                 type: collection.type,
                 title: collection.title,
@@ -600,7 +598,7 @@ export class CollectionsService {
                 ...collection,
                 plexId: +newColl.ratingKey,
               });
-              await this.plexApi.UpdateCollectionSettings({
+              await this.plexSyncService.updatePlexCollectionSettings({
                 libraryId: collection.libraryId,
                 collectionId: collection.plexId,
                 recommended: collection.visibleOnRecommended,
@@ -672,9 +670,10 @@ export class CollectionsService {
         if (
           collectionMedia.length <= 0 &&
           !collection.manualCollection &&
-          collection.plexId
+          collection.plexId &&
+          this.plexSyncService.shouldSyncToPlex(collection)
         ) {
-          const resp = await this.plexApi.deleteCollection(
+          const resp = await this.plexSyncService.deletePlexCollection(
             collection.plexId.toString(),
           );
 
@@ -721,8 +720,8 @@ export class CollectionsService {
       collection = await this.checkAutomaticPlexLink(collection);
 
       let status = { code: 1, status: 'OK' };
-      if (collection.plexId && !collection.manualCollection) {
-        status = await this.plexApi.deleteCollection(
+      if (collection.plexId && !collection.manualCollection && this.plexSyncService.shouldSyncToPlex(collection)) {
+        status = await this.plexSyncService.deletePlexCollection(
           collection.plexId.toString(),
         );
       }
@@ -745,8 +744,8 @@ export class CollectionsService {
         where: { id: collectionDbId },
       });
 
-      if (!collection.manualCollection) {
-        await this.plexApi.deleteCollection(collection.plexId.toString());
+      if (!collection.manualCollection && collection.plexId && this.plexSyncService.shouldSyncToPlex(collection)) {
+        await this.plexSyncService.deletePlexCollection(collection.plexId.toString());
       }
 
       await this.CollectionMediaRepo.delete({ collectionId: collection.id });
@@ -840,13 +839,17 @@ export class CollectionsService {
           break;
       }
 
-      const responseColl: PlexCollection | BasicResponseDto =
-        await this.plexApi.addChildToCollection(
+      // Only add to Plex collection if plexId is available (syncing enabled)
+      let responseColl: PlexCollection | BasicResponseDto = { status: 'OK', code: 1, message: 'Success' };
+      
+      if (collectionIds.plexId) {
+        responseColl = await this.plexSyncService.addChildToPlexCollection(
           collectionIds.plexId.toString(),
           childId.toString(),
         );
+      }
 
-      if ('ratingKey' in responseColl) {
+      if ('ratingKey' in responseColl || responseColl.status === 'OK') {
         await this.connection
           .createQueryBuilder()
           .insert()
@@ -918,11 +921,16 @@ export class CollectionsService {
     try {
       this.infoLogger(`Removing media with id ${childId} from collection..`);
 
-      const responseColl: BasicResponseDto =
-        await this.plexApi.deleteChildFromCollection(
+      // Only remove from Plex collection if plexId is available (syncing enabled)
+      let responseColl: BasicResponseDto = { status: 'OK', code: 1, message: 'Success' };
+      
+      if (collectionIds.plexId) {
+        responseColl = await this.plexSyncService.removeChildFromPlexCollection(
           collectionIds.plexId.toString(),
           childId.toString(),
         );
+      }
+      
       if (
         responseColl.status === 'OK' ||
         responseColl.message.includes('404') // if media is not in collection
@@ -1056,70 +1064,6 @@ export class CollectionsService {
     } catch (err) {
       this.logger.debug(err);
       return { status: 'NOK', code: 0, message: 'Removing from DB failed' };
-    }
-  }
-
-  private async createPlexCollection(
-    collectionData: CreateUpdateCollection,
-  ): Promise<PlexCollection> {
-    try {
-      this.infoLogger(`Creating collection in Plex..`);
-      const resp = await this.plexApi.createCollection(collectionData);
-      if (resp?.ratingKey) {
-        return resp;
-      } else {
-        return resp[0];
-      }
-    } catch (err) {
-      this.logger.warn(
-        'An error occurred while performing collection actions.',
-      );
-      this.logger.debug(err);
-      return undefined;
-    }
-  }
-
-  public async findPlexCollection(
-    name: string,
-    libraryId: number,
-  ): Promise<PlexCollection> {
-    try {
-      const resp = await this.plexApi.getCollections(libraryId.toString());
-      if (resp) {
-        const found = resp.find((coll) => {
-          return coll.title.trim() === name.trim() && !coll.smart;
-        });
-
-        return found?.ratingKey !== undefined ? found : undefined;
-      }
-    } catch (err) {
-      this.logger.warn(
-        'An error occurred while searching for a specific Plex collection.',
-      );
-      this.logger.debug(err);
-
-      return undefined;
-    }
-  }
-
-  public async findPlexCollectionByID(id: number): Promise<PlexCollection> {
-    try {
-      const result = await this.plexApi.getCollection(id);
-
-      if (result?.smart) {
-        this.logger.warn(
-          `Plex collection ${id} is a smart collection which is not supported.`,
-        );
-        return undefined;
-      }
-
-      return result;
-    } catch (err) {
-      this.logger.warn(
-        'An error occurred while searching for a specific Plex collection.',
-      );
-      this.logger.debug(err);
-      return undefined;
     }
   }
 
