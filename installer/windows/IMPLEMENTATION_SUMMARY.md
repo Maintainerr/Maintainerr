@@ -105,11 +105,10 @@ All development work has been completed successfully. The installer is ready for
 **Template File:** `installer/windows/Resources/.env.server`
 
 **Environment Variables Managed:**
-- `APP_DIR` - Installation directory
 - `DATA_DIR` - Data directory
-- `API_PORT` - Server API port (default: 3001)
-- `UI_PORT` - UI port (default: 6246)
-- `UI_HOSTNAME` - UI hostname (default: 0.0.0.0)
+- `UI_PORT` - Server port (default: 6246) - Note: The server serves both API and UI
+- `UI_HOSTNAME` - Server hostname (default: 0.0.0.0)
+- `BASE_PATH` - Base path for serving under a subdirectory (optional)
 - `NODE_ENV` - Node environment (production)
 - `VERSION_TAG` - Version tag
 - `GIT_SHA` - Git commit SHA
@@ -134,7 +133,7 @@ The installer intelligently handles upgrades:
 3. **Preservation**: Preserves node_modules and data directory
 4. **Update**: Replaces application files
 5. **Dependencies**: Runs yarn install to sync dependencies
-6. **Configuration**: Updates APP_DIR in .env if path changed
+6. **Configuration**: Preserves .env file with user configuration
 7. **Service Start**: Restarts the service
 
 ## File Structure
@@ -182,7 +181,7 @@ All requirements from the problem statement have been implemented:
 
 ✅ **Environment configuration**
 - .env file managed in data directory
-- APP_DIR and DATA_DIR configured
+- DATA_DIR and runtime variables configured
 
 ✅ **Upgrade process**
 - Wipes installation directory (keeps node_modules)

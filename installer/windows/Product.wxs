@@ -219,13 +219,6 @@
   <Fragment>
     <Component Id="EnvironmentFiles" Directory="DATAFOLDER" Guid="6C0A9F1B-4D8E-7A5F-1B3C-5E7F9A1B4D6C">
       <File Id="ServerEnvFile" Source="Resources\.env.server" Name=".env" KeyPath="yes" />
-      <IniFile Id="ServerEnvAppDir" 
-               Action="createLine" 
-               Directory="DATAFOLDER" 
-               Name=".env" 
-               Section="" 
-               Key="APP_DIR" 
-               Value="[INSTALLFOLDER]" />
       <IniFile Id="ServerEnvDataDir" 
                Action="createLine" 
                Directory="DATAFOLDER" 

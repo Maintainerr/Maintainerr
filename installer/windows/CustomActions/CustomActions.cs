@@ -250,28 +250,6 @@ namespace Maintainerr.Installer.CustomActions
                 if (File.Exists(envFilePath))
                 {
                     session.Log(".env file already exists, preserving existing configuration");
-                    
-                    // Update APP_DIR in existing file
-                    var lines = File.ReadAllLines(envFilePath).ToList();
-                    bool appDirFound = false;
-                    
-                    for (int i = 0; i < lines.Count; i++)
-                    {
-                        if (lines[i].StartsWith("APP_DIR="))
-                        {
-                            lines[i] = $"APP_DIR={installFolder}";
-                            appDirFound = true;
-                            session.Log("Updated APP_DIR in existing .env file");
-                        }
-                    }
-                    
-                    if (!appDirFound)
-                    {
-                        lines.Insert(0, $"APP_DIR={installFolder}");
-                        session.Log("Added APP_DIR to existing .env file");
-                    }
-                    
-                    File.WriteAllLines(envFilePath, lines);
                 }
                 else
                 {
@@ -281,20 +259,18 @@ namespace Maintainerr.Installer.CustomActions
                         "# Maintainerr Configuration",
                         "# This file contains environment variables for Maintainerr",
                         "",
-                        "# The root directory where Maintainerr is installed",
-                        $"APP_DIR={installFolder}",
-                        "",
                         "# Where Maintainerr will store its data",
                         $"DATA_DIR={dataFolder}",
                         "",
-                        "# API Port (default: 3001)",
-                        "API_PORT=3001",
-                        "",
-                        "# UI Port (default: 6246)",
+                        "# Server Port (default: 6246)",
                         "UI_PORT=6246",
                         "",
-                        "# UI Hostname (default: 0.0.0.0)",
+                        "# Server Hostname (default: 0.0.0.0)",
                         "UI_HOSTNAME=0.0.0.0",
+                        "",
+                        "# Base path for serving under a subdirectory (e.g., /maintainerr)",
+                        "# Leave empty if serving from root",
+                        "BASE_PATH=",
                         "",
                         "# Node environment",
                         "NODE_ENV=production",

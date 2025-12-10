@@ -33,8 +33,6 @@ namespace Maintainerr.Service
     {
         private readonly ILogger<MaintainerrWorker> _logger;
         private Process? _serverProcess;
-        private Process? _uiProcess;
-        private string _installFolder = string.Empty;
         private string _dataFolder = string.Empty;
         private string? _nodeExePath = null;
 
@@ -91,26 +89,17 @@ namespace Maintainerr.Service
                 // Load environment variables from .env file in data directory
                 LoadEnvironmentVariables();
 
-                // Start server process
+                // Start server process (which serves both API and UI)
                 await StartServerProcess(stoppingToken);
-
-                // Start UI process
-                await StartUiProcess(stoppingToken);
 
                 // Keep service running
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    // Check if processes are still running
+                    // Check if process is still running
                     if (_serverProcess != null && _serverProcess.HasExited)
                     {
                         _logger.LogWarning("Server process has exited unexpectedly. Restarting...");
                         await StartServerProcess(stoppingToken);
-                    }
-
-                    if (_uiProcess != null && _uiProcess.HasExited)
-                    {
-                        _logger.LogWarning("UI process has exited unexpectedly. Restarting...");
-                        await StartUiProcess(stoppingToken);
                     }
 
                     await Task.Delay(5000, stoppingToken);
@@ -130,10 +119,9 @@ namespace Maintainerr.Service
         {
             // Try to get data folder from environment or registry
             _dataFolder = Environment.GetEnvironmentVariable("DATA_DIR") ?? string.Empty;
-            _installFolder = Environment.GetEnvironmentVariable("APP_DIR") ?? string.Empty;
 
             // If not set, try to get from registry (set during installation)
-            if (string.IsNullOrEmpty(_dataFolder) || string.IsNullOrEmpty(_installFolder))
+            if (string.IsNullOrEmpty(_dataFolder))
             {
                 try
                 {
@@ -142,7 +130,6 @@ namespace Maintainerr.Service
                         if (key != null)
                         {
                             _dataFolder = key.GetValue("DataFolder") as string ?? _dataFolder;
-                            _installFolder = key.GetValue("InstallFolder") as string ?? _installFolder;
                         }
                     }
                 }
@@ -157,12 +144,6 @@ namespace Maintainerr.Service
                 throw new InvalidOperationException("DATA_DIR is not set. Cannot start service.");
             }
 
-            if (string.IsNullOrEmpty(_installFolder))
-            {
-                throw new InvalidOperationException("APP_DIR is not set. Cannot start service.");
-            }
-
-            _logger.LogInformation($"Install Folder: {_installFolder}");
             _logger.LogInformation($"Data Folder: {_dataFolder}");
 
             // Load .env file from data directory
@@ -190,7 +171,30 @@ namespace Maintainerr.Service
             {
                 _logger.LogInformation("Starting Maintainerr server...");
 
-                string serverPath = Path.Combine(_installFolder, "server");
+                // Get install folder from registry
+                string installFolder = string.Empty;
+                try
+                {
+                    using (var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Maintainerr"))
+                    {
+                        if (key != null)
+                        {
+                            installFolder = key.GetValue("InstallFolder") as string ?? string.Empty;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Could not read install folder from registry");
+                    throw;
+                }
+
+                if (string.IsNullOrEmpty(installFolder))
+                {
+                    throw new InvalidOperationException("Install folder not found in registry");
+                }
+
+                string serverPath = Path.Combine(installFolder, "server");
                 string nodeExe = GetNodeExecutablePath();
                 string serverMain = Path.Combine(serverPath, "dist", "main.js");
 
@@ -199,6 +203,9 @@ namespace Maintainerr.Service
                     _logger.LogError($"Server main file not found: {serverMain}");
                     throw new FileNotFoundException("Server main file not found", serverMain);
                 }
+
+                _logger.LogInformation($"Install Folder: {installFolder}");
+                _logger.LogInformation($"Server Path: {serverPath}");
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -211,13 +218,30 @@ namespace Maintainerr.Service
                     CreateNoWindow = true
                 };
 
-                // Pass environment variables
+                // Pass environment variables from .env file (already loaded)
                 startInfo.EnvironmentVariables["NODE_ENV"] = Environment.GetEnvironmentVariable("NODE_ENV") ?? "production";
                 startInfo.EnvironmentVariables["DATA_DIR"] = _dataFolder;
-                startInfo.EnvironmentVariables["APP_DIR"] = _installFolder;
                 
-                string apiPort = Environment.GetEnvironmentVariable("API_PORT") ?? "3001";
-                startInfo.EnvironmentVariables["API_PORT"] = apiPort;
+                string uiPort = Environment.GetEnvironmentVariable("UI_PORT") ?? "6246";
+                string uiHostname = Environment.GetEnvironmentVariable("UI_HOSTNAME") ?? "0.0.0.0";
+                string basePath = Environment.GetEnvironmentVariable("BASE_PATH") ?? "";
+                string versionTag = Environment.GetEnvironmentVariable("VERSION_TAG") ?? "";
+                string gitSha = Environment.GetEnvironmentVariable("GIT_SHA") ?? "";
+                
+                startInfo.EnvironmentVariables["UI_PORT"] = uiPort;
+                startInfo.EnvironmentVariables["UI_HOSTNAME"] = uiHostname;
+                if (!string.IsNullOrEmpty(basePath))
+                {
+                    startInfo.EnvironmentVariables["BASE_PATH"] = basePath;
+                }
+                if (!string.IsNullOrEmpty(versionTag))
+                {
+                    startInfo.EnvironmentVariables["VERSION_TAG"] = versionTag;
+                }
+                if (!string.IsNullOrEmpty(gitSha))
+                {
+                    startInfo.EnvironmentVariables["GIT_SHA"] = gitSha;
+                }
 
                 _serverProcess = new Process { StartInfo = startInfo };
                 _serverProcess.OutputDataReceived += (sender, e) =>
@@ -239,7 +263,7 @@ namespace Maintainerr.Service
                 _serverProcess.BeginOutputReadLine();
                 _serverProcess.BeginErrorReadLine();
 
-                _logger.LogInformation("Maintainerr server started");
+                _logger.LogInformation($"Maintainerr server started on {uiHostname}:{uiPort}");
 
                 // Give server time to start
                 await Task.Delay(3000, stoppingToken);
@@ -251,95 +275,9 @@ namespace Maintainerr.Service
             }
         }
 
-        private async Task StartUiProcess(CancellationToken stoppingToken)
-        {
-            try
-            {
-                _logger.LogInformation("Starting Maintainerr UI...");
-
-                string uiPath = Path.Combine(_installFolder, "ui");
-                string nodeExe = GetNodeExecutablePath();
-                string uiServer = Path.Combine(uiPath, "server.js");
-
-                if (!File.Exists(uiServer))
-                {
-                    _logger.LogError($"UI server file not found: {uiServer}");
-                    throw new FileNotFoundException("UI server file not found", uiServer);
-                }
-
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = nodeExe,
-                    Arguments = $"\"{uiServer}\"",
-                    WorkingDirectory = uiPath,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                // Pass environment variables
-                startInfo.EnvironmentVariables["NODE_ENV"] = Environment.GetEnvironmentVariable("NODE_ENV") ?? "production";
-                
-                string uiPort = Environment.GetEnvironmentVariable("UI_PORT") ?? "6246";
-                string uiHostname = Environment.GetEnvironmentVariable("UI_HOSTNAME") ?? "0.0.0.0";
-                string apiPort = Environment.GetEnvironmentVariable("API_PORT") ?? "3001";
-                
-                startInfo.EnvironmentVariables["PORT"] = uiPort;
-                startInfo.EnvironmentVariables["HOSTNAME"] = uiHostname;
-                startInfo.EnvironmentVariables["API_PORT"] = apiPort;
-
-                _uiProcess = new Process { StartInfo = startInfo };
-                _uiProcess.OutputDataReceived += (sender, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        _logger.LogInformation($"[UI] {e.Data}");
-                    }
-                };
-                _uiProcess.ErrorDataReceived += (sender, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        _logger.LogError($"[UI] {e.Data}");
-                    }
-                };
-
-                _uiProcess.Start();
-                _uiProcess.BeginOutputReadLine();
-                _uiProcess.BeginErrorReadLine();
-
-                _logger.LogInformation("Maintainerr UI started");
-
-                // Give UI time to start
-                await Task.Delay(2000, stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to start Maintainerr UI");
-                throw;
-            }
-        }
-
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Stopping Maintainerr Service...");
-
-            // Stop UI process
-            if (_uiProcess != null && !_uiProcess.HasExited)
-            {
-                try
-                {
-                    _logger.LogInformation("Stopping UI process...");
-                    _uiProcess.Kill(entireProcessTree: true);
-                    await _uiProcess.WaitForExitAsync(cancellationToken);
-                    _logger.LogInformation("UI process stopped");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error stopping UI process");
-                }
-            }
 
             // Stop server process
             if (_serverProcess != null && !_serverProcess.HasExited)

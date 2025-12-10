@@ -105,7 +105,7 @@ The installer will be output to: `installer/windows/bin/Release/Maintainerr.msi`
 
 5. **Environment Configuration**
    - Creates `.env` file in data directory
-   - Sets `APP_DIR` and `DATA_DIR` environment variables
+   - Sets `DATA_DIR` and other configuration variables
    - Preserves existing `.env` files during upgrades
 
 6. **Windows Service**
@@ -121,7 +121,7 @@ When upgrading:
 2. Installation directory is cleaned (except `node_modules`)
 3. New files are extracted
 4. `yarn install` runs to sync dependencies
-5. `.env` file is updated with new `APP_DIR` if changed
+5. `.env` file is preserved (user configuration maintained)
 6. Service is restarted
 
 ### Uninstallation
@@ -135,13 +135,13 @@ When upgrading:
 After installation, users can configure Maintainerr by editing the `.env` file in the data directory:
 
 ```
-APP_DIR=C:\Program Files\Maintainerr
 DATA_DIR=C:\ProgramData\MaintainerrData
-API_PORT=3001
 UI_PORT=6246
 UI_HOSTNAME=0.0.0.0
+BASE_PATH=
 NODE_ENV=production
 VERSION_TAG=stable
+GIT_SHA=
 ```
 
 ## Service Management
