@@ -484,14 +484,21 @@ export class CollectionsService {
     // Delegate to PlexCollectionSyncService
     const result = await this.plexSyncService.relinkManualCollection(collection);
     
+    // Save if needed
+    if (result.needsSave) {
+      collection = await this.saveCollection(result.collection);
+    } else {
+      collection = result.collection;
+    }
+    
     // Add log records
-    if (result.plexId && collection.manualCollection && collection.syncToPlexCollection) {
+    if (result.success && collection.manualCollection && collection.syncToPlexCollection) {
       await this.addLogRecord(
         { id: collection.id } as Collection,
         'Successfully relinked the manual Plex collection',
         ECollectionLogType.COLLECTION,
       );
-    } else if (collection.manualCollection && collection.syncToPlexCollection && !result.plexId) {
+    } else if (!result.success && collection.manualCollection && collection.syncToPlexCollection) {
       await this.addLogRecord(
         { id: collection.id } as Collection,
         'Failed to relink the manual Plex collection',
@@ -499,14 +506,21 @@ export class CollectionsService {
       );
     }
     
-    return result;
+    return collection;
   }
 
   public async checkAutomaticPlexLink(
     collection: Collection,
   ): Promise<Collection> {
     // Delegate to PlexCollectionSyncService
-    return await this.plexSyncService.checkAutomaticPlexLink(collection);
+    const result = await this.plexSyncService.checkAutomaticPlexLink(collection);
+    
+    // Save if needed
+    if (result.needsSave) {
+      return await this.saveCollection(result.collection);
+    }
+    
+    return result.collection;
   }
 
   async MediaCollectionActionWithContext(
@@ -827,16 +841,29 @@ export class CollectionsService {
       }
 
       // Only add to Plex collection if plexId is available (syncing enabled)
-      let responseColl: PlexCollection | BasicResponseDto = { status: 'OK', code: 1, message: 'Success' };
+      let plexSuccess = true;
       
       if (collectionIds.plexId) {
-        responseColl = await this.plexSyncService.addChildToPlexCollection(
+        const responseColl = await this.plexSyncService.addChildToPlexCollection(
           collectionIds.plexId.toString(),
           childId.toString(),
         );
+        
+        // Check if Plex operation succeeded
+        if ('ratingKey' in responseColl) {
+          plexSuccess = true;
+        } else if (responseColl.status === 'OK') {
+          plexSuccess = true;
+        } else {
+          plexSuccess = false;
+          this.logger.warn(
+            `Couldn't add media to Plex collection: ${responseColl.message}`,
+          );
+        }
       }
 
-      if ('ratingKey' in responseColl || responseColl.status === 'OK') {
+      // Add to database regardless of Plex sync status (for Maintainerr-only collections)
+      if (plexSuccess) {
         await this.connection
           .createQueryBuilder()
           .insert()
@@ -859,10 +886,6 @@ export class CollectionsService {
           collectionIds.dbId,
           'add',
           logMeta,
-        );
-      } else if ('message' in responseColl) {
-        this.logger.warn(
-          `Couldn't add media to collection: ${responseColl.message}`,
         );
       }
     } catch (err) {

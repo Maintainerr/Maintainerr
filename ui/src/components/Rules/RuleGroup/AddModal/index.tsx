@@ -994,7 +994,7 @@ const AddModal = (props: AddModal) => {
                       <label htmlFor="sync_to_plex" className="text-label">
                         Sync to Plex
                         <p className="text-xs font-normal">
-                          Sync collection with Plex or keep it Maintainerr-only
+                          When enabled, collection will be created and synced with Plex. When disabled, collection exists only in Maintainerr.
                         </p>
                       </label>
                       <div className="form-input">

@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import { BasicResponseDto } from '../api/plex-api/dto/basic-response.dto';
 import {
   CreateUpdateCollection,
@@ -9,8 +7,6 @@ import {
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Collection } from './entities/collection.entities';
-import { CollectionMedia } from './entities/collection_media.entities';
-import { CollectionLog } from './entities/collection_log.entities';
 
 /**
  * Service responsible for synchronizing Maintainerr collections with Plex collections.
@@ -21,13 +17,6 @@ import { CollectionLog } from './entities/collection_log.entities';
 @Injectable()
 export class PlexCollectionSyncService {
   constructor(
-    @InjectRepository(Collection)
-    private readonly collectionRepo: Repository<Collection>,
-    @InjectRepository(CollectionMedia)
-    private readonly collectionMediaRepo: Repository<CollectionMedia>,
-    @InjectRepository(CollectionLog)
-    private readonly collectionLogRepo: Repository<CollectionLog>,
-    private readonly connection: DataSource,
     private readonly plexApi: PlexApiService,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -232,20 +221,22 @@ export class PlexCollectionSyncService {
 
   /**
    * Checks if the automatic Plex link is valid and fixes it if needed.
+   * Returns the collection with updated plexId. Caller should save the collection.
    * Only called when syncToPlexCollection is true.
    */
-  async checkAutomaticPlexLink(collection: Collection): Promise<Collection> {
+  async checkAutomaticPlexLink(collection: Collection): Promise<{ collection: Collection; needsSave: boolean }> {
     // Skip if syncing is disabled
     if (!collection.syncToPlexCollection) {
-      return collection;
+      return { collection, needsSave: false };
     }
 
     // Skip if manual collection
     if (collection.manualCollection) {
-      return collection;
+      return { collection, needsSave: false };
     }
 
     let plexColl: PlexCollection = undefined;
+    let needsSave = false;
 
     if (collection.plexId) {
       plexColl = await this.findPlexCollectionByID(collection.plexId);
@@ -259,7 +250,7 @@ export class PlexCollectionSyncService {
 
       if (plexColl) {
         collection.plexId = +plexColl.ratingKey;
-        collection = await this.collectionRepo.save(collection);
+        needsSave = true;
       }
     }
 
@@ -271,25 +262,26 @@ export class PlexCollectionSyncService {
 
     if (!plexColl) {
       collection.plexId = null;
-      collection = await this.collectionRepo.save(collection);
+      needsSave = true;
     }
 
-    return collection;
+    return { collection, needsSave };
   }
 
   /**
    * Relinks a manual Plex collection by finding it and updating the plexId.
+   * Returns the collection with updated plexId. Caller should save the collection.
    * Only called when syncToPlexCollection is true.
    */
-  async relinkManualCollection(collection: Collection): Promise<Collection> {
+  async relinkManualCollection(collection: Collection): Promise<{ collection: Collection; needsSave: boolean; success: boolean }> {
     // Skip if syncing is disabled
     if (!collection.syncToPlexCollection) {
-      return collection;
+      return { collection, needsSave: false, success: true };
     }
 
     // Only for manual collections
     if (!collection.manualCollection) {
-      return collection;
+      return { collection, needsSave: false, success: true };
     }
 
     const plexColl = await this.findPlexCollection(
@@ -299,15 +291,14 @@ export class PlexCollectionSyncService {
 
     if (plexColl) {
       collection.plexId = +plexColl.ratingKey;
-      collection = await this.collectionRepo.save(collection);
       this.logger.log('Successfully relinked the manual Plex collection');
+      return { collection, needsSave: true, success: true };
     } else {
       this.logger.error(
         'Manual Plex collection not found.. Is it still available in Plex?',
       );
+      return { collection, needsSave: false, success: false };
     }
-
-    return collection;
   }
 
   /**
