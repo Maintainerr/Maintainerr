@@ -507,19 +507,6 @@ export class CollectionsService {
   ): Promise<Collection> {
     // Delegate to PlexCollectionSyncService
     return await this.plexSyncService.checkAutomaticPlexLink(collection);
-
-      // If the collection is empty in Plex, remove it. Otherwise issues when adding media
-      if (plexColl && collection.plexId !== null && +plexColl.childCount <= 0) {
-        await this.plexApi.deleteCollection(plexColl.ratingKey);
-        plexColl = undefined;
-      }
-
-      if (!plexColl) {
-        collection.plexId = null;
-        collection = await this.saveCollection(collection);
-      }
-    }
-    return collection;
   }
 
   async MediaCollectionActionWithContext(
@@ -873,10 +860,9 @@ export class CollectionsService {
           'add',
           logMeta,
         );
-      } else {
+      } else if ('message' in responseColl) {
         this.logger.warn(
-          `Couldn't add media to collection: 
-          ${responseColl.message}`,
+          `Couldn't add media to collection: ${responseColl.message}`,
         );
       }
     } catch (err) {
