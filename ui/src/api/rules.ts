@@ -260,7 +260,7 @@ export const useExecuteRuleGroup = (options?: UseExecuteRuleGroupOptions) => {
   const queryClient = useQueryClient()
 
   return useMutation<void, Error, number | string>({
-    mutationKey: ['rules', 'execute'],
+    mutationKey: ['rules', 'execute', 'rulegroup', 'start'],
     mutationFn: async (id) => {
       const normalizedId = String(id)
 
