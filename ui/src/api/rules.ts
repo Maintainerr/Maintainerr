@@ -1,4 +1,4 @@
-import { BasicResponseDto } from '@maintainerr/contracts'
+import { BasicResponseDto, RuleExecuteStatusDto } from '@maintainerr/contracts'
 import {
   useMutation,
   UseMutationOptions,
@@ -42,6 +42,7 @@ export interface RuleGroupCreatePayload {
   rules: IRule[]
   dataType: EPlexDataType
   notifications: AgentConfiguration[]
+  ruleHandlerCronSchedule: string | null
 }
 
 export type RuleGroupUpdatePayload = RuleGroupCreatePayload & { id: number }
@@ -90,7 +91,7 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
     queryFn: async () => {
       return await GetApiHandler<IConstants>(`/rules/constants`)
     },
-    staleTime: Infinity,
+    staleTime: 0,
     ...options,
   })
 }
@@ -99,7 +100,7 @@ export type UseRuleConstants = ReturnType<typeof useRuleConstants>
 
 type UseCreateRuleGroupOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, RuleGroupCreatePayload>,
-  'mutationFn' | 'mutationKey' | 'onSuccess'
+  'mutationFn' | 'mutationKey'
 >
 
 export const useCreateRuleGroup = (options?: UseCreateRuleGroupOptions) => {
@@ -153,3 +154,134 @@ export const useUpdateRuleGroup = (options?: UseUpdateRuleGroupOptions) => {
 }
 
 export type UseUpdateRuleGroupResult = ReturnType<typeof useUpdateRuleGroup>
+
+type UseRuleHandlerStatusQueryKey = ['rules', 'execute', 'status']
+
+type UseRuleHandlerStatusOptions = Omit<
+  UseQueryOptions<
+    RuleExecuteStatusDto,
+    Error,
+    RuleExecuteStatusDto,
+    UseRuleHandlerStatusQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const useRuleHandlerStatus = (options?: UseRuleHandlerStatusOptions) => {
+  return useQuery({
+    queryKey: ['rules', 'execute', 'status'],
+    queryFn: async () => {
+      return await GetApiHandler<RuleExecuteStatusDto>('/rules/execute/status')
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseRuleHandlerStatus = ReturnType<typeof useRuleHandlerStatus>
+
+type UseStopAllRuleExecutionOptions = Omit<
+  UseMutationOptions<void, Error, void>,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useStopAllRuleExecution = (
+  options?: UseStopAllRuleExecutionOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, void>({
+    mutationKey: ['rules', 'execute', 'stop'],
+    mutationFn: async () => {
+      await PostApiHandler<void>('/rules/execute/stop', {})
+    },
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
+        queryKey: [
+          'rules',
+          'execute',
+          'status',
+        ] satisfies UseRuleHandlerStatusQueryKey,
+      })
+
+      if (options?.onSuccess) {
+        await options.onSuccess(data, variables, context, mutation)
+      }
+    },
+    ...options,
+  })
+}
+
+export type UseStopAllRuleExecution = ReturnType<typeof useStopAllRuleExecution>
+
+type UseStopRuleGroupExecutionOptions = Omit<
+  UseMutationOptions<void, Error, number | string>,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useStopRuleGroupExecution = (
+  options?: UseStopRuleGroupExecutionOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, number | string>({
+    mutationKey: ['rules', 'execute', 'rulegroup', 'stop'],
+    mutationFn: async (id) => {
+      const normalizedId = String(id)
+
+      await PostApiHandler<void>(`/rules/${normalizedId}/execute/stop`, {})
+    },
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
+        queryKey: [
+          'rules',
+          'execute',
+          'status',
+        ] satisfies UseRuleHandlerStatusQueryKey,
+      })
+
+      if (options?.onSuccess) {
+        await options.onSuccess(data, variables, context, mutation)
+      }
+    },
+    ...options,
+  })
+}
+
+export type UseStopRuleGroupExecution = ReturnType<
+  typeof useStopRuleGroupExecution
+>
+
+type UseExecuteRuleGroupOptions = Omit<
+  UseMutationOptions<void, Error, number | string>,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useExecuteRuleGroup = (options?: UseExecuteRuleGroupOptions) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, number | string>({
+    mutationKey: ['rules', 'execute', 'rulegroup', 'start'],
+    mutationFn: async (id) => {
+      const normalizedId = String(id)
+
+      await PostApiHandler<void>(`/rules/${normalizedId}/execute`, {})
+    },
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
+        queryKey: [
+          'rules',
+          'execute',
+          'status',
+        ] satisfies UseRuleHandlerStatusQueryKey,
+      })
+
+      if (options?.onSuccess) {
+        await options.onSuccess(data, variables, context, mutation)
+      }
+    },
+    ...options,
+  })
+}
+
+export type UseExecuteRuleGroup = ReturnType<typeof useExecuteRuleGroup>

@@ -90,7 +90,7 @@ export class AppModule implements OnModuleInit {
   async onModuleInit() {
     // Initialize modules requiring settings
     await this.settings.init();
-    await this.plexApi.initialize({});
+    await this.plexApi.initialize();
     this.overseerApi.init();
     this.tautulliApi.init();
     this.jellyseerrApi.init();

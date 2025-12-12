@@ -148,11 +148,19 @@ const RuleInput = (props: IRuleInput) => {
   }, [])
 
   const updateFirstValue = (event: { target: { value: string } }) => {
-    setFirstVal(event.target.value)
+    if (event.target.value === '') {
+      setFirstVal(undefined)
+    } else {
+      setFirstVal(event.target.value)
+    }
   }
 
   const updateSecondValue = (event: { target: { value: string } }) => {
-    setSecondVal(event.target.value)
+    if (event.target.value === '') {
+      setSecondVal(undefined)
+    } else {
+      setSecondVal(event.target.value)
+    }
   }
 
   const updateCustomValue = (event: { target: { value: string } }) => {
@@ -164,11 +172,19 @@ const RuleInput = (props: IRuleInput) => {
   }
 
   const updateAction = (event: { target: { value: string } }) => {
-    setAction(+event.target.value)
+    if (event.target.value === '') {
+      setAction(undefined)
+    } else {
+      setAction(+event.target.value)
+    }
   }
 
   const updateOperator = (event: { target: { value: string } }) => {
-    setOperator(event.target.value)
+    if (event.target.value === '') {
+      setOperator(undefined)
+    } else {
+      setOperator(event.target.value)
+    }
   }
 
   const onDelete = (e: FormEvent | null) => {
@@ -177,9 +193,7 @@ const RuleInput = (props: IRuleInput) => {
   }
 
   const submit = (e: FormEvent | null) => {
-    if (e) {
-      e.preventDefault()
-    }
+    e?.preventDefault()
 
     if (
       firstval &&
@@ -375,7 +389,7 @@ const RuleInput = (props: IRuleInput) => {
                   onChange={updateOperator}
                   value={operator}
                 >
-                  <option value={undefined}> </option>
+                  <option value=""> </option>
                   {Object.keys(RuleOperators).map(
                     (value: string, key: number) => {
                       if (!isNaN(+value)) {
@@ -407,7 +421,7 @@ const RuleInput = (props: IRuleInput) => {
             value={firstval}
             className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
           >
-            <option value={undefined} className="text-amber-600">
+            <option value="" className="text-amber-600">
               Select First Value...
             </option>
             {constants.applications
@@ -455,7 +469,7 @@ const RuleInput = (props: IRuleInput) => {
             value={action}
             className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
           >
-            <option value={undefined} className="text-amber-600">
+            <option value="" className="text-amber-600">
               Select Action...
             </option>
             {possibilities.map((action) => (
@@ -481,7 +495,7 @@ const RuleInput = (props: IRuleInput) => {
             value={secondVal}
             className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
           >
-            <option value={undefined} className="text-amber-600">
+            <option value="" className="text-amber-600">
               Select Second Value...
             </option>
             <optgroup label="Custom values">

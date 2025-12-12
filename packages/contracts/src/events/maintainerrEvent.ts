@@ -11,4 +11,12 @@ export enum MaintainerrEvent {
   CollectionMedia_Removed = 'collection_media.removed',
   CollectionMedia_Handled = 'collection_media.handled',
   Notifications_Fire = 'agents.notify',
+  Collection_Created = 'collection.created',
+  Collection_Updated = 'collection.updated',
+  Collection_Deleted = 'collection.deleted',
+  RuleGroup_Created = 'rulegroup.created',
+  RuleGroup_Updated = 'rulegroup.updated',
+  RuleGroup_Deleted = 'rulegroup.deleted',
+  Settings_Updated = 'settings.updated',
+  RuleHandlerQueue_StatusUpdated = 'rule_handler_queue.status_updated',
 }

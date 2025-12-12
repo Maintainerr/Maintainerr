@@ -20,8 +20,6 @@ import {
 } from '../../events/events.dto';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
-import { TaskBase } from '../../tasks/task.base';
-import { TasksService } from '../../tasks/tasks.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
@@ -36,10 +34,7 @@ interface PlexData {
 }
 
 @Injectable()
-export class RuleExecutorService extends TaskBase {
-  protected name = 'Rule Handler';
-  protected cronSchedule = ''; // overriden in onBootstrapHook
-
+export class RuleExecutorService {
   ruleConstants: RuleConstants;
   userId: string;
   plexData: PlexData;
@@ -48,127 +43,124 @@ export class RuleExecutorService extends TaskBase {
   resultData: PlexLibraryItem[];
   statisticsData: IComparisonStatistics[];
   Data: PlexLibraryItem[];
-
   startTime: Date;
 
   constructor(
     private readonly rulesService: RulesService,
     private readonly plexApi: PlexApiService,
     private readonly collectionService: CollectionsService,
-    protected readonly taskService: TasksService,
     private readonly settings: SettingsService,
     private readonly comparatorFactory: RuleComparatorServiceFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly progressManager: RuleExecutorProgressService,
-    protected readonly logger: MaintainerrLogger,
+    private readonly logger: MaintainerrLogger,
   ) {
-    super(taskService, logger);
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
     this.plexData = { page: 1, finished: false, data: [] };
   }
 
-  protected onBootstrapHook(): void {
-    this.cronSchedule = this.settings.rules_handler_job_cron;
-  }
+  public async executeForRuleGroups(
+    ruleGroupId: number,
+    abortSignal: AbortSignal,
+  ) {
+    const ruleGroup = await this.rulesService.getRuleGroup(ruleGroupId);
 
-  protected async executeTask(abortSignal: AbortSignal) {
+    if (!ruleGroup) {
+      this.logger.warn(
+        `Rule group ${ruleGroupId} not found. Skipping rule execution.`,
+      );
+      return;
+    }
+
+    if (!ruleGroup.isActive) {
+      this.logger.log(
+        `Rule group '${ruleGroup.name}' is not active. Skipping rule execution.`,
+      );
+      return;
+    }
+
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Started,
-      new RuleHandlerStartedEventDto('Started execution of all active rules'),
+      new RuleHandlerStartedEventDto(
+        `Started execution of rule '${ruleGroup.name}'`,
+      ),
     );
 
     try {
-      this.logger.log('Starting execution of all active rules');
+      this.logger.log(`Starting execution of rule '${ruleGroup.name}'`);
       const appStatus = await this.settings.testConnections();
 
-      // reset API caches, make sure latest data is used
-      cacheManager.flushAll();
-
       if (appStatus) {
-        const ruleGroups = await this.getAllActiveRuleGroups();
-        if (ruleGroups) {
-          const comparator = this.comparatorFactory.create();
+        // reset API caches, make sure latest data is used
+        cacheManager.flushAll();
 
-          let totalEvaluations = 0;
-          const ruleGroupTotals: { [key: string]: number } = {};
-          for (const rulegroup of ruleGroups) {
-            const mediaItemCount = await this.plexApi.getLibraryContentCount(
-              rulegroup.libraryId,
-              rulegroup.dataType,
-            );
+        const comparator = this.comparatorFactory.create();
 
-            totalEvaluations += mediaItemCount * rulegroup.rules.length;
-            ruleGroupTotals[rulegroup.id] = mediaItemCount;
-          }
+        const mediaItemCount = await this.plexApi.getLibraryContentCount(
+          ruleGroup.libraryId,
+          ruleGroup.dataType,
+        );
 
-          this.progressManager.initialize(ruleGroups.length, totalEvaluations);
+        const totalEvaluations = mediaItemCount * ruleGroup.rules.length;
 
-          for (let i = 0; i < ruleGroups.length; i++) {
-            const rulegroup = ruleGroups[i];
+        this.progressManager.initialize({
+          name: ruleGroup.name,
+          totalEvaluations: totalEvaluations,
+        });
 
-            this.progressManager.startRuleGroup({
-              name: rulegroup.name,
-              number: i + 1,
-              totalEvaluations:
-                ruleGroupTotals[rulegroup.id] * rulegroup.rules.length,
-            });
+        if (ruleGroup.useRules) {
+          this.logger.log(`Executing rules for '${ruleGroup.name}'`);
+          this.startTime = new Date();
 
-            if (rulegroup.useRules) {
-              this.logger.log(`Executing rules for '${rulegroup.name}'`);
-              this.startTime = new Date();
+          // reset Plex cache if group uses a rule that requires it (collection rules for example)
+          await this.rulesService.resetPlexCacheIfgroupUsesRuleThatRequiresIt(
+            ruleGroup,
+          );
 
-              // reset Plex cache if group uses a rule that requires it (collection rules for example)
-              await this.rulesService.resetPlexCacheIfgroupUsesRuleThatRequiresIt(
-                rulegroup,
-              );
+          // prepare
+          this.workerData = [];
+          this.resultData = [];
+          this.statisticsData = [];
+          this.plexData = { page: 0, finished: false, data: [] };
 
-              // prepare
-              this.workerData = [];
-              this.resultData = [];
-              this.statisticsData = [];
-              this.plexData = { page: 0, finished: false, data: [] };
+          this.plexDataType = ruleGroup.dataType
+            ? ruleGroup.dataType
+            : undefined;
 
-              this.plexDataType = rulegroup.dataType
-                ? rulegroup.dataType
-                : undefined;
+          // Run rules data chunks of 50
+          while (!this.plexData.finished) {
+            await this.getPlexData(ruleGroup.libraryId);
 
-              // Run rules data chunks of 50
-              while (!this.plexData.finished) {
-                await this.getPlexData(rulegroup.libraryId);
-
-                const ruleResult = await comparator.executeRulesWithData(
-                  rulegroup,
-                  this.plexData.data,
-                  () => {
-                    this.progressManager.incrementProcessed(
-                      this.plexData.data.length,
-                    );
-                  },
-                  abortSignal,
+            const ruleResult = await comparator.executeRulesWithData(
+              ruleGroup,
+              this.plexData.data,
+              () => {
+                this.progressManager.incrementProcessed(
+                  this.plexData.data.length,
                 );
-
-                if (ruleResult) {
-                  this.statisticsData.push(...ruleResult.stats);
-                  this.resultData.push(...ruleResult.data);
-                }
-              }
-
-              await this.handleCollection(
-                await this.rulesService.getRuleGroupById(rulegroup.id), // refetch to get latest changes
-              );
-
-              this.logger.log(
-                `Execution of rules for '${rulegroup.name}' done.`,
-              );
-            }
-            await this.syncManualPlexMediaToCollectionDB(
-              await this.rulesService.getRuleGroupById(rulegroup.id), // refetch to get latest changes
+              },
+              abortSignal,
             );
+
+            if (ruleResult) {
+              this.statisticsData.push(...ruleResult.stats);
+              this.resultData.push(...ruleResult.data);
+            }
           }
+
+          await this.handleCollection(
+            await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+          );
+
+          this.logger.log(`Execution of rules for '${ruleGroup.name}' done.`);
         }
+
+        await this.syncManualPlexMediaToCollectionDB(
+          await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+        );
       } else {
-        this.logger.log(
+        this.logger.warn(
           'Not all applications are reachable.. Skipped rule execution.',
         );
 
@@ -179,16 +171,19 @@ export class RuleExecutorService extends TaskBase {
         err instanceof DOMException && err.name === 'AbortError';
 
       if (!executionBeingAborted) {
-        this.logger.log('Error running rules executor.');
-        this.logger.debug(err);
+        this.logger.error('Error running rules executor.', err);
         this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
+      } else {
+        this.logger.log(`Execution of rule '${ruleGroup.name}' was aborted.`);
       }
     }
 
     this.progressManager.reset();
     this.eventEmitter.emit(
       MaintainerrEvent.RuleHandler_Finished,
-      new RuleHandlerFinishedEventDto('Finished execution of all active rules'),
+      new RuleHandlerFinishedEventDto(
+        `Finished execution of rule '${ruleGroup.name}'`,
+      ),
     );
   }
 

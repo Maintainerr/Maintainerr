@@ -1,17 +1,17 @@
-import { Collection } from '../../collections/entities/collection.entities';
-import { ICollection } from '../../collections/interfaces/collection.interface';
 import {
-  Entity,
   Column,
-  PrimaryGeneratedColumn,
+  Entity,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
   OneToMany,
   OneToOne,
-  JoinColumn,
-  ManyToMany,
-  JoinTable,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Rules } from './rules.entities';
+import { Collection } from '../../collections/entities/collection.entities';
+import { ICollection } from '../../collections/interfaces/collection.interface';
 import { Notification } from '../../notifications/entities/notification.entities';
+import { Rules } from './rules.entities';
 
 @Entity('rule_group')
 export class RuleGroup {
@@ -38,6 +38,9 @@ export class RuleGroup {
 
   @Column({ nullable: true })
   dataType: number;
+
+  @Column({ nullable: true, default: null })
+  ruleHandlerCronSchedule: string | null;
 
   @OneToMany(() => Rules, (rules) => rules.ruleGroup, {
     onDelete: 'CASCADE',

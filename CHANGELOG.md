@@ -1,3 +1,32 @@
+# [2.24.0](https://github.com/maintainerr/Maintainerr/compare/v2.23.0...v2.24.0) (2025-12-07)
+
+
+### Bug Fixes
+
+* Unselecting options in rule editor throws error ([#2142](https://github.com/maintainerr/Maintainerr/issues/2142)) ([9c11b01](https://github.com/maintainerr/Maintainerr/commit/9c11b01c4c772e73065909d7dec33a863494a5a4))
+
+
+### Features
+
+* Add clone feature to rule group editor ([#2140](https://github.com/maintainerr/Maintainerr/issues/2140)) ([d8aee79](https://github.com/maintainerr/Maintainerr/commit/d8aee79abcc79d422cf29010d106bf0911f09042))
+
+# [2.23.0](https://github.com/maintainerr/Maintainerr/compare/v2.22.1...v2.23.0) (2025-12-06)
+
+
+### Bug Fixes
+
+* Hide *arr rules until server is selected ([#2109](https://github.com/maintainerr/Maintainerr/issues/2109)) ([6e8b456](https://github.com/maintainerr/Maintainerr/commit/6e8b45683c954d171755222ceecd5950dc7b63e6))
+* Improve error handling for read-only filesystem in UI path rewriting ([#2105](https://github.com/maintainerr/Maintainerr/issues/2105)) ([d72e5b3](https://github.com/maintainerr/Maintainerr/commit/d72e5b3bf82df6c62b83aea8f9e32688e070fc9b))
+* Stop music being returned in search ([#2107](https://github.com/maintainerr/Maintainerr/issues/2107)) ([aecdabe](https://github.com/maintainerr/Maintainerr/commit/aecdabe9f22b4cbe43f194530b695b51814d1087))
+
+
+### Features
+
+* Add Sonarr - Series Type ([#2128](https://github.com/maintainerr/Maintainerr/issues/2128)) ([156eed2](https://github.com/maintainerr/Maintainerr/commit/156eed2f6fbc04287f43e4e728708ec7bef14e15))
+* Make 'Has series finale episode' available at show level ([#2127](https://github.com/maintainerr/Maintainerr/issues/2127)) ([9bd9cdd](https://github.com/maintainerr/Maintainerr/commit/9bd9cdd24c8d04e354eb84896aedd9c80b906ce4))
+* Migrate UI from Next.js to Vite + React Router ([#2100](https://github.com/maintainerr/Maintainerr/issues/2100)) ([a9474d4](https://github.com/maintainerr/Maintainerr/commit/a9474d456986528ca8f7364d54785f4856b06c75))
+* Support Last-Event-Id in event streams ([#2120](https://github.com/maintainerr/Maintainerr/issues/2120)) ([537929f](https://github.com/maintainerr/Maintainerr/commit/537929f7501c7542bc114f5c7ea93f74ec507cfd))
+
 ## [2.22.1](https://github.com/maintainerr/Maintainerr/compare/v2.22.0...v2.22.1) (2025-11-30)
 
 

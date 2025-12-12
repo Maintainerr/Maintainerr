@@ -285,7 +285,7 @@ export class SonarrGetterService {
         case 'seriesFinale': {
           const episodes = await sonarrApiClient.getEpisodes(
             showResponse.id,
-            origLibItem.index,
+            dataType === EPlexDataType.SEASONS ? origLibItem.index : undefined,
           );
 
           if (!episodes) {
@@ -322,6 +322,9 @@ export class SonarrGetterService {
         }
         case 'fileAudioLanguages': {
           return episodeFile?.mediaInfo?.audioLanguages ?? null;
+        }
+        case 'seriesType': {
+          return showResponse.seriesType ?? null;
         }
       }
     } catch (e) {

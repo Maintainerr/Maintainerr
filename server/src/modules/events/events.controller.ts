@@ -3,8 +3,10 @@ import {
   CollectionHandlerFinishedEventDto,
   CollectionHandlerProgressedEventDto,
   CollectionHandlerStartedEventDto,
+  MaintainerrEvent,
   RuleHandlerFinishedEventDto,
   RuleHandlerProgressedEventDto,
+  RuleHandlerQueueStatusUpdatedEventDto,
   RuleHandlerStartedEventDto,
 } from '@maintainerr/contracts';
 import {
@@ -112,12 +114,13 @@ export class EventsController implements BeforeApplicationShutdown {
     }
   }
 
-  @OnEvent('rule_handler.started')
-  @OnEvent('rule_handler.progressed')
-  @OnEvent('rule_handler.finished')
-  @OnEvent('collection_handler.started')
-  @OnEvent('collection_handler.progressed')
-  @OnEvent('collection_handler.finished')
+  @OnEvent(MaintainerrEvent.RuleHandler_Started)
+  @OnEvent(MaintainerrEvent.RuleHandler_Progressed)
+  @OnEvent(MaintainerrEvent.RuleHandler_Finished)
+  @OnEvent(MaintainerrEvent.CollectionHandler_Started)
+  @OnEvent(MaintainerrEvent.CollectionHandler_Progressed)
+  @OnEvent(MaintainerrEvent.CollectionHandler_Finished)
+  @OnEvent(MaintainerrEvent.RuleHandlerQueue_StatusUpdated)
   sendEventToClient(
     payload:
       | RuleHandlerStartedEventDto
@@ -125,7 +128,8 @@ export class EventsController implements BeforeApplicationShutdown {
       | RuleHandlerFinishedEventDto
       | CollectionHandlerStartedEventDto
       | CollectionHandlerProgressedEventDto
-      | CollectionHandlerFinishedEventDto,
+      | CollectionHandlerFinishedEventDto
+      | RuleHandlerQueueStatusUpdatedEventDto,
   ) {
     const eventMessage = this.eventsBufferService.buildBufferedEvent({
       type: payload.type,

@@ -1,27 +1,31 @@
 import { CloudDownloadIcon } from '@heroicons/react/outline'
 import {
   BanIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  DocumentDuplicateIcon,
   DownloadIcon,
   QuestionMarkCircleIcon,
   SaveIcon,
   UploadIcon,
 } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useContext, useEffect, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { isValidCron } from 'cron-validator'
+import { useEffect, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
-import ConstantsContext, {
-  Application,
-} from '../../../../contexts/constants-context'
-import LibrariesContext, {
-  ILibrary,
-} from '../../../../contexts/libraries-context'
-import GetApiHandler, {
-  PostApiHandler,
-  PutApiHandler,
-} from '../../../../utils/ApiHandler'
+import { ILibrary, usePlexLibraries } from '../../../../api/plex'
+import {
+  RuleGroupCreatePayload,
+  useCreateRuleGroup,
+  useRuleConstants,
+  useUpdateRuleGroup,
+} from '../../../../api/rules'
+import { Application } from '../../../../contexts/constants-context'
+import { PostApiHandler } from '../../../../utils/ApiHandler'
 import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
@@ -35,34 +39,9 @@ import ConfigureNotificationModal from './ConfigureNotificationModal'
 
 interface AddModal {
   editData?: IRuleGroup
+  isCloneMode?: boolean
   onCancel: () => void
   onSuccess: () => void
-}
-
-interface RuleGroupCreatePayload {
-  name: string
-  description: string
-  libraryId: number
-  arrAction: number
-  dataType: EPlexDataType
-  isActive: boolean
-  useRules: boolean
-  listExclusions: boolean
-  forceOverseerr: boolean
-  tautulliWatchedPercentOverride?: number
-  radarrSettingsId?: number
-  sonarrSettingsId?: number
-  collection: {
-    visibleOnRecommended: boolean
-    visibleOnHome: boolean
-    deleteAfterDays?: number
-    manualCollection: boolean
-    manualCollectionName: string
-    keepLogsForMonths: number
-    sortTitle?: string
-  }
-  rules: IRule[]
-  notifications: AgentConfiguration[]
 }
 
 const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
@@ -135,6 +114,15 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    ruleHandlerCronSchedule: z.preprocess(
+      (val) => (val === '' ? null : val),
+      z
+        .string()
+        .refine((val) => (val != null ? isValidCron(val) : true), {
+          message: 'Invalid cron schedule',
+        })
+        .nullable(),
+    ),
   })
   .refine(
     (data) =>
@@ -206,13 +194,36 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrSettingsId: editData
     ? ((editData as any).collection?.sonarrSettingsId ?? null)
     : undefined,
+  ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
 const AddModal = (props: AddModal) => {
+  const navigate = useNavigate()
+  const { data: constants, isLoading: constantsLoading } = useRuleConstants({
+    retry: false,
+  })
+
+  const { data: plexLibraries = [], isLoading: plexLibrariesLoading } =
+    usePlexLibraries({
+      retry: false,
+    })
+
   const {
+    mutateAsync: createRuleGroup,
+    isPending: isCreatePending,
+    isError: isCreateError,
+  } = useCreateRuleGroup()
+
+  const {
+    mutateAsync: updateRuleGroup,
+    isPending: isUpdatePending,
+    isError: isUpdateError,
+  } = useUpdateRuleGroup()
+
+  const {
+    control,
     register,
     handleSubmit,
-    watch,
     reset,
     setValue,
     getValues,
@@ -222,27 +233,28 @@ const AddModal = (props: AddModal) => {
     defaultValues: buildFormDefaults(props.editData),
   })
 
-  const constantsCtx = useContext(ConstantsContext)
-  const librariesCtx = useContext(LibrariesContext)
+  const isSaving = isCreatePending || isUpdatePending
 
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState(false)
-
-  const selectedLibraryId = watch('libraryId') ?? ''
-  const selectedType = watch('dataType') ?? ''
+  const selectedLibraryId = useWatch({ control, name: 'libraryId' }) ?? ''
+  const selectedType = useWatch({ control, name: 'dataType' }) ?? ''
   const selectedLibraryType: undefined | 'movie' | 'show' = selectedType
     ? +selectedType === EPlexDataType.MOVIES
       ? 'movie'
       : 'show'
     : undefined
-  const manualCollectionEnabled = watch('manualCollection')
-  const useRulesEnabled = watch('useRules')
-  const arrActionValue = watch('arrAction') as number | undefined
-  const radarrSettingsId = watch('radarrSettingsId') as
+  const manualCollectionEnabled = useWatch({
+    control,
+    name: 'manualCollection',
+  })
+  const useRulesEnabled = useWatch({ control, name: 'useRules' })
+  const arrActionValue = useWatch({ control, name: 'arrAction' }) as
+    | number
+    | undefined
+  const radarrSettingsId = useWatch({ control, name: 'radarrSettingsId' }) as
     | number
     | null
     | undefined
-  const sonarrSettingsId = watch('sonarrSettingsId') as
+  const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
     | number
     | null
     | undefined
@@ -251,60 +263,26 @@ const AddModal = (props: AddModal) => {
   const [configureNotificionModal, setConfigureNotificationModal] =
     useState(false)
 
-  const yaml = useRef<string>(undefined)
-  const [configuredNotificationConfigurations, setConfiguredNotificationConfigurations] =
-    useState<AgentConfiguration[]>(
-      props.editData?.notifications ? props.editData?.notifications : [],
-    )
+  const [yaml, setYaml] = useState<string | undefined>(undefined)
+  const [
+    configuredNotificationConfigurations,
+    setConfiguredNotificationConfigurations,
+  ] = useState<AgentConfiguration[]>(
+    props.editData?.notifications ? props.editData?.notifications : [],
+  )
   const [rules, setRules] = useState<IRule[]>(
     props.editData?.rules
       ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
       : [],
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
-  const ruleCreatorVersion = useRef<number>(1)
-  const [plexLibraries, setPlexLibraries] = useState<ILibrary[]>([])
-  const [plexLibrariesLoading, setPlexLibrariesLoading] = useState(true)
-  const [constantsLoading, setConstantsLoading] = useState(true)
-
-  const constants = constantsCtx.constants
+  const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
 
   useEffect(() => {
     register('arrAction')
     register('radarrSettingsId')
     register('sonarrSettingsId')
   }, [register])
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const constantsResp = await GetApiHandler('/rules/constants')
-        constantsCtx.setConstants(constantsResp)
-      } catch (e) {
-        // ignore, handled by UI defaults
-      } finally {
-        setConstantsLoading(false)
-      }
-
-      if (librariesCtx.libraries.length > 0) {
-        setPlexLibraries(librariesCtx.libraries)
-        setPlexLibrariesLoading(false)
-        return
-      }
-
-      try {
-        const libs = (await GetApiHandler('/plex/libraries/')) ?? []
-        librariesCtx.addLibraries(libs)
-        setPlexLibraries(libs)
-      } catch (e) {
-        setPlexLibraries([])
-      } finally {
-        setPlexLibrariesLoading(false)
-      }
-    }
-
-    load()
-  }, [constantsCtx, librariesCtx])
 
   useEffect(() => {
     reset(buildFormDefaults(props.editData))
@@ -314,53 +292,49 @@ const AddModal = (props: AddModal) => {
         ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
         : [],
     )
-    ruleCreatorVersion.current += 1
+    setRuleCreatorVersion((prev) => prev + 1)
   }, [props.editData, reset])
 
-  useEffect(() => {
+  const filterRulesForArrSelection = (
+    inputRules: IRule[],
+    radarrId: number | null | undefined,
+    sonarrId: number | null | undefined,
+  ): IRule[] => {
     const shouldFilterApp = (
       appId: number,
-      radarrId: number | null | undefined,
-      sonarrId: number | null | undefined,
+      selectedRadarrId: number | null | undefined,
+      selectedSonarrId: number | null | undefined,
     ): boolean => {
       if (
         appId === Application.RADARR &&
-        (radarrId === undefined || radarrId === null)
+        (selectedRadarrId === undefined || selectedRadarrId === null)
       ) {
         return true
       }
       if (
         appId === Application.SONARR &&
-        (sonarrId === undefined || sonarrId === null)
+        (selectedSonarrId === undefined || selectedSonarrId === null)
       ) {
         return true
       }
       return false
     }
 
-    setRules((prevRules) => {
-      const filteredRules = prevRules.filter((rule) => {
-        if (
-          shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)
-        ) {
-          return false
-        }
-        if (
-          rule.lastVal &&
-          shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)
-        ) {
-          return false
-        }
-        return true
-      })
-
-      if (filteredRules.length !== prevRules.length) {
-        ruleCreatorVersion.current += 1
-        return filteredRules
+    return inputRules.filter((rule) => {
+      if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) {
+        return false
       }
-      return prevRules
+
+      if (
+        rule.lastVal &&
+        shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)
+      ) {
+        return false
+      }
+
+      return true
     })
-  }, [radarrSettingsId, sonarrSettingsId])
+  }
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
@@ -368,10 +342,6 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.OVERSEERR) ?? false
 
   function updateLibraryId(value: string) {
-    if (!plexLibraries) {
-      throw new Error('Plex libraries not loaded')
-    }
-
     const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
 
     if (lib) {
@@ -386,6 +356,21 @@ const AddModal = (props: AddModal) => {
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
     updateArrOption(0)
+
+    setRules((prevRules) => {
+      const filteredRules = filterRulesForArrSelection(
+        prevRules,
+        undefined,
+        undefined,
+      )
+
+      if (filteredRules.length !== prevRules.length) {
+        setRuleCreatorVersion((prev) => prev + 1)
+        return filteredRules
+      }
+
+      return prevRules
+    })
   }
 
   function updateArrOption(value: number | undefined) {
@@ -405,6 +390,9 @@ const AddModal = (props: AddModal) => {
   ) => {
     updateArrOption(arrAction)
 
+    const nextRadarrId = type === 'Radarr' ? settingId : undefined
+    const nextSonarrId = type === 'Sonarr' ? settingId : undefined
+
     if (type === 'Radarr') {
       setValue('sonarrSettingsId', undefined)
       setValue('radarrSettingsId', settingId)
@@ -412,6 +400,21 @@ const AddModal = (props: AddModal) => {
       setValue('radarrSettingsId', undefined)
       setValue('sonarrSettingsId', settingId)
     }
+
+    setRules((prevRules) => {
+      const filteredRules = filterRulesForArrSelection(
+        prevRules,
+        nextRadarrId,
+        nextSonarrId,
+      )
+
+      if (filteredRules.length !== prevRules.length) {
+        setRuleCreatorVersion((prev) => prev + 1)
+        return filteredRules
+      }
+
+      return prevRules
+    })
   }
 
   function updateRules(rules: IRule[]) {
@@ -433,7 +436,7 @@ const AddModal = (props: AddModal) => {
     })
 
     if (response.code === 1) {
-      yaml.current = response.result
+      setYaml(response.result)
 
       if (!yamlImporterModal) {
         setYamlImporterModal(true)
@@ -444,7 +447,7 @@ const AddModal = (props: AddModal) => {
   }
 
   const toggleYamlImporter = () => {
-    yaml.current = undefined
+    setYaml(undefined)
     if (!yamlImporterModal) {
       setYamlImporterModal(true)
     } else {
@@ -473,13 +476,27 @@ const AddModal = (props: AddModal) => {
 
   const handleLoadRules = (rules: IRule[]) => {
     updateRules(rules)
-    ruleCreatorVersion.current = ruleCreatorVersion.current + 1
+    setRuleCreatorVersion((prev) => prev + 1)
     setShowCommunityModal(false)
   }
 
   const cancel = () => {
     props.onCancel()
   }
+
+  const [atBottom, setAtBottom] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolledToBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 50
+
+      setAtBottom(scrolledToBottom)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const onSubmit = async (data: RuleGroupFormOutput) => {
     if (data.useRules && rules.length === 0) {
@@ -517,32 +534,28 @@ const AddModal = (props: AddModal) => {
       },
       rules: data.useRules ? rules : [],
       notifications: configuredNotificationConfigurations,
+      ruleHandlerCronSchedule: data.ruleHandlerCronSchedule,
     }
 
     try {
-      setIsSaving(true)
-      setSaveError(false)
-      if (props.editData) {
-        const resp = await PutApiHandler('/rules', {
+      if (props.editData && !props.isCloneMode) {
+        await updateRuleGroup({
           id: props.editData.id,
           ...creationObj,
         })
-        if (!resp || resp.code !== 1) {
-          throw new Error('Update failed')
-        }
       } else {
-        const resp = await PostApiHandler('/rules', creationObj)
-        if (!resp || resp.code !== 1) {
-          throw new Error('Create failed')
-        }
+        await createRuleGroup(creationObj)
       }
 
       props.onSuccess()
     } catch (mutationError) {
       console.error('Failed to save rule group', mutationError)
-      setSaveError(true)
-    } finally {
-      setIsSaving(false)
+    }
+  }
+
+  const handleClone = () => {
+    if (props.editData && !props.isCloneMode) {
+      navigate(`/rules/clone/${props.editData.id}`)
     }
   }
 
@@ -553,13 +566,18 @@ const AddModal = (props: AddModal) => {
   return (
     <>
       <div className="h-full w-full">
-        <div className="flex">
+        <div className="mb-5 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-start sm:text-left">
           <div className="ml-0">
-            <h3 className="heading mb-5">Rule Group Settings</h3>
+            <h3 className="heading">Rule Group Settings</h3>
           </div>
-          <div className="ml-auto">
+          <div className="flex flex-wrap justify-center gap-2">
+            {props.editData && !props.isCloneMode && (
+              <Button buttonType="primary" type="button" onClick={handleClone}>
+                <DocumentDuplicateIcon />
+                <span>Clone</span>
+              </Button>
+            )}
             <Button
-              className="ml-3"
               buttonType="default"
               type="button"
               as="a"
@@ -573,19 +591,25 @@ const AddModal = (props: AddModal) => {
           </div>
         </div>
 
-        {saveError && (
+        {props.editData && props.isCloneMode && (
+          <Alert type="info">
+            You are cloning the rule group &apos;{props.editData.name}&apos;.
+          </Alert>
+        )}
+
+        {(isCreateError || isUpdateError) && (
           <Alert>
             Something went wrong saving the group.. Please verify that all
             values are valid
           </Alert>
         )}
 
-        {formIncomplete ? (
+        {formIncomplete && (
           <Alert>
             Not all required (*) fields contain values and at least 1 valid rule
             is required
           </Alert>
-        ) : undefined}
+        )}
         <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <div className="flex flex-col items-center">
@@ -609,11 +633,11 @@ const AddModal = (props: AddModal) => {
                           {...register('name')}
                         ></input>
                       </div>
-                      {errors.name ? (
+                      {errors.name && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.name.message}
                         </p>
-                      ) : undefined}
+                      )}
                     </div>
                   </div>
 
@@ -663,11 +687,11 @@ const AddModal = (props: AddModal) => {
                           )
                         })()}
                       </div>
-                      {errors.libraryId ? (
+                      {errors.libraryId && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.libraryId.message}
                         </p>
-                      ) : undefined}
+                      )}
                     </div>
                   </div>
                   {selectedLibraryType && selectedLibraryType === 'movie' && (
@@ -749,11 +773,11 @@ const AddModal = (props: AddModal) => {
                               )
                             })()}
                           </div>
-                          {errors.dataType ? (
+                          {errors.dataType && (
                             <p className="mt-1 text-xs text-red-400">
                               {errors.dataType.message}
                             </p>
-                          ) : undefined}
+                          )}
                         </div>
                       </div>
 
@@ -823,11 +847,11 @@ const AddModal = (props: AddModal) => {
                                 ]
                         }
                       />
-                      {errors.sonarrSettingsId ? (
+                      {errors.sonarrSettingsId && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.sonarrSettingsId.message}
                         </p>
-                      ) : undefined}
+                      )}
                     </>
                   )}
 
@@ -851,11 +875,11 @@ const AddModal = (props: AddModal) => {
                             {...register('deleteAfterDays')}
                           />
                         </div>
-                        {errors.deleteAfterDays ? (
+                        {errors.deleteAfterDays && (
                           <p className="mt-1 text-xs text-red-400">
                             {errors.deleteAfterDays.message}
                           </p>
-                        ) : undefined}
+                        )}
                       </div>
                     </div>
                   )}
@@ -1046,29 +1070,31 @@ const AddModal = (props: AddModal) => {
                             {...register('manualCollectionName')}
                           />
                         </div>
-                        {errors.manualCollectionName ? (
+                        {errors.manualCollectionName && (
                           <p className="mt-1 text-xs text-red-400">
                             {errors.manualCollectionName.message}
                           </p>
-                        ) : undefined}
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex flex-col p-2 md:p-4">
                     <div className="flex flex-row items-center justify-between py-2 md:py-4">
-                      <label htmlFor="notifications" className="text-label">
+                      <label
+                        htmlFor="notifications"
+                        className="text-label flex flex-wrap gap-1"
+                      >
                         Notifications
                         <span className="ml-1.5 rounded-full bg-amber-600 px-3 text-white">
                           BETA
                         </span>
                       </label>
                       <div className="flex justify-end px-2 py-2">
-                        <div className="form-input-field w-20">
+                        <div className="form-input-field w-32">
                           <Button
                             buttonType="default"
                             type="button"
-                            name="notifications"
                             className="w-full !bg-amber-600 hover:!bg-amber-500"
                             onClick={() => {
                               setConfigureNotificationModal(
@@ -1093,35 +1119,38 @@ const AddModal = (props: AddModal) => {
                           measured in months (0 = forever)
                         </p>
                       </label>
-                      <div className="flex justify-end px-2 py-2">
-                        <div className="form-input-field w-20">
+                      <div className="form-input">
+                        <div className="form-input-field flex w-32 flex-col">
                           <input
                             type="number"
                             id="collection_logs_months"
                             min={0}
                             {...register('keepLogsForMonths')}
                           />
+                          {errors.keepLogsForMonths && (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.keepLogsForMonths.message}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      {errors.keepLogsForMonths ? (
-                        <p className="mt-1 text-end text-xs text-red-400">
-                          {errors.keepLogsForMonths.message}
-                        </p>
-                      ) : undefined}
                     </div>
 
                     <div className="flex flex-row items-center justify-between py-2 md:py-4">
-                      <label htmlFor="sort_title" className="text-label text-left">
+                      <label
+                        htmlFor="sort_title"
+                        className="text-label text-left"
+                      >
                         Sort title
                         <p className="text-xs font-normal">
-                          Custom sort title for the collection in Plex (optional)
+                          Custom sort title for the collection in Plex
+                          (optional)
                         </p>
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-full">
                           <input
                             type="text"
-                            name="sort_title"
                             id="sort_title"
                             placeholder="e.g., 001 My Collection"
                             {...register('sortTitle')}
@@ -1143,8 +1172,8 @@ const AddModal = (props: AddModal) => {
                             counted as watched
                           </p>
                         </label>
-                        <div className="flex justify-end px-2 py-2">
-                          <div className="form-input-field w-20">
+                        <div className="form-input">
+                          <div className="form-input-field flex w-32 flex-col">
                             <input
                               type="number"
                               min={0}
@@ -1152,15 +1181,49 @@ const AddModal = (props: AddModal) => {
                               id="tautulli_watched_percent_override"
                               {...register('tautulliWatchedPercentOverride')}
                             />
+                            {errors.tautulliWatchedPercentOverride && (
+                              <p className="mt-1 text-xs text-red-400">
+                                {errors.tautulliWatchedPercentOverride.message}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        {errors.tautulliWatchedPercentOverride ? (
-                          <p className="mt-1 text-end text-xs text-red-400">
-                            {errors.tautulliWatchedPercentOverride.message}
-                          </p>
-                        ) : undefined}
                       </div>
                     )}
+
+                    <div className="flex flex-row items-center justify-between py-2 md:py-4">
+                      <label
+                        htmlFor="rule_handler_cron_schedule"
+                        className="text-label text-left"
+                      >
+                        Rule handler schedule override
+                        <p className="text-xs font-normal">
+                          Supports all standard{' '}
+                          <a
+                            href="http://crontab.org/"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            cron
+                          </a>{' '}
+                          patterns
+                        </p>
+                      </label>
+                      <div className="form-input">
+                        <div className="form-input-field flex w-32 flex-col">
+                          <input
+                            type="text"
+                            id="rule_handler_cron_schedule"
+                            {...register('ruleHandlerCronSchedule')}
+                          />
+                          {errors.ruleHandlerCronSchedule && (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.ruleHandlerCronSchedule.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1182,7 +1245,7 @@ const AddModal = (props: AddModal) => {
                     </div>
                     <div className="ml-auto">
                       <button
-                        className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-zinc-900 shadow-md hover:bg-amber-800 md:h-10"
+                        className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-sm text-zinc-900 shadow-md hover:bg-amber-800 md:h-10 md:text-base"
                         onClick={toggleCommunityRuleModal}
                         type="button"
                       >
@@ -1233,7 +1296,7 @@ const AddModal = (props: AddModal) => {
                 )}
                 {yamlImporterModal && (
                   <YamlImporterModal
-                    yaml={yaml.current ? yaml.current : undefined}
+                    yaml={yaml}
                     onImport={(yaml: string) => {
                       importRulesFromYaml(yaml)
                       setYamlImporterModal(false)
@@ -1244,7 +1307,7 @@ const AddModal = (props: AddModal) => {
                   />
                 )}
 
-                {configureNotificionModal ? (
+                {configureNotificionModal && (
                   <ConfigureNotificationModal
                     onSuccess={(selection) => {
                       setConfiguredNotificationConfigurations(selection)
@@ -1255,10 +1318,10 @@ const AddModal = (props: AddModal) => {
                     }}
                     selectedAgents={configuredNotificationConfigurations}
                   />
-                ) : undefined}
+                )}
 
                 <RuleCreator
-                  key={ruleCreatorVersion.current}
+                  key={ruleCreatorVersion}
                   mediaType={
                     selectedLibraryType != null
                       ? selectedLibraryType === 'movie'
@@ -1276,7 +1339,7 @@ const AddModal = (props: AddModal) => {
               </div>
             </div>
           </div>
-          <div className="mt-5 flex h-full w-full">
+          <div className="mt-5 hidden h-full w-full md:flex">
             <div className="m-auto flex xl:m-0">
               <button
                 className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
@@ -1288,7 +1351,6 @@ const AddModal = (props: AddModal) => {
                   Save
                 </p>
               </button>
-
               <button
                 className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
                 onClick={cancel}
@@ -1301,6 +1363,53 @@ const AddModal = (props: AddModal) => {
                 </p>
               </button>
             </div>
+          </div>
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
+            <div className="flex justify-center gap-3">
+              <button
+                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500 disabled:opacity-60"
+                type="submit"
+                disabled={isCreatePending || isUpdatePending}
+              >
+                <SaveIcon className="h-5 w-5 text-zinc-200" />
+                <span className="ml-2 text-zinc-100">Save</span>
+              </button>
+
+              <button
+                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800 disabled:opacity-60"
+                type="button"
+                onClick={cancel}
+                disabled={isCreatePending || isUpdatePending}
+              >
+                <BanIcon className="h-5 w-5 text-zinc-200" />
+                <span className="ml-2 text-zinc-100">Cancel</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="fixed bottom-6 right-6 z-40 hidden md:block">
+            <button
+              type="button"
+              onClick={() => {
+                if (atBottom) {
+                  // Scroll UP
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                } else {
+                  // Scroll DOWN
+                  window.scrollTo({
+                    top: document.body.scrollHeight,
+                    behavior: 'smooth',
+                  })
+                }
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-600 shadow-lg transition-colors hover:bg-amber-500 focus:outline-none"
+            >
+              {atBottom ? (
+                <ChevronUpIcon className="h-5 w-5 text-zinc-900" />
+              ) : (
+                <ChevronDownIcon className="h-5 w-5 text-zinc-900" />
+              )}
+            </button>
           </div>
         </form>
       </div>

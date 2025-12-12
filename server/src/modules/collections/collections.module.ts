@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActionsModule } from '../actions/actions.module';
 import { JellyseerrApiModule } from '../api/jellyseerr-api/jellyseerr-api.module';
@@ -11,6 +11,7 @@ import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionLogCleanerService } from '../collections/tasks/collection-log-cleaner.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
+import { RulesModule } from '../rules/rules.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
@@ -36,6 +37,7 @@ import { CollectionMedia } from './entities/collection_media.entities';
     ServarrApiModule,
     TasksModule,
     ActionsModule,
+    forwardRef(() => RulesModule),
   ],
   providers: [
     CollectionsService,

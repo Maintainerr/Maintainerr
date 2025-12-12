@@ -1,6 +1,11 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
-import { ILibrary } from '../contexts/libraries-context'
 import GetApiHandler from '../utils/ApiHandler'
+
+export interface ILibrary {
+  key: string
+  type: 'movie' | 'show'
+  title: string
+}
 
 type UsePlexLibrariesQueryKey = ['plex', 'libraries']
 

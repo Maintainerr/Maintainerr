@@ -9,6 +9,7 @@ import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.servi
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
 import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
 import { SettingsService } from '../settings/settings.service';
+import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
@@ -27,6 +28,7 @@ describe('CollectionWorkerService', () => {
   let overseerrApi: Mocked<OverseerrApiService>;
   let jellyseerrApi: Mocked<JellyseerrApiService>;
   let collectionHandler: Mocked<CollectionHandler>;
+  let executionLock: Mocked<ExecutionLockService>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
@@ -45,6 +47,9 @@ describe('CollectionWorkerService', () => {
     overseerrApi = unitRef.get(OverseerrApiService);
     jellyseerrApi = unitRef.get(JellyseerrApiService);
     collectionHandler = unitRef.get(CollectionHandler);
+    executionLock = unitRef.get(ExecutionLockService);
+
+    executionLock.acquire.mockResolvedValue(jest.fn());
   });
 
   it('should abort if another instance is running', async () => {
@@ -52,7 +57,7 @@ describe('CollectionWorkerService', () => {
 
     await collectionWorkerService.execute();
 
-    expect(taskService.waitUntilTaskIsFinished).not.toHaveBeenCalled();
+    expect(executionLock.acquire).not.toHaveBeenCalled();
   });
 
   it('should abort if testing connection fails', async () => {
@@ -60,7 +65,7 @@ describe('CollectionWorkerService', () => {
 
     await collectionWorkerService.execute();
 
-    expect(taskService.waitUntilTaskIsFinished).toHaveBeenCalled();
+    expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionRepository.find).not.toHaveBeenCalled();
   });
 
@@ -76,7 +81,7 @@ describe('CollectionWorkerService', () => {
 
     await collectionWorkerService.execute();
 
-    expect(taskService.waitUntilTaskIsFinished).toHaveBeenCalled();
+    expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionRepository.find).toHaveBeenCalled();
     expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
   });
@@ -97,6 +102,7 @@ describe('CollectionWorkerService', () => {
 
     await collectionWorkerService.execute();
 
+    expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(overseerrApi.api.post).toHaveBeenCalled();
     expect(jellyseerrApi.api.post).toHaveBeenCalled();

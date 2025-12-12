@@ -1,7 +1,20 @@
-import { PencilIcon, TrashIcon } from '@heroicons/react/solid'
+import {
+  PencilIcon,
+  PlayIcon,
+  StopIcon,
+  TrashIcon,
+} from '@heroicons/react/solid'
 import { EPlexDataType } from '@maintainerr/contracts'
+import { isAxiosError } from 'axios'
+import clsx from 'clsx'
 import { useState } from 'react'
+import { toast } from 'react-toastify'
 import { usePlexLibraries } from '../../../api/plex'
+import {
+  useExecuteRuleGroup,
+  useStopRuleGroupExecution,
+} from '../../../api/rules'
+import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { ICollection } from '../../Collection'
 import DeleteButton from '../../Common/DeleteButton'
@@ -21,6 +34,7 @@ export interface IRuleGroup {
   dataType: EPlexDataType
   notifications?: AgentConfiguration[]
   collection?: ICollection
+  ruleHandlerCronSchedule?: string | null
 }
 
 const RuleGroup = (props: {
@@ -30,6 +44,26 @@ const RuleGroup = (props: {
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
   const { data: plexLibraries } = usePlexLibraries()
+  const { queueStatus } = useTaskStatusContext()
+  const { mutate: executeRules } = useExecuteRuleGroup({
+    onError(error) {
+      if (isAxiosError(error) && error.response?.data?.message) {
+        toast.error(
+          error.response?.data?.message || 'Failed to start rule execution.',
+        )
+      } else {
+        toast.error('Failed to start rule execution.')
+      }
+    },
+  })
+  const { mutate: stopExecution } = useStopRuleGroupExecution({
+    onSuccess() {
+      toast.success('Requested to stop rule execution.')
+    },
+    onError() {
+      toast.error('Failed to request stop of rule execution.')
+    },
+  })
 
   const onRemove = () => {
     setShowSureDelete(true)
@@ -50,22 +84,57 @@ const RuleGroup = (props: {
       })
   }
 
+  const isQueued = queueStatus?.queue.includes(props.group.id)
+  const ruleExecutingOrQueued =
+    queueStatus?.executingRuleGroupId === props.group.id || isQueued
+
   return (
     <>
       <div className="inset-0 z-0 h-fit p-3">
-        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white sm:text-lg">
-          <div>{props.group.name}</div>
+        <div className="flex justify-between gap-4">
+          <div className="truncate text-base font-bold text-white sm:text-lg">
+            {props.group.name}
+          </div>
+          {props.group.isActive && (
+            <button
+              type="button"
+              className="text-zinc-400 hover:text-zinc-300"
+              onClick={() =>
+                ruleExecutingOrQueued
+                  ? stopExecution(props.group.id)
+                  : executeRules(props.group.id)
+              }
+              title={
+                ruleExecutingOrQueued
+                  ? 'Request stop execution'
+                  : 'Start execution'
+              }
+              aria-label={
+                ruleExecutingOrQueued
+                  ? 'Request stop execution'
+                  : 'Start execution'
+              }
+            >
+              {!ruleExecutingOrQueued ? (
+                <PlayIcon className="m-auto h-7" />
+              ) : (
+                <StopIcon
+                  className={clsx('m-auto h-7', {
+                    'animate-pulse': !isQueued,
+                  })}
+                />
+              )}
+            </button>
+          )}
         </div>
-        <div className="h-12 max-h-12 overflow-y-hidden whitespace-normal text-base text-zinc-400 hover:overflow-y-scroll">
+        <div className="h-12 max-h-12 overflow-y-hidden text-zinc-400 hover:overflow-y-scroll">
           {props.group.description}
         </div>
       </div>
       <div className="inset-0 z-0 h-fit p-3">
         <div className="mb-5 mt-5 grid grid-cols-3 gap-3">
           <div>
-            <div className="align-center flex justify-center font-bold">
-              Status
-            </div>
+            <div className="flex justify-center font-bold">Status</div>
             <div>
               {props.group.isActive ? (
                 <span className="flex justify-center text-green-500">

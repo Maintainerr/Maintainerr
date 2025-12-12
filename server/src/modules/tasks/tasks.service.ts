@@ -105,6 +105,10 @@ export class TasksService {
     return resp.running;
   }
 
+  public async getTask(name: string) {
+    return this.taskRunningRepo.findOne({ where: { name: name } });
+  }
+
   public async clearRunning(name: string) {
     const resp = await this.taskRunningRepo.findOne({ where: { name: name } });
     if (resp) {
@@ -120,7 +124,7 @@ export class TasksService {
 
   public async getRunningSince(name: string) {
     const resp = await this.taskRunningRepo.findOne({ where: { name } });
-    return resp.runningSince;
+    return resp?.runningSince ?? null;
   }
 
   public async waitUntilTaskIsFinished(

@@ -7,7 +7,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 interface RuleGroupProgressPayload {
   name: string;
-  number: number;
   totalEvaluations: number;
 }
 
@@ -17,23 +16,10 @@ export class RuleExecutorProgressService {
 
   constructor(private readonly eventEmitter: EventEmitter2) {}
 
-  initialize(totalRuleGroups: number, totalEvaluations: number): void {
-    this.progressedEvent = new RuleHandlerProgressedEventDto();
-    this.progressedEvent.totalRuleGroups = totalRuleGroups;
-    this.progressedEvent.totalEvaluations = totalEvaluations;
+  initialize(payload: RuleGroupProgressPayload): void {
+    this.progressedEvent = new RuleHandlerProgressedEventDto(payload.name);
+    this.progressedEvent.totalEvaluations = payload.totalEvaluations;
     this.progressedEvent.processedEvaluations = 0;
-    this.progressedEvent.processingRuleGroup = undefined;
-    this.emit();
-  }
-
-  startRuleGroup(payload: RuleGroupProgressPayload): void {
-    const event = this.ensureEvent();
-    event.processingRuleGroup = {
-      name: payload.name,
-      number: payload.number,
-      processedEvaluations: 0,
-      totalEvaluations: payload.totalEvaluations,
-    };
     this.emit();
   }
 
@@ -44,11 +30,6 @@ export class RuleExecutorProgressService {
 
     const event = this.ensureEvent();
     event.processedEvaluations += processedCount;
-
-    if (event.processingRuleGroup) {
-      event.processingRuleGroup.processedEvaluations += processedCount;
-    }
-
     this.emit();
   }
 
@@ -59,10 +40,7 @@ export class RuleExecutorProgressService {
   private emit(): void {
     const event = this.ensureEvent();
     event.time = new Date();
-    this.eventEmitter.emit(
-      MaintainerrEvent.CollectionHandler_Progressed,
-      event,
-    );
+    this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Progressed, event);
   }
 
   private ensureEvent(): RuleHandlerProgressedEventDto {

@@ -790,7 +790,7 @@ export class RuleConstants {
           humanName: 'Has series finale episode',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SEASONS],
+          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
         },
         {
           id: 18,
@@ -851,6 +851,13 @@ export class RuleConstants {
           name: 'fileAudioLanguages',
           humanName: 'Episode file audio languages',
           showType: [EPlexDataType.EPISODES],
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 27,
+          name: 'seriesType',
+          humanName: 'Series type',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },

@@ -1,6 +1,7 @@
 **/node_modules/
 .git
 data/
+docker/nginx-reverse-subfolder/
 server/dist
 ui/.next
 Dockerfile
