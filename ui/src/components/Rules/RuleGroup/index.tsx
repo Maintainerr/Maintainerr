@@ -5,6 +5,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 import { EPlexDataType } from '@maintainerr/contracts'
+import { isAxiosError } from 'axios'
 import clsx from 'clsx'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
@@ -44,10 +45,23 @@ const RuleGroup = (props: {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
   const { data: plexLibraries } = usePlexLibraries()
   const { queueStatus } = useTaskStatusContext()
-  const { mutate: executeRules } = useExecuteRuleGroup()
+  const { mutate: executeRules } = useExecuteRuleGroup({
+    onError(error) {
+      if (isAxiosError(error) && error.response?.data?.message) {
+        toast.error(
+          error.response?.data?.message || 'Failed to start rule execution.',
+        )
+      } else {
+        toast.error('Failed to start rule execution.')
+      }
+    },
+  })
   const { mutate: stopExecution } = useStopRuleGroupExecution({
     onSuccess() {
       toast.success('Requested to stop rule execution.')
+    },
+    onError() {
+      toast.error('Failed to request stop of rule execution.')
     },
   })
 
@@ -90,6 +104,11 @@ const RuleGroup = (props: {
                 : executeRules(props.group.id)
             }
             title={
+              ruleExecutingOrQueued
+                ? 'Request stop execution'
+                : 'Start execution'
+            }
+            aria-label={
               ruleExecutingOrQueued
                 ? 'Request stop execution'
                 : 'Start execution'

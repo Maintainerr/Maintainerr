@@ -29,9 +29,6 @@ export const TaskStatusProvider = (props: any) => {
     useState<TaskStatusDto>()
   const [collectionHandlerRunningState, setCollectionHandlerRunningState] =
     useState<TaskStatusDto>()
-  const [queueStatusState, setQueueStatusState] =
-    useState<RuleExecuteStatusDto>()
-
   const { data: ruleHandlerStatus } = useRuleHandlerStatus()
 
   const updateRuleExecutorRunning = (value: boolean, date: Date) => {
@@ -47,11 +44,8 @@ export const TaskStatusProvider = (props: any) => {
     })
   }
 
-  useEvent<RuleHandlerQueueStatusUpdatedEventDto>(
+  const queueStatusState = useEvent<RuleHandlerQueueStatusUpdatedEventDto>(
     MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-    (event) => {
-      setQueueStatusState(event.data)
-    },
   )
 
   useEvent<RuleHandlerStartedEventDto>(
@@ -129,7 +123,7 @@ export const TaskStatusProvider = (props: any) => {
   }, [collectionHandlerRunningState, collectionHandlerStatusQuery.data])
 
   const queueStatus = useMemo(() => {
-    if (queueStatusState) return queueStatusState
+    if (queueStatusState?.data) return queueStatusState.data
     return ruleHandlerStatus
   }, [queueStatusState, ruleHandlerStatus])
 
