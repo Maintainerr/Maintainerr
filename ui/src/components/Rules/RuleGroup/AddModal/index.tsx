@@ -11,8 +11,8 @@ import {
 } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { isValidCron } from 'cron-validator'
-import { useEffect, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
@@ -169,61 +169,38 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   name: editData?.name ?? '',
   description: editData?.description ?? '',
   libraryId: editData?.libraryId ? editData.libraryId.toString() : '',
-  dataType: (editData as any)?.dataType
-    ? (editData as any).dataType.toString()
-    : '',
-  arrAction: (editData as any)?.collection?.arrAction ?? undefined,
-  deleteAfterDays: (editData as any)?.collection?.deleteAfterDays ?? undefined,
-  keepLogsForMonths: (editData as any)?.collection?.keepLogsForMonths ?? 6,
+  dataType: editData?.dataType ? editData.dataType.toString() : '',
+  arrAction: editData?.collection?.arrAction ?? undefined,
+  deleteAfterDays: editData?.collection?.deleteAfterDays ?? undefined,
+  keepLogsForMonths: editData?.collection?.keepLogsForMonths ?? 6,
   tautulliWatchedPercentOverride:
-    (editData as any)?.collection?.tautulliWatchedPercentOverride ?? undefined,
-  showRecommended: (editData as any)?.collection?.visibleOnRecommended ?? true,
-  showHome: (editData as any)?.collection?.visibleOnHome ?? true,
-  listExclusions: (editData as any)?.collection?.listExclusions ?? true,
-  forceOverseerr: (editData as any)?.collection?.forceOverseerr ?? false,
-  manualCollection: (editData as any)?.collection?.manualCollection ?? false,
+    editData?.collection?.tautulliWatchedPercentOverride ?? undefined,
+  showRecommended: editData?.collection?.visibleOnRecommended ?? true,
+  showHome: editData?.collection?.visibleOnHome ?? true,
+  listExclusions: editData?.collection?.listExclusions ?? true,
+  forceOverseerr: editData?.collection?.forceOverseerr ?? false,
+  manualCollection: editData?.collection?.manualCollection ?? false,
   manualCollectionName:
-    (editData as any)?.collection?.manualCollectionName ??
+    editData?.collection?.manualCollectionName ??
     DEFAULT_MANUAL_COLLECTION_NAME,
-  sortTitle: (editData as any)?.collection?.sortTitle ?? '',
+  sortTitle: editData?.collection?.sortTitle ?? '',
   active: editData?.isActive ?? true,
   useRules: editData?.useRules ?? true,
   radarrSettingsId: editData
-    ? ((editData as any).collection?.radarrSettingsId ?? null)
+    ? (editData.collection?.radarrSettingsId ?? null)
     : undefined,
   sonarrSettingsId: editData
-    ? ((editData as any).collection?.sonarrSettingsId ?? null)
+    ? (editData.collection?.sonarrSettingsId ?? null)
     : undefined,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
 const AddModal = (props: AddModal) => {
   const navigate = useNavigate()
-  const { data: constants, isLoading: constantsLoading } = useRuleConstants({
-    retry: false,
-  })
-
-  const { data: plexLibraries = [], isLoading: plexLibrariesLoading } =
-    usePlexLibraries({
-      retry: false,
-    })
-
   const {
-    mutateAsync: createRuleGroup,
-    isPending: isCreatePending,
-    isError: isCreateError,
-  } = useCreateRuleGroup()
-
-  const {
-    mutateAsync: updateRuleGroup,
-    isPending: isUpdatePending,
-    isError: isUpdateError,
-  } = useUpdateRuleGroup()
-
-  const {
-    control,
     register,
     handleSubmit,
+    watch,
     reset,
     setValue,
     getValues,
@@ -233,28 +210,32 @@ const AddModal = (props: AddModal) => {
     defaultValues: buildFormDefaults(props.editData),
   })
 
-  const isSaving = isCreatePending || isUpdatePending
+  const {
+    mutateAsync: createRuleGroup,
+    isError: isCreateError,
+    isPending: isCreatePending,
+  } = useCreateRuleGroup()
+  const {
+    mutateAsync: updateRuleGroup,
+    isError: isUpdateError,
+    isPending: isUpdatePending,
+  } = useUpdateRuleGroup()
 
-  const selectedLibraryId = useWatch({ control, name: 'libraryId' }) ?? ''
-  const selectedType = useWatch({ control, name: 'dataType' }) ?? ''
+  const selectedLibraryId = watch('libraryId') ?? ''
+  const selectedType = watch('dataType') ?? ''
   const selectedLibraryType: undefined | 'movie' | 'show' = selectedType
     ? +selectedType === EPlexDataType.MOVIES
       ? 'movie'
       : 'show'
     : undefined
-  const manualCollectionEnabled = useWatch({
-    control,
-    name: 'manualCollection',
-  })
-  const useRulesEnabled = useWatch({ control, name: 'useRules' })
-  const arrActionValue = useWatch({ control, name: 'arrAction' }) as
-    | number
-    | undefined
-  const radarrSettingsId = useWatch({ control, name: 'radarrSettingsId' }) as
+  const manualCollectionEnabled = watch('manualCollection')
+  const useRulesEnabled = watch('useRules')
+  const arrActionValue = watch('arrAction') as number | undefined
+  const radarrSettingsId = watch('radarrSettingsId') as
     | number
     | null
     | undefined
-  const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
+  const sonarrSettingsId = watch('sonarrSettingsId') as
     | number
     | null
     | undefined
@@ -263,7 +244,7 @@ const AddModal = (props: AddModal) => {
   const [configureNotificionModal, setConfigureNotificationModal] =
     useState(false)
 
-  const [yaml, setYaml] = useState<string | undefined>(undefined)
+  const yaml = useRef<string>(undefined)
   const [
     configuredNotificationConfigurations,
     setConfiguredNotificationConfigurations,
@@ -276,7 +257,12 @@ const AddModal = (props: AddModal) => {
       : [],
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
-  const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
+  const ruleCreatorVersion = useRef<number>(1)
+
+  const { data: plexLibraries, isLoading: plexLibrariesLoading } =
+    usePlexLibraries()
+
+  const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
   useEffect(() => {
     register('arrAction')
@@ -292,49 +278,58 @@ const AddModal = (props: AddModal) => {
         ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
         : [],
     )
-    setRuleCreatorVersion((prev) => prev + 1)
+    ruleCreatorVersion.current += 1
   }, [props.editData, reset])
 
-  const filterRulesForArrSelection = (
-    inputRules: IRule[],
-    radarrId: number | null | undefined,
-    sonarrId: number | null | undefined,
-  ): IRule[] => {
+  // Filter out Radarr/Sonarr rules when servers are deselected
+  useEffect(() => {
+    // Helper function to check if an app should be filtered
     const shouldFilterApp = (
       appId: number,
-      selectedRadarrId: number | null | undefined,
-      selectedSonarrId: number | null | undefined,
+      radarrId: number | null | undefined,
+      sonarrId: number | null | undefined,
     ): boolean => {
       if (
         appId === Application.RADARR &&
-        (selectedRadarrId === undefined || selectedRadarrId === null)
+        (radarrId === undefined || radarrId === null)
       ) {
         return true
       }
       if (
         appId === Application.SONARR &&
-        (selectedSonarrId === undefined || selectedSonarrId === null)
+        (sonarrId === undefined || sonarrId === null)
       ) {
         return true
       }
       return false
     }
 
-    return inputRules.filter((rule) => {
-      if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) {
-        return false
-      }
+    setRules((prevRules) => {
+      const filteredRules = prevRules.filter((rule) => {
+        // Check first value
+        if (
+          shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)
+        ) {
+          return false
+        }
+        // Check second value if it exists
+        if (
+          rule.lastVal &&
+          shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)
+        ) {
+          return false
+        }
+        return true
+      })
 
-      if (
-        rule.lastVal &&
-        shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)
-      ) {
-        return false
+      // Only update if rules actually changed
+      if (filteredRules.length !== prevRules.length) {
+        ruleCreatorVersion.current += 1
+        return filteredRules
       }
-
-      return true
+      return prevRules
     })
-  }
+  }, [radarrSettingsId, sonarrSettingsId])
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
@@ -342,6 +337,10 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.OVERSEERR) ?? false
 
   function updateLibraryId(value: string) {
+    if (!plexLibraries) {
+      throw new Error('Plex libraries not loaded')
+    }
+
     const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
 
     if (lib) {
@@ -356,21 +355,6 @@ const AddModal = (props: AddModal) => {
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
     updateArrOption(0)
-
-    setRules((prevRules) => {
-      const filteredRules = filterRulesForArrSelection(
-        prevRules,
-        undefined,
-        undefined,
-      )
-
-      if (filteredRules.length !== prevRules.length) {
-        setRuleCreatorVersion((prev) => prev + 1)
-        return filteredRules
-      }
-
-      return prevRules
-    })
   }
 
   function updateArrOption(value: number | undefined) {
@@ -390,9 +374,6 @@ const AddModal = (props: AddModal) => {
   ) => {
     updateArrOption(arrAction)
 
-    const nextRadarrId = type === 'Radarr' ? settingId : undefined
-    const nextSonarrId = type === 'Sonarr' ? settingId : undefined
-
     if (type === 'Radarr') {
       setValue('sonarrSettingsId', undefined)
       setValue('radarrSettingsId', settingId)
@@ -400,21 +381,6 @@ const AddModal = (props: AddModal) => {
       setValue('radarrSettingsId', undefined)
       setValue('sonarrSettingsId', settingId)
     }
-
-    setRules((prevRules) => {
-      const filteredRules = filterRulesForArrSelection(
-        prevRules,
-        nextRadarrId,
-        nextSonarrId,
-      )
-
-      if (filteredRules.length !== prevRules.length) {
-        setRuleCreatorVersion((prev) => prev + 1)
-        return filteredRules
-      }
-
-      return prevRules
-    })
   }
 
   function updateRules(rules: IRule[]) {
@@ -436,7 +402,7 @@ const AddModal = (props: AddModal) => {
     })
 
     if (response.code === 1) {
-      setYaml(response.result)
+      yaml.current = response.result
 
       if (!yamlImporterModal) {
         setYamlImporterModal(true)
@@ -447,7 +413,7 @@ const AddModal = (props: AddModal) => {
   }
 
   const toggleYamlImporter = () => {
-    setYaml(undefined)
+    yaml.current = undefined
     if (!yamlImporterModal) {
       setYamlImporterModal(true)
     } else {
@@ -476,7 +442,7 @@ const AddModal = (props: AddModal) => {
 
   const handleLoadRules = (rules: IRule[]) => {
     updateRules(rules)
-    setRuleCreatorVersion((prev) => prev + 1)
+    ruleCreatorVersion.current = ruleCreatorVersion.current + 1
     setShowCommunityModal(false)
   }
 
@@ -612,6 +578,7 @@ const AddModal = (props: AddModal) => {
         )}
         <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            {/* Start Left side of top section */}
             <div className="flex flex-col items-center">
               <h2 className="mb-2 flex justify-center font-semibold text-zinc-100">
                 General
@@ -831,7 +798,8 @@ const AddModal = (props: AddModal) => {
                                     name: 'Do nothing',
                                   },
                                 ]
-                              : [
+                              : // episodes
+                                [
                                   {
                                     id: 0,
                                     name: 'Unmonitor and delete episode',
@@ -886,12 +854,14 @@ const AddModal = (props: AddModal) => {
                 </div>
               </div>
             </div>
+            {/* Start Right side of top section */}
             <div className="flex flex-col items-center">
               <h2 className="mb-2 flex justify-center font-semibold text-zinc-100">
                 Options
               </h2>
               <div className="flex w-full flex-col rounded-lg bg-zinc-800 px-3 py-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 md:gap-3">
+                  {/* Checkbox Options */}
                   <div className="flex flex-col p-2 md:my-2 md:border-r-2 md:border-dashed md:border-zinc-700 md:p-4">
                     <div className="flex flex-row items-center justify-between py-4">
                       <label htmlFor="is_active" className="text-label">
@@ -1079,6 +1049,7 @@ const AddModal = (props: AddModal) => {
                     </div>
                   </div>
 
+                  {/* Form Input Options */}
                   <div className="flex flex-col p-2 md:p-4">
                     <div className="flex flex-row items-center justify-between py-2 md:py-4">
                       <label
@@ -1095,6 +1066,7 @@ const AddModal = (props: AddModal) => {
                           <Button
                             buttonType="default"
                             type="button"
+                            name="notifications"
                             className="w-full !bg-amber-600 hover:!bg-amber-500"
                             onClick={() => {
                               setConfigureNotificationModal(
@@ -1296,7 +1268,7 @@ const AddModal = (props: AddModal) => {
                 )}
                 {yamlImporterModal && (
                   <YamlImporterModal
-                    yaml={yaml}
+                    yaml={yaml.current ? yaml.current : undefined}
                     onImport={(yaml: string) => {
                       importRulesFromYaml(yaml)
                       setYamlImporterModal(false)
@@ -1321,7 +1293,7 @@ const AddModal = (props: AddModal) => {
                 )}
 
                 <RuleCreator
-                  key={ruleCreatorVersion}
+                  key={ruleCreatorVersion.current}
                   mediaType={
                     selectedLibraryType != null
                       ? selectedLibraryType === 'movie'
@@ -1344,7 +1316,7 @@ const AddModal = (props: AddModal) => {
               <button
                 className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
                 type="submit"
-                disabled={isSaving}
+                disabled={isCreatePending || isUpdatePending}
               >
                 {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
@@ -1355,7 +1327,7 @@ const AddModal = (props: AddModal) => {
                 className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
                 onClick={cancel}
                 type="button"
-                disabled={isSaving}
+                disabled={isCreatePending || isUpdatePending}
               >
                 {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
                 <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
