@@ -95,35 +95,37 @@ const RuleGroup = (props: {
           <div className="truncate text-base font-bold text-white sm:text-lg">
             {props.group.name}
           </div>
-          <button
-            type="button"
-            className="text-zinc-400 hover:text-zinc-300"
-            onClick={() =>
-              ruleExecutingOrQueued
-                ? stopExecution(props.group.id)
-                : executeRules(props.group.id)
-            }
-            title={
-              ruleExecutingOrQueued
-                ? 'Request stop execution'
-                : 'Start execution'
-            }
-            aria-label={
-              ruleExecutingOrQueued
-                ? 'Request stop execution'
-                : 'Start execution'
-            }
-          >
-            {!ruleExecutingOrQueued ? (
-              <PlayIcon className="m-auto h-7" />
-            ) : (
-              <StopIcon
-                className={clsx('m-auto h-7', {
-                  'animate-pulse': !isQueued,
-                })}
-              />
-            )}
-          </button>
+          {props.group.isActive && (
+            <button
+              type="button"
+              className="text-zinc-400 hover:text-zinc-300"
+              onClick={() =>
+                ruleExecutingOrQueued
+                  ? stopExecution(props.group.id)
+                  : executeRules(props.group.id)
+              }
+              title={
+                ruleExecutingOrQueued
+                  ? 'Request stop execution'
+                  : 'Start execution'
+              }
+              aria-label={
+                ruleExecutingOrQueued
+                  ? 'Request stop execution'
+                  : 'Start execution'
+              }
+            >
+              {!ruleExecutingOrQueued ? (
+                <PlayIcon className="m-auto h-7" />
+              ) : (
+                <StopIcon
+                  className={clsx('m-auto h-7', {
+                    'animate-pulse': !isQueued,
+                  })}
+                />
+              )}
+            </button>
+          )}
         </div>
         <div className="h-12 max-h-12 overflow-y-hidden text-zinc-400 hover:overflow-y-scroll">
           {props.group.description}
