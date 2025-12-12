@@ -1116,7 +1116,6 @@ const AddModal = (props: AddModal) => {
                         Sort title
                         <p className="text-xs font-normal">
                           Custom sort title for the collection in Plex
-                          (optional)
                         </p>
                       </label>
                       <div className="flex justify-end px-2 py-2">
