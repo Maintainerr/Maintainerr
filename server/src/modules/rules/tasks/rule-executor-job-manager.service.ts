@@ -1,4 +1,9 @@
+import {
+  MaintainerrEvent,
+  RuleHandlerQueueStatusUpdatedEventDto,
+} from '@maintainerr/contracts';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExecutionLockService } from '../../tasks/execution-lock.service';
 import { RuleExecutorService } from './rule-executor.service';
@@ -25,6 +30,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   constructor(
     private readonly ruleExecutorService: RuleExecutorService,
     private readonly executionLock: ExecutionLockService,
+    private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RuleExecutorJobManagerService.name);
@@ -43,6 +49,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     this.queue.length = 0;
 
     this.abortController?.abort();
+
+    this.eventEmitter.emit(
+      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+    );
 
     // Wait for the active execution to exit (it will finish quickly once aborted)
     if (this.processQueuePromise != null) {
@@ -94,6 +105,12 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     }
 
     this.queue.push({ ruleGroupId: request.ruleGroupId });
+
+    this.eventEmitter.emit(
+      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+    );
+
     void this.processQueue();
     return true;
   }
@@ -121,6 +138,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     );
     if (indexOfJob !== -1) {
       this.queue.splice(indexOfJob, 1);
+
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+        new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+      );
     }
   }
 
@@ -131,6 +153,10 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       try {
         while (this.queue.length > 0) {
           const next = this.queue.shift();
+          this.eventEmitter.emit(
+            MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+            new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+          );
           if (!next) break;
 
           await this.executeJob(next);
@@ -149,6 +175,10 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     const release = await this.executionLock.acquire('rules-collections-lock');
     this.executingRuleGroupId = request.ruleGroupId;
     this.abortController = new AbortController();
+    this.eventEmitter.emit(
+      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+    );
 
     try {
       await this.ruleExecutorService.executeForRuleGroups(
@@ -162,9 +192,15 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       );
     } finally {
       release();
+
       this.executingRuleGroupId = null;
       this.abortController = undefined;
+
       this.reservedRuleGroupIds.delete(request.ruleGroupId);
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+        new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+      );
     }
   }
 
@@ -172,7 +208,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     return {
       processingQueue: this.processingQueue,
       executingRuleGroupId: this.executingRuleGroupId,
-      queueLength: this.queue.length,
+      queue: this.queue.map((q) => q.ruleGroupId),
     };
   }
 }

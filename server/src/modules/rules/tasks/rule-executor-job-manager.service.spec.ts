@@ -27,6 +27,10 @@ describe('RuleExecutorJobManagerService', () => {
         executeMock ?? (jest.fn().mockResolvedValue(undefined) as ExecuteMock),
     };
 
+    const eventEmitter = {
+      emit: jest.fn(),
+    };
+
     const executionLock = {
       acquire: jest.fn().mockResolvedValue(jest.fn()),
     } as unknown as ExecutionLockService;
@@ -35,10 +39,12 @@ describe('RuleExecutorJobManagerService', () => {
       service: new RuleExecutorJobManagerService(
         ruleExecutorService as any,
         executionLock,
+        eventEmitter as any,
         logger as any,
       ),
       ruleExecutorService,
       executionLock,
+      eventEmitter,
     };
   };
 
@@ -134,14 +140,14 @@ describe('RuleExecutorJobManagerService', () => {
     expect(service.getStatus()).toEqual({
       processingQueue: false,
       executingRuleGroupId: null,
-      queueLength: 0,
+      queue: [],
     });
 
     service.enqueue({ ruleGroupId: 7 });
     await flushMicrotasks();
     const status = service.getStatus();
     expect(status.executingRuleGroupId).toBe(7);
-    expect(status.queueLength).toBeGreaterThanOrEqual(0);
+    expect(status.queue).toHaveLength(0);
 
     // finish the in-flight job to avoid dangling work
     inFlight.resolve();

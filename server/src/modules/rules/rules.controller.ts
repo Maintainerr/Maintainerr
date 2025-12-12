@@ -10,6 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -31,6 +32,7 @@ export class RulesController {
     private readonly ruleExecutorSchedulerService: RuleExecutorSchedulerService,
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
   ) {}
+
   @Get('/constants')
   async getRuleConstants() {
     return await this.rulesService.getRuleConstants();
@@ -62,13 +64,13 @@ export class RulesController {
   }
 
   @Get('/:id/rules')
-  getRules(@Param('id') id: string) {
+  getRules(@Param('id', ParseIntPipe) id: number) {
     return this.rulesService.getRules(id);
   }
 
   @Get('/collection/:id')
-  getRuleGroupByCollectionId(@Param('id') id: string) {
-    return this.rulesService.getRuleGroupByCollectionId(+id);
+  getRuleGroupByCollectionId(@Param('id', ParseIntPipe) id: number) {
+    return this.rulesService.getRuleGroupByCollectionId(id);
   }
 
   @Get()
@@ -88,14 +90,15 @@ export class RulesController {
   }
 
   @Get('/:id')
-  getRuleGroup(@Param('id') id: number): Promise<RulesDto> {
+  getRuleGroup(@Param('id', ParseIntPipe) id: number): Promise<RulesDto> {
     return this.rulesService.getRuleGroup(id);
   }
 
   @Delete('/:id')
-  deleteRuleGroup(@Param('id') id: string) {
-    return this.rulesService.deleteRuleGroup(+id);
+  deleteRuleGroup(@Param('id', ParseIntPipe) id: number) {
+    return this.rulesService.deleteRuleGroup(id);
   }
+
   @Post('/execute')
   async executeRules() {
     if (this.ruleExecutorJobManagerService.isProcessing()) {
@@ -111,7 +114,7 @@ export class RulesController {
   }
 
   @Post('/:id/execute')
-  async executeRule(@Param('id') id: number) {
+  async executeRule(@Param('id', ParseIntPipe) id: number) {
     const ruleGroup = await this.rulesService.getRuleGroup(id);
     if (!ruleGroup) {
       throw new NotFoundException('Rule group not found');
@@ -176,7 +179,10 @@ export class RulesController {
     status: 202,
     description: 'The rules handler has been requested to stop.',
   })
-  async stopExecutingRule(@Param('id') id: number, @Res() res: Response) {
+  async stopExecutingRule(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
     if (!this.ruleExecutorJobManagerService.isRuleGroupProcessingOrQueued(id)) {
       res.status(HttpStatus.OK).send();
       return;
@@ -190,6 +196,7 @@ export class RulesController {
   async setRules(@Body() body: RulesDto): Promise<ReturnStatus> {
     return await this.rulesService.setRules(body);
   }
+
   @Post('/exclusion')
   async setExclusion(@Body() body: ExclusionContextDto): Promise<ReturnStatus> {
     if (body.action === undefined || body.action === ExclusionAction.ADD) {
@@ -198,20 +205,26 @@ export class RulesController {
       return await this.rulesService.removeExclusionWitData(body);
     }
   }
+
   @Delete('/exclusion/:id')
-  async removeExclusion(@Param('id') id: string): Promise<ReturnStatus> {
-    return await this.rulesService.removeExclusion(+id);
+  async removeExclusion(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ReturnStatus> {
+    return await this.rulesService.removeExclusion(id);
   }
+
   @Delete('/exclusions/:plexId')
   async removeAllExclusion(
-    @Param('plexId') plexId: string,
+    @Param('plexId', ParseIntPipe) plexId: number,
   ): Promise<ReturnStatus> {
-    return await this.rulesService.removeAllExclusion(+plexId);
+    return await this.rulesService.removeAllExclusion(plexId);
   }
+
   @Put()
   async updateRule(@Body() body: RulesDto): Promise<ReturnStatus> {
     return await this.rulesService.updateRules(body);
   }
+
   @Post('/community')
   async updateCommunityRules(
     @Body() body: CommunityRule,
@@ -225,6 +238,7 @@ export class RulesController {
       };
     }
   }
+
   @Post('/community/karma')
   async updateCommunityRuleKarma(
     @Body() body: { id: number; karma: number },

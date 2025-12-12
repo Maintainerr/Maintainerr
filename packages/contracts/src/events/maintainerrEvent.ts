@@ -18,4 +18,5 @@ export enum MaintainerrEvent {
   RuleGroup_Updated = 'rulegroup.updated',
   RuleGroup_Deleted = 'rulegroup.deleted',
   Settings_Updated = 'settings.updated',
+  RuleHandlerQueue_StatusUpdated = 'rule_handler_queue.status_updated',
 }

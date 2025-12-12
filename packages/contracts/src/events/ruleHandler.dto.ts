@@ -1,3 +1,4 @@
+import { RuleExecuteStatusDto } from '../rules'
 import { BaseEventDto } from './baseEvent.dto'
 import { MaintainerrEvent } from './maintainerrEvent'
 
@@ -29,5 +30,14 @@ export class RuleHandlerFinishedEventDto extends BaseEventDto {
   constructor(message: string) {
     super(MaintainerrEvent.RuleHandler_Finished)
     this.message = message
+  }
+}
+
+export class RuleHandlerQueueStatusUpdatedEventDto extends BaseEventDto {
+  data: RuleExecuteStatusDto
+
+  constructor(data: RuleExecuteStatusDto) {
+    super(MaintainerrEvent.RuleHandlerQueue_StatusUpdated)
+    this.data = data
   }
 }

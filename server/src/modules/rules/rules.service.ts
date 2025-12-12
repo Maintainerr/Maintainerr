@@ -121,7 +121,7 @@ export class RulesService {
 
     return localConstants;
   }
-  async getRules(ruleGroupId: string): Promise<Rules[]> {
+  async getRules(ruleGroupId: number): Promise<Rules[]> {
     try {
       return await this.connection
         .getRepository(Rules)
@@ -1143,7 +1143,7 @@ export class RulesService {
     const mediaResp = await this.plexApi.getMetadata(mediaId);
     const group = await this.getRuleGroupById(rulegroupId);
     if (group && mediaResp) {
-      group.rules = await this.getRules(group.id.toString());
+      group.rules = await this.getRules(group.id);
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       const result = await ruleComparator.executeRulesWithData(
         group as RulesDto,

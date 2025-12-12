@@ -35,7 +35,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
             {'Automatic collections'}
           </h1>
         </div>
-        <ul className="xs:collection-cards-vertical">
+        <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
           {props.collections?.map((col) => (
             <li
               key={+col.id!}

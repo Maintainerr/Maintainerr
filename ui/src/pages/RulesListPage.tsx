@@ -2,6 +2,7 @@ import { AxiosError } from 'axios'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useStopAllRuleExecution } from '../api/rules'
 import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
 import LibrarySwitcher from '../components/Common/LibrarySwitcher'
@@ -16,6 +17,14 @@ const RulesListPage = () => {
   const [selectedLibrary, setSelectedLibrary] = useState<number>(9999)
   const [isLoading, setIsLoading] = useState(true)
   const { ruleHandlerRunning } = useTaskStatusContext()
+  const { mutate: stopAllExecution } = useStopAllRuleExecution({
+    onSuccess() {
+      toast.success('Requested to stop all rule executions.')
+    },
+    onError() {
+      toast.error('Failed to request stop of all rule executions.')
+    },
+  })
 
   const fetchData = async () => {
     if (selectedLibrary === 9999) return await GetApiHandler('/rules')
@@ -48,8 +57,6 @@ const RulesListPage = () => {
   const sync = async () => {
     try {
       await PostApiHandler(`/rules/execute`, {})
-
-      toast.success('Initiated rule execution in the background.')
     } catch (e) {
       if (e instanceof AxiosError) {
         if (e.response?.status === 409) {
@@ -59,16 +66,6 @@ const RulesListPage = () => {
       }
 
       toast.error('Failed to initiate rule execution.')
-    }
-  }
-
-  const requestStopExecution = async () => {
-    try {
-      await PostApiHandler(`/rules/execute/stop`, {})
-
-      toast.success('Requested to stop rule execution.')
-    } catch (e) {
-      toast.error('Failed to request stop of rule execution.')
     }
   }
 
@@ -97,7 +94,7 @@ const RulesListPage = () => {
             <ExecuteButton
               onClick={() => {
                 if (ruleHandlerRunning) {
-                  requestStopExecution()
+                  stopAllExecution()
                 } else {
                   sync()
                 }
@@ -108,7 +105,7 @@ const RulesListPage = () => {
           </div>
         </div>
         <h1 className="mb-3 text-lg font-bold text-zinc-200">{'Rules'}</h1>
-        <ul className="xs:collection-cards-vertical">
+        <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
           {data.map((el) => (
             <li
               key={el.id}

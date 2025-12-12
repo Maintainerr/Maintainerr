@@ -27,14 +27,15 @@ export const EventsProvider = (props: any) => {
 
 export const useEvent = <T,>(
   type: MaintainerrEvent,
-  listener: (event: T) => any,
+  listener?: (event: T) => any,
 ) => {
   const context = useContext(EventsContext)
   const listenerRef = useRef(listener)
+  const [lastEvent, setLastEvent] = useState<T>()
 
   useEffect(() => {
     listenerRef.current = listener
-  })
+  }, [listener])
 
   useEffect(() => {
     if (!context) return
@@ -45,7 +46,9 @@ export const useEvent = <T,>(
 
     const parserListener = (ev: MessageEvent) => {
       try {
-        listenerRef.current(JSON.parse(ev.data))
+        const parsed = JSON.parse(ev.data) as T
+        setLastEvent(parsed)
+        listenerRef.current?.(parsed)
       } catch (error) {
         console.error('Error parsing event data:', error)
       }
@@ -56,5 +59,7 @@ export const useEvent = <T,>(
     return () => {
       context.removeEventListener(type, parserListener, options)
     }
-  }, [context])
+  }, [context, type])
+
+  return lastEvent
 }
