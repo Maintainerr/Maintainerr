@@ -736,6 +736,171 @@ export class PlexGetterService {
 
           return Array.from(combinedCollections).map((el) => el.trim());
         }
+        case 'seenBy_includingMarked': {
+          const plexUsers = await this.plexApi.getCorrectedUsers(false);
+
+          const viewers: PlexSeenBy[] = await this.plexApi
+            .getWatchHistoryIncludingMarked(metadata.ratingKey)
+            .catch(() => {
+              return null;
+            });
+          if (viewers) {
+            const viewerIds = viewers.map((el) => +el.id);
+            return plexUsers
+              .filter((el) => viewerIds.includes(el.plexId))
+              .map((el) => el.username);
+          } else {
+            return [];
+          }
+        }
+        case 'sw_allEpisodesSeenBy_includingMarked': {
+          const plexUsers = await this.plexApi.getCorrectedUsers(false);
+
+          const seasons =
+            metadata.type !== 'season'
+              ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
+              : [metadata];
+          const allViewers = plexUsers.slice();
+          for (const season of seasons) {
+            const episodes = await this.plexApi.getChildrenMetadata(
+              season.ratingKey,
+            );
+            for (const episode of episodes) {
+              const viewers: PlexSeenBy[] = await this.plexApi
+                .getWatchHistoryIncludingMarked(episode.ratingKey)
+                .catch(() => {
+                  return null;
+                });
+
+              const arrLength = allViewers.length - 1;
+              allViewers
+                .slice()
+                .reverse()
+                .forEach((el, idx) => {
+                  if (
+                    !viewers ||
+                    !viewers.find((viewEl) => el.plexId === viewEl.id)
+                  ) {
+                    allViewers.splice(arrLength - idx, 1);
+                  }
+                });
+            }
+          }
+
+          if (allViewers && allViewers.length > 0) {
+            const viewerIds = allViewers.map((el) => +el.plexId);
+            return plexUsers
+              .filter((el) => viewerIds.includes(el.plexId))
+              .map((el) => el.username);
+          }
+
+          return [];
+        }
+        case 'sw_watchers_includingMarked': {
+          const plexUsers = await this.plexApi.getCorrectedUsers(false);
+          const allViewers = new Set<number>();
+
+          // for episodes
+          if (metadata.type === 'episode') {
+            const watchHistory = await this.plexApi.getWatchHistoryIncludingMarked(
+              metadata.ratingKey,
+            );
+            if (watchHistory) {
+              watchHistory.forEach(viewer => allViewers.add(+viewer.id));
+            }
+          } else {
+            // for seasons & shows
+            const seasons = metadata.type !== 'season'
+              ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
+              : [metadata];
+
+            for (const season of seasons) {
+              const episodes = await this.plexApi.getChildrenMetadata(season.ratingKey);
+              for (const episode of episodes) {
+                const views = await this.plexApi.getWatchHistoryIncludingMarked(
+                  episode.ratingKey,
+                );
+                if (views) {
+                  views.forEach(viewer => allViewers.add(+viewer.id));
+                }
+              }
+            }
+          }
+
+          const uniqueViewers = Array.from(allViewers);
+          if (uniqueViewers.length > 0) {
+            return plexUsers
+              .filter((el) => uniqueViewers.includes(+el.plexId))
+              .map((el) => el.username);
+          }
+          return [];
+        }
+        case 'sw_amountOfViews_includingMarked': {
+          let viewCount = 0;
+
+          // for episodes
+          if (metadata.type === 'episode') {
+            const views = await this.plexApi.getWatchHistoryIncludingMarked(
+              metadata.ratingKey,
+            );
+            viewCount = views
+              ? views.reduce((sum, viewer) => sum + viewer.globalViewCount, 0)
+              : 0;
+          } else {
+            // for seasons & shows
+            const seasons =
+              metadata.type !== 'season'
+                ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
+                : [metadata];
+
+            for (const season of seasons) {
+              const episodes = await this.plexApi.getChildrenMetadata(
+                season.ratingKey,
+              );
+              for (const episode of episodes) {
+                const views = await this.plexApi.getWatchHistoryIncludingMarked(
+                  episode.ratingKey,
+                );
+                if (views) {
+                  viewCount += views.reduce(
+                    (sum, viewer) => sum + viewer.globalViewCount,
+                    0,
+                  );
+                }
+              }
+            }
+          }
+          return viewCount;
+        }
+        case 'sw_viewedEpisodes_includingMarked': {
+          let viewCount = 0;
+          const seasons =
+            metadata.type !== 'season'
+              ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
+              : [metadata];
+          for (const season of seasons) {
+            const episodes = await this.plexApi.getChildrenMetadata(
+              season.ratingKey,
+            );
+            for (const episode of episodes) {
+              const views = await this.plexApi.getWatchHistoryIncludingMarked(
+                episode.ratingKey,
+              );
+              if (views?.length > 0) {
+                viewCount++;
+              }
+            }
+          }
+          return viewCount;
+        }
+        case 'viewCount_includingMarked': {
+          const viewers = await this.plexApi.getWatchHistoryIncludingMarked(
+            metadata.ratingKey,
+          );
+          return viewers
+            ? viewers.reduce((sum, viewer) => sum + viewer.globalViewCount, 0)
+            : 0;
+        }
         default: {
           return null;
         }
