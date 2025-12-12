@@ -3004,7 +3004,7 @@ __metadata:
     react-select: "npm:^5.10.2"
     react-toastify: "npm:^11.0.5"
     reconnecting-eventsource: "npm:^1.6.4"
-    tailwindcss: "npm:^3.4.18"
+    tailwindcss: "npm:^3.4.19"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.2.7"
     vite-tsconfig-paths: "npm:^5.1.4"
@@ -18541,9 +18541,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwindcss@npm:^3.4.18":
-  version: 3.4.18
-  resolution: "tailwindcss@npm:3.4.18"
+"tailwindcss@npm:^3.4.19":
+  version: 3.4.19
+  resolution: "tailwindcss@npm:3.4.19"
   dependencies:
     "@alloc/quick-lru": "npm:^5.2.0"
     arg: "npm:^5.0.2"
@@ -18570,7 +18570,7 @@ __metadata:
   bin:
     tailwind: lib/cli.js
     tailwindcss: lib/cli.js
-  checksum: 10c0/230c0815d0b981f4952d1902e025d7571929e5fc133b4bb4fcbbc3b642e7ab0cecb9687f80f311afd0db07df8f383ce4317b3ca75ae93156c2ddc777e59fc31b
+  checksum: 10c0/e1063daccb9e5a508b357ec73b0011354204b2366b56496d6f0cc822733a55a0551502cb85856a2257ef9b676d0026616daaaa176d391f3216df57fbd693c581
   languageName: node
   linkType: hard
 
