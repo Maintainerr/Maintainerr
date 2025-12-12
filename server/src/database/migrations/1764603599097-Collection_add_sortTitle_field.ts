@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CollectionAddSortTitleField1764603599097
-  implements MigrationInterface
-{
+export class CollectionAddSortTitleField1764603599097 implements MigrationInterface {
   name = 'CollectionAddSortTitleField1764603599097';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
