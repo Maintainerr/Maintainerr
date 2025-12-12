@@ -1,4 +1,4 @@
-FROM node:24.11.1-alpine3.22@sha256:2867d550cf9d8bb50059a0fff528741f11a84d985c732e60e19e8e75c7239c43 AS base
+FROM node:24.12.0-alpine3.22@sha256:4f4a059445c5a6ef2b9d169d9afde176301263178141fc05ba657dab1c84f9a7 AS base
 LABEL Description="Contains the Maintainerr Docker image"
 
 FROM base AS builder
