@@ -193,6 +193,11 @@ export class RuleExecutorService {
         rulegroup.collectionId,
       );
 
+      // Only sync if syncToPlexCollection is enabled
+      if (!collection || collection.syncToPlexCollection === false) {
+        return;
+      }
+
       collection =
         await this.collectionService.relinkManualCollection(collection);
 

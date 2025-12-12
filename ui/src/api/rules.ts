@@ -23,6 +23,7 @@ export interface RuleGroupCollectionPayload {
   manualCollection?: boolean
   manualCollectionName?: string
   keepLogsForMonths?: number
+  syncToPlexCollection?: boolean
 }
 
 export interface RuleGroupCreatePayload {
