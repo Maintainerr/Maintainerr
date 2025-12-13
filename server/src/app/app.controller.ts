@@ -28,4 +28,9 @@ export class AppController {
     );
     return releases || [];
   }
+
+  @Get('/health')
+  health() {
+    return { status: 'ok' };
+  }
 }
