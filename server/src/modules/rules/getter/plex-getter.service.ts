@@ -44,13 +44,24 @@ export class PlexGetterService {
       const metadata: PlexMetadata = await this.plexApi.getMetadata(
         libItem.ratingKey,
       );
-      const parent = metadata?.parentRatingKey
-        ? await this.plexApi.getMetadata(metadata.parentRatingKey)
-        : undefined;
 
-      const grandparent = metadata?.grandparentRatingKey
-        ? await this.plexApi.getMetadata(metadata.grandparentRatingKey)
-        : undefined;
+      // Parent/grandparent metadata is only needed for some properties.
+      // Lazy-load and memoize so we don't fetch unless a case uses it.
+      let parentPromise: Promise<PlexMetadata> | undefined;
+      const getParent = async (): Promise<PlexMetadata | undefined> => {
+        if (!metadata?.parentRatingKey) return undefined;
+        parentPromise ??= this.plexApi.getMetadata(metadata.parentRatingKey);
+        return parentPromise;
+      };
+
+      let grandparentPromise: Promise<PlexMetadata> | undefined;
+      const getGrandparent = async (): Promise<PlexMetadata | undefined> => {
+        if (!metadata?.grandparentRatingKey) return undefined;
+        grandparentPromise ??= this.plexApi.getMetadata(
+          metadata.grandparentRatingKey,
+        );
+        return grandparentPromise;
+      };
 
       switch (prop.name) {
         case 'addDate': {
@@ -97,13 +108,11 @@ export class PlexGetterService {
         case 'labels': {
           const item =
             metadata.type === 'episode'
-              ? ((await this.plexApi.getMetadata(
-                  metadata.grandparentRatingKey,
-                )) as unknown as PlexLibraryItem)
+              ? (((await getGrandparent()) as unknown as PlexLibraryItem) ??
+                metadata)
               : metadata.type === 'season'
-                ? ((await this.plexApi.getMetadata(
-                    metadata.parentRatingKey,
-                  )) as unknown as PlexLibraryItem)
+                ? (((await getParent()) as unknown as PlexLibraryItem) ??
+                  metadata)
                 : metadata;
 
           return item.Label ? item.Label.map((l) => l.tag) : [];
@@ -124,6 +133,8 @@ export class PlexGetterService {
             : 0;
         }
         case 'sw_collections_including_parent': {
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
           const combinedCollections = [
             ...(metadata?.Collection || []),
             ...(parent?.Collection || []),
@@ -216,6 +227,8 @@ export class PlexGetterService {
             : null;
         }
         case 'sw_collection_names_including_parent': {
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
           const combinedCollections = [
             ...(metadata?.Collection || []),
             ...(parent?.Collection || []),
@@ -261,13 +274,11 @@ export class PlexGetterService {
         case 'genre': {
           const item =
             metadata.type === 'episode'
-              ? ((await this.plexApi.getMetadata(
-                  metadata.grandparentRatingKey,
-                )) as unknown as PlexLibraryItem)
+              ? (((await getGrandparent()) as unknown as PlexLibraryItem) ??
+                metadata)
               : metadata.type === 'season'
-                ? ((await this.plexApi.getMetadata(
-                    metadata.parentRatingKey,
-                  )) as unknown as PlexLibraryItem)
+                ? (((await getParent()) as unknown as PlexLibraryItem) ??
+                  metadata)
                 : metadata;
           return item.Genre ? item.Genre.map((el) => el.tag) : null;
         }
@@ -447,6 +458,8 @@ export class PlexGetterService {
         }
         case 'watchlist_isListedByUsers': {
           // returns a list of users that have this media item, or parent, in their watchlist
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
           const guid = grandparent
             ? grandparent.guid
             : parent
@@ -473,6 +486,8 @@ export class PlexGetterService {
           return usernames;
         }
         case 'watchlist_isWatchlisted': {
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
           const guid = grandparent
             ? grandparent.guid
             : parent
@@ -498,6 +513,10 @@ export class PlexGetterService {
           return false;
         }
         case 'sw_seasonLastEpisodeAiredAt': {
+          const parent = await getParent();
+          if (!parent) {
+            return null;
+          }
           const lastEpDate = await this.plexApi
             .getChildrenMetadata(parent.ratingKey)
             .then((eps) => {
@@ -539,7 +558,9 @@ export class PlexGetterService {
         }
         case 'rating_imdbShow': {
           const showMetadata =
-            metadata.type === 'season' ? parent : grandparent;
+            metadata.type === 'season'
+              ? await getParent()
+              : await getGrandparent();
 
           return (
             showMetadata.Rating?.find(
@@ -549,7 +570,9 @@ export class PlexGetterService {
         }
         case 'rating_rottenTomatoesCriticShow': {
           const showMetadata =
-            metadata.type === 'season' ? parent : grandparent;
+            metadata.type === 'season'
+              ? await getParent()
+              : await getGrandparent();
 
           return (
             showMetadata.Rating?.find(
@@ -559,7 +582,9 @@ export class PlexGetterService {
         }
         case 'rating_rottenTomatoesAudienceShow': {
           const showMetadata =
-            metadata.type === 'season' ? parent : grandparent;
+            metadata.type === 'season'
+              ? await getParent()
+              : await getGrandparent();
 
           return (
             showMetadata.Rating?.find(
@@ -570,7 +595,9 @@ export class PlexGetterService {
         }
         case 'rating_tmdbShow': {
           const showMetadata =
-            metadata.type === 'season' ? parent : grandparent;
+            metadata.type === 'season'
+              ? await getParent()
+              : await getGrandparent();
 
           return (
             showMetadata.Rating?.find(
@@ -623,6 +650,8 @@ export class PlexGetterService {
           return normalCollectionCount + smartCollectionCount;
         }
         case 'sw_collections_including_parent_and_smart': {
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
           const combinedCollections = [
             ...(metadata.Collection || []),
             ...(parent?.Collection || []),
@@ -669,6 +698,8 @@ export class PlexGetterService {
           return normalCollectionCount + smartCollectionCount;
         }
         case 'sw_collection_names_including_parent_and_smart': {
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
           const collections = await this.plexApi.getCollections(
             ruleGroup.libraryId,
           );
