@@ -9,3 +9,15 @@ node_modules
 !.yarn/versions
 .idea
 .turbo
+
+# Installer outputs
+installer/windows/bin/
+installer/windows/obj/
+installer/windows/CustomActions/bin/
+installer/windows/CustomActions/obj/
+installer/windows/ServiceWrapper/bin/
+installer/windows/ServiceWrapper/obj/
+installer/windows/Resources/MaintainerrService.exe
+installer/windows/CustomActions.CA.dll
+*.msi
+*.wixpdb

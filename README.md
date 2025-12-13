@@ -58,6 +58,8 @@ Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 
 # Installation
 
+## Docker (Recommended)
+
 Docker images for amd64 & arm64 are available under <b>ghcr.io/maintainerr/maintainerr</b> and [jorenn92/maintainerr](https://hub.docker.com/r/jorenn92/maintainerr). <br />
 
 Data is saved within the container under /opt/data, it is recommended to tie a persistent volume to this location in your docker command/compose file.
@@ -102,6 +104,40 @@ services:
           - 6246:6246
         restart: unless-stopped
 ```
+
+## Windows Installer
+
+For Windows users, a native MSI installer is available that makes installation and management easy.
+
+### Features
+- Validates Node.js installation and version
+- Prompts for installation and data directories
+- Automatically installs dependencies
+- Sets up Maintainerr as a Windows Service
+- Manages configuration via .env file
+
+### Requirements
+- **Node.js 20.19.0 or later, OR 22.12.0 or later**
+  - Download from: https://nodejs.org/
+
+### Download
+Download the latest `Maintainerr-{version}-win-x64.msi` installer from the [GitHub Releases page](https://github.com/Maintainerr/Maintainerr/releases).
+
+### Installation Steps
+1. Download and run the MSI installer
+2. Follow the installation wizard
+3. Select your data directory (must be outside installation directory)
+4. The installer will:
+   - Extract application files
+   - Install dependencies
+   - Create configuration files
+   - Install and start Maintainerr as a Windows Service
+5. Access Maintainerr at `http://localhost:6246`
+
+### Documentation
+For detailed Windows installation, configuration, and troubleshooting documentation, see:
+- [Windows Installation Guide](docs/WINDOWS_INSTALLATION.md)
+- [Windows Installer README](installer/windows/README.md)
 
 # Documentation
 

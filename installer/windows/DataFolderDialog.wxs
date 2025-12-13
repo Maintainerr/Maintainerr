@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <UI>
+      <Dialog Id="DataFolderDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Data Directory" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="30" Transparent="yes" NoPrefix="yes" Text="Please select a directory for storing Maintainerr data. This directory must be outside the installation directory and will be used for database, logs, and configuration." />
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.InstallDirDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        
+        <Control Id="FolderLabel" Type="Text" X="20" Y="60" Width="290" Height="30" NoPrefix="yes" Text="Select the folder where you want to store Maintainerr data:" />
+        <Control Id="Folder" Type="PathEdit" X="20" Y="90" Width="320" Height="18" Property="DATAFOLDER" Indirect="yes" />
+        <Control Id="ChangeFolder" Type="PushButton" X="20" Y="110" Width="56" Height="17" Text="!(loc.InstallDirDlgChange)">
+          <Publish Event="SelectionBrowse" Value="DataFolderDlg">1</Publish>
+        </Control>
+        
+        <Control Id="RequirementText" Type="Text" X="20" Y="140" Width="330" Height="60" Transparent="yes" NoPrefix="yes" Text="Important: The data directory must be:\n• Outside the installation directory\n• On a persistent storage location\n• Accessible by the service account\n\nNote: Existing .env files in this directory will be preserved during upgrades." />
+
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)">
+          <Condition Action="disable"><![CDATA[DATAFOLDER = ""]]></Condition>
+          <Condition Action="enable"><![CDATA[DATAFOLDER <> ""]]></Condition>
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+        </Control>
+      </Dialog>
+    </UI>
+  </Fragment>
+</Wix>
