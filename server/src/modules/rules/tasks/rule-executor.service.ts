@@ -274,12 +274,27 @@ export class RuleExecutorService {
 
       const exclusions = await this.rulesService.getExclusions(rulegroup.id);
 
+      const excludedPlexIds = new Set<number>(
+        exclusions.map((e) => {
+          return +e.plexId;
+        }),
+      );
+
+      const statsByPlexId = new Map<number, IComparisonStatistics>();
+      for (const stat of this.statisticsData ?? []) {
+        if (!statsByPlexId.has(stat.plexId)) {
+          statsByPlexId.set(stat.plexId, stat);
+        }
+      }
+
       // filter exclusions out of results & get correct ratingKey
-      const data = this.resultData
-        .filter((el) => !exclusions.find((e) => +e.plexId === +el.ratingKey))
-        .map((el) => {
-          return +el.ratingKey;
-        });
+      const desiredPlexIds = new Set<number>();
+      for (const item of this.resultData ?? []) {
+        const plexId = +item.ratingKey;
+        if (!excludedPlexIds.has(plexId)) {
+          desiredPlexIds.add(plexId);
+        }
+      }
 
       if (collection) {
         const collMediaData = await this.collectionService.getCollectionMedia(
@@ -304,24 +319,25 @@ export class RuleExecutorService {
           }
         }
 
-        // Add manually added media to data
-        const manualData = collMediaData
-          .filter((el) => el.isManual === true)
-          .map((e) => e.plexId);
+        // Ensure manually added media always remains included
+        for (const media of collMediaData) {
+          if (media?.isManual === true) {
+            desiredPlexIds.add(+media.plexId);
+          }
+        }
 
-        data.push(...manualData);
-
-        let currentCollectionData = collMediaData.map((e) => {
-          return e.plexId;
-        });
-
-        currentCollectionData = currentCollectionData
-          ? currentCollectionData
-          : [];
-
-        const mediaToAdd = data.filter(
-          (el) => !currentCollectionData.includes(el),
+        const currentPlexIds = new Set<number>(
+          collMediaData.map((e) => {
+            return +e.plexId;
+          }),
         );
+
+        const mediaToAdd: number[] = [];
+        for (const plexId of desiredPlexIds) {
+          if (!currentPlexIds.has(plexId)) {
+            mediaToAdd.push(plexId);
+          }
+        }
 
         const dataToAdd: AddRemoveCollectionMedia[] = this.prepareDataAmendment(
           mediaToAdd.map((el) => {
@@ -329,15 +345,18 @@ export class RuleExecutorService {
               plexId: +el,
               reason: {
                 type: 'media_added_by_rule',
-                data: this.statisticsData.find((stat) => el == stat.plexId),
+                data: statsByPlexId.get(+el),
               },
             } satisfies AddRemoveCollectionMedia;
           }),
         );
 
-        const mediaToRemove = currentCollectionData.filter(
-          (el) => !data.includes(el),
-        );
+        const mediaToRemove: number[] = [];
+        for (const plexId of currentPlexIds) {
+          if (!desiredPlexIds.has(plexId)) {
+            mediaToRemove.push(plexId);
+          }
+        }
 
         const dataToRemove: AddRemoveCollectionMedia[] =
           this.prepareDataAmendment(
@@ -346,7 +365,7 @@ export class RuleExecutorService {
                 plexId: +el,
                 reason: {
                   type: 'media_removed_by_rule',
-                  data: this.statisticsData.find((stat) => el == stat.plexId),
+                  data: statsByPlexId.get(+el),
                 },
               } satisfies AddRemoveCollectionMedia;
             }),
@@ -474,6 +493,7 @@ export class RuleExecutorService {
         size: size,
       },
       this.plexDataType,
+      false, // avoid caching hundreds of paged responses during bulk scans
     );
     if (response) {
       this.plexData.data = response.items ? response.items : [];

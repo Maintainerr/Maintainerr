@@ -251,16 +251,20 @@ export class PlexApiService {
     id: string,
     { offset = 0, size = 50 }: { offset?: number; size?: number } = {},
     datatype?: EPlexDataType,
+    useCache: boolean = true,
   ): Promise<{ totalSize: number; items: PlexLibraryItem[] }> {
     try {
       const type = datatype ? '&type=' + datatype : '';
-      const response = await this.plexClient.query<PlexLibraryResponse>({
-        uri: `/library/sections/${id}/all?includeGuids=1${type}`,
-        extraHeaders: {
-          'X-Plex-Container-Start': `${offset}`,
-          'X-Plex-Container-Size': `${size}`,
+      const response = await this.plexClient.query<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${id}/all?includeGuids=1${type}`,
+          extraHeaders: {
+            'X-Plex-Container-Start': `${offset}`,
+            'X-Plex-Container-Size': `${size}`,
+          },
         },
-      });
+        useCache,
+      );
 
       return {
         totalSize: response.MediaContainer.totalSize,
