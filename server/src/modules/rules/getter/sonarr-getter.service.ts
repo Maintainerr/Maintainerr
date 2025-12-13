@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
 import { PlexMetadata } from '../../../modules/api/plex-api/interfaces/media.interface';
-import { SonarrSeason } from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
+import {
+  SonarrEpisode,
+  SonarrEpisodeFile,
+  SonarrSeason,
+} from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
 import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
@@ -92,25 +96,65 @@ export class SonarrGetterService {
         ? showResponse.seasons.find((el) => el.seasonNumber === seasonRatingKey)
         : undefined;
 
-      // fetch episode or first episode of the season
-      const episode =
-        [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType) &&
-        showResponse.added !== '0001-01-01T00:00:00Z'
-          ? (showResponse.id
-              ? await sonarrApiClient.getEpisodes(
-                  showResponse.id,
-                  origLibItem.grandparentRatingKey
-                    ? origLibItem.parentIndex
-                    : origLibItem.index,
-                  [origLibItem.grandparentRatingKey ? origLibItem.index : 1],
-                )
-              : [])[0]
-          : undefined;
+      // Lazy-load episode / episodeFile only if a property actually needs them.
+      let episodePromise: Promise<SonarrEpisode | undefined> | undefined;
+      const getEpisode = async (): Promise<SonarrEpisode | undefined> => {
+        if (
+          ![EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+        ) {
+          return undefined;
+        }
 
-      const episodeFile =
-        episode?.episodeFileId && dataType === EPlexDataType.EPISODES
-          ? await sonarrApiClient.getEpisodeFile(episode.episodeFileId)
-          : undefined;
+        if (showResponse.added === '0001-01-01T00:00:00Z') {
+          return undefined;
+        }
+
+        if (!showResponse.id || !origLibItem) {
+          return undefined;
+        }
+
+        episodePromise ??= (async () => {
+          const seasonNumber = origLibItem.grandparentRatingKey
+            ? origLibItem.parentIndex
+            : origLibItem.index;
+
+          const episodeNumbers = [
+            origLibItem.grandparentRatingKey ? origLibItem.index : 1,
+          ];
+
+          const episodes = await sonarrApiClient.getEpisodes(
+            showResponse.id,
+            seasonNumber,
+            episodeNumbers,
+          );
+
+          return episodes?.[0];
+        })();
+
+        return episodePromise;
+      };
+
+      let episodeFilePromise:
+        | Promise<SonarrEpisodeFile | undefined>
+        | undefined;
+      const getEpisodeFile = async (): Promise<
+        SonarrEpisodeFile | undefined
+      > => {
+        if (dataType !== EPlexDataType.EPISODES) {
+          return undefined;
+        }
+
+        const episode = await getEpisode();
+        if (!episode?.episodeFileId) {
+          return undefined;
+        }
+
+        episodeFilePromise ??= sonarrApiClient.getEpisodeFile(
+          episode.episodeFileId,
+        );
+
+        return episodeFilePromise;
+      };
 
       switch (prop.name) {
         case 'addDate': {
@@ -124,6 +168,7 @@ export class SonarrGetterService {
             [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
           ) {
             if (dataType === EPlexDataType.EPISODES) {
+              const episodeFile = await getEpisodeFile();
               return episodeFile?.size ? +episodeFile.size / 1048576 : null;
             } else {
               return season?.statistics?.sizeOnDisk
@@ -140,9 +185,11 @@ export class SonarrGetterService {
           return showResponse.path ? showResponse.path : null;
         }
         case 'episodeFilePath': {
+          const episodeFile = await getEpisodeFile();
           return episodeFile?.path ? episodeFile.path : null;
         }
         case 'episodeNumber': {
+          const episode = await getEpisode();
           return episode?.episodeNumber != null ? episode.episodeNumber : null;
         }
         case 'tags': {
@@ -152,6 +199,7 @@ export class SonarrGetterService {
             .map((el) => el.label);
         }
         case 'qualityProfileId': {
+          const episodeFile = await getEpisodeFile();
           if ([EPlexDataType.EPISODES].includes(dataType) && episodeFile) {
             return episodeFile.quality.quality.id;
           } else {
@@ -162,6 +210,7 @@ export class SonarrGetterService {
           if (
             [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
           ) {
+            const episode = await getEpisode();
             return episode?.airDate ? new Date(episode.airDate) : null;
           } else {
             return showResponse.firstAired
@@ -202,6 +251,7 @@ export class SonarrGetterService {
           }
 
           if (dataType === EPlexDataType.EPISODES) {
+            const episode = await getEpisode();
             return showResponse.added !== '0001-01-01T00:00:00Z' && episode
               ? episode.monitored
                 ? 1
@@ -306,11 +356,13 @@ export class SonarrGetterService {
           return showResponse.ratings?.votes ?? null;
         }
         case 'fileQualityCutoffMet': {
+          const episodeFile = await getEpisodeFile();
           return episodeFile?.qualityCutoffNotMet != null
             ? !episodeFile.qualityCutoffNotMet
             : false;
         }
         case 'fileQualityName': {
+          const episodeFile = await getEpisodeFile();
           return episodeFile?.quality?.quality?.name ?? null;
         }
         case 'qualityProfileName': {
@@ -321,6 +373,7 @@ export class SonarrGetterService {
           ).name;
         }
         case 'fileAudioLanguages': {
+          const episodeFile = await getEpisodeFile();
           return episodeFile?.mediaInfo?.audioLanguages ?? null;
         }
         case 'seriesType': {
