@@ -413,11 +413,15 @@ const AddModal = (props: AddModal) => {
   }
 
   const toggleYamlImporter = () => {
-    yaml.current = undefined
-    if (!yamlImporterModal) {
-      setYamlImporterModal(true)
+    if (selectedLibraryType == null) {
+      alert('Please select a library first.')
     } else {
-      setYamlImporterModal(false)
+      yaml.current = undefined
+      if (!yamlImporterModal) {
+        setYamlImporterModal(true)
+      } else {
+        setYamlImporterModal(false)
+      }
     }
   }
 
