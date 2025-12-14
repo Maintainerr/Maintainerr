@@ -20,8 +20,8 @@
     "test:watch": "turbo test:watch"
   },
   "workspaces": [
-    "ui",
-    "server",
+    "apps/ui",
+    "apps/server",
     "packages/*"
   ],
   "engines": {
@@ -52,7 +52,7 @@
       [
         "@semantic-release/exec",
         {
-          "prepareCmd": "yarn --cwd server version ${nextRelease.version} && yarn --cwd ui version ${nextRelease.version}"
+          "prepareCmd": "yarn --cwd apps/server version ${nextRelease.version} && yarn --cwd apps/ui version ${nextRelease.version}"
         }
       ],
       [
@@ -60,8 +60,8 @@
         {
           "assets": [
             "package.json",
-            "server/package.json",
-            "ui/package.json",
+            "apps/server/package.json",
+            "apps/ui/package.json",
             "CHANGELOG.md"
           ],
           "message": "chore(release): ${nextRelease.version}"

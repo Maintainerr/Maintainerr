@@ -2889,9 +2889,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@maintainerr/server@workspace:server":
+"@maintainerr/server@workspace:apps/server":
   version: 0.0.0-use.local
-  resolution: "@maintainerr/server@workspace:server"
+  resolution: "@maintainerr/server@workspace:apps/server"
   dependencies:
     "@eslint/eslintrc": "npm:^3.3.3"
     "@eslint/js": "npm:^9.39.1"
@@ -2958,9 +2958,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@maintainerr/ui@workspace:ui":
+"@maintainerr/ui@workspace:apps/ui":
   version: 0.0.0-use.local
-  resolution: "@maintainerr/ui@workspace:ui"
+  resolution: "@maintainerr/ui@workspace:apps/ui"
   dependencies:
     "@eslint/eslintrc": "npm:^3.3.3"
     "@eslint/js": "npm:^9.39.1"
