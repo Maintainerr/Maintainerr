@@ -49,6 +49,13 @@ export interface PlexLibraryResponse {
       | PlexCollection[]
       | PlexCollection
       | PlexPlaylist[];
+     Account?: Array<{
+      id: number;
+      globalViewCount: number;
+    }>;
+    identifier?: string;
+    mediaTagPrefix?: string;
+    mediaTagVersion?: number;
   };
 }
 export interface PlexGenre {
@@ -132,4 +139,6 @@ export interface PlexSeenBy extends PlexLibraryItem {
   viewedAt: number;
   accountID: number;
   deviceID: number;
+  id: number;
+  globalViewCount: number;
 }

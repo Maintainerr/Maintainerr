@@ -475,6 +475,58 @@ export class RuleConstants {
           type: RuleType.TEXT_LIST,
           cacheReset: true,
         },
+        {
+          id: 43,
+          name: 'seenBy_includingMarked',
+          humanName:
+            '[list] Viewed by (username) - including marked as watched',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT_LIST,
+        },
+        {
+          id: 44,
+          name: 'sw_allEpisodesSeenBy_includingMarked',
+          humanName:
+            '[list] Users that saw all available episodes - including marked as watched',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // return usernames []
+          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+        },
+        {
+          id: 45,
+          name: 'sw_watchers_includingMarked',
+          humanName:
+            '[list] Users that watch the show/season/episode - including marked as watched',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // return usernames []
+          showType: [
+            EPlexDataType.SHOWS,
+            EPlexDataType.SEASONS,
+            EPlexDataType.EPISODES,
+          ],
+        },
+        {
+          id: 46,
+          name: 'sw_amountOfViews_includingMarked',
+          humanName: 'Total views - including marked as watched',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 47,
+          name: 'sw_viewedEpisodes_includingMarked',
+          humanName: 'Amount of watched episodes - including marked as watched',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+        },
+        {
+          id: 48,
+          name: 'viewCount_includingMarked',
+          humanName: 'Times viewed - including marked as watched',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
       ],
     },
     {
