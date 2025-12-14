@@ -32,12 +32,12 @@ WORKDIR /opt/app
 COPY --from=builder --chmod=777 --chown=node:node /app/node_modules ./node_modules
 
 # Copy standalone server
-COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/dist ./server/dist
-COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/package.json ./server/package.json
-COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/node_modules ./server/node_modules
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/dist ./apps/server/dist
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/node_modules ./apps/server/node_modules
 
 # copy UI output to API to be served statically
-COPY --from=builder --chmod=777 --chown=node:node /app/apps/ui/dist ./server/dist/ui
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/ui/dist ./apps/server/dist/ui
 
 # Copy packages/contracts
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/dist ./packages/contracts/dist

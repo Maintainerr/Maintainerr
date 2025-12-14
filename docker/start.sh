@@ -1,7 +1,7 @@
 #!/bin/sh
 
 BASE_PATH_REPLACE="${BASE_PATH:-}"
-UI_DIST_DIR="/opt/app/server/dist/ui"
+UI_DIST_DIR="/opt/app/apps/server/dist/ui"
 
 # Replace the path prefix placeholder inside the built UI files; this can fail when
 # the directory is mounted as read-only, so surface a clearer error in that case.
@@ -14,4 +14,4 @@ if ! find "$UI_DIST_DIR" -type f -not -path '*/node_modules/*' -print0 | xargs -
 	exit 1
 fi
 
-exec npm run --prefix /opt/app/server start
+exec npm run --prefix /opt/app/apps/server start
