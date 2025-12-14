@@ -6,7 +6,7 @@ const ormConfig: TypeOrmModuleOptions = {
   database:
     process.env.NODE_ENV === 'production'
       ? '/opt/data/maintainerr.sqlite'
-      : '../data/maintainerr.sqlite',
+      : '../../data/maintainerr.sqlite',
   subscribers: ['./**/*.subscriber{.ts,.js}'],
   migrations:
     process.env.NODE_ENV === 'production'

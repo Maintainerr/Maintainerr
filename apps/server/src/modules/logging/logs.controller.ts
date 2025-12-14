@@ -41,7 +41,7 @@ import { LogSettingsService } from './logs.service';
 const logsDirectory =
   process.env.NODE_ENV === 'production'
     ? '/opt/data/logs'
-    : path.join(__dirname, `../../../../data/logs`);
+    : path.join(__dirname, `../../../../../data/logs`);
 
 const safeLogFileRegex = /maintainerr-\d{4}-\d{2}-\d{2}\.log(\.gz)?/;
 
