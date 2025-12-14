@@ -2,6 +2,33 @@
 
 BASE_PATH_REPLACE="${BASE_PATH:-}"
 UI_DIST_DIR="/opt/app/server/dist/ui"
+DATA_DIR="/opt/data"
+
+# Check if the data directory is properly mounted to persistent storage
+# This can be skipped by setting SKIP_DATA_MOUNT_CHECK=true
+if [ "${SKIP_DATA_MOUNT_CHECK}" != "true" ]; then
+	# Check if /opt/data is a mount point by examining /proc/mounts
+	# A properly configured container should have /opt/data as either:
+	# - A bind mount (bind flag in options)
+	# - A named/anonymous volume mount (not the same device as /)
+	if ! grep -q " ${DATA_DIR} " /proc/mounts; then
+		printf '\n========================================\n' >&2
+		printf 'ERROR: /opt/data is not mounted!\n' >&2
+		printf '========================================\n\n' >&2
+		printf 'The /opt/data directory must be mounted to persistent storage.\n' >&2
+		printf 'Without a proper mount, all data (database, logs, etc.) will be lost\n' >&2
+		printf 'when the container is removed or recreated.\n\n' >&2
+		printf 'Please update your Docker configuration:\n\n' >&2
+		printf 'Docker run:\n' >&2
+		printf '  docker run -v ./data:/opt/data ...\n\n' >&2
+		printf 'Docker Compose:\n' >&2
+		printf '  volumes:\n' >&2
+		printf '    - ./data:/opt/data\n\n' >&2
+		printf 'To bypass this check (not recommended), set:\n' >&2
+		printf '  SKIP_DATA_MOUNT_CHECK=true\n\n' >&2
+		exit 1
+	fi
+fi
 
 # Replace the path prefix placeholder inside the built UI files; this can fail when
 # the directory is mounted as read-only, so surface a clearer error in that case.
