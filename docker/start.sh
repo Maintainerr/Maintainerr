@@ -11,7 +11,8 @@ if [ "${SKIP_DATA_MOUNT_CHECK}" != "true" ]; then
 	# A properly configured container should have /opt/data as either:
 	# - A bind mount (bind flag in options)
 	# - A named/anonymous volume mount (not the same device as /)
-	if ! grep -q " ${DATA_DIR} " /proc/mounts; then
+	# Format: device mountpoint type options ...
+	if ! grep -q "^[^ ]* ${DATA_DIR} " /proc/mounts; then
 		printf '\n========================================\n' >&2
 		printf 'ERROR: /opt/data is not mounted!\n' >&2
 		printf '========================================\n\n' >&2
