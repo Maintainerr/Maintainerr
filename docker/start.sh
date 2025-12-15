@@ -7,18 +7,42 @@ DATA_DIR="/opt/data"
 # Check if the data directory is properly mounted to persistent storage
 # This can be skipped by setting SKIP_DATA_MOUNT_CHECK=true
 if [ "${SKIP_DATA_MOUNT_CHECK}" != "true" ]; then
-	# Check if /opt/data is a mount point by examining /proc/mounts
-	# A properly configured container should have /opt/data as either:
-	# - A bind mount (bind flag in options)
-	# - A named/anonymous volume mount (not the same device as /)
+	# Get the mount entry for /opt/data from /proc/mounts
 	# Format: device mountpoint type options ...
-	if ! grep -q "^[^ ]* ${DATA_DIR} " /proc/mounts; then
+	mount_entry=$(grep "^[^ ]* ${DATA_DIR} " /proc/mounts)
+	
+	if [ -z "$mount_entry" ]; then
+		# No mount found at all (shouldn't happen due to VOLUME directive, but check anyway)
 		printf '\n========================================\n' >&2
 		printf 'ERROR: /opt/data is not mounted!\n' >&2
 		printf '========================================\n\n' >&2
 		printf 'The /opt/data directory must be mounted to persistent storage.\n' >&2
 		printf 'Without a proper mount, all data (database, logs, etc.) will be lost\n' >&2
 		printf 'when the container is removed or recreated.\n\n' >&2
+		printf 'Please update your Docker configuration:\n\n' >&2
+		printf 'Docker run:\n' >&2
+		printf '  docker run -v ./data:/opt/data ...\n\n' >&2
+		printf 'Docker Compose:\n' >&2
+		printf '  volumes:\n' >&2
+		printf '    - ./data:/opt/data\n\n' >&2
+		printf 'To bypass this check (not recommended), set:\n' >&2
+		printf '  SKIP_DATA_MOUNT_CHECK=true\n\n' >&2
+		exit 1
+	fi
+	
+	# Extract the source path (first field) from the mount entry
+	mount_source=$(echo "$mount_entry" | awk '{print $1}')
+	
+	# Check if this is an anonymous Docker volume (64-character hex hash)
+	# Anonymous volumes have paths like: /var/lib/docker/volumes/{64-hex-chars}/_data
+	if echo "$mount_source" | grep -q '/var/lib/docker/volumes/[0-9a-f]\{64\}/_data'; then
+		printf '\n========================================\n' >&2
+		printf 'ERROR: /opt/data is using an anonymous Docker volume!\n' >&2
+		printf '========================================\n\n' >&2
+		printf 'Anonymous Docker volumes are not persistent and will be lost\n' >&2
+		printf 'when the container is removed.\n\n' >&2
+		printf 'This happened because the Dockerfile declares a VOLUME, but you\n' >&2
+		printf 'did not explicitly map it to a persistent location.\n\n' >&2
 		printf 'Please update your Docker configuration:\n\n' >&2
 		printf 'Docker run:\n' >&2
 		printf '  docker run -v ./data:/opt/data ...\n\n' >&2
