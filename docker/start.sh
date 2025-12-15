@@ -35,12 +35,12 @@ if [ "${SKIP_DATA_MOUNT_CHECK}" != "true" ]; then
 	
 	# Check if this is an anonymous Docker volume (64-character hex hash)
 	# Anonymous volumes have paths like: /var/lib/docker/volumes/{64-hex-chars}/_data
-	if echo "$mount_source" | grep -q '/var/lib/docker/volumes/[0-9a-f]\{64\}/_data'; then
+	if echo "$mount_source" | grep -E -q '/var/lib/docker/volumes/[0-9a-f]{64}/_data'; then
 		printf '\n========================================\n' >&2
 		printf 'ERROR: /opt/data is using an anonymous Docker volume!\n' >&2
 		printf '========================================\n\n' >&2
-		printf 'Anonymous Docker volumes are not persistent and will be lost\n' >&2
-		printf 'when the container is removed.\n\n' >&2
+		printf 'Anonymous Docker volumes are not easily manageable and their data\n' >&2
+		printf 'becomes inaccessible when the container is recreated.\n\n' >&2
 		printf 'This happened because the Dockerfile declares a VOLUME, but you\n' >&2
 		printf 'did not explicitly map it to a persistent location.\n\n' >&2
 		printf 'Please update your Docker configuration:\n\n' >&2
