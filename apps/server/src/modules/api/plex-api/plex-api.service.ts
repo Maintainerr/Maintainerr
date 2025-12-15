@@ -58,7 +58,6 @@ export class PlexApiService {
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
     this.logger.setContext(PlexApiService.name);
-    void this.initialize();
   }
 
   private getDbSettings(): PlexSettings {
