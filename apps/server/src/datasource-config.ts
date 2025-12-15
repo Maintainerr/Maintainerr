@@ -2,7 +2,7 @@ import { DataSource } from 'typeorm';
 
 const datasource = new DataSource({
   type: 'better-sqlite3',
-  database: '../data/maintainerr.sqlite',
+  database: '../../data/maintainerr.sqlite',
   entities: ['./dist/**/*.entities{.ts,.js}'],
   synchronize: false,
   migrationsTableName: 'migrations',

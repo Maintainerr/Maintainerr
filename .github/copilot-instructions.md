@@ -9,17 +9,18 @@ Maintainerr is a media management application that helps users automatically man
 This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspaces**:
 
 ```
-├── server/          # Nest.js backend API
-├── ui/             # Vite + React Router frontend application
+├── apps/
+│   ├── server/      # Nest.js backend API
+│   └── ui/          # Vite + React Router frontend application
 ├── packages/
-│   └── contracts/  # Shared TypeScript types, DTOs, and interfaces
-├── package.json    # Root package with Turborepo scripts
-└── turbo.json      # Turborepo configuration
+│   └── contracts/   # Shared TypeScript types, DTOs, and interfaces
+├── package.json     # Root package with Turborepo scripts
+└── turbo.json       # Turborepo configuration
 ```
 
 ## Technology Stack
 
-### Backend (`server/`)
+### Backend (`apps/server/`)
 
 - **Framework**: Nest.js with TypeScript
 - **Database**: TypeORM with SQLite
@@ -28,7 +29,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 - **Validation**: Zod schemas with nestjs-zod
 - **Architecture**: Event-driven with schedulers, graceful shutdown support
 
-### Frontend (`ui/`)
+### Frontend (`apps/ui/`)
 
 - **Build System**: Vite 7+ for fast development and production builds
 - **Framework**: React 19+ with React Router 7+ for client-side routing
@@ -133,7 +134,7 @@ yarn workspace @maintainerr/contracts build
 ### Server Structure
 
 ```
-server/src/
+apps/server/src/
 ├── modules/        # Feature modules (collections, rules, settings, etc.)
 ├── common/         # Shared utilities, decorators, filters
 ├── database/       # TypeORM entities and migrations
@@ -144,7 +145,7 @@ server/src/
 ### UI Structure
 
 ```
-ui/src/
+apps/ui/src/
 ├── components/     # Reusable UI components
 ├── hooks/          # Custom React hooks
 ├── pages/          # Page components for routes (DocsPage, PlexLoadingPage)
@@ -161,7 +162,7 @@ When modifying existing code, follow these specific refactoring priorities:
 ### Forms and UI Components
 
 - **React Hook Forms Migration**: Forms that do not use React Hook Form should be refactored to use it, along with their Zod validation schemas and corresponding DTOs from the contracts package. See [PR #1871](https://github.com/Maintainerr/Maintainerr/pull/1871) as a reference example.
-- **Form Components**: Use existing form components from `ui/src/components/Forms/` (Input, Select, etc.) and create new ones in this directory if necessary, following the same patterns.
+- **Form Components**: Use existing form components from `apps/ui/src/components/Forms/` (Input, Select, etc.) and create new ones in this directory if necessary, following the same patterns.
 - **Component Naming**: Component file names should follow the exported type name(s) rather than using generic `index.tsx` files. For example, use `UserSettingsForm.tsx` instead of `index.tsx`.
 
 ### Server-Side Type Safety

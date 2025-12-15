@@ -52,7 +52,7 @@
   "jest.virtualFolders": [
     {
       "name": "server",
-      "rootPath": "server"
+      "rootPath": "apps/server"
     }
   ],
   "sqltools.useNodeRuntime": true

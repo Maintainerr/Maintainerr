@@ -11,7 +11,7 @@ import { MaintainerrLogger } from './modules/logging/logs.service';
 const dataDir =
   process.env.NODE_ENV === 'production'
     ? '/opt/data'
-    : path.join(__dirname, '../../data');
+    : path.join(__dirname, '../../../data');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {

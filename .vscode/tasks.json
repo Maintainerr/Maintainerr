@@ -161,7 +161,7 @@
     {
       "label": "Clean Install",
       "type": "shell",
-      "command": "rm -rf node_modules server/node_modules ui/node_modules packages/*/node_modules && yarn install",
+      "command": "rm -rf node_modules apps/server/node_modules apps/ui/node_modules packages/*/node_modules && yarn install",
       "problemMatcher": [],
       "group": "none",
       "presentation": {
@@ -172,7 +172,7 @@
     {
       "label": "Clean Build Artifacts",
       "type": "shell",
-      "command": "rm -rf server/dist ui/.next ui/out packages/*/dist",
+      "command": "rm -rf apps/server/dist apps/ui/.next apps/ui/out packages/*/dist",
       "problemMatcher": [],
       "group": "none",
       "presentation": {

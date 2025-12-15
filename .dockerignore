@@ -2,7 +2,7 @@
 .git
 data/
 docker/nginx-reverse-subfolder/
-server/dist
-ui/.next
+apps/server/dist
+apps/ui/.next
 Dockerfile
 **/*.md

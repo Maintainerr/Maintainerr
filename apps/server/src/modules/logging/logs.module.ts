@@ -19,7 +19,7 @@ import { EventEmitterTransport } from './winston/eventEmitterTransport';
 const dataDir =
   process.env.NODE_ENV === 'production'
     ? '/opt/data'
-    : path.join(__dirname, '../../../../data');
+    : path.join(__dirname, '../../../../../data');
 
 @Global()
 @Module({
