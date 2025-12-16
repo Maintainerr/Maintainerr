@@ -6,10 +6,18 @@ FROM base AS builder
 WORKDIR /app
 
 RUN yarn global add turbo@^2
-COPY . .
+
+# Copy only files needed to resolve/install dependencies first (better Docker layer caching)
+COPY package.json yarn.lock .yarnrc.yml turbo.json ./
+COPY .yarn/releases ./.yarn/releases
+COPY apps/server/package.json ./apps/server/package.json
+COPY apps/ui/package.json ./apps/ui/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
 
 RUN yarn install --network-timeout 99999999
-RUN yarn cache clean
+
+# Copy the rest of the repository after deps are installed
+COPY . .
 
 RUN <<EOF cat >> ./apps/ui/.env
 VITE_BASE_PATH=/__PATH_PREFIX__
