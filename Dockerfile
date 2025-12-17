@@ -88,6 +88,9 @@ USER node
 
 EXPOSE 6246
 
-# Note: VOLUME directive removed - users must explicitly map /opt/data
-# This allows the startup check to detect when no volume is mapped
+# IMPORTANT: VOLUME directive removed to enable mount detection
+# Users MUST explicitly configure a volume for /opt/data:
+#   docker run: -v ./data:/opt/data
+#   docker-compose: volumes: - ./data:/opt/data
+# See README.md for complete examples
 ENTRYPOINT ["/opt/app/start.sh"]

@@ -8,7 +8,8 @@ DATA_DIR="/opt/data"
 # This can be skipped by setting SKIP_DATA_MOUNT_CHECK=true
 if [ "${SKIP_DATA_MOUNT_CHECK}" != "true" ]; then
 	# Use mountpoint command to check if /opt/data is actually a mount point
-	# mountpoint returns 0 if it IS a mount point, 1 if it is NOT
+	# mountpoint is part of BusyBox (included in Alpine Linux by default)
+	# Returns 0 if it IS a mount point, 1 if it is NOT
 	if ! mountpoint -q "${DATA_DIR}"; then
 		printf '\n========================================\n' >&2
 		printf 'ERROR: /opt/data is not mounted!\n' >&2
