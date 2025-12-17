@@ -379,6 +379,17 @@ export class SonarrGetterService {
         case 'seriesType': {
           return showResponse.seriesType ?? null;
         }
+        case 'missing_episodes': {
+          if ([EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)) {
+            return season?.statistics
+              ? season.statistics.episodeCount - season.statistics.episodeFileCount
+              : null;
+          }
+
+          return showResponse.statistics
+            ? showResponse.statistics.episodeCount - showResponse.statistics.episodeFileCount
+            : null;
+        }
       }
     } catch (e) {
       this.logger.warn(

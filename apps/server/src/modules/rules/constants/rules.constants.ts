@@ -861,6 +861,18 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
+        {
+          id: 28,
+          name: 'missing_episodes',
+          humanName: 'Episodes - Missing count',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: [
+            EPlexDataType.SHOWS,
+            EPlexDataType.SEASONS,
+            EPlexDataType.EPISODES,
+          ],
+        },
       ],
     },
     {
