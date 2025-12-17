@@ -88,5 +88,6 @@ USER node
 
 EXPOSE 6246
 
-VOLUME [ "/opt/data" ]
+# Note: VOLUME directive removed - users must explicitly map /opt/data
+# This allows the startup check to detect when no volume is mapped
 ENTRYPOINT ["/opt/app/start.sh"]
