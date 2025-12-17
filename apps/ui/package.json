@@ -26,7 +26,7 @@
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",
     "cron-validator": "^1.4.0",
-    "lodash-es": "^4.17.21",
+    "lodash-es": "^4.17.22",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.68.0",
