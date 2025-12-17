@@ -46,12 +46,10 @@ COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/node_m
 
 COPY --chmod=777 --chown=node:node docker/start.sh /opt/app/start.sh
 
-# Create required directories and add a marker file to detect if volume is mounted
+# Create required directories
 RUN mkdir -m 777 /opt/data && \
     mkdir -m 777 /opt/data/logs && \
-    chown -R node:node /opt/data && \
-    echo "This marker file indicates /opt/data is NOT mounted to persistent storage." > /opt/data/.VOLUME_NOT_MOUNTED && \
-    chmod 444 /opt/data/.VOLUME_NOT_MOUNTED
+    chown -R node:node /opt/data
 
 # This is required for docker user directive to work
 RUN chmod 777 /opt/app/start.sh

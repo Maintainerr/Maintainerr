@@ -7,10 +7,9 @@ DATA_DIR="/opt/data"
 # Check if the data directory is properly mounted to persistent storage
 # This can be skipped by setting SKIP_DATA_MOUNT_CHECK=true
 if [ "${SKIP_DATA_MOUNT_CHECK}" != "true" ]; then
-	# Check for the marker file that was created during image build
-	# If a volume is mounted over /opt/data, this marker file will not be present
-	# If the marker file exists, it means no volume was mounted
-	if [ -f "${DATA_DIR}/.VOLUME_NOT_MOUNTED" ]; then
+	# Use mountpoint command to check if /opt/data is actually a mount point
+	# mountpoint returns 0 if it IS a mount point, 1 if it is NOT
+	if ! mountpoint -q "${DATA_DIR}"; then
 		printf '\n========================================\n' >&2
 		printf 'ERROR: /opt/data is not mounted!\n' >&2
 		printf '========================================\n\n' >&2
