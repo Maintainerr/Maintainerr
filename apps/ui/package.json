@@ -26,7 +26,7 @@
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",
     "cron-validator": "^1.4.0",
-    "lodash-es": "^4.17.21",
+    "lodash-es": "^4.17.22",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.68.0",
@@ -36,7 +36,7 @@
     "react-toastify": "^11.0.5",
     "reconnecting-eventsource": "^1.6.4",
     "yaml": "^2.8.2",
-    "zod": "^4.1.13"
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
@@ -49,7 +49,7 @@
     "@types/node": "^22",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
     "@typescript-eslint/parser": "^8.49.0",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "10.4.23",
@@ -64,6 +64,6 @@
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^6.0.2"
   }
 }
