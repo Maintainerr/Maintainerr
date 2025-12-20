@@ -191,10 +191,27 @@ jobs:
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
+  
+  after-effects:
+    name: Actions taken after a release.
+    runs-on: ubuntu-latest
+    needs: semantic-release
+    # Only publish docs if a successful release was made, and not a dry-run.
+    if: ${{ needs.semantic-release.result == 'success' && github.event.inputs.dry-run-semantic-release != 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Get release version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Log version
+        run: echo "Release version: ${{ steps.package-version.outputs.current-version }}"
 
       - name: Mkdocs Deploy
-        if: ${{ success() }}
         continue-on-error: true
+        if: ${{ steps.package-version.outputs.current-version != '' }}
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.DOCS_DEPLOY }}
@@ -203,5 +220,16 @@ jobs:
           client-payload: |
             {
               "ref": "refs/heads/main",
-              "versionInput": "${{ needs.build-docker-image.outputs.version }}"
+              "versionInput": "${{ steps.package-version.outputs.current-version }}"
             }
+
+      - name: Update DockerHub README
+        if: ${{ github.event.inputs.with-docker-images == 'true' && steps.package-version.outputs.current-version != '' }}
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_SLUG }}
+          short-description: ${{ github.event.repository.description }}
+          readme-filepath: ./dockerhub/README.md
