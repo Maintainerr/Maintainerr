@@ -232,4 +232,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.DOCKERHUB_SLUG }}
           short-description: ${{ github.event.repository.description }}
-          readme-filepath: ./dockerhub/README.md
+          readme-filepath: ./dockerhub-README.md
