@@ -209,9 +209,6 @@ jobs:
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
 
-      - name: Log version
-        run: echo "Release version: ${{ steps['package-version'].outputs['current-version'] }}"
-
       - name: Mkdocs Deploy
         continue-on-error: true
         if: ${{ steps['package-version'].outputs['current-version'] != '' }}
