@@ -199,11 +199,15 @@ jobs:
     permissions:
       contents: read
       packages: write
-    # Only publish docs if a successful release was made, and not a dry-run.
     if: ${{ needs.semantic-release.result == 'success' && github.event.inputs.dry-run-semantic-release != 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Pull latest changes
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git pull --ff-only
 
       - name: Get release version
         id: package-version
@@ -211,7 +215,7 @@ jobs:
 
       - name: Mkdocs Deploy
         continue-on-error: true
-        if: ${{ steps['package-version'].outputs['current-version'] != '' }}
+        if: ${{ steps.package-version.outputs.current-version != '' }}
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.DOCS_DEPLOY }}
@@ -220,11 +224,11 @@ jobs:
           client-payload: |
             {
               "ref": "refs/heads/main",
-              "versionInput": "${{ steps['package-version'].outputs['current-version'] }}"
+              "versionInput": "${{ steps.package-version.outputs.current-version }}"
             }
 
       - name: Update DockerHub README
-        if: ${{ github.event.inputs.with-docker-images == 'true' && steps['package-version'].outputs['current-version'] != '' }}
+        if: ${{ github.event.inputs.with-docker-images == 'true' && steps.package-version.outputs.current-version != '' }}
         continue-on-error: true
         uses: peter-evans/dockerhub-description@v5
         with:

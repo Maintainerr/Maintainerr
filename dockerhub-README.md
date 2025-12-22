@@ -42,7 +42,7 @@ For more information, visit the [installation guide](https://docs.maintainerr.in
 
 Docker run:
 
-```Yaml
+```yaml
 docker run -d \
 --name maintainerr \
 -e TZ=Europe/Brussels \
@@ -55,7 +55,7 @@ ghcr.io/maintainerr/maintainerr:latest
 
 Docker-compose:
 
-```Yaml
+```yaml
 version: '3'
 
 services:
