@@ -1,0 +1,26 @@
+# Build outputs
+bin/
+obj/
+*.wixobj
+*.wixpdb
+
+# NuGet packages
+packages/
+
+# Custom Actions DLL (copied during build)
+CustomActions.CA.dll
+
+# Resources (some are generated)
+Resources/MaintainerrService.exe
+
+# MSI files
+*.msi
+*.wixpdb
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider
+.idea/
