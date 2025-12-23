@@ -29,7 +29,7 @@
     "globals": "^16.5.0",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.0"
+    "typescript-eslint": "^8.50.1"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.10",
