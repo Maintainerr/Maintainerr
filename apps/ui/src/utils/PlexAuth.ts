@@ -98,7 +98,7 @@ class PlexOAuth {
 
     if (this.popup) {
       this.popup.location.href = `https://app.plex.tv/auth/#!?${this.encodeData(
-        params,
+        params as Record<string, string>,
       )}`
     }
 
@@ -157,29 +157,29 @@ class PlexOAuth {
         'Window is undefined. Are you running this in the browser?',
       )
     }
-    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
-    // Fixes dual-screen position                         Most browsers      Firefox
     const dualScreenLeft =
       window.screenLeft != undefined ? window.screenLeft : window.screenX
     const dualScreenTop =
       window.screenTop != undefined ? window.screenTop : window.screenY
+
     const width = window.innerWidth
       ? window.innerWidth
       : document.documentElement.clientWidth
         ? document.documentElement.clientWidth
         : screen.width
+
     const height = window.innerHeight
       ? window.innerHeight
       : document.documentElement.clientHeight
         ? document.documentElement.clientHeight
         : screen.height
+
     const left = width / 2 - w / 2 + dualScreenLeft
     const top = height / 2 - h / 2 + dualScreenTop
 
-    //Set url to login/plex/loading so browser doesn't block popup
     const newWindow = window.open(
-      `${basePath}/login/plex/loading`,
+      '',
       title,
       'scrollbars=yes, width=' +
         w +
@@ -190,7 +190,47 @@ class PlexOAuth {
         ', left=' +
         left,
     )
+
     if (newWindow) {
+      try {
+        newWindow.document.open()
+        newWindow.document.write(`
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Opening Plex…</title>
+              <style>
+                html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+                body { display:flex; align-items:center; justify-content:center; background:#09090b; color:#f4f4f5; }
+                .card { background:#18181b; padding:20px 22px; border-radius:12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); width: fit-content; max-width: 360px; }
+                .muted { color:#a1a1aa; margin-top:8px; font-size:14px; line-height:1.3; }
+                .spinner {
+                  width:18px; height:18px; border-radius:50%;
+                  border:2px solid rgba(244,244,245,.25);
+                  border-top-color: #f4f4f5;
+                  display:inline-block;
+                  animation: spin 700ms linear infinite;
+                  margin-right:10px;
+                  vertical-align:middle;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div><span class="spinner"></span><strong>Opening Plex sign-in…</strong></div>
+                <div class="muted">Please finish signing in in this window.</div>
+              </div>
+            </body>
+          </html>
+        `)
+        newWindow.document.close()
+      } catch {
+        // If writing fails for any reason, it's not fatal.
+      }
+
       newWindow.focus()
       this.popup = newWindow
       return this.popup
@@ -199,9 +239,7 @@ class PlexOAuth {
 
   private encodeData(data: Record<string, string>): string {
     return Object.keys(data)
-      .map(function (key) {
-        return [key, data[key]].map(encodeURIComponent).join('=')
-      })
+      .map((key) => [key, data[key]].map(encodeURIComponent).join('='))
       .join('&')
   }
 }

@@ -815,15 +815,10 @@ export class SettingsService implements SettingDto {
     return this.jellyseerr_url !== null && this.jellyseerr_api_key !== null;
   }
 
-  // Test if all required settings are set.
+  // Test if there is a Plex auth token configured
   public async testSetup(): Promise<boolean> {
     try {
-      if (
-        this.plex_hostname &&
-        this.plex_name &&
-        this.plex_port &&
-        this.plex_auth_token
-      ) {
+      if (this.plex_auth_token !== null) {
         return true;
       }
       return false;

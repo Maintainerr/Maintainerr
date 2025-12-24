@@ -18,35 +18,42 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
   const [loading, setLoading] = useState(false)
 
   const getPlexLogin = async () => {
-    setLoading(true)
     try {
       const authToken = await plexOAuth.login()
-      setLoading(false)
       onAuthToken(authToken)
     } catch (e) {
-      if (onError) {
-        onError(e instanceof Error ? e.message : 'Unknown error')
-      }
+      onError?.(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
       setLoading(false)
     }
   }
+
+  const handleClick = () => {
+    if (loading || isProcessing) return
+
+    setLoading(true)
+    plexOAuth.preparePopup()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void getPlexLogin()
+      })
+    })
+  }
+
   return (
     <span className="block w-full rounded-md shadow-sm">
       <button
         type="button"
-        onClick={() => {
-          plexOAuth.preparePopup()
-          setTimeout(() => getPlexLogin(), 1500)
-        }}
+        onClick={handleClick}
         disabled={loading || isProcessing}
         className="plex-button"
       >
         <LoginIcon />
         <span>
           {loading
-            ? 'Loading'
+            ? 'Loading…'
             : isProcessing
-              ? 'Authenticating..'
+              ? 'Authenticating…'
               : 'Authenticate with Plex'}
         </span>
       </button>

@@ -1,16 +1,14 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash-es'
-import { ReactNode, useContext, useEffect, useState } from 'react'
+import { ReactNode, useContext, useState } from 'react'
 import {
   isRouteErrorResponse,
   Outlet,
-  useLocation,
   useNavigate,
   useRouteError,
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import GetApiHandler from '../../utils/ApiHandler'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
 
@@ -23,19 +21,10 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const SearchCtx = useContext(SearchContext)
   const navigate = useNavigate()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-  const location = useLocation()
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)
   }
-
-  useEffect(() => {
-    GetApiHandler('/settings/test/setup').then((setupDone) => {
-      if (!setupDone && location.pathname !== '/setup') {
-        navigate('/setup')
-      }
-    })
-  }, [navigate, location.pathname])
 
   return (
     <section>

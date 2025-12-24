@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, redirect } from 'react-router-dom'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
 import Overview from './components/Overview'
 import Settings from './components/Settings'
@@ -26,15 +26,43 @@ import SetupPage from './pages/SetupPage'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
 
+async function requireSetupLoader() {
+  const res = await fetch('/api/settings/test/setup', {
+    credentials: 'include',
+  })
+
+  if (!res.ok) return null
+
+  const setupDone = (await res.json()) as boolean
+  if (!setupDone) throw redirect('/setup')
+
+  return null
+}
+
+async function setupPageLoader() {
+  const res = await fetch('/api/settings/test/setup', {
+    credentials: 'include',
+  })
+
+  if (!res.ok) return null
+
+  const setupDone = (await res.json()) as boolean
+  if (setupDone) throw redirect('/overview')
+
+  return null
+}
+
 export const router = createBrowserRouter(
   [
     {
       path: '/setup',
       element: <SetupPage />,
+      loader: setupPageLoader,
     },
     {
       path: '/',
       element: <Layout />,
+      loader: requireSetupLoader,
       errorElement: <LayoutErrorBoundary />,
       children: [
         {
