@@ -11,7 +11,7 @@ Maintainerr feels like the most complete solution, and if we could make that wor
 
 # Jellyfin Support Implementation Plan
 
-**Document Version:** 4.3  
+**Document Version:** 4.4  
 **Last Updated:** December 29, 2025  
 **Status:** Complete - Ready for Implementation
 
@@ -20,6 +20,17 @@ Maintainerr feels like the most complete solution, and if we could make that wor
 ## Document Overview
 
 This implementation plan provides a technically accurate roadmap for adding Jellyfin support to Maintainerr. All findings are verified against actual source code from Maintainerr, Jellyfin server, and reference implementations (Janitorr, Jellysweep).
+
+### Current Scope & Future Extensibility
+
+> **Current Implementation:** Single media server at a time (global `media_server_type` setting)
+>
+> **Future Extension:** The architecture is designed to support **per-rule media server selection** in a future release. This would allow users to run both Plex and Jellyfin simultaneously, with rules targeting different servers. Key extension points:
+> - `MediaServerFactory` can manage multiple server instances
+> - Rules/Collections can add optional `mediaServerType` field (defaults to global setting)
+> - UI can add a media server selector to the rule editor
+>
+> This future capability is OUT OF SCOPE for the initial Jellyfin implementation but the abstraction layer is intentionally designed to accommodate it.
 
 ### Reference Codebases Analyzed
 
@@ -439,6 +450,32 @@ jellyfin_server_name: string;
 ```
 
 ## 1.8 Key Technical Considerations
+
+### Media Server Switching (Halfway House Solution)
+
+Rather than requiring users to delete the entire SQLite database when switching between Plex and Jellyfin, we implement a **controlled switch** that:
+
+**Data Cleared on Switch:**
+- Collections (tied to media server IDs)
+- Collection media items
+- Exclusions (reference media IDs)
+- Collection logs
+- Old server credentials
+
+**Data Preserved on Switch:**
+- General application settings
+- Radarr/Sonarr server configurations
+- Overseerr/Jellyseerr settings  
+- Tautulli settings
+- Notification configurations
+
+**API Endpoints:**
+```
+GET  /api/settings/media-server/switch/preview/:targetServerType
+POST /api/settings/media-server/switch
+```
+
+The switch requires explicit confirmation (`confirmDataClear: true`) to prevent accidental data loss.
 
 ### Watch History Architecture Differences
 

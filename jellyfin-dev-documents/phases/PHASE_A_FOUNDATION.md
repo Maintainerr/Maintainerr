@@ -87,6 +87,54 @@ Create migration: `{timestamp}-add-jellyfin-settings.ts`
 
 ---
 
+## A.2.5: Media Server Switch Functionality
+
+### Implementation Note
+
+Instead of requiring users to "nuke the entire database" to switch media servers, we implement a **halfway house solution** that:
+- **Clears**: Collections, collection media, exclusions, collection logs (media server-specific data)
+- **Keeps**: General settings, Radarr/Sonarr settings, Overseerr/Jellyseerr settings, Tautulli settings, notifications
+
+### API Endpoints
+
+```
+GET  /api/settings/media-server/switch/preview/:targetServerType
+POST /api/settings/media-server/switch
+```
+
+### DTOs (in `@maintainerr/contracts`)
+
+```typescript
+// Request
+interface SwitchMediaServerRequestDto {
+  targetServerType: EMediaServerType;
+  confirmDataClear: boolean;  // Must be true to proceed
+}
+
+// Response
+interface SwitchMediaServerResponseDto {
+  status: 'OK' | 'NOK';
+  code: number;
+  message: string;
+  clearedData?: {
+    collections: number;
+    collectionMedia: number;
+    exclusions: number;
+    collectionLogs: number;
+  };
+}
+
+// Preview
+interface MediaServerSwitchPreviewDto {
+  currentServerType: EMediaServerType;
+  targetServerType: EMediaServerType;
+  dataToBeCleared: { ... };
+  dataToBeKept: { ... };
+}
+```
+
+---
+
 ## A.3: Media Server Module Structure
 
 ### Files to Create
@@ -170,6 +218,13 @@ export interface IMediaServerService {
 ```
 
 ### A.3.2: `media-server.factory.ts`
+
+> **Future Extensibility Note:** The factory pattern is intentionally chosen to support future multi-server scenarios. Currently returns a single service based on global settings, but can be extended to:
+> - `getService(serverType?: EMediaServerType)` - Get specific server instance
+> - `getConfiguredServers()` - List all configured servers
+> - Manage connection pools for multiple servers
+>
+> This would enable per-rule server selection in a future release.
 
 ```typescript
 @Injectable()
