@@ -2055,27 +2055,25 @@ export class JellyfinGetterService {
 }
 ```
 
-#### C.2: Update Rules Constants
+#### C.2: Rules Approach (Add Jellyfin as Application)
+
+Per maintainer feedback, instead of adding availability flags to properties, we add `jellyfin` as another application in RuleConstants (similar to how `radarr`, `sonarr`, `plex` are defined).
+
+This means:
+- No changes to the existing RuleConstants property structure
+- The GetterService dispatcher handles `application: 'jellyfin'` case
+- Jellyfin-specific property values come from JellyfinGetterService
+- Properties that don't apply to Jellyfin simply won't be in the jellyfin application options
 
 ```typescript
-// Add feature availability flags
-export const RULE_PROPERTIES: Record<number, RulePropertyDefinition> = {
-  [RuleProperty.SEEN_BY]: {
-    id: 1,
-    name: "seenBy",
-    type: "user_list",
-    availableFor: ["plex", "jellyfin"],
-    jellyfinNote: "Requires user iteration, may be slower",
-  },
-  [RuleProperty.WATCHLIST_IS_LISTED]: {
-    id: 28,
-    name: "watchlist_isListedByUsers",
-    type: "user_list",
-    availableFor: ["plex"], // Plex-only
-    jellyfinNote: "Not available - Jellyfin has no watchlist API",
-  },
-  // ...
-};
+// In GetterService - dispatch to appropriate service based on application
+switch (rule.application) {
+  case 'jellyfin':
+    return this.jellyfinGetterService.get(rule.property, item);
+  case 'plex':
+  default:
+    return this.plexGetterService.get(rule.property, item);
+}
 ```
 
 ### Phase D: Collection Handling (Week 4)
@@ -2276,27 +2274,34 @@ describe("Jellyfin Integration", () => {
 2. User selects "Jellyfin" as media server type
 3. Enters Jellyfin URL and API key
 4. System validates connection and imports libraries
-5. User informed about feature limitations (visibility, watchlist)
+5. Start creating collections
 
-### For Users Migrating Plex → Jellyfin
+### Important Note: No Server Switching
 
-1. Change media server type in settings
-2. System warns about:
-   - Collection visibility settings will be ignored
-   - Watchlist rules will not work
-   - User mapping may differ
-3. Collections recreated in Jellyfin (manual process)
-4. Rules re-evaluated against Jellyfin data
+**Per maintainer guidance:** Switching between Plex and Jellyfin is NOT supported.
 
-## 4.5 Known Limitations (Final)
+Once a media server is configured, users should not attempt to change server types.
+If a user wants to switch from Plex to Jellyfin (or vice versa), they should:
+1. Start with a fresh database (delete/rename existing SQLite file)
+2. Configure the new media server from scratch
+3. Recreate collections and rules
 
-| Feature               | Plex           | Jellyfin          | Workaround                 |
+This simplifies the implementation significantly and avoids complex migration logic.
+
+## 4.5 Implementation Notes
+
+### Jellyfin Feature Differences (Handled Transparently)
+
+| Feature               | Plex           | Jellyfin          | How We Handle It           |
 | --------------------- | -------------- | ----------------- | -------------------------- |
-| Collection visibility | ✅ Full        | ❌ None           | Document limitation        |
-| Watchlist rules       | ✅ Via Plex.tv | ❌ No API         | Remove from Jellyfin rules |
-| Central watch history | ✅ Single call | ⚠️ User iteration | Cache + batch              |
-| Labels                | ✅ Labels      | ⚠️ Tags           | Map Labels→Tags            |
+| Collection visibility | ✅ Full        | ❌ None           | Ignored silently           |
+| Watchlist rules       | ✅ Via Plex.tv | ❌ No API         | Property not available     |
+| Central watch history | ✅ Single call | ⚠️ User iteration | Cache + batch internally   |
+| Labels                | ✅ Labels      | ⚠️ Tags           | Map Labels→Tags internally |
 | Multi-server          | ⚠️ Basic       | ⚠️ Basic          | Single server per instance |
+
+**Note:** Per maintainer feedback, we do NOT show UI warnings about these differences.
+The UI stays clean - feature differences are handled at the service/rules layer.
 
 ## 4.6 Files to Create/Modify Summary
 
@@ -2334,11 +2339,10 @@ describe("Jellyfin Integration", () => {
 | `collections.service.ts`       | Use IMediaServerService                              |
 | `collection-handler.ts`        | Use factory                                          |
 | `plex-getter.service.ts`       | Extract to adapter, use MediaItem                    |
-| `rules.constants.ts`           | Add availability flags                               |
 | `rule-executor.service.ts`     | Use factory, MediaItem                               |
 | `settings.service.ts`          | Handle Jellyfin settings                             |
 | `notifications.service.ts`     | Use interface                                        |
-| `getter.service.ts`            | Dispatch to Jellyfin getter                          |
+| `getter.service.ts`            | Dispatch to Jellyfin getter based on application     |
 | `radarr-getter.service.ts`     | Use MediaItem                                        |
 | `sonarr-getter.service.ts`     | Use MediaItem                                        |
 | `overseerr-getter.service.ts`  | Use MediaItem                                        |
