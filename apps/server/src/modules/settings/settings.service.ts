@@ -47,6 +47,8 @@ export class SettingsService implements SettingDto {
 
   locale: string;
 
+  media_server_type?: 'plex' | 'jellyfin';
+
   plex_name: string;
 
   plex_hostname: string;
@@ -56,6 +58,14 @@ export class SettingsService implements SettingDto {
   plex_ssl: number;
 
   plex_auth_token: string;
+
+  jellyfin_url?: string;
+
+  jellyfin_api_key?: string;
+
+  jellyfin_user_id?: string;
+
+  jellyfin_server_name?: string;
 
   overseerr_url: string;
 
@@ -109,11 +119,16 @@ export class SettingsService implements SettingDto {
       this.applicationUrl = settingsDb?.applicationUrl;
       this.apikey = settingsDb?.apikey;
       this.locale = settingsDb?.locale;
+      this.media_server_type = settingsDb?.media_server_type;
       this.plex_name = settingsDb?.plex_name;
       this.plex_hostname = settingsDb?.plex_hostname;
       this.plex_port = settingsDb?.plex_port;
       this.plex_ssl = settingsDb?.plex_ssl;
       this.plex_auth_token = settingsDb?.plex_auth_token;
+      this.jellyfin_url = settingsDb?.jellyfin_url;
+      this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
+      this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
+      this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
       this.overseerr_url = settingsDb?.overseerr_url;
       this.overseerr_api_key = settingsDb?.overseerr_api_key;
       this.tautulli_url = settingsDb?.tautulli_url;
