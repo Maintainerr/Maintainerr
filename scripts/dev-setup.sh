@@ -40,4 +40,4 @@ yarn workspace @maintainerr/contracts build
 echo "✅ Setup complete! Starting development server..."
 
 # Start development server
-yarn dev
+yarn dev &
