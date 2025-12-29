@@ -142,7 +142,7 @@ describe('JellyfinMapper', () => {
   });
 
   describe('toMediaItem', () => {
-    const baseJellyfinItem: BaseItemDto = {
+    const baseJellyfinItem = {
       Id: 'abc123',
       ParentId: 'parent123',
       SeriesId: 'series123',
@@ -151,6 +151,7 @@ describe('JellyfinMapper', () => {
       SeriesName: 'Test Series',
       Type: BaseItemKind.Movie,
       DateCreated: '2021-01-01T00:00:00.000Z',
+      DateLastSaved: '2021-01-02T00:00:00.000Z',
       ProviderIds: {
         Imdb: 'tt1234567',
         Tmdb: '12345',
@@ -163,14 +164,14 @@ describe('JellyfinMapper', () => {
           Container: 'mkv',
           MediaStreams: [
             {
-              Type: 'Video',
+              Type: 'Video' as const,
               Width: 1920,
               Height: 1080,
               Codec: 'h264',
               AspectRatio: '16:9',
             },
             {
-              Type: 'Audio',
+              Type: 'Audio' as const,
               Channels: 6,
               Codec: 'aac',
             },
@@ -202,7 +203,7 @@ describe('JellyfinMapper', () => {
       IndexNumber: 1,
       ParentIndexNumber: 1,
       Tags: ['HD', '4K'],
-    };
+    } as BaseItemDto;
 
     it('should convert all basic fields correctly', () => {
       const result = JellyfinMapper.toMediaItem(baseJellyfinItem);

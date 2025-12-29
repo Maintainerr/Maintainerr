@@ -97,10 +97,10 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.ts$": "ts-jest"
+      "^.+\\.(ts|js)$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(@octokit|octokit|bottleneck)/)"
+      "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk)/)"
     ],
     "collectCoverageFrom": [
       "**/*.ts"
