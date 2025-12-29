@@ -22,6 +22,7 @@
     "migration:show": "ts-node ../tools/typeOrmCli.ts migration:show --dataSource ./src/datasource-config.ts"
   },
   "dependencies": {
+    "@jellyfin/sdk": "^0.13.0",
     "@maintainerr/contracts": "workspace:^",
     "@nestjs/common": "^11.1.11",
     "@nestjs/core": "^11.1.11",

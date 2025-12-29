@@ -4,8 +4,7 @@ import { SettingsService } from '../../settings/settings.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { IMediaServerService } from './media-server.interface';
 import { PlexAdapterService } from './plex/plex-adapter.service';
-// JellyfinService will be imported in Phase B
-// import { JellyfinService } from './jellyfin/jellyfin.service';
+import { JellyfinService } from './jellyfin/jellyfin.service';
 
 /**
  * Type guard to check if settings response is a Settings object
@@ -29,7 +28,7 @@ export class MediaServerFactory {
     @Inject(forwardRef(() => SettingsService))
     private readonly settingsService: SettingsService,
     private readonly plexAdapter: PlexAdapterService,
-    // @Optional() private readonly jellyfinService: JellyfinService,
+    @Optional() private readonly jellyfinService?: JellyfinService,
   ) {}
 
   /**
@@ -58,14 +57,10 @@ export class MediaServerFactory {
   getServiceByType(serverType: EMediaServerType): IMediaServerService {
     switch (serverType) {
       case EMediaServerType.JELLYFIN:
-        // Will be implemented in Phase B
-        throw new Error(
-          'Jellyfin support is not yet implemented. Please configure Plex.',
-        );
-      // if (!this.jellyfinService) {
-      //   throw new Error('Jellyfin service not available');
-      // }
-      // return this.jellyfinService;
+        if (!this.jellyfinService) {
+          throw new Error('Jellyfin service not available');
+        }
+        return this.jellyfinService;
 
       case EMediaServerType.PLEX:
       default:

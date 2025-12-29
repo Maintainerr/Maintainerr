@@ -3,14 +3,14 @@ import { PlexApiModule } from '../plex-api/plex-api.module';
 import { SettingsModule } from '../../settings/settings.module';
 import { MediaServerFactory } from './media-server.factory';
 import { PlexAdapterService } from './plex/plex-adapter.service';
-// JellyfinModule will be imported in Phase B
-// import { JellyfinModule } from './jellyfin/jellyfin.module';
+import { JellyfinModule } from './jellyfin/jellyfin.module';
+import { JellyfinService } from './jellyfin/jellyfin.service';
 
 /**
  * Media Server Module
  *
  * Provides abstraction layer for media server operations.
- * Currently supports Plex, with Jellyfin support to be added in Phase B.
+ * Supports both Plex and Jellyfin media servers.
  *
  * Usage:
  * ```typescript
@@ -27,16 +27,16 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
   imports: [
     forwardRef(() => PlexApiModule),
     forwardRef(() => SettingsModule),
-    // JellyfinModule, // Phase B
+    JellyfinModule,
   ],
   providers: [
     PlexAdapterService,
-    // JellyfinService, // Phase B
+    JellyfinService,
     MediaServerFactory,
   ],
   exports: [
     PlexAdapterService,
-    // JellyfinService, // Phase B
+    JellyfinService,
     MediaServerFactory,
   ],
 })
