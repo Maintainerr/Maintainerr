@@ -1,0 +1,155 @@
+name: Sync Jellyfin Branch with Main
+
+on:
+  # Run on schedule - every day at 00:00 UTC
+  schedule:
+    - cron: '0 0 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Only run in the main repository, not forks
+    if: github.repository == 'Maintainerr/Maintainerr'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check if jellyfin branch exists
+        id: check_branch
+        run: |
+          if git ls-remote --heads origin jellyfin | grep -q jellyfin; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if sync is needed
+        if: steps.check_branch.outputs.exists == 'true'
+        id: check_sync
+        run: |
+          git fetch origin main
+          git fetch origin jellyfin
+          
+          MAIN_COMMIT=$(git rev-parse origin/main)
+          JELLYFIN_BASE=$(git merge-base origin/main origin/jellyfin)
+          
+          echo "Main HEAD: $MAIN_COMMIT"
+          echo "Common ancestor: $JELLYFIN_BASE"
+          
+          if [ "$MAIN_COMMIT" = "$JELLYFIN_BASE" ]; then
+            echo "needs_sync=false" >> $GITHUB_OUTPUT
+            echo "✅ Jellyfin branch is already up to date with main"
+          else
+            echo "needs_sync=true" >> $GITHUB_OUTPUT
+            echo "📦 Main has $(git rev-list --count $JELLYFIN_BASE..$MAIN_COMMIT) new commit(s)"
+          fi
+
+      - name: Attempt merge
+        if: steps.check_branch.outputs.exists == 'true' && steps.check_sync.outputs.needs_sync == 'true'
+        id: merge
+        run: |
+          git checkout jellyfin
+          
+          if git merge origin/main --no-edit -m "chore: sync with main branch"; then
+            echo "merge_status=success" >> $GITHUB_OUTPUT
+            git push origin jellyfin
+            echo "✅ Merge successful"
+          else
+            git merge --abort
+            echo "merge_status=conflict" >> $GITHUB_OUTPUT
+            echo "⚠️ Merge conflict detected"
+          fi
+
+      - name: Check for existing sync PR
+        if: steps.merge.outputs.merge_status == 'conflict'
+        id: check_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:sync/main-to-jellyfin`,
+              base: 'jellyfin'
+            });
+            return prs.data.length > 0 ? prs.data[0].number : null;
+          result-encoding: string
+
+      - name: Create sync branch and PR
+        if: steps.merge.outputs.merge_status == 'conflict' && steps.check_pr.outputs.result == 'null'
+        run: |
+          # Create a new branch from main for the PR
+          git checkout origin/main
+          git checkout -b sync/main-to-jellyfin
+          git push -f origin sync/main-to-jellyfin
+
+      - name: Create Pull Request for conflict resolution
+        if: steps.merge.outputs.merge_status == 'conflict' && steps.check_pr.outputs.result == 'null'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔄 Sync main → jellyfin (conflict resolution needed)',
+              head: 'sync/main-to-jellyfin',
+              base: 'jellyfin',
+              body: `## Automated Sync PR
+              
+            This PR syncs changes from \`main\` into the \`jellyfin\` branch.
+            
+            **⚠️ Merge conflicts detected** - manual resolution required.
+            
+            ### How to resolve
+            
+            1. Check out this PR locally
+            2. Resolve the conflicts
+            3. Push the resolution
+            4. Merge the PR
+            
+            \`\`\`bash
+            gh pr checkout ${{ github.event.number }}
+            # Or manually:
+            git fetch origin
+            git checkout sync/main-to-jellyfin
+            git merge origin/jellyfin
+            # Resolve conflicts, keeping jellyfin-specific changes where appropriate
+            git add .
+            git commit
+            git push
+            \`\`\`
+            
+            ---
+            *This PR was automatically created by the sync workflow.*
+            
+            /cc @enoch85`
+            });
+            
+            // Add labels
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['jellyfin', 'sync', 'needs-review']
+            });
+
+      - name: Update existing PR
+        if: steps.merge.outputs.merge_status == 'conflict' && steps.check_pr.outputs.result != 'null'
+        run: |
+          # Update the sync branch with latest main
+          git checkout origin/main
+          git checkout -B sync/main-to-jellyfin
+          git push -f origin sync/main-to-jellyfin
+          echo "📝 Updated existing sync PR #${{ steps.check_pr.outputs.result }}"
