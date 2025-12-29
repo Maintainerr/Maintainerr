@@ -1,7 +1,11 @@
 import {
+  EMediaServerType,
   JellyseerrSettingDto,
   MaintainerrEvent,
+  MediaServerSwitchPreviewDto,
   OverseerrSettingDto,
+  SwitchMediaServerRequestDto,
+  SwitchMediaServerResponseDto,
   TautulliSettingDto,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
@@ -32,6 +36,11 @@ import {
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
+import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { CollectionLog } from '../collections/entities/collection_log.entities';
+import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
 
 @Injectable()
 export class SettingsService implements SettingDto {
@@ -47,6 +56,8 @@ export class SettingsService implements SettingDto {
 
   locale: string;
 
+  media_server_type?: 'plex' | 'jellyfin';
+
   plex_name: string;
 
   plex_hostname: string;
@@ -56,6 +67,14 @@ export class SettingsService implements SettingDto {
   plex_ssl: number;
 
   plex_auth_token: string;
+
+  jellyfin_url?: string;
+
+  jellyfin_api_key?: string;
+
+  jellyfin_user_id?: string;
+
+  jellyfin_server_name?: string;
 
   overseerr_url: string;
 
@@ -92,6 +111,16 @@ export class SettingsService implements SettingDto {
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
+    @InjectRepository(Collection)
+    private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(CollectionMedia)
+    private readonly collectionMediaRepo: Repository<CollectionMedia>,
+    @InjectRepository(CollectionLog)
+    private readonly collectionLogRepo: Repository<CollectionLog>,
+    @InjectRepository(Exclusion)
+    private readonly exclusionRepo: Repository<Exclusion>,
+    @InjectRepository(RuleGroup)
+    private readonly ruleGroupRepo: Repository<RuleGroup>,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -109,11 +138,16 @@ export class SettingsService implements SettingDto {
       this.applicationUrl = settingsDb?.applicationUrl;
       this.apikey = settingsDb?.apikey;
       this.locale = settingsDb?.locale;
+      this.media_server_type = settingsDb?.media_server_type;
       this.plex_name = settingsDb?.plex_name;
       this.plex_hostname = settingsDb?.plex_hostname;
       this.plex_port = settingsDb?.plex_port;
       this.plex_ssl = settingsDb?.plex_ssl;
       this.plex_auth_token = settingsDb?.plex_auth_token;
+      this.jellyfin_url = settingsDb?.jellyfin_url;
+      this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
+      this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
+      this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
       this.overseerr_url = settingsDb?.overseerr_url;
       this.overseerr_api_key = settingsDb?.overseerr_api_key;
       this.tautulli_url = settingsDb?.tautulli_url;
@@ -848,5 +882,165 @@ export class SettingsService implements SettingDto {
 
   public async getPlexServers() {
     return await this.plexApi.getAvailableServers();
+  }
+
+  /**
+   * Preview what data will be cleared when switching media servers
+   */
+  public async previewMediaServerSwitch(
+    targetServerType: EMediaServerType,
+  ): Promise<MediaServerSwitchPreviewDto> {
+    const currentServerType =
+      (this.media_server_type as EMediaServerType) || EMediaServerType.PLEX;
+
+    // Count media server-specific data
+    const collectionsCount = await this.collectionRepo.count();
+    const collectionMediaCount = await this.collectionMediaRepo.count();
+    const exclusionsCount = await this.exclusionRepo.count();
+    const collectionLogsCount = await this.collectionLogRepo.count();
+
+    // Count settings that will be kept
+    const radarrSettingsCount = await this.radarrSettingsRepo.count();
+    const sonarrSettingsCount = await this.sonarrSettingsRepo.count();
+
+    return {
+      currentServerType,
+      targetServerType,
+      dataToBeCleared: {
+        collections: collectionsCount,
+        collectionMedia: collectionMediaCount,
+        exclusions: exclusionsCount,
+        collectionLogs: collectionLogsCount,
+      },
+      dataToBeKept: {
+        generalSettings: true,
+        radarrSettings: radarrSettingsCount,
+        sonarrSettings: sonarrSettingsCount,
+        overseerrSettings: this.overseerrConfigured(),
+        jellyseerrSettings: this.jellyseerrConfigured(),
+        tautulliSettings: this.tautulliConfigured(),
+        notificationSettings: true,
+      },
+    };
+  }
+
+  /**
+   * Switch media server type and clear media server-specific data
+   * Keeps: general settings, *arr settings, notification settings
+   * Clears: collections, collection media, exclusions, collection logs
+   */
+  public async switchMediaServer(
+    request: SwitchMediaServerRequestDto,
+  ): Promise<SwitchMediaServerResponseDto> {
+    const { targetServerType, confirmDataClear } = request;
+
+    // Require explicit confirmation
+    if (!confirmDataClear) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message:
+          'Data clear confirmation required. Set confirmDataClear to true to proceed.',
+      };
+    }
+
+    const currentServerType =
+      (this.media_server_type as EMediaServerType) || EMediaServerType.PLEX;
+
+    // Check if already on target server type
+    if (currentServerType === targetServerType) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: `Already using ${targetServerType} as media server`,
+      };
+    }
+
+    try {
+      this.logger.log(
+        `Switching media server from ${currentServerType} to ${targetServerType}`,
+      );
+
+      // Count data before clearing (for response)
+      const collectionsCount = await this.collectionRepo.count();
+      const collectionMediaCount = await this.collectionMediaRepo.count();
+      const exclusionsCount = await this.exclusionRepo.count();
+      const collectionLogsCount = await this.collectionLogRepo.count();
+
+      // Clear media server-specific data in correct order (respecting foreign keys)
+      // 1. Collection media (references collections)
+      await this.collectionMediaRepo.clear();
+      this.logger.log(`Cleared ${collectionMediaCount} collection media items`);
+
+      // 2. Collection logs (references collections)
+      await this.collectionLogRepo.clear();
+      this.logger.log(`Cleared ${collectionLogsCount} collection logs`);
+
+      // 3. Exclusions (references rule groups)
+      await this.exclusionRepo.clear();
+      this.logger.log(`Cleared ${exclusionsCount} exclusions`);
+
+      // 4. Rule groups (references collections via OneToOne)
+      await this.ruleGroupRepo.clear();
+      this.logger.log(`Cleared rule groups`);
+
+      // 5. Collections
+      await this.collectionRepo.clear();
+      this.logger.log(`Cleared ${collectionsCount} collections`);
+
+      // Update media server type and clear old server credentials
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      const updatedSettings: Partial<Settings> = {
+        ...settingsDb,
+        media_server_type: targetServerType,
+      };
+
+      // Clear the credentials of the server we're switching FROM
+      if (currentServerType === EMediaServerType.PLEX) {
+        updatedSettings.plex_name = null;
+        updatedSettings.plex_hostname = null;
+        updatedSettings.plex_port = null;
+        updatedSettings.plex_ssl = null;
+        updatedSettings.plex_auth_token = null;
+      } else if (currentServerType === EMediaServerType.JELLYFIN) {
+        updatedSettings.jellyfin_url = null;
+        updatedSettings.jellyfin_api_key = null;
+        updatedSettings.jellyfin_user_id = null;
+        updatedSettings.jellyfin_server_name = null;
+      }
+
+      await this.settingsRepo.save(updatedSettings);
+      await this.init();
+
+      // Uninitialize old media server
+      if (currentServerType === EMediaServerType.PLEX) {
+        this.plexApi.uninitialize();
+      }
+      // TODO: Add Jellyfin uninitialize when implemented
+
+      this.logger.log(
+        `Successfully switched media server to ${targetServerType}`,
+      );
+
+      return {
+        status: 'OK',
+        code: 1,
+        message: `Successfully switched from ${currentServerType} to ${targetServerType}`,
+        clearedData: {
+          collections: collectionsCount,
+          collectionMedia: collectionMediaCount,
+          exclusions: exclusionsCount,
+          collectionLogs: collectionLogsCount,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error switching media server: ${error}`);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: `Failed to switch media server: ${error.message || error}`,
+      };
+    }
   }
 }

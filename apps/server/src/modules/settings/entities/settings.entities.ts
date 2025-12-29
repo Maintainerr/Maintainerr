@@ -3,6 +3,8 @@ import { randomUUID } from 'crypto';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { SettingDto } from "../dto's/setting.dto";
 
+export type MediaServerType = 'plex' | 'jellyfin';
+
 @Entity()
 export class Settings implements SettingDto {
   @PrimaryGeneratedColumn()
@@ -26,6 +28,11 @@ export class Settings implements SettingDto {
   @Column({ nullable: false, default: 'en' })
   locale: string;
 
+  // Media server type selection
+  @Column({ type: 'varchar', nullable: true, default: 'plex' })
+  media_server_type?: MediaServerType;
+
+  // Plex settings
   @Column({ nullable: true })
   plex_name: string;
 
@@ -41,6 +48,20 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   plex_auth_token: string;
 
+  // Jellyfin settings
+  @Column({ nullable: true })
+  jellyfin_url?: string;
+
+  @Column({ nullable: true })
+  jellyfin_api_key?: string;
+
+  @Column({ nullable: true })
+  jellyfin_user_id?: string;
+
+  @Column({ nullable: true })
+  jellyfin_server_name?: string;
+
+  // Third-party integrations
   @Column({ nullable: true })
   overseerr_api_key: string;
 

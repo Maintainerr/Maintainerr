@@ -7,6 +7,15 @@
 
 ---
 
+> **Future Extensibility Note:** While we add `mediaServerType` to collections to track which server they belong to, the current implementation assumes all collections use the global media server. In a future multi-server release:
+> - Users could have collections on both Plex and Jellyfin simultaneously
+> - The `CollectionsService` would need to route operations to the correct server based on `collection.mediaServerType`
+> - UI would show server badges on collections and allow filtering by server
+>
+> The entity changes below prepare for this by storing the server type per-collection.
+
+---
+
 ## D.1: Understanding Current Architecture
 
 ### Key Files
