@@ -53,7 +53,8 @@
   "remoteUser": "node",
   "remoteEnv": {
     "NODE_ENV": "development",
-    "DATA_DIR": "${containerWorkspaceFolder}/data"
+    "DATA_DIR": "${containerWorkspaceFolder}/data",
+    "CI": "true"
   },
   "overrideCommand": false
 }
