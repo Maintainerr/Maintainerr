@@ -4,6 +4,7 @@ import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/librar
 import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { Application } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
+import { JellyfinGetterService } from './jellyfin-getter.service';
 import { JellyseerrGetterService } from './jellyseerr-getter.service';
 import { OverseerrGetterService } from './overseerr-getter.service';
 import { PlexGetterService } from './plex-getter.service';
@@ -20,6 +21,7 @@ export class ValueGetterService {
     private readonly overseerGetter: OverseerrGetterService,
     private readonly tautulliGetter: TautulliGetterService,
     private readonly jellyseerrGetter: JellyseerrGetterService,
+    private readonly jellyfinGetter: JellyfinGetterService,
   ) {}
 
   async get(
@@ -31,6 +33,9 @@ export class ValueGetterService {
     switch (val1) {
       case Application.PLEX: {
         return await this.plexGetter.get(val2, libItem, dataType, ruleGroup);
+      }
+      case Application.JELLYFIN: {
+        return await this.jellyfinGetter.get(val2, libItem, dataType, ruleGroup);
       }
       case Application.RADARR: {
         return await this.radarrGetter.get(val2, libItem, ruleGroup);
