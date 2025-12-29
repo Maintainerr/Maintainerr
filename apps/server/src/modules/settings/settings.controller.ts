@@ -1,7 +1,11 @@
 import {
   BasicResponseDto,
+  EMediaServerType,
   JellyseerrSettingDto,
+  MediaServerSwitchPreviewDto,
   OverseerrSettingDto,
+  SwitchMediaServerRequestDto,
+  SwitchMediaServerResponseDto,
   TautulliSettingDto,
 } from '@maintainerr/contracts';
 import {
@@ -229,5 +233,27 @@ export class SettingsController {
     return this.settingsService.cronIsValid(payload.schedule)
       ? { status: 'OK', code: 1, message: 'Success' }
       : { status: 'NOK', code: 0, message: 'Failure' };
+  }
+
+  /**
+   * Preview what data will be cleared when switching media servers
+   */
+  @Get('/media-server/switch/preview/:targetServerType')
+  async previewMediaServerSwitch(
+    @Param('targetServerType') targetServerType: EMediaServerType,
+  ): Promise<MediaServerSwitchPreviewDto> {
+    return this.settingsService.previewMediaServerSwitch(targetServerType);
+  }
+
+  /**
+   * Switch media server type and clear media server-specific data
+   * Keeps: general settings, *arr settings, notification settings
+   * Clears: collections, collection media, exclusions, collection logs
+   */
+  @Post('/media-server/switch')
+  async switchMediaServer(
+    @Body() payload: SwitchMediaServerRequestDto,
+  ): Promise<SwitchMediaServerResponseDto> {
+    return this.settingsService.switchMediaServer(payload);
   }
 }

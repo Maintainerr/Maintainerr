@@ -7,6 +7,15 @@
 
 ---
 
+> **Future Extensibility Note:** The current implementation uses a global media server type from settings. In a future release, rules could have an optional `mediaServerType` field to target specific servers. This would require:
+> - Adding `mediaServerType?: EMediaServerType` to the Rule entity
+> - Updating `RuleExecutorService` to use the rule's server type (or fall back to global)
+> - Adding a server selector dropdown in the rule editor UI
+>
+> The `MediaServerGetterService` abstraction below is designed to accommodate this future change.
+
+---
+
 ## C.1: Understanding Current Rules Architecture
 
 Based on analysis of existing code:
