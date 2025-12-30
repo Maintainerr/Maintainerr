@@ -87,7 +87,11 @@ export class TmdbIdService {
         }
       }
       return {
-        type: [EMediaDataType.SHOWS, EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(item.type)
+        type: [
+          EMediaDataType.SHOWS,
+          EMediaDataType.SEASONS,
+          EMediaDataType.EPISODES,
+        ].includes(item.type)
           ? 'tv'
           : 'movie',
         id: id,

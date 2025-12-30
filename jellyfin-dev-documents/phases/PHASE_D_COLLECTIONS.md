@@ -8,6 +8,7 @@
 ---
 
 > **Future Extensibility Note:** While we add `mediaServerType` to collections to track which server they belong to, the current implementation assumes all collections use the global media server. In a future multi-server release:
+>
 > - Users could have collections on both Plex and Jellyfin simultaneously
 > - The `CollectionsService` would need to route operations to the correct server based on `collection.mediaServerType`
 > - UI would show server badges on collections and allow filtering by server
@@ -34,6 +35,7 @@ apps/server/src/modules/collections/
 ### Current PlexApiService Usage in CollectionsService
 
 Based on analysis:
+
 1. `createCollection()` - Creates Plex collection + visibility settings
 2. `deleteCollection()` - Removes from Plex
 3. `addToCollection()` - Adds media to Plex collection
@@ -72,8 +74,8 @@ export class Collection {
   mediaServerId: string;
 
   // NEW: Track which server type
-  @Column({ type: 'varchar', default: 'plex' })
-  mediaServerType: 'plex' | 'jellyfin';
+  @Column({ type: "varchar", default: "plex" })
+  mediaServerType: "plex" | "jellyfin";
 
   // Plex-specific settings (will be null for Jellyfin)
   @Column({ default: false })
@@ -94,23 +96,34 @@ Create migration: `{timestamp}-rename-plexid-to-mediaserverid.ts`
 export class RenameField1234567890 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Rename column
-    await queryRunner.renameColumn('collection', 'plexId', 'mediaServerId');
-    
+    await queryRunner.renameColumn("collection", "plexId", "mediaServerId");
+
     // Add new column
-    await queryRunner.addColumn('collection', new TableColumn({
-      name: 'mediaServerType',
-      type: 'varchar',
-      default: "'plex'",
-    }));
-    
+    await queryRunner.addColumn(
+      "collection",
+      new TableColumn({
+        name: "mediaServerType",
+        type: "varchar",
+        default: "'plex'",
+      })
+    );
+
     // Same for collection_media if needed
-    await queryRunner.renameColumn('collection_media', 'plexId', 'mediaServerId');
+    await queryRunner.renameColumn(
+      "collection_media",
+      "plexId",
+      "mediaServerId"
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.renameColumn('collection', 'mediaServerId', 'plexId');
-    await queryRunner.dropColumn('collection', 'mediaServerType');
-    await queryRunner.renameColumn('collection_media', 'mediaServerId', 'plexId');
+    await queryRunner.renameColumn("collection", "mediaServerId", "plexId");
+    await queryRunner.dropColumn("collection", "mediaServerType");
+    await queryRunner.renameColumn(
+      "collection_media",
+      "mediaServerId",
+      "plexId"
+    );
   }
 }
 ```
@@ -131,7 +144,7 @@ export class RenameField1234567890 implements MigrationInterface {
 @Injectable()
 export class CollectionsService {
   constructor(
-    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaServerFactory: MediaServerFactory
     // ... other deps
   ) {}
 
@@ -146,7 +159,9 @@ export class CollectionsService {
     });
 
     // Handle visibility (Plex-only feature)
-    if (mediaServer.supportsFeature(EMediaServerFeature.COLLECTION_VISIBILITY)) {
+    if (
+      mediaServer.supportsFeature(EMediaServerFeature.COLLECTION_VISIBILITY)
+    ) {
       await mediaServer.updateCollectionVisibility?.(serverCollection.id, {
         visibleOnHome: params.visibleOnHome ?? false,
         visibleOnRecommended: params.visibleOnRecommended ?? false,
@@ -168,9 +183,11 @@ export class CollectionsService {
   }
 
   async deleteCollection(id: number): Promise<void> {
-    const collection = await this.collectionRepository.findOne({ where: { id } });
+    const collection = await this.collectionRepository.findOne({
+      where: { id },
+    });
     if (!collection) {
-      throw new NotFoundException('Collection not found');
+      throw new NotFoundException("Collection not found");
     }
 
     const mediaServer = await this.mediaServerFactory.getService();
@@ -180,7 +197,9 @@ export class CollectionsService {
       try {
         await mediaServer.deleteCollection(collection.mediaServerId);
       } catch (error) {
-        this.logger.warn(`Failed to delete collection from media server: ${error.message}`);
+        this.logger.warn(
+          `Failed to delete collection from media server: ${error.message}`
+        );
       }
     }
 
@@ -188,10 +207,17 @@ export class CollectionsService {
     await this.collectionRepository.remove(collection);
   }
 
-  async addToCollection(collectionId: number, mediaServerId: string): Promise<void> {
-    const collection = await this.collectionRepository.findOne({ where: { id: collectionId } });
+  async addToCollection(
+    collectionId: number,
+    mediaServerId: string
+  ): Promise<void> {
+    const collection = await this.collectionRepository.findOne({
+      where: { id: collectionId },
+    });
     if (!collection?.mediaServerId) {
-      throw new NotFoundException('Collection not found or not linked to media server');
+      throw new NotFoundException(
+        "Collection not found or not linked to media server"
+      );
     }
 
     const mediaServer = await this.mediaServerFactory.getService();
@@ -204,14 +230,22 @@ export class CollectionsService {
     });
   }
 
-  async removeFromCollection(collectionId: number, mediaServerId: string): Promise<void> {
-    const collection = await this.collectionRepository.findOne({ where: { id: collectionId } });
+  async removeFromCollection(
+    collectionId: number,
+    mediaServerId: string
+  ): Promise<void> {
+    const collection = await this.collectionRepository.findOne({
+      where: { id: collectionId },
+    });
     if (!collection?.mediaServerId) {
-      throw new NotFoundException('Collection not found');
+      throw new NotFoundException("Collection not found");
     }
 
     const mediaServer = await this.mediaServerFactory.getService();
-    await mediaServer.removeFromCollection(collection.mediaServerId, mediaServerId);
+    await mediaServer.removeFromCollection(
+      collection.mediaServerId,
+      mediaServerId
+    );
 
     // Remove from junction table
     await this.collectionMediaRepository.delete({
@@ -223,27 +257,32 @@ export class CollectionsService {
   async syncCollectionWithMediaServer(collectionId: number): Promise<void> {
     const collection = await this.collectionRepository.findOne({
       where: { id: collectionId },
-      relations: ['media'],
+      relations: ["media"],
     });
-    
+
     if (!collection?.mediaServerId) return;
 
     const mediaServer = await this.mediaServerFactory.getService();
-    
+
     // Get current children from media server
-    const serverChildren = await mediaServer.getCollectionChildren(collection.mediaServerId);
-    const serverIds = new Set(serverChildren.map(c => c.id));
-    
+    const serverChildren = await mediaServer.getCollectionChildren(
+      collection.mediaServerId
+    );
+    const serverIds = new Set(serverChildren.map((c) => c.id));
+
     // Get our tracked items
-    const ourIds = new Set(collection.media.map(m => m.mediaServerId));
-    
+    const ourIds = new Set(collection.media.map((m) => m.mediaServerId));
+
     // Add missing items to server
     for (const media of collection.media) {
       if (!serverIds.has(media.mediaServerId)) {
-        await mediaServer.addToCollection(collection.mediaServerId, media.mediaServerId);
+        await mediaServer.addToCollection(
+          collection.mediaServerId,
+          media.mediaServerId
+        );
       }
     }
-    
+
     // Optionally: remove items from server that we don't track
     // (Depends on desired behavior)
   }
@@ -264,19 +303,23 @@ export class CollectionsService {
 export class CollectionHandler {
   constructor(
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly collectionsService: CollectionsService,
+    private readonly collectionsService: CollectionsService
     // ... other deps
   ) {}
 
   async handleCollectionSync(collection: Collection): Promise<void> {
     const mediaServer = await this.mediaServerFactory.getService();
-    
+
     // Verify collection exists in media server
     if (collection.mediaServerId) {
-      const serverCollection = await mediaServer.getCollection(collection.mediaServerId);
-      
+      const serverCollection = await mediaServer.getCollection(
+        collection.mediaServerId
+      );
+
       if (!serverCollection) {
-        this.logger.warn(`Collection ${collection.id} not found in media server, recreating...`);
+        this.logger.warn(
+          `Collection ${collection.id} not found in media server, recreating...`
+        );
         await this.recreateCollection(collection);
       }
     }
@@ -284,14 +327,16 @@ export class CollectionHandler {
 
   private async recreateCollection(collection: Collection): Promise<void> {
     const mediaServer = await this.mediaServerFactory.getService();
-    
+
     const newCollection = await mediaServer.createCollection({
       name: collection.title,
       libraryId: collection.libraryId.toString(),
     });
 
     // Update visibility if supported
-    if (mediaServer.supportsFeature(EMediaServerFeature.COLLECTION_VISIBILITY)) {
+    if (
+      mediaServer.supportsFeature(EMediaServerFeature.COLLECTION_VISIBILITY)
+    ) {
       await mediaServer.updateCollectionVisibility?.(newCollection.id, {
         visibleOnHome: collection.visibleOnHome,
         visibleOnRecommended: collection.visibleOnRecommended,
@@ -335,11 +380,11 @@ export class CreateCollectionDto {
 
   @IsBoolean()
   @IsOptional()
-  visibleOnHome?: boolean;  // Plex-only, ignored for Jellyfin
+  visibleOnHome?: boolean; // Plex-only, ignored for Jellyfin
 
   @IsBoolean()
   @IsOptional()
-  visibleOnRecommended?: boolean;  // Plex-only, ignored for Jellyfin
+  visibleOnRecommended?: boolean; // Plex-only, ignored for Jellyfin
 }
 
 export class CollectionResponseDto {
@@ -348,7 +393,7 @@ export class CollectionResponseDto {
   description?: string;
   libraryId: number;
   mediaServerId?: string;
-  mediaServerType: 'plex' | 'jellyfin';
+  mediaServerType: "plex" | "jellyfin";
   visibleOnHome: boolean;
   visibleOnRecommended: boolean;
   mediaCount: number;
@@ -377,32 +422,34 @@ export class CollectionResponseDto {
 ### Test Cases
 
 ```typescript
-describe('CollectionsService', () => {
-  describe('createCollection', () => {
-    it('should set visibility for Plex', async () => {
+describe("CollectionsService", () => {
+  describe("createCollection", () => {
+    it("should set visibility for Plex", async () => {
       mockMediaServerFactory.getService.mockResolvedValue(mockPlexAdapter);
       mockPlexAdapter.supportsFeature.mockReturnValue(true);
-      
+
       await service.createCollection({
-        title: 'Test',
+        title: "Test",
         libraryId: 1,
         visibleOnHome: true,
       });
-      
+
       expect(mockPlexAdapter.updateCollectionVisibility).toHaveBeenCalled();
     });
 
-    it('should skip visibility for Jellyfin', async () => {
+    it("should skip visibility for Jellyfin", async () => {
       mockMediaServerFactory.getService.mockResolvedValue(mockJellyfinService);
       mockJellyfinService.supportsFeature.mockReturnValue(false);
-      
+
       await service.createCollection({
-        title: 'Test',
+        title: "Test",
         libraryId: 1,
         visibleOnHome: true,
       });
-      
-      expect(mockJellyfinService.updateCollectionVisibility).not.toHaveBeenCalled();
+
+      expect(
+        mockJellyfinService.updateCollectionVisibility
+      ).not.toHaveBeenCalled();
     });
   });
 });
@@ -428,15 +475,15 @@ describe('CollectionsService', () => {
 
 ### Modified Files (8)
 
-| File | Changes |
-|------|---------|
-| `collection.entities.ts` | Rename plexId, add mediaServerType |
-| `collection_media.entities.ts` | Rename plexId |
-| `collections.service.ts` | Use MediaServerFactory |
-| `collection-handler.ts` | Use MediaServerFactory |
-| `collection.dto.ts` | Add feature flags |
-| Migration file | Rename columns |
-| Related test files | Update tests |
+| File                           | Changes                            |
+| ------------------------------ | ---------------------------------- |
+| `collection.entities.ts`       | Rename plexId, add mediaServerType |
+| `collection_media.entities.ts` | Rename plexId                      |
+| `collections.service.ts`       | Use MediaServerFactory             |
+| `collection-handler.ts`        | Use MediaServerFactory             |
+| `collection.dto.ts`            | Add feature flags                  |
+| Migration file                 | Rename columns                     |
+| Related test files             | Update tests                       |
 
 ### Database Changes
 
@@ -452,15 +499,15 @@ The following services have been migrated from `PlexApiService` to use the `Medi
 
 ### Services Successfully Migrated ✅
 
-| Service | Migration Status | Notes |
-|---------|------------------|-------|
-| `notifications.service.ts` | ✅ Complete | Uses `MediaServerFactory.getService()` |
-| `exclusion-corrector.service.ts` | ✅ Complete | Uses `MediaServerFactory.getService()` |
-| `tmdb-id.service.ts` | ✅ Complete | Added `getTmdbIdFromMediaItem()` method using `providerIds` |
-| `rules.service.ts` | ✅ Partial | `getLibraries()`, `resetMetadataCache()` migrated |
-| `jellyseerr-getter.service.ts` | ✅ Partial | `getMetadata()` migrated |
-| `overseerr-getter.service.ts` | ✅ Partial | `getMetadata()` migrated |
-| `rule-executor.service.ts` | ✅ Partial | `getLibraryContentCount()`, `getCollectionChildren()` migrated |
+| Service                          | Migration Status | Notes                                                          |
+| -------------------------------- | ---------------- | -------------------------------------------------------------- |
+| `notifications.service.ts`       | ✅ Complete      | Uses `MediaServerFactory.getService()`                         |
+| `exclusion-corrector.service.ts` | ✅ Complete      | Uses `MediaServerFactory.getService()`                         |
+| `tmdb-id.service.ts`             | ✅ Complete      | Added `getTmdbIdFromMediaItem()` method using `providerIds`    |
+| `rules.service.ts`               | ✅ Partial       | `getLibraries()`, `resetMetadataCache()` migrated              |
+| `jellyseerr-getter.service.ts`   | ✅ Partial       | `getMetadata()` migrated                                       |
+| `overseerr-getter.service.ts`    | ✅ Partial       | `getMetadata()` migrated                                       |
+| `rule-executor.service.ts`       | ✅ Partial       | `getLibraryContentCount()`, `getCollectionChildren()` migrated |
 
 ### Constants Migration ✅
 
@@ -481,17 +528,17 @@ The following items require new interface methods or significant type refactorin
 
 ### Methods Requiring New Interface Abstraction
 
-| Method | Used By | Abstraction Needed |
-|--------|---------|-------------------|
-| `getCorrectedUsers()` | `jellyseerr-getter`, `overseerr-getter`, `tautulli-getter`, `plex-getter` | `IMediaServerService.getUsers(): Promise<MediaServerUser[]>` |
-| `getAllIdsForContextAction()` | `rules.service`, `collections.service` | `IMediaServerService.getContextIds()` - complex show→season→episode traversal |
+| Method                        | Used By                                                                   | Abstraction Needed                                                            |
+| ----------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `getCorrectedUsers()`         | `jellyseerr-getter`, `overseerr-getter`, `tautulli-getter`, `plex-getter` | `IMediaServerService.getUsers(): Promise<MediaServerUser[]>`                  |
+| `getAllIdsForContextAction()` | `rules.service`, `collections.service`                                    | `IMediaServerService.getContextIds()` - complex show→season→episode traversal |
 
 ### Internal Type Refactoring Required
 
-| Service | Current Type | Target Type | Scope |
-|---------|--------------|-------------|-------|
-| `rule-executor.service.ts` | `PlexLibraryItem[]` | `MediaItem[]` | `workerData`, `resultData`, `plexData.data` internal arrays |
-| `sonarr-getter.service.ts` | Plex `Guid` parsing | `MediaItem.providerIds` | Test fixtures need Jellyfin equivalents |
+| Service                    | Current Type        | Target Type             | Scope                                                       |
+| -------------------------- | ------------------- | ----------------------- | ----------------------------------------------------------- |
+| `rule-executor.service.ts` | `PlexLibraryItem[]` | `MediaItem[]`           | `workerData`, `resultData`, `plexData.data` internal arrays |
+| `sonarr-getter.service.ts` | Plex `Guid` parsing | `MediaItem.providerIds` | Test fixtures need Jellyfin equivalents                     |
 
 ### Services Correctly Using PlexApiService (No Change Needed)
 

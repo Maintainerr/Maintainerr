@@ -187,7 +187,9 @@ export class JellyseerrGetterService {
           }
           case 'requestDate': {
             if (
-              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
+                dataType,
+              )
             ) {
               const createdAt = this.getSeasonRequests(
                 origLibItem,
@@ -224,7 +226,9 @@ export class JellyseerrGetterService {
           }
           case 'approvalDate': {
             if (
-              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
+                dataType,
+              )
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
@@ -248,7 +252,9 @@ export class JellyseerrGetterService {
           }
           case 'mediaAddedAt': {
             if (
-              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
+                dataType,
+              )
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,

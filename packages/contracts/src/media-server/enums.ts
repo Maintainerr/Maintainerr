@@ -27,7 +27,7 @@ export const MediaDataTypeStrings: string[] = [
   'SHOWS',
   'SEASONS',
   'EPISODES',
-];
+]
 
 /**
  * Feature flags for capability detection

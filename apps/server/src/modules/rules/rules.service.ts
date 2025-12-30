@@ -1,4 +1,8 @@
-import { ECollectionLogType, EMediaDataType, MaintainerrEvent } from '@maintainerr/contracts';
+import {
+  ECollectionLogType,
+  EMediaDataType,
+  MaintainerrEvent,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -534,34 +538,47 @@ export class RulesService {
       const plexMedia = await this.plexApi.getAllIdsForContextAction(
         group ? PlexMapper.toPlexDataType(group.dataType) : undefined,
         data.context
-          ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id }
-          : { type: PlexMapper.toPlexDataType(group.dataType), id: data.mediaId },
+          ? {
+              type: PlexMapper.toPlexDataType(data.context.type),
+              id: data.context.id,
+            }
+          : {
+              type: PlexMapper.toPlexDataType(group.dataType),
+              id: data.mediaId,
+            },
         { plexId: data.mediaId },
       );
-      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
+      handleMedia = plexMedia.map((m) => ({
+        mediaServerId: m.plexId.toString(),
+      }));
       data.ruleGroupId = group.id;
     } else {
       // get type from metadata
       const metaData = await this.plexApi.getMetadata(data.mediaId.toString());
       const type =
-        metaData.type === 'movie' ? EMediaDataType.MOVIES : EMediaDataType.SHOWS;
+        metaData.type === 'movie'
+          ? EMediaDataType.MOVIES
+          : EMediaDataType.SHOWS;
 
       // get media - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
       const plexMedia = await this.plexApi.getAllIdsForContextAction(
         undefined,
-        data.context 
-          ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id } 
+        data.context
+          ? {
+              type: PlexMapper.toPlexDataType(data.context.type),
+              id: data.context.id,
+            }
           : { type: PlexMapper.toPlexDataType(type), id: data.mediaId },
         { plexId: data.mediaId },
       );
-      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
+      handleMedia = plexMedia.map((m) => ({
+        mediaServerId: m.plexId.toString(),
+      }));
     }
     try {
       // add all items
       for (const media of handleMedia) {
-        const metaData = await this.plexApi.getMetadata(
-          media.mediaServerId,
-        );
+        const metaData = await this.plexApi.getMetadata(media.mediaServerId);
 
         const old = await this.exclusionRepo.findOne({
           where: {
@@ -675,19 +692,32 @@ export class RulesService {
       const plexMedia = await this.plexApi.getAllIdsForContextAction(
         group ? PlexMapper.toPlexDataType(group.dataType) : undefined,
         data.context
-          ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id }
-          : { type: PlexMapper.toPlexDataType(group.dataType), id: data.mediaId },
+          ? {
+              type: PlexMapper.toPlexDataType(data.context.type),
+              id: data.context.id,
+            }
+          : {
+              type: PlexMapper.toPlexDataType(group.dataType),
+              id: data.mediaId,
+            },
         { plexId: data.mediaId },
       );
-      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
+      handleMedia = plexMedia.map((m) => ({
+        mediaServerId: m.plexId.toString(),
+      }));
     } else {
       // get type from metadata - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
       const plexMedia = await this.plexApi.getAllIdsForContextAction(
         undefined,
-        { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id },
+        {
+          type: PlexMapper.toPlexDataType(data.context.type),
+          id: data.context.id,
+        },
         { plexId: data.mediaId },
       );
-      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
+      handleMedia = plexMedia.map((m) => ({
+        mediaServerId: m.plexId.toString(),
+      }));
     }
 
     try {
@@ -741,7 +771,9 @@ export class RulesService {
       { type: PlexMapper.toPlexDataType(type), id: +mediaServerId },
       { plexId: +mediaServerId },
     );
-    handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
+    handleMedia = plexMedia.map((m) => ({
+      mediaServerId: m.plexId.toString(),
+    }));
 
     try {
       for (const media of handleMedia) {
@@ -749,7 +781,9 @@ export class RulesService {
       }
       return this.createReturnStatus(true, 'Success');
     } catch (e) {
-      this.logger.warn(`Removing all exclusions with mediaServerId ${mediaServerId} failed.`);
+      this.logger.warn(
+        `Removing all exclusions with mediaServerId ${mediaServerId} failed.`,
+      );
       this.logger.debug(e);
       return this.createReturnStatus(false, 'Failed');
     }
@@ -769,9 +803,12 @@ export class RulesService {
         } else {
           exclusions = await this.exclusionRepo
             .createQueryBuilder('exclusion')
-            .where('exclusion.mediaServerId = :mediaServerId OR exclusion.parent = :mediaServerId', {
-              mediaServerId,
-            })
+            .where(
+              'exclusion.mediaServerId = :mediaServerId OR exclusion.parent = :mediaServerId',
+              {
+                mediaServerId,
+              },
+            )
             .getMany();
         }
 

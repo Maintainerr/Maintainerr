@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import YAML from 'yaml';
-import {
-  EMediaDataType,
-  MediaDataTypeStrings,
-} from '@maintainerr/contracts';
+import { EMediaDataType, MediaDataTypeStrings } from '@maintainerr/contracts';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   ICustomIdentifier,

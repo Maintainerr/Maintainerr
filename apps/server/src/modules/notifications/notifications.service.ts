@@ -1,4 +1,9 @@
-import { BasicResponseDto, EMediaDataType, MaintainerrEvent, MediaItem } from '@maintainerr/contracts';
+import {
+  BasicResponseDto,
+  EMediaDataType,
+  MaintainerrEvent,
+  MediaItem,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -794,12 +799,12 @@ export class NotificationService {
           message = message.replace('{media_items}', result);
         } else {
           // if 1 item
-          const item = await mediaServer.getMetadata(
-            items[0].mediaServerId,
-          );
+          const item = await mediaServer.getMetadata(items[0].mediaServerId);
           message = message.replace(
             '{media_title}',
-            item ? this.getTitle(item) : '1 item that no longer exists in the media server',
+            item
+              ? this.getTitle(item)
+              : '1 item that no longer exists in the media server',
           );
         }
       }

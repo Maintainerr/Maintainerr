@@ -175,7 +175,9 @@ export class OverseerrGetterService {
           }
           case 'requestDate': {
             if (
-              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
+                dataType,
+              )
             ) {
               const createdAt = this.getSeasonRequests(
                 origLibItem,
@@ -212,7 +214,9 @@ export class OverseerrGetterService {
           }
           case 'approvalDate': {
             if (
-              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
+                dataType,
+              )
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
@@ -236,7 +240,9 @@ export class OverseerrGetterService {
           }
           case 'mediaAddedAt': {
             if (
-              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
+                dataType,
+              )
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
