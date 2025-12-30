@@ -1,8 +1,8 @@
+import { EMediaDataType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
-import { EMediaDataType } from '@maintainerr/contracts';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import {
   TautulliApiService,

@@ -1,6 +1,7 @@
+import { EMediaDataType, MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { MediaServerFactory } from '../media-server/media-server.factory';
 import { PlexMetadata } from '../../../modules/api/plex-api/interfaces/media.interface';
-import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
 import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { PlexLibraryItem } from '../plex-api/interfaces/library.interfaces';
@@ -9,7 +10,7 @@ import { PlexLibraryItem } from '../plex-api/interfaces/library.interfaces';
 export class TmdbIdService {
   constructor(
     private readonly tmdbApi: TmdbApiService,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TmdbIdService.name);
@@ -19,21 +20,20 @@ export class TmdbIdService {
     ratingKey: string,
   ): Promise<{ type: 'movie' | 'tv'; id: number | undefined }> {
     try {
-      let libItem: PlexMetadata = await this.plexApi.getMetadata(ratingKey);
-      if (libItem) {
+      const mediaServer = await this.mediaServerFactory.getService();
+      let mediaItem = await mediaServer.getMetadata(ratingKey);
+      if (mediaItem) {
         // fetch show in case of season / episode
-        libItem = libItem.grandparentRatingKey
-          ? await this.plexApi.getMetadata(
-              libItem.grandparentRatingKey.toString(),
-            )
-          : libItem.parentRatingKey
-            ? await this.plexApi.getMetadata(libItem.parentRatingKey.toString())
-            : libItem;
+        mediaItem = mediaItem.grandparentId
+          ? await mediaServer.getMetadata(mediaItem.grandparentId)
+          : mediaItem.parentId
+            ? await mediaServer.getMetadata(mediaItem.parentId)
+            : mediaItem;
 
-        return this.getTmdbIdFromPlexData(libItem);
+        return this.getTmdbIdFromMediaItem(mediaItem);
       } else {
         this.logger.warn(
-          `Failed to fetch metadata of Plex rating key : ${ratingKey}`,
+          `Failed to fetch metadata of media server item : ${ratingKey}`,
         );
       }
     } catch (e) {
@@ -43,6 +43,65 @@ export class TmdbIdService {
     }
   }
 
+  /**
+   * Get TMDB ID from a MediaItem (server-agnostic)
+   */
+  async getTmdbIdFromMediaItem(
+    item: MediaItem,
+  ): Promise<{ type: 'movie' | 'tv'; id: number | undefined }> {
+    try {
+      let id: number = undefined;
+
+      // Use providerIds from the abstraction layer
+      if (item.providerIds) {
+        if (item.providerIds.tmdb) {
+          id = +item.providerIds.tmdb;
+        }
+
+        if (!id && item.providerIds.tvdb) {
+          const resp = await this.tmdbApi.getByExternalId({
+            externalId: +item.providerIds.tvdb,
+            type: 'tvdb',
+          });
+
+          if (resp) {
+            id =
+              resp.movie_results?.length > 0
+                ? resp.movie_results[0]?.id
+                : resp.tv_results[0]?.id;
+          }
+        }
+
+        if (!id && item.providerIds.imdb) {
+          const resp = await this.tmdbApi.getByExternalId({
+            externalId: item.providerIds.imdb,
+            type: 'imdb',
+          });
+
+          if (resp) {
+            id =
+              resp.movie_results?.length > 0
+                ? resp.movie_results[0]?.id
+                : resp.tv_results[0]?.id;
+          }
+        }
+      }
+      return {
+        type: [EMediaDataType.SHOWS, EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(item.type)
+          ? 'tv'
+          : 'movie',
+        id: id,
+      };
+    } catch (e) {
+      this.logger.warn(`Failed to fetch id : ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
+  /**
+   * @deprecated Use getTmdbIdFromMediaItem instead. This method is kept for backward compatibility with Plex-specific code.
+   */
   async getTmdbIdFromPlexData(
     libItem: PlexMetadata | PlexLibraryItem,
   ): Promise<{ type: 'movie' | 'tv'; id: number | undefined }> {

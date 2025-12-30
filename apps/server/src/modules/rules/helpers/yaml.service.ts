@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import YAML from 'yaml';
 import {
-  EPlexDataType,
-  PlexDataTypeStrings,
-} from '../../..//modules/api/plex-api/enums/plex-data-type-enum';
+  EMediaDataType,
+  MediaDataTypeStrings,
+} from '@maintainerr/contracts';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   ICustomIdentifier,
@@ -80,7 +80,7 @@ export class RuleYamlService {
       // push last workingsection to sections
       sections.push({ [+workingSection.id]: workingSection.rules });
       const fullObject: IRuleYamlParent = {
-        mediaType: PlexDataTypeStrings[+mediaType - 1],
+        mediaType: MediaDataTypeStrings[+mediaType - 1],
         rules: sections,
       };
       // Transform to yaml
@@ -108,11 +108,11 @@ export class RuleYamlService {
       let idRef = 0;
 
       // Break when media types are incompatible
-      if (+mediaType !== +EPlexDataType[decoded.mediaType.toUpperCase()]) {
+      if (+mediaType !== +EMediaDataType[decoded.mediaType.toUpperCase()]) {
         this.logger.warn(`Yaml import failed. Incompatible media types`);
         this.logger.debug(
           `Media type with ID ${+mediaType} is not compatible with media type with ID ${
-            EPlexDataType[decoded.mediaType.toUpperCase()]
+            EMediaDataType[decoded.mediaType.toUpperCase()]
           } `,
         );
 
@@ -154,7 +154,7 @@ export class RuleYamlService {
       }
 
       const returnObj: { mediaType: number; rules: RuleDto[] } = {
-        mediaType: EPlexDataType[decoded.mediaType],
+        mediaType: EMediaDataType[decoded.mediaType],
         rules: rules,
       };
 

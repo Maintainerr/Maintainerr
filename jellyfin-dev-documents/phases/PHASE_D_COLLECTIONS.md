@@ -412,15 +412,15 @@ describe('CollectionsService', () => {
 
 ## D.8: Acceptance Criteria
 
-- [ ] `plexId` renamed to `mediaServerId` throughout
-- [ ] `mediaServerType` column added and populated
-- [ ] Collection visibility handled conditionally
-- [ ] CollectionsService uses MediaServerFactory
-- [ ] CollectionHandler works with abstraction
-- [ ] DTOs include feature flags
-- [ ] Existing Plex collections still work
-- [ ] All unit tests pass
-- [ ] Database migration runs cleanly
+- [x] `plexId` renamed to `mediaServerId` throughout
+- [x] `mediaServerType` column added and populated
+- [x] Collection visibility handled conditionally
+- [x] CollectionsService uses MediaServerFactory
+- [x] CollectionHandler works with abstraction
+- [x] DTOs include feature flags
+- [x] Existing Plex collections still work
+- [x] All unit tests pass (357 tests)
+- [x] Database migration runs cleanly
 
 ---
 
@@ -446,33 +446,52 @@ describe('CollectionsService', () => {
 
 ---
 
-## EXTRA: Additional Services Requiring Abstraction Layer Migration
+## EXTRA: Additional Services Migration - COMPLETED
 
-The following services still use `PlexApiService` directly for metadata operations that should use the `MediaServerFactory` abstraction layer. These can be addressed as part of Phase D or deferred to a cleanup phase.
+The following services have been migrated from `PlexApiService` to use the `MediaServerFactory` abstraction layer.
 
-### Services to Migrate
+### Services Successfully Migrated ✅
 
-| Service | Current Usage | Required Change |
-|---------|---------------|-----------------|
-| `notifications.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
-| `exclusion-corrector.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
-| `tmdb-id.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
-| `rules.service.ts` | `plexApi.getMetadata()`, `plexApi.getLibraries()`, `plexApi.getAllIdsForContextAction()` | Use abstraction layer |
-| `jellyseerr-getter.service.ts` | `plexApi.getMetadata()`, `plexApi.getCorrectedUsers()` | Use abstraction layer |
-| `overseerr-getter.service.ts` | `plexApi.getMetadata()`, `plexApi.getCorrectedUsers()` | Use abstraction layer |
-| `sonarr-getter.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
-| `tautulli-getter.service.ts` | `plexApi.getCorrectedUsers()` | Need Jellyfin equivalent or conditional |
-| `rule-executor.service.ts` | `plexApi.getLibraryContents()`, `plexApi.getLibraryContentCount()`, `plexApi.getCollectionChildren()` | Use abstraction layer |
+| Service | Migration Status | Notes |
+|---------|------------------|-------|
+| `notifications.service.ts` | ✅ Complete | Uses `MediaServerFactory.getService()` |
+| `exclusion-corrector.service.ts` | ✅ Complete | Uses `MediaServerFactory.getService()` |
+| `tmdb-id.service.ts` | ✅ Complete | Added `getTmdbIdFromMediaItem()` method using `providerIds` |
+| `rules.service.ts` | ✅ Partial | `getLibraries()`, `resetMetadataCache()` migrated |
+| `jellyseerr-getter.service.ts` | ✅ Partial | `getMetadata()` migrated |
+| `overseerr-getter.service.ts` | ✅ Partial | `getMetadata()` migrated |
+| `rule-executor.service.ts` | ✅ Partial | `getLibraryContentCount()`, `getCollectionChildren()` migrated |
 
-### Constants Migration
+### Constants Migration ✅
 
-**`rules.constants.ts`**: Uses `EPlexDataType` for `showType` filtering throughout. Should migrate to `EMediaDataType`.
+**`rules.constants.ts`**: Migrated from `EPlexDataType` to `EMediaDataType` from `@maintainerr/contracts`.
 
-### Notes
+**`yaml.service.ts`**: Migrated to use `EMediaDataType` and `MediaDataTypeStrings` from `@maintainerr/contracts`.
 
-- Some Plex-specific operations (like `getCorrectedUsers()`) need Jellyfin equivalents in the abstraction layer
-- Return types need updating from `PlexMetadata`/`PlexLibraryItem` to `MediaItem`
-- Services using `PlexApiService` for Plex-specific auth operations (e.g., `settings.service.ts`) are correct and should NOT be changed
+### Type Conversion Notes
+
+- `EMediaDataType` and `EPlexDataType` have identical numeric values (MOVIES=1, SHOWS=2, SEASONS=3, EPISODES=4)
+- Use `PlexMapper.toPlexDataType()` when calling Plex-specific APIs with `EMediaDataType` values
+
+---
+
+## Deferred Items (Future Phase)
+
+The following items require new interface methods or significant type refactoring. Deferred to avoid regression risk.
+
+### Methods Requiring New Interface Abstraction
+
+| Method | Used By | Abstraction Needed |
+|--------|---------|-------------------|
+| `getCorrectedUsers()` | `jellyseerr-getter`, `overseerr-getter`, `tautulli-getter`, `plex-getter` | `IMediaServerService.getUsers(): Promise<MediaServerUser[]>` |
+| `getAllIdsForContextAction()` | `rules.service`, `collections.service` | `IMediaServerService.getContextIds()` - complex show→season→episode traversal |
+
+### Internal Type Refactoring Required
+
+| Service | Current Type | Target Type | Scope |
+|---------|--------------|-------------|-------|
+| `rule-executor.service.ts` | `PlexLibraryItem[]` | `MediaItem[]` | `workerData`, `resultData`, `plexData.data` internal arrays |
+| `sonarr-getter.service.ts` | Plex `Guid` parsing | `MediaItem.providerIds` | Test fixtures need Jellyfin equivalents |
 
 ### Services Correctly Using PlexApiService (No Change Needed)
 

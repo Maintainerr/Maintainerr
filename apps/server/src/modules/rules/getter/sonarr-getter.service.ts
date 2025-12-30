@@ -1,3 +1,4 @@
+import { EMediaDataType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
@@ -10,7 +11,6 @@ import {
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
 import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
-import { EMediaDataType } from '@maintainerr/contracts';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';

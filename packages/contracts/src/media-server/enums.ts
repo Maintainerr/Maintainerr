@@ -20,6 +20,16 @@ export enum EMediaDataType {
 }
 
 /**
+ * EMediaDataType values as strings for YAML serialization
+ */
+export const MediaDataTypeStrings: string[] = [
+  'MOVIES',
+  'SHOWS',
+  'SEASONS',
+  'EPISODES',
+];
+
+/**
  * Feature flags for capability detection
  * Different media servers support different features
  */

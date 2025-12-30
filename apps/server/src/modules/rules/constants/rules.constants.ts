@@ -1,4 +1,4 @@
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { EMediaDataType } from '@maintainerr/contracts';
 
 export enum RulePossibility {
   BIGGER,
@@ -122,7 +122,7 @@ export interface Property {
   mediaType: MediaType;
   humanName: string;
   cacheReset?: boolean; // for properties that require a cache reset between group executions
-  showType?: EPlexDataType[]; // if not configured = available for all types
+  showType?: EMediaDataType[]; // if not configured = available for all types
 }
 
 export interface ApplicationProperties {
@@ -229,7 +229,7 @@ export class RuleConstants {
           humanName: '[list] Users that saw all available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 13,
@@ -237,7 +237,7 @@ export class RuleConstants {
           humanName: 'Newest episode view date',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 14,
@@ -245,7 +245,7 @@ export class RuleConstants {
           humanName: 'Amount of available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 15,
@@ -253,7 +253,7 @@ export class RuleConstants {
           humanName: 'Amount of watched episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 16,
@@ -261,7 +261,7 @@ export class RuleConstants {
           humanName: 'Last episode added at',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 17,
@@ -277,9 +277,9 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
+            EMediaDataType.SHOWS,
+            EMediaDataType.SEASONS,
+            EMediaDataType.EPISODES,
           ],
         },
         {
@@ -331,7 +331,7 @@ export class RuleConstants {
           humanName: 'Present in amount of other collections (incl. parents)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
           cacheReset: true,
         },
         {
@@ -340,7 +340,7 @@ export class RuleConstants {
           humanName:
             '[list] Collections media is present in (titles) (incl. parents)',
           mediaType: MediaType.SHOW,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
           cacheReset: true,
           type: RuleType.TEXT_LIST,
         },
@@ -350,7 +350,7 @@ export class RuleConstants {
           humanName: 'Last episode aired at',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 28,
@@ -372,7 +372,7 @@ export class RuleConstants {
           humanName: 'Last episode aired at (season)',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
         },
         {
           id: 31,
@@ -380,7 +380,7 @@ export class RuleConstants {
           humanName: 'IMDb rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: [EMediaDataType.EPISODES, EMediaDataType.SHOWS],
         },
         {
           id: 35,
@@ -388,7 +388,7 @@ export class RuleConstants {
           humanName: 'IMDb rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
         },
         {
           id: 32,
@@ -396,7 +396,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes critic rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: [EMediaDataType.EPISODES, EMediaDataType.SHOWS],
         },
         {
           id: 36,
@@ -404,7 +404,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes critic rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
         },
         {
           id: 33,
@@ -412,7 +412,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes audience rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: [EMediaDataType.EPISODES, EMediaDataType.SHOWS],
         },
         {
           id: 37,
@@ -420,7 +420,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes audience rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
         },
         {
           id: 34,
@@ -428,7 +428,7 @@ export class RuleConstants {
           humanName: 'The Movie Database rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: [EMediaDataType.EPISODES, EMediaDataType.SHOWS],
         },
         {
           id: 38,
@@ -436,7 +436,7 @@ export class RuleConstants {
           humanName: 'The Movie Database rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
         },
         {
           id: 39,
@@ -454,7 +454,7 @@ export class RuleConstants {
             'Present in amount of other collections (incl. parents and smart collections)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
           cacheReset: true,
         },
         {
@@ -463,7 +463,7 @@ export class RuleConstants {
           humanName:
             '[list] Collections media is present in (titles) (incl. parents and smart collections)',
           mediaType: MediaType.SHOW,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
           cacheReset: true,
           type: RuleType.TEXT_LIST,
         },
@@ -651,7 +651,7 @@ export class RuleConstants {
           humanName: 'Date added',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS],
+          showType: [EMediaDataType.SHOWS],
         },
         {
           id: 1,
@@ -660,9 +660,9 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
+            EMediaDataType.SHOWS,
+            EMediaDataType.SEASONS,
+            EMediaDataType.EPISODES,
           ],
         },
         {
@@ -699,7 +699,7 @@ export class RuleConstants {
           humanName: 'Number of seasons / episodes (also unavailable)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 6,
@@ -707,7 +707,7 @@ export class RuleConstants {
           humanName: 'Status (continuing, ended)',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 7,
@@ -715,7 +715,7 @@ export class RuleConstants {
           humanName: 'Show ended',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 8,
@@ -737,7 +737,7 @@ export class RuleConstants {
           humanName: 'Has unaired episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 11,
@@ -745,7 +745,7 @@ export class RuleConstants {
           humanName: 'Number of monitored seasons / episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 12,
@@ -753,7 +753,7 @@ export class RuleConstants {
           humanName: 'Season has unaired episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
         },
         {
           id: 13,
@@ -761,7 +761,7 @@ export class RuleConstants {
           humanName: 'Is (part of) latest aired/airing season',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.EPISODES, EMediaDataType.SEASONS],
         },
         {
           id: 14,
@@ -783,7 +783,7 @@ export class RuleConstants {
           humanName: 'Has season finale episode',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SEASONS],
         },
         {
           id: 17,
@@ -791,7 +791,7 @@ export class RuleConstants {
           humanName: 'Has series finale episode',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 18,
@@ -799,7 +799,7 @@ export class RuleConstants {
           humanName: 'Season number',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.EPISODES, EMediaDataType.SEASONS],
         },
         {
           id: 19,
@@ -819,7 +819,7 @@ export class RuleConstants {
           id: 22,
           name: 'episodeNumber',
           humanName: 'Episode number',
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
         },
@@ -827,7 +827,7 @@ export class RuleConstants {
           id: 21,
           name: 'episodeFilePath',
           humanName: 'Episode file path',
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
@@ -835,7 +835,7 @@ export class RuleConstants {
           id: 23,
           name: 'fileQualityCutoffMet',
           humanName: 'Episode file quality cutoff met',
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
         },
@@ -843,7 +843,7 @@ export class RuleConstants {
           id: 24,
           name: 'fileQualityName',
           humanName: 'Episode file quality',
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
@@ -851,7 +851,7 @@ export class RuleConstants {
           id: 26,
           name: 'fileAudioLanguages',
           humanName: 'Episode file audio languages',
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
@@ -938,7 +938,7 @@ export class RuleConstants {
           humanName: '[list] Users that saw all available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 2,
@@ -974,7 +974,7 @@ export class RuleConstants {
           humanName: 'Amount of watched episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 7,
@@ -982,7 +982,7 @@ export class RuleConstants {
           humanName: 'Newest episode view date',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 8,
@@ -991,9 +991,9 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
+            EMediaDataType.SHOWS,
+            EMediaDataType.SEASONS,
+            EMediaDataType.EPISODES,
           ],
         },
       ],
@@ -1151,7 +1151,7 @@ export class RuleConstants {
           humanName: '[list] Users that saw all available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 13,
@@ -1159,7 +1159,7 @@ export class RuleConstants {
           humanName: 'Newest episode view date',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 14,
@@ -1167,7 +1167,7 @@ export class RuleConstants {
           humanName: 'Amount of available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 15,
@@ -1175,7 +1175,7 @@ export class RuleConstants {
           humanName: 'Amount of watched episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 16,
@@ -1183,7 +1183,7 @@ export class RuleConstants {
           humanName: 'Last episode added at',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 17,
@@ -1199,9 +1199,9 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
+            EMediaDataType.SHOWS,
+            EMediaDataType.SEASONS,
+            EMediaDataType.EPISODES,
           ],
         },
         {
@@ -1253,7 +1253,7 @@ export class RuleConstants {
           humanName: 'Present in amount of other collections (incl. parents)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
           cacheReset: true,
         },
         {
@@ -1262,7 +1262,7 @@ export class RuleConstants {
           humanName:
             '[list] Collections media is present in (titles) (incl. parents)',
           mediaType: MediaType.SHOW,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: [EMediaDataType.SEASONS, EMediaDataType.EPISODES],
           cacheReset: true,
           type: RuleType.TEXT_LIST,
         },
@@ -1272,7 +1272,7 @@ export class RuleConstants {
           humanName: 'Last episode aired at',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: [EMediaDataType.SHOWS, EMediaDataType.SEASONS],
         },
         {
           id: 29,
@@ -1280,7 +1280,7 @@ export class RuleConstants {
           humanName: 'Last episode aired at (season)',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.EPISODES],
+          showType: [EMediaDataType.EPISODES],
         },
       ],
     },

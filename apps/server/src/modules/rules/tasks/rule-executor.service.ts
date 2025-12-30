@@ -8,6 +8,8 @@ import {
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import cacheManager from '../../api/lib/cache';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
+import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
 import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
@@ -49,6 +51,9 @@ export class RuleExecutorService {
 
   constructor(
     private readonly rulesService: RulesService,
+    private readonly mediaServerFactory: MediaServerFactory,
+    // PlexApiService kept for getLibraryContents() - returns PlexLibraryItem[] used by internal data structures
+    // TODO: Refactor workerData/resultData to use MediaItem[] in future phase
     private readonly plexApi: PlexApiService,
     private readonly collectionService: CollectionsService,
     private readonly settings: SettingsService,
@@ -60,6 +65,10 @@ export class RuleExecutorService {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
     this.plexData = { page: 1, finished: false, data: [] };
+  }
+
+  private async getMediaServer(): Promise<IMediaServerService> {
+    return this.mediaServerFactory.getService();
   }
 
   public async executeForRuleGroups(
@@ -98,10 +107,11 @@ export class RuleExecutorService {
         cacheManager.flushAll();
 
         const comparator = this.comparatorFactory.create();
+        const mediaServer = await this.getMediaServer();
 
-        const mediaItemCount = await this.plexApi.getLibraryContentCount(
-          ruleGroup.libraryId,
-          ruleGroup.dataType ? PlexMapper.toPlexDataType(ruleGroup.dataType) : undefined,
+        const mediaItemCount = await mediaServer.getLibraryContentCount(
+          ruleGroup.libraryId.toString(),
+          ruleGroup.dataType ? ruleGroup.dataType : undefined,
         );
 
         const totalEvaluations = mediaItemCount * ruleGroup.rules.length;
@@ -203,25 +213,25 @@ export class RuleExecutorService {
           rulegroup.collectionId,
         );
 
-        const children = await this.plexApi.getCollectionChildren(
+        const mediaServer = await this.getMediaServer();
+        const children = await mediaServer.getCollectionChildren(
           collection.mediaServerId,
-          false,
         );
 
         // Handle manually added
         if (children && children.length > 0) {
           for (const child of children) {
-            if (child && child.ratingKey)
+            if (child && child.id)
               if (
                 !collectionMedia.find((e) => {
-                  return e.mediaServerId === child.ratingKey.toString();
+                  return e.mediaServerId === child.id.toString();
                 })
               ) {
                 await this.collectionService.addToCollection(
                   collection.id,
                   [
                     {
-                      mediaServerId: child.ratingKey.toString(),
+                      mediaServerId: child.id.toString(),
                       reason: {
                         type: 'media_added_manually',
                       },
@@ -239,7 +249,7 @@ export class RuleExecutorService {
             if (media && media.mediaServerId) {
               if (
                 !children ||
-                !children.find((e) => media.mediaServerId === e.ratingKey.toString())
+                !children.find((e) => media.mediaServerId === e.id.toString())
               ) {
                 await this.collectionService.removeFromCollection(
                   collection.id,

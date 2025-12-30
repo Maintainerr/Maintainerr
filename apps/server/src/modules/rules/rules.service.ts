@@ -6,8 +6,9 @@ import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { PlexMapper } from '../api/media-server/plex/plex.mapper';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
@@ -67,6 +68,9 @@ export class RulesService {
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
     private readonly collectionService: CollectionsService,
+    private readonly mediaServerFactory: MediaServerFactory,
+    // PlexApiService kept for getAllIdsForContextAction() - complex show→season→episode traversal
+    // TODO: Abstract to IMediaServerService.getContextIds() in future phase
     private readonly plexApi: PlexApiService,
     private readonly connection: DataSource,
     private readonly ruleYamlService: RuleYamlService,
@@ -76,6 +80,10 @@ export class RulesService {
   ) {
     logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
+  }
+
+  private async getMediaServer(): Promise<IMediaServerService> {
+    return this.mediaServerFactory.getService();
   }
   async getRuleConstants(): Promise<RuleConstants> {
     const settings = await this.settingsRepo.findOne({ where: {} });
@@ -286,8 +294,9 @@ export class RulesService {
       }
 
       // create the collection
-      const lib = (await this.plexApi.getLibraries()).find(
-        (el) => +el.key === +params.libraryId,
+      const mediaServer = await this.getMediaServer();
+      const lib = (await mediaServer.getLibraries()).find(
+        (el) => +el.id === +params.libraryId,
       );
       const collection = (
         await this.collectionService.createCollection({
@@ -420,8 +429,9 @@ export class RulesService {
         }
 
         // update the collection
-        const lib = (await this.plexApi.getLibraries()).find(
-          (el) => +el.key === +params.libraryId,
+        const mediaServer = await this.getMediaServer();
+        const lib = (await mediaServer.getLibraries()).find(
+          (el) => +el.id === +params.libraryId,
         );
 
         const collection = (
@@ -534,12 +544,14 @@ export class RulesService {
       // get type from metadata
       const metaData = await this.plexApi.getMetadata(data.mediaId.toString());
       const type =
-        metaData.type === 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS;
+        metaData.type === 'movie' ? EMediaDataType.MOVIES : EMediaDataType.SHOWS;
 
       // get media - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
       const plexMedia = await this.plexApi.getAllIdsForContextAction(
         undefined,
-        data.context ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id } : { type: type, id: data.mediaId },
+        data.context 
+          ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id } 
+          : { type: PlexMapper.toPlexDataType(type), id: data.mediaId },
         { plexId: data.mediaId },
       );
       handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
@@ -664,7 +676,7 @@ export class RulesService {
         group ? PlexMapper.toPlexDataType(group.dataType) : undefined,
         data.context
           ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id }
-          : { type: group.libraryId as unknown as EPlexDataType, id: data.mediaId },
+          : { type: PlexMapper.toPlexDataType(group.dataType), id: data.mediaId },
         { plexId: data.mediaId },
       );
       handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
@@ -721,12 +733,12 @@ export class RulesService {
 
     const metaData = await this.plexApi.getMetadata(mediaServerId);
     const type =
-      metaData.type === 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS;
+      metaData.type === 'movie' ? EMediaDataType.MOVIES : EMediaDataType.SHOWS;
 
     // Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
     const plexMedia = await this.plexApi.getAllIdsForContextAction(
       undefined,
-      { type: type, id: +mediaServerId },
+      { type: PlexMapper.toPlexDataType(type), id: +mediaServerId },
       { plexId: +mediaServerId },
     );
     handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
@@ -1139,7 +1151,8 @@ export class RulesService {
     mediaId: string,
   ): Promise<any> {
     // flush caches
-    this.plexApi.resetMetadataCache(mediaId);
+    const mediaServer = await this.getMediaServer();
+    mediaServer.resetMetadataCache(mediaId);
     cacheManager.getCache('overseerr').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
     cacheManager.getCache('jellyseerr').flush();

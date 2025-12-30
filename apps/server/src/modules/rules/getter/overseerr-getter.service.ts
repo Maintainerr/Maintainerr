@@ -11,6 +11,8 @@ import {
   OverSeerrTVResponse,
 } from '../../api/overseerr-api/overseerr-api.service';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
+import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
@@ -28,6 +30,9 @@ export class OverseerrGetterService {
   constructor(
     private readonly overseerrApi: OverseerrApiService,
     private readonly tmdbApi: TmdbApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
+    // PlexApiService kept for getCorrectedUsers() - Plex.tv user mapping
+    // TODO: Abstract to IMediaServerService.getUsers() in future phase
     private readonly plexApi: PlexApiService,
     private readonly tmdbIdHelper: TmdbIdService,
     private readonly logger: MaintainerrLogger,
@@ -37,6 +42,10 @@ export class OverseerrGetterService {
     this.appProperties = ruleConstanst.applications.find(
       (el) => el.id === Application.OVERSEERR,
     ).props;
+  }
+
+  private async getMediaServer(): Promise<IMediaServerService> {
+    return this.mediaServerFactory.getService();
   }
 
   async get(id: number, libItem: PlexLibraryItem, dataType?: EMediaDataType) {
@@ -52,7 +61,8 @@ export class OverseerrGetterService {
         dataType === EMediaDataType.EPISODES
       ) {
         origLibItem = _.cloneDeep(libItem);
-        libItem = (await this.plexApi.getMetadata(
+        const mediaServer = await this.getMediaServer();
+        libItem = (await mediaServer.getMetadata(
           dataType === EMediaDataType.SEASONS
             ? libItem.parentRatingKey
             : libItem.grandparentRatingKey,
