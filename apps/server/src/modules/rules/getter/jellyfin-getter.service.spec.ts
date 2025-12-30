@@ -5,7 +5,7 @@ import {
   createPlexLibraryItem,
   createRulesDto,
 } from '../../../../test/utils/data';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { JellyfinService } from '../../api/media-server/jellyfin/jellyfin.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -15,7 +15,7 @@ import { JellyfinGetterService } from './jellyfin-getter.service';
 const createMediaItem = (overrides: Partial<MediaItem> = {}): MediaItem => ({
   id: 'jellyfin-item-123',
   title: 'Test Movie',
-  type: EMediaDataType.MOVIE,
+  type: EMediaDataType.MOVIES,
   guid: 'jellyfin-guid-123',
   addedAt: new Date('2024-01-15'),
   providerIds: { tmdb: '12345', imdb: 'tt1234567' },
@@ -87,8 +87,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         0, // addDate
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();
@@ -106,8 +106,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         0,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(new Date('2024-03-15'));
@@ -121,8 +121,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         0,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();
@@ -145,8 +145,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         1,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(['Alice', 'Bob']);
@@ -163,8 +163,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         1,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual([]);
@@ -182,8 +182,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         2,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(new Date('2024-01-01'));
@@ -199,8 +199,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         3,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(8);
@@ -214,8 +214,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         3,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(0);
@@ -233,8 +233,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         4,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(['Actor One', 'Actor Two']);
@@ -248,8 +248,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         4,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();
@@ -272,8 +272,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         5,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(3);
@@ -296,8 +296,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         7,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(new Date('2024-06-15'));
@@ -313,8 +313,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         7,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();
@@ -330,8 +330,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         8,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe('1080p');
@@ -345,8 +345,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         8,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();
@@ -362,8 +362,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         9,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(8000000);
@@ -379,8 +379,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         10,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe('h264');
@@ -398,8 +398,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         11,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(['Action', 'Comedy']);
@@ -415,8 +415,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         24,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toEqual(['tag1', 'tag2']);
@@ -434,8 +434,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         22,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(7.5);
@@ -449,8 +449,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         22,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(0);
@@ -468,8 +468,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         23,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBe(8.5);
@@ -485,8 +485,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         999, // Unknown property ID
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();
@@ -501,8 +501,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         0,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeUndefined();
@@ -515,8 +515,8 @@ describe('JellyfinGetterService', () => {
       const response = await jellyfinGetterService.get(
         0,
         plexLibraryItem,
-        EPlexDataType.MOVIES,
-        createRulesDto({ dataType: EPlexDataType.MOVIES }),
+        EMediaDataType.MOVIES,
+        createRulesDto({ dataType: EMediaDataType.MOVIES }),
       );
 
       expect(response).toBeNull();

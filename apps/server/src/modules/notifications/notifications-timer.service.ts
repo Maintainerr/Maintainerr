@@ -74,7 +74,7 @@ export class NotificationTimerService extends TaskBase {
         ).flat();
 
         const transformedItems = itemsToNotify.map((i) => ({
-          plexId: i.plexId,
+          mediaServerId: i.mediaServerId,
         }));
 
         // send the notification if required

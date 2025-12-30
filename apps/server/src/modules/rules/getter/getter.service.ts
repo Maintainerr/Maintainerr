@@ -1,7 +1,6 @@
-import { RuleValueType } from '@maintainerr/contracts';
+import { EMediaDataType, RuleValueType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { Application } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { JellyfinGetterService } from './jellyfin-getter.service';
@@ -28,7 +27,7 @@ export class ValueGetterService {
     [val1, val2]: [number, number],
     libItem: PlexLibraryItem,
     ruleGroup?: RulesDto,
-    dataType?: EPlexDataType,
+    dataType?: EMediaDataType,
   ): Promise<RuleValueType> {
     switch (val1) {
       case Application.PLEX: {

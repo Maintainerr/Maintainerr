@@ -1,4 +1,5 @@
 import {
+  EMediaDataType,
   IComparisonStatistics,
   MaintainerrEvent,
   RuleHandlerFinishedEventDto,
@@ -7,6 +8,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import cacheManager from '../../api/lib/cache';
+import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
 import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
@@ -99,7 +101,7 @@ export class RuleExecutorService {
 
         const mediaItemCount = await this.plexApi.getLibraryContentCount(
           ruleGroup.libraryId,
-          ruleGroup.dataType,
+          ruleGroup.dataType ? PlexMapper.toPlexDataType(ruleGroup.dataType) : undefined,
         );
 
         const totalEvaluations = mediaItemCount * ruleGroup.rules.length;
@@ -125,7 +127,7 @@ export class RuleExecutorService {
           this.plexData = { page: 0, finished: false, data: [] };
 
           this.plexDataType = ruleGroup.dataType
-            ? ruleGroup.dataType
+            ? PlexMapper.toPlexDataType(ruleGroup.dataType)
             : undefined;
 
           // Run rules data chunks of 50
@@ -196,13 +198,13 @@ export class RuleExecutorService {
       collection =
         await this.collectionService.relinkManualCollection(collection);
 
-      if (collection && collection.plexId) {
+      if (collection && collection.mediaServerId) {
         const collectionMedia = await this.collectionService.getCollectionMedia(
           rulegroup.collectionId,
         );
 
         const children = await this.plexApi.getCollectionChildren(
-          collection.plexId.toString(),
+          collection.mediaServerId,
           false,
         );
 
@@ -212,14 +214,14 @@ export class RuleExecutorService {
             if (child && child.ratingKey)
               if (
                 !collectionMedia.find((e) => {
-                  return +e.plexId === +child.ratingKey;
+                  return e.mediaServerId === child.ratingKey.toString();
                 })
               ) {
                 await this.collectionService.addToCollection(
                   collection.id,
                   [
                     {
-                      plexId: +child.ratingKey,
+                      mediaServerId: child.ratingKey.toString(),
                       reason: {
                         type: 'media_added_manually',
                       },
@@ -234,16 +236,16 @@ export class RuleExecutorService {
         // Handle manually removed
         if (collectionMedia && collectionMedia.length > 0) {
           for (const media of collectionMedia) {
-            if (media && media.plexId) {
+            if (media && media.mediaServerId) {
               if (
                 !children ||
-                !children.find((e) => +media.plexId === +e.ratingKey)
+                !children.find((e) => media.mediaServerId === e.ratingKey.toString())
               ) {
                 await this.collectionService.removeFromCollection(
                   collection.id,
                   [
                     {
-                      plexId: +media.plexId,
+                      mediaServerId: media.mediaServerId,
                       reason: {
                         type: 'media_removed_manually',
                       },
@@ -274,25 +276,26 @@ export class RuleExecutorService {
 
       const exclusions = await this.rulesService.getExclusions(rulegroup.id);
 
-      const excludedPlexIds = new Set<number>(
+      const excludedMediaServerIds = new Set<string>(
         exclusions.map((e) => {
-          return +e.plexId;
+          return e.mediaServerId;
         }),
       );
 
-      const statsByPlexId = new Map<number, IComparisonStatistics>();
+      const statsByMediaServerId = new Map<string, IComparisonStatistics>();
       for (const stat of this.statisticsData ?? []) {
-        if (!statsByPlexId.has(stat.plexId)) {
-          statsByPlexId.set(stat.plexId, stat);
+        const mediaServerId = stat.mediaServerId;
+        if (!statsByMediaServerId.has(mediaServerId)) {
+          statsByMediaServerId.set(mediaServerId, stat);
         }
       }
 
       // filter exclusions out of results & get correct ratingKey
-      const desiredPlexIds = new Set<number>();
+      const desiredMediaServerIds = new Set<string>();
       for (const item of this.resultData ?? []) {
-        const plexId = +item.ratingKey;
-        if (!excludedPlexIds.has(plexId)) {
-          desiredPlexIds.add(plexId);
+        const mediaServerId = item.ratingKey.toString();
+        if (!excludedMediaServerIds.has(mediaServerId)) {
+          desiredMediaServerIds.add(mediaServerId);
         }
       }
 
@@ -301,15 +304,17 @@ export class RuleExecutorService {
           collection.id,
         );
 
-        // check Plex collection link
-        if (collMediaData.length > 0 && collection.plexId) {
+        // check media server collection link
+        if (collMediaData.length > 0 && collection.mediaServerId) {
           collection =
             await this.collectionService.checkAutomaticPlexLink(collection);
           // if collection was removed while it should be available.. resync current data
-          if (!collection.plexId) {
+          if (!collection.mediaServerId) {
             collection = await this.collectionService.addToCollection(
               collection.id,
-              collMediaData,
+              collMediaData.map((m) => ({
+                mediaServerId: m.mediaServerId,
+              })),
               collection.manualCollection,
             );
             if (collection) {
@@ -322,39 +327,39 @@ export class RuleExecutorService {
         // Ensure manually added media always remains included
         for (const media of collMediaData) {
           if (media?.isManual === true) {
-            desiredPlexIds.add(+media.plexId);
+            desiredMediaServerIds.add(media.mediaServerId);
           }
         }
 
-        const currentPlexIds = new Set<number>(
+        const currentMediaServerIds = new Set<string>(
           collMediaData.map((e) => {
-            return +e.plexId;
+            return e.mediaServerId;
           }),
         );
 
-        const mediaToAdd: number[] = [];
-        for (const plexId of desiredPlexIds) {
-          if (!currentPlexIds.has(plexId)) {
-            mediaToAdd.push(plexId);
+        const mediaToAdd: string[] = [];
+        for (const mediaServerId of desiredMediaServerIds) {
+          if (!currentMediaServerIds.has(mediaServerId)) {
+            mediaToAdd.push(mediaServerId);
           }
         }
 
         const dataToAdd: AddRemoveCollectionMedia[] = this.prepareDataAmendment(
           mediaToAdd.map((el) => {
             return {
-              plexId: +el,
+              mediaServerId: el,
               reason: {
                 type: 'media_added_by_rule',
-                data: statsByPlexId.get(+el),
+                data: statsByMediaServerId.get(el),
               },
             } satisfies AddRemoveCollectionMedia;
           }),
         );
 
-        const mediaToRemove: number[] = [];
-        for (const plexId of currentPlexIds) {
-          if (!desiredPlexIds.has(plexId)) {
-            mediaToRemove.push(plexId);
+        const mediaToRemove: string[] = [];
+        for (const mediaServerId of currentMediaServerIds) {
+          if (!desiredMediaServerIds.has(mediaServerId)) {
+            mediaToRemove.push(mediaServerId);
           }
         }
 
@@ -362,10 +367,10 @@ export class RuleExecutorService {
           this.prepareDataAmendment(
             mediaToRemove.map((el) => {
               return {
-                plexId: +el,
+                mediaServerId: el,
                 reason: {
                   type: 'media_removed_by_rule',
-                  data: statsByPlexId.get(+el),
+                  data: statsByMediaServerId.get(el),
                 },
               } satisfies AddRemoveCollectionMedia;
             }),
@@ -469,7 +474,7 @@ export class RuleExecutorService {
     const uniqueArr: AddRemoveCollectionMedia[] = [];
     arr.filter(
       (item) =>
-        !uniqueArr.find((el) => el.plexId === item.plexId) &&
+        !uniqueArr.find((el) => el.mediaServerId === item.mediaServerId) &&
         uniqueArr.push(item),
     );
     return uniqueArr;

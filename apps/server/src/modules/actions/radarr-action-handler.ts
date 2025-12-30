@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
@@ -11,7 +11,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 export class RadarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly tmdbIdService: TmdbIdService,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -31,7 +31,7 @@ export class RadarrActionHandler {
       ? media.tmdbId
       : (
           await this.tmdbIdService.getTmdbIdFromPlexRatingKey(
-            media.plexId.toString(),
+            media.mediaServerId,
           )
         )?.id;
 
@@ -73,18 +73,19 @@ export class RadarrActionHandler {
       } else {
         if (collection.arrAction !== ServarrAction.UNMONITOR) {
           this.logger.log(
-            `Couldn't find movie with tmdb id ${tmdbid} in Radarr, so no Radarr action was taken for movie with Plex ID ${media.plexId}. Attempting to remove from the filesystem via Plex.`,
+            `Couldn't find movie with tmdb id ${tmdbid} in Radarr, so no Radarr action was taken for movie with media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
           );
-          await this.plexApi.deleteMediaFromDisk(media.plexId.toString());
+          const mediaServer = await this.mediaServerFactory.getService();
+          await mediaServer.deleteFromDisk(media.mediaServerId);
         } else {
           this.logger.log(
-            `Radarr unmonitor action was not possible, couldn't find movie with tmdb id ${tmdbid} in Radarr. No action was taken for movie with Plex ID ${media.plexId}`,
+            `Radarr unmonitor action was not possible, couldn't find movie with tmdb id ${tmdbid} in Radarr. No action was taken for movie with media server ID ${media.mediaServerId}`,
           );
         }
       }
     } else {
       this.logger.log(
-        `Couldn't find correct tmdb id. No action taken for movie with Plex ID: ${media.plexId}. Please check this movie manually`,
+        `Couldn't find correct tmdb id. No action taken for movie with media server ID: ${media.mediaServerId}. Please check this movie manually`,
       );
     }
   }

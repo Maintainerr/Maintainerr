@@ -1,5 +1,6 @@
 export interface IComparisonStatistics {
-  plexId: number
+  /** Media server item ID (Plex ratingKey or Jellyfin GUID) */
+  mediaServerId: string
   result: boolean
   sectionResults: ISectionComparisonResults[]
 }

@@ -10,7 +10,7 @@ import {
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
 import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { EMediaDataType } from '@maintainerr/contracts';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -41,7 +41,7 @@ export class SonarrGetterService {
   async get(
     id: number,
     libItem: PlexLibraryItem,
-    dataType?: EPlexDataType,
+    dataType?: EMediaDataType,
     ruleGroup?: RulesDto,
   ) {
     if (!ruleGroup.collection?.sonarrSettingsId) {
@@ -57,8 +57,8 @@ export class SonarrGetterService {
       let seasonRatingKey: number | undefined = undefined;
 
       if (
-        dataType === EPlexDataType.SEASONS ||
-        dataType === EPlexDataType.EPISODES
+        dataType === EMediaDataType.SEASONS ||
+        dataType === EMediaDataType.EPISODES
       ) {
         origLibItem = _.cloneDeep(libItem);
         seasonRatingKey = libItem.grandparentRatingKey
@@ -100,7 +100,7 @@ export class SonarrGetterService {
       let episodePromise: Promise<SonarrEpisode | undefined> | undefined;
       const getEpisode = async (): Promise<SonarrEpisode | undefined> => {
         if (
-          ![EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+          ![EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
         ) {
           return undefined;
         }
@@ -140,7 +140,7 @@ export class SonarrGetterService {
       const getEpisodeFile = async (): Promise<
         SonarrEpisodeFile | undefined
       > => {
-        if (dataType !== EPlexDataType.EPISODES) {
+        if (dataType !== EMediaDataType.EPISODES) {
           return undefined;
         }
 
@@ -165,9 +165,9 @@ export class SonarrGetterService {
         }
         case 'diskSizeEntireShow': {
           if (
-            [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+            [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
           ) {
-            if (dataType === EPlexDataType.EPISODES) {
+            if (dataType === EMediaDataType.EPISODES) {
               const episodeFile = await getEpisodeFile();
               return episodeFile?.size ? +episodeFile.size / 1048576 : null;
             } else {
@@ -200,7 +200,7 @@ export class SonarrGetterService {
         }
         case 'qualityProfileId': {
           const episodeFile = await getEpisodeFile();
-          if ([EPlexDataType.EPISODES].includes(dataType) && episodeFile) {
+          if ([EMediaDataType.EPISODES].includes(dataType) && episodeFile) {
             return episodeFile.quality.quality.id;
           } else {
             return showResponse.qualityProfileId;
@@ -208,7 +208,7 @@ export class SonarrGetterService {
         }
         case 'firstAirDate': {
           if (
-            [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+            [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
           ) {
             const episode = await getEpisode();
             return episode?.airDate ? new Date(episode.airDate) : null;
@@ -220,7 +220,7 @@ export class SonarrGetterService {
         }
         case 'seasons': {
           if (
-            [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+            [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
           ) {
             return season?.statistics?.totalEpisodeCount
               ? +season.statistics.totalEpisodeCount
@@ -242,7 +242,7 @@ export class SonarrGetterService {
             : null;
         }
         case 'monitored': {
-          if (dataType === EPlexDataType.SEASONS) {
+          if (dataType === EMediaDataType.SEASONS) {
             return showResponse.added !== '0001-01-01T00:00:00Z' && season
               ? season.monitored
                 ? 1
@@ -250,7 +250,7 @@ export class SonarrGetterService {
               : null;
           }
 
-          if (dataType === EPlexDataType.EPISODES) {
+          if (dataType === EMediaDataType.EPISODES) {
             const episode = await getEpisode();
             return showResponse.added !== '0001-01-01T00:00:00Z' && episode
               ? episode.monitored
@@ -268,7 +268,7 @@ export class SonarrGetterService {
         case 'unaired_episodes': {
           // returns true if a season with unaired episodes is found in monitored seasons
           const data: SonarrSeason[] = [];
-          if (dataType === EPlexDataType.SEASONS) {
+          if (dataType === EMediaDataType.SEASONS) {
             data.push(season);
           } else {
             data.push(...showResponse.seasons.filter((el) => el.monitored));
@@ -287,7 +287,7 @@ export class SonarrGetterService {
         case 'seasons_monitored': {
           // returns the number of monitored seasons / episodes
           if (
-            [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+            [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
           ) {
             return season?.statistics?.episodeCount
               ? +season.statistics.episodeCount
@@ -299,7 +299,7 @@ export class SonarrGetterService {
         case 'part_of_latest_season': {
           // returns the true when this is the latest season or the episode is part of the latest season
           if (
-            [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+            [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
           ) {
             return season.seasonNumber && showResponse.seasons
               ? +season.seasonNumber ===
@@ -335,7 +335,7 @@ export class SonarrGetterService {
         case 'seriesFinale': {
           const episodes = await sonarrApiClient.getEpisodes(
             showResponse.id,
-            dataType === EPlexDataType.SEASONS ? origLibItem.index : undefined,
+            dataType === EMediaDataType.SEASONS ? origLibItem.index : undefined,
           );
 
           if (!episodes) {

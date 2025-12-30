@@ -9,7 +9,7 @@ import {
   createSonarrSeries,
   EPlexDataTypeToPlexTypeMap,
 } from '../../../../test/utils/data';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { EMediaDataType } from '@maintainerr/contracts';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
@@ -42,14 +42,14 @@ describe('SonarrGetterService', () => {
 
   describe('part_of_latest_season', () => {
     it.each([
-      { type: EPlexDataType.SEASONS, title: 'SEASONS' },
+      { type: EMediaDataType.SEASONS, title: 'SEASONS' },
       {
-        type: EPlexDataType.EPISODES,
+        type: EMediaDataType.EPISODES,
         title: 'EPISODES',
       },
     ])(
       'should return true when next season has not started airing yet for $title',
-      async ({ type }: { type: EPlexDataType }) => {
+      async ({ type }: { type: EMediaDataType }) => {
         jest.useFakeTimers().setSystemTime(new Date('2025-01-01'));
 
         const collectionMedia = createCollectionMedia(type);
@@ -114,10 +114,10 @@ describe('SonarrGetterService', () => {
           });
 
         const plexLibraryItem = createPlexLibraryItem(
-          type == EPlexDataType.EPISODES ? 'episode' : 'season',
+          type == EMediaDataType.EPISODES ? 'episode' : 'season',
           {
             index: 1,
-            parentIndex: type == EPlexDataType.EPISODES ? 1 : undefined, // For episode, target parent (season)
+            parentIndex: type == EMediaDataType.EPISODES ? 1 : undefined, // For episode, target parent (season)
           },
         );
 
@@ -137,14 +137,14 @@ describe('SonarrGetterService', () => {
 
     describe('part_of_latest_season', () => {
       it.each([
-        { type: EPlexDataType.SEASONS, title: 'SEASONS' },
+        { type: EMediaDataType.SEASONS, title: 'SEASONS' },
         {
-          type: EPlexDataType.EPISODES,
+          type: EMediaDataType.EPISODES,
           title: 'EPISODES',
         },
       ])(
         'should return false when a later season has aired for $title',
-        async ({ type }: { type: EPlexDataType }) => {
+        async ({ type }: { type: EMediaDataType }) => {
           jest.useFakeTimers().setSystemTime(new Date('2025-06-01'));
 
           const collectionMedia = createCollectionMedia(type);
@@ -209,10 +209,10 @@ describe('SonarrGetterService', () => {
             });
 
           const plexLibraryItem = createPlexLibraryItem(
-            type == EPlexDataType.EPISODES ? 'episode' : 'season',
+            type == EMediaDataType.EPISODES ? 'episode' : 'season',
             {
               index: 1,
-              parentIndex: type == EPlexDataType.EPISODES ? 1 : undefined, // For episode, target parent (season)
+              parentIndex: type == EMediaDataType.EPISODES ? 1 : undefined, // For episode, target parent (season)
             },
           );
 
@@ -239,7 +239,7 @@ describe('SonarrGetterService', () => {
     let plexLibraryItem: PlexLibraryItem;
 
     beforeEach(() => {
-      collectionMedia = createCollectionMedia(EPlexDataType.EPISODES);
+      collectionMedia = createCollectionMedia(EMediaDataType.EPISODES);
       collectionMedia.collection.sonarrSettingsId = 1;
       plexApi.getMetadata.mockResolvedValue(
         createPlexMetadata({
@@ -266,10 +266,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         23,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -291,10 +291,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         23,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -307,10 +307,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         23,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -325,7 +325,7 @@ describe('SonarrGetterService', () => {
     let plexLibraryItem: PlexLibraryItem;
 
     beforeEach(() => {
-      collectionMedia = createCollectionMedia(EPlexDataType.EPISODES);
+      collectionMedia = createCollectionMedia(EMediaDataType.EPISODES);
       collectionMedia.collection.sonarrSettingsId = 1;
       plexApi.getMetadata.mockResolvedValue(
         createPlexMetadata({
@@ -359,10 +359,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         24,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -375,10 +375,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         24,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -388,19 +388,19 @@ describe('SonarrGetterService', () => {
 
   describe('qualityProfileName', () => {
     it.each([
-      { type: EPlexDataType.SEASONS, title: 'SEASONS' },
+      { type: EMediaDataType.SEASONS, title: 'SEASONS' },
       {
-        type: EPlexDataType.SHOWS,
+        type: EMediaDataType.SHOWS,
         title: 'SHOWS',
       },
       {
-        type: EPlexDataType.EPISODES,
+        type: EMediaDataType.EPISODES,
         title: 'EPISODES',
       },
     ])(
       'should return show quality name for $title',
-      async ({ type }: { type: EPlexDataType }) => {
-        const collectionMedia = createCollectionMedia(EPlexDataType.EPISODES);
+      async ({ type }: { type: EMediaDataType }) => {
+        const collectionMedia = createCollectionMedia(EMediaDataType.EPISODES);
         collectionMedia.collection.sonarrSettingsId = 1;
         plexApi.getMetadata.mockResolvedValue(
           createPlexMetadata({
@@ -449,7 +449,7 @@ describe('SonarrGetterService', () => {
     let plexLibraryItem: PlexLibraryItem;
 
     beforeEach(() => {
-      collectionMedia = createCollectionMedia(EPlexDataType.EPISODES);
+      collectionMedia = createCollectionMedia(EMediaDataType.EPISODES);
       collectionMedia.collection.sonarrSettingsId = 1;
       plexApi.getMetadata.mockResolvedValue(
         createPlexMetadata({
@@ -476,10 +476,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         26,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -492,10 +492,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         26,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 
@@ -517,10 +517,10 @@ describe('SonarrGetterService', () => {
       const response = await sonarrGetterService.get(
         26,
         plexLibraryItem,
-        EPlexDataType.EPISODES,
+        EMediaDataType.EPISODES,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.EPISODES,
+          dataType: EMediaDataType.EPISODES,
         }),
       );
 

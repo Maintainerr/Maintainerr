@@ -48,7 +48,7 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
 
     // correct the type
     for (const el of exclusionsWithoutType) {
-      const metaData = await this.plexApi.getMetadata(el.plexId.toString());
+      const metaData = await this.plexApi.getMetadata(el.mediaServerId);
       if (!metaData) {
         // remove record if not in Plex
         await this.rulesService.removeExclusion(el.id);

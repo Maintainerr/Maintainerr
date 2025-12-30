@@ -1,6 +1,6 @@
+import { EMediaDataType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
-import { EPlexDataType } from '../../utils/PlexDataType-enum'
 import Alert from '../Common/Alert'
 import FormItem from '../Common/FormItem'
 import Modal from '../Common/Modal'
@@ -56,11 +56,11 @@ const AddModal = (props: IAddModal) => {
   const selectedContext = useMemo(() => {
     return props.type === 2
       ? selectedEpisodes !== -1
-        ? EPlexDataType.EPISODES
+        ? EMediaDataType.EPISODES
         : selectedSeasons !== -1
-          ? EPlexDataType.SEASONS
-          : EPlexDataType.SHOWS
-      : EPlexDataType.MOVIES
+          ? EMediaDataType.SEASONS
+          : EMediaDataType.SHOWS
+      : EMediaDataType.MOVIES
   }, [selectedSeasons, selectedEpisodes])
 
   const handleCancel = () => {

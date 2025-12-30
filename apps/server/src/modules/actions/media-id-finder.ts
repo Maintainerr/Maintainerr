@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 
 @Injectable()
 export class MediaIdFinder {
   constructor(
-    private plexApi: PlexApiService,
+    private mediaServerFactory: MediaServerFactory,
     private tmdbApi: TmdbApiService,
     private tmdbIdHelper: TmdbIdService,
   ) {}
@@ -24,19 +24,19 @@ export class MediaIdFinder {
       : undefined;
 
     if (!tmdbShow?.external_ids?.tvdb_id) {
-      let plexData = await this.plexApi.getMetadata(plexId.toString());
-      // fetch correct record for seasons & episodes
-      plexData = plexData.grandparentRatingKey
-        ? await this.plexApi.getMetadata(
-            plexData.grandparentRatingKey.toString(),
-          )
-        : plexData.parentRatingKey
-          ? await this.plexApi.getMetadata(plexData.parentRatingKey.toString())
-          : plexData;
+      const mediaServer = await this.mediaServerFactory.getService();
+      let mediaData = await mediaServer.getMetadata(plexId.toString());
+      // fetch correct record for seasons & episodes (go up to show level)
+      mediaData = mediaData?.grandparentId
+        ? await mediaServer.getMetadata(mediaData.grandparentId)
+        : mediaData?.parentId
+          ? await mediaServer.getMetadata(mediaData.parentId)
+          : mediaData;
 
-      const tvdbidPlex = plexData?.Guid?.find((el) => el.id.includes('tvdb'));
-      if (tvdbidPlex) {
-        tvdbid = tvdbidPlex.id.split('tvdb://')[1];
+      // Check providerIds for tvdb
+      const tvdbFromProviders = mediaData?.providerIds?.tvdb;
+      if (tvdbFromProviders) {
+        tvdbid = tvdbFromProviders;
       }
     } else {
       tvdbid = tmdbShow.external_ids.tvdb_id;

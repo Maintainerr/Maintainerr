@@ -10,13 +10,13 @@ export enum EMediaServerType {
 /**
  * Media data type enumeration
  * Server-agnostic media type classification
- * Note: This is designed to eventually replace EPlexDataType
+ * Uses numeric values and plural names for database compatibility with existing EPlexDataType data
  */
 export enum EMediaDataType {
-  MOVIE = 'movie',
-  SHOW = 'show',
-  SEASON = 'season',
-  EPISODE = 'episode',
+  MOVIES = 1,
+  SHOWS = 2,
+  SEASONS = 3,
+  EPISODES = 4,
 }
 
 /**

@@ -49,18 +49,18 @@ export class JellyfinMapper {
     switch (kind) {
       case BaseItemKind.Movie:
       case 'Movie':
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
       case BaseItemKind.Series:
       case 'Series':
-        return EMediaDataType.SHOW;
+        return EMediaDataType.SHOWS;
       case BaseItemKind.Season:
       case 'Season':
-        return EMediaDataType.SEASON;
+        return EMediaDataType.SEASONS;
       case BaseItemKind.Episode:
       case 'Episode':
-        return EMediaDataType.EPISODE;
+        return EMediaDataType.EPISODES;
       default:
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
     }
   }
 
@@ -69,13 +69,13 @@ export class JellyfinMapper {
    */
   static toBaseItemKind(type: EMediaDataType): BaseItemKind {
     switch (type) {
-      case EMediaDataType.MOVIE:
+      case EMediaDataType.MOVIES:
         return BaseItemKind.Movie;
-      case EMediaDataType.SHOW:
+      case EMediaDataType.SHOWS:
         return BaseItemKind.Series;
-      case EMediaDataType.SEASON:
+      case EMediaDataType.SEASONS:
         return BaseItemKind.Season;
-      case EMediaDataType.EPISODE:
+      case EMediaDataType.EPISODES:
         return BaseItemKind.Episode;
       default:
         return BaseItemKind.Movie;

@@ -54,8 +54,10 @@ export class RulesController {
   }
 
   @Get('/exclusion')
-  getExclusion(@Query() query: { rulegroupId?: number; plexId?: number }) {
-    return this.rulesService.getExclusions(query.rulegroupId, query.plexId);
+  getExclusion(
+    @Query() query: { rulegroupId?: number; mediaServerId?: string },
+  ) {
+    return this.rulesService.getExclusions(query.rulegroupId, query.mediaServerId);
   }
 
   @Get('/count')
@@ -213,11 +215,11 @@ export class RulesController {
     return await this.rulesService.removeExclusion(id);
   }
 
-  @Delete('/exclusions/:plexId')
+  @Delete('/exclusions/:mediaServerId')
   async removeAllExclusion(
-    @Param('plexId', ParseIntPipe) plexId: number,
+    @Param('mediaServerId') mediaServerId: string,
   ): Promise<ReturnStatus> {
-    return await this.rulesService.removeAllExclusion(plexId);
+    return await this.rulesService.removeAllExclusion(mediaServerId);
   }
 
   @Put()

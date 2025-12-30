@@ -443,3 +443,40 @@ describe('CollectionsService', () => {
 - Rename: `collection.plexId` → `collection.mediaServerId`
 - Rename: `collection_media.plexId` → `collection_media.mediaServerId`
 - Add: `collection.mediaServerType` (varchar, default 'plex')
+
+---
+
+## EXTRA: Additional Services Requiring Abstraction Layer Migration
+
+The following services still use `PlexApiService` directly for metadata operations that should use the `MediaServerFactory` abstraction layer. These can be addressed as part of Phase D or deferred to a cleanup phase.
+
+### Services to Migrate
+
+| Service | Current Usage | Required Change |
+|---------|---------------|-----------------|
+| `notifications.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
+| `exclusion-corrector.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
+| `tmdb-id.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
+| `rules.service.ts` | `plexApi.getMetadata()`, `plexApi.getLibraries()`, `plexApi.getAllIdsForContextAction()` | Use abstraction layer |
+| `jellyseerr-getter.service.ts` | `plexApi.getMetadata()`, `plexApi.getCorrectedUsers()` | Use abstraction layer |
+| `overseerr-getter.service.ts` | `plexApi.getMetadata()`, `plexApi.getCorrectedUsers()` | Use abstraction layer |
+| `sonarr-getter.service.ts` | `plexApi.getMetadata()` | Use `mediaServer.getMetadata()` |
+| `tautulli-getter.service.ts` | `plexApi.getCorrectedUsers()` | Need Jellyfin equivalent or conditional |
+| `rule-executor.service.ts` | `plexApi.getLibraryContents()`, `plexApi.getLibraryContentCount()`, `plexApi.getCollectionChildren()` | Use abstraction layer |
+
+### Constants Migration
+
+**`rules.constants.ts`**: Uses `EPlexDataType` for `showType` filtering throughout. Should migrate to `EMediaDataType`.
+
+### Notes
+
+- Some Plex-specific operations (like `getCorrectedUsers()`) need Jellyfin equivalents in the abstraction layer
+- Return types need updating from `PlexMetadata`/`PlexLibraryItem` to `MediaItem`
+- Services using `PlexApiService` for Plex-specific auth operations (e.g., `settings.service.ts`) are correct and should NOT be changed
+
+### Services Correctly Using PlexApiService (No Change Needed)
+
+- `settings.service.ts` - Plex-specific auth/init operations
+- `plex-adapter.service.ts` - IS the adapter
+- `plex-api.controller.ts` - Plex-specific controller
+- `plex-getter.service.ts` - Plex-specific getter

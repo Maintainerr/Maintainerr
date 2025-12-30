@@ -1,7 +1,6 @@
+import { EMediaDataType, MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
-import { PlexMetadata } from '../api/plex-api/interfaces/media.interface';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
@@ -14,10 +13,10 @@ import { MediaIdFinder } from './media-id-finder';
 export class SonarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
-    private readonly plexApi: PlexApiService,
     private readonly tmdbIdService: TmdbIdService,
     private readonly mediaIdFinder: MediaIdFinder,
     private readonly logger: MaintainerrLogger,
+    private readonly mediaServerFactory: MediaServerFactory,
   ) {
     logger.setContext(SonarrActionHandler.name);
   }
@@ -26,53 +25,54 @@ export class SonarrActionHandler {
     collection: Collection,
     media: CollectionMedia,
   ): Promise<void> {
+    const mediaServer = await this.mediaServerFactory.getService();
     const sonarrApiClient = await this.servarrApi.getSonarrApiClient(
       collection.sonarrSettingsId,
     );
 
-    let plexData: PlexMetadata = undefined;
+    let mediaData: MediaItem | undefined = undefined;
 
     // get the tvdb id
-    let tvdbId = undefined;
+    let tvdbId: number | undefined = undefined;
     switch (collection.type) {
-      case EPlexDataType.SEASONS:
-        plexData = await this.plexApi.getMetadata(media.plexId.toString());
+      case EMediaDataType.SEASONS:
+        mediaData = await mediaServer.getMetadata(media.mediaServerId);
         tvdbId = await this.mediaIdFinder.findTvdbId(
-          plexData.parentRatingKey,
+          mediaData?.parentId,
           media.tmdbId,
         );
         media.tmdbId = media.tmdbId
           ? media.tmdbId
           : (
               await this.tmdbIdService.getTmdbIdFromPlexRatingKey(
-                plexData.parentRatingKey,
+                mediaData?.parentId,
               )
             )?.id;
         break;
-      case EPlexDataType.EPISODES:
-        plexData = await this.plexApi.getMetadata(media.plexId.toString());
+      case EMediaDataType.EPISODES:
+        mediaData = await mediaServer.getMetadata(media.mediaServerId);
         tvdbId = await this.mediaIdFinder.findTvdbId(
-          plexData.grandparentRatingKey,
+          mediaData?.grandparentId,
           media.tmdbId,
         );
         media.tmdbId = media.tmdbId
           ? media.tmdbId
           : (
               await this.tmdbIdService.getTmdbIdFromPlexRatingKey(
-                plexData.grandparentRatingKey.toString(),
+                mediaData?.grandparentId,
               )
             )?.id;
         break;
       default:
         tvdbId = await this.mediaIdFinder.findTvdbId(
-          media.plexId,
+          media.mediaServerId,
           media.tmdbId,
         );
         media.tmdbId = media.tmdbId
           ? media.tmdbId
           : (
               await this.tmdbIdService.getTmdbIdFromPlexRatingKey(
-                media.plexId.toString(),
+                media.mediaServerId,
               )
             )?.id;
         break;
@@ -90,9 +90,9 @@ export class SonarrActionHandler {
     if (!sonarrMedia?.id) {
       if (collection.arrAction !== ServarrAction.UNMONITOR) {
         this.logger.log(
-          `Couldn't find correct tvdb id. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Attempting to remove from the filesystem via Plex.`,
+          `Couldn't find correct tvdb id. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Attempting to remove from the filesystem via media server.`,
         );
-        await this.plexApi.deleteMediaFromDisk(media.plexId.toString());
+        await mediaServer.deleteFromDisk(media.mediaServerId);
       } else {
         this.logger.log(
           `Couldn't find correct tvdb id. No unmonitor action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}`,
@@ -104,25 +104,25 @@ export class SonarrActionHandler {
     switch (collection.arrAction) {
       case ServarrAction.DELETE:
         switch (collection.type) {
-          case EPlexDataType.SEASONS:
+          case EMediaDataType.SEASONS:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
-              plexData.index,
+              mediaData?.index,
               true,
             );
             this.logger.log(
-              `[Sonarr] Removed season ${plexData.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
-          case EPlexDataType.EPISODES:
+          case EMediaDataType.EPISODES:
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
-              plexData.parentIndex,
-              [plexData.index],
+              mediaData?.parentIndex,
+              [mediaData?.index],
               true,
             );
             this.logger.log(
-              `[Sonarr] Removed season ${plexData.parentIndex} episode ${plexData.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
           default:
@@ -137,25 +137,25 @@ export class SonarrActionHandler {
         break;
       case ServarrAction.UNMONITOR:
         switch (collection.type) {
-          case EPlexDataType.SEASONS:
+          case EMediaDataType.SEASONS:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
-              plexData.index,
+              mediaData?.index,
               false,
             );
             this.logger.log(
-              `[Sonarr] Unmonitored season ${plexData.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
-          case EPlexDataType.EPISODES:
+          case EMediaDataType.EPISODES:
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
-              plexData.parentIndex,
-              [plexData.index],
+              mediaData?.parentIndex,
+              [mediaData?.index],
               false,
             );
             this.logger.log(
-              `[Sonarr] Unmonitored season ${plexData.parentIndex} episode ${plexData.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Unmonitored season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
           default:
@@ -179,7 +179,7 @@ export class SonarrActionHandler {
         break;
       case ServarrAction.UNMONITOR_DELETE_ALL:
         switch (collection.type) {
-          case EPlexDataType.SHOWS:
+          case EMediaDataType.SHOWS:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'all',
@@ -205,18 +205,18 @@ export class SonarrActionHandler {
         break;
       case ServarrAction.UNMONITOR_DELETE_EXISTING:
         switch (collection.type) {
-          case EPlexDataType.SEASONS:
+          case EMediaDataType.SEASONS:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
-              plexData.index,
+              mediaData?.index,
               true,
               true,
             );
             this.logger.log(
-              `[Sonarr] Removed exisiting episodes from season ${plexData.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed exisiting episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
-          case EPlexDataType.SHOWS:
+          case EMediaDataType.SHOWS:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'existing',

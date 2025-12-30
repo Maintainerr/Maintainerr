@@ -1,3 +1,4 @@
+import { EMediaDataType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import {
@@ -9,7 +10,6 @@ import {
   OverseerrTVRequest,
   OverSeerrTVResponse,
 } from '../../api/overseerr-api/overseerr-api.service';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
@@ -39,7 +39,7 @@ export class OverseerrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: PlexLibraryItem, dataType?: EPlexDataType) {
+  async get(id: number, libItem: PlexLibraryItem, dataType?: EMediaDataType) {
     try {
       let origLibItem = undefined;
       let seasonMediaResponse: OverSeerrSeasonResponse = undefined;
@@ -48,12 +48,12 @@ export class OverseerrGetterService {
 
       // get original show in case of season / episode
       if (
-        dataType === EPlexDataType.SEASONS ||
-        dataType === EPlexDataType.EPISODES
+        dataType === EMediaDataType.SEASONS ||
+        dataType === EMediaDataType.EPISODES
       ) {
         origLibItem = _.cloneDeep(libItem);
         libItem = (await this.plexApi.getMetadata(
-          dataType === EPlexDataType.SEASONS
+          dataType === EMediaDataType.SEASONS
             ? libItem.parentRatingKey
             : libItem.grandparentRatingKey,
         )) as unknown as PlexLibraryItem;
@@ -71,19 +71,19 @@ export class OverseerrGetterService {
         } else {
           tvMediaResponse = await this.overseerrApi.getShow(tmdb.id.toString());
           if (
-            dataType === EPlexDataType.SEASONS ||
-            dataType === EPlexDataType.EPISODES
+            dataType === EMediaDataType.SEASONS ||
+            dataType === EMediaDataType.EPISODES
           ) {
             seasonMediaResponse = await this.overseerrApi.getSeason(
               tmdb.id.toString(),
-              dataType === EPlexDataType.SEASONS
+              dataType === EMediaDataType.SEASONS
                 ? origLibItem.index
                 : origLibItem.parentIndex,
             );
             if (!seasonMediaResponse) {
               this.logger.debug(
                 `Couldn't fetch season data for '${libItem.title}' season ${
-                  dataType === EPlexDataType.SEASONS
+                  dataType === EMediaDataType.SEASONS
                     ? origLibItem.index
                     : origLibItem.parentIndex
                 } from Overseerr. As a result, unreliable results are expected.`,
@@ -110,13 +110,13 @@ export class OverseerrGetterService {
                 for (const request of mediaResponse.mediaInfo.requests) {
                   // for seasons, only add if user requested the correct season
                   if (
-                    (dataType === EPlexDataType.SEASONS ||
-                      dataType === EPlexDataType.EPISODES) &&
+                    (dataType === EMediaDataType.SEASONS ||
+                      dataType === EMediaDataType.EPISODES) &&
                     request.type === 'tv'
                   ) {
                     const includesSeason = this.includesSeason(
                       request.seasons,
-                      dataType === EPlexDataType.SEASONS
+                      dataType === EMediaDataType.SEASONS
                         ? origLibItem.index
                         : origLibItem.parentIndex,
                     );
@@ -157,7 +157,7 @@ export class OverseerrGetterService {
             }
           }
           case 'amountRequested': {
-            return [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(
+            return [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
               dataType,
             )
               ? this.getSeasonRequests(origLibItem, tvMediaResponse).length
@@ -165,7 +165,7 @@ export class OverseerrGetterService {
           }
           case 'requestDate': {
             if (
-              [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
             ) {
               const createdAt = this.getSeasonRequests(
                 origLibItem,
@@ -184,12 +184,12 @@ export class OverseerrGetterService {
                 ? new Date(movieMediaResponse?.releaseDate)
                 : null;
             } else {
-              if (EPlexDataType.EPISODES === dataType) {
+              if (EMediaDataType.EPISODES === dataType) {
                 const ep = seasonMediaResponse.episodes?.find(
                   (el) => el.episodeNumber === origLibItem.index,
                 );
                 return ep?.airDate ? new Date(ep.airDate) : null;
-              } else if (EPlexDataType.SEASONS === dataType) {
+              } else if (EMediaDataType.SEASONS === dataType) {
                 return seasonMediaResponse?.airDate
                   ? new Date(seasonMediaResponse.airDate)
                   : null;
@@ -202,7 +202,7 @@ export class OverseerrGetterService {
           }
           case 'approvalDate': {
             if (
-              [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
@@ -226,7 +226,7 @@ export class OverseerrGetterService {
           }
           case 'mediaAddedAt': {
             if (
-              [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
@@ -251,7 +251,7 @@ export class OverseerrGetterService {
           case 'isRequested': {
             try {
               if (
-                [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(
+                [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
                   dataType,
                 )
               ) {

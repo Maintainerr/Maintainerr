@@ -125,6 +125,22 @@ export interface MediaItem {
   collections?: string[];
   /** Labels/tags */
   labels?: string[];
+
+  /** Maintainerr-specific: exclusion type */
+  maintainerrExclusionType?: 'specific' | 'global';
+  /** Maintainerr-specific: exclusion ID */
+  maintainerrExclusionId?: number;
+  /** Maintainerr-specific: manual addition flag */
+  maintainerrIsManual?: boolean;
+}
+
+/**
+ * MediaItem extended with parent metadata
+ * Used when child items need their parent's metadata (e.g., for provider IDs)
+ */
+export interface MediaItemWithParent extends MediaItem {
+  /** Parent item metadata (for episodes/seasons) */
+  parentItem?: MediaItem;
 }
 
 /**

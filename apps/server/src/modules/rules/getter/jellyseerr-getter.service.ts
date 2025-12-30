@@ -9,7 +9,7 @@ import {
   JellyseerrTVRequest,
   JellyseerrTVResponse,
 } from '../../api/jellyseerr-api/jellyseerr-api.service';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { EMediaDataType } from '@maintainerr/contracts';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
@@ -39,7 +39,7 @@ export class JellyseerrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: PlexLibraryItem, dataType?: EPlexDataType) {
+  async get(id: number, libItem: PlexLibraryItem, dataType?: EMediaDataType) {
     try {
       let origLibItem = undefined;
       let seasonMediaResponse: JellyseerrSeasonResponse = undefined;
@@ -48,12 +48,12 @@ export class JellyseerrGetterService {
 
       // get original show in case of season / episode
       if (
-        dataType === EPlexDataType.SEASONS ||
-        dataType === EPlexDataType.EPISODES
+        dataType === EMediaDataType.SEASONS ||
+        dataType === EMediaDataType.EPISODES
       ) {
         origLibItem = _.cloneDeep(libItem);
         libItem = (await this.plexApi.getMetadata(
-          dataType === EPlexDataType.SEASONS
+          dataType === EMediaDataType.SEASONS
             ? libItem.parentRatingKey
             : libItem.grandparentRatingKey,
         )) as unknown as PlexLibraryItem;
@@ -73,19 +73,19 @@ export class JellyseerrGetterService {
             tmdb.id.toString(),
           );
           if (
-            dataType === EPlexDataType.SEASONS ||
-            dataType === EPlexDataType.EPISODES
+            dataType === EMediaDataType.SEASONS ||
+            dataType === EMediaDataType.EPISODES
           ) {
             seasonMediaResponse = await this.jellyseerrApi.getSeason(
               tmdb.id.toString(),
-              dataType === EPlexDataType.SEASONS
+              dataType === EMediaDataType.SEASONS
                 ? origLibItem.index
                 : origLibItem.parentIndex,
             );
             if (!seasonMediaResponse) {
               this.logger.debug(
                 `Couldn't fetch season data for '${libItem.title}' season ${
-                  dataType === EPlexDataType.SEASONS
+                  dataType === EMediaDataType.SEASONS
                     ? origLibItem.index
                     : origLibItem.parentIndex
                 } from Jellyseerr. As a result, unreliable results are expected.`,
@@ -112,13 +112,13 @@ export class JellyseerrGetterService {
                 for (const request of mediaResponse.mediaInfo.requests) {
                   // for seasons, only add if user requested the correct season
                   if (
-                    (dataType === EPlexDataType.SEASONS ||
-                      dataType === EPlexDataType.EPISODES) &&
+                    (dataType === EMediaDataType.SEASONS ||
+                      dataType === EMediaDataType.EPISODES) &&
                     request.type === 'tv'
                   ) {
                     const includesSeason = this.includesSeason(
                       request.seasons,
-                      dataType === EPlexDataType.SEASONS
+                      dataType === EMediaDataType.SEASONS
                         ? origLibItem.index
                         : origLibItem.parentIndex,
                     );
@@ -169,7 +169,7 @@ export class JellyseerrGetterService {
             }
           }
           case 'amountRequested': {
-            return [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(
+            return [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
               dataType,
             )
               ? this.getSeasonRequests(origLibItem, tvMediaResponse).length
@@ -177,7 +177,7 @@ export class JellyseerrGetterService {
           }
           case 'requestDate': {
             if (
-              [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
             ) {
               const createdAt = this.getSeasonRequests(
                 origLibItem,
@@ -196,12 +196,12 @@ export class JellyseerrGetterService {
                 ? new Date(movieMediaResponse?.releaseDate)
                 : null;
             } else {
-              if (EPlexDataType.EPISODES === dataType) {
+              if (EMediaDataType.EPISODES === dataType) {
                 const ep = seasonMediaResponse.episodes?.find(
                   (el) => el.episodeNumber === origLibItem.index,
                 );
                 return ep?.airDate ? new Date(ep.airDate) : null;
-              } else if (EPlexDataType.SEASONS === dataType) {
+              } else if (EMediaDataType.SEASONS === dataType) {
                 return seasonMediaResponse?.airDate
                   ? new Date(seasonMediaResponse.airDate)
                   : null;
@@ -214,7 +214,7 @@ export class JellyseerrGetterService {
           }
           case 'approvalDate': {
             if (
-              [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
@@ -238,7 +238,7 @@ export class JellyseerrGetterService {
           }
           case 'mediaAddedAt': {
             if (
-              [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(dataType)
+              [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(dataType)
             ) {
               const season = this.getSeasonRequests(
                 origLibItem,
@@ -263,7 +263,7 @@ export class JellyseerrGetterService {
           case 'isRequested': {
             try {
               if (
-                [EPlexDataType.SEASONS, EPlexDataType.EPISODES].includes(
+                [EMediaDataType.SEASONS, EMediaDataType.EPISODES].includes(
                   dataType,
                 )
               ) {

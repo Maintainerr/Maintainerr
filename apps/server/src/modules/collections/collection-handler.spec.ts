@@ -2,14 +2,15 @@ import { Mocked, TestBed } from '@suites/unit';
 import {
   createCollection,
   createCollectionMedia,
-  createCollectionMediaWithPlexData,
-  createPlexLibraries,
+  createCollectionMediaWithMetadata,
+  createMediaLibraries,
 } from '../../../test/utils/data';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { EMediaDataType, MediaItem } from '@maintainerr/contracts';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
@@ -17,7 +18,8 @@ import { ServarrAction } from './interfaces/collection.interface';
 
 describe('CollectionHandler', () => {
   let collectionHandler: CollectionHandler;
-  let plexApi: Mocked<PlexApiService>;
+  let mediaServerFactory: Mocked<MediaServerFactory>;
+  let mediaServer: Mocked<IMediaServerService>;
   let collectionsService: Mocked<CollectionsService>;
   let radarrActionHandler: Mocked<RadarrActionHandler>;
   let sonarrActionHandler: Mocked<SonarrActionHandler>;
@@ -29,24 +31,37 @@ describe('CollectionHandler', () => {
       await TestBed.solitary(CollectionHandler).compile();
 
     collectionHandler = unit;
-    plexApi = unitRef.get(PlexApiService);
+    mediaServerFactory = unitRef.get(MediaServerFactory);
     collectionsService = unitRef.get(CollectionsService);
     radarrActionHandler = unitRef.get(RadarrActionHandler);
     sonarrActionHandler = unitRef.get(SonarrActionHandler);
     overseerrApi = unitRef.get(OverseerrApiService);
     settings = unitRef.get(SettingsService);
+
+    // Setup media server mock
+    mediaServer = {
+      getMetadata: jest.fn(),
+      deleteFromDisk: jest.fn(),
+      getLibraries: jest.fn(),
+    } as unknown as Mocked<IMediaServerService>;
+    mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
+
+  // Helper to setup media server mock for each test
+  const mockMediaServerMetadata = (mediaData: MediaItem) => {
+    mediaServer.getMetadata.mockResolvedValue(mediaData);
+  };
 
   it('should do nothing if action is DO_NOTHING', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DO_NOTHING,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
       }),
     );
 
@@ -58,33 +73,33 @@ describe('CollectionHandler', () => {
   it('should delete from disk', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      type: EPlexDataType.SHOWS,
+      type: EMediaDataType.SHOWS,
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
       }),
     );
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
-    expect(plexApi.deleteMediaFromDisk).toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
   });
 
   it('should call Radarr action handler', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       radarrSettingsId: 1,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'movie',
       }),
     );
@@ -99,13 +114,13 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SHOWS,
+      type: EMediaDataType.SHOWS,
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'show',
       }),
     );
@@ -120,25 +135,25 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceOverseerr: true,
-      type: EPlexDataType.SEASONS,
+      type: EMediaDataType.SEASONS,
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection);
+    const collectionMedia = createCollectionMediaWithMetadata(collection);
 
     settings.overseerrConfigured.mockReturnValue(true);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'show',
       }),
     );
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
     expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
-      collectionMedia.plexData.index,
+      collectionMedia.mediaData.index,
     );
     expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
   });
@@ -147,25 +162,25 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceOverseerr: true,
-      type: EPlexDataType.EPISODES,
+      type: EMediaDataType.EPISODES,
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection);
+    const collectionMedia = createCollectionMediaWithMetadata(collection);
 
     settings.overseerrConfigured.mockReturnValue(true);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'show',
       }),
     );
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
     expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
-      collectionMedia.plexData.parentIndex,
+      collectionMedia.mediaData.parentIndex,
     );
     expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
   });
@@ -174,15 +189,15 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceOverseerr: true,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection);
 
     settings.overseerrConfigured.mockReturnValue(true);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'movie',
       }),
     );
@@ -200,15 +215,15 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceOverseerr: true,
-      type: EPlexDataType.SHOWS,
+      type: EMediaDataType.SHOWS,
     });
     const collectionMedia = createCollectionMedia(collection);
 
     settings.overseerrConfigured.mockReturnValue(true);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'show',
       }),
     );
@@ -226,13 +241,13 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceOverseerr: false,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'movie',
       }),
     );
@@ -247,15 +262,15 @@ describe('CollectionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceOverseerr: false,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection);
 
     settings.overseerrConfigured.mockReturnValue(false);
 
-    plexApi.getLibraries.mockResolvedValue(
-      createPlexLibraries({
-        key: collection.libraryId.toString(),
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
         type: 'movie',
       }),
     );

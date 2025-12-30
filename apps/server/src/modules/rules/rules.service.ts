@@ -1,4 +1,4 @@
-import { ECollectionLogType, MaintainerrEvent } from '@maintainerr/contracts';
+import { ECollectionLogType, EMediaDataType, MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,6 +6,7 @@ import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
+import { PlexMapper } from '../api/media-server/plex/plex.mapper';
 import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
@@ -293,10 +294,10 @@ export class RulesService {
           libraryId: +params.libraryId,
           type:
             lib.type === 'movie'
-              ? EPlexDataType.MOVIES
+              ? EMediaDataType.MOVIES
               : params.dataType !== undefined
                 ? params.dataType
-                : EPlexDataType.SHOWS,
+                : EMediaDataType.SHOWS,
           title: params.name,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
@@ -429,10 +430,10 @@ export class RulesService {
             libraryId: +params.libraryId,
             type:
               lib.type === 'movie'
-                ? EPlexDataType.MOVIES
+                ? EMediaDataType.MOVIES
                 : params.dataType !== undefined
                   ? params.dataType
-                  : EPlexDataType.SHOWS,
+                  : EMediaDataType.SHOWS,
             title: params.name,
             description: params.description,
             arrAction: params.arrAction ? params.arrAction : 0,
@@ -519,14 +520,15 @@ export class RulesService {
           collectionId: data.collectionId,
         },
       });
-      // get media
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
-        group ? group.dataType : undefined,
+      // get media - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
+      const plexMedia = await this.plexApi.getAllIdsForContextAction(
+        group ? PlexMapper.toPlexDataType(group.dataType) : undefined,
         data.context
-          ? data.context
-          : { type: group.dataType, id: data.mediaId },
+          ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id }
+          : { type: PlexMapper.toPlexDataType(group.dataType), id: data.mediaId },
         { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+      );
+      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
       data.ruleGroupId = group.id;
     } else {
       // get type from metadata
@@ -534,22 +536,24 @@ export class RulesService {
       const type =
         metaData.type === 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS;
 
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
+      // get media - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
+      const plexMedia = await this.plexApi.getAllIdsForContextAction(
         undefined,
-        data.context ? data.context : { type: type, id: data.mediaId },
+        data.context ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id } : { type: type, id: data.mediaId },
         { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+      );
+      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
     }
     try {
       // add all items
       for (const media of handleMedia) {
         const metaData = await this.plexApi.getMetadata(
-          media.plexId.toString(),
+          media.mediaServerId,
         );
 
         const old = await this.exclusionRepo.findOne({
           where: {
-            plexId: media.plexId,
+            mediaServerId: media.mediaServerId,
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
               : { ruleGroupId: null }),
@@ -559,7 +563,7 @@ export class RulesService {
         await this.exclusionRepo.save([
           {
             ...old,
-            plexId: media.plexId,
+            mediaServerId: media.mediaServerId,
             // ruleGroupId is only set if it's available
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
@@ -583,7 +587,7 @@ export class RulesService {
         // add collection log record if needed
         if (data.collectionId) {
           await this.collectionService.CollectionLogRecordForChild(
-            media.plexId,
+            media.mediaServerId,
             data.collectionId,
             'exclude',
           );
@@ -592,7 +596,7 @@ export class RulesService {
         this.logger.log(
           `Added ${
             data.ruleGroupId === undefined ? 'global ' : ''
-          }exclusion for media with id ${media.plexId} ${
+          }exclusion for media with id ${media.mediaServerId} ${
             data.ruleGroupId !== undefined
               ? `and rulegroup id ${data.ruleGroupId}`
               : ''
@@ -627,7 +631,7 @@ export class RulesService {
         });
         // add collection log record
         await this.collectionService.CollectionLogRecordForChild(
-          exclcusion.plexId,
+          exclcusion.mediaServerId,
           rulegroup.collectionId,
           'include',
         );
@@ -655,27 +659,29 @@ export class RulesService {
       });
 
       data.ruleGroupId = group.id;
-      // get media
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
-        group ? group.dataType : undefined,
+      // get media - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
+      const plexMedia = await this.plexApi.getAllIdsForContextAction(
+        group ? PlexMapper.toPlexDataType(group.dataType) : undefined,
         data.context
-          ? data.context
-          : { type: group.libraryId, id: data.mediaId },
+          ? { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id }
+          : { type: group.libraryId as unknown as EPlexDataType, id: data.mediaId },
         { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+      );
+      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
     } else {
-      // get type from metadata
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
+      // get type from metadata - Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
+      const plexMedia = await this.plexApi.getAllIdsForContextAction(
         undefined,
-        { type: data.context.type, id: data.context.id },
+        { type: PlexMapper.toPlexDataType(data.context.type), id: data.context.id },
         { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+      );
+      handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
     }
 
     try {
       for (const media of handleMedia) {
         await this.exclusionRepo.delete({
-          plexId: media.plexId,
+          mediaServerId: media.mediaServerId,
           ...(data.ruleGroupId !== undefined
             ? { ruleGroupId: data.ruleGroupId }
             : {}),
@@ -684,7 +690,7 @@ export class RulesService {
         // add collection log record if needed
         if (data.collectionId) {
           await this.collectionService.CollectionLogRecordForChild(
-            media.plexId,
+            media.mediaServerId,
             data.collectionId,
             'include',
           );
@@ -692,7 +698,7 @@ export class RulesService {
         this.logger.log(
           `Removed ${
             data.ruleGroupId === undefined ? 'global ' : ''
-          }exclusion for media with id ${media.plexId} ${
+          }exclusion for media with id ${media.mediaServerId} ${
             data.ruleGroupId !== undefined
               ? `and rulegroup id ${data.ruleGroupId}`
               : ''
@@ -709,27 +715,29 @@ export class RulesService {
     }
   }
 
-  async removeAllExclusion(plexId: number) {
+  async removeAllExclusion(mediaServerId: string) {
     // get type from metadata
     let handleMedia: AddRemoveCollectionMedia[] = [];
 
-    const metaData = await this.plexApi.getMetadata(plexId.toString());
+    const metaData = await this.plexApi.getMetadata(mediaServerId);
     const type =
       metaData.type === 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS;
 
-    handleMedia = (await this.plexApi.getAllIdsForContextAction(
+    // Plex API returns { plexId: number }[], convert to { mediaServerId: string }[]
+    const plexMedia = await this.plexApi.getAllIdsForContextAction(
       undefined,
-      { type: type, id: plexId },
-      { plexId: plexId },
-    )) as unknown as AddRemoveCollectionMedia[];
+      { type: type, id: +mediaServerId },
+      { plexId: +mediaServerId },
+    );
+    handleMedia = plexMedia.map((m) => ({ mediaServerId: m.plexId.toString() }));
 
     try {
       for (const media of handleMedia) {
-        await this.exclusionRepo.delete({ plexId: media.plexId });
+        await this.exclusionRepo.delete({ mediaServerId: media.mediaServerId });
       }
       return this.createReturnStatus(true, 'Success');
     } catch (e) {
-      this.logger.warn(`Removing all exclusions with plexId ${plexId} failed.`);
+      this.logger.warn(`Removing all exclusions with mediaServerId ${mediaServerId} failed.`);
       this.logger.debug(e);
       return this.createReturnStatus(false, 'Failed');
     }
@@ -737,10 +745,10 @@ export class RulesService {
 
   async getExclusions(
     rulegroupId?: number,
-    plexId?: number,
+    mediaServerId?: string,
   ): Promise<Exclusion[]> {
     try {
-      if (rulegroupId || plexId) {
+      if (rulegroupId || mediaServerId) {
         let exclusions: Exclusion[] = [];
         if (rulegroupId) {
           exclusions = await this.exclusionRepo.find({
@@ -749,8 +757,8 @@ export class RulesService {
         } else {
           exclusions = await this.exclusionRepo
             .createQueryBuilder('exclusion')
-            .where('exclusion.plexId = :plexId OR exclusion.parent = :plexId', {
-              plexId,
+            .where('exclusion.mediaServerId = :mediaServerId OR exclusion.parent = :mediaServerId', {
+              mediaServerId,
             })
             .getMany();
         }

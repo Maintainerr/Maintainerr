@@ -597,7 +597,7 @@ export class NotificationService {
 
   public async handleNotification(
     type: NotificationType,
-    mediaItems?: { plexId: number }[],
+    mediaItems?: { mediaServerId: string }[],
     collectionName?: string,
     dayAmount?: number,
     agent?: NotificationAgent,
@@ -753,7 +753,7 @@ export class NotificationService {
 
   private async transformMessageContent(
     message: string,
-    items?: { plexId: number }[],
+    items?: { mediaServerId: string }[],
     collectionName?: string,
     dayAmount?: number,
   ): Promise<string> {
@@ -765,7 +765,7 @@ export class NotificationService {
           let numUnknownItems = 0;
 
           for (const i of items) {
-            const item = await this.plexApi.getMetadata(i.plexId.toString());
+            const item = await this.plexApi.getMetadata(i.mediaServerId);
 
             if (item) {
               titles.push(this.getTitle(item));
@@ -790,7 +790,7 @@ export class NotificationService {
         } else {
           // if 1 item
           const item = await this.plexApi.getMetadata(
-            items[0].plexId.toString(),
+            items[0].mediaServerId,
           );
           message = message.replace(
             '{media_title}',

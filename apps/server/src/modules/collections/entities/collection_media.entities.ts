@@ -1,3 +1,4 @@
+import { MediaItemWithParent } from '@maintainerr/contracts';
 import {
   Column,
   Entity,
@@ -5,7 +6,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { Collection } from './collection.entities';
 
 @Entity()
@@ -17,8 +17,9 @@ export class CollectionMedia {
   @Column()
   collectionId: number;
 
+  /** Media server item ID (Plex ratingKey or Jellyfin GUID) */
   @Column()
-  plexId: number;
+  mediaServerId: string;
 
   @Column({ nullable: true })
   tmdbId: number;
@@ -38,6 +39,21 @@ export class CollectionMedia {
   collection: Collection;
 }
 
+// Re-export for convenience
+export type { MediaItemWithParent };
+
+/**
+ * Collection media with server-agnostic metadata.
+ * Replaces the previous CollectionMediaWithPlexData.
+ */
+export class CollectionMediaWithMetadata extends CollectionMedia {
+  /** Server-agnostic media metadata */
+  mediaData: MediaItemWithParent;
+}
+
+/**
+ * @deprecated Use CollectionMediaWithMetadata instead
+ */
 export class CollectionMediaWithPlexData extends CollectionMedia {
-  plexData: PlexMetadata;
+  plexData: MediaItemWithParent;
 }

@@ -153,7 +153,7 @@ export class CollectionWorkerService extends TaskBase {
           handledCollectionMedia++;
           progressedEvent.processingCollection.processedMedias++;
           progressedEvent.processedMedias++;
-          handledMediaForNotification.push({ plexId: media.plexId });
+          handledMediaForNotification.push({ mediaServerId: media.mediaServerId });
           emitProgressedEvent();
         }
 

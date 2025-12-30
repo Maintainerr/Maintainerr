@@ -124,7 +124,7 @@ export class CollectionsController {
     return this.collectionService.MediaCollectionActionWithContext(
       request.collectionId,
       request.context,
-      { plexId: request.mediaId },
+      { mediaServerId: request.mediaId.toString() },
       request.action === 0 ? 'add' : 'remove',
     );
   }
@@ -135,12 +135,12 @@ export class CollectionsController {
   ) {
     if (!collectionId) {
       return this.collectionService.removeFromAllCollections([
-        { plexId: mediaId },
+        { mediaServerId: mediaId.toString() },
       ]);
     } else {
       return this.collectionService.removeFromCollection(collectionId, [
         {
-          plexId: mediaId,
+          mediaServerId: mediaId.toString(),
         },
       ]);
     }

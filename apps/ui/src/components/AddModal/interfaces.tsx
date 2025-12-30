@@ -1,4 +1,4 @@
-import { EPlexDataType } from '../../utils/PlexDataType-enum'
+import { EMediaDataType } from '@maintainerr/contracts'
 
 export interface IAddModal {
   onCancel: () => void
@@ -21,7 +21,7 @@ export interface ICollectionMedia {
   visibleOnRecommended?: boolean
   visibleOnHome?: boolean
   deleteAfterDays?: number
-  type?: EPlexDataType
+  type?: EMediaDataType
   collectionMedia?: []
 }
 
@@ -29,5 +29,5 @@ export interface IAlterableMediaDto {
   id: number
   index?: number
   parenIndex?: number
-  type: EPlexDataType
+  type: EMediaDataType
 }

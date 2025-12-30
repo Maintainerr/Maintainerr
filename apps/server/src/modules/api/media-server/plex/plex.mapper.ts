@@ -54,18 +54,18 @@ export class PlexMapper {
   ): EMediaDataType {
     switch (plexType) {
       case 'movie':
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
       case 'show':
-        return EMediaDataType.SHOW;
+        return EMediaDataType.SHOWS;
       case 'season':
-        return EMediaDataType.SEASON;
+        return EMediaDataType.SEASONS;
       case 'episode':
-        return EMediaDataType.EPISODE;
+        return EMediaDataType.EPISODES;
       case 'collection':
         // Collections aren't really a media type, but map to MOVIE for compatibility
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
       default:
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
     }
   }
 
@@ -75,13 +75,13 @@ export class PlexMapper {
    */
   static toPlexDataType(type: EMediaDataType): EPlexDataType {
     switch (type) {
-      case EMediaDataType.MOVIE:
+      case EMediaDataType.MOVIES:
         return EPlexDataType.MOVIES;
-      case EMediaDataType.SHOW:
+      case EMediaDataType.SHOWS:
         return EPlexDataType.SHOWS;
-      case EMediaDataType.SEASON:
+      case EMediaDataType.SEASONS:
         return EPlexDataType.SEASONS;
-      case EMediaDataType.EPISODE:
+      case EMediaDataType.EPISODES:
         return EPlexDataType.EPISODES;
       default:
         return EPlexDataType.MOVIES;
@@ -94,15 +94,15 @@ export class PlexMapper {
   static fromPlexDataType(plexType: EPlexDataType): EMediaDataType {
     switch (plexType) {
       case EPlexDataType.MOVIES:
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
       case EPlexDataType.SHOWS:
-        return EMediaDataType.SHOW;
+        return EMediaDataType.SHOWS;
       case EPlexDataType.SEASONS:
-        return EMediaDataType.SEASON;
+        return EMediaDataType.SEASONS;
       case EPlexDataType.EPISODES:
-        return EMediaDataType.EPISODE;
+        return EMediaDataType.EPISODES;
       default:
-        return EMediaDataType.MOVIE;
+        return EMediaDataType.MOVIES;
     }
   }
 

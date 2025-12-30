@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { EMediaDataType } from '@maintainerr/contracts';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import {
   TautulliApiService,
@@ -39,7 +39,7 @@ export class TautulliGetterService {
   async get(
     id: number,
     libItem: PlexLibraryItem,
-    dataType?: EPlexDataType,
+    dataType?: EMediaDataType,
     ruleGroup?: RulesDto,
   ) {
     try {

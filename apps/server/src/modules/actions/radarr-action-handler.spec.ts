@@ -5,8 +5,9 @@ import {
   createCollectionMedia,
   createRadarrMovie,
 } from '../../../test/utils/data';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { EMediaDataType } from '@maintainerr/contracts';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { RadarrApi } from '../api/servarr-api/helpers/radarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
@@ -16,7 +17,8 @@ import { RadarrActionHandler } from './radarr-action-handler';
 
 describe('RadarrActionHandler', () => {
   let radarrActionHandler: RadarrActionHandler;
-  let plexApi: Mocked<PlexApiService>;
+  let mediaServerFactory: Mocked<MediaServerFactory>;
+  let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
   let tmdbIdService: Mocked<TmdbIdService>;
   let logger: Mocked<MaintainerrLogger>;
@@ -26,17 +28,25 @@ describe('RadarrActionHandler', () => {
       await TestBed.solitary(RadarrActionHandler).compile();
 
     radarrActionHandler = unit;
-    plexApi = unitRef.get(PlexApiService);
+    mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
     tmdbIdService = unitRef.get(TmdbIdService);
     logger = unitRef.get(MaintainerrLogger);
+
+    // Setup mock for MediaServerFactory
+    mediaServer = {
+      getMetadata: jest.fn(),
+      deleteFromDisk: jest.fn(),
+      getLibraries: jest.fn(),
+    } as unknown as Mocked<IMediaServerService>;
+    mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
 
   it('should do nothing when tmdbid failed lookup', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       radarrSettingsId: 1,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection, {
       tmdbId: undefined,
@@ -56,7 +66,7 @@ describe('RadarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR,
       radarrSettingsId: 1,
-      type: EPlexDataType.MOVIES,
+      type: EMediaDataType.MOVIES,
     });
     const collectionMedia = createCollectionMedia(collection, {
       tmdbId: 1,
@@ -70,7 +80,7 @@ describe('RadarrActionHandler', () => {
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
     expect(mockedRadarrApi.getMovieByTmdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 
@@ -86,7 +96,7 @@ describe('RadarrActionHandler', () => {
       const collection = createCollection({
         arrAction: action,
         radarrSettingsId: 1,
-        type: EPlexDataType.MOVIES,
+        type: EMediaDataType.MOVIES,
       });
       const collectionMedia = createCollectionMedia(collection, {
         tmdbId: 1,
@@ -114,7 +124,7 @@ describe('RadarrActionHandler', () => {
       const collection = createCollection({
         arrAction: ServarrAction.UNMONITOR,
         radarrSettingsId: 1,
-        type: EPlexDataType.MOVIES,
+        type: EMediaDataType.MOVIES,
         listExclusions,
       });
       const collectionMedia = createCollectionMedia(collection, {
@@ -142,7 +152,7 @@ describe('RadarrActionHandler', () => {
       const collection = createCollection({
         arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
         radarrSettingsId: 1,
-        type: EPlexDataType.MOVIES,
+        type: EMediaDataType.MOVIES,
         listExclusions,
       });
       const collectionMedia = createCollectionMedia(collection, {

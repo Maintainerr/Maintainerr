@@ -1,10 +1,10 @@
 import {
+  EMediaDataType,
   IComparisonStatistics,
   IRuleComparisonResult,
   RuleValueType,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { RuleConstanstService } from '../constants/constants.service';
@@ -45,14 +45,14 @@ export class RuleComparatorService {
   workerData: PlexLibraryItem[];
   resultData: PlexLibraryItem[];
   plexData: PlexLibraryItem[];
-  plexDataType: EPlexDataType;
+  plexDataType: EMediaDataType;
   statistics: IComparisonStatistics[];
   statisticWorker: IRuleComparisonResult[];
   abortSignal?: AbortSignal;
 
-  private workerPlexIds: Set<number>;
-  private resultPlexIds: Set<number>;
-  private statsByPlexId: Map<number, IComparisonStatistics>;
+  private workerIds: Set<string>;
+  private resultIds: Set<string>;
+  private statsById: Map<string, IComparisonStatistics>;
 
   constructor(
     private readonly valueGetter: ValueGetterService,
@@ -78,9 +78,9 @@ export class RuleComparatorService {
       this.statisticWorker = [];
       this.abortSignal = abortSignal;
 
-      this.workerPlexIds = new Set<number>();
-      this.resultPlexIds = new Set<number>();
-      this.statsByPlexId = new Map<number, IComparisonStatistics>();
+      this.workerIds = new Set<string>();
+      this.resultIds = new Set<string>();
+      this.statsById = new Map<string, IComparisonStatistics>();
 
       // run rules
       let currentSection = 0;
@@ -151,14 +151,14 @@ export class RuleComparatorService {
 
   private updateStatisticResults() {
     this.statistics.forEach((el) => {
-      el.result = this.resultPlexIds.has(+el.plexId);
+      el.result = this.resultIds.has(el.mediaServerId);
     });
   }
 
   private setStatisticSectionResults() {
     // add the result of the last section. If media is in workerData, section = true.
     this.statistics.forEach((stat) => {
-      if (this.workerPlexIds.has(+stat.plexId)) {
+      if (this.workerIds.has(stat.mediaServerId)) {
         stat.sectionResults[stat.sectionResults.length - 1].result = true;
       } else {
         stat.sectionResults[stat.sectionResults.length - 1].result = false;
@@ -192,7 +192,7 @@ export class RuleComparatorService {
     for (let i = data.length - 1; i >= 0; i--) {
       // fetch values
       const plexItem = data[i];
-      const plexId = +plexItem.ratingKey;
+      const mediaId = plexItem.ratingKey;
       firstVal = await this.valueGetter.get(
         rule.firstVal,
         plexItem,
@@ -225,7 +225,7 @@ export class RuleComparatorService {
           rule,
           firstVal,
           secondVal,
-          plexId,
+          mediaId,
           comparisonResult,
         );
 
@@ -233,8 +233,8 @@ export class RuleComparatorService {
         if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
           if (comparisonResult) {
             // add to workerdata if not yet available
-            if (!this.workerPlexIds.has(plexId)) {
-              this.workerPlexIds.add(plexId);
+            if (!this.workerIds.has(mediaId)) {
+              this.workerIds.add(mediaId);
               this.workerData.push(plexItem);
             }
           }
@@ -242,7 +242,7 @@ export class RuleComparatorService {
           if (!comparisonResult) {
             // remove from workerdata
             this.workerData.splice(i, 1);
-            this.workerPlexIds.delete(plexId);
+            this.workerIds.delete(mediaId);
           }
         }
       }
@@ -311,9 +311,9 @@ export class RuleComparatorService {
 
   private prepareStatistics() {
     this.plexData.forEach((data) => {
-      const plexId = +data.ratingKey;
+      const mediaId = data.ratingKey;
       const stat: IComparisonStatistics = {
-        plexId,
+        mediaServerId: mediaId,
         result: false,
         sectionResults: [
           {
@@ -325,7 +325,7 @@ export class RuleComparatorService {
       };
 
       this.statistics.push(stat);
-      this.statsByPlexId.set(plexId, stat);
+      this.statsById.set(mediaId, stat);
     });
   }
 
@@ -333,10 +333,10 @@ export class RuleComparatorService {
     rule: RuleDto,
     firstVal: RuleValueType,
     secondVal: RuleValueType,
-    plexId: number,
+    mediaId: string,
     result: boolean,
   ) {
-    const stat = this.statsByPlexId.get(+plexId);
+    const stat = this.statsById.get(mediaId);
     if (!stat) {
       return;
     }
@@ -365,40 +365,40 @@ export class RuleComparatorService {
     if (!sectionActionAnd) {
       // section action is OR, then push in result array
       for (const item of this.workerData) {
-        const plexId = +item.ratingKey;
-        if (!this.resultPlexIds.has(plexId)) {
-          this.resultPlexIds.add(plexId);
+        const mediaId = item.ratingKey;
+        if (!this.resultIds.has(mediaId)) {
+          this.resultIds.add(mediaId);
           this.resultData.push(item);
         }
       }
     } else {
       // section action is AND, then filter media not in work array out of result array
-      const plexIdsInCurrentData = new Set<number>(
+      const idsInCurrentData = new Set<string>(
         this.plexData.map((plexEl) => {
-          return +plexEl.ratingKey;
+          return plexEl.ratingKey;
         }),
       );
 
       this.resultData = this.resultData.filter((el) => {
-        const plexId = +el.ratingKey;
+        const mediaId = el.ratingKey;
         // If in current data.. Otherwise we're removing previously added media
-        if (plexIdsInCurrentData.has(plexId)) {
-          return this.workerPlexIds.has(plexId);
+        if (idsInCurrentData.has(mediaId)) {
+          return this.workerIds.has(mediaId);
         } else {
           // If not in current data, skip check
           return true;
         }
       });
 
-      this.resultPlexIds = new Set<number>(
+      this.resultIds = new Set<string>(
         this.resultData.map((el) => {
-          return +el.ratingKey;
+          return el.ratingKey;
         }),
       );
     }
     // empty workerdata. prepare for execution of new section
     this.workerData = [];
-    this.workerPlexIds.clear();
+    this.workerIds.clear();
   }
 
   private doRuleAction(
