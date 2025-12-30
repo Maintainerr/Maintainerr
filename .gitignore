@@ -9,3 +9,5 @@ node_modules
 !.yarn/versions
 .idea
 .turbo
+# Development documentation (not committed)
+jellyfin-dev-documents/
