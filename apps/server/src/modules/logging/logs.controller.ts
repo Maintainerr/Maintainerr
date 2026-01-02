@@ -31,6 +31,7 @@ import {
   interval,
   map,
   mergeMap,
+  of,
   Subject,
   switchMap,
 } from 'rxjs';
@@ -120,6 +121,7 @@ export class LogsController implements BeforeApplicationShutdown {
         readdir(logsDirectory, (err, files) => {
           if (err) {
             reject(err);
+            return;
           } else {
             const currentLogFile = files
               .filter((x) => x.endsWith('.log'))
@@ -127,7 +129,8 @@ export class LogsController implements BeforeApplicationShutdown {
               .reverse()?.[0];
 
             if (!currentLogFile) {
-              reject("Couldn't find any log files");
+              resolve(undefined);
+              return;
             }
 
             const filePath = path.join(logsDirectory, currentLogFile);
@@ -138,10 +141,10 @@ export class LogsController implements BeforeApplicationShutdown {
     );
 
     const currentLogFileRecentLines = from(currentLogFile).pipe(
-      switchMap((file) => from(readLastLines.read(file, 200))),
-      catchError(() => {
-        return '';
-      }),
+      switchMap((file) =>
+        file ? from(readLastLines.read(file, 200)) : of(''),
+      ),
+      catchError(() => of('')),
     );
 
     const strToDate = (dtStr: string) => {

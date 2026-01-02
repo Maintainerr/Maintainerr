@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  InternalServerErrorException,
   Param,
   ParseIntPipe,
   Post,
@@ -26,67 +27,122 @@ import { PlexApiService } from './plex-api.service';
 export class PlexApiController {
   constructor(private readonly plexApiService: PlexApiService) {}
   @Get()
-  getStatus(): any {
-    return this.plexApiService.getStatus();
+  async getStatus(): Promise<any> {
+    const status = await this.plexApiService.getStatus();
+    if (status == null) {
+      throw new InternalServerErrorException('Could not fetch Plex status');
+    }
+    return status;
   }
 
   @Get('libraries')
   async getLibraries() {
-    return this.plexApiService.getLibraries();
+    const libraries = await this.plexApiService.getLibraries();
+    if (libraries == null) {
+      throw new InternalServerErrorException('Could not fetch Plex libraries');
+    }
+    return libraries;
   }
 
   @Get('library/:id/content{/:page}')
-  getLibraryContent(
+  async getLibraryContent(
     @Param('id') id: string,
     @Param('page', new ParseIntPipe()) page: number,
     @Query('amount') amount: number,
   ) {
     const size = amount ? amount : 50;
     const offset = (page - 1) * size;
-    return this.plexApiService.getLibraryContents(id, {
+    const result = await this.plexApiService.getLibraryContents(id, {
       offset: offset,
       size: size,
     });
+    if (result == null) {
+      throw new InternalServerErrorException(
+        'Could not fetch Plex library contents',
+      );
+    }
+    return result;
   }
 
   @Get('library/:id/content/search/:query')
-  searchibraryContent(
+  async searchLibraryContent(
     @Param('id') id: string,
     @Param('query') query: string,
     @Query('type') type?: EPlexDataType,
   ) {
-    return this.plexApiService.searchLibraryContents(id, query, type);
+    const result = await this.plexApiService.searchLibraryContents(
+      id,
+      query,
+      type,
+    );
+    if (result == null) {
+      throw new InternalServerErrorException(
+        'Could not search Plex library contents',
+      );
+    }
+    return result;
   }
 
   @Get('meta/:id')
-  getMetadata(@Param('id') id: string) {
-    return this.plexApiService.getMetadata(id);
+  async getMetadata(@Param('id') id: string) {
+    const result = await this.plexApiService.getMetadata(id);
+    if (result == null) {
+      throw new InternalServerErrorException('Could not fetch Plex metadata');
+    }
+    return result;
   }
 
   @Get('meta/:id/seen')
-  getSeenBy(@Param('id') id: string) {
-    return this.plexApiService.getWatchHistory(id);
+  async getSeenBy(@Param('id') id: string) {
+    const result = await this.plexApiService.getWatchHistory(id);
+    if (result == null) {
+      throw new InternalServerErrorException(
+        'Could not fetch Plex watch history',
+      );
+    }
+    return result;
   }
 
   @Get('users')
-  getUser() {
-    return this.plexApiService.getUsers();
+  async getUser() {
+    const result = await this.plexApiService.getUsers();
+    if (result == null) {
+      throw new InternalServerErrorException('Could not fetch Plex users');
+    }
+    return result;
   }
 
   @Get('meta/:id/children')
-  getChildrenMetadata(@Param('id') id: string) {
-    return this.plexApiService.getChildrenMetadata(id);
+  async getChildrenMetadata(@Param('id') id: string) {
+    const result = await this.plexApiService.getChildrenMetadata(id);
+    if (result == null) {
+      throw new InternalServerErrorException(
+        'Could not fetch Plex children metadata',
+      );
+    }
+    return result;
   }
 
   @Get('library/:id/recent')
-  getRecentlyAdded(@Param('id', new ParseIntPipe()) id: number) {
-    return this.plexApiService.getRecentlyAdded(id.toString());
+  async getRecentlyAdded(@Param('id', new ParseIntPipe()) id: number) {
+    const result = await this.plexApiService.getRecentlyAdded(id.toString());
+    if (result == null) {
+      throw new InternalServerErrorException(
+        'Could not fetch recently added items',
+      );
+    }
+    return result;
   }
 
   @Get('library/:id/collections')
   async getCollections(@Param('id', new ParseIntPipe()) id: number) {
     const collection: PlexCollection[] =
       await this.plexApiService.getCollections(id.toString());
+    if (collection == null) {
+      throw new InternalServerErrorException(
+        'Could not fetch Plex collections',
+      );
+    }
     return collection;
   }
 
@@ -97,6 +153,9 @@ export class PlexApiController {
     const collection: PlexCollection = await this.plexApiService.getCollection(
       collectionId.toString(),
     );
+    if (collection == null) {
+      throw new InternalServerErrorException('Could not fetch Plex collection');
+    }
     return collection;
   }
 
@@ -106,12 +165,21 @@ export class PlexApiController {
   ) {
     const collection: PlexLibraryItem[] =
       await this.plexApiService.getCollectionChildren(collectionId.toString());
+    if (collection == null) {
+      throw new InternalServerErrorException(
+        'Could not fetch Plex collection children',
+      );
+    }
     return collection;
   }
 
   @Get('/search/:input')
   async searchLibrary(@Param('input') input: string) {
-    return await this.plexApiService.searchContent(input);
+    const result = await this.plexApiService.searchContent(input);
+    if (result == null) {
+      throw new InternalServerErrorException('Could not search Plex library');
+    }
+    return result;
   }
 
   @Put('library/collection/:collectionId/child/:childId')
@@ -144,6 +212,11 @@ export class PlexApiController {
   async updateCollection(@Body() body: CreateUpdateCollection) {
     const collection: PlexCollection =
       await this.plexApiService.updateCollection(body);
+    if (collection == null) {
+      throw new InternalServerErrorException(
+        'Could not update Plex collection',
+      );
+    }
     return collection;
   }
 
@@ -151,6 +224,11 @@ export class PlexApiController {
   async createCollection(@Body() body: CreateUpdateCollection) {
     const collection: PlexCollection =
       await this.plexApiService.createCollection(body);
+    if (collection == null) {
+      throw new InternalServerErrorException(
+        'Could not create Plex collection',
+      );
+    }
     return collection;
   }
 
@@ -174,6 +252,11 @@ export class PlexApiController {
     ) {
       const response: PlexHub =
         await this.plexApiService.UpdateCollectionSettings(body);
+      if (response == null) {
+        throw new InternalServerErrorException(
+          'Could not update Plex collection settings',
+        );
+      }
       return response;
     } else {
       return 'Incorrect input parameters supplied.';
