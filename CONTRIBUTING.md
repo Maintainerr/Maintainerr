@@ -116,7 +116,7 @@ If you prefer to set up your development environment manually (specific to a Win
 ### Contributing Code
 
 - If you are taking on an existing bug or feature ticket, please comment on the [issue](https://github.com/Maintainerr/Maintainerr/issues) to avoid multiple people working on the same thing.
-- If you have a major change or large feature to contribute, reach out via [Discussions](https://github.com/Maintainerr/Maintainerr/discussions) or our [Discord server](https://discord.gg/WP4ZW2QYwk) first to align with us! It'll save us all time, as the review will be quicker, and we will have more context about your change, allowing us to guide you in the right direction.
+- If you have a major change or large feature to contribute, reach out via [Discussions](https://github.com/Maintainerr/Maintainerr/discussions) or our [Discord server](https://discord.gg/WP4ZW2QYwk) first to align on design and approach! It'll save us all time, as the review will be quicker, and we will have more context about your change, allowing us to guide you in the right direction.
   - You can create a "draft" pull request early to get feedback on your work.
 - Large PRs (>500 lines changed, excluding tests) should be split into smaller, manageable parts by stacking your PRs sequentially. This approach makes the review process significantly easier when done in order.
 - Each PR should target one major meaningful change, which allows us to review independent changes separately, rather than having everything blocked on a single review.
@@ -128,6 +128,20 @@ If you prefer to set up your development environment manually (specific to a Win
 - It is your responsibility to keep your branch up-to-date. Your work will **not** be merged unless it is rebased off the latest `main` branch.
 - Your code **must** be formatted correctly.
   - We use Prettier to format our code base. It is recommended to have the Prettier extension installed in your editor and to format on save. Alternatively, you can run `yarn format` to format.
+- Contributors should be prepared to explain their design decisions and trade-offs during review.
+
+## Use of AI Tools
+
+We allow the use of AI tools (e.g. ChatGPT, GitHub Copilot, Claude) as development aids, but not as a substitute for understanding.
+
+By submitting a pull request, you confirm that:
+
+- You understand the code you are submitting and can explain how it works
+- You have reviewed any AI-assisted output for correctness, security, performance, and maintainability
+- You have tested the change appropriately in the context of Maintainerr
+- You take full responsibility for the contribution, regardless of how it was produced
+
+Pull requests that appear to be largely unreviewed, low-effort, or misaligned with Maintainerr’s design and coding standards may be closed without detailed feedback.
 
 ### UI Text Style
 
