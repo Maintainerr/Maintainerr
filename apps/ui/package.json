@@ -36,7 +36,7 @@
     "react-toastify": "^11.0.5",
     "reconnecting-eventsource": "^1.6.4",
     "yaml": "^2.8.2",
-    "zod": "^4.3.4"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
