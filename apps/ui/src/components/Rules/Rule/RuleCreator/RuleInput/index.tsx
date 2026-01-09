@@ -1,16 +1,16 @@
 import { TrashIcon } from '@heroicons/react/solid'
+import {
+  Application,
+  type MediaItemType,
+  MediaType,
+  RulePossibility,
+  RulePossibilityTranslations,
+} from '@maintainerr/contracts'
 import { cloneDeep } from 'lodash-es'
 import { FormEvent, useEffect, useState } from 'react'
 import { IRule } from '../'
 import { useRuleConstants } from '../../../../../api/rules'
-import {
-  Application,
-  IProperty,
-  MediaType,
-  RulePossibility,
-  RulePossibilityTranslations,
-} from '../../../../../contexts/constants-context'
-import { EPlexDataType } from '../../../../../utils/PlexDataType-enum'
+import { IProperty } from '../../../../../contexts/constants-context'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
 
 enum RuleType {
@@ -38,7 +38,7 @@ interface IRuleInput {
   id?: number
   tagId?: number
   mediaType?: MediaType
-  dataType?: EPlexDataType
+  dataType?: MediaItemType
   section?: number
   newlyAdded?: number[]
   editData?: { rule: IRule }
@@ -270,7 +270,9 @@ const RuleInput = (props: IRuleInput) => {
     if (firstval) {
       const val = JSON.parse(firstval)
       const appId = val[0]
-      if (!apps?.[appId]?.props.find((el) => el.id == val[1])) {
+      // Find application by ID instead of using array index
+      const app = apps?.find((a) => a.id === appId)
+      if (!app?.props.find((el) => el.id === val[1])) {
         setFirstVal(undefined)
       }
     }

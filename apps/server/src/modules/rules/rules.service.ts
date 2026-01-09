@@ -1,4 +1,9 @@
-import { ECollectionLogType, MaintainerrEvent } from '@maintainerr/contracts';
+import {
+  ECollectionLogType,
+  MaintainerrEvent,
+  MediaItemType,
+  MediaServerType,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,9 +11,8 @@ import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
-import { PlexLibraryItem } from '../api/plex-api/interfaces/library.interfaces';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -66,7 +70,7 @@ export class RulesService {
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
     private readonly collectionService: CollectionsService,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly connection: DataSource,
     private readonly ruleYamlService: RuleYamlService,
     private readonly ruleComparatorServiceFactory: RuleComparatorServiceFactory,
@@ -75,6 +79,10 @@ export class RulesService {
   ) {
     logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
+  }
+
+  private async getMediaServer(): Promise<IMediaServerService> {
+    return this.mediaServerFactory.getService();
   }
   async getRuleConstants(): Promise<RuleConstants> {
     const settings = await this.settingsRepo.findOne({ where: {} });
@@ -137,27 +145,36 @@ export class RulesService {
 
   async getRuleGroups(
     activeOnly = false,
-    libraryId?: number,
+    libraryId?: string,
     typeId?: number,
   ): Promise<RulesDto[]> {
     try {
-      const rulegroups = await this.connection
+      const queryBuilder = this.connection
         .createQueryBuilder('rule_group', 'rg')
         .innerJoinAndSelect('rg.rules', 'r')
-        .innerJoinAndSelect('rg.collection', 'c')
+        // leftJoin because collectionId may be null during media server migration
+        // (rules are preserved but collections are cleared until user re-assigns libraries)
+        .leftJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .where(
           activeOnly ? 'rg.isActive = true' : 'rg.isActive in (true, false)',
-        )
-        .andWhere(
-          libraryId !== undefined
-            ? `rg.libraryId = ${libraryId}`
-            : typeId !== undefined
-              ? `c.type = ${typeId}`
-              : 'rg.libraryId != -1',
-        )
-        .orderBy('rg.id, r.id')
-        .getMany();
+        );
+
+      if (libraryId !== undefined) {
+        queryBuilder.andWhere('rg.libraryId = :libraryId', { libraryId });
+      } else if (typeId !== undefined) {
+        queryBuilder.andWhere('c.type = :typeId', { typeId });
+      } else {
+        queryBuilder.andWhere("rg.libraryId != '-1'");
+      }
+
+      const rulegroups = await queryBuilder.orderBy('rg.id, r.id').getMany();
+      // Ensure rules is always an array for each group
+      for (const group of rulegroups) {
+        if (!Array.isArray(group.rules)) {
+          group.rules = [];
+        }
+      }
       return rulegroups as RulesDto[];
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
@@ -175,11 +192,18 @@ export class RulesService {
       const rulegroups = await this.connection
         .createQueryBuilder('rule_group', 'rg')
         .innerJoinAndSelect('rg.rules', 'r')
-        .innerJoinAndSelect('rg.collection', 'c')
+        // leftJoin because collectionId may be null during media server migration
+        .leftJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .where('rg.id IN (:...ids)', { ids })
         .orderBy('rg.id, r.id')
         .getMany();
+      // Ensure rules is always an array for each group
+      for (const group of rulegroups) {
+        if (!Array.isArray(group.rules)) {
+          group.rules = [];
+        }
+      }
       return rulegroups as RulesDto[];
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
@@ -193,11 +217,16 @@ export class RulesService {
       const rulegroup = await this.connection
         .createQueryBuilder('rule_group', 'rg')
         .innerJoinAndSelect('rg.rules', 'r')
-        .innerJoinAndSelect('rg.collection', 'c')
+        // leftJoin because collectionId may be null during media server migration
+        .leftJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
-        .andWhere(`rg.id = ${id}`)
+        .andWhere('rg.id = :id', { id })
         .orderBy('r.id')
         .getOne();
+      // Ensure rules is always an array
+      if (rulegroup && !Array.isArray(rulegroup.rules)) {
+        rulegroup.rules = [];
+      }
       return rulegroup as RulesDto;
     } catch (e) {
       this.logger.warn(`Rules - Action failed : ${e.message}`);
@@ -285,18 +314,19 @@ export class RulesService {
       }
 
       // create the collection
-      const lib = (await this.plexApi.getLibraries()).find(
-        (el) => +el.key === +params.libraryId,
+      const mediaServer = await this.getMediaServer();
+      const lib = (await mediaServer.getLibraries()).find(
+        (el) => el.id === params.libraryId,
       );
       const collection = (
         await this.collectionService.createCollection({
-          libraryId: +params.libraryId,
+          libraryId: params.libraryId,
           type:
             lib.type === 'movie'
-              ? EPlexDataType.MOVIES
+              ? 'movie'
               : params.dataType !== undefined
                 ? params.dataType
-                : EPlexDataType.SHOWS,
+                : 'show',
           title: params.name,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
@@ -389,24 +419,44 @@ export class RulesService {
           where: { id: params.id },
         });
 
-        const dbCollection = await this.collectionService.getCollection(
-          group.collectionId,
-        );
+        const dbCollection = group.collectionId
+          ? await this.collectionService.getCollection(group.collectionId)
+          : null;
 
         // if datatype or manual collection settings changed then remove the collection media and specific exclusions. The Plex collection will be removed later by updateCollection()
+        // Only check if there's an existing collection
         if (
-          group.dataType !== params.dataType ||
-          params.collection.manualCollection !==
-            dbCollection.manualCollection ||
-          params.collection.manualCollectionName !==
-            dbCollection.manualCollectionName ||
-          params.libraryId !== dbCollection.libraryId
+          dbCollection &&
+          (group.dataType !== params.dataType ||
+            params.collection.manualCollection !==
+              dbCollection.manualCollection ||
+            params.collection.manualCollectionName !==
+              dbCollection.manualCollectionName ||
+            params.libraryId !== dbCollection.libraryId)
         ) {
           this.logger.log(
             `A crucial setting of Rulegroup '${params.name}' was changed. Removed all media & specific exclusions`,
           );
           await this.collectionMediaRepository.delete({
             collectionId: group.collectionId,
+          });
+
+          // Delete the media server collection if it exists, then clear mediaServerId.
+          // Jellyfin auto-deletes empty collections, but Plex does not.
+          if (dbCollection.mediaServerId) {
+            const mediaServer = await this.getMediaServer();
+            try {
+              await mediaServer.deleteCollection(dbCollection.mediaServerId);
+            } catch (e) {
+              // Collection may already be deleted, ignore errors
+              this.logger.debug(
+                `Failed to delete media server collection: ${e.message}`,
+              );
+            }
+          }
+          await this.collectionService.saveCollection({
+            ...dbCollection,
+            mediaServerId: null,
           });
 
           await this.collectionService.addLogRecord(
@@ -418,51 +468,67 @@ export class RulesService {
           await this.exclusionRepo.delete({ ruleGroupId: params.id });
         }
 
-        // update the collection
-        const lib = (await this.plexApi.getLibraries()).find(
-          (el) => +el.key === +params.libraryId,
+        // update or create the collection
+        const mediaServer = await this.getMediaServer();
+        const lib = (await mediaServer.getLibraries()).find(
+          (el) => el.id === params.libraryId,
         );
 
-        const collection = (
-          await this.collectionService.updateCollection({
-            id: group.collectionId ? group.collectionId : undefined,
-            libraryId: +params.libraryId,
-            type:
-              lib.type === 'movie'
-                ? EPlexDataType.MOVIES
-                : params.dataType !== undefined
-                  ? params.dataType
-                  : EPlexDataType.SHOWS,
-            title: params.name,
-            description: params.description,
-            arrAction: params.arrAction ? params.arrAction : 0,
-            isActive: params.isActive,
-            listExclusions: params.listExclusions
-              ? params.listExclusions
-              : false,
-            forceOverseerr: params.forceOverseerr
-              ? params.forceOverseerr
-              : false,
-            tautulliWatchedPercentOverride:
-              params.tautulliWatchedPercentOverride ?? null,
-            radarrSettingsId: params.radarrSettingsId ?? null,
-            sonarrSettingsId: params.sonarrSettingsId ?? null,
-            visibleOnRecommended: params.collection.visibleOnRecommended,
-            visibleOnHome: params.collection.visibleOnHome,
-            deleteAfterDays: params.collection.deleteAfterDays ?? null,
-            manualCollection: params.collection.manualCollection,
-            manualCollectionName: params.collection.manualCollectionName,
-            keepLogsForMonths: +params.collection.keepLogsForMonths,
-            sortTitle: params.collection?.sortTitle,
-          })
-        ).dbCollection;
+        const collectionData = {
+          libraryId: params.libraryId,
+          type:
+            lib.type === 'movie'
+              ? 'movie'
+              : params.dataType !== undefined
+                ? params.dataType
+                : 'show',
+          title: params.name,
+          description: params.description,
+          arrAction: params.arrAction ? params.arrAction : 0,
+          isActive: params.isActive,
+          listExclusions: params.listExclusions ? params.listExclusions : false,
+          forceOverseerr: params.forceOverseerr ? params.forceOverseerr : false,
+          tautulliWatchedPercentOverride:
+            params.tautulliWatchedPercentOverride ?? null,
+          radarrSettingsId: params.radarrSettingsId ?? null,
+          sonarrSettingsId: params.sonarrSettingsId ?? null,
+          visibleOnRecommended: params.collection?.visibleOnRecommended,
+          visibleOnHome: params.collection?.visibleOnHome,
+          deleteAfterDays: params.collection?.deleteAfterDays ?? null,
+          manualCollection: params.collection?.manualCollection,
+          manualCollectionName: params.collection?.manualCollectionName,
+          keepLogsForMonths: +params.collection?.keepLogsForMonths,
+          sortTitle: params.collection?.sortTitle,
+        };
+
+        // If there's no existing collection (e.g., after rule migration), create a new one
+        // Otherwise, update the existing collection
+        let collectionId: number | undefined;
+        if (group.collectionId) {
+          const result = await this.collectionService.updateCollection({
+            id: group.collectionId,
+            ...collectionData,
+          });
+          collectionId = result?.dbCollection?.id;
+        } else {
+          const result =
+            await this.collectionService.createCollection(collectionData);
+          collectionId = result?.dbCollection?.id;
+        }
+
+        if (!collectionId) {
+          return this.createReturnStatus(
+            false,
+            'Failed to create/update collection',
+          );
+        }
 
         // update or create group
         const groupId = await this.createOrUpdateGroup(
           params.name,
           params.description,
           params.libraryId,
-          collection.id,
+          collectionId,
           params.useRules !== undefined ? params.useRules : true,
           params.isActive !== undefined ? params.isActive : true,
           params.dataType !== undefined ? params.dataType : undefined,
@@ -511,6 +577,7 @@ export class RulesService {
     }
   }
   async setExclusion(data: ExclusionContextDto) {
+    const mediaServer = await this.getMediaServer();
     let handleMedia: AddRemoveCollectionMedia[] = [];
 
     if (data.collectionId) {
@@ -519,37 +586,44 @@ export class RulesService {
           collectionId: data.collectionId,
         },
       });
-      // get media
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
-        group ? group.dataType : undefined,
+      // get media - traverse show -> seasons -> episodes if needed
+      const ids = await mediaServer.getAllIdsForContextAction(
+        group?.dataType,
         data.context
-          ? data.context
-          : { type: group.dataType, id: data.mediaId },
-        { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+          ? { type: data.context.type, id: String(data.context.id) }
+          : { type: group.dataType, id: String(data.mediaId) },
+        String(data.mediaId),
+      );
+      handleMedia = ids.map((id) => ({ mediaServerId: id }));
       data.ruleGroupId = group.id;
     } else {
       // get type from metadata
-      const metaData = await this.plexApi.getMetadata(data.mediaId.toString());
-      const type =
-        metaData.type === 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS;
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot set exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
 
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
+      // get media - traverse show -> seasons -> episodes if needed
+      const ids = await mediaServer.getAllIdsForContextAction(
         undefined,
-        data.context ? data.context : { type: type, id: data.mediaId },
-        { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+        data.context
+          ? { type: data.context.type, id: String(data.context.id) }
+          : { type: metaData.type, id: String(data.mediaId) },
+        String(data.mediaId),
+      );
+      handleMedia = ids.map((id) => ({ mediaServerId: id }));
     }
     try {
       // add all items
       for (const media of handleMedia) {
-        const metaData = await this.plexApi.getMetadata(
-          media.plexId.toString(),
-        );
+        const metaData = await mediaServer.getMetadata(media.mediaServerId);
 
         const old = await this.exclusionRepo.findOne({
           where: {
-            plexId: media.plexId,
+            mediaServerId: media.mediaServerId,
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
               : { ruleGroupId: null }),
@@ -559,7 +633,7 @@ export class RulesService {
         await this.exclusionRepo.save([
           {
             ...old,
-            plexId: media.plexId,
+            mediaServerId: media.mediaServerId,
             // ruleGroupId is only set if it's available
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
@@ -567,23 +641,14 @@ export class RulesService {
             // set parent
             parent: data.mediaId ? data.mediaId : null,
             // set media type
-            type:
-              metaData.type === 'movie'
-                ? 1
-                : metaData.type === 'show'
-                  ? 2
-                  : metaData.type === 'season'
-                    ? 3
-                    : metaData.type === 'episode'
-                      ? 4
-                      : undefined,
+            type: metaData?.type,
           },
         ]);
 
         // add collection log record if needed
         if (data.collectionId) {
           await this.collectionService.CollectionLogRecordForChild(
-            media.plexId,
+            media.mediaServerId,
             data.collectionId,
             'exclude',
           );
@@ -592,7 +657,7 @@ export class RulesService {
         this.logger.log(
           `Added ${
             data.ruleGroupId === undefined ? 'global ' : ''
-          }exclusion for media with id ${media.plexId} ${
+          }exclusion for media with id ${media.mediaServerId} ${
             data.ruleGroupId !== undefined
               ? `and rulegroup id ${data.ruleGroupId}`
               : ''
@@ -627,7 +692,7 @@ export class RulesService {
         });
         // add collection log record
         await this.collectionService.CollectionLogRecordForChild(
-          exclcusion.plexId,
+          exclcusion.mediaServerId,
           rulegroup.collectionId,
           'include',
         );
@@ -645,6 +710,7 @@ export class RulesService {
   }
 
   async removeExclusionWitData(data: ExclusionContextDto) {
+    const mediaServer = await this.getMediaServer();
     let handleMedia: AddRemoveCollectionMedia[] = [];
 
     if (data.collectionId) {
@@ -655,27 +721,29 @@ export class RulesService {
       });
 
       data.ruleGroupId = group.id;
-      // get media
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
-        group ? group.dataType : undefined,
+      // get media - traverse show -> seasons -> episodes if needed
+      const ids = await mediaServer.getAllIdsForContextAction(
+        group?.dataType,
         data.context
-          ? data.context
-          : { type: group.libraryId, id: data.mediaId },
-        { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+          ? { type: data.context.type, id: String(data.context.id) }
+          : { type: group.dataType, id: String(data.mediaId) },
+        String(data.mediaId),
+      );
+      handleMedia = ids.map((id) => ({ mediaServerId: id }));
     } else {
-      // get type from metadata
-      handleMedia = (await this.plexApi.getAllIdsForContextAction(
+      // get media - traverse show -> seasons -> episodes if needed
+      const ids = await mediaServer.getAllIdsForContextAction(
         undefined,
-        { type: data.context.type, id: data.context.id },
-        { plexId: data.mediaId },
-      )) as unknown as AddRemoveCollectionMedia[];
+        { type: data.context.type, id: String(data.context.id) },
+        String(data.mediaId),
+      );
+      handleMedia = ids.map((id) => ({ mediaServerId: id }));
     }
 
     try {
       for (const media of handleMedia) {
         await this.exclusionRepo.delete({
-          plexId: media.plexId,
+          mediaServerId: media.mediaServerId,
           ...(data.ruleGroupId !== undefined
             ? { ruleGroupId: data.ruleGroupId }
             : {}),
@@ -684,7 +752,7 @@ export class RulesService {
         // add collection log record if needed
         if (data.collectionId) {
           await this.collectionService.CollectionLogRecordForChild(
-            media.plexId,
+            media.mediaServerId,
             data.collectionId,
             'include',
           );
@@ -692,7 +760,7 @@ export class RulesService {
         this.logger.log(
           `Removed ${
             data.ruleGroupId === undefined ? 'global ' : ''
-          }exclusion for media with id ${media.plexId} ${
+          }exclusion for media with id ${media.mediaServerId} ${
             data.ruleGroupId !== undefined
               ? `and rulegroup id ${data.ruleGroupId}`
               : ''
@@ -709,27 +777,36 @@ export class RulesService {
     }
   }
 
-  async removeAllExclusion(plexId: number) {
+  async removeAllExclusion(mediaServerId: string) {
+    const mediaServer = await this.getMediaServer();
     // get type from metadata
     let handleMedia: AddRemoveCollectionMedia[] = [];
 
-    const metaData = await this.plexApi.getMetadata(plexId.toString());
-    const type =
-      metaData.type === 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS;
+    const metaData = await mediaServer.getMetadata(mediaServerId);
+    if (!metaData?.type) {
+      this.logger.warn(
+        `No metadata found for media ${mediaServerId}, cannot remove exclusions`,
+      );
+      return this.createReturnStatus(false, 'Failed - no metadata');
+    }
 
-    handleMedia = (await this.plexApi.getAllIdsForContextAction(
+    // get media - traverse show -> seasons -> episodes if needed
+    const ids = await mediaServer.getAllIdsForContextAction(
       undefined,
-      { type: type, id: plexId },
-      { plexId: plexId },
-    )) as unknown as AddRemoveCollectionMedia[];
+      { type: metaData.type, id: mediaServerId },
+      mediaServerId,
+    );
+    handleMedia = ids.map((id) => ({ mediaServerId: id }));
 
     try {
       for (const media of handleMedia) {
-        await this.exclusionRepo.delete({ plexId: media.plexId });
+        await this.exclusionRepo.delete({ mediaServerId: media.mediaServerId });
       }
       return this.createReturnStatus(true, 'Success');
     } catch (e) {
-      this.logger.warn(`Removing all exclusions with plexId ${plexId} failed.`);
+      this.logger.warn(
+        `Removing all exclusions with mediaServerId ${mediaServerId} failed.`,
+      );
       this.logger.debug(e);
       return this.createReturnStatus(false, 'Failed');
     }
@@ -737,10 +814,10 @@ export class RulesService {
 
   async getExclusions(
     rulegroupId?: number,
-    plexId?: number,
+    mediaServerId?: string,
   ): Promise<Exclusion[]> {
     try {
-      if (rulegroupId || plexId) {
+      if (rulegroupId || mediaServerId) {
         let exclusions: Exclusion[] = [];
         if (rulegroupId) {
           exclusions = await this.exclusionRepo.find({
@@ -749,9 +826,12 @@ export class RulesService {
         } else {
           exclusions = await this.exclusionRepo
             .createQueryBuilder('exclusion')
-            .where('exclusion.plexId = :plexId OR exclusion.parent = :plexId', {
-              plexId,
-            })
+            .where(
+              'exclusion.mediaServerId = :mediaServerId OR exclusion.parent = :mediaServerId',
+              {
+                mediaServerId,
+              },
+            )
             .getMany();
         }
 
@@ -908,7 +988,7 @@ export class RulesService {
   private async createOrUpdateGroup(
     name: string,
     description: string,
-    libraryId: number,
+    libraryId: string,
     collectionId: number,
     useRules = true,
     isActive = true,
@@ -921,7 +1001,7 @@ export class RulesService {
       const values = {
         name: name,
         description: description,
-        libraryId: +libraryId,
+        libraryId: libraryId,
         collectionId: +collectionId,
         isActive: isActive,
         useRules: useRules,
@@ -1118,11 +1198,14 @@ export class RulesService {
       });
   }
 
-  public encodeToYaml(rules: RuleDto[], mediaType: number): ReturnStatus {
+  public encodeToYaml(
+    rules: RuleDto[],
+    mediaType: MediaItemType,
+  ): ReturnStatus {
     return this.ruleYamlService.encode(rules, mediaType);
   }
 
-  public decodeFromYaml(yaml: string, mediaType: number): ReturnStatus {
+  public decodeFromYaml(yaml: string, mediaType: MediaItemType): ReturnStatus {
     return this.ruleYamlService.decode(yaml, mediaType);
   }
 
@@ -1131,7 +1214,8 @@ export class RulesService {
     mediaId: string,
   ): Promise<any> {
     // flush caches
-    this.plexApi.resetMetadataCache(mediaId);
+    const mediaServer = await this.getMediaServer();
+    mediaServer.resetMetadataCache(mediaId);
     cacheManager.getCache('overseerr').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
     cacheManager.getCache('jellyseerr').flush();
@@ -1142,14 +1226,14 @@ export class RulesService {
       .getCachesByType('sonarr')
       .forEach((cache) => cache.data.flushAll());
 
-    const mediaResp = await this.plexApi.getMetadata(mediaId);
+    const mediaResp = await mediaServer.getMetadata(mediaId);
     const group = await this.getRuleGroupById(rulegroupId);
     if (group && mediaResp) {
       group.rules = await this.getRules(group.id);
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       const result = await ruleComparator.executeRulesWithData(
         group as RulesDto,
-        [mediaResp as unknown as PlexLibraryItem],
+        [mediaResp],
       );
 
       if (result) {
@@ -1204,11 +1288,21 @@ export class RulesService {
 
       // if any rule requires a cache reset
       if (result) {
-        cacheManager.getCache('plextv').flush();
-        cacheManager.getCache('plexguid').flush();
-        this.logger.log(
-          `Flushed Plex cache because a rule in the group required it`,
-        );
+        const serverType =
+          await this.mediaServerFactory.getConfiguredServerType();
+
+        if (serverType === MediaServerType.JELLYFIN) {
+          cacheManager.getCache('jellyfin').flush();
+          this.logger.log(
+            `Flushed Jellyfin cache because a rule in the group required it`,
+          );
+        } else if (serverType === MediaServerType.PLEX) {
+          cacheManager.getCache('plextv').flush();
+          cacheManager.getCache('plexguid').flush();
+          this.logger.log(
+            `Flushed Plex cache because a rule in the group required it`,
+          );
+        }
       }
 
       return result;

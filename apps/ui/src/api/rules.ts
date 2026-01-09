@@ -1,4 +1,8 @@
-import { BasicResponseDto, RuleExecuteStatusDto } from '@maintainerr/contracts'
+import {
+  BasicResponseDto,
+  MediaItemType,
+  RuleExecuteStatusDto,
+} from '@maintainerr/contracts'
 import {
   useMutation,
   UseMutationOptions,
@@ -14,7 +18,6 @@ import GetApiHandler, {
   PostApiHandler,
   PutApiHandler,
 } from '../utils/ApiHandler'
-import { EPlexDataType } from '../utils/PlexDataType-enum'
 
 export interface RuleGroupCollectionPayload {
   visibleOnRecommended: boolean
@@ -29,7 +32,7 @@ export interface RuleGroupCollectionPayload {
 export interface RuleGroupCreatePayload {
   name: string
   description: string
-  libraryId: number
+  libraryId: string
   arrAction: number
   isActive: boolean
   useRules: boolean
@@ -40,7 +43,7 @@ export interface RuleGroupCreatePayload {
   sonarrSettingsId?: number
   collection: RuleGroupCollectionPayload
   rules: IRule[]
-  dataType: EPlexDataType
+  dataType: MediaItemType
   notifications: AgentConfiguration[]
   ruleHandlerCronSchedule: string | null
 }

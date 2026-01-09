@@ -1,16 +1,17 @@
 import { PlayIcon } from '@heroicons/react/solid'
+import { type MediaItem } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection, ICollectionMedia } from '..'
 import GetApiHandler from '../../../utils/ApiHandler'
 import TabbedLinks, { TabbedRoute } from '../../Common/TabbedLinks'
-import OverviewContent, { IPlexMetadata } from '../../Overview/Content'
+import OverviewContent from '../../Overview/Content'
 import CollectionInfo from './CollectionInfo'
 import CollectionExcludions from './Exclusions'
 import TestMediaItem from './TestMediaItem'
 
 interface ICollectionDetail {
-  libraryId: number
+  libraryId: string
   collection: ICollection
   title: string
   onBack: () => void
@@ -20,7 +21,7 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   // TODO: this component uses it's own lazy loading mechanism instead of the one from OverviewContent. Update this.
   props: ICollectionDetail,
 ) => {
-  const [data, setData] = useState<IPlexMetadata[]>([])
+  const [data, setData] = useState<MediaItem[]>([])
   const [media, setMedia] = useState<ICollectionMedia[]>([])
   const [selectedTab, setSelectedTab] = useState<string>('media')
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
@@ -29,7 +30,7 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
   const fetchAmount = 25
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
-  const dataRef = useRef<IPlexMetadata[]>([])
+  const dataRef = useRef<MediaItem[]>([])
   const mediaRef = useRef<ICollectionMedia[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
@@ -90,8 +91,10 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
     setData([
       ...dataRef.current,
       ...resp.items.map((el) => {
-        el.plexData!.maintainerrIsManual = el.isManual ? el.isManual : false
-        return el.plexData ? el.plexData : ({} as IPlexMetadata)
+        if (el.mediaData) {
+          el.mediaData.maintainerrIsManual = el.isManual ? el.isManual : false
+        }
+        return el.mediaData ? el.mediaData : ({} as MediaItem)
       }),
     ])
     loadingRef.current = false
@@ -180,8 +183,10 @@ const CollectionDetail: React.FC<ICollectionDetail> = (
             }
             onRemove={(id: string) =>
               setTimeout(() => {
-                setData(dataRef.current.filter((el) => +el.ratingKey !== +id))
-                setMedia(mediaRef.current.filter((el) => +el.plexId !== +id))
+                setData(dataRef.current.filter((el) => el.id !== id))
+                setMedia(
+                  mediaRef.current.filter((el) => el.mediaServerId !== id),
+                )
               }, 500)
             }
             collectionInfo={media.map((el) => {

@@ -1,0 +1,10 @@
+# Ignore Jellyfin data directories
+jellyfin-config/
+jellyfin-cache/
+media/
+
+# Ignore Maintainerr data directory
+maintainerr-data/
+
+# Build logs
+*.log

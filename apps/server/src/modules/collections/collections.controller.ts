@@ -1,4 +1,4 @@
-import { ECollectionLogType } from '@maintainerr/contracts';
+import { ECollectionLogType, MediaItemType } from '@maintainerr/contracts';
 import {
   Body,
   Controller,
@@ -82,19 +82,19 @@ export class CollectionsController {
   }
 
   @Get('/deactivate/:id')
-  deactivate(@Param('id') id: number) {
+  deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.collectionService.deactivateCollection(id);
   }
 
   @Get('/activate/:id')
-  activate(@Param('id') id: number) {
+  activate(@Param('id', ParseIntPipe) id: number) {
     return this.collectionService.activateCollection(id);
   }
 
   @Get()
   getCollections(
-    @Query('libraryId') libraryId: number,
-    @Query('typeId') typeId: 1 | 2 | 3 | 4,
+    @Query('libraryId') libraryId: string,
+    @Query('typeId') typeId: MediaItemType,
   ) {
     if (libraryId) {
       return this.collectionService.getCollections(libraryId, undefined);
@@ -105,17 +105,15 @@ export class CollectionsController {
     }
   }
   @Get('/collection/:id')
-  getCollection(@Param('id') collectionId: number) {
-    return this.collectionService.getCollection(
-      collectionId ? collectionId : undefined,
-    );
+  getCollection(@Param('id', ParseIntPipe) collectionId: number) {
+    return this.collectionService.getCollection(collectionId);
   }
 
   @Post('/media/add')
   ManualActionOnCollection(
     @Body()
     request: {
-      mediaId: number;
+      mediaId: string;
       context: IAlterableMediaDto;
       collectionId: number;
       action: 0 | 1;
@@ -124,45 +122,47 @@ export class CollectionsController {
     return this.collectionService.MediaCollectionActionWithContext(
       request.collectionId,
       request.context,
-      { plexId: request.mediaId },
+      { mediaServerId: request.mediaId },
       request.action === 0 ? 'add' : 'remove',
     );
   }
   @Delete('/media')
   deleteMediaFromCollection(
-    @Query('mediaId') mediaId: number,
-    @Query('collectionId') collectionId: number,
+    @Query('mediaId') mediaId: string,
+    @Query('collectionId', new ParseIntPipe({ optional: true }))
+    collectionId?: number,
   ) {
     if (!collectionId) {
       return this.collectionService.removeFromAllCollections([
-        { plexId: mediaId },
-      ]);
-    } else {
-      return this.collectionService.removeFromCollection(collectionId, [
-        {
-          plexId: mediaId,
-        },
+        { mediaServerId: mediaId },
       ]);
     }
+    return this.collectionService.removeFromCollection(collectionId, [
+      { mediaServerId: mediaId },
+    ]);
   }
 
   @Get('/media/')
-  getMediaInCollection(@Query('collectionId') collectionId: number) {
+  getMediaInCollection(
+    @Query('collectionId', ParseIntPipe) collectionId: number,
+  ) {
     return this.collectionService.getCollectionMedia(collectionId);
   }
 
   @Get('/media/count')
-  getMediaInCollectionCount(@Query('collectionId') collectionId: number) {
+  getMediaInCollectionCount(
+    @Query('collectionId', ParseIntPipe) collectionId: number,
+  ) {
     return this.collectionService.getCollectionMediaCount(collectionId);
   }
 
   @Get('/media/:id/content/:page')
   getLibraryContent(
-    @Param('id') id: number,
-    @Param('page', new ParseIntPipe()) page: number,
-    @Query('size') amount: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('page', ParseIntPipe) page: number,
+    @Query('size', new ParseIntPipe({ optional: true })) amount?: number,
   ) {
-    const size = amount ? amount : 25;
+    const size = amount ?? 25;
     const offset = (page - 1) * size;
     return this.collectionService.getCollectionMediaWitPlexDataAndhPaging(id, {
       offset: offset,
@@ -172,11 +172,11 @@ export class CollectionsController {
 
   @Get('/exclusions/:id/content/:page')
   getExclusions(
-    @Param('id') id: number,
-    @Param('page', new ParseIntPipe()) page: number,
-    @Query('size') amount: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('page', ParseIntPipe) page: number,
+    @Query('size', new ParseIntPipe({ optional: true })) amount?: number,
   ) {
-    const size = amount ? amount : 25;
+    const size = amount ?? 25;
     const offset = (page - 1) * size;
     return this.collectionService.getCollectionExclusionsWithPlexDataAndhPaging(
       id,
@@ -189,14 +189,14 @@ export class CollectionsController {
 
   @Get('/logs/:id/content/:page')
   getCollectionLogs(
-    @Param('id') id: number,
-    @Param('page', new ParseIntPipe()) page: number,
-    @Query('size') amount: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('page', ParseIntPipe) page: number,
     @Query('search') search: string,
     @Query('sort') sort: 'ASC' | 'DESC' = 'DESC',
     @Query('filter') filter: ECollectionLogType,
+    @Query('size', new ParseIntPipe({ optional: true })) amount?: number,
   ) {
-    const size = amount ? amount : 25;
+    const size = amount ?? 25;
     const offset = (page - 1) * size;
     return this.collectionService.getCollectionLogsWithPaging(
       id,

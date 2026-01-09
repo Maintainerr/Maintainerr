@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PlexApiService } from '../../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Collection } from '../../collections/entities/collection.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -21,7 +21,7 @@ export class RuleMaintenanceService extends TaskBase {
     private readonly rulesService: RulesService,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
   ) {
     logger.setContext(RuleMaintenanceService.name);
     super(taskService, logger);
@@ -50,12 +50,13 @@ export class RuleMaintenanceService extends TaskBase {
   private async removeLeftoverExclusions() {
     // get all exclusions
     const exclusions = await this.rulesService.getAllExclusions();
+    const mediaServer = await this.mediaServerFactory.getService();
     // loop through exclusions
     for (const exclusion of exclusions) {
       // check if media still exists
-      const resp = await this.plexApi.getMetadata(exclusion.plexId.toString());
+      const resp = await mediaServer.getMetadata(exclusion.mediaServerId);
       // remove when not
-      if (!resp?.ratingKey) {
+      if (!resp?.id) {
         await this.rulesService.removeExclusion(exclusion.id);
       }
     }

@@ -1,10 +1,10 @@
 import { ClipboardCopyIcon } from '@heroicons/react/solid'
+import { MediaItemType } from '@maintainerr/contracts'
 import { Editor } from '@monaco-editor/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import YAML from 'yaml'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
-import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import FormItem from '../../../Common/FormItem'
 import Modal from '../../../Common/Modal'
@@ -17,7 +17,7 @@ interface ITestMediaItem {
 }
 
 interface IOptions {
-  id: number
+  id: number | string
   title: string
 }
 
@@ -34,14 +34,14 @@ const emptyOption: IOptions = {
 const TestMediaItem = (props: ITestMediaItem) => {
   const [loading, setLoading] = useState(true)
   const [ruleGroup, setRuleGroup] = useState<{
-    dataType: EPlexDataType
-    libraryId: number
+    dataType: MediaItemType
+    libraryId: string
     id: string
   }>()
 
   const [mediaItem, setMediaItem] = useState<IMediaOptions>()
-  const [selectedSeasons, setSelectedSeasons] = useState<number>(-1)
-  const [selectedEpisodes, setSelectedEpisodes] = useState<number>(-1)
+  const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
+  const [selectedEpisodes, setSelectedEpisodes] = useState<number | string>(-1)
   const [seasonOptions, setSeasonOptions] = useState<IOptions[]>([emptyOption])
   const [episodeOptions, setEpisodeOptions] = useState<IOptions[]>([
     emptyOption,
@@ -60,23 +60,17 @@ const TestMediaItem = (props: ITestMediaItem) => {
     if (!mediaItem || !ruleGroup) return false
 
     // if movies or shows is selected
-    if (
-      ruleGroup.dataType === EPlexDataType.MOVIES ||
-      ruleGroup.dataType === EPlexDataType.SHOWS
-    ) {
+    if (ruleGroup.dataType === 'movie' || ruleGroup.dataType === 'show') {
       return true
     }
 
     // if seasons & season is selected
-    else if (
-      ruleGroup.dataType === EPlexDataType.SEASONS &&
-      selectedSeasons !== -1
-    ) {
+    else if (ruleGroup.dataType === 'season' && selectedSeasons !== -1) {
       return true
     }
     // if episodes mediaitem, season & episode is selected
     else if (
-      ruleGroup.dataType === EPlexDataType.EPISODES &&
+      ruleGroup.dataType === 'episode' &&
       selectedSeasons !== -1 &&
       selectedEpisodes !== -1
     ) {
@@ -95,17 +89,17 @@ const TestMediaItem = (props: ITestMediaItem) => {
     updateSelectedSeasons(-1)
     setSeasonOptions([emptyOption])
 
-    if (item?.type == EPlexDataType.SHOWS) {
+    if (item?.type === 'show') {
       // get seasons
-      GetApiHandler(`/plex/meta/${item.id}/children`).then(
-        (resp: [{ ratingKey: number; title: string }]) => {
+      GetApiHandler(`/media-server/meta/${item.id}/children`).then(
+        (resp: { id: string; title: string }[]) => {
           setSeasonOptions([
             emptyOption,
             ...resp.map((el) => {
               return {
-                id: el.ratingKey,
+                id: el.id,
                 title: el.title,
-              }
+              } as IOptions
             }),
           ])
         },
@@ -113,22 +107,22 @@ const TestMediaItem = (props: ITestMediaItem) => {
     }
   }
 
-  const updateSelectedSeasons = (seasons: number) => {
+  const updateSelectedSeasons = (seasons: number | string) => {
     setSelectedSeasons(seasons)
     setSelectedEpisodes(-1)
     setEpisodeOptions([emptyOption])
 
     if (seasons !== -1) {
       // get episodes
-      GetApiHandler(`/plex/meta/${seasons}/children`).then(
-        (resp: [{ ratingKey: number; index: number }]) => {
+      GetApiHandler(`/media-server/meta/${seasons}/children`).then(
+        (resp: { id: string; index: number }[]) => {
           setEpisodeOptions([
             emptyOption,
             ...resp.map((el) => {
               return {
-                id: el.ratingKey,
+                id: el.id,
                 title: `Episode ${el.index}`,
-              }
+              } as IOptions
             }),
           ])
         },
@@ -221,17 +215,15 @@ const TestMediaItem = (props: ITestMediaItem) => {
               <br />
               <br />
               {`The rule group is of type ${
-                ruleGroup.dataType === EPlexDataType.MOVIES
+                ruleGroup.dataType === 'movie'
                   ? 'movies'
-                  : ruleGroup.dataType === EPlexDataType.SEASONS
+                  : ruleGroup.dataType === 'season'
                     ? 'seasons'
-                    : ruleGroup.dataType === EPlexDataType.EPISODES
+                    : ruleGroup.dataType === 'episode'
                       ? 'episodes'
                       : 'series'
               }, as a result only media of type ${
-                ruleGroup.dataType === EPlexDataType.MOVIES
-                  ? 'movies'
-                  : 'series'
+                ruleGroup.dataType === 'movie' ? 'movies' : 'series'
               } will be displayed in the search bar.`}
             </Alert>
           </div>
@@ -247,15 +239,16 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
           {/* seasons */}
           <div className="w-full">
-            {ruleGroup.dataType === EPlexDataType.SEASONS ||
-            ruleGroup.dataType === EPlexDataType.EPISODES ? (
+            {ruleGroup.dataType === 'season' ||
+            ruleGroup.dataType === 'episode' ? (
               <FormItem label="Season">
                 <select
                   name={`Seasons-field`}
                   id={`Seasons-field`}
                   value={selectedSeasons}
                   onChange={(e: { target: { value: string } }) => {
-                    updateSelectedSeasons(+e.target.value)
+                    const value = e.target.value
+                    updateSelectedSeasons(value === '-1' ? -1 : value)
                   }}
                 >
                   {seasonOptions.map((e: IOptions) => {
@@ -269,7 +262,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
               </FormItem>
             ) : undefined}
 
-            {ruleGroup.dataType === EPlexDataType.EPISODES ? (
+            {ruleGroup.dataType === 'episode' ? (
               // episodes
               <FormItem label="Episode">
                 <select
@@ -277,7 +270,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
                   id={`episode-field`}
                   value={selectedEpisodes}
                   onChange={(e: { target: { value: string } }) => {
-                    setSelectedEpisodes(+e.target.value)
+                    const value = e.target.value
+                    setSelectedEpisodes(value === '-1' ? -1 : value)
                   }}
                 >
                   {episodeOptions.map((e: IOptions) => {
