@@ -19,7 +19,7 @@ FROM base AS builder
 WORKDIR /app
 
 # Build arguments for branch/repo selection
-ARG BRANCH=remaining-issues/abstraction-cleanup
+ARG BRANCH=remaining-issues/abstraction-cleanup-squashed
 ARG REPO=https://github.com/Maintainerr/Maintainerr.git
 
 # Install git and build tools for native modules (better-sqlite3, esbuild, etc.)
@@ -96,7 +96,7 @@ ENV VERSION_TAG=develop
 # Store branch info for debugging
 # NOTE: This duplicates the ARG from line 23 to make it available in this stage.
 # Update to 'main' once the Jellyfin feature branch is merged.
-ARG BRANCH=remaining-issues/abstraction-cleanup
+ARG BRANCH=remaining-issues/abstraction-cleanup-squashed
 ENV MAINTAINERR_BRANCH=${BRANCH}
 
 # Temporary workaround for https://github.com/libuv/libuv/pull/4141
