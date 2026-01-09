@@ -8,7 +8,8 @@ type AvailableCacheIds =
   | 'plexcommunity'
   | 'tautulli'
   | 'jellyseerr'
-  | 'github';
+  | 'github'
+  | 'jellyfin';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr';
 
@@ -70,6 +71,7 @@ class CacheManager {
       stdTtl: 86400, // 24 hours
       checkPeriod: 60 * 60, // Check every hour
     }),
+    jellyfin: new Cache('jellyfin', 'Jellyfin API', 'jellyfin'),
   };
 
   public createCache(

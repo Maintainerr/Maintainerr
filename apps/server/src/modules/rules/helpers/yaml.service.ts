@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import YAML from 'yaml';
 import {
-  EPlexDataType,
-  PlexDataTypeStrings,
-} from '../../..//modules/api/plex-api/enums/plex-data-type-enum';
+  MediaDataTypeStrings,
+  MediaItemType,
+  MediaItemTypes,
+} from '@maintainerr/contracts';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   ICustomIdentifier,
@@ -39,7 +40,7 @@ export class RuleYamlService {
     logger.setContext(RuleYamlService.name);
   }
 
-  public encode(rules: RuleDto[], mediaType: number): ReturnStatus {
+  public encode(rules: RuleDto[], mediaType: MediaItemType): ReturnStatus {
     try {
       let workingSection = { id: 0, rules: [] };
       const sections: ISectionYaml[] = [];
@@ -79,8 +80,13 @@ export class RuleYamlService {
 
       // push last workingsection to sections
       sections.push({ [+workingSection.id]: workingSection.rules });
+      // Convert MediaItemType to uppercase string for YAML serialization
+      const mediaTypeIndex = MediaItemTypes.indexOf(mediaType);
       const fullObject: IRuleYamlParent = {
-        mediaType: PlexDataTypeStrings[+mediaType - 1],
+        mediaType:
+          mediaTypeIndex >= 0
+            ? MediaDataTypeStrings[mediaTypeIndex]
+            : MediaDataTypeStrings[0],
         rules: sections,
       };
       // Transform to yaml
@@ -101,19 +107,26 @@ export class RuleYamlService {
     }
   }
 
-  public decode(yaml: string, mediaType: number): ReturnStatus {
+  public decode(yaml: string, mediaType: MediaItemType): ReturnStatus {
     try {
       const decoded: IRuleYamlParent = YAML.parse(yaml);
       const rules: RuleDto[] = [];
       let idRef = 0;
 
+      // Convert YAML uppercase string to MediaItemType
+      const yamlMediaTypeIndex = MediaDataTypeStrings.indexOf(
+        decoded.mediaType.toUpperCase(),
+      );
+      const yamlMediaType: MediaItemType | undefined =
+        yamlMediaTypeIndex >= 0
+          ? MediaItemTypes[yamlMediaTypeIndex]
+          : undefined;
+
       // Break when media types are incompatible
-      if (+mediaType !== +EPlexDataType[decoded.mediaType.toUpperCase()]) {
+      if (!yamlMediaType || mediaType !== yamlMediaType) {
         this.logger.warn(`Yaml import failed. Incompatible media types`);
         this.logger.debug(
-          `Media type with ID ${+mediaType} is not compatible with media type with ID ${
-            EPlexDataType[decoded.mediaType.toUpperCase()]
-          } `,
+          `Media type '${mediaType}' is not compatible with YAML media type '${decoded.mediaType}'`,
         );
 
         return {
@@ -153,8 +166,8 @@ export class RuleYamlService {
         idRef++;
       }
 
-      const returnObj: { mediaType: number; rules: RuleDto[] } = {
-        mediaType: EPlexDataType[decoded.mediaType],
+      const returnObj: { mediaType: MediaItemType; rules: RuleDto[] } = {
+        mediaType: yamlMediaType,
         rules: rules,
       };
 

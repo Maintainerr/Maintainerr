@@ -1,0 +1,118 @@
+# Jellyfin + Maintainerr Development Test Environment
+# ====================================================
+#
+# Quick Start:
+#   cd docker/dev
+#   docker compose up -d
+#
+# Build from a specific branch:
+#   BRANCH=remaining-issues/abstraction-cleanup docker compose up -d --build
+#
+# Build from a fork:
+#   REPO=https://github.com/yourfork/Maintainerr.git BRANCH=my-feature docker compose up -d --build
+#
+# Access:
+#   - Maintainerr: http://localhost:6246
+#   - Jellyfin:    http://localhost:8096
+#
+# First-time Jellyfin setup:
+#   1. Open http://localhost:8096
+#   2. Complete the setup wizard, create admin user
+#   3. Add media libraries pointing to your mounted media paths
+#   4. Get API key: Dashboard -> API Keys -> Add
+#
+# Configure Maintainerr to use Jellyfin:
+#   1. Open http://localhost:6246
+#   2. Settings -> Media Server -> Select "Jellyfin"
+#   3. URL: http://jellyfin:8096 (internal docker network)
+#   4. API Key: (from step 4 above)
+#
+# Clean up:
+#   docker compose down -v  # Removes containers and volumes
+
+services:
+  # ==========================================
+  # Init container to set permissions
+  # ==========================================
+  init-permissions:
+    image: alpine:latest
+    container_name: maintainerr-init
+    volumes:
+      - maintainerr-data:/opt/data
+      - jellyfin-config:/jellyfin-config
+      - jellyfin-cache:/jellyfin-cache
+    command: >
+      sh -c "
+        echo 'Setting up directories and permissions...' &&
+        mkdir -p /opt/data/logs &&
+        mkdir -p /jellyfin-config/log &&
+        mkdir -p /jellyfin-cache &&
+        chown -R 1000:1000 /opt/data /jellyfin-config /jellyfin-cache &&
+        chmod -R 755 /opt/data /jellyfin-config /jellyfin-cache &&
+        echo 'Permissions set successfully'
+      "
+
+  # ==========================================
+  # Jellyfin Media Server
+  # ==========================================
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: maintainerr-jellyfin-test
+    user: "1000:1000"
+    depends_on:
+      init-permissions:
+        condition: service_completed_successfully
+    ports:
+      - "8097:8096"
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+      # Mount your own media directories here:
+      # - /path/to/your/movies:/media/movies:ro
+      # - /path/to/your/tvshows:/media/tvshows:ro
+    environment:
+      - TZ=UTC
+      - JELLYFIN_PublishedServerUrl=http://localhost:8096
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================
+  # Maintainerr - Built from specified branch
+  # ==========================================
+  maintainerr:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        BRANCH: ${BRANCH:-remaining-issues/abstraction-cleanup}
+        REPO: ${REPO:-https://github.com/enoch85/Maintainerr.git}
+    container_name: maintainerr-test
+    user: "1000:1000"
+    depends_on:
+      jellyfin:
+        condition: service_healthy
+      init-permissions:
+        condition: service_completed_successfully
+    network_mode: container:wg
+    volumes:
+      - maintainerr-data:/opt/data
+    environment:
+      - TZ=UTC
+      - DEBUG=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6246/api/app/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  maintainerr-data:
+  jellyfin-config:
+  jellyfin-cache:

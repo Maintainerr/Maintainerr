@@ -1,3 +1,7 @@
+import {
+  type MediaItem,
+  type MediaItemWithParent,
+} from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
 import { useEffect } from 'react'
 import { ICollectionMedia } from '../../Collection'
@@ -7,70 +11,36 @@ import LoadingSpinner, {
 import MediaCard from '../../Common/MediaCard'
 
 interface IOverviewContent {
-  data: IPlexMetadata[]
+  data: MediaItem[]
   dataFinished: boolean
   loading: boolean
   extrasLoading?: boolean
   fetchData: () => void
   onRemove?: (id: string) => void
-  libraryId: number
+  libraryId: string
   collectionPage?: boolean
   collectionInfo?: ICollectionMedia[]
   collectionId?: number
 }
 
-export interface IPlexMetadata {
-  ratingKey: string
-  key: string
-  parentRatingKey?: string
-  grandparentRatingKey?: string
-  art: string
-  audienceRating?: number
-  audienceRatingImage?: string
-  contentRating?: string
-  duration: number
-  guid: string
-  type: 'movie' | 'show' | 'season' | 'episode'
-  title: string
-  Guid: {
-    id: string
-  }[]
-  Genre?: {
-    id: string
-  }[]
-  Country?: {
-    tag: string
-  }[]
-  Role?: {
-    tag: string
-  }[]
-  Writer?: {
-    tag: string
-  }[]
-  Director?: {
-    tag: string
-  }[]
-  addedAt: number
-  childCount?: number
-  leafCount?: number
-  viewedLeafCount?: number
-  primaryExtraKey: string
-  originallyAvailableAt: string
-  updatedAt: number
-  thumb: string
-  tagline?: string
-  summary: string
-  studio: string
-  year: number
-  parentTitle?: string
-  grandparentTitle?: string
-  parentData?: IPlexMetadata
-  parentYear?: number
-  grandParentYear?: number
-  index?: number
-  maintainerrExclusionType?: 'specific' | 'global' // this is added by Maintainerr, not a Plex type
-  maintainerrExclusionId?: number // this is added by Maintainerr, not a Plex type
-  maintainerrIsManual?: boolean // this is added by Maintainerr, not a Plex type
+/**
+ * Extract TMDB ID from a MediaItem.
+ * For episodes/seasons, checks parent item's providerIds.
+ */
+function extractTmdbId(
+  item: MediaItem | MediaItemWithParent,
+): string | undefined {
+  if (item.providerIds?.tmdb?.[0]) {
+    return item.providerIds.tmdb[0]
+  }
+
+  // For episodes/seasons, check parent item's providerIds
+  const parentItem = (item as MediaItemWithParent).parentItem
+  if (parentItem?.providerIds?.tmdb?.[0]) {
+    return parentItem.providerIds.tmdb[0]
+  }
+
+  return undefined
 }
 
 const OverviewContent = (props: IOverviewContent) => {
@@ -106,10 +76,10 @@ const OverviewContent = (props: IOverviewContent) => {
     }
   }, [props.data])
 
-  const getDaysLeft = (plexId: number) => {
+  const getDaysLeft = (mediaId: string) => {
     if (props.collectionInfo) {
       const collectionData = props.collectionInfo.find(
-        (colEl) => colEl.plexId === +plexId,
+        (colEl) => colEl.mediaServerId === mediaId,
       )
       if (collectionData && collectionData.collection) {
         if (collectionData.collection.deleteAfterDays == null) {
@@ -129,6 +99,22 @@ const OverviewContent = (props: IOverviewContent) => {
     return undefined
   }
 
+  /**
+   * Get the parent year from a MediaItem.
+   * For episodes/seasons, this is the show's year.
+   */
+  const getParentYear = (item: MediaItem): number | undefined => {
+    const parentItem = (item as MediaItemWithParent).parentItem
+    return parentItem?.year
+  }
+
+  /**
+   * Get the audience rating from a MediaItem's ratings array.
+   */
+  const getAudienceRating = (item: MediaItem): number => {
+    return item.ratings?.find((r) => r.type === 'audience')?.value ?? 0
+  }
+
   if (props.loading) {
     return <LoadingSpinner />
   }
@@ -137,19 +123,11 @@ const OverviewContent = (props: IOverviewContent) => {
     return (
       <ul className="cards-vertical">
         {props.data.map((el) => (
-          <li key={+el.ratingKey}>
+          <li key={el.id}>
             <MediaCard
-              id={+el.ratingKey}
+              id={el.id}
               libraryId={props.libraryId}
-              type={
-                el.type === 'movie'
-                  ? 1
-                  : el.type === 'show'
-                    ? 2
-                    : el.type === 'season'
-                      ? 3
-                      : 4
-              }
+              type={el.type}
               image={''}
               summary={
                 el.type === 'movie' || el.type === 'show'
@@ -163,19 +141,11 @@ const OverviewContent = (props: IOverviewContent) => {
               year={
                 el.type === 'episode'
                   ? el.parentTitle
-                  : el.parentYear
-                    ? el.parentYear.toString()
+                  : getParentYear(el)
+                    ? getParentYear(el)?.toString()
                     : el.year?.toString()
               }
-              mediaType={
-                el.type === 'movie'
-                  ? 'movie'
-                  : el.type === 'show'
-                    ? 'show'
-                    : el.type === 'season'
-                      ? 'season'
-                      : 'episode'
-              }
+              mediaType={el.type}
               title={
                 el.grandparentTitle
                   ? el.grandparentTitle
@@ -183,23 +153,13 @@ const OverviewContent = (props: IOverviewContent) => {
                     ? el.parentTitle
                     : el.title
               }
-              userScore={el.audienceRating ? el.audienceRating : 0}
+              userScore={getAudienceRating(el)}
               exclusionId={
                 el.maintainerrExclusionId
                   ? el.maintainerrExclusionId
                   : undefined
               }
-              tmdbid={
-                el.parentData
-                  ? el.parentData.Guid?.find((e) =>
-                      e.id?.includes('tmdb'),
-                    )?.id?.split('tmdb://')[1]
-                  : el.Guid
-                    ? el.Guid.find((e) => e.id?.includes('tmdb'))?.id?.split(
-                        'tmdb://',
-                      )[1]
-                    : undefined
-              }
+              tmdbid={extractTmdbId(el)}
               collectionPage={
                 props.collectionPage ? props.collectionPage : false
               }
@@ -209,9 +169,9 @@ const OverviewContent = (props: IOverviewContent) => {
               isManual={el.maintainerrIsManual ? el.maintainerrIsManual : false}
               {...(props.collectionInfo
                 ? {
-                    daysLeft: getDaysLeft(+el.ratingKey),
+                    daysLeft: getDaysLeft(el.id),
                     collectionId: props.collectionInfo.find(
-                      (colEl) => colEl.plexId === +el.ratingKey,
+                      (colEl) => colEl.mediaServerId === el.id,
                     )?.collectionId,
                   }
                 : undefined)}

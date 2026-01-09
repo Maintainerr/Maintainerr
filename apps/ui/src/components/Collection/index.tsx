@@ -1,10 +1,9 @@
-import { EPlexDataType } from '../../utils/PlexDataType-enum'
-import { IPlexMetadata } from '../Overview/Content'
+import { type MediaItem, type MediaItemType } from '@maintainerr/contracts'
 
 export interface ICollection {
   id?: number
-  plexId?: number
-  libraryId: number
+  mediaServerId?: string
+  libraryId: string
   title: string
   description?: string
   isActive: boolean
@@ -13,7 +12,7 @@ export interface ICollection {
   deleteAfterDays?: number
   listExclusions?: boolean
   forceOverseerr?: boolean
-  type: EPlexDataType
+  type: MediaItemType
   arrAction: number
   media: ICollectionMedia[]
   manualCollection: boolean
@@ -31,12 +30,13 @@ export interface ICollection {
 export interface ICollectionMedia {
   id: number
   collectionId: number
-  plexId: number
+  mediaServerId: string
   tmdbId: number
   tvdbid: number
   addDate: Date
   image_path: string
   isManual: boolean
   collection: ICollection
-  plexData?: IPlexMetadata
+  /** Server-agnostic media metadata */
+  mediaData?: MediaItem
 }

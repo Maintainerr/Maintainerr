@@ -6,7 +6,7 @@ import {
   EyeIcon,
   XIcon,
 } from '@heroicons/react/outline'
-import { ReactNode, useContext, useRef } from 'react'
+import { ReactNode, useContext, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import Messages from '../../Messages/Messages'
@@ -20,37 +20,6 @@ interface NavBarLink {
   matchPattern?: RegExp
 }
 
-const navBarItems: NavBarLink[] = [
-  {
-    key: '0',
-    href: '/overview',
-    svgIcon: <EyeIcon className="mr-3 h-6 w-6" />,
-    name: 'Overview',
-    matchPattern: /^\/(?:overview(?:\/.*)?|)$/,
-  },
-  {
-    key: '1',
-    href: '/rules',
-    svgIcon: <ClipboardCheckIcon className="mr-3 h-6 w-6" />,
-    name: 'Rules',
-    matchPattern: /^\/rules(?:\/.*)?$/,
-  },
-  {
-    key: '2',
-    href: '/collections',
-    svgIcon: <ArchiveIcon className="mr-3 h-6 w-6" />,
-    name: 'Collections',
-    matchPattern: /^\/collections(?:\/.*)?$/,
-  },
-  {
-    key: '3',
-    href: '/settings',
-    svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
-    name: 'Settings',
-    matchPattern: /^\/settings(?:\/.*)?$/,
-  },
-]
-
 interface NavBarProps {
   open?: boolean
   setClosed: () => void
@@ -61,6 +30,42 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const SearchCtx = useContext(SearchContext)
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
+  // Keep variable for potential future customization
+  const collectionsLabel = 'Collections'
+
+  const navBarItems: NavBarLink[] = useMemo(
+    () => [
+      {
+        key: '0',
+        href: '/overview',
+        svgIcon: <EyeIcon className="mr-3 h-6 w-6" />,
+        name: 'Overview',
+        matchPattern: /^\/(?:overview(?:\/.*)?|)$/,
+      },
+      {
+        key: '1',
+        href: '/rules',
+        svgIcon: <ClipboardCheckIcon className="mr-3 h-6 w-6" />,
+        name: 'Rules',
+        matchPattern: /^\/rules(?:\/.*)?$/,
+      },
+      {
+        key: '2',
+        href: '/collections',
+        svgIcon: <ArchiveIcon className="mr-3 h-6 w-6" />,
+        name: collectionsLabel,
+        matchPattern: /^\/collections(?:\/.*)?$/,
+      },
+      {
+        key: '3',
+        href: '/settings',
+        svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
+        name: 'Settings',
+        matchPattern: /^\/settings(?:\/.*)?$/,
+      },
+    ],
+    [collectionsLabel],
+  )
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {

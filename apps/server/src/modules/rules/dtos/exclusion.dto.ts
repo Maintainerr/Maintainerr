@@ -1,7 +1,7 @@
 import { IAlterableMediaDto } from '../../collections/interfaces/collection-media.interface';
 
 export class ExclusionDto {
-  plexId: number;
+  mediaServerId: string;
   ruleGroupId?: number;
   collectionId?: number;
   action?: ExclusionAction;

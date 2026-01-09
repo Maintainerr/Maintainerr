@@ -1,0 +1,110 @@
+# Maintainerr Development Dockerfile
+# ==================================
+# Builds Maintainerr from a specific branch for local testing with Jellyfin
+#
+# Build arguments:
+#   BRANCH - The git branch to build (default: jellyfin-type-consolidation)
+#   REPO   - The git repository URL (default: https://github.com/Maintainerr/Maintainerr.git)
+#
+# Usage:
+#   docker build -f Dockerfile.dev --build-arg BRANCH=jellyfin-type-consolidation -t maintainerr-dev .
+#   docker build -f Dockerfile.dev --build-arg BRANCH=main -t maintainerr-main .
+#   docker build -f Dockerfile.dev --build-arg REPO=https://github.com/yourfork/Maintainerr.git --build-arg BRANCH=my-feature -t maintainerr-feature .
+
+FROM node:24.12.0-alpine3.22 AS base
+LABEL Description="Maintainerr Development Build"
+
+FROM base AS builder
+
+WORKDIR /app
+
+# Build arguments for branch/repo selection
+ARG BRANCH=remaining-issues/abstraction-cleanup
+ARG REPO=https://github.com/Maintainerr/Maintainerr.git
+
+# Install git and build tools for native modules (better-sqlite3, esbuild, etc.)
+# libc6-compat is needed for some prebuilt binaries
+RUN apk add --no-cache git python3 make g++ libc6-compat
+
+# Install turbo globally
+RUN yarn global add turbo@^2
+
+# Clone the specific branch
+RUN echo "Cloning branch: ${BRANCH} from ${REPO}" && \
+    git clone --depth 1 --branch ${BRANCH} ${REPO} . && \
+    echo "Cloned commit: $(git rev-parse HEAD)"
+
+# Install dependencies
+RUN yarn install --network-timeout 99999999
+
+# Set base path for UI (empty for root)
+RUN echo "VITE_BASE_PATH=" >> ./apps/ui/.env
+
+# Build all packages
+RUN yarn turbo build
+
+# Only install production dependencies to reduce image size
+RUN yarn workspaces focus --all --production
+
+# Ensure node_modules folders exist
+RUN mkdir -p ./packages/contracts/node_modules
+RUN mkdir -p ./apps/server/node_modules
+
+# ============================================
+# Runner stage - minimal production image
+# ============================================
+FROM base AS runner
+
+WORKDIR /opt/app
+
+# Copy root node_modules
+COPY --from=builder --chmod=777 --chown=node:node /app/node_modules ./node_modules
+
+# Copy standalone server
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/dist ./apps/server/dist
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/node_modules ./apps/server/node_modules
+
+# Copy UI output to API to be served statically
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/ui/dist ./apps/server/dist/ui
+
+# Copy packages/contracts
+COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/package.json ./packages/contracts/package.json
+COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/node_modules ./packages/contracts/node_modules
+
+# Copy start script
+COPY --from=builder --chmod=777 --chown=node:node /app/docker/start.sh /opt/app/start.sh
+
+# Create required directories
+RUN mkdir -m 777 /opt/data && \
+    mkdir -m 777 /opt/data/logs && \
+    chown -R node:node /opt/data
+
+RUN chmod 777 /opt/app/start.sh
+
+RUN apk --update --no-cache add curl
+
+# Environment configuration
+ENV NODE_ENV=production
+ENV DEBUG=false
+ENV UI_PORT=6246
+ENV UI_HOSTNAME=0.0.0.0
+ENV DATA_DIR=/opt/data
+ENV VERSION_TAG=develop
+
+# Store branch info for debugging
+# NOTE: This duplicates the ARG from line 23 to make it available in this stage.
+# Update to 'main' once the Jellyfin feature branch is merged.
+ARG BRANCH=remaining-issues/abstraction-cleanup
+ENV MAINTAINERR_BRANCH=${BRANCH}
+
+# Temporary workaround for https://github.com/libuv/libuv/pull/4141
+ENV UV_USE_IO_URING=0
+
+USER node
+
+EXPOSE 6246
+
+VOLUME [ "/opt/data" ]
+ENTRYPOINT ["/opt/app/start.sh"]

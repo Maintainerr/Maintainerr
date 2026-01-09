@@ -1,7 +1,12 @@
 import {
   BasicResponseDto,
+  JellyfinSettingDto,
   JellyseerrSettingDto,
+  MediaServerSwitchPreview,
+  MediaServerType,
   OverseerrSettingDto,
+  SwitchMediaServerRequest,
+  SwitchMediaServerResponse,
   TautulliSettingDto,
 } from '@maintainerr/contracts';
 import {
@@ -21,11 +26,15 @@ import { SettingDto } from "./dto's/setting.dto";
 import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
+import { MediaServerSwitchService } from './media-server-switch.service';
 import { SettingsService } from './settings.service';
 
 @Controller('/api/settings')
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly mediaServerSwitchService: MediaServerSwitchService,
+  ) {}
 
   @Get()
   getSettings() {
@@ -209,6 +218,23 @@ export class SettingsController {
     return this.settingsService.testOverseerr(payload);
   }
 
+  @Post('/jellyfin/test')
+  testJellyfin(@Body() payload: JellyfinSettingDto): Promise<BasicResponseDto> {
+    return this.settingsService.testJellyfin(payload);
+  }
+
+  @Post('/jellyfin')
+  async saveJellyfinSettings(
+    @Body() payload: JellyfinSettingDto,
+  ): Promise<BasicResponseDto> {
+    return await this.settingsService.saveJellyfinSettings(payload);
+  }
+
+  @Delete('/jellyfin')
+  async removeJellyfinSettings(): Promise<BasicResponseDto> {
+    return await this.settingsService.removeJellyfinSettings();
+  }
+
   @Delete('/sonarr/:id')
   async deleteSonarrSetting(@Param('id', new ParseIntPipe()) id: number) {
     return await this.settingsService.deleteSonarrSetting(id);
@@ -229,5 +255,27 @@ export class SettingsController {
     return this.settingsService.cronIsValid(payload.schedule)
       ? { status: 'OK', code: 1, message: 'Success' }
       : { status: 'NOK', code: 0, message: 'Failure' };
+  }
+
+  /**
+   * Preview what data will be cleared when switching media servers
+   */
+  @Get('/media-server/switch/preview/:targetServerType')
+  async previewMediaServerSwitch(
+    @Param('targetServerType') targetServerType: MediaServerType,
+  ): Promise<MediaServerSwitchPreview> {
+    return this.mediaServerSwitchService.previewSwitch(targetServerType);
+  }
+
+  /**
+   * Switch media server type and clear media server-specific data
+   * Keeps: general settings, *arr settings, notification settings
+   * Clears: collections, collection media, exclusions, collection logs
+   */
+  @Post('/media-server/switch')
+  async switchMediaServer(
+    @Body() payload: SwitchMediaServerRequest,
+  ): Promise<SwitchMediaServerResponse> {
+    return this.mediaServerSwitchService.executeSwitch(payload);
   }
 }

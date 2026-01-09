@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Outlet, useOutletContext } from 'react-router-dom'
 import { useSettings, type UseSettingsResult } from '../../api/settings'
 import Alert from '../Common/Alert'
@@ -14,63 +15,99 @@ export const useSettingsOutletContext = () =>
 const SettingsWrapper = () => {
   const { data: settings, isLoading, error } = useSettings()
 
-  const settingsRoutes: SettingsRoute[] = [
-    {
-      text: 'General',
-      route: '/settings/main',
-      regex: /^\/settings\/main$/,
-    },
-    {
-      text: 'Plex',
-      route: '/settings/plex',
-      regex: /^\/settings\/plex$/,
-    },
-    {
-      text: 'Overseerr',
-      route: '/settings/overseerr',
-      regex: /^\/settings\/overseerr$/,
-    },
-    {
-      text: 'Jellyseerr',
-      route: '/settings/jellyseerr',
-      regex: /^\/settings\/jellyseerr$/,
-    },
-    {
-      text: 'Radarr',
-      route: '/settings/radarr',
-      regex: /^\/settings\/radarr$/,
-    },
-    {
-      text: 'Sonarr',
-      route: '/settings/sonarr',
-      regex: /^\/settings\/sonarr$/,
-    },
-    {
-      text: 'Tautulli',
-      route: '/settings/tautulli',
-      regex: /^\/settings\/tautulli$/,
-    },
-    {
-      text: 'Notifications',
-      route: '/settings/notifications',
-      regex: /^\/settings\/notifications$/,
-    },
-    {
-      text: 'Logs',
-      route: '/settings/logs',
-      regex: /^\/settings\/logs$/,
-    },
-    {
-      text: 'Jobs',
-      route: '/settings/jobs',
-      regex: /^\/settings\/jobs$/,
-    },
-    {
-      text: 'About',
-      route: '/settings/about',
-      regex: /^\/settings\/about$/,
-    },
-  ]
+  // Determine which media server tab to show based on settings
+  const mediaServerType = settings?.media_server_type
+
+  const settingsRoutes: SettingsRoute[] = useMemo(() => {
+    const baseRoutes: SettingsRoute[] = [
+      {
+        text: 'General',
+        route: '/settings/main',
+        regex: /^\/settings\/main$/,
+      },
+    ]
+
+    // Show media server tabs based on configuration
+    // If no type selected yet, show both so user can access either
+    if (!mediaServerType) {
+      // Show both tabs during initial setup
+      baseRoutes.push(
+        {
+          text: 'Plex',
+          route: '/settings/plex',
+          regex: /^\/settings\/plex$/,
+        },
+        {
+          text: 'Jellyfin',
+          route: '/settings/jellyfin',
+          regex: /^\/settings\/jellyfin$/,
+        },
+      )
+    } else if (mediaServerType === 'jellyfin') {
+      baseRoutes.push({
+        text: 'Jellyfin',
+        route: '/settings/jellyfin',
+        regex: /^\/settings\/jellyfin$/,
+      })
+    } else {
+      baseRoutes.push({
+        text: 'Plex',
+        route: '/settings/plex',
+        regex: /^\/settings\/plex$/,
+      })
+    }
+
+    // Add remaining tabs
+    baseRoutes.push(
+      {
+        text: 'Overseerr',
+        route: '/settings/overseerr',
+        regex: /^\/settings\/overseerr$/,
+      },
+      {
+        text: 'Jellyseerr',
+        route: '/settings/jellyseerr',
+        regex: /^\/settings\/jellyseerr$/,
+      },
+      {
+        text: 'Radarr',
+        route: '/settings/radarr',
+        regex: /^\/settings\/radarr$/,
+      },
+      {
+        text: 'Sonarr',
+        route: '/settings/sonarr',
+        regex: /^\/settings\/sonarr$/,
+      },
+      {
+        text: 'Tautulli',
+        route: '/settings/tautulli',
+        regex: /^\/settings\/tautulli$/,
+      },
+      {
+        text: 'Notifications',
+        route: '/settings/notifications',
+        regex: /^\/settings\/notifications$/,
+      },
+      {
+        text: 'Logs',
+        route: '/settings/logs',
+        regex: /^\/settings\/logs$/,
+      },
+      {
+        text: 'Jobs',
+        route: '/settings/jobs',
+        regex: /^\/settings\/jobs$/,
+      },
+      {
+        text: 'About',
+        route: '/settings/about',
+        regex: /^\/settings\/about$/,
+      },
+    )
+
+    return baseRoutes
+  }, [mediaServerType])
 
   if (error) {
     return (
@@ -97,12 +134,18 @@ const SettingsWrapper = () => {
   }
 
   if (settings) {
+    // Allow access if either Plex or Jellyfin is configured
+    const isMediaServerConfigured = Boolean(
+      settings.plex_auth_token !== null ||
+      (settings.jellyfin_url && settings.jellyfin_api_key),
+    )
+
     return (
       <>
         <div className="mt-6">
           <SettingsTabs
             settingsRoutes={settingsRoutes}
-            allEnabled={settings.plex_auth_token !== null}
+            allEnabled={isMediaServerConfigured}
           />
         </div>
         <div className="mt-10 text-white">

@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Timeout } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PlexApiService } from '../../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { Exclusion } from '../entities/exclusion.entities';
@@ -11,7 +11,7 @@ import { RulesService } from '../rules.service';
 @Injectable()
 export class ExclusionTypeCorrectorService implements OnModuleInit {
   constructor(
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly settings: SettingsService,
     private readonly rulesService: RulesService,
     @InjectRepository(Exclusion)
@@ -28,9 +28,10 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
   @Timeout(5000)
   private async execute() {
     try {
-      const appStatus = await this.settings.testPlex();
+      // Check if any media server is configured (Plex or Jellyfin)
+      const isSetup = await this.settings.testSetup();
 
-      if (appStatus) {
+      if (isSetup) {
         // remove media exclusions that are no longer available
         await this.correctExclusionTypes();
       }
@@ -46,24 +47,17 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
       .where('type is null')
       .getMany();
 
+    const mediaServer = await this.mediaServerFactory.getService();
+
     // correct the type
     for (const el of exclusionsWithoutType) {
-      const metaData = await this.plexApi.getMetadata(el.plexId.toString());
+      const metaData = await mediaServer.getMetadata(el.mediaServerId);
       if (!metaData) {
-        // remove record if not in Plex
+        // remove record if not in media server
         await this.rulesService.removeExclusion(el.id);
       } else {
-        el.type = metaData?.type
-          ? metaData.type === 'movie'
-            ? 1
-            : metaData.type === 'show'
-              ? 2
-              : metaData.type === 'season'
-                ? 3
-                : metaData.type === 'episode'
-                  ? 4
-                  : undefined
-          : undefined;
+        // Assign MediaItemType string directly
+        el.type = metaData?.type;
       }
     }
 

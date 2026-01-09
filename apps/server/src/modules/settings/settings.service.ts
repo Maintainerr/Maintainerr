@@ -1,6 +1,7 @@
 import {
   JellyseerrSettingDto,
   MaintainerrEvent,
+  MediaServerType,
   OverseerrSettingDto,
   TautulliSettingDto,
 } from '@maintainerr/contracts';
@@ -13,6 +14,7 @@ import { Repository } from 'typeorm';
 import { BasicResponseDto } from '../api/external-api/dto/basic-response.dto';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
 import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
+import { JellyfinAdapterService } from '../api/media-server/jellyfin/jellyfin-adapter.service';
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
@@ -47,6 +49,8 @@ export class SettingsService implements SettingDto {
 
   locale: string;
 
+  media_server_type?: MediaServerType;
+
   plex_name: string;
 
   plex_hostname: string;
@@ -56,6 +60,14 @@ export class SettingsService implements SettingDto {
   plex_ssl: number;
 
   plex_auth_token: string;
+
+  jellyfin_url?: string;
+
+  jellyfin_api_key?: string;
+
+  jellyfin_user_id?: string;
+
+  jellyfin_server_name?: string;
 
   overseerr_url: string;
 
@@ -76,6 +88,8 @@ export class SettingsService implements SettingDto {
   constructor(
     @Inject(forwardRef(() => PlexApiService))
     private readonly plexApi: PlexApiService,
+    @Inject(forwardRef(() => JellyfinAdapterService))
+    private readonly jellyfinAdapter: JellyfinAdapterService,
     @Inject(forwardRef(() => ServarrService))
     private readonly servarr: ServarrService,
     @Inject(forwardRef(() => OverseerrApiService))
@@ -109,11 +123,16 @@ export class SettingsService implements SettingDto {
       this.applicationUrl = settingsDb?.applicationUrl;
       this.apikey = settingsDb?.apikey;
       this.locale = settingsDb?.locale;
+      this.media_server_type = settingsDb?.media_server_type;
       this.plex_name = settingsDb?.plex_name;
       this.plex_hostname = settingsDb?.plex_hostname;
       this.plex_port = settingsDb?.plex_port;
       this.plex_ssl = settingsDb?.plex_ssl;
       this.plex_auth_token = settingsDb?.plex_auth_token;
+      this.jellyfin_url = settingsDb?.jellyfin_url;
+      this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
+      this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
+      this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
       this.overseerr_url = settingsDb?.overseerr_url;
       this.overseerr_api_key = settingsDb?.overseerr_api_key;
       this.tautulli_url = settingsDb?.tautulli_url;
@@ -353,6 +372,181 @@ export class SettingsService implements SettingDto {
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
       this.logger.error('Error while updating Overseerr settings: ', e);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  /**
+   * Test connection to a Jellyfin server
+   */
+  public async testJellyfin(settings: {
+    jellyfin_url: string;
+    jellyfin_api_key: string;
+    jellyfin_user_id?: string;
+  }): Promise<BasicResponseDto & { serverName?: string; version?: string }> {
+    const result = await this.jellyfinAdapter.testConnection(
+      settings.jellyfin_url,
+      settings.jellyfin_api_key,
+    );
+
+    if (result.success) {
+      return {
+        status: 'OK',
+        code: 1,
+        message: `Connected to ${result.serverName}`,
+        serverName: result.serverName,
+        version: result.version,
+      };
+    } else {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: result.error || 'Connection failed',
+      };
+    }
+  }
+
+  /**
+   * Save Jellyfin settings and initialize the service
+   */
+  public async saveJellyfinSettings(settings: {
+    jellyfin_url: string;
+    jellyfin_api_key: string;
+    jellyfin_user_id?: string;
+  }): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      // Test connection - block save on failure
+      const testResult = await this.testJellyfin(settings);
+      if (testResult.code !== 1) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: testResult.message || 'Connection test failed',
+        };
+      }
+
+      // Auto-detect admin user if not provided
+      let userId = settings.jellyfin_user_id;
+      if (!userId) {
+        userId = await this.autoDetectJellyfinAdminUser(settings);
+        if (userId) {
+          this.logger.log(`Auto-detected Jellyfin admin user ID: ${userId}`);
+        } else {
+          this.logger.warn(
+            'Could not auto-detect Jellyfin admin user. Some features may not work correctly.',
+          );
+        }
+      }
+
+      await this.saveSettings({
+        ...settingsDb,
+        jellyfin_url: settings.jellyfin_url,
+        jellyfin_api_key: settings.jellyfin_api_key,
+        jellyfin_user_id: userId || null,
+        jellyfin_server_name: testResult.serverName || null,
+        media_server_type: MediaServerType.JELLYFIN,
+      });
+
+      // Uninitialize service so it reinitializes with new credentials on next use
+      this.jellyfinAdapter.uninitialize();
+
+      this.jellyfin_url = settings.jellyfin_url;
+      this.jellyfin_api_key = settings.jellyfin_api_key;
+      this.jellyfin_user_id = userId;
+      this.jellyfin_server_name = testResult.serverName;
+      this.media_server_type = MediaServerType.JELLYFIN;
+
+      this.logger.log('Jellyfin settings saved successfully');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error('Error while saving Jellyfin settings: ', e);
+      const message =
+        e instanceof Error ? e.message : 'Failed to save settings';
+      return { status: 'NOK', code: 0, message };
+    }
+  }
+
+  /**
+   * Auto-detect an admin user from Jellyfin
+   */
+  private async autoDetectJellyfinAdminUser(settings: {
+    jellyfin_url: string;
+    jellyfin_api_key: string;
+  }): Promise<string | undefined> {
+    try {
+      const { Jellyfin } = await import('@jellyfin/sdk');
+      const { getUserApi } = await import('@jellyfin/sdk/lib/utils/api');
+
+      const jellyfin = new Jellyfin({
+        clientInfo: { name: 'Maintainerr', version: '2.0.0' },
+        deviceInfo: {
+          name: 'Maintainerr-AutoDetect',
+          id: 'maintainerr-detect',
+        },
+      });
+
+      const api = jellyfin.createApi(
+        settings.jellyfin_url,
+        settings.jellyfin_api_key,
+      );
+
+      const response = await getUserApi(api).getUsers();
+      const users = response.data || [];
+
+      // Find first admin user
+      const adminUser = users.find((user) => user.Policy?.IsAdministrator);
+      if (adminUser?.Id) {
+        this.logger.debug(
+          `Found Jellyfin admin user: ${adminUser.Name} (${adminUser.Id})`,
+        );
+        return adminUser.Id;
+      }
+
+      // Fallback to first user if no admin found
+      // Warning: Non-admin users may lack permissions for some operations
+      if (users.length > 0 && users[0].Id) {
+        this.logger.warn(
+          `No Jellyfin admin user found, falling back to first user: ${users[0].Name} (${users[0].Id}). Some operations may fail due to insufficient permissions.`,
+        );
+        return users[0].Id;
+      }
+
+      return undefined;
+    } catch (error) {
+      this.logger.error('Failed to auto-detect Jellyfin admin user: ', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Remove Jellyfin settings
+   */
+  public async removeJellyfinSettings(): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        jellyfin_url: null,
+        jellyfin_api_key: null,
+        jellyfin_user_id: null,
+        jellyfin_server_name: null,
+      });
+
+      // Uninitialize service to clear credentials
+      this.jellyfinAdapter.uninitialize();
+
+      this.jellyfin_url = undefined;
+      this.jellyfin_api_key = undefined;
+      this.jellyfin_user_id = undefined;
+      this.jellyfin_server_name = undefined;
+
+      this.logger.log('Jellyfin settings cleared');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error('Error removing Jellyfin settings: ', e);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -749,10 +943,37 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  // Test if all configured applications are reachable. Plex is required.
+  // Test if all configured applications are reachable. Media server is required.
   public async testConnections(): Promise<boolean> {
     try {
-      const plexState = (await this.testPlex()).status === 'OK';
+      // Test the configured media server
+      let mediaServerState: boolean;
+
+      // If no media server type is configured, connections cannot be tested
+      if (!this.media_server_type) {
+        return false;
+      }
+
+      if (this.media_server_type === MediaServerType.JELLYFIN) {
+        // Test Jellyfin with current settings
+        if (this.jellyfin_url && this.jellyfin_api_key) {
+          mediaServerState =
+            (
+              await this.testJellyfin({
+                jellyfin_url: this.jellyfin_url,
+                jellyfin_api_key: this.jellyfin_api_key,
+                jellyfin_user_id: this.jellyfin_user_id,
+              })
+            ).status === 'OK';
+        } else {
+          mediaServerState = false;
+        }
+      } else if (this.media_server_type === MediaServerType.PLEX) {
+        mediaServerState = (await this.testPlex()).status === 'OK';
+      } else {
+        mediaServerState = false;
+      }
+
       let radarrState = true;
       let sonarrState = true;
       let overseerrState = true;
@@ -786,7 +1007,7 @@ export class SettingsService implements SettingDto {
       }
 
       if (
-        plexState &&
+        mediaServerState &&
         radarrState &&
         sonarrState &&
         overseerrState &&
@@ -815,16 +1036,84 @@ export class SettingsService implements SettingDto {
     return this.jellyseerr_url !== null && this.jellyseerr_api_key !== null;
   }
 
+  /**
+   * Get the current media server type
+   */
+  public getMediaServerType(): MediaServerType | null {
+    return (this.media_server_type as MediaServerType) || null;
+  }
+
+  /**
+   * Get count of Radarr settings (for switch preview)
+   */
+  public async getRadarrSettingsCount(): Promise<number> {
+    return this.radarrSettingsRepo.count();
+  }
+
+  /**
+   * Get count of Sonarr settings (for switch preview)
+   */
+  public async getSonarrSettingsCount(): Promise<number> {
+    return this.sonarrSettingsRepo.count();
+  }
+
+  /**
+   * Update media server type and clear old server credentials.
+   * Called by MediaServerSwitchService during server switch.
+   */
+  public async updateMediaServerType(
+    targetServerType: MediaServerType,
+    currentServerType: MediaServerType | null,
+  ): Promise<void> {
+    const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+    const updatedSettings: Partial<Settings> = {
+      ...settingsDb,
+      media_server_type: targetServerType,
+    };
+
+    // Clear the credentials of the server we're switching FROM
+    if (currentServerType === MediaServerType.PLEX) {
+      updatedSettings.plex_name = null;
+      updatedSettings.plex_hostname = null;
+      updatedSettings.plex_port = null;
+      updatedSettings.plex_ssl = null;
+      updatedSettings.plex_auth_token = null;
+    } else if (currentServerType === MediaServerType.JELLYFIN) {
+      updatedSettings.jellyfin_url = null;
+      updatedSettings.jellyfin_api_key = null;
+      updatedSettings.jellyfin_user_id = null;
+      updatedSettings.jellyfin_server_name = null;
+    }
+
+    await this.settingsRepo.save(updatedSettings);
+    await this.init();
+  }
+
   // Test if all required settings are set.
   public async testSetup(): Promise<boolean> {
     try {
-      if (
-        this.plex_hostname &&
-        this.plex_name &&
-        this.plex_port &&
-        this.plex_auth_token
-      ) {
-        return true;
+      // If no media server type is selected, setup is not complete
+      if (!this.media_server_type) {
+        return false;
+      }
+
+      // Check based on configured media server type
+      if (this.media_server_type === MediaServerType.JELLYFIN) {
+        // Jellyfin requires URL and API key (user ID is optional, can be auto-detected later)
+        if (this.jellyfin_url && this.jellyfin_api_key) {
+          return true;
+        }
+      } else if (this.media_server_type === MediaServerType.PLEX) {
+        // Plex requires hostname, name, port, and auth token
+        if (
+          this.plex_hostname &&
+          this.plex_name &&
+          this.plex_port &&
+          this.plex_auth_token
+        ) {
+          return true;
+        }
       }
       return false;
     } catch (e) {

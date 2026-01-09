@@ -116,14 +116,6 @@ interface OverseerrAbout {
   version: string;
 }
 
-export enum OverseerrMediaStatus {
-  UNKNOWN = 1,
-  PENDING,
-  PROCESSING,
-  PARTIALLY_AVAILABLE,
-  AVAILABLE,
-}
-
 export interface OverseerBasicApiResponse {
   code: string;
   description: string;

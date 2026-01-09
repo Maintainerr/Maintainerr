@@ -6,6 +6,7 @@ import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import MediaServerSelector from '../MediaServerSelector'
 
 const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
@@ -122,6 +123,9 @@ const MainSettings = () => {
             </div>
           </form>
         </div>
+
+        {/* Media Server Selector */}
+        <MediaServerSelector currentType={settings.media_server_type ?? null} />
       </div>
     </>
   )

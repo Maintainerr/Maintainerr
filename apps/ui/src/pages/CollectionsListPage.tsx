@@ -12,7 +12,7 @@ const CollectionsListPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [collections, setCollections] = useState<ICollection[]>()
 
-  const getCollections = async (libraryId?: number) => {
+  const getCollections = async (libraryId?: string) => {
     const colls: ICollection[] = libraryId
       ? await GetApiHandler(`/collections?libraryId=${libraryId}`)
       : await GetApiHandler('/collections')
@@ -24,8 +24,8 @@ const CollectionsListPage = () => {
     getCollections()
   }, [])
 
-  const onSwitchLibrary = (id: number) => {
-    getCollections(id != 9999 ? id : undefined)
+  const onSwitchLibrary = (id: string) => {
+    getCollections(id !== 'all' ? id : undefined)
   }
 
   const doActions = async () => {

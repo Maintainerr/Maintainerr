@@ -1,3 +1,4 @@
+import { MediaItemType } from '@maintainerr/contracts';
 import {
   Column,
   Entity,
@@ -24,8 +25,8 @@ export class RuleGroup {
   @Column({ nullable: true })
   description: string;
 
-  @Column()
-  libraryId: number;
+  @Column({ type: 'varchar' })
+  libraryId: string;
 
   @Column({ default: true })
   isActive: boolean;
@@ -37,7 +38,7 @@ export class RuleGroup {
   useRules: boolean;
 
   @Column({ nullable: true })
-  dataType: number;
+  dataType: MediaItemType | null;
 
   @Column({ nullable: true, default: null })
   ruleHandlerCronSchedule: string | null;

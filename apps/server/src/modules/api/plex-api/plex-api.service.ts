@@ -124,6 +124,10 @@ export class PlexApiService {
 
   public async getStatus() {
     try {
+      if (!this.isPlexSetup()) {
+        this.logger.debug('Plex client not initialized, skipping getStatus');
+        return undefined;
+      }
       const response: PlexStatusResponse = await this.plexClient.query(
         '/',
         false,
@@ -535,12 +539,15 @@ export class PlexApiService {
         },
         false,
       );
-      const collection: PlexCollection = response.MediaContainer
-        .Metadata as PlexCollection;
+      // Metadata can be a single object or an array - handle both
+      const metadata = response.MediaContainer.Metadata;
+      const collection = (
+        Array.isArray(metadata) ? metadata[0] : metadata
+      ) as PlexCollection;
 
       return collection;
     } catch (err) {
-      this.logger.error(
+      this.logger.debug(
         `Couldn't find collection with id ${+collectionId}`,
         err,
       );

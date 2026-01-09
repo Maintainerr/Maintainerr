@@ -1,5 +1,6 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
+import { MediaItemType } from '@maintainerr/contracts'
 import React, { memo, useEffect, useState } from 'react'
 import { useIsTouch } from '../../../hooks/useIsTouch'
 import GetApiHandler from '../../../utils/ApiHandler'
@@ -9,7 +10,7 @@ import Button from '../Button'
 import MediaModalContent from './MediaModal'
 
 interface IMediaCard {
-  id: number
+  id: number | string
   image?: string
   summary?: string
   year?: string
@@ -18,8 +19,8 @@ interface IMediaCard {
   userScore: number
   inProgress?: boolean
   tmdbid?: string
-  libraryId?: number
-  type?: 1 | 2 | 3 | 4
+  libraryId?: string
+  type?: MediaItemType
   collectionPage: boolean
   daysLeft?: number
   exclusionId?: number
@@ -72,7 +73,7 @@ const MediaCard: React.FC<IMediaCard> = ({
 
   const getExclusions = () => {
     if (!collectionPage) {
-      GetApiHandler(`/rules/exclusion?plexId=${id}`).then((resp: []) =>
+      GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then((resp: []) =>
         resp.length > 0 ? setHasExclusion(true) : setHasExclusion(false),
       )
     }
@@ -87,7 +88,7 @@ const MediaCard: React.FC<IMediaCard> = ({
     <div className={'w-full'}>
       {excludeModal ? (
         <AddModal
-          plexId={id}
+          mediaServerId={id}
           {...(libraryId ? { libraryId: libraryId } : {})}
           {...(type ? { type: type } : {})}
           onSubmit={() => {
@@ -100,7 +101,7 @@ const MediaCard: React.FC<IMediaCard> = ({
 
       {addModal ? (
         <AddModal
-          plexId={id}
+          mediaServerId={id}
           {...(libraryId ? { libraryId: libraryId } : {})}
           {...(type ? { type: type } : {})}
           onSubmit={() => {
@@ -312,7 +313,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                     </div>
                   ) : (
                     <RemoveFromCollectionBtn
-                      plexId={id}
+                      mediaServerId={id}
                       popup={exclusionType && exclusionType === 'global'}
                       onRemove={() => onRemove(id.toString())}
                       collectionId={collectionId}

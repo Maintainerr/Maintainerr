@@ -1,19 +1,19 @@
-import { EPlexDataType } from '../../utils/PlexDataType-enum'
+import { MediaItemType } from '@maintainerr/contracts'
 
 export interface IAddModal {
   onCancel: () => void
   onSubmit: () => void
-  libraryId?: number
-  type?: number
-  plexId: number
+  libraryId?: string
+  type?: MediaItemType
+  mediaServerId: number | string
   modalType: 'add' | 'exclude'
 }
 
 export interface ICollectionMedia {
   media?: []
-  id: number
-  plexId?: number
-  libraryId?: number
+  id: number | string
+  mediaServerId?: number | string
+  libraryId?: string
   title: string
   description?: string
   isActive?: boolean
@@ -21,13 +21,13 @@ export interface ICollectionMedia {
   visibleOnRecommended?: boolean
   visibleOnHome?: boolean
   deleteAfterDays?: number
-  type?: EPlexDataType
+  type?: MediaItemType
   collectionMedia?: []
 }
 
 export interface IAlterableMediaDto {
-  id: number
+  id: number | string
   index?: number
   parenIndex?: number
-  type: EPlexDataType
+  type: MediaItemType
 }

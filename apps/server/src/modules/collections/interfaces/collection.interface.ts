@@ -1,11 +1,12 @@
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { MediaItemType, MediaServerType } from '@maintainerr/contracts';
 import { CollectionMedia } from '../entities/collection_media.entities';
 
 export interface ICollection {
   id?: number;
-  type: EPlexDataType;
-  plexId?: number;
-  libraryId: number;
+  type: MediaItemType;
+  mediaServerId?: string;
+  mediaServerType?: MediaServerType;
+  libraryId: string;
   title: string;
   description?: string;
   isActive: boolean;

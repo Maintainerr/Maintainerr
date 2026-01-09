@@ -1,5 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { EPlexDataType } from '../../src/modules/api/plex-api/enums/plex-data-type-enum';
+import {
+  MediaServerType,
+  MediaItem,
+  MediaItemType,
+  MediaItemWithParent,
+  MediaLibrary,
+} from '@maintainerr/contracts';
 import {
   PlexLibrary,
   PlexLibraryItem,
@@ -20,17 +26,10 @@ import {
 import { Collection } from '../../src/modules/collections/entities/collection.entities';
 import {
   CollectionMedia,
-  CollectionMediaWithPlexData,
+  CollectionMediaWithMetadata,
 } from '../../src/modules/collections/entities/collection_media.entities';
 import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
-
-export const EPlexDataTypeToPlexTypeMap = {
-  [EPlexDataType.MOVIES]: 'movie',
-  [EPlexDataType.EPISODES]: 'episode',
-  [EPlexDataType.SHOWS]: 'show',
-  [EPlexDataType.SEASONS]: 'season',
-} as const;
 
 export const createCollection = (
   properties: Partial<Collection> = {},
@@ -42,13 +41,14 @@ export const createCollection = (
     isActive: true,
     arrAction: ServarrAction.DELETE,
     type: faker.helpers.arrayElement([
-      EPlexDataType.MOVIES,
-      EPlexDataType.EPISODES,
-      EPlexDataType.SEASONS,
-      EPlexDataType.SHOWS,
-    ]),
-    libraryId: faker.number.int(),
-    plexId: faker.number.int(),
+      'movie',
+      'episode',
+      'season',
+      'show',
+    ] as MediaItemType[]),
+    libraryId: faker.number.int().toString(),
+    mediaServerId: faker.number.int().toString(),
+    mediaServerType: MediaServerType.PLEX,
     addDate: faker.date.past(),
     collectionLog: [],
     collectionMedia: [],
@@ -74,13 +74,19 @@ export const createCollection = (
 };
 
 export const createCollectionMedia = (
-  collectionOrType?: Collection | EPlexDataType,
+  collectionOrType?: Collection | MediaItemType,
   properties: Partial<CollectionMedia> = {},
 ): CollectionMedia => {
-  const collectionToUse =
-    collectionOrType instanceof Collection
-      ? collectionOrType
-      : createCollection({ type: collectionOrType });
+  // Check if collectionOrType is a collection-like object (has an 'id' and 'type' property)
+  const isCollection =
+    collectionOrType !== null &&
+    typeof collectionOrType === 'object' &&
+    'id' in collectionOrType &&
+    'type' in collectionOrType;
+
+  const collectionToUse = isCollection
+    ? (collectionOrType as Collection)
+    : createCollection({ type: collectionOrType as MediaItemType });
 
   return {
     id: faker.number.int(),
@@ -89,23 +95,23 @@ export const createCollectionMedia = (
     addDate: faker.date.past(),
     image_path: '',
     isManual: false,
-    plexId: faker.number.int(),
+    mediaServerId: faker.number.int().toString(),
     tmdbId: faker.number.int(),
     ...properties,
   };
 };
 
-type CollectionMediaWithPlexDataOptional = Omit<
-  CollectionMediaWithPlexData,
-  'plexData'
+type CollectionMediaWithMetadataOptional = Omit<
+  CollectionMediaWithMetadata,
+  'mediaData'
 > & {
-  plexData: Partial<Omit<PlexMetadata, 'type'>>;
+  mediaData: Partial<Omit<MediaItemWithParent, 'type'>>;
 };
 
-export const createCollectionMediaWithPlexData = (
-  collectionOrType?: Collection | EPlexDataType,
-  properties: Partial<CollectionMediaWithPlexDataOptional> = {},
-): CollectionMediaWithPlexData => {
+export const createCollectionMediaWithMetadata = (
+  collectionOrType?: Collection | MediaItemType,
+  properties: Partial<CollectionMediaWithMetadataOptional> = {},
+): CollectionMediaWithMetadata => {
   const collectionMedia: CollectionMedia = {
     ...createCollectionMedia(collectionOrType, properties),
     ...properties,
@@ -114,10 +120,51 @@ export const createCollectionMediaWithPlexData = (
   return {
     ...createCollectionMedia(collectionOrType, properties),
     ...properties,
-    plexData: createPlexMetadata({
-      ...properties.plexData,
-      type: EPlexDataTypeToPlexTypeMap[collectionMedia.collection.type],
+    mediaData: createMediaItem({
+      ...properties.mediaData,
+      type: collectionMedia.collection.type,
     }),
+  };
+};
+
+export const createMediaItem = (
+  properties: Partial<MediaItem> = {},
+): MediaItemWithParent => {
+  const type =
+    properties.type ??
+    faker.helpers.arrayElement([
+      'movie',
+      'show',
+      'season',
+      'episode',
+    ] as MediaItemType[]);
+
+  return {
+    id: faker.number.int().toString(),
+    title: faker.word.words(2),
+    guid: `plex://${type}/${faker.string.sample(24)}`,
+    type,
+    addedAt: faker.date.past(),
+    updatedAt: faker.date.past(),
+    providerIds: {
+      tvdb: [faker.number.int().toString()],
+      tmdb: [faker.number.int().toString()],
+      imdb: [`tt${faker.number.int()}`],
+    },
+    mediaSources: [],
+    library: {
+      id: faker.number.int().toString(),
+      title: faker.word.words(2),
+    },
+    index: faker.number.int(),
+    parentIndex: type === 'episode' ? faker.number.int() : undefined,
+    childCount:
+      type === 'show' || type === 'season' ? faker.number.int() : undefined,
+    watchedChildCount:
+      type === 'show' || type === 'season' ? faker.number.int() : undefined,
+    summary: faker.lorem.paragraph(),
+    year: faker.number.int({ min: 1900, max: 2024 }),
+    ...properties,
   };
 };
 
@@ -179,6 +226,32 @@ export const createPlexLibrary = (
   title: faker.string.sample(10),
   ...properties,
 });
+
+/**
+ * Create a MediaLibrary for testing (server-agnostic library representation)
+ */
+export const createMediaLibrary = (
+  properties: Partial<MediaLibrary> = {},
+): MediaLibrary => ({
+  id: faker.string.sample(10),
+  title: faker.string.sample(10),
+  type: faker.helpers.arrayElement(['movie', 'show']),
+  agent: faker.string.sample(10),
+  ...properties,
+});
+
+/**
+ * Create multiple MediaLibraries for testing
+ */
+export const createMediaLibraries = (
+  properties: Partial<MediaLibrary> = {},
+): MediaLibrary[] => {
+  return [
+    createMediaLibrary(properties),
+    createMediaLibrary(),
+    createMediaLibrary(),
+  ];
+};
 
 export const createPlexLibraryItem = (
   type?: PlexMetadata['type'],
@@ -454,13 +527,13 @@ export const createRulesDto = (
   properties: Partial<RulesDto> = {},
 ): RulesDto => ({
   id: faker.number.int(),
-  libraryId: faker.number.int(),
+  libraryId: faker.number.int().toString(),
   dataType: faker.helpers.arrayElement([
-    EPlexDataType.MOVIES,
-    EPlexDataType.EPISODES,
-    EPlexDataType.SEASONS,
-    EPlexDataType.SHOWS,
-  ]),
+    'movie',
+    'episode',
+    'season',
+    'show',
+  ] as MediaItemType[]),
   name: faker.string.sample(10),
   rules: [],
   description: faker.string.sample(10),

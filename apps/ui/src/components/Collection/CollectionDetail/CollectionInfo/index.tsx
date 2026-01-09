@@ -9,6 +9,7 @@ import {
   CollectionLogDto,
   CollectionLogMetaMediaAddedByRule,
   CollectionLogMetaMediaRemovedByRule,
+  ECollectionLogType,
   isMetaActionedByRule,
 } from '@maintainerr/contracts'
 import { Editor } from '@monaco-editor/react'
@@ -33,12 +34,6 @@ interface ICollectionInfo {
 interface ICollectionInfoLogApiResponse {
   totalSize: number
   items: CollectionLogDto[]
-}
-
-export enum ECollectionLogType {
-  COLLECTION,
-  MEDIA,
-  RULES,
 }
 
 const CollectionInfo = (props: ICollectionInfo) => {
