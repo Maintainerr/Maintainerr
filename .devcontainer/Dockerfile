@@ -41,7 +41,8 @@ USER ${USERNAME}
 
 # Install global tools that might be useful for development
 # Turbo is already installed as a dev dependency, but global install can be helpful
-RUN yarn global add turbo@^2
+# Use --yes to avoid interactive prompts during container build
+RUN yes | yarn global add turbo@^2 || yarn global add turbo@^2
 
 # Set environment variables for development
 ENV NODE_ENV=development
