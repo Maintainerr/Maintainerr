@@ -3,6 +3,7 @@ import { Editor } from '@monaco-editor/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import YAML from 'yaml'
+import { useRuleGroupForCollection } from '../../../../api/rules'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
@@ -32,13 +33,6 @@ const emptyOption: IOptions = {
 }
 
 const TestMediaItem = (props: ITestMediaItem) => {
-  const [loading, setLoading] = useState(true)
-  const [ruleGroup, setRuleGroup] = useState<{
-    dataType: EPlexDataType
-    libraryId: number
-    id: string
-  }>()
-
   const [mediaItem, setMediaItem] = useState<IMediaOptions>()
   const [selectedSeasons, setSelectedSeasons] = useState<number>(-1)
   const [selectedEpisodes, setSelectedEpisodes] = useState<number>(-1)
@@ -49,12 +43,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
   const [comparisonResult, setComparisonResult] = useState<IComparisonResult>()
   const editorRef = useRef(undefined)
 
-  useEffect(() => {
-    GetApiHandler(`/rules/collection/${props.collectionId}`).then((resp) => {
-      setRuleGroup(resp)
-      setLoading(false)
-    })
-  }, [])
+  const ruleGroupQuery = useRuleGroupForCollection(props.collectionId)
+  const ruleGroup = ruleGroupQuery.data
 
   const testable = useMemo(() => {
     if (!mediaItem || !ruleGroup) return false
@@ -84,7 +74,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
     }
 
     return false
-  }, [mediaItem, selectedSeasons, selectedEpisodes])
+  }, [mediaItem, ruleGroup, selectedSeasons, selectedEpisodes])
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor
@@ -166,8 +156,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
     }
   }, [selectedSeasons, selectedEpisodes, mediaItem])
 
-  if (loading || !ruleGroup) {
-    return
+  if (ruleGroupQuery.isLoading || !ruleGroup) {
+    return null
   }
 
   const copyToClipboard = async () => {

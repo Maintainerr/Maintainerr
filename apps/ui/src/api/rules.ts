@@ -16,6 +16,51 @@ import GetApiHandler, {
 } from '../utils/ApiHandler'
 import { EPlexDataType } from '../utils/PlexDataType-enum'
 
+type UseRuleGroupForCollectionQueryKey = ['rules', 'collection', string]
+
+type UseRuleGroupForCollectionOptions = Omit<
+  UseQueryOptions<
+    IRuleGroup,
+    Error,
+    IRuleGroup,
+    UseRuleGroupForCollectionQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const useRuleGroupForCollection = (
+  collectionId?: string | number,
+  options?: UseRuleGroupForCollectionOptions,
+) => {
+  const normalizedId = collectionId != null ? String(collectionId) : ''
+  const queryEnabled = normalizedId.length > 0 && (options?.enabled ?? true)
+
+  return useQuery<
+    IRuleGroup,
+    Error,
+    IRuleGroup,
+    UseRuleGroupForCollectionQueryKey
+  >({
+    queryKey: ['rules', 'collection', normalizedId],
+    queryFn: async () => {
+      if (!normalizedId) {
+        throw new Error('Collection ID is required to fetch rule group data.')
+      }
+
+      return await GetApiHandler<IRuleGroup>(
+        `/rules/collection/${normalizedId}`,
+      )
+    },
+    staleTime: 0,
+    ...options,
+    enabled: queryEnabled,
+  })
+}
+
+export type UseRuleGroupForCollectionResult = ReturnType<
+  typeof useRuleGroupForCollection
+>
+
 export interface RuleGroupCollectionPayload {
   visibleOnRecommended: boolean
   visibleOnHome: boolean

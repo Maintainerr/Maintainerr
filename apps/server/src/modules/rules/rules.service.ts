@@ -1111,6 +1111,16 @@ export class RulesService {
     rulegroupId: number,
     mediaId: string,
   ): Promise<any> {
+    const group = await this.getRuleGroupById(rulegroupId);
+
+    if (!group) {
+      return { code: 0, result: 'Rule group not found' };
+    }
+
+    if (!group.useRules) {
+      return { code: 0, result: 'Rule group does not use rules' };
+    }
+
     // flush caches
     this.plexApi.resetMetadataCache(mediaId);
     cacheManager.getCache('overseerr').data.flushAll();
@@ -1124,8 +1134,8 @@ export class RulesService {
       .forEach((cache) => cache.data.flushAll());
 
     const mediaResp = await this.plexApi.getMetadata(mediaId);
-    const group = await this.getRuleGroupById(rulegroupId);
-    if (group && mediaResp) {
+
+    if (mediaResp) {
       group.rules = await this.getRules(group.id);
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       const result = await ruleComparator.executeRulesWithData(

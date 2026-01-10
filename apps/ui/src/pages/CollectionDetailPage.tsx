@@ -1,6 +1,7 @@
 import { PlayIcon } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
 import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
@@ -24,6 +25,9 @@ const CollectionDetailPage = () => {
   }
 
   const currentTab = getCurrentTab()
+
+  const { data: ruleGroup, isLoading: ruleGroupLoading } =
+    useRuleGroupForCollection(id)
 
   useEffect(() => {
     if (id) {
@@ -62,7 +66,7 @@ const CollectionDetailPage = () => {
     }
   }
 
-  if (isLoading || !collection) {
+  if (isLoading || !collection || ruleGroupLoading) {
     return (
       <>
         <title>Collection - Maintainerr</title>
@@ -92,15 +96,17 @@ const CollectionDetailPage = () => {
               />
             </div>
           </div>
-          <div className="flex justify-center sm:justify-start">
-            <button
-              className="edit-button mb-4 flex h-9 rounded text-zinc-200 shadow-md"
-              onClick={() => setMediaTestModalOpen(true)}
-            >
-              {<PlayIcon className="m-auto ml-5 h-5" />}{' '}
-              <p className="rules-button-text m-auto ml-1 mr-5">Test Media</p>
-            </button>
-          </div>
+          {ruleGroup?.useRules && (
+            <div className="flex justify-center sm:justify-start">
+              <button
+                className="edit-button mb-4 flex h-9 rounded text-zinc-200 shadow-md"
+                onClick={() => setMediaTestModalOpen(true)}
+              >
+                {<PlayIcon className="m-auto ml-5 h-5" />}{' '}
+                <p className="rules-button-text m-auto ml-1 mr-5">Test Media</p>
+              </button>
+            </div>
+          )}
 
           <Outlet context={{ collection }} />
         </div>
