@@ -143,7 +143,7 @@ export class RulesService {
     try {
       const rulegroups = await this.connection
         .createQueryBuilder('rule_group', 'rg')
-        .innerJoinAndSelect('rg.rules', 'r')
+        .leftJoinAndSelect('rg.rules', 'r')
         .innerJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .where(
@@ -174,7 +174,7 @@ export class RulesService {
     try {
       const rulegroups = await this.connection
         .createQueryBuilder('rule_group', 'rg')
-        .innerJoinAndSelect('rg.rules', 'r')
+        .leftJoinAndSelect('rg.rules', 'r')
         .innerJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .where('rg.id IN (:...ids)', { ids })
@@ -192,7 +192,7 @@ export class RulesService {
     try {
       const rulegroup = await this.connection
         .createQueryBuilder('rule_group', 'rg')
-        .innerJoinAndSelect('rg.rules', 'r')
+        .leftJoinAndSelect('rg.rules', 'r')
         .innerJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .andWhere(`rg.id = ${id}`)
@@ -347,15 +347,6 @@ export class RulesService {
         }
 
         return state;
-      } else {
-        // empty rule if not using rules
-        await this.rulesRepository.save([
-          {
-            ruleJson: JSON.stringify(''),
-            ruleGroupId: groupId,
-            section: 0,
-          },
-        ]);
       }
 
       return state;
@@ -487,15 +478,6 @@ export class RulesService {
               },
             ]);
           }
-        } else {
-          // empty rule if not using rules
-          await this.rulesRepository.save([
-            {
-              ruleJson: JSON.stringify(''),
-              ruleGroupId: groupId,
-              section: 0,
-            },
-          ]);
         }
 
         this.logger.log(`Successfully updated rulegroup '${params.name}'.`);
