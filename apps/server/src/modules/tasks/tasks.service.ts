@@ -1,33 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CronJob } from 'cron';
-import { Repository } from 'typeorm';
-import { delay } from '../../utils/delay';
+import { CronJob, CronTime } from 'cron';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { TaskRunning } from '../tasks/entities/task_running.entities';
 import { Status } from './interfaces/status.interface';
 import { StatusService } from './status.service';
 
+interface TaskState {
+  name: string;
+  running: boolean;
+  runningSince: Date | null;
+}
+
 @Injectable()
 export class TasksService {
+  private readonly runningTasks = new Map<string, TaskState>();
+
   constructor(
     private schedulerRegistry: SchedulerRegistry,
     private readonly status: StatusService,
-    @InjectRepository(TaskRunning)
-    private readonly taskRunningRepo: Repository<TaskRunning>,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TasksService.name);
   }
 
-  public async createJob(
+  public createJob(
     name: string,
     cronExp: CronExpression | string,
     task: () => void,
-    isNewInstance: boolean,
-  ): Promise<Status> {
+  ): Status {
     try {
+      if (this.schedulerRegistry.getCronJobs().has(name)) {
+        throw new Error(`Task ${name} already exists.`);
+      }
+
       const job = new CronJob(cronExp, () => {
         task();
       });
@@ -35,15 +40,9 @@ export class TasksService {
       this.schedulerRegistry.addCronJob(name, job);
       job.start();
 
-      if (isNewInstance) {
-        // create database running entry
-        const taskRunning = await this.taskRunningRepo.findOne({
-          where: { name: name },
-        });
-
-        await this.taskRunningRepo.save({
-          id: taskRunning?.id ?? null,
-          name: name,
+      if (!this.runningTasks.has(name)) {
+        this.runningTasks.set(name, {
+          name,
           running: false,
           runningSince: null,
         });
@@ -64,83 +63,60 @@ export class TasksService {
   public async updateJob(
     name: string,
     cronExp: CronExpression | string,
-    task: () => void,
   ): Promise<Status> {
-    const output = this.removeJob(name);
-    if (output.code === 1) {
-      return this.createJob(name, cronExp, task, false);
-    }
-  }
-
-  private removeJob(name: string): Status {
     try {
-      this.schedulerRegistry.deleteCronJob(name);
-      this.logger.log(`Task ${name} removed successfully`);
+      const job = this.schedulerRegistry.getCronJobs().get(name);
+
+      if (!job) {
+        const message = `Task ${name} does not exist.`;
+        this.logger.error(message);
+        return this.status.createStatus(false, message);
+      }
+
+      await job.stop();
+      job.setTime(new CronTime(cronExp));
+      job.start();
+
+      this.logger.log(`Task ${name} updated successfully`);
       return this.status.createStatus(
         true,
-        `Task ${name} removed successfully`,
+        `Task ${name} updated successfully`,
       );
     } catch (e) {
-      const message = `An error occurred while removing the ${name} task.`;
+      const message = `An error occurred while updating the ${name} task.`;
       this.logger.error(message, e);
       return this.status.createStatus(false, message);
     }
   }
 
-  public async setRunning(name: string) {
-    const resp = await this.taskRunningRepo.findOne({ where: { name: name } });
-    if (resp) {
-      await this.taskRunningRepo.update(
-        { id: resp.id },
-        {
-          running: true,
-          runningSince: new Date(),
-        },
-      );
+  public setRunning(name: string) {
+    const task = this.getTask(name);
+
+    if (!task) {
+      throw new Error(`Task ${name} does not exist.`);
     }
+
+    task.running = true;
+    task.runningSince = new Date();
   }
 
-  public async isRunning(name: string) {
-    const resp = await this.taskRunningRepo.findOne({ where: { name: name } });
-    return resp.running;
+  public isRunning(name: string) {
+    const task = this.getTask(name);
+    return task?.running ?? false;
   }
 
-  public async getTask(name: string) {
-    return this.taskRunningRepo.findOne({ where: { name: name } });
+  public getTask(name: string): TaskState | undefined {
+    return this.runningTasks.get(name);
   }
 
-  public async clearRunning(name: string) {
-    const resp = await this.taskRunningRepo.findOne({ where: { name: name } });
-    if (resp) {
-      await this.taskRunningRepo.update(
-        { id: resp.id },
-        {
-          running: false,
-          runningSince: null,
-        },
-      );
+  public clearRunning(name: string) {
+    const task = this.getTask(name);
+
+    if (!task) {
+      throw new Error(`Task ${name} does not exist.`);
     }
-  }
 
-  public async getRunningSince(name: string) {
-    const resp = await this.taskRunningRepo.findOne({ where: { name } });
-    return resp?.runningSince ?? null;
-  }
-
-  public async waitUntilTaskIsFinished(
-    name: string,
-    myname: string = undefined,
-  ) {
-    let task = await this.taskRunningRepo.findOne({ where: { name: name } });
-
-    if (task?.running) {
-      this.logger.log(
-        `${myname ? `Task ${myname} is waiting` : `Waiting`} for task ${name} to finish...`,
-      );
-      while (task.running) {
-        await delay(10_000);
-        task = await this.taskRunningRepo.findOne({ where: { name: name } });
-      }
-    }
+    task.running = false;
+    task.runningSince = null;
   }
 }

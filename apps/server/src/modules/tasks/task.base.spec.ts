@@ -52,7 +52,7 @@ describe('TaskBase', () => {
   });
 
   it('should create a job on application bootstrap', () => {
-    tasksService.createJob.mockResolvedValue({ code: 0, message: 'OK' });
+    tasksService.createJob.mockReturnValue({ code: 0, message: 'OK' });
 
     void task.onApplicationBootstrap();
 
@@ -60,13 +60,12 @@ describe('TaskBase', () => {
       'Test Task',
       '0 0 0 0 0',
       expect.any(Function),
-      true,
     );
     expect(task.hasBootstraped).toBe(true);
   });
 
   it('should try job creation 3 times before stopping', async () => {
-    tasksService.createJob.mockResolvedValue({ code: 0, message: 'Error' });
+    tasksService.createJob.mockReturnValue({ code: 0, message: 'Error' });
 
     void task.onApplicationBootstrap();
 
@@ -85,11 +84,11 @@ describe('TaskBase', () => {
 
   it('should stop execution when requested', async () => {
     tasksService.isRunning
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
 
     const taskPromise = task.execute();
     await jest.advanceTimersByTimeAsync(1);
@@ -106,13 +105,13 @@ describe('TaskBase', () => {
 
   it('should stop execution when shutting down', async () => {
     tasksService.isRunning
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
 
     const taskPromise = task.execute();
     await jest.advanceTimersByTimeAsync(1);
@@ -128,7 +127,7 @@ describe('TaskBase', () => {
   });
 
   it('should log and skip execution if already running', async () => {
-    tasksService.isRunning.mockResolvedValue(true);
+    tasksService.isRunning.mockReturnValue(true);
     const logSpy = jest.spyOn(task['logger'], 'log');
     await task.execute();
     expect(logSpy).toHaveBeenCalledWith(
@@ -152,7 +151,6 @@ describe('TaskBase', () => {
     expect(tasksService.updateJob).toHaveBeenCalledWith(
       'Test Task',
       '0 0 * * *',
-      expect.any(Function),
     );
   });
 });

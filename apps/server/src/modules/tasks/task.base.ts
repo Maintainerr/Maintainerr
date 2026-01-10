@@ -23,11 +23,10 @@ export abstract class TaskBase
       void (async () => {
         while (this.jobCreationAttempts < 3) {
           this.jobCreationAttempts++;
-          const state = await this.taskService.createJob(
+          const state = this.taskService.createJob(
             this.name,
             this.cronSchedule,
             this.execute.bind(this),
-            true,
           );
 
           if (state.code === 1) {
@@ -57,11 +56,11 @@ export abstract class TaskBase
   async onApplicationShutdown() {
     this.abortController?.abort();
 
-    if (!(await this.isRunning())) return;
+    if (!this.isRunning()) return;
 
     this.logger.log(`Stopping the ${this.name} task...`);
 
-    while (await this.isRunning()) {
+    while (this.isRunning()) {
       await delay(1000);
     }
 
@@ -72,7 +71,7 @@ export abstract class TaskBase
   protected onBootstrapHook() {}
 
   public async execute(abortController?: AbortController) {
-    if (await this.isRunning()) {
+    if (this.isRunning()) {
       this.logger.log(
         `Another instance of the ${this.name} task is currently running. Skipping this execution`,
       );
@@ -80,27 +79,26 @@ export abstract class TaskBase
     }
 
     this.abortController = abortController || new AbortController();
-    await this.taskService.setRunning(this.name);
+    this.taskService.setRunning(this.name);
 
     try {
       abortController?.signal.throwIfAborted();
       await this.executeTask(this.abortController.signal);
     } finally {
       this.abortController = undefined;
-      await this.taskService.clearRunning(this.name);
+      this.taskService.clearRunning(this.name);
     }
   }
 
   protected abstract executeTask(abortSignal: AbortSignal): Promise<void>;
 
   public async stopExecution() {
-    if (!(await this.isRunning()) || this.abortController.signal.aborted)
-      return;
+    if (!this.isRunning() || this.abortController.signal.aborted) return;
 
     this.logger.log(`Requesting to stop the ${this.name} task`);
     this.abortController.abort();
 
-    while (await this.isRunning()) {
+    while (this.isRunning()) {
       await delay(1000);
     }
 
@@ -108,10 +106,10 @@ export abstract class TaskBase
   }
 
   public updateJob(cron: string) {
-    return this.taskService.updateJob(this.name, cron, this.execute.bind(this));
+    return this.taskService.updateJob(this.name, cron);
   }
 
-  public async isRunning() {
-    return await this.taskService.isRunning(this.name);
+  public isRunning() {
+    return this.taskService.isRunning(this.name);
   }
 }

@@ -66,7 +66,7 @@ export class CollectionsController {
 
   @Post('/handle')
   async handleCollection() {
-    if (await this.collectionWorkerService.isRunning()) {
+    if (this.collectionWorkerService.isRunning()) {
       throw new HttpException(
         'The collection handler is already running',
         HttpStatus.CONFLICT,
