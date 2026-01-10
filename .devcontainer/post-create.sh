@@ -17,6 +17,8 @@ echo "📂 Working directory: ${WORKSPACE_DIR}"
 
 # Install dependencies
 echo "📥 Installing dependencies (this may take a few minutes)..."
+corepack enable
+corepack install
 yarn install
 
 # Create data directory if it doesn't exist

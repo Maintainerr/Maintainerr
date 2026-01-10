@@ -11,7 +11,6 @@ export class TaskRunning {
   @Column({
     type: 'datetime',
     nullable: true,
-    default: () => 'CURRENT_TIMESTAMP',
   })
   runningSince: Date;
 

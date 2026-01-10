@@ -190,9 +190,9 @@ export class CollectionWorkerService extends TaskBase {
                 );
               } catch (err) {
                 this.logger.error(
-                  `Failed to trigger Overseerr's availability-sync: ${err}`,
+                  `Failed to trigger Overseerr's availability-sync`,
+                  err,
                 );
-                this.logger.debug(err);
               }
             }),
           );
@@ -211,9 +211,9 @@ export class CollectionWorkerService extends TaskBase {
                 );
               } catch (err) {
                 this.logger.error(
-                  `Failed to trigger Jellyseerr's availability-sync: ${err}`,
+                  `Failed to trigger Jellyseerr's availability-sync`,
+                  err,
                 );
-                this.logger.debug(err);
               }
             }),
           );

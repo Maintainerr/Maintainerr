@@ -1,5 +1,3 @@
-import { CronExpression } from '@nestjs/schedule';
-import { randomUUID } from 'crypto';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { SettingDto } from "../dto's/setting.dto";
 
@@ -8,7 +6,7 @@ export class Settings implements SettingDto {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true, default: randomUUID() })
+  @Column({ nullable: true })
   clientId: string;
 
   @Column({ nullable: false, default: 'Maintainerr' })
@@ -56,9 +54,9 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   jellyseerr_api_key: string;
 
-  @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
+  @Column({ nullable: false, default: '0 0-23/12 * * *' })
   collection_handler_job_cron: string;
 
-  @Column({ nullable: false, default: CronExpression.EVERY_8_HOURS })
+  @Column({ nullable: false, default: '0 0-23/8 * * *' })
   rules_handler_job_cron: string;
 }

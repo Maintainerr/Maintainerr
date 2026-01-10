@@ -1,3 +1,19 @@
+# [2.26.0](https://github.com/maintainerr/Maintainerr/compare/v2.25.0...v2.26.0) (2025-12-31)
+
+
+### Bug Fixes
+
+* Correct path to database migrations ([#2193](https://github.com/maintainerr/Maintainerr/issues/2193)) ([abf52ba](https://github.com/maintainerr/Maintainerr/commit/abf52ba215d046d5ea25bbcb284e19df0bbefb6d))
+* Handle errors and improve log file retrieval in log stream ([#2229](https://github.com/maintainerr/Maintainerr/issues/2229)) ([0e88b37](https://github.com/maintainerr/Maintainerr/commit/0e88b379205e258577d03f13ba97a64b4748e846))
+* Improve error handling when Plex returns error ([#2236](https://github.com/maintainerr/Maintainerr/issues/2236)) ([7f7943d](https://github.com/maintainerr/Maintainerr/commit/7f7943d5672983be9f465fc8939a41d6987402fa))
+* Rule importer should enforce library selection ([#2177](https://github.com/maintainerr/Maintainerr/issues/2177)) ([3d67915](https://github.com/maintainerr/Maintainerr/commit/3d679157f8ed66de5de65eb3ee2616b54ded40b2))
+* Stop "Plex API isn't fully initialized" log at startup ([#2188](https://github.com/maintainerr/Maintainerr/issues/2188)) ([641de9e](https://github.com/maintainerr/Maintainerr/commit/641de9e133f4dd1b56f06257618ae15e228ed095))
+
+
+### Features
+
+* add post-release actions to update DockerHub README ([#2207](https://github.com/maintainerr/Maintainerr/issues/2207)) ([b3b49eb](https://github.com/maintainerr/Maintainerr/commit/b3b49ebf127c7535498b701f01bd2d15a0b370b8))
+
 # [2.25.0](https://github.com/maintainerr/Maintainerr/compare/v2.24.0...v2.25.0) (2025-12-13)
 
 
