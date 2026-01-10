@@ -15,6 +15,7 @@ export class CollectionLog {
   id: number;
 
   @ManyToOne(() => Collection, (collection) => collection.collectionLog, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   collection: Collection;
@@ -22,14 +23,13 @@ export class CollectionLog {
   @Column({
     type: 'datetime',
     nullable: false,
-    default: () => 'CURRENT_TIMESTAMP',
   })
   timestamp: Date;
 
   @Column()
   message: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: false })
   type: ECollectionLogType;
 
   @Column('simple-json', { nullable: true })

@@ -258,8 +258,7 @@ export class RulesService {
       );
       return this.createReturnStatus(true, 'Success');
     } catch (err) {
-      this.logger.warn('Rulegroup deletion failed');
-      this.logger.debug(err);
+      this.logger.error('Rulegroup deletion failed', err);
       return this.createReturnStatus(false, 'Delete Failed');
     }
   }

@@ -41,8 +41,7 @@ export class AppService {
         ),
       };
     } catch (err) {
-      this.logger.error(`Couldn't fetch app version status`);
-      this.logger.debug(err);
+      this.logger.error(`Couldn't fetch app version status`, err);
       return {
         status: 0,
         version: '0.0.1',
