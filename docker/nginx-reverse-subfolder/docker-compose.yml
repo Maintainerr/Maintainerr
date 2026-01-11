@@ -15,4 +15,5 @@ services:
     user: 1000:1000
     environment:
       - BASE_PATH=/maintainerr
+      - SKIP_DATA_MOUNT_CHECK=true
     network_mode: host
