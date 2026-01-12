@@ -120,7 +120,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
     await queryRunner.query(`
             CREATE TABLE "temporary_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-                "clientId" varchar DEFAULT ('718f9807-cd95-4fff-939a-fee4c6b58f63'),
+                "clientId" varchar DEFAULT ('3f6df77f-feb3-4f14-9e2e-56bfc1275b67'),
                 "applicationTitle" varchar NOT NULL DEFAULT ('Maintainerr'),
                 "applicationUrl" varchar NOT NULL DEFAULT ('localhost'),
                 "apikey" varchar,
