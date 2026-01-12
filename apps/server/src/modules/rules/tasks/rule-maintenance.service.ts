@@ -77,10 +77,10 @@ export class RuleMaintenanceService extends TaskBase {
         }
       }
     } catch (err) {
-      this.logger.warn(
+      this.logger.error(
         `Couldn't remove collection without rule: ${err.message}`,
+        err,
       );
-      this.logger.debug(err);
     }
   }
 }

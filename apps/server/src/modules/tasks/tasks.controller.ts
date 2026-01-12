@@ -8,15 +8,15 @@ export class TasksController {
 
   @Get(':id/status')
   async getTaskStatus(@Param('id') id: string): Promise<TaskStatusDto> {
-    const task = await this.tasksService.getTask(id);
+    const task = this.tasksService.getTask(id);
     if (!task) {
       throw new NotFoundException('Task not found');
     }
 
     return {
       time: new Date(),
-      running: await this.tasksService.isRunning(id),
-      runningSince: await this.tasksService.getRunningSince(id),
+      running: task.running,
+      runningSince: task.runningSince,
     };
   }
 }

@@ -52,7 +52,7 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should abort if another instance is running', async () => {
-    taskService.isRunning.mockResolvedValue(true);
+    taskService.isRunning.mockReturnValue(true);
 
     await collectionWorkerService.execute();
 

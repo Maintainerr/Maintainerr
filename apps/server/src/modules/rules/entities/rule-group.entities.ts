@@ -50,12 +50,18 @@ export class RuleGroup {
 
   @ManyToMany(() => Notification, {
     eager: true,
-    onDelete: 'NO ACTION',
+    onDelete: 'CASCADE',
   })
   @JoinTable({
     name: 'notification_rulegroup',
-    joinColumn: { name: 'rulegroupId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'notificationId', referencedColumnName: 'id' },
+    joinColumn: {
+      name: 'rulegroupId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'notificationId',
+      referencedColumnName: 'id',
+    },
   })
   notifications: Notification[];
 

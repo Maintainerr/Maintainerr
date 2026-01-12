@@ -16,10 +16,11 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migration:run": "ts-node ../tools/typeOrmCli.ts migration:run -d ./src/datasource-config.ts",
-    "migration:revert": "ts-node ../tools/typeOrmCli.ts migration:revert -d ./src/datasource-config.ts",
-    "migration:generate": "ts-node ../tools/typeOrmCli.ts migration:generate --dataSource ./src/datasource-config.ts -p",
-    "migration:show": "ts-node ../tools/typeOrmCli.ts migration:show --dataSource ./src/datasource-config.ts"
+    "migration:create": "ts-node --project ./tsconfig.json ../../tools/typeOrmCli.ts migration:create",
+    "migration:run": "ts-node --project ./tsconfig.json ../../tools/typeOrmCli.ts migration:run -d ./src/datasource-config.ts",
+    "migration:revert": "ts-node --project ./tsconfig.json ../../tools/typeOrmCli.ts migration:revert -d ./src/datasource-config.ts",
+    "migration:generate": "ts-node --project ./tsconfig.json ../../tools/typeOrmCli.ts migration:generate --dataSource ./src/datasource-config.ts -p",
+    "migration:show": "ts-node --project ./tsconfig.json ../../tools/typeOrmCli.ts migration:show --dataSource ./src/datasource-config.ts"
   },
   "dependencies": {
     "@jellyfin/sdk": "^0.13.0",
