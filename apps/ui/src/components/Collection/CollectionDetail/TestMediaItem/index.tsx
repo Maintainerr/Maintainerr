@@ -1,9 +1,10 @@
 import { ClipboardCopyIcon } from '@heroicons/react/solid'
 import { MediaItemType } from '@maintainerr/contracts'
 import { Editor } from '@monaco-editor/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import YAML from 'yaml'
+import { useRuleGroupForCollection } from '../../../../api/rules'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
 import FormItem from '../../../Common/FormItem'
@@ -32,13 +33,6 @@ const emptyOption: IOptions = {
 }
 
 const TestMediaItem = (props: ITestMediaItem) => {
-  const [loading, setLoading] = useState(true)
-  const [ruleGroup, setRuleGroup] = useState<{
-    dataType: MediaItemType
-    libraryId: string
-    id: string
-  }>()
-
   const [mediaItem, setMediaItem] = useState<IMediaOptions>()
   const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
   const [selectedEpisodes, setSelectedEpisodes] = useState<number | string>(-1)
@@ -49,12 +43,15 @@ const TestMediaItem = (props: ITestMediaItem) => {
   const [comparisonResult, setComparisonResult] = useState<IComparisonResult>()
   const editorRef = useRef(undefined)
 
-  useEffect(() => {
-    GetApiHandler(`/rules/collection/${props.collectionId}`).then((resp) => {
-      setRuleGroup(resp)
-      setLoading(false)
-    })
-  }, [])
+  const ruleGroupQuery = useRuleGroupForCollection(props.collectionId)
+  const ruleGroup = ruleGroupQuery.data
+
+  const clearEditor = () => {
+    if (editorRef.current) {
+      ;(editorRef.current as any).setValue('')
+      setComparisonResult(undefined)
+    }
+  }
 
   const testable = useMemo(() => {
     if (!mediaItem || !ruleGroup) return false
@@ -88,6 +85,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
     setMediaItem(item)
     updateSelectedSeasons(-1)
     setSeasonOptions([emptyOption])
+    clearEditor()
 
     if (item?.type === 'show') {
       // get seasons
@@ -111,6 +109,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
     setSelectedSeasons(seasons)
     setSelectedEpisodes(-1)
     setEpisodeOptions([emptyOption])
+    clearEditor()
 
     if (seasons !== -1) {
       // get episodes
@@ -128,6 +127,11 @@ const TestMediaItem = (props: ITestMediaItem) => {
         },
       )
     }
+  }
+
+  const updateSelectedEpisodes = (episodes: number | string) => {
+    setSelectedEpisodes(episodes)
+    clearEditor()
   }
 
   const onSubmit = async () => {
@@ -153,15 +157,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
     }
   }, [selectedSeasons, selectedEpisodes, mediaItem])
 
-  useEffect(() => {
-    if (editorRef.current) {
-      ;(editorRef.current as any).setValue('')
-      setComparisonResult(undefined)
-    }
-  }, [selectedSeasons, selectedEpisodes, mediaItem])
-
-  if (loading || !ruleGroup) {
-    return
+  if (ruleGroupQuery.isLoading || !ruleGroup) {
+    return null
   }
 
   const copyToClipboard = async () => {
@@ -271,7 +268,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
                   value={selectedEpisodes}
                   onChange={(e: { target: { value: string } }) => {
                     const value = e.target.value
-                    setSelectedEpisodes(value === '-1' ? -1 : value)
+                    updateSelectedEpisodes(value === '-1' ? -1 : value)
                   }}
                 >
                   {episodeOptions.map((e: IOptions) => {

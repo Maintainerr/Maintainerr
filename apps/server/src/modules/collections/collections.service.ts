@@ -1141,81 +1141,70 @@ export class CollectionsService {
     collection: ICollection,
     mediaServerId?: string,
   ): Promise<addCollectionDbResponse> {
+    this.infoLogger(`Adding collection to the database..`);
     try {
       const mediaServerType = await this.getMediaServerType();
-      this.logger.log(
-        `[DEBUG addCollectionToDB] collection.libraryId = "${collection.libraryId}" (type: ${typeof collection.libraryId})`,
+      const insertResult = await this.connection
+        .createQueryBuilder()
+        .insert()
+        .into(Collection)
+        .values([
+          {
+            title: collection.title,
+            description: collection.description,
+            mediaServerId: mediaServerId,
+            mediaServerType: mediaServerType,
+            type: collection.type,
+            libraryId: collection.libraryId,
+            arrAction: collection.arrAction ? collection.arrAction : 0,
+            isActive: collection.isActive,
+            visibleOnRecommended: collection.visibleOnRecommended,
+            visibleOnHome: collection.visibleOnHome,
+            deleteAfterDays: collection.deleteAfterDays,
+            listExclusions: collection.listExclusions,
+            forceOverseerr: collection.forceOverseerr,
+            keepLogsForMonths: collection.keepLogsForMonths,
+            tautulliWatchedPercentOverride:
+              collection.tautulliWatchedPercentOverride ?? null,
+            manualCollection:
+              collection.manualCollection !== undefined
+                ? collection.manualCollection
+                : false,
+            manualCollectionName:
+              collection.manualCollectionName !== undefined
+                ? collection.manualCollectionName
+                : '',
+            sonarrSettingsId: collection.sonarrSettingsId,
+            radarrSettingsId: collection.radarrSettingsId,
+            sortTitle: collection.sortTitle,
+          },
+        ])
+        .execute();
+
+      // generatedMaps only returns auto-generated columns (like id), not the full row
+      // We need to include mediaServerId since it was passed as a parameter
+      const generatedId = insertResult.generatedMaps[0] as { id: number };
+      const dbCol: addCollectionDbResponse = {
+        id: generatedId.id,
+        mediaServerId: mediaServerId,
+        isActive: collection.isActive,
+        visibleOnRecommended: collection.visibleOnRecommended,
+        visibleOnHome: collection.visibleOnHome,
+        deleteAfterDays: collection.deleteAfterDays,
+        manualCollection: collection.manualCollection ?? false,
+      };
+
+      await this.addLogRecord(
+        dbCol as Collection,
+        'Collection Created',
+        ECollectionLogType.COLLECTION,
       );
-      this.infoLogger(`Adding collection to the Database..`);
-      try {
-        const insertResult = await this.connection
-          .createQueryBuilder()
-          .insert()
-          .into(Collection)
-          .values([
-            {
-              title: collection.title,
-              description: collection.description,
-              mediaServerId: mediaServerId,
-              mediaServerType: mediaServerType,
-              type: collection.type,
-              libraryId: collection.libraryId,
-              arrAction: collection.arrAction ? collection.arrAction : 0,
-              isActive: collection.isActive,
-              visibleOnRecommended: collection.visibleOnRecommended,
-              visibleOnHome: collection.visibleOnHome,
-              deleteAfterDays: collection.deleteAfterDays,
-              listExclusions: collection.listExclusions,
-              forceOverseerr: collection.forceOverseerr,
-              keepLogsForMonths: collection.keepLogsForMonths,
-              tautulliWatchedPercentOverride:
-                collection.tautulliWatchedPercentOverride ?? null,
-              manualCollection:
-                collection.manualCollection !== undefined
-                  ? collection.manualCollection
-                  : false,
-              manualCollectionName:
-                collection.manualCollectionName !== undefined
-                  ? collection.manualCollectionName
-                  : '',
-              sonarrSettingsId: collection.sonarrSettingsId,
-              radarrSettingsId: collection.radarrSettingsId,
-              sortTitle: collection.sortTitle,
-            },
-          ])
-          .execute();
-
-        // generatedMaps only returns auto-generated columns (like id), not the full row
-        // We need to include mediaServerId since it was passed as a parameter
-        const generatedId = insertResult.generatedMaps[0] as { id: number };
-        const dbCol: addCollectionDbResponse = {
-          id: generatedId.id,
-          mediaServerId: mediaServerId,
-          isActive: collection.isActive,
-          visibleOnRecommended: collection.visibleOnRecommended,
-          visibleOnHome: collection.visibleOnHome,
-          deleteAfterDays: collection.deleteAfterDays,
-          manualCollection: collection.manualCollection ?? false,
-        };
-
-        await this.addLogRecord(
-          dbCol as Collection,
-          'Collection Created',
-          ECollectionLogType.COLLECTION,
-        );
-        return dbCol;
-      } catch (err) {
-        // Log error
-        this.infoLogger(
-          `Something went wrong creating the collection in the Database..`,
-        );
-        this.logger.debug(err);
-      }
+      return dbCol;
     } catch (err) {
-      this.logger.warn(
-        'An error occurred while performing collection actions.',
+      this.logger.error(
+        `Something went wrong creating the collection in the database..`,
+        err,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -1223,33 +1212,24 @@ export class CollectionsService {
   private async RemoveCollectionFromDB(
     collection: ICollection,
   ): Promise<BasicResponseDto> {
+    this.infoLogger(`Removing collection from database..`);
     try {
-      this.infoLogger(`Removing collection from Database..`);
-      try {
-        await this.CollectionMediaRepo.delete({ collectionId: collection.id }); // cascade delete doesn't work for some reason..
-        await this.CollectionLogRepo.delete({ collection: collection }); // cascade delete doesn't work for some reason..
-        await this.collectionRepo.delete(collection.id);
+      await this.collectionRepo.delete(collection.id);
 
-        this.eventEmitter.emit(MaintainerrEvent.Collection_Deleted, {
-          collection,
-        });
+      this.eventEmitter.emit(MaintainerrEvent.Collection_Deleted, {
+        collection,
+      });
 
-        await this.addLogRecord(
-          { id: collection.id } as Collection,
-          'Collection Removed',
-          ECollectionLogType.COLLECTION,
-        );
+      this.infoLogger(
+        `Collection with id ${collection.id} has been removed from the database.`,
+      );
 
-        return { status: 'OK', code: 1, message: 'Success' };
-      } catch (err) {
-        this.infoLogger(
-          `Something went wrong deleting the collection from the Database..`,
-        );
-        this.logger.debug(err);
-        return { status: 'NOK', code: 0, message: 'Removing from DB failed' };
-      }
+      return { status: 'OK', code: 1, message: 'Success' };
     } catch (err) {
-      this.logger.debug(err);
+      this.logger.error(
+        `Something went wrong deleting the collection from the database..`,
+        err,
+      );
       return { status: 'NOK', code: 0, message: 'Removing from DB failed' };
     }
   }

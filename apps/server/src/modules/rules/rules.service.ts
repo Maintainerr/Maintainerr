@@ -151,9 +151,9 @@ export class RulesService {
     try {
       const queryBuilder = this.connection
         .createQueryBuilder('rule_group', 'rg')
-        .innerJoinAndSelect('rg.rules', 'r')
-        // leftJoin because collectionId may be null during media server migration
-        // (rules are preserved but collections are cleared until user re-assigns libraries)
+        // leftJoin for rules: allows rule groups without rules (useRules=false)
+        .leftJoinAndSelect('rg.rules', 'r')
+        // leftJoin for collection: collectionId may be null during media server migration
         .leftJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .where(
@@ -191,8 +191,9 @@ export class RulesService {
     try {
       const rulegroups = await this.connection
         .createQueryBuilder('rule_group', 'rg')
-        .innerJoinAndSelect('rg.rules', 'r')
-        // leftJoin because collectionId may be null during media server migration
+        // leftJoin for rules: allows rule groups without rules (useRules=false)
+        .leftJoinAndSelect('rg.rules', 'r')
+        // leftJoin for collection: collectionId may be null during media server migration
         .leftJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .where('rg.id IN (:...ids)', { ids })
@@ -216,8 +217,9 @@ export class RulesService {
     try {
       const rulegroup = await this.connection
         .createQueryBuilder('rule_group', 'rg')
-        .innerJoinAndSelect('rg.rules', 'r')
-        // leftJoin because collectionId may be null during media server migration
+        // leftJoin for rules: allows rule groups without rules (useRules=false)
+        .leftJoinAndSelect('rg.rules', 'r')
+        // leftJoin for collection: collectionId may be null during media server migration
         .leftJoinAndSelect('rg.collection', 'c')
         .leftJoinAndSelect('rg.notifications', 'n')
         .andWhere('rg.id = :id', { id })
@@ -1213,6 +1215,16 @@ export class RulesService {
     rulegroupId: number,
     mediaId: string,
   ): Promise<any> {
+    const group = await this.getRuleGroupById(rulegroupId);
+
+    if (!group) {
+      return { code: 0, result: 'Rule group not found' };
+    }
+
+    if (!group.useRules) {
+      return { code: 0, result: 'Rule group does not use rules' };
+    }
+
     // flush caches
     const mediaServer = await this.getMediaServer();
     mediaServer.resetMetadataCache(mediaId);
@@ -1227,8 +1239,8 @@ export class RulesService {
       .forEach((cache) => cache.data.flushAll());
 
     const mediaResp = await mediaServer.getMetadata(mediaId);
-    const group = await this.getRuleGroupById(rulegroupId);
-    if (group && mediaResp) {
+
+    if (mediaResp) {
       group.rules = await this.getRules(group.id);
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       const result = await ruleComparator.executeRulesWithData(
