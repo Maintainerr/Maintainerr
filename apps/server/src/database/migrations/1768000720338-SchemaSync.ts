@@ -1,16 +1,16 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class SchemaSync1768000720338 implements MigrationInterface {
-    name = 'SchemaSync1768000720338'
+  name = 'SchemaSync1768000720338';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP INDEX "IDX_dcc3ba7f814ebd3d47facad716"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_2c70d3feb9b789062bfa14c6b9"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_notification_rulegroup" (
                 "notificationId" integer NOT NULL,
                 "rulegroupId" integer NOT NULL,
@@ -18,29 +18,29 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 PRIMARY KEY ("notificationId", "rulegroupId")
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_notification_rulegroup"("notificationId", "rulegroupId")
             SELECT "notificationId",
                 "rulegroupId"
             FROM "notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_notification_rulegroup"
                 RENAME TO "notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_dcc3ba7f814ebd3d47facad716" ON "notification_rulegroup" ("notificationId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_2c70d3feb9b789062bfa14c6b9" ON "notification_rulegroup" ("rulegroupId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_log_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection_log" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer,
@@ -50,7 +50,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta" text
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection_log"(
                     "id",
                     "collectionId",
@@ -67,20 +67,20 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta"
             FROM "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection_log"
                 RENAME TO "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_log_collection_id" ON "collection_log" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_log_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection_log" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -90,7 +90,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta" text
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection_log"(
                     "id",
                     "collectionId",
@@ -107,17 +107,17 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta"
             FROM "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection_log"
                 RENAME TO "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_log_collection_id" ON "collection_log" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar DEFAULT ('718f9807-cd95-4fff-939a-fee4c6b58f63'),
@@ -145,7 +145,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "jellyfin_server_name" varchar
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_settings"(
                     "id",
                     "clientId",
@@ -198,17 +198,17 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "jellyfin_server_name"
             FROM "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_settings"
                 RENAME TO "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_log_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection_log" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -219,7 +219,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 CONSTRAINT "FK_c70b4409f8834d108a5e845365a" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection_log"(
                     "id",
                     "collectionId",
@@ -236,23 +236,23 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta"
             FROM "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection_log"
                 RENAME TO "collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_log_collection_id" ON "collection_log" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_dcc3ba7f814ebd3d47facad716"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_2c70d3feb9b789062bfa14c6b9"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_notification_rulegroup" (
                 "notificationId" integer NOT NULL,
                 "rulegroupId" integer NOT NULL,
@@ -261,39 +261,39 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 PRIMARY KEY ("notificationId", "rulegroupId")
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_notification_rulegroup"("notificationId", "rulegroupId")
             SELECT "notificationId",
                 "rulegroupId"
             FROM "notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_notification_rulegroup"
                 RENAME TO "notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_dcc3ba7f814ebd3d47facad716" ON "notification_rulegroup" ("notificationId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_2c70d3feb9b789062bfa14c6b9" ON "notification_rulegroup" ("rulegroupId")
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP INDEX "IDX_2c70d3feb9b789062bfa14c6b9"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_dcc3ba7f814ebd3d47facad716"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "notification_rulegroup"
                 RENAME TO "temporary_notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "notification_rulegroup" (
                 "notificationId" integer NOT NULL,
                 "rulegroupId" integer NOT NULL,
@@ -301,29 +301,29 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 PRIMARY KEY ("notificationId", "rulegroupId")
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "notification_rulegroup"("notificationId", "rulegroupId")
             SELECT "notificationId",
                 "rulegroupId"
             FROM "temporary_notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_2c70d3feb9b789062bfa14c6b9" ON "notification_rulegroup" ("rulegroupId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_dcc3ba7f814ebd3d47facad716" ON "notification_rulegroup" ("notificationId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_log_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection_log"
                 RENAME TO "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection_log" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -333,7 +333,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta" text
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection_log"(
                     "id",
                     "collectionId",
@@ -350,17 +350,17 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta"
             FROM "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_log_collection_id" ON "collection_log" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "settings"
                 RENAME TO "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar DEFAULT ('a6ba5e30-4456-4da6-9849-8870ff6a3881'),
@@ -388,7 +388,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "jellyfin_server_name" varchar
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "settings"(
                     "id",
                     "clientId",
@@ -441,17 +441,17 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "jellyfin_server_name"
             FROM "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_log_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection_log"
                 RENAME TO "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection_log" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer,
@@ -461,7 +461,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta" text
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection_log"(
                     "id",
                     "collectionId",
@@ -478,20 +478,20 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta"
             FROM "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_log_collection_id" ON "collection_log" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_log_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection_log"
                 RENAME TO "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection_log" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer,
@@ -502,7 +502,7 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 CONSTRAINT "FK_c70b4409f8834d108a5e845365a" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection_log"(
                     "id",
                     "collectionId",
@@ -519,23 +519,23 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 "meta"
             FROM "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection_log"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_log_collection_id" ON "collection_log" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_2c70d3feb9b789062bfa14c6b9"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_dcc3ba7f814ebd3d47facad716"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "notification_rulegroup"
                 RENAME TO "temporary_notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "notification_rulegroup" (
                 "notificationId" integer NOT NULL,
                 "rulegroupId" integer NOT NULL,
@@ -544,21 +544,20 @@ export class SchemaSync1768000720338 implements MigrationInterface {
                 PRIMARY KEY ("notificationId", "rulegroupId")
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "notification_rulegroup"("notificationId", "rulegroupId")
             SELECT "notificationId",
                 "rulegroupId"
             FROM "temporary_notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_notification_rulegroup"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_2c70d3feb9b789062bfa14c6b9" ON "notification_rulegroup" ("rulegroupId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "IDX_dcc3ba7f814ebd3d47facad716" ON "notification_rulegroup" ("notificationId")
         `);
-    }
-
+  }
 }
