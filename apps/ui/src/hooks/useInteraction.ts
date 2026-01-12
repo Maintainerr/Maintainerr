@@ -10,7 +10,8 @@ let isTouch = typeof window !== 'undefined' && 'ontouchstart' in window
 let lastTouchUpdate = Date.now()
 let isSubscribed = false
 
-const shouldUpdate = (): boolean => lastTouchUpdate + UPDATE_INTERVAL < Date.now()
+const shouldUpdate = (): boolean =>
+  lastTouchUpdate + UPDATE_INTERVAL < Date.now()
 
 const setTouch = (value: boolean): void => {
   if (isTouch !== value) {
