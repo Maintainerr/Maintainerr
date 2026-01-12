@@ -44,6 +44,7 @@ const RuleFormPage = () => {
     <>
       <title>{pageTitle}</title>
       <AddModal
+        key={id}
         onSuccess={handleSuccess}
         editData={data}
         isCloneMode={isCloneMode}

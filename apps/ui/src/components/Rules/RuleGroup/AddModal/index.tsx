@@ -48,14 +48,6 @@ interface AddModal {
   onSuccess: () => void
 }
 
-// Helper to parse and filter valid rules from editData
-const parseValidRules = (editData?: IRuleGroup): IRule[] => {
-  if (!editData?.rules || !Array.isArray(editData.rules)) return []
-  return editData.rules
-    .map((r) => JSON.parse(r.ruleJson) as IRule)
-    .filter((rule) => rule.firstVal && Array.isArray(rule.firstVal))
-}
-
 // Helper function to check if an app should be filtered
 const shouldFilterApp = (
   appId: number,
@@ -78,7 +70,6 @@ const filterRulesForArrSettings = (
   sonarrId: number | null | undefined,
 ): IRule[] => {
   return rules.filter((rule) => {
-    if (!rule.firstVal || !Array.isArray(rule.firstVal)) return false
     if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) return false
     if (rule.lastVal && Array.isArray(rule.lastVal) && shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)) {
       return false
@@ -312,7 +303,11 @@ const AddModal = (props: AddModal) => {
   ] = useState<AgentConfiguration[]>(
     props.editData?.notifications ? props.editData?.notifications : [],
   )
-  const [rules, setRules] = useState<IRule[]>(() => parseValidRules(props.editData))
+  const [rules, setRules] = useState<IRule[]>(
+    props.editData?.rules
+      ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
+      : [],
+  )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const ruleCreatorVersion = useRef<number>(1)
 
