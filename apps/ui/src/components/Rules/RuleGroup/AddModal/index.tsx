@@ -16,7 +16,7 @@ import {
   MediaLibrary,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -46,6 +46,55 @@ interface AddModal {
   isCloneMode?: boolean
   onCancel: () => void
   onSuccess: () => void
+}
+
+// Helper to parse and filter valid rules from editData
+const parseValidRules = (editData?: IRuleGroup): IRule[] => {
+  if (!editData?.rules || !Array.isArray(editData.rules)) return []
+  return editData.rules
+    .map((r) => JSON.parse(r.ruleJson) as IRule)
+    .filter((rule) => rule.firstVal && Array.isArray(rule.firstVal))
+}
+
+// Helper function to check if an app should be filtered
+const shouldFilterApp = (
+  appId: number,
+  radarrId: number | null | undefined,
+  sonarrId: number | null | undefined,
+): boolean => {
+  if (appId === Application.RADARR && (radarrId === undefined || radarrId === null)) {
+    return true
+  }
+  if (appId === Application.SONARR && (sonarrId === undefined || sonarrId === null)) {
+    return true
+  }
+  return false
+}
+
+// Filter rules that reference deselected *arr servers
+const filterRulesForArrSettings = (
+  rules: IRule[],
+  radarrId: number | null | undefined,
+  sonarrId: number | null | undefined,
+): IRule[] => {
+  return rules.filter((rule) => {
+    if (!rule.firstVal || !Array.isArray(rule.firstVal)) return false
+    if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) return false
+    if (rule.lastVal && Array.isArray(rule.lastVal) && shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)) {
+      return false
+    }
+    return true
+  })
+}
+
+// Scroll detection using useSyncExternalStore (no useEffect needed)
+const scrollStore = {
+  subscribe: (callback: () => void) => {
+    window.addEventListener('scroll', callback)
+    return () => window.removeEventListener('scroll', callback)
+  },
+  getSnapshot: () => window.innerHeight + window.scrollY >= document.body.offsetHeight - 50,
+  getServerSnapshot: () => false,
 }
 
 const numberOrUndefined = (value: unknown): number | undefined => {
@@ -263,11 +312,7 @@ const AddModal = (props: AddModal) => {
   ] = useState<AgentConfiguration[]>(
     props.editData?.notifications ? props.editData?.notifications : [],
   )
-  const [rules, setRules] = useState<IRule[]>(
-    props.editData?.rules && Array.isArray(props.editData.rules)
-      ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
-      : [],
-  )
+  const [rules, setRules] = useState<IRule[]>(() => parseValidRules(props.editData))
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const ruleCreatorVersion = useRef<number>(1)
 
@@ -276,72 +321,12 @@ const AddModal = (props: AddModal) => {
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
-  useEffect(() => {
-    register('arrAction')
-    register('radarrSettingsId')
-    register('sonarrSettingsId')
-  }, [register])
-
-  useEffect(() => {
-    reset(buildFormDefaults(props.editData))
-    setConfiguredNotificationConfigurations(props.editData?.notifications ?? [])
-    setRules(
-      props.editData?.rules && Array.isArray(props.editData.rules)
-        ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
-        : [],
-    )
-    ruleCreatorVersion.current += 1
-  }, [props.editData, reset])
-
-  // Filter out Radarr/Sonarr rules when servers are deselected
-  useEffect(() => {
-    // Helper function to check if an app should be filtered
-    const shouldFilterApp = (
-      appId: number,
-      radarrId: number | null | undefined,
-      sonarrId: number | null | undefined,
-    ): boolean => {
-      if (
-        appId === Application.RADARR &&
-        (radarrId === undefined || radarrId === null)
-      ) {
-        return true
-      }
-      if (
-        appId === Application.SONARR &&
-        (sonarrId === undefined || sonarrId === null)
-      ) {
-        return true
-      }
-      return false
-    }
-
-    setRules((prevRules) => {
-      const filteredRules = prevRules.filter((rule) => {
-        // Check first value
-        if (
-          shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)
-        ) {
-          return false
-        }
-        // Check second value if it exists
-        if (
-          rule.lastVal &&
-          shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)
-        ) {
-          return false
-        }
-        return true
-      })
-
-      // Only update if rules actually changed
-      if (filteredRules.length !== prevRules.length) {
-        ruleCreatorVersion.current += 1
-        return filteredRules
-      }
-      return prevRules
-    })
-  }, [radarrSettingsId, sonarrSettingsId])
+  // Scroll detection without useEffect
+  const atBottom = useSyncExternalStore(
+    scrollStore.subscribe,
+    scrollStore.getSnapshot,
+    scrollStore.getServerSnapshot,
+  )
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
@@ -363,6 +348,13 @@ const AddModal = (props: AddModal) => {
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
     updateArrOption(0)
+
+    // Clear rules that reference *arr servers since we're resetting them
+    const filtered = filterRulesForArrSettings(rules, undefined, undefined)
+    if (filtered.length !== rules.length) {
+      setRules(filtered)
+      ruleCreatorVersion.current += 1
+    }
   }
 
   function updateArrOption(value: number | undefined) {
@@ -382,12 +374,17 @@ const AddModal = (props: AddModal) => {
   ) => {
     updateArrOption(arrAction)
 
-    if (type === 'Radarr') {
-      setValue('sonarrSettingsId', undefined)
-      setValue('radarrSettingsId', settingId)
-    } else if (type === 'Sonarr') {
-      setValue('radarrSettingsId', undefined)
-      setValue('sonarrSettingsId', settingId)
+    const newRadarrId = type === 'Radarr' ? settingId : undefined
+    const newSonarrId = type === 'Sonarr' ? settingId : undefined
+
+    setValue('radarrSettingsId', newRadarrId)
+    setValue('sonarrSettingsId', newSonarrId)
+
+    // Filter out rules that reference the deselected *arr server
+    const filtered = filterRulesForArrSettings(rules, newRadarrId, newSonarrId)
+    if (filtered.length !== rules.length) {
+      setRules(filtered)
+      ruleCreatorVersion.current += 1
     }
   }
 
@@ -461,20 +458,6 @@ const AddModal = (props: AddModal) => {
   const cancel = () => {
     props.onCancel()
   }
-
-  const [atBottom, setAtBottom] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrolledToBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 50
-
-      setAtBottom(scrolledToBottom)
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const onSubmit = async (data: RuleGroupFormOutput) => {
     if (data.useRules && rules.length === 0) {
