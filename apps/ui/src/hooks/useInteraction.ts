@@ -1,78 +1,89 @@
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 
-export const INTERACTION_TYPE = {
-  MOUSE: 'mouse',
-  PEN: 'pen',
-  TOUCH: 'touch',
+const UPDATE_INTERVAL = 1000 // Throttle updates to prevent flip flopping
+
+// Subscription management
+const listeners = new Set<() => void>()
+
+// Module-level state
+let isTouch = typeof window !== 'undefined' && 'ontouchstart' in window
+let lastTouchUpdate = Date.now()
+let isSubscribed = false
+
+const shouldUpdate = (): boolean => lastTouchUpdate + UPDATE_INTERVAL < Date.now()
+
+const setTouch = (value: boolean): void => {
+  if (isTouch !== value) {
+    isTouch = value
+    listeners.forEach((cb) => cb())
+  }
 }
 
-const UPDATE_INTERVAL = 1000 // Throttle updates to the type to prevent flip flopping
+const onMouseMove = (): void => {
+  if (isTouch && shouldUpdate()) {
+    setTimeout(() => {
+      if (shouldUpdate()) setTouch(false)
+    }, UPDATE_INTERVAL)
+  }
+}
 
-const useInteraction = (): boolean => {
-  const [isTouch, setIsTouch] = useState(false)
+const onTouchStart = (): void => {
+  lastTouchUpdate = Date.now()
+  if (!isTouch) setTouch(true)
+}
 
-  useEffect(() => {
-    const hasTapEvent = 'ontouchstart' in window
-    setIsTouch(hasTapEvent)
+const onPointerMove = (e: PointerEvent): void => {
+  if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+    onTouchStart()
+  } else {
+    onMouseMove()
+  }
+}
 
-    let localTouch = hasTapEvent
-    let lastTouchUpdate = Date.now()
+const setupListeners = (): void => {
+  if (isSubscribed || typeof window === 'undefined') return
+  isSubscribed = true
 
-    const shouldUpdate = (): boolean =>
-      lastTouchUpdate + UPDATE_INTERVAL < Date.now()
+  if ('ontouchstart' in window) {
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+  } else {
+    window.addEventListener('pointerdown', onPointerMove, { passive: true })
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+  }
+}
 
-    const onMouseMove = (): void => {
-      if (localTouch && shouldUpdate()) {
-        setTimeout(() => {
-          if (shouldUpdate()) {
-            setIsTouch(false)
-            localTouch = false
-          }
-        }, UPDATE_INTERVAL)
-      }
-    }
+const cleanupListeners = (): void => {
+  if (!isSubscribed || typeof window === 'undefined') return
+  isSubscribed = false
 
-    const onTouchStart = (): void => {
-      lastTouchUpdate = Date.now()
+  if ('ontouchstart' in window) {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('touchstart', onTouchStart)
+  } else {
+    window.removeEventListener('pointerdown', onPointerMove)
+    window.removeEventListener('pointermove', onPointerMove)
+  }
+}
 
-      if (!localTouch) {
-        setIsTouch(true)
-        localTouch = true
-      }
-    }
-
-    const onPointerMove = (e: PointerEvent): void => {
-      const { pointerType } = e
-
-      switch (pointerType) {
-        case INTERACTION_TYPE.TOUCH:
-        case INTERACTION_TYPE.PEN:
-          return onTouchStart()
-        default:
-          return onMouseMove()
-      }
-    }
-
-    if (hasTapEvent) {
-      window.addEventListener('mousemove', onMouseMove)
-      window.addEventListener('touchstart', onTouchStart)
-    } else {
-      window.addEventListener('pointerdown', onPointerMove)
-      window.addEventListener('pointermove', onPointerMove)
-    }
-
+const interactionStore = {
+  subscribe: (callback: () => void): (() => void) => {
+    listeners.add(callback)
+    setupListeners()
     return () => {
-      if (hasTapEvent) {
-        window.removeEventListener('mousemove', onMouseMove)
-        window.removeEventListener('touchstart', onTouchStart)
-      } else {
-        window.removeEventListener('pointerdown', onPointerMove)
-        window.removeEventListener('pointermove', onPointerMove)
-      }
+      listeners.delete(callback)
+      if (listeners.size === 0) cleanupListeners()
     }
-  }, [])
-
-  return isTouch
+  },
+  getSnapshot: (): boolean => isTouch,
+  getServerSnapshot: (): boolean => false,
 }
+
+const useInteraction = (): boolean =>
+  useSyncExternalStore(
+    interactionStore.subscribe,
+    interactionStore.getSnapshot,
+    interactionStore.getServerSnapshot,
+  )
 
 export default useInteraction
