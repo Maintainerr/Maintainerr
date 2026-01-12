@@ -116,9 +116,13 @@ export class CollectionsService {
   }
 
   public async getCollectionMediaCount(id?: number) {
-    return await this.CollectionMediaRepo.count({
-      where: { collectionId: id },
-    });
+    if (id !== undefined) {
+      return await this.CollectionMediaRepo.count({
+        where: { collectionId: id },
+      });
+    }
+    // No id = count ALL media across all collections
+    return await this.CollectionMediaRepo.count();
   }
 
   public async getCollectionMediaWitPlexDataAndhPaging(

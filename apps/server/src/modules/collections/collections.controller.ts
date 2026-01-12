@@ -151,7 +151,8 @@ export class CollectionsController {
 
   @Get('/media/count')
   getMediaInCollectionCount(
-    @Query('collectionId', ParseIntPipe) collectionId: number,
+    @Query('collectionId', new ParseIntPipe({ optional: true }))
+    collectionId?: number,
   ) {
     return this.collectionService.getCollectionMediaCount(collectionId);
   }
