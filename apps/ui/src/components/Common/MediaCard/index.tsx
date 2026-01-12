@@ -2,7 +2,6 @@ import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType } from '@maintainerr/contracts'
 import React, { memo, useEffect, useState } from 'react'
-import { useIsTouch } from '../../../hooks/useIsTouch'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
@@ -48,7 +47,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   isManual = false,
   onRemove = () => {},
 }) => {
-  const isTouch = useIsTouch()
   const [showDetail, setShowDetail] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [excludeModal, setExcludeModal] = useState(false)
@@ -112,14 +110,10 @@ const MediaCard: React.FC<IMediaCard> = ({
         />
       ) : undefined}
       <div
-        className={`relative transform-gpu cursor-default overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${
-          showDetail
-            ? 'scale-105 shadow-lg ring-zinc-500'
-            : 'scale-100 shadow ring-zinc-700'
-        }`}
-        onMouseEnter={() => !isTouch && setShowDetail(true)}
+        className={`media-card relative transform-gpu cursor-pointer overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${showDetail ? 'show-detail' : ''}`}
+        onMouseEnter={() => setShowDetail(true)}
         onMouseLeave={() => setShowDetail(false)}
-        onClick={() => showDetail && openMediaModal()}
+        onClick={() => openMediaModal()}
         role="link"
         tabIndex={0}
       >
