@@ -113,7 +113,13 @@ const MediaCard: React.FC<IMediaCard> = ({
         className={`media-card relative transform-gpu cursor-pointer overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${showDetail ? 'show-detail' : ''}`}
         onMouseEnter={() => setShowDetail(true)}
         onMouseLeave={() => setShowDetail(false)}
-        onClick={() => openMediaModal()}
+        onClick={() => {
+          if (showDetail) {
+            openMediaModal()
+          } else {
+            setShowDetail(true) // First tap on mobile shows buttons
+          }
+        }}
         role="link"
         tabIndex={0}
       >
