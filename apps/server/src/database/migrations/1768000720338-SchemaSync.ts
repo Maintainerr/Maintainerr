@@ -128,16 +128,16 @@ export class SchemaSync1768000720338 implements MigrationInterface {
     await queryRunner.query(`
             CREATE TABLE "temporary_exclusion" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-                "plexId" integer NOT NULL,
+                "mediaServerId" varchar NOT NULL,
                 "ruleGroupId" integer,
                 "parent" integer,
-                "type" integer
+                "type" varchar
             )
         `);
     await queryRunner.query(`
-            INSERT INTO "temporary_exclusion"("id", "plexId", "ruleGroupId", "parent", "type")
+            INSERT INTO "temporary_exclusion"("id", "mediaServerId", "ruleGroupId", "parent", "type")
             SELECT "id",
-                "plexId",
+                "mediaServerId",
                 "ruleGroupId",
                 "parent",
                 "type"
@@ -319,16 +319,16 @@ export class SchemaSync1768000720338 implements MigrationInterface {
     await queryRunner.query(`
             CREATE TABLE "exclusion" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-                "plexId" integer NOT NULL,
+                "mediaServerId" varchar NOT NULL,
                 "ruleGroupId" integer,
                 "parent" integer,
-                "type" integer DEFAULT (NULL)
+                "type" varchar
             )
         `);
     await queryRunner.query(`
-            INSERT INTO "exclusion"("id", "plexId", "ruleGroupId", "parent", "type")
+            INSERT INTO "exclusion"("id", "mediaServerId", "ruleGroupId", "parent", "type")
             SELECT "id",
-                "plexId",
+                "mediaServerId",
                 "ruleGroupId",
                 "parent",
                 "type"
