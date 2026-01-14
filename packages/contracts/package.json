@@ -29,12 +29,12 @@
     "globals": "^17.0.0",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.52.0"
+    "typescript-eslint": "^8.53.0"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.11",
     "@nestjs/core": "^11.1.11",
-    "@nestjs/swagger": "^11.2.4",
+    "@nestjs/swagger": "^11.2.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "nestjs-zod": "^5.0.1",

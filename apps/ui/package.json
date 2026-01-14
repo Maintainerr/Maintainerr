@@ -20,7 +20,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
-    "@tanstack/react-query": "^5.90.16",
+    "@tanstack/react-query": "^5.90.17",
     "axios": "^1.13.2",
     "bowser": "^2.13.1",
     "clsx": "^2.1.1",
@@ -29,7 +29,7 @@
     "lodash-es": "^4.17.22",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-hook-form": "^7.70.0",
+    "react-hook-form": "^7.71.1",
     "react-markdown": "10.1.0",
     "react-router-dom": "^7.12.0",
     "react-select": "^5.10.2",
@@ -47,10 +47,10 @@
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22",
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.52.0",
-    "@typescript-eslint/parser": "^8.52.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "10.4.23",
     "eslint": "^9.39.2",
@@ -64,6 +64,6 @@
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vite-tsconfig-paths": "^6.0.3"
+    "vite-tsconfig-paths": "^6.0.4"
   }
 }
