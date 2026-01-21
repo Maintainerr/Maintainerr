@@ -38,7 +38,7 @@
     "@types/express": "^5.0.6",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
-    "better-sqlite3": "^12.6.0",
+    "better-sqlite3": "^12.6.2",
     "chalk": "^4.1.2",
     "cron-validator": "^1.4.0",
     "email-templates": "13.0.1",
