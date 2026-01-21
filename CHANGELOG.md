@@ -1,3 +1,12 @@
+## [2.26.1](https://github.com/maintainerr/Maintainerr/compare/v2.26.0...v2.26.1) (2026-01-20)
+
+
+### Bug Fixes
+
+* Enable source maps for better debugging in production builds ([#2269](https://github.com/maintainerr/Maintainerr/issues/2269)) ([4e6b7f1](https://github.com/maintainerr/Maintainerr/commit/4e6b7f1e58851921fab45f7eacf2ffc94661f006))
+* Hide Test Media for collections that don't use rules ([#2271](https://github.com/maintainerr/Maintainerr/issues/2271)) ([139904d](https://github.com/maintainerr/Maintainerr/commit/139904d294f00b7fa2b8bc64abad1420e60642f8))
+* Rule editor errors when not using rule system ([#2270](https://github.com/maintainerr/Maintainerr/issues/2270)) ([730adb5](https://github.com/maintainerr/Maintainerr/commit/730adb5644b4fee33a766cfefa038fb0dee87d8c))
+
 # [2.26.0](https://github.com/maintainerr/Maintainerr/compare/v2.25.0...v2.26.0) (2025-12-31)
 
 
