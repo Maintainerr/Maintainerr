@@ -2998,7 +2998,7 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-react: "npm:^7.37.5"
     eslint-plugin-react-hooks: "npm:^7.0.1"
-    lodash-es: "npm:^4.17.22"
+    lodash-es: "npm:^4.17.23"
     monaco-editor: "npm:0.55.1"
     postcss: "npm:^8.5.6"
     prettier: "npm:^3.8.0"
@@ -13390,10 +13390,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash-es@npm:^4.17.22":
-  version: 4.17.22
-  resolution: "lodash-es@npm:4.17.22"
-  checksum: 10c0/5f28a262183cca43e08c580622557f393cb889386df2d8adf7c852bfdff7a84c5e629df5aa6c5c6274e83b38172f239d3e4e72e1ad27352d9ae9766627338089
+"lodash-es@npm:^4.17.23":
+  version: 4.17.23
+  resolution: "lodash-es@npm:4.17.23"
+  checksum: 10c0/3150fb6660c14c7a6b5f23bd11597d884b140c0e862a17fdb415aaa5ef7741523182904a6b7929f04e5f60a11edb5a79499eb448734381c99ffb3c4734beeddd
   languageName: node
   linkType: hard
 
