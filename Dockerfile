@@ -96,5 +96,9 @@ USER node
 
 EXPOSE 6246
 
-VOLUME [ "/opt/data" ]
+# IMPORTANT: VOLUME directive removed to enable mount detection
+# Users MUST explicitly configure a volume for /opt/data:
+#   docker run: -v ./data:/opt/data
+#   docker-compose: volumes: - ./data:/opt/data
+# See README.md for complete examples
 ENTRYPOINT ["/opt/app/start.sh"]
