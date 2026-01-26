@@ -21,7 +21,7 @@
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.90.20",
-    "axios": "^1.13.2",
+    "axios": "^1.13.3",
     "bowser": "^2.13.1",
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",

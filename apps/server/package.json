@@ -36,7 +36,7 @@
     "@octokit/plugin-throttling": "^8.2.0",
     "@tygra/nestjs-graceful-shutdown": "^2.0.0",
     "@types/express": "^5.0.6",
-    "axios": "^1.13.2",
+    "axios": "^1.13.3",
     "axios-retry": "^4.5.0",
     "better-sqlite3": "^12.6.2",
     "chalk": "^4.1.2",
