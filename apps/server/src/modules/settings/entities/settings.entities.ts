@@ -1,3 +1,6 @@
+import { MediaServerType } from '@maintainerr/contracts';
+import { CronExpression } from '@nestjs/schedule';
+import { randomUUID } from 'crypto';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { SettingDto } from "../dto's/setting.dto";
 
@@ -6,7 +9,7 @@ export class Settings implements SettingDto {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, default: randomUUID() })
   clientId: string;
 
   @Column({ nullable: false, default: 'Maintainerr' })
@@ -24,6 +27,11 @@ export class Settings implements SettingDto {
   @Column({ nullable: false, default: 'en' })
   locale: string;
 
+  // Media server type selection - null until user chooses
+  @Column({ type: 'varchar', nullable: true, default: null })
+  media_server_type?: MediaServerType | null;
+
+  // Plex settings
   @Column({ nullable: true })
   plex_name: string;
 
@@ -39,6 +47,20 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   plex_auth_token: string;
 
+  // Jellyfin settings
+  @Column({ nullable: true })
+  jellyfin_url?: string;
+
+  @Column({ nullable: true })
+  jellyfin_api_key?: string;
+
+  @Column({ nullable: true })
+  jellyfin_user_id?: string;
+
+  @Column({ nullable: true })
+  jellyfin_server_name?: string;
+
+  // Third-party integrations
   @Column({ nullable: true })
   overseerr_api_key: string;
 
@@ -54,9 +76,9 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   jellyseerr_api_key: string;
 
-  @Column({ nullable: false, default: '0 0-23/12 * * *' })
+  @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
   collection_handler_job_cron: string;
 
-  @Column({ nullable: false, default: '0 0-23/8 * * *' })
+  @Column({ nullable: false, default: CronExpression.EVERY_8_HOURS })
   rules_handler_job_cron: string;
 }

@@ -1,4 +1,4 @@
-import { RuleExecuteStatusDto } from '@maintainerr/contracts';
+import { MediaItemType, RuleExecuteStatusDto } from '@maintainerr/contracts';
 import {
   Body,
   ConflictException,
@@ -54,8 +54,13 @@ export class RulesController {
   }
 
   @Get('/exclusion')
-  getExclusion(@Query() query: { rulegroupId?: number; plexId?: number }) {
-    return this.rulesService.getExclusions(query.rulegroupId, query.plexId);
+  getExclusion(
+    @Query() query: { rulegroupId?: number; mediaServerId?: string },
+  ) {
+    return this.rulesService.getExclusions(
+      query.rulegroupId,
+      query.mediaServerId,
+    );
   }
 
   @Get('/count')
@@ -78,7 +83,7 @@ export class RulesController {
     @Query()
     query: {
       activeOnly?: boolean;
-      libraryId?: number;
+      libraryId?: string;
       typeId?: number;
     },
   ) {
@@ -213,11 +218,11 @@ export class RulesController {
     return await this.rulesService.removeExclusion(id);
   }
 
-  @Delete('/exclusions/:plexId')
+  @Delete('/exclusions/:mediaServerId')
   async removeAllExclusion(
-    @Param('plexId', ParseIntPipe) plexId: number,
+    @Param('mediaServerId') mediaServerId: string,
   ): Promise<ReturnStatus> {
-    return await this.rulesService.removeAllExclusion(plexId);
+    return await this.rulesService.removeAllExclusion(mediaServerId);
   }
 
   @Put()
@@ -264,7 +269,7 @@ export class RulesController {
    */
   @Post('/yaml/encode')
   async yamlEncode(
-    @Body() body: { rules: string; mediaType: number },
+    @Body() body: { rules: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.encodeToYaml(
@@ -287,7 +292,7 @@ export class RulesController {
    */
   @Post('/yaml/decode')
   async yamlDecode(
-    @Body() body: { yaml: string; mediaType: number },
+    @Body() body: { yaml: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.decodeFromYaml(body.yaml, body.mediaType);
