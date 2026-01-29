@@ -13,6 +13,7 @@ import {
   getLibraryApi,
   getSearchApi,
   getSystemApi,
+  getTvShowsApi,
   getUserApi,
 } from '@jellyfin/sdk/lib/utils/api';
 import {
@@ -497,6 +498,24 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
+      // For seasons, use the dedicated TvShows API which properly handles
+      // the Jellyfin data model where seasons have SeriesId pointing to the show,
+      // not ParentId (which points to the library folder).
+      if (childType === 'season') {
+        const response = await getTvShowsApi(this.api).getSeasons({
+          seriesId: parentId,
+          fields: [
+            ItemFields.ProviderIds,
+            ItemFields.Path,
+            ItemFields.DateCreated,
+          ],
+          enableUserData: true,
+        });
+
+        return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      }
+
+      // For episodes and other types, parentId works correctly
       const response = await getItemsApi(this.api).getItems({
         parentId,
         fields: [
