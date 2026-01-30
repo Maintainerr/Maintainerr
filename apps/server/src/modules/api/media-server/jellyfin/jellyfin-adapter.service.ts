@@ -498,12 +498,20 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
+      // Get admin user ID from settings - Jellyfin requires userId for UserData fields
+      const settings = await this.settingsService.getSettings();
+      const userId =
+        settings && 'jellyfin_user_id' in settings
+          ? settings.jellyfin_user_id
+          : undefined;
+
       // For seasons, use the dedicated TvShows API which properly handles
       // the Jellyfin data model where seasons have SeriesId pointing to the show,
       // not ParentId (which points to the library folder).
       if (childType === 'season') {
         const response = await getTvShowsApi(this.api).getSeasons({
           seriesId: parentId,
+          userId,
           fields: [
             ItemFields.ProviderIds,
             ItemFields.Path,
@@ -517,6 +525,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       // For episodes and other types, parentId works correctly
       const response = await getItemsApi(this.api).getItems({
+        userId,
         parentId,
         fields: [
           ItemFields.ProviderIds,
