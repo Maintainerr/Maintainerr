@@ -173,7 +173,10 @@ export class JellyfinGetterService {
             isMediaType(metadata.type, 'show') ||
             isMediaType(metadata.type, 'season')
           ) {
-            return await this.getLastWatchedShowDate(metadata.id, metadata.type);
+            return await this.getLastWatchedShowDate(
+              metadata.id,
+              metadata.type,
+            );
           }
           return await this.getLastViewedAt(metadata.id);
         }
