@@ -131,7 +131,7 @@ export interface MediaUser {
 export interface WatchRecord {
   userId: string
   itemId: string
-  watchedAt: Date
+  watchedAt?: Date
   progress?: number
 }
 

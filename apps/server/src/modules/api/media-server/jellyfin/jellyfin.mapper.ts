@@ -265,7 +265,7 @@ export class JellyfinMapper {
     return {
       userId,
       itemId,
-      watchedAt: lastPlayedDate || new Date(),
+      watchedAt: lastPlayedDate,
       progress: 100, // Marked as watched = 100%
     };
   }
