@@ -167,6 +167,14 @@ export class JellyfinGetterService {
         }
 
         case 'lastViewedAt': {
+          // For shows/seasons, Jellyfin doesn't store LastPlayedDate on the parent item
+          // We need to aggregate from episodes
+          if (
+            isMediaType(metadata.type, 'show') ||
+            isMediaType(metadata.type, 'season')
+          ) {
+            return await this.getLastWatchedShowDate(metadata.id, metadata.type);
+          }
           return await this.getLastViewedAt(metadata.id);
         }
 
@@ -340,21 +348,12 @@ export class JellyfinGetterService {
   private async getLastViewedAt(itemId: string): Promise<Date | null> {
     const watchHistory = await this.jellyfinAdapter.getWatchHistory(itemId);
     if (!watchHistory.length) {
-      this.logger.log(`getLastViewedAt: No watch history for ${itemId}`);
       return null;
     }
-
-    this.logger.log(
-      `getLastViewedAt: ${itemId} has ${watchHistory.length} watch records, watchedAt values: ${watchHistory.map((r) => r.watchedAt?.toISOString() ?? 'undefined').join(', ')}`,
-    );
 
     const dates = watchHistory
       .map((r) => r.watchedAt)
       .filter((d): d is Date => d !== undefined);
-
-    this.logger.log(
-      `getLastViewedAt: ${itemId} filtered to ${dates.length} valid dates`,
-    );
 
     return dates.length > 0
       ? new Date(Math.max(...dates.map((d) => d.getTime())))
@@ -421,14 +420,8 @@ export class JellyfinGetterService {
         itemId,
         'episode',
       );
-      this.logger.log(
-        `getLastWatchedShowDate: Found ${episodes.length} episodes for season ${itemId}`,
-      );
       for (const episode of episodes) {
         const lastViewed = await this.getLastViewedAt(episode.id);
-        this.logger.log(
-          `getLastWatchedShowDate: Episode ${episode.id} lastViewed=${lastViewed?.toISOString() ?? 'null'}`,
-        );
         if (lastViewed && (!latestDate || lastViewed > latestDate)) {
           latestDate = lastViewed;
         }
