@@ -739,7 +739,11 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
         enableUserData: true,
       });
-      return response.data.Items?.[0]?.UserData;
+      const userData = response.data.Items?.[0]?.UserData;
+      this.logger.log(
+        `getItemUserData: item=${itemId}, user=${userId}, Played=${userData?.Played}, LastPlayedDate=${userData?.LastPlayedDate}`,
+      );
+      return userData;
     } catch {
       return undefined;
     }
