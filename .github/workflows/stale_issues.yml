@@ -10,7 +10,7 @@ jobs:
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,benscobie"
+      allowed: "ydkmlt84"
 
   close-issues:
     needs: guard_manual_run
@@ -23,7 +23,7 @@ jobs:
           days-before-issue-stale: 30
           days-before-issue-close: 14
           exempt-issue-labels: never-stale,bug,enhancement
-          exempt-issue-assignees: jorenn92,ydkmlt84,benscobie
+          exempt-issue-assignees: jorenn92,ydkmlt84
           stale-issue-label: "stale"
           close-issue-label: "stale-closed"
           stale-issue-message: "This issue has been marked stale because it has been 30 days with no activity."

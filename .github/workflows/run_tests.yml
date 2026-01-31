@@ -15,7 +15,7 @@ jobs:
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,benscobie"
+      allowed: "ydkmlt84"
 
   run_tests:
     name: Run integration tests

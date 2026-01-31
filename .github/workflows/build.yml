@@ -23,7 +23,7 @@ jobs:
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,benscobie"
+      allowed: "ydkmlt84"
 
   build_docker_image:
     name: Build ${{ matrix.platform }}

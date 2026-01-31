@@ -17,7 +17,7 @@ jobs:
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,benscobie"
+      allowed: "ydkmlt84"
 
   # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
   copilot-setup-steps:
