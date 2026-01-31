@@ -1,0 +1,32 @@
+services:
+  # ==========================================
+  # Maintainerr - Built from specified branch
+  # ==========================================
+  maintainerr:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        BRANCH: ${BRANCH:-remaining-issues/abstraction-cleanup-squashed}
+        REPO: ${REPO:-https://github.com/enoch85/Maintainerr.git}
+    container_name: maintainerr-test
+    user: "1000:1000"
+    depends_on:
+      init-permissions:
+        condition: service_completed_successfully
+    network_mode: container:wg
+    volumes:
+      - maintainerr-data:/opt/data
+    environment:
+      - TZ=UTC
+      - DEBUG=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6246/api/app/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  maintainerr-data:
