@@ -123,7 +123,11 @@ export class PlexApiLegacyController {
     @Query('type') type?: string,
   ) {
     const mediaServer = await this.mediaServerFactory.getService();
-    const result = await mediaServer.searchLibraryContents(id, query, type as any);
+    const result = await mediaServer.searchLibraryContents(
+      id,
+      query,
+      type as any,
+    );
     if (result == null) {
       throw new InternalServerErrorException(
         'Could not search Plex library contents',
@@ -208,9 +212,7 @@ export class PlexApiLegacyController {
 
   /** @deprecated Use GET /api/media-server/collection/:id instead */
   @Get('library/collection/:collectionId')
-  async getCollection(
-    @Param('collectionId') collectionId: string,
-  ) {
+  async getCollection(@Param('collectionId') collectionId: string) {
     const mediaServer = await this.mediaServerFactory.getService();
     const collection = await mediaServer.getCollection(collectionId);
     if (collection == null) {
@@ -221,9 +223,7 @@ export class PlexApiLegacyController {
 
   /** @deprecated Use GET /api/media-server/collection/:id/children instead */
   @Get('library/collection/:collectionId/children')
-  async getCollectionChildren(
-    @Param('collectionId') collectionId: string,
-  ) {
+  async getCollectionChildren(@Param('collectionId') collectionId: string) {
     const mediaServer = await this.mediaServerFactory.getService();
     const children = await mediaServer.getCollectionChildren(collectionId);
     if (children == null) {

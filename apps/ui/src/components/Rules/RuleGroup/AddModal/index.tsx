@@ -54,10 +54,16 @@ const shouldFilterApp = (
   radarrId: number | null | undefined,
   sonarrId: number | null | undefined,
 ): boolean => {
-  if (appId === Application.RADARR && (radarrId === undefined || radarrId === null)) {
+  if (
+    appId === Application.RADARR &&
+    (radarrId === undefined || radarrId === null)
+  ) {
     return true
   }
-  if (appId === Application.SONARR && (sonarrId === undefined || sonarrId === null)) {
+  if (
+    appId === Application.SONARR &&
+    (sonarrId === undefined || sonarrId === null)
+  ) {
     return true
   }
   return false
@@ -71,7 +77,11 @@ const filterRulesForArrSettings = (
 ): IRule[] => {
   return rules.filter((rule) => {
     if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) return false
-    if (rule.lastVal && Array.isArray(rule.lastVal) && shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)) {
+    if (
+      rule.lastVal &&
+      Array.isArray(rule.lastVal) &&
+      shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)
+    ) {
       return false
     }
     return true
@@ -84,7 +94,8 @@ const scrollStore = {
     window.addEventListener('scroll', callback)
     return () => window.removeEventListener('scroll', callback)
   },
-  getSnapshot: () => window.innerHeight + window.scrollY >= document.body.offsetHeight - 50,
+  getSnapshot: () =>
+    window.innerHeight + window.scrollY >= document.body.offsetHeight - 50,
   getServerSnapshot: () => false,
 }
 

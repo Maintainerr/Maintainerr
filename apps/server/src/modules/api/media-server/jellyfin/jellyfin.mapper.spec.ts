@@ -472,19 +472,14 @@ describe('JellyfinMapper', () => {
       expect(result.progress).toBe(100);
     });
 
-    it('should use current date if no lastPlayedDate', () => {
-      const before = new Date();
+    it('should leave watchedAt undefined if no lastPlayedDate', () => {
       const result = JellyfinMapper.toWatchRecord(
         'user123',
         'item456',
         undefined,
       );
-      const after = new Date();
 
-      expect(result.watchedAt.getTime()).toBeGreaterThanOrEqual(
-        before.getTime(),
-      );
-      expect(result.watchedAt.getTime()).toBeLessThanOrEqual(after.getTime());
+      expect(result.watchedAt).toBeUndefined();
     });
   });
 

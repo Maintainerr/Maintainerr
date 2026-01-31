@@ -1,8 +1,8 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { SettingsModule } from '../../../modules/settings/settings.module';
-import { PlexApiService } from './plex-api.service';
-import { PlexApiLegacyController } from './plex-api-legacy.controller';
 import { MediaServerModule } from '../media-server/media-server.module';
+import { PlexApiLegacyController } from './plex-api-legacy.controller';
+import { PlexApiService } from './plex-api.service';
 
 /**
  * PlexApiModule
@@ -16,7 +16,10 @@ import { MediaServerModule } from '../media-server/media-server.module';
  * To remove legacy support: Remove PlexApiLegacyController from this module.
  */
 @Module({
-  imports: [forwardRef(() => SettingsModule), forwardRef(() => MediaServerModule)],
+  imports: [
+    forwardRef(() => SettingsModule),
+    forwardRef(() => MediaServerModule),
+  ],
   controllers: [PlexApiLegacyController],
   providers: [PlexApiService],
   exports: [PlexApiService],
