@@ -11,6 +11,7 @@ import {
   getItemsApi,
   getItemUpdateApi,
   getLibraryApi,
+  getPlaylistsApi,
   getSearchApi,
   getSystemApi,
   getTvShowsApi,
@@ -1094,6 +1095,24 @@ export class JellyfinAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to get Jellyfin playlists for library ${libraryId}`,
+        error,
+      );
+      return [];
+    }
+  }
+
+  async getPlaylistItems(playlistId: string): Promise<MediaItem[]> {
+    if (!this.api) return [];
+
+    try {
+      const response = await getPlaylistsApi(this.api).getPlaylistItems({
+        playlistId,
+      });
+
+      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+    } catch (error) {
+      this.logger.error(
+        `Failed to get Jellyfin playlist items for ${playlistId}`,
         error,
       );
       return [];

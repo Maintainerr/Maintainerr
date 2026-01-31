@@ -619,29 +619,33 @@ export class JellyfinGetterService {
     const playlists = await this.jellyfinAdapter.getPlaylists('');
     const matchingPlaylists: string[] = [];
 
-    // For shows, check all episodes
+    // Build set of IDs to match against playlist contents
+    const targetIds = new Set<string>();
+
     if (type === 'show' || type === 'season') {
+      // For shows/seasons: collect all episode IDs
       const seasons =
         type === 'season'
           ? [{ id: itemId }]
           : await this.jellyfinAdapter.getChildrenMetadata(itemId, 'season');
 
-      const episodeIds: string[] = [];
       for (const season of seasons) {
         const episodes = await this.jellyfinAdapter.getChildrenMetadata(
           season.id,
           'episode',
         );
-        episodeIds.push(...episodes.map((e) => e.id));
+        episodes.forEach((e) => targetIds.add(e.id));
       }
+    } else {
+      // For movies/episodes: just match the item itself
+      targetIds.add(itemId);
+    }
 
-      // Check each playlist for matching episodes
-      for (const playlist of playlists) {
-        // Note: Jellyfin SDK may not have a direct way to get playlist items
-        // This is a simplified implementation
-        if (!matchingPlaylists.includes(playlist.title)) {
-          matchingPlaylists.push(playlist.title);
-        }
+    // Check each playlist for matching items
+    for (const playlist of playlists) {
+      const items = await this.jellyfinAdapter.getPlaylistItems(playlist.id);
+      if (items.some((item) => targetIds.has(item.id))) {
+        matchingPlaylists.push(playlist.title);
       }
     }
 
