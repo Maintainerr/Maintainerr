@@ -1,4 +1,4 @@
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { MediaItemType } from '@maintainerr/contracts';
 import { ICollection } from '../../collections/interfaces/collection.interface';
 import { Notification } from '../../notifications/entities/notification.entities';
 import { RuleDto } from './rule.dto';
@@ -6,7 +6,7 @@ import { RuleDbDto } from './ruleDb.dto';
 
 export class RulesDto {
   id?: number;
-  libraryId: number;
+  libraryId: string;
   name: string;
   description: string;
   isActive?: boolean;
@@ -19,7 +19,7 @@ export class RulesDto {
   rules: RuleDto[] | RuleDbDto[];
   manualCollection?: boolean;
   manualCollectionName?: string;
-  dataType: EPlexDataType;
+  dataType: MediaItemType;
   tautulliWatchedPercentOverride?: number;
   notifications?: Notification[];
   radarrSettingsId?: number;

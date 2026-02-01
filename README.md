@@ -17,6 +17,10 @@
 <!-- License -->  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/maintainerr/maintainerr?style=flat"></picture>
 </p>
 
+<p>
+<b> THIS IS A DEVELOPMENT BRANCH, INTRODUCING JELLYFIN SUPPORT. YOU SHOULD NOT USE IT IN PRODUCTION. </b>
+</p>
+
 <b>Maintainerr</b> makes managing your media easy.
 
 - Do you hate being the janitor of your server?

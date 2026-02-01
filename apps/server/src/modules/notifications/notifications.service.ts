@@ -1,11 +1,15 @@
-import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
+import {
+  BasicResponseDto,
+  MaintainerrEvent,
+  MediaItem,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
-import { PlexMetadata } from '../api/plex-api/interfaces/media.interface';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
   CollectionMediaAddedDto,
   CollectionMediaHandledDto,
@@ -62,11 +66,15 @@ export class NotificationService {
     private readonly ruleGroupRepo: Repository<RuleGroup>,
     private readonly connection: DataSource,
     private readonly settings: SettingsService,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
     logger.setContext(NotificationService.name);
+  }
+
+  private async getMediaServer(): Promise<IMediaServerService> {
+    return this.mediaServerFactory.getService();
   }
 
   public registerAgents = (
@@ -597,7 +605,7 @@ export class NotificationService {
 
   public async handleNotification(
     type: NotificationType,
-    mediaItems?: { plexId: number }[],
+    mediaItems?: { mediaServerId: string }[],
     collectionName?: string,
     dayAmount?: number,
     agent?: NotificationAgent,
@@ -753,11 +761,12 @@ export class NotificationService {
 
   private async transformMessageContent(
     message: string,
-    items?: { plexId: number }[],
+    items?: { mediaServerId: string }[],
     collectionName?: string,
     dayAmount?: number,
   ): Promise<string> {
     try {
+      const mediaServer = await this.getMediaServer();
       if (items) {
         if (items.length > 1) {
           // if multiple items
@@ -765,7 +774,7 @@ export class NotificationService {
           let numUnknownItems = 0;
 
           for (const i of items) {
-            const item = await this.plexApi.getMetadata(i.plexId.toString());
+            const item = await mediaServer.getMetadata(i.mediaServerId);
 
             if (item) {
               titles.push(this.getTitle(item));
@@ -778,7 +787,7 @@ export class NotificationService {
             titles.push(
               `${numUnknownItems} item${
                 numUnknownItems > 1 ? 's' : ''
-              } that no longer exist${numUnknownItems > 1 ? '' : 's'} in Plex`,
+              } that no longer exist${numUnknownItems > 1 ? '' : 's'} in the media server`,
             );
           }
 
@@ -789,12 +798,12 @@ export class NotificationService {
           message = message.replace('{media_items}', result);
         } else {
           // if 1 item
-          const item = await this.plexApi.getMetadata(
-            items[0].plexId.toString(),
-          );
+          const item = await mediaServer.getMetadata(items[0].mediaServerId);
           message = message.replace(
             '{media_title}',
-            item ? this.getTitle(item) : '1 item that no longer exists in Plex',
+            item
+              ? this.getTitle(item)
+              : '1 item that no longer exists in the media server',
           );
         }
       }
@@ -814,10 +823,10 @@ export class NotificationService {
     }
   }
 
-  private getTitle(item: PlexMetadata): string {
-    return item.grandparentRatingKey
+  private getTitle(item: MediaItem): string {
+    return item.grandparentId
       ? `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`
-      : item.parentRatingKey
+      : item.parentId
         ? `${item.parentTitle} - season ${item.index}`
         : item.title;
   }

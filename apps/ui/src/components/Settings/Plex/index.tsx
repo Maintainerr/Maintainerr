@@ -287,7 +287,7 @@ const PlexSettings = () => {
           <Alert type="info" title="Settings successfully updated" />
         )}
 
-        {tokenValid ? (
+        {tokenValid || settings?.plex_auth_token ? (
           ''
         ) : (
           <Alert

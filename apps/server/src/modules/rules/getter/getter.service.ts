@@ -1,9 +1,12 @@
-import { RuleValueType } from '@maintainerr/contracts';
+import {
+  MediaItem,
+  MediaItemType,
+  RuleValueType,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { Application } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
+import { JellyfinGetterService } from './jellyfin-getter.service';
 import { JellyseerrGetterService } from './jellyseerr-getter.service';
 import { OverseerrGetterService } from './overseerr-getter.service';
 import { PlexGetterService } from './plex-getter.service';
@@ -20,17 +23,26 @@ export class ValueGetterService {
     private readonly overseerGetter: OverseerrGetterService,
     private readonly tautulliGetter: TautulliGetterService,
     private readonly jellyseerrGetter: JellyseerrGetterService,
+    private readonly jellyfinGetter: JellyfinGetterService,
   ) {}
 
   async get(
     [val1, val2]: [number, number],
-    libItem: PlexLibraryItem,
+    libItem: MediaItem,
     ruleGroup?: RulesDto,
-    dataType?: EPlexDataType,
+    dataType?: MediaItemType,
   ): Promise<RuleValueType> {
     switch (val1) {
       case Application.PLEX: {
         return await this.plexGetter.get(val2, libItem, dataType, ruleGroup);
+      }
+      case Application.JELLYFIN: {
+        return await this.jellyfinGetter.get(
+          val2,
+          libItem,
+          dataType,
+          ruleGroup,
+        );
       }
       case Application.RADARR: {
         return await this.radarrGetter.get(val2, libItem, ruleGroup);

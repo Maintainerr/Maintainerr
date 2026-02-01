@@ -9,7 +9,7 @@ export class RuleHandlerFailedDto {
 
 export class CollectionMediaHandledDto {
   constructor(
-    public mediaItems: { plexId: number }[],
+    public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier?: { type: string; value: number },
   ) {}
@@ -17,7 +17,7 @@ export class CollectionMediaHandledDto {
 
 export class CollectionMediaRemovedDto {
   constructor(
-    public mediaItems: { plexId: number }[],
+    public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
     public dayAmount?: number,
@@ -26,7 +26,7 @@ export class CollectionMediaRemovedDto {
 
 export class CollectionMediaAddedDto {
   constructor(
-    public mediaItems: { plexId: number }[],
+    public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
     public dayAmount?: number,
@@ -35,7 +35,7 @@ export class CollectionMediaAddedDto {
 
 export class CollectionHandlerFailedDto {
   constructor(
-    public mediaItems: { plexId: number }[],
+    public mediaItems: { mediaServerId: string }[],
     public collectionName?: string,
     public dayAmount?: number,
     public identifier?: { type: string; value: number },

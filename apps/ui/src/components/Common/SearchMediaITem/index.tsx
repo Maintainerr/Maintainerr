@@ -1,35 +1,40 @@
+import { type MediaItem, type MediaItemType } from '@maintainerr/contracts'
 import { SingleValue } from 'react-select'
 import AsyncSelect from 'react-select/async'
 import GetApiHandler from '../../../utils/ApiHandler'
-import { EPlexDataType } from '../../../utils/PlexDataType-enum'
-import { IPlexMetadata } from '../../Overview/Content'
 
 export interface IMediaOptions {
   id: string
   name: string
-  type: EPlexDataType
+  type: MediaItemType
 }
 
 interface ISearchMediaITem {
   onChange: (item: SingleValue<IMediaOptions>) => void
-  mediatype?: EPlexDataType
-  libraryId?: number
+  mediatype?: MediaItemType
+  libraryId?: string
 }
 
 const SearchMediaItem = (props: ISearchMediaITem) => {
   const loadData = async (query: string): Promise<IMediaOptions[]> => {
-    // load your data using query
+    // Validate libraryId before making API call
+    if (!props.libraryId) {
+      console.warn(
+        'SearchMediaItem: libraryId is required but was not provided',
+      )
+      return []
+    }
 
-    const resp: IPlexMetadata[] = await GetApiHandler(
-      `/plex/library/${props.libraryId}/content/search/${query}?type=${props.mediatype == EPlexDataType.MOVIES ? EPlexDataType.MOVIES : EPlexDataType.SHOWS}`,
+    const searchType = props.mediatype === 'movie' ? 'movie' : 'show'
+    const resp: MediaItem[] = await GetApiHandler(
+      `/media-server/library/${props.libraryId}/content/search/${query}?type=${searchType}`,
     )
-    //const resp: IPlexMetadata[] = await GetApiHandler(`/plex//search/${query}`)
     const output = resp.map((el) => {
       return {
-        id: el.ratingKey,
+        id: el.id,
         name: el.title,
-        type: el.type == 'movie' ? EPlexDataType.MOVIES : EPlexDataType.SHOWS,
-      } as unknown as IMediaOptions
+        type: el.type,
+      } as IMediaOptions
     })
 
     return output

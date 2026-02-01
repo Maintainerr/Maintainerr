@@ -1,16 +1,17 @@
 import { TrashIcon } from '@heroicons/react/solid'
+import {
+  Application,
+  type MediaItemType,
+  MediaType,
+  RulePossibility,
+  RulePossibilityTranslations,
+} from '@maintainerr/contracts'
 import { cloneDeep } from 'lodash-es'
 import { FormEvent, useEffect, useState } from 'react'
 import { IRule } from '../'
 import { useRuleConstants } from '../../../../../api/rules'
-import {
-  Application,
-  IProperty,
-  MediaType,
-  RulePossibility,
-  RulePossibilityTranslations,
-} from '../../../../../contexts/constants-context'
-import { EPlexDataType } from '../../../../../utils/PlexDataType-enum'
+import { IProperty } from '../../../../../contexts/constants-context'
+import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
 
 enum RuleType {
@@ -38,7 +39,7 @@ interface IRuleInput {
   id?: number
   tagId?: number
   mediaType?: MediaType
-  dataType?: EPlexDataType
+  dataType?: MediaItemType
   section?: number
   newlyAdded?: number[]
   editData?: { rule: IRule }
@@ -52,12 +53,14 @@ interface IRuleInput {
 
 /**
  * Helper function to determine if an application should be filtered out
- * based on server selection
+ * based on server selection and media server type
  */
 const shouldFilterApplication = (
   appId: number,
   radarrSettingsId: number | null | undefined,
   sonarrSettingsId: number | null | undefined,
+  isPlex: boolean,
+  isJellyfin: boolean,
 ): boolean => {
   // Filter out Radarr if no Radarr server is selected
   if (
@@ -71,6 +74,17 @@ const shouldFilterApplication = (
     appId === Application.SONARR &&
     (sonarrSettingsId === undefined || sonarrSettingsId === null)
   ) {
+    return true
+  }
+  // Filter out Plex/Tautulli if on Jellyfin
+  if (
+    isJellyfin &&
+    (appId === Application.PLEX || appId === Application.TAUTULLI)
+  ) {
+    return true
+  }
+  // Filter out Jellyfin if on Plex
+  if (isPlex && appId === Application.JELLYFIN) {
     return true
   }
   return false
@@ -90,6 +104,7 @@ const RuleInput = (props: IRuleInput) => {
   const [ruleType, setRuleType] = useState<RuleType>(RuleType.NUMBER)
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
+  const { isPlex, isJellyfin } = useMediaServerType()
 
   useEffect(() => {
     if (props.editData?.rule) {
@@ -270,7 +285,9 @@ const RuleInput = (props: IRuleInput) => {
     if (firstval) {
       const val = JSON.parse(firstval)
       const appId = val[0]
-      if (!apps?.[appId]?.props.find((el) => el.id == val[1])) {
+      // Find application by ID instead of using array index
+      const app = apps?.find((a) => a.id === appId)
+      if (!app?.props.find((el) => el.id === val[1])) {
         setFirstVal(undefined)
       }
     }
@@ -431,6 +448,8 @@ const RuleInput = (props: IRuleInput) => {
                     app.id,
                     props.radarrSettingsId,
                     props.sonarrSettingsId,
+                    isPlex,
+                    isJellyfin,
                   ),
               )
               .map((app) =>
@@ -531,6 +550,8 @@ const RuleInput = (props: IRuleInput) => {
                     app.id,
                     props.radarrSettingsId,
                     props.sonarrSettingsId,
+                    isPlex,
+                    isJellyfin,
                   ),
               )
               .map((app) => {

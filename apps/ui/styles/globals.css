@@ -87,6 +87,24 @@
     grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
   }
 
+  /* Media card hover effects - only on devices that support hover */
+  .media-card {
+    @apply scale-100 shadow ring-zinc-700;
+  }
+
+  @media (hover: hover) {
+    .media-card:hover {
+      @apply scale-105 shadow-lg ring-zinc-500;
+    }
+  }
+
+  /* Touch devices - show detail on tap via state */
+  @media (hover: none) {
+    .media-card.show-detail {
+      @apply scale-105 shadow-lg ring-zinc-500;
+    }
+  }
+
   .collection {
     @apply border-r border-zinc-700;
   }

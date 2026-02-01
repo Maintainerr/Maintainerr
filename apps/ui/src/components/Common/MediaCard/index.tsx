@@ -1,7 +1,7 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
+import { MediaItemType } from '@maintainerr/contracts'
 import React, { memo, useEffect, useState } from 'react'
-import { useIsTouch } from '../../../hooks/useIsTouch'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
@@ -9,7 +9,7 @@ import Button from '../Button'
 import MediaModalContent from './MediaModal'
 
 interface IMediaCard {
-  id: number
+  id: number | string
   image?: string
   summary?: string
   year?: string
@@ -18,8 +18,8 @@ interface IMediaCard {
   userScore: number
   inProgress?: boolean
   tmdbid?: string
-  libraryId?: number
-  type?: 1 | 2 | 3 | 4
+  libraryId?: string
+  type?: MediaItemType
   collectionPage: boolean
   daysLeft?: number
   exclusionId?: number
@@ -47,7 +47,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   isManual = false,
   onRemove = () => {},
 }) => {
-  const isTouch = useIsTouch()
   const [showDetail, setShowDetail] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [excludeModal, setExcludeModal] = useState(false)
@@ -72,7 +71,7 @@ const MediaCard: React.FC<IMediaCard> = ({
 
   const getExclusions = () => {
     if (!collectionPage) {
-      GetApiHandler(`/rules/exclusion?plexId=${id}`).then((resp: []) =>
+      GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then((resp: []) =>
         resp.length > 0 ? setHasExclusion(true) : setHasExclusion(false),
       )
     }
@@ -87,7 +86,7 @@ const MediaCard: React.FC<IMediaCard> = ({
     <div className={'w-full'}>
       {excludeModal ? (
         <AddModal
-          plexId={id}
+          mediaServerId={id}
           {...(libraryId ? { libraryId: libraryId } : {})}
           {...(type ? { type: type } : {})}
           onSubmit={() => {
@@ -100,7 +99,7 @@ const MediaCard: React.FC<IMediaCard> = ({
 
       {addModal ? (
         <AddModal
-          plexId={id}
+          mediaServerId={id}
           {...(libraryId ? { libraryId: libraryId } : {})}
           {...(type ? { type: type } : {})}
           onSubmit={() => {
@@ -111,14 +110,16 @@ const MediaCard: React.FC<IMediaCard> = ({
         />
       ) : undefined}
       <div
-        className={`relative transform-gpu cursor-default overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${
-          showDetail
-            ? 'scale-105 shadow-lg ring-zinc-500'
-            : 'scale-100 shadow ring-zinc-700'
-        }`}
-        onMouseEnter={() => !isTouch && setShowDetail(true)}
+        className={`media-card relative transform-gpu cursor-pointer overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${showDetail ? 'show-detail' : ''}`}
+        onMouseEnter={() => setShowDetail(true)}
         onMouseLeave={() => setShowDetail(false)}
-        onClick={() => showDetail && openMediaModal()}
+        onClick={() => {
+          if (showDetail) {
+            openMediaModal()
+          } else {
+            setShowDetail(true) // First tap on mobile shows buttons
+          }
+        }}
         role="link"
         tabIndex={0}
       >
@@ -312,7 +313,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                     </div>
                   ) : (
                     <RemoveFromCollectionBtn
-                      plexId={id}
+                      mediaServerId={id}
                       popup={exclusionType && exclusionType === 'global'}
                       onRemove={() => onRemove(id.toString())}
                       collectionId={collectionId}
