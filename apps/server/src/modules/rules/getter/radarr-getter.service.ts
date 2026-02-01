@@ -36,6 +36,29 @@ export class RadarrGetterService {
     try {
       const prop = this.plexProperties.find((el) => el.id === id);
 
+      // ARR diskspace check doesn't require a movie lookup - handle early
+      if (
+        prop?.name === 'diskspace_remaining_mb' ||
+        prop?.name === 'diskspace_total_mb'
+      ) {
+        const radarrApiClient = await this.servarrService.getRadarrApiClient(
+          ruleGroup.collection.radarrSettingsId,
+        );
+        const diskspace = await radarrApiClient.getDiskspace();
+        if (!diskspace || diskspace.length === 0) return null;
+        const totalFree = diskspace.reduce(
+          (acc, d) => acc + (d.freeSpace ?? 0),
+          0,
+        );
+        const totalSpace = diskspace.reduce(
+          (acc, d) => acc + (d.totalSpace ?? 0),
+          0,
+        );
+        return prop.name === 'diskspace_remaining_mb'
+          ? Math.round(totalFree / 1048576)
+          : Math.round(totalSpace / 1048576);
+      }
+
       const tmdbIds = libItem.providerIds?.tmdb || [];
 
       if (tmdbIds.length === 0) {
