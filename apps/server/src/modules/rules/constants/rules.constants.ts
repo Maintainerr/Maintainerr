@@ -603,14 +603,14 @@ export class RuleConstants {
         {
           id: 28,
           name: 'diskspace_remaining_mb',
-          humanName: 'Radarr - Remaining disk space (MB)',
+          humanName: 'Remaining disk space (MB)',
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
         {
           id: 29,
           name: 'diskspace_total_mb',
-          humanName: 'Radarr - Total disk space (MB)',
+          humanName: 'Total disk space (MB)',
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
@@ -640,14 +640,14 @@ export class RuleConstants {
         {
           id: 28,
           name: 'diskspace_remaining_mb',
-          humanName: 'Sonarr - Remaining disk space (MB)',
+          humanName: 'Remaining disk space (MB)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
         },
         {
           id: 29,
           name: 'diskspace_total_mb',
-          humanName: 'Sonarr - Total disk space (MB)',
+          humanName: 'Total disk space (MB)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
         },
