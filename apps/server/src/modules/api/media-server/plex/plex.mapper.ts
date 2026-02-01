@@ -344,6 +344,8 @@ export class PlexMapper {
       videoCodec: m.videoCodec,
       videoResolution: m.videoResolution,
       container: m.container,
+      sizeBytes:
+        m.Part?.reduce((sum, p) => sum + (p.size || 0), 0) || undefined,
     }));
   }
 

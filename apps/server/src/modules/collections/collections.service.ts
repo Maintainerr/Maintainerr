@@ -846,6 +846,10 @@ export class CollectionsService {
             );
           }
         }
+
+        // Update cached total size (non-blocking)
+        this.updateCollectionTotalSize(collectionDbId).catch(() => {});
+
         return collection;
       } else {
         this.logger.warn("Collection doesn't exist.");
@@ -918,6 +922,10 @@ export class CollectionsService {
           }
         }
       }
+
+      // Update cached total size (non-blocking)
+      this.updateCollectionTotalSize(collectionDbId).catch(() => {});
+
       return collection;
     } catch (err) {
       this.logger.warn(
@@ -1452,6 +1460,108 @@ export class CollectionsService {
       );
       this.logger.debug(e);
     }
+  }
+
+  /**
+   * Calculate and cache the total file size (in bytes) for a collection.
+   * Sums sizeBytes from mediaSources on each media item.
+   * For show/season items without direct file sizes, traverses children.
+   */
+  async updateCollectionTotalSize(collectionId: number): Promise<void> {
+    try {
+      const collection = await this.collectionRepo.findOne({
+        where: { id: collectionId },
+      });
+      if (!collection) return;
+
+      const mediaServer = await this.getMediaServer();
+      const collectionMedia = await this.CollectionMediaRepo.find({
+        where: { collectionId },
+      });
+
+      if (collectionMedia.length === 0) {
+        await this.collectionRepo.update(collectionId, {
+          totalSizeBytes: null,
+        });
+        return;
+      }
+
+      let totalBytes = 0;
+      let hasAnySize = false;
+
+      for (const media of collectionMedia) {
+        try {
+          const metadata = await mediaServer.getMetadata(media.mediaServerId);
+          if (!metadata) continue;
+
+          const itemSize = this.sumMediaSourceSizes(metadata);
+
+          if (itemSize > 0) {
+            totalBytes += itemSize;
+            hasAnySize = true;
+          } else if (
+            metadata.type === 'show' ||
+            metadata.type === 'season'
+          ) {
+            // Show/season items may not have file sizes at the top level.
+            // Traverse children to sum episode-level sizes.
+            const childSize = await this.getChildrenTotalSize(
+              mediaServer,
+              metadata,
+            );
+            if (childSize > 0) {
+              totalBytes += childSize;
+              hasAnySize = true;
+            }
+          }
+        } catch (e) {
+          this.logger.debug(
+            `Failed to get size for media ${media.mediaServerId}: ${e.message}`,
+          );
+        }
+      }
+
+      await this.collectionRepo.update(collectionId, {
+        totalSizeBytes: hasAnySize ? totalBytes : null,
+      });
+    } catch (e) {
+      this.logger.debug(
+        `Failed to update total size for collection ${collectionId}: ${e.message}`,
+      );
+    }
+  }
+
+  /**
+   * Sum sizeBytes across all mediaSources on a MediaItem.
+   */
+  private sumMediaSourceSizes(item: MediaItem): number {
+    if (!item.mediaSources?.length) return 0;
+    return item.mediaSources.reduce(
+      (sum, source) => sum + (source.sizeBytes || 0),
+      0,
+    );
+  }
+
+  /**
+   * Recursively sum file sizes for child items (seasons → episodes).
+   */
+  private async getChildrenTotalSize(
+    mediaServer: IMediaServerService,
+    parent: MediaItem,
+  ): Promise<number> {
+    let total = 0;
+
+    const children = await mediaServer.getChildrenMetadata(parent.id);
+    for (const child of children) {
+      const childSize = this.sumMediaSourceSizes(child);
+      if (childSize > 0) {
+        total += childSize;
+      } else if (child.type === 'show' || child.type === 'season') {
+        total += await this.getChildrenTotalSize(mediaServer, child);
+      }
+    }
+
+    return total;
   }
 
   private infoLogger(message: string) {

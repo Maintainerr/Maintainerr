@@ -70,6 +70,7 @@ export const createCollection = (
     visibleOnRecommended: false,
     tautulliWatchedPercentOverride: undefined,
     sortTitle: undefined,
+    totalSizeBytes: null,
     ...properties,
   };
 };

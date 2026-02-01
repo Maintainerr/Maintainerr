@@ -6,6 +6,15 @@ interface ICollectionItem {
   onClick?: (collection: ICollection) => void
 }
 
+function formatSize(bytes: number | null | undefined): string {
+  if (bytes == null) return 'N/A'
+  const gb = bytes / 1073741824
+  if (gb >= 1) return `${gb.toFixed(1)} GB`
+  const mb = bytes / 1048576
+  if (mb >= 1) return `${mb.toFixed(0)} MB`
+  return '< 1 MB'
+}
+
 const CollectionItem = (props: ICollectionItem) => {
   const { data: libraries } = useMediaServerLibraries()
 
@@ -70,6 +79,13 @@ const CollectionItem = (props: ICollectionItem) => {
                 {`${
                   props.collection.media ? props.collection.media.length : 0
                 }`}
+              </p>
+            </div>
+
+            <div className="mr-5 sm:mr-0">
+              <p className="font-bold">Size</p>
+              <p className="text-amber-500">
+                {formatSize(props.collection.totalSizeBytes)}
               </p>
             </div>
           </div>
