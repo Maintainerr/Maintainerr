@@ -64,12 +64,6 @@ export class SonarrGetterService {
         prop?.name === 'diskspace_remaining_mb' ||
         prop?.name === 'diskspace_total_mb'
       ) {
-        if (!ruleGroup?.collection?.sonarrSettingsId) {
-          this.logger.error(
-            `No Sonarr server configured for ${ruleGroup?.collection?.title}`,
-          );
-          return null;
-        }
         const sonarrApiClient = await this.servarrService.getSonarrApiClient(
           ruleGroup.collection.sonarrSettingsId,
         );

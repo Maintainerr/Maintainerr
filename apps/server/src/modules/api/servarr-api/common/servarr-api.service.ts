@@ -92,6 +92,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       return data;
     } catch (e) {
       this.logger.warn(`Failed to retrieve disk space: ${e.message}`);
+      return [];
     }
   };
 

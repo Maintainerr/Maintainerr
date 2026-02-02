@@ -601,14 +601,14 @@ export class RuleConstants {
           type: RuleType.NUMBER,
         },
         {
-          id: 28,
+          id: 50,
           name: 'diskspace_remaining_mb',
           humanName: 'Remaining disk space (MB)',
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
         {
-          id: 29,
+          id: 51,
           name: 'diskspace_total_mb',
           humanName: 'Total disk space (MB)',
           mediaType: MediaType.MOVIE,
@@ -638,14 +638,14 @@ export class RuleConstants {
           showType: ['show', 'season', 'episode'],
         },
         {
-          id: 28,
+          id: 50,
           name: 'diskspace_remaining_mb',
           humanName: 'Remaining disk space (MB)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
         },
         {
-          id: 29,
+          id: 51,
           name: 'diskspace_total_mb',
           humanName: 'Total disk space (MB)',
           mediaType: MediaType.SHOW,
