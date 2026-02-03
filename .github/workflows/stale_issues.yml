@@ -5,7 +5,15 @@ on:
   workflow_dispatch:
 
 jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    with:
+      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      allowed: "ydkmlt84"
+
   close-issues:
+    needs: guard_manual_run
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -15,7 +23,7 @@ jobs:
           days-before-issue-stale: 30
           days-before-issue-close: 14
           exempt-issue-labels: never-stale,bug,enhancement
-          exempt-issue-assignees: jorenn92,ydkmlt84,benscobie
+          exempt-issue-assignees: jorenn92,ydkmlt84
           stale-issue-label: "stale"
           close-issue-label: "stale-closed"
           stale-issue-message: "This issue has been marked stale because it has been 30 days with no activity."

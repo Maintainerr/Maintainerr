@@ -10,15 +10,23 @@ on:
       with-docker-images:
         type: boolean
         description: Build and push docker images
-        default: true
+        default: false
 
 env:
-  DOCKERHUB_SLUG: jorenn92/maintainerr
+  DOCKERHUB_SLUG: maintainerr/maintainerr
   GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    with:
+      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      allowed: "ydkmlt84"
+
   semantic-release:
     name: Tag and release latest version
+    needs: guard_manual_run
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -42,6 +50,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           if [ "${{ github.event.inputs.dry-run-semantic-release }}" == "true" ]; then
+          echo "Dry run enabled."
           npx semantic-release --dry-run
           else
           npx semantic-release
@@ -191,7 +200,7 @@ jobs:
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
-  
+
   after-effects:
     name: Actions taken after a release.
     runs-on: ubuntu-latest

@@ -3,15 +3,15 @@
 </p>
 
 <p align="center" >
-  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/maintainerr/maintainerr/.github%2Fworkflows%2Fbuild.yml?branch=main&style=flat&logo=github&label=Latest%20Build"></picture>
-  <a href="https://github.com/maintainerr/Maintainerr/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Latest%20Release"></a>
-  <picture><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/maintainerr/maintainerr/latest?style=flat&logo=github&logoColor=white"></picture>
-  <picture><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Stars"></picture>
-  <a href="https://hub.docker.com/r/jorenn92/maintainerr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/jorenn92/maintainerr?style=flat&logo=docker&logoColor=white&label=Docker%20Pulls"></a>
-  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues-closed/maintainerr/maintainerr?style=flat&logo=github&logoColor=white"></picture>
-  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/maintainerr/maintainerr?style=flat&logo=github&logoColor=white"></picture>
-  <a href="https://ko-fi.com/maintainerr_app"><img alt="Static Badge" src="https://img.shields.io/badge/DONATE-kofi-red?style=flat&logo=ko-fi&logoColor=white"></a>
-  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/maintainerr/maintainerr?style=flat"></picture>
+<!-- Latest Build -->  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/maintainerr/maintainerr/.github%2Fworkflows%2Fbuild.yml?branch=main&style=flat&logo=github&label=Latest%20Build"></picture>
+<!-- Latest Release -->  <a href="https://github.com/maintainerr/Maintainerr/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Latest%20Release"></a>
+<!-- Commits -->  <picture><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/maintainerr/maintainerr/latest?style=flat&logo=github&logoColor=white"></picture>
+<!-- Github Stars -->  <picture><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Stars"></picture>
+<!-- Docker Pulls -->  <a href="https://hub.docker.com/r/maintainerr/maintainerr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/maintainerr/maintainerr?style=flat&logo=docker&logoColor=white&label=Docker%20Pulls"></a>
+<!-- Issues Closed -->  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues-closed/maintainerr/maintainerr?style=flat&logo=github&logoColor=white"></picture>
+<!-- Issues Open -->  <picture><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/maintainerr/maintainerr?style=flat&logo=github&logoColor=white"></picture>
+<!-- Open Collective Donate -->  <a href="https://opencollective.com/maintainerr"><img alt="Static Badge" src="https://img.shields.io/badge/DONATE-opencollective-red?style=flat&logo=opencollective&logoColor=white"></a>
+<!-- License -->  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/maintainerr/maintainerr?style=flat"></picture>
 </p>
 
 <b>Maintainerr</b> makes managing your media easy.
@@ -29,7 +29,7 @@ It's a one-stop-shop for handling those outlying shows and movies that take up p
 
 # Support
 
-<a href="https://discord.maintainerr.info"><img alt="Discord" src="https://img.shields.io/discord/1152219249549512724?style=flat&logo=discord&logoColor=white&label=Maintainerr&color=orange"></a>
+<a href="https://discord.maintainerr.info"><img alt="Discord" src="https://img.shields.io/discord/1152219249549512724?style=flat&logo=discord&logoColor=white&label=Discord&color=orange"></a>
 
 <a href="https://github.com/maintainerr/maintainerr"><img alt="Github" src="https://img.shields.io/github/stars/maintainerr?style=flat&logo=github&label=Github&color=orange&link=https%3A%2F%2Fgithub.com%2Fmaintainerr%2Fmaintainerr"></a>
 
@@ -50,7 +50,7 @@ docker run -d \
 -u 1000:1000 \
 -p 6246:6246 \
 --restart unless-stopped \
-ghcr.io/maintainerr/maintainerr:latest
+maintainerr/maintainerr:latest
 ```
 
 Docker-compose:
@@ -60,7 +60,7 @@ version: '3'
 
 services:
     maintainerr:
-        image: ghcr.io/maintainerr/maintainerr:latest # or jorenn92/maintainerr:latest
+        image: maintainerr/maintainerr:latest # or ghcr.io/maintainerr/maintainerr:latest
         container_name: maintainerr
         user: 1000:1000
         volumes:

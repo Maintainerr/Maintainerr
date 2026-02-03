@@ -1,8 +1,8 @@
 // After each new entity, generate migration
-yarn migration:generate src/database/migrations/<migr_name>
+yarn migration:generate apps/server/src/database/migrations/<migr_name>
 
 // Run migrations
-yarn migration:run
+yarn workspace @maintainerr/server migration:run
 
 // Revert migrations
-yarn migration:revert
+yarn workspace @maintainerr/server migration:revert

@@ -12,8 +12,16 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 
 jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    with:
+      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      allowed: "ydkmlt84"
+
   # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
   copilot-setup-steps:
+    needs: guard_manual_run
     runs-on: ubuntu-latest
 
     # Set the permissions to the lowest permissions possible needed for your steps.

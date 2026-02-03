@@ -257,20 +257,11 @@ const AboutSettings = () => {
               <div className="form-input-field font-bold text-amber-600">
                 <a
                   className="pr-2 underline hover:text-amber-800"
-                  href="https://github.com/sponsors/jorenn92"
+                  href="https://opencollective.com/maintainerr"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  GitHub Sponsors
-                </a>
-                <p className="pr-2 !no-underline">or</p>
-                <a
-                  className="pr-2 underline hover:text-amber-800"
-                  href="https://ko-fi.com/maintainerr_app"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Ko-fi
+                  OpenCollective
                 </a>
               </div>
             </div>

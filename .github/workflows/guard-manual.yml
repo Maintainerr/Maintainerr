@@ -1,0 +1,41 @@
+name: Guard Manual Runs
+
+on:
+  workflow_call:
+    inputs:
+      is_manual:
+        type: boolean
+        required: true
+      actor:
+        type: string
+        required: true
+      allowed:
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check actor
+        if: inputs.is_manual
+        shell: bash
+        run: |
+          ALLOWED_RAW="${{ inputs.allowed }}"
+          IFS=',' read -r -a ALLOWED <<< "$ALLOWED_RAW"
+          ACTOR="${{ inputs.actor }}"
+
+          for user in "${ALLOWED[@]}"; do
+            if [ "$ACTOR" == "$user" ]; then
+              echo "::notice::Manual workflow authorized for ${ACTOR}"
+              exit 0
+            fi
+          done
+
+          echo "::error title=Unauthorized manual workflow run::User '${ACTOR}' is not allowed to run this workflow manually. Allowed: ydkmlt84."
+          exit 1
+      - name: Skip check for non-manual runs
+        if: ${{ !inputs.is_manual }}
+        run: echo "Non-manual run; skipping manual trigger authorization check."

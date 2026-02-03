@@ -14,12 +14,20 @@ permissions:
   packages: write
 
 env:
-  DOCKERHUB_SLUG: jorenn92/maintainerr
+  DOCKERHUB_SLUG: maintainerr/maintainerr
   GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    with:
+      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      allowed: "ydkmlt84"
+
   build_docker_image:
     name: Build ${{ matrix.platform }}
+    needs: guard_manual_run
     strategy:
       fail-fast: false
       matrix:
