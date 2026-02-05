@@ -3130,7 +3130,7 @@ __metadata:
     "@tanstack/react-query": "npm:^5.90.20"
     "@types/lodash-es": "npm:^4.17.12"
     "@types/node": "npm:^22"
-    "@types/react": "npm:^19.2.11"
+    "@types/react": "npm:^19.2.13"
     "@types/react-dom": "npm:^19.2.3"
     "@typescript-eslint/eslint-plugin": "npm:^8.54.0"
     "@typescript-eslint/parser": "npm:^8.54.0"
@@ -5689,12 +5689,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19.2.11":
-  version: 19.2.11
-  resolution: "@types/react@npm:19.2.11"
+"@types/react@npm:^19.2.13":
+  version: 19.2.13
+  resolution: "@types/react@npm:19.2.13"
   dependencies:
     csstype: "npm:^3.2.2"
-  checksum: 10c0/a02aa87853fa6ef82353dd58803f18744e367e05760845be9a35f9771031fb81077ef05fb5ef3e9d7bbd91d3f8394b47106a18a833ddfed81e6fbf0be55a3544
+  checksum: 10c0/e512dc53b805b9066f5c6ad42944372e1204290d618dbaec634d8bbd80d3aadcc1b8cdd7251329936bbdafae0425c02f531083213473bb370df903f20bb66e91
   languageName: node
   linkType: hard
 
