@@ -45,7 +45,7 @@
     "http-terminator": "^3.2.0",
     "lodash": "^4.17.23",
     "mime-types": "^3.0.2",
-    "nestjs-zod": "^5.0.1",
+    "nestjs-zod": "^5.1.1",
     "node-cache": "^5.1.2",
     "nodemailer": "7.0.13",
     "octokit": "^3.2.2",
