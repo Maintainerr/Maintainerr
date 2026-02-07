@@ -33,6 +33,7 @@ interface iRuleCreator {
   onCancel: () => void
   radarrSettingsId?: number | null
   sonarrSettingsId?: number | null
+  pathSelectionEnabled?: boolean
 }
 
 const calculateRuleAmount = (
@@ -254,6 +255,9 @@ const RuleCreator = (props: iRuleCreator) => {
                         dataType={props.dataType}
                         radarrSettingsId={props.radarrSettingsId}
                         sonarrSettingsId={props.sonarrSettingsId}
+                        pathSelectionEnabled={
+                          props.pathSelectionEnabled
+                        }
                         onCommit={ruleCommited}
                         onIncomplete={ruleOmitted}
                         onDelete={ruleDeleted}

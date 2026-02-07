@@ -129,6 +129,10 @@ const OverviewContent = (props: IOverviewContent) => {
     return undefined
   }
 
+  const getCollectionMediaSize = (plexId: number) => {
+    return props.collectionInfo?.find((colEl) => colEl.plexId === +plexId)?.size
+  }
+
   if (props.loading) {
     return <LoadingSpinner />
   }
@@ -176,6 +180,11 @@ const OverviewContent = (props: IOverviewContent) => {
                       ? 'season'
                       : 'episode'
               }
+              mediaTypeSubLabel={
+                el.type === 'season' && el.index !== undefined
+                  ? `${el.index}`
+                  : undefined
+              }
               title={
                 el.grandparentTitle
                   ? el.grandparentTitle
@@ -207,6 +216,7 @@ const OverviewContent = (props: IOverviewContent) => {
               onRemove={props.onRemove}
               collectionId={props.collectionId}
               isManual={el.maintainerrIsManual ? el.maintainerrIsManual : false}
+              collectionMediaSize={getCollectionMediaSize(+el.ratingKey)}
               {...(props.collectionInfo
                 ? {
                     daysLeft: getDaysLeft(+el.ratingKey),

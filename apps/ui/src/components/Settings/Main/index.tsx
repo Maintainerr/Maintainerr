@@ -1,8 +1,13 @@
-import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
+import {
+  ClipboardCopyIcon,
+  RefreshIcon,
+  SaveIcon,
+} from '@heroicons/react/solid'
+import axios from 'axios'
 import React, { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
-import GetApiHandler from '../../../utils/ApiHandler'
+import GetApiHandler, { API_BASE_PATH } from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
@@ -11,6 +16,7 @@ const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
   const apiKeyRef = useRef<HTMLInputElement>(null)
   const [missingValuesError, setMissingValuesError] = useState<boolean>()
+  const [downloadingDb, setDownloadingDb] = useState(false)
   const { settings } = useSettingsOutletContext()
   const {
     mutateAsync: updateSettings,
@@ -39,6 +45,30 @@ const MainSettings = () => {
     await updateSettings({
       apikey: key,
     })
+  }
+
+  const downloadDatabase = async () => {
+    setDownloadingDb(true)
+    try {
+      const response = await axios.get(
+        `${API_BASE_PATH}/api/settings/database/download`,
+        { responseType: 'blob' },
+      )
+
+      const blob = new Blob([response.data], {
+        type: 'application/octet-stream',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'maintainerr.sqlite'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } finally {
+      setDownloadingDb(false)
+    }
   }
 
   return (
@@ -105,7 +135,22 @@ const MainSettings = () => {
               <div className="flex justify-end">
                 <div className="flex w-full">
                   <span className="mr-auto flex rounded-md shadow-sm">
-                    <DocsButton />
+                    <div className="flex gap-2">
+                      <DocsButton />
+                      <Button
+                        buttonType="default"
+                        type="button"
+                        disabled={downloadingDb}
+                        onClick={downloadDatabase}
+                      >
+                        <ClipboardCopyIcon />
+                        <span>
+                          {downloadingDb
+                            ? 'Downloading...'
+                            : 'Download Database'}
+                        </span>
+                      </Button>
+                    </div>
                   </span>
                   <span className="ml-auto flex rounded-md shadow-sm">
                     <Button

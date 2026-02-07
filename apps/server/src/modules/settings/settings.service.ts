@@ -9,6 +9,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
 import { randomUUID } from 'crypto';
+import { existsSync } from 'fs';
+import path from 'path';
 import { Repository } from 'typeorm';
 import { BasicResponseDto } from '../api/external-api/dto/basic-response.dto';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
@@ -22,12 +24,14 @@ import {
   DeleteRadarrSettingResponseDto,
   RadarrSettingRawDto,
   RadarrSettingResponseDto,
+  RadarrSettingTestResponseDto,
 } from "./dto's/radarr-setting.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import {
   DeleteSonarrSettingResponseDto,
   SonarrSettingRawDto,
   SonarrSettingResponseDto,
+  SonarrSettingTestResponseDto,
 } from "./dto's/sonarr-setting.dto";
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
@@ -689,9 +693,56 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  private uniqueFolderPaths(paths: Array<string | undefined | null>): string[] {
+    return Array.from(
+      new Set(
+        paths
+          .filter((p): p is string => typeof p === 'string')
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0),
+      ),
+    );
+  }
+
+  private getUniqueRootFolderPaths(
+    rootFolders: Array<{ path: string }> = [],
+  ): string[] {
+    if (!rootFolders?.length) {
+      return [];
+    }
+
+    return this.uniqueFolderPaths(
+      rootFolders.map((rootFolder) => rootFolder.path),
+    );
+  }
+
+  public async getRadarrDiskPaths(
+    id: number,
+  ): Promise<
+    { status: 'OK'; code: 1; message: string; data: string[] } | BasicResponseDto
+  > {
+    try {
+      const apiClient = await this.servarr.getRadarrApiClient(id);
+      const diskSpace = await apiClient.getDiskSpace();
+      const folderPaths = this.uniqueFolderPaths(
+        diskSpace?.map((x) => x.path) ?? [],
+      );
+
+      return {
+        status: 'OK',
+        code: 1,
+        message: 'Success',
+        data: folderPaths,
+      };
+    } catch (e) {
+      this.logger.debug(e);
+      return { status: 'NOK', code: 0, message: 'Failure' };
+    }
+  }
+
   public async testRadarr(
     id: number | RadarrSettingRawDto,
-  ): Promise<BasicResponseDto> {
+  ): Promise<RadarrSettingTestResponseDto> {
     try {
       const apiClient = await this.servarr.getRadarrApiClient(id);
 
@@ -704,9 +755,58 @@ export class SettingsService implements SettingDto {
           message: `Unexpected application name returned: ${resp.appName}`,
         };
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+
+      if (!resp?.version) {
+        return { status: 'NOK', code: 0, message: 'Failure' };
+      }
+
+      const [rootFolders, diskSpace] = await Promise.all([
+        apiClient.getRootFolders(),
+        apiClient.getDiskSpace(),
+      ]);
+
+      const folderPaths = this.getUniqueRootFolderPaths(rootFolders);
+
+      return {
+        status: 'OK',
+        code: 1,
+        message: resp.version,
+        data: {
+          version: resp.version,
+          rootFolders: folderPaths,
+          diskSpace:
+            diskSpace?.map((x) => ({
+              path: x.path,
+              label: x.label,
+              freeSpace: x.freeSpace,
+              totalSpace: x.totalSpace,
+            })) ?? [],
+        },
+      };
+    } catch (e) {
+      this.logger.debug(e);
+      return { status: 'NOK', code: 0, message: 'Failure' };
+    }
+  }
+
+  public async getSonarrDiskPaths(
+    id: number,
+  ): Promise<
+    { status: 'OK'; code: 1; message: string; data: string[] } | BasicResponseDto
+  > {
+    try {
+      const apiClient = await this.servarr.getSonarrApiClient(id);
+      const diskSpace = await apiClient.getDiskSpace();
+      const folderPaths = this.uniqueFolderPaths(
+        diskSpace?.map((x) => x.path) ?? [],
+      );
+
+      return {
+        status: 'OK',
+        code: 1,
+        message: 'Success',
+        data: folderPaths,
+      };
     } catch (e) {
       this.logger.debug(e);
       return { status: 'NOK', code: 0, message: 'Failure' };
@@ -715,7 +815,7 @@ export class SettingsService implements SettingDto {
 
   public async testSonarr(
     id: number | SonarrSettingRawDto,
-  ): Promise<BasicResponseDto> {
+  ): Promise<SonarrSettingTestResponseDto> {
     try {
       const apiClient = await this.servarr.getSonarrApiClient(id);
 
@@ -728,9 +828,34 @@ export class SettingsService implements SettingDto {
           message: `Unexpected application name returned: ${resp.appName}`,
         };
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+
+      if (!resp?.version) {
+        return { status: 'NOK', code: 0, message: 'Failure' };
+      }
+
+      const [rootFolders, diskSpace] = await Promise.all([
+        apiClient.getRootFolders(),
+        apiClient.getDiskSpace(),
+      ]);
+
+      const folderPaths = this.getUniqueRootFolderPaths(rootFolders);
+
+      return {
+        status: 'OK',
+        code: 1,
+        message: resp.version,
+        data: {
+          version: resp.version,
+          rootFolders: folderPaths,
+          diskSpace:
+            diskSpace?.map((x) => ({
+              path: x.path,
+              label: x.label,
+              freeSpace: x.freeSpace,
+              totalSpace: x.totalSpace,
+            })) ?? [],
+        },
+      };
     } catch (e) {
       this.logger.debug(e);
       return { status: 'NOK', code: 0, message: 'Failure' };
@@ -848,5 +973,18 @@ export class SettingsService implements SettingDto {
 
   public async getPlexServers() {
     return await this.plexApi.getAvailableServers();
+  }
+
+  public getDatabaseFilePath(): string | null {
+    const dbPath =
+      process.env.NODE_ENV === 'production'
+        ? '/opt/data/maintainerr.sqlite'
+        : path.join(__dirname, '../../../../../data/maintainerr.sqlite');
+
+    if (!existsSync(dbPath)) {
+      return null;
+    }
+
+    return dbPath;
   }
 }

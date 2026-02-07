@@ -10,13 +10,13 @@ export interface IMediaOptions {
   type: EPlexDataType
 }
 
-interface ISearchMediaITem {
+interface ISearchMediaItem {
   onChange: (item: SingleValue<IMediaOptions>) => void
   mediatype?: EPlexDataType
   libraryId?: number
 }
 
-const SearchMediaItem = (props: ISearchMediaITem) => {
+const SearchMediaItem = (props: ISearchMediaItem) => {
   const loadData = async (query: string): Promise<IMediaOptions[]> => {
     // load your data using query
 

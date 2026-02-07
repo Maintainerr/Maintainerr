@@ -528,6 +528,101 @@ describe('SonarrGetterService', () => {
     });
   });
 
+  describe('spaceAvailableGib', () => {
+    it('should return total available free space in GiB for all diskspace entries when none are selected', async () => {
+      const collectionMedia = createCollectionMedia(EPlexDataType.SHOWS);
+      collectionMedia.collection.sonarrSettingsId = 1;
+      collectionMedia.collection.selectedPaths = [];
+
+      const mockedSonarrApi = mockSonarrApi();
+      jest.spyOn(mockedSonarrApi, 'getDiskSpace').mockResolvedValue([
+        {
+          path: '/mnt/storage-a',
+          freeSpace: 1024 * 1024 * 1024,
+          totalSpace: 0,
+        },
+        {
+          path: '/mnt/storage-b',
+          freeSpace: 2 * 1024 * 1024 * 1024,
+          totalSpace: 0,
+        },
+      ]);
+
+      const response = await sonarrGetterService.get(
+        28,
+        createPlexLibraryItem('show'),
+        EPlexDataType.SHOWS,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.SHOWS,
+        }),
+      );
+
+      expect(response).toBe(3);
+    });
+
+    it('should filter by selected disk paths and return total matching free space in GiB', async () => {
+      const collectionMedia = createCollectionMedia(EPlexDataType.EPISODES);
+      collectionMedia.collection.sonarrSettingsId = 1;
+      collectionMedia.collection.selectedPaths = [
+        '/mnt/storage-a',
+        '/mnt/storage-b',
+      ];
+
+      const mockedSonarrApi = mockSonarrApi();
+      jest.spyOn(mockedSonarrApi, 'getDiskSpace').mockResolvedValue([
+        {
+          path: '/mnt/storage-a',
+          freeSpace: 512 * 1024 * 1024 * 1024,
+          totalSpace: 0,
+        },
+        {
+          path: '/mnt/storage-b',
+          freeSpace: 256 * 1024 * 1024 * 1024,
+          totalSpace: 0,
+        },
+        {
+          path: '/mnt/storage-c',
+          freeSpace: 128 * 1024 * 1024 * 1024,
+          totalSpace: 0,
+        },
+      ]);
+
+      const response = await sonarrGetterService.get(
+        28,
+        createPlexLibraryItem('episode'),
+        EPlexDataType.EPISODES,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.EPISODES,
+        }),
+      );
+
+      expect(response).toBe(768);
+    });
+
+    it('should return null when there are no diskspace entries', async () => {
+      const collectionMedia = createCollectionMedia(EPlexDataType.SEASONS);
+      collectionMedia.collection.sonarrSettingsId = 1;
+      collectionMedia.collection.selectedPaths = ['__ALL__'];
+
+      const mockedSonarrApi = mockSonarrApi();
+      jest.spyOn(mockedSonarrApi, 'getDiskSpace').mockResolvedValue([]);
+
+      const response = await sonarrGetterService.get(
+        28,
+        createPlexLibraryItem('season'),
+        EPlexDataType.SEASONS,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.SEASONS,
+        }),
+      );
+
+      expect(response).toBeNull();
+    });
+  });
+
   const mockSonarrApi = (series?: SonarrSeries) => {
     const mockedSonarrApi = new SonarrApi({} as any, logger as any);
     const mockedServarrService = new ServarrService({} as any, logger as any);

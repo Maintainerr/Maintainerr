@@ -287,6 +287,7 @@ export class RulesService {
       const lib = (await this.plexApi.getLibraries()).find(
         (el) => +el.key === +params.libraryId,
       );
+      const collectionTitle = params.collectionName?.trim() || params.name;
       const collection = (
         await this.collectionService.createCollection({
           libraryId: +params.libraryId,
@@ -296,7 +297,7 @@ export class RulesService {
               : params.dataType !== undefined
                 ? params.dataType
                 : EPlexDataType.SHOWS,
-          title: params.name,
+          title: collectionTitle,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
@@ -313,6 +314,9 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          pathSelectionEnabled:
+            params.collection?.pathSelectionEnabled ?? false,
+          selectedPaths: params.collection?.selectedPaths ?? [],
         })
       )?.dbCollection;
 
@@ -413,6 +417,7 @@ export class RulesService {
           (el) => +el.key === +params.libraryId,
         );
 
+        const collectionTitle = params.collectionName?.trim() || params.name;
         const collection = (
           await this.collectionService.updateCollection({
             id: group.collectionId ? group.collectionId : undefined,
@@ -423,7 +428,7 @@ export class RulesService {
                 : params.dataType !== undefined
                   ? params.dataType
                   : EPlexDataType.SHOWS,
-            title: params.name,
+            title: collectionTitle,
             description: params.description,
             arrAction: params.arrAction ? params.arrAction : 0,
             isActive: params.isActive,
@@ -444,6 +449,9 @@ export class RulesService {
             manualCollectionName: params.collection.manualCollectionName,
             keepLogsForMonths: +params.collection.keepLogsForMonths,
             sortTitle: params.collection?.sortTitle,
+            pathSelectionEnabled:
+              params.collection?.pathSelectionEnabled ?? false,
+            selectedPaths: params.collection?.selectedPaths ?? [],
           })
         ).dbCollection;
 

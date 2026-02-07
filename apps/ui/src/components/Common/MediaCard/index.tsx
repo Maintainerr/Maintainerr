@@ -14,6 +14,7 @@ interface IMediaCard {
   summary?: string
   year?: string
   mediaType: 'movie' | 'show' | 'season' | 'episode'
+  mediaTypeSubLabel?: string
   title: string
   userScore: number
   inProgress?: boolean
@@ -27,6 +28,7 @@ interface IMediaCard {
   collectionId?: number
   isManual?: boolean
   onRemove?: (id: string) => void
+  collectionMediaSize?: number
 }
 
 const MediaCard: React.FC<IMediaCard> = ({
@@ -34,6 +36,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   summary,
   year,
   mediaType,
+  mediaTypeSubLabel,
   title,
   libraryId,
   type,
@@ -46,6 +49,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   exclusionType = undefined,
   isManual = false,
   onRemove = () => {},
+  collectionMediaSize = undefined,
 }) => {
   const isTouch = useIsTouch()
   const [showDetail, setShowDetail] = useState(false)
@@ -60,6 +64,17 @@ const MediaCard: React.FC<IMediaCard> = ({
   }
 
   const closeMediaModal = () => setShowMediaModal(false)
+
+  const formatBytes = (bytes: number) => {
+    if (bytes <= 0) return 'Unknown'
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+    const index = Math.min(
+      Math.floor(Math.log(bytes) / Math.log(1024)),
+      units.length - 1,
+    )
+    const value = bytes / Math.pow(1024, index)
+    return `${value >= 100 ? value.toFixed(0) : value.toFixed(2)} ${units[index]}`
+  }
 
   useEffect(() => {
     if (tmdbid) {
@@ -130,9 +145,9 @@ const MediaCard: React.FC<IMediaCard> = ({
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
             />
           ) : undefined}
-          <div className="absolute left-0 right-0 flex items-center justify-between p-2">
+          <div className="absolute left-0 top-0 z-40 flex flex-col items-start gap-1 p-2">
             <div
-              className={`pointer-events-none z-40 rounded-full shadow ${
+              className={`pointer-events-none rounded-full shadow ${
                 mediaType === 'movie'
                   ? 'bg-zinc-900'
                   : mediaType === 'show'
@@ -140,12 +155,29 @@ const MediaCard: React.FC<IMediaCard> = ({
                     : mediaType === 'season'
                       ? 'bg-yellow-700'
                       : 'bg-rose-900'
-              }`}
+                }`}
             >
               <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
                 {mediaType}
               </div>
             </div>
+            {mediaTypeSubLabel ? (
+              <div
+                className={`pointer-events-none rounded-full shadow ${
+                  mediaType === 'movie'
+                    ? 'bg-zinc-900'
+                    : mediaType === 'show'
+                      ? 'bg-amber-900'
+                      : mediaType === 'season'
+                        ? 'bg-yellow-700'
+                        : 'bg-rose-900'
+                }`}
+              >
+                <div className="flex h-4 items-center px-2 py-2 text-center text-[10px] font-medium tracking-wider text-zinc-200 sm:h-5">
+                  {mediaTypeSubLabel}
+                </div>
+              </div>
+            ) : undefined}
           </div>
           {hasExclusion && !collectionPage ? (
             <div className="absolute right-0 flex items-center justify-between p-2">
@@ -188,47 +220,56 @@ const MediaCard: React.FC<IMediaCard> = ({
             </div>
           ) : undefined}
 
-          {/* on collection page and for the media items */}
-          {collectionPage && !exclusionType && daysLeft !== 9999 ? (
-            <div className="absolute right-0 flex items-center justify-between p-2">
-              <div
-                className={`pointer-events-none z-40 rounded-full shadow ${
-                  daysLeft < 0
-                    ? 'bg-red-700'
-                    : mediaType === 'movie'
+          {collectionPage &&
+          (!exclusionType && daysLeft !== 9999
+            ? true
+            : collectionMediaSize !== undefined || exclusionType === 'global') ? (
+            <div className="absolute right-2 top-2 z-40 flex flex-col items-end gap-1">
+              {!exclusionType && daysLeft !== 9999 ? (
+                <div
+                  className={`pointer-events-none rounded-full shadow ${
+                    daysLeft < 0
+                      ? 'bg-red-700'
+                      : mediaType === 'movie'
+                        ? 'bg-zinc-900'
+                        : mediaType === 'show'
+                          ? 'bg-amber-900'
+                          : mediaType === 'season'
+                            ? 'bg-yellow-700'
+                            : 'bg-rose-900'
+                  }`}
+                >
+                  <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
+                    {daysLeft}
+                  </div>
+                </div>
+              ) : undefined}
+
+              {collectionMediaSize !== undefined ? (
+                <div className="pointer-events-none rounded-full bg-zinc-900 shadow">
+                  <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium tracking-wider text-zinc-200 sm:h-5">
+                    {formatBytes(collectionMediaSize)}
+                  </div>
+                </div>
+              ) : undefined}
+
+              {exclusionType === 'global' ? (
+                <div
+                  className={`pointer-events-none rounded-full shadow ${
+                    mediaType === 'movie'
                       ? 'bg-zinc-900'
                       : mediaType === 'show'
                         ? 'bg-amber-900'
                         : mediaType === 'season'
                           ? 'bg-yellow-700'
                           : 'bg-rose-900'
-                } `}
-              >
-                <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
-                  {daysLeft}
+                  }`}
+                >
+                  <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
+                    {exclusionType.toUpperCase()}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : undefined}
-
-          {/* on collection page and for the exclusions */}
-          {collectionPage && exclusionType === 'global' ? (
-            <div className="absolute right-0 flex items-center justify-between p-2">
-              <div
-                className={`pointer-events-none z-40 rounded-full shadow ${
-                  mediaType === 'movie'
-                    ? 'bg-zinc-900'
-                    : mediaType === 'show'
-                      ? 'bg-amber-900'
-                      : mediaType === 'season'
-                        ? 'bg-yellow-700'
-                        : 'bg-rose-900'
-                }`}
-              >
-                <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
-                  {exclusionType.toUpperCase()}
-                </div>
-              </div>
+              ) : undefined}
             </div>
           ) : undefined}
 
@@ -335,6 +376,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           tmdbid={tmdbid}
           year={year}
           userScore={userScore}
+          managedSize={collectionMediaSize}
         />
       )}
     </div>

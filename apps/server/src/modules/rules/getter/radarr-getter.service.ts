@@ -12,6 +12,8 @@ import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class RadarrGetterService {
+  private static readonly BYTES_PER_GIB = 1024 * 1024 * 1024;
+  private static readonly ALL_ROOT_FOLDERS_VALUE = '__ALL__';
   plexProperties: Property[];
   constructor(
     private readonly servarrService: ServarrService,
@@ -35,6 +37,60 @@ export class RadarrGetterService {
 
     try {
       const prop = this.plexProperties.find((el) => el.id === id);
+      const rawselectedPaths =
+        ruleGroup?.collection?.selectedPaths ?? [];
+      const allRootFoldersSelected = rawselectedPaths.includes(
+        RadarrGetterService.ALL_ROOT_FOLDERS_VALUE,
+      );
+      const selectedPaths = rawselectedPaths.filter(
+          (path) =>
+            path &&
+            path.trim().length > 0 &&
+            path !== RadarrGetterService.ALL_ROOT_FOLDERS_VALUE,
+        );
+
+      const radarrApiClient = await this.servarrService.getRadarrApiClient(
+        ruleGroup.collection.radarrSettingsId,
+      );
+
+      if (prop?.name === 'spaceAvailableGib') {
+        const diskSpaces = await radarrApiClient.getDiskSpace();
+        if (!diskSpaces?.length) {
+          return null;
+        }
+
+        const diskSpaceByPath = new Map(
+          diskSpaces.map((diskSpace) => [diskSpace.path.toLowerCase(), diskSpace]),
+        );
+
+        const matchingDiskSpaces =
+          allRootFoldersSelected || selectedPaths.length === 0
+            ? diskSpaces
+            : selectedPaths
+                .map((selectedPath) =>
+                  diskSpaceByPath.get(selectedPath.toLowerCase()),
+                )
+                .filter(
+                  (diskSpace): diskSpace is (typeof diskSpaces)[number] =>
+                    Boolean(diskSpace),
+                );
+
+        if (!matchingDiskSpaces.length) {
+          return null;
+        }
+
+        const totalFreeSpaceBytes = matchingDiskSpaces.reduce(
+          (sum, diskSpace) => sum + (diskSpace.freeSpace ?? 0),
+          0,
+        );
+
+        return (
+          Math.round(
+            (totalFreeSpaceBytes / RadarrGetterService.BYTES_PER_GIB) * 100,
+          ) / 100
+        );
+      }
+
       const tmdb = await this.tmdbIdHelper.getTmdbIdFromPlexRatingKey(
         libItem.ratingKey,
       );
@@ -45,10 +101,6 @@ export class RadarrGetterService {
         );
         return null;
       }
-
-      const radarrApiClient = await this.servarrService.getRadarrApiClient(
-        ruleGroup.collection.radarrSettingsId,
-      );
 
       const movieResponse = await radarrApiClient.getMovieByTmdbId(tmdb.id);
       if (movieResponse) {

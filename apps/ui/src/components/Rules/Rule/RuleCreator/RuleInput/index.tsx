@@ -48,7 +48,10 @@ interface IRuleInput {
   allowDelete?: boolean
   radarrSettingsId?: number | null
   sonarrSettingsId?: number | null
+  pathSelectionEnabled?: boolean
 }
+
+const SPACE_AVAILABLE_PROP_NAME = 'spaceAvailableGib'
 
 /**
  * Helper function to determine if an application should be filtered out
@@ -73,6 +76,22 @@ const shouldFilterApplication = (
   ) {
     return true
   }
+  return false
+}
+
+const shouldFilterProperty = (
+  appId: number,
+  property: IProperty,
+  pathSelectionEnabled: boolean | undefined,
+): boolean => {
+  if (
+    (appId === Application.RADARR || appId === Application.SONARR) &&
+    property.name === SPACE_AVAILABLE_PROP_NAME &&
+    pathSelectionEnabled === false
+  ) {
+    return true
+  }
+
   return false
 }
 
@@ -262,7 +281,12 @@ const RuleInput = (props: IRuleInput) => {
             props.mediaType === prop.mediaType) &&
           (props.mediaType === MediaType.MOVIE ||
             prop.showType === undefined ||
-            prop.showType.includes(props.dataType!))
+            prop.showType.includes(props.dataType!)) &&
+          !shouldFilterProperty(
+            app.id,
+            prop,
+            props.pathSelectionEnabled,
+          )
         )
       })
       return app
@@ -274,7 +298,12 @@ const RuleInput = (props: IRuleInput) => {
         setFirstVal(undefined)
       }
     }
-  }, [props.dataType, props.mediaType, constants])
+  }, [
+    props.dataType,
+    props.mediaType,
+    props.pathSelectionEnabled,
+    constants,
+  ])
 
   useEffect(() => {
     if (firstval) {
@@ -442,7 +471,12 @@ const RuleInput = (props: IRuleInput) => {
                         props.mediaType === prop.mediaType) &&
                       (props.mediaType === MediaType.MOVIE ||
                         prop.showType === undefined ||
-                        prop.showType.includes(props.dataType!)) ? (
+                        prop.showType.includes(props.dataType!)) &&
+                      !shouldFilterProperty(
+                        app.id,
+                        prop,
+                        props.pathSelectionEnabled,
+                      ) ? (
                         <option
                           key={`${app.id}-${prop.id}`}
                           value={JSON.stringify([app.id, prop.id])}
@@ -551,7 +585,12 @@ const RuleInput = (props: IRuleInput) => {
                             props.mediaType === prop.mediaType) &&
                             (props.mediaType === MediaType.MOVIE ||
                               prop.showType === undefined ||
-                              prop.showType.includes(props.dataType!)) ? (
+                              prop.showType.includes(props.dataType!)) &&
+                            !shouldFilterProperty(
+                              app.id,
+                              prop,
+                              props.pathSelectionEnabled,
+                            ) ? (
                             <option
                               key={app.id + 10 + prop.id}
                               value={JSON.stringify([app.id, prop.id])}

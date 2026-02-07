@@ -23,6 +23,8 @@ import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class SonarrGetterService {
+  private static readonly BYTES_PER_GIB = 1024 * 1024 * 1024;
+  private static readonly ALL_ROOT_FOLDERS_VALUE = '__ALL__';
   plexProperties: Property[];
 
   constructor(
@@ -53,6 +55,59 @@ export class SonarrGetterService {
 
     try {
       const prop = this.plexProperties.find((el) => el.id === id);
+      const rawselectedPaths = ruleGroup?.collection?.selectedPaths ?? [];
+      const allRootFoldersSelected = rawselectedPaths.includes(
+        SonarrGetterService.ALL_ROOT_FOLDERS_VALUE,
+      );
+      const selectedPaths = rawselectedPaths.filter(
+        (path) =>
+          path &&
+          path.trim().length > 0 &&
+          path !== SonarrGetterService.ALL_ROOT_FOLDERS_VALUE,
+      );
+
+      const sonarrApiClient = await this.servarrService.getSonarrApiClient(
+        ruleGroup.collection.sonarrSettingsId,
+      );
+
+      if (prop?.name === 'spaceAvailableGib') {
+        const diskSpaces = await sonarrApiClient.getDiskSpace();
+        if (!diskSpaces?.length) {
+          return null;
+        }
+
+        const diskSpaceByPath = new Map(
+          diskSpaces.map((diskSpace) => [diskSpace.path.toLowerCase(), diskSpace]),
+        );
+
+        const matchingDiskSpaces =
+          allRootFoldersSelected || selectedPaths.length === 0
+            ? diskSpaces
+            : selectedPaths
+                .map((selectedPath) =>
+                  diskSpaceByPath.get(selectedPath.toLowerCase()),
+                )
+                .filter(
+                  (diskSpace): diskSpace is (typeof diskSpaces)[number] =>
+                    Boolean(diskSpace),
+                );
+
+        if (!matchingDiskSpaces.length) {
+          return null;
+        }
+
+        const totalFreeSpaceBytes = matchingDiskSpaces.reduce(
+          (sum, diskSpace) => sum + (diskSpace.freeSpace ?? 0),
+          0,
+        );
+
+        return (
+          Math.round(
+            (totalFreeSpaceBytes / SonarrGetterService.BYTES_PER_GIB) * 100,
+          ) / 100
+        );
+      }
+
       let origLibItem: PlexLibraryItem = undefined;
       let seasonRatingKey: number | undefined = undefined;
 
@@ -81,10 +136,6 @@ export class SonarrGetterService {
         );
         return null;
       }
-
-      const sonarrApiClient = await this.servarrService.getSonarrApiClient(
-        ruleGroup.collection.sonarrSettingsId,
-      );
 
       const showResponse = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
 

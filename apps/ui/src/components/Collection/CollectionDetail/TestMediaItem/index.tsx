@@ -9,7 +9,7 @@ import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import FormItem from '../../../Common/FormItem'
 import Modal from '../../../Common/Modal'
-import SearchMediaItem, { IMediaOptions } from '../../../Common/SearchMediaITem'
+import SearchMediaItem, { IMediaOptions } from '../../../Common/SearchMediaItem'
 
 interface ITestMediaItem {
   onCancel: () => void

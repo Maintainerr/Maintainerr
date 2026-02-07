@@ -8,6 +8,7 @@ export class RulesDto {
   id?: number;
   libraryId: number;
   name: string;
+  collectionName?: string;
   description: string;
   isActive?: boolean;
   arrAction?: number;

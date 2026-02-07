@@ -97,6 +97,12 @@ export class Collection {
   @Column({ nullable: true })
   sortTitle: string;
 
+  @Column({ nullable: false, default: false })
+  pathSelectionEnabled: boolean;
+
+  @Column({ type: 'simple-json', nullable: true, default: null })
+  selectedPaths: string[];
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,

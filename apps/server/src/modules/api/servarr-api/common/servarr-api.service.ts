@@ -3,6 +3,7 @@ import { DVRSettings } from '../../../../modules/settings/interfaces/dvr-setting
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import cacheManager from '../../lib/cache';
 import {
+  DiskSpace,
   QualityProfile,
   QueueItem,
   QueueResponse,
@@ -77,6 +78,20 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       return data;
     } catch (e) {
       this.logger.warn(`Failed to retrieve root folders: ${e.message}`);
+    }
+  };
+
+  public getDiskSpace = async (): Promise<DiskSpace[]> => {
+    try {
+      const data = await this.getRolling<DiskSpace[]>(
+        `/diskspace`,
+        undefined,
+        3600,
+      );
+
+      return data;
+    } catch (e) {
+      this.logger.warn(`Failed to retrieve disk space: ${e.message}`);
     }
   };
 

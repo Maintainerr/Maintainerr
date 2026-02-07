@@ -1,8 +1,15 @@
-// After each new entity, generate migration
-yarn migration:generate apps/server/src/database/migrations/<migr_name>
+// Generate a migration (run from repo root)
+yarn --cwd apps/server migration:generate ./src/database/migrations/<migration_name>
 
-// Run migrations
-yarn workspace @maintainerr/server migration:run
+// Show migration status (optional)
+yarn --cwd apps/server migration:show
 
-// Revert migrations
-yarn workspace @maintainerr/server migration:revert
+// Run pending migrations
+yarn --cwd apps/server migration:run
+
+// Revert the latest migration
+yarn --cwd apps/server migration:revert
+
+// Notes:
+// - Migration scripts are wired through tools/typeOrmCli.ts.
+// - Use ./src/database/migrations/... path for generation (relative to apps/server).

@@ -6,6 +6,7 @@ export interface ICollection {
   plexId?: number
   libraryId: number
   title: string
+  ruleName?: string
   description?: string
   isActive: boolean
   visibleOnRecommended?: boolean
@@ -26,6 +27,8 @@ export interface ICollection {
   radarrSettingsId?: number
   sonarrSettingsId?: number
   sortTitle?: string
+  pathSelectionEnabled?: boolean
+  selectedPaths?: string[]
 }
 
 export interface ICollectionMedia {
@@ -36,6 +39,8 @@ export interface ICollectionMedia {
   tvdbid: number
   addDate: Date
   image_path: string
+  title?: string
+  size?: number
   isManual: boolean
   collection: ICollection
   plexData?: IPlexMetadata

@@ -8,6 +8,8 @@ export interface ICollectionMedia {
   tmdbId: number;
   tvdbid: number;
   addDate: Date;
+  title?: string;
+  size?: number;
 }
 
 export interface AddRemoveCollectionMedia {
