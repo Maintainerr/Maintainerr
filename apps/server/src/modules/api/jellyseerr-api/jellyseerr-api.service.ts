@@ -114,14 +114,6 @@ interface JellyseerrAbout {
   version: string;
 }
 
-export enum JellyseerrMediaStatus {
-  UNKNOWN = 1,
-  PENDING,
-  PROCESSING,
-  PARTIALLY_AVAILABLE,
-  AVAILABLE,
-}
-
 export interface JellyseerrBasicApiResponse {
   code: string;
   description: string;

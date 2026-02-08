@@ -3,6 +3,7 @@ import Layout, { LayoutErrorBoundary } from './components/Layout'
 import Overview from './components/Overview'
 import Settings from './components/Settings'
 import SettingsAbout from './components/Settings/About'
+import SettingsJellyfin from './components/Settings/Jellyfin'
 import SettingsJellyseerr from './components/Settings/Jellyseerr'
 import SettingsJobs from './components/Settings/Jobs'
 import SettingsLogs from './components/Settings/Logs'
@@ -111,6 +112,10 @@ export const router = createBrowserRouter(
             {
               path: 'plex',
               element: <SettingsPlex />,
+            },
+            {
+              path: 'jellyfin',
+              element: <SettingsJellyfin />,
             },
             {
               path: 'sonarr',

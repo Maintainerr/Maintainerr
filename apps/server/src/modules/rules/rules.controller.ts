@@ -1,4 +1,4 @@
-import { RuleExecuteStatusDto } from '@maintainerr/contracts';
+import { MediaItemType, RuleExecuteStatusDto } from '@maintainerr/contracts';
 import {
   Body,
   ConflictException,
@@ -54,8 +54,12 @@ export class RulesController {
   }
 
   @Get('/exclusion')
-  getExclusion(@Query() query: { rulegroupId?: number; plexId?: number }) {
-    return this.rulesService.getExclusions(query.rulegroupId, query.plexId);
+  getExclusion(
+    @Query('rulegroupId', new ParseIntPipe({ optional: true }))
+    rulegroupId?: number,
+    @Query('mediaServerId') mediaServerId?: string,
+  ) {
+    return this.rulesService.getExclusions(rulegroupId, mediaServerId);
   }
 
   @Get('/count')
@@ -75,17 +79,14 @@ export class RulesController {
 
   @Get()
   getRuleGroups(
-    @Query()
-    query: {
-      activeOnly?: boolean;
-      libraryId?: number;
-      typeId?: number;
-    },
+    @Query('activeOnly') activeOnly?: string,
+    @Query('libraryId') libraryId?: string,
+    @Query('typeId', new ParseIntPipe({ optional: true })) typeId?: number,
   ) {
     return this.rulesService.getRuleGroups(
-      query.activeOnly !== undefined ? query.activeOnly : false,
-      query.libraryId ? query.libraryId : undefined,
-      query.typeId ? query.typeId : undefined,
+      activeOnly !== undefined ? activeOnly === 'true' : false,
+      libraryId ? libraryId : undefined,
+      typeId ? typeId : undefined,
     );
   }
 
@@ -213,11 +214,11 @@ export class RulesController {
     return await this.rulesService.removeExclusion(id);
   }
 
-  @Delete('/exclusions/:plexId')
+  @Delete('/exclusions/:mediaServerId')
   async removeAllExclusion(
-    @Param('plexId', ParseIntPipe) plexId: number,
+    @Param('mediaServerId') mediaServerId: string,
   ): Promise<ReturnStatus> {
-    return await this.rulesService.removeAllExclusion(plexId);
+    return await this.rulesService.removeAllExclusion(mediaServerId);
   }
 
   @Put()
@@ -264,7 +265,7 @@ export class RulesController {
    */
   @Post('/yaml/encode')
   async yamlEncode(
-    @Body() body: { rules: string; mediaType: number },
+    @Body() body: { rules: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.encodeToYaml(
@@ -287,7 +288,7 @@ export class RulesController {
    */
   @Post('/yaml/decode')
   async yamlDecode(
-    @Body() body: { yaml: string; mediaType: number },
+    @Body() body: { yaml: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.decodeFromYaml(body.yaml, body.mediaType);
@@ -305,5 +306,22 @@ export class RulesController {
       body.rulegroupId,
       body.mediaId,
     );
+  }
+
+  /**
+   * Migrates rules to match the configured media server type.
+   * Used for community rule imports to convert Plex ↔ Jellyfin rules.
+   */
+  @Post('/migrate')
+  async migrateRules(@Body() body: { rules: string }): Promise<ReturnStatus> {
+    try {
+      const rules = JSON.parse(body.rules);
+      return await this.rulesService.migrateRules(rules);
+    } catch (err) {
+      return {
+        code: 0,
+        result: 'Invalid input',
+      };
+    }
   }
 }

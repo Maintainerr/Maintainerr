@@ -1,13 +1,27 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { SettingsModule } from '../../../modules/settings/settings.module';
-import { PlexSetupGuard } from './guards/plex-setup.guard';
-import { PlexApiController } from './plex-api.controller';
+import { MediaServerModule } from '../media-server/media-server.module';
+import { PlexApiLegacyController } from './plex-api-legacy.controller';
 import { PlexApiService } from './plex-api.service';
 
+/**
+ * PlexApiModule
+ *
+ * Provides the PlexApiService for internal use by other modules.
+ *
+ * Also provides deprecated /api/plex endpoints for backward compatibility.
+ * The PlexApiLegacyController delegates to MediaServerFactory.
+ *
+ * @deprecated The /api/plex endpoints are deprecated. Use /api/media-server instead.
+ * To remove legacy support: Remove PlexApiLegacyController from this module.
+ */
 @Module({
-  imports: [SettingsModule],
-  controllers: [PlexApiController],
-  providers: [PlexApiService, PlexSetupGuard],
+  imports: [
+    forwardRef(() => SettingsModule),
+    forwardRef(() => MediaServerModule),
+  ],
+  controllers: [PlexApiLegacyController],
+  providers: [PlexApiService],
   exports: [PlexApiService],
 })
 export class PlexApiModule {}

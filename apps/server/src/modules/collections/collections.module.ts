@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActionsModule } from '../actions/actions.module';
 import { JellyseerrApiModule } from '../api/jellyseerr-api/jellyseerr-api.module';
+import { MediaServerModule } from '../api/media-server/media-server.module';
 import { OverseerrApiModule } from '../api/overseerr-api/overseerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
@@ -12,6 +13,7 @@ import { CollectionLogCleanerService } from '../collections/tasks/collection-log
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { RulesModule } from '../rules/rules.module';
+import { SettingsModule } from '../settings/settings.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
@@ -23,6 +25,8 @@ import { CollectionMedia } from './entities/collection_media.entities';
 @Module({
   imports: [
     PlexApiModule,
+    MediaServerModule,
+    SettingsModule,
     TypeOrmModule.forFeature([
       Collection,
       CollectionMedia,

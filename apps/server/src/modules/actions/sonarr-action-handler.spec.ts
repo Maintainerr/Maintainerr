@@ -2,11 +2,12 @@ import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
 import {
   createCollection,
-  createCollectionMediaWithPlexData,
+  createCollectionMediaWithMetadata,
   createSonarrSeries,
 } from '../../../test/utils/data';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaItem, MediaItemType } from '@maintainerr/contracts';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SonarrApi } from '../api/servarr-api/helpers/sonarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
@@ -16,7 +17,8 @@ import { SonarrActionHandler } from './sonarr-action-handler';
 
 describe('SonarrActionHandler', () => {
   let sonarrActionHandler: SonarrActionHandler;
-  let plexApi: Mocked<PlexApiService>;
+  let mediaServerFactory: Mocked<MediaServerFactory>;
+  let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
   let mediaIdFinder: Mocked<MediaIdFinder>;
   let logger: Mocked<MaintainerrLogger>;
@@ -26,35 +28,47 @@ describe('SonarrActionHandler', () => {
       await TestBed.solitary(SonarrActionHandler).compile();
 
     sonarrActionHandler = unit;
-    plexApi = unitRef.get(PlexApiService);
+    mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
     mediaIdFinder = unitRef.get(MediaIdFinder);
     logger = unitRef.get(MaintainerrLogger);
+
+    // Setup media server mock
+    mediaServer = {
+      getMetadata: jest.fn(),
+      deleteFromDisk: jest.fn(),
+    } as unknown as Mocked<IMediaServerService>;
+    mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
 
+  // Helper to setup media server mock for each test
+  const mockMediaServerMetadata = (mediaData: MediaItem) => {
+    mediaServer.getMetadata.mockResolvedValue(mediaData);
+  };
+
   it.each([
-    { type: EPlexDataType.SEASONS, title: 'SEASONS' },
+    { type: 'season', title: 'SEASONS' },
     {
-      type: EPlexDataType.SHOWS,
+      type: 'show',
       title: 'SHOWS',
     },
     {
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
       title: 'EPISODES',
     },
   ])(
     'should do nothing for $title when Show tmdbid failed lookup',
-    async ({ type }: { type: EPlexDataType }) => {
+    async ({ type }: { type: string }) => {
       const collection = createCollection({
         arrAction: ServarrAction.DELETE,
         sonarrSettingsId: 1,
-        type,
+        type: type as MediaItemType,
       });
-      const collectionMedia = createCollectionMediaWithPlexData(collection, {
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
         tmdbId: 1,
       });
 
-      plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+      mockMediaServerMetadata(collectionMedia.mediaData);
 
       const mockedSonarrApi = mockSonarrApi();
       jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId');
@@ -65,34 +79,34 @@ describe('SonarrActionHandler', () => {
 
       expect(mockedSonarrApi.getSeriesByTvdbId).not.toHaveBeenCalled();
       expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
-      expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+      expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
       validateNoSonarrActionsTaken(mockedSonarrApi);
     },
   );
 
   it.each([
-    { type: EPlexDataType.SEASONS, title: 'SEASONS' },
+    { type: 'season', title: 'SEASONS' },
     {
-      type: EPlexDataType.SHOWS,
+      type: 'show',
       title: 'SHOWS',
     },
     {
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
       title: 'EPISODES',
     },
   ])(
     'should do nothing for $title if not found in Sonarr and action is UNMONITOR',
-    async ({ type }: { type: EPlexDataType }) => {
+    async ({ type }: { type: string }) => {
       const collection = createCollection({
         arrAction: ServarrAction.UNMONITOR,
         sonarrSettingsId: 1,
-        type,
+        type: type as MediaItemType,
       });
-      const collectionMedia = createCollectionMediaWithPlexData(collection, {
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
         tmdbId: 1,
       });
 
-      plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+      mockMediaServerMetadata(collectionMedia.mediaData);
 
       const mockedSonarrApi = mockSonarrApi();
       jest
@@ -105,76 +119,70 @@ describe('SonarrActionHandler', () => {
 
       expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
       expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-      expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+      expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
       validateNoSonarrActionsTaken(mockedSonarrApi);
     },
   );
 
   it.each([
     {
-      type: EPlexDataType.SEASONS,
+      type: 'season',
       title: 'SEASONS',
       action: ServarrAction.DELETE,
     },
     {
-      type: EPlexDataType.SEASONS,
+      type: 'season',
       title: 'SEASONS',
       action: ServarrAction.UNMONITOR_DELETE_ALL,
     },
     {
-      type: EPlexDataType.SEASONS,
+      type: 'season',
       title: 'SEASONS',
       action: ServarrAction.UNMONITOR_DELETE_EXISTING,
     },
     {
-      type: EPlexDataType.SHOWS,
+      type: 'show',
       title: 'SHOWS',
       action: ServarrAction.DELETE,
     },
     {
-      type: EPlexDataType.SHOWS,
+      type: 'show',
       title: 'SHOWS',
       action: ServarrAction.UNMONITOR_DELETE_ALL,
     },
     {
-      type: EPlexDataType.SHOWS,
+      type: 'show',
       title: 'SHOWS',
       action: ServarrAction.UNMONITOR_DELETE_EXISTING,
     },
     {
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
       title: 'EPISODES',
       action: ServarrAction.DELETE,
     },
     {
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
       title: 'EPISODES',
       action: ServarrAction.UNMONITOR_DELETE_ALL,
     },
     {
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
       title: 'EPISODES',
       action: ServarrAction.UNMONITOR_DELETE_EXISTING,
     },
   ])(
     'should delete $title in Plex if not found in Sonarr and action is $action',
-    async ({
-      type,
-      action,
-    }: {
-      type: EPlexDataType;
-      action: ServarrAction;
-    }) => {
+    async ({ type, action }: { type: string; action: ServarrAction }) => {
       const collection = createCollection({
         arrAction: action,
         sonarrSettingsId: 1,
-        type,
+        type: type as MediaItemType,
       });
-      const collectionMedia = createCollectionMediaWithPlexData(collection, {
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
         tmdbId: 1,
       });
 
-      plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+      mockMediaServerMetadata(collectionMedia.mediaData);
 
       const mockedSonarrApi = mockSonarrApi();
       jest
@@ -187,7 +195,7 @@ describe('SonarrActionHandler', () => {
 
       expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
       expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-      expect(plexApi.deleteMediaFromDisk).toHaveBeenCalled();
+      expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
       validateNoSonarrActionsTaken(mockedSonarrApi);
     },
   );
@@ -196,13 +204,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SEASONS,
+      type: 'season',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -216,13 +224,13 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
     expect(mockedSonarrApi.unmonitorSeasons).toHaveBeenCalledWith(
       series.id,
-      collectionMedia.plexData.index,
+      collectionMedia.mediaData.index,
       true,
     );
   });
@@ -231,13 +239,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       sonarrSettingsId: 1,
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -250,14 +258,14 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.unmonitorSeasons).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
       series.id,
-      collectionMedia.plexData.parentIndex,
-      [collectionMedia.plexData.index],
+      collectionMedia.mediaData.parentIndex,
+      [collectionMedia.mediaData.index],
       true,
     );
   });
@@ -266,13 +274,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SHOWS,
+      type: 'show',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -285,7 +293,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.unmonitorSeasons).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
@@ -300,13 +308,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SEASONS,
+      type: 'season',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -320,13 +328,13 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
     expect(mockedSonarrApi.unmonitorSeasons).toHaveBeenCalledWith(
       series.id,
-      collectionMedia.plexData.index,
+      collectionMedia.mediaData.index,
       false,
     );
   });
@@ -335,13 +343,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR,
       sonarrSettingsId: 1,
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -354,14 +362,14 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.unmonitorSeasons).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
       series.id,
-      collectionMedia.plexData.parentIndex,
-      [collectionMedia.plexData.index],
+      collectionMedia.mediaData.parentIndex,
+      [collectionMedia.mediaData.index],
       false,
     );
   });
@@ -370,13 +378,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SHOWS,
+      type: 'show',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -391,7 +399,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
@@ -410,13 +418,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SEASONS,
+      type: 'season',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -429,7 +437,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     validateNoSonarrActionsTaken(mockedSonarrApi);
   });
 
@@ -437,13 +445,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
       sonarrSettingsId: 1,
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -456,7 +464,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     validateNoSonarrActionsTaken(mockedSonarrApi);
   });
 
@@ -464,13 +472,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SHOWS,
+      type: 'show',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -485,7 +493,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
@@ -504,13 +512,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SEASONS,
+      type: 'season',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -524,13 +532,13 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
     expect(mockedSonarrApi.unmonitorSeasons).toHaveBeenCalledWith(
       series.id,
-      collectionMedia.plexData.index,
+      collectionMedia.mediaData.index,
       true,
       true,
     );
@@ -540,13 +548,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
       sonarrSettingsId: 1,
-      type: EPlexDataType.EPISODES,
+      type: 'episode',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -559,7 +567,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     validateNoSonarrActionsTaken(mockedSonarrApi);
   });
 
@@ -567,13 +575,13 @@ describe('SonarrActionHandler', () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
       sonarrSettingsId: 1,
-      type: EPlexDataType.SHOWS,
+      type: 'show',
     });
-    const collectionMedia = createCollectionMediaWithPlexData(collection, {
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
     });
 
-    plexApi.getMetadata.mockResolvedValue(collectionMedia.plexData);
+    mockMediaServerMetadata(collectionMedia.mediaData);
 
     const series = createSonarrSeries();
 
@@ -588,7 +596,7 @@ describe('SonarrActionHandler', () => {
 
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(plexApi.deleteMediaFromDisk).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
     expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(mockedSonarrApi.delete).not.toHaveBeenCalled();

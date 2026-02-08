@@ -6,7 +6,7 @@ import CollectionItem from '../CollectionItem'
 
 interface ICollectionOverview {
   collections: ICollection[] | undefined
-  onSwitchLibrary: (id: number) => void
+  onSwitchLibrary: (id: string) => void
   doActions: () => void
   openDetail: (collection: ICollection) => void
 }

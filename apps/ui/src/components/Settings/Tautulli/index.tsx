@@ -6,7 +6,7 @@ import {
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
   DeleteApiHandler,
@@ -49,7 +49,6 @@ const TautulliSettings = () => {
   const {
     register,
     handleSubmit,
-    watch,
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
@@ -64,8 +63,8 @@ const TautulliSettings = () => {
     },
   })
 
-  const url = watch('url')
-  const api_key = watch('api_key')
+  const url = useWatch({ control, name: 'url' })
+  const api_key = useWatch({ control, name: 'api_key' })
 
   const isGoingToRemoveSetting = url === '' && api_key === ''
   const enteredSettingsAreSameAsSaved =
