@@ -86,6 +86,8 @@ export interface RuleGroupCreatePayload {
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number
+  radarrQualityProfileId?: number
+  sonarrQualityProfileId?: number
   collection: RuleGroupCollectionPayload
   rules: IRule[]
   dataType: MediaItemType

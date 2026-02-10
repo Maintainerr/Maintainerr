@@ -613,4 +613,161 @@ describe('SonarrActionHandler', () => {
       monitored: false,
     });
   });
+
+  it('should change quality profile and trigger search when action is CHANGE_QUALITY_PROFILE for SHOWS', async () => {
+    const targetProfileId = 3;
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: targetProfileId,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    const existingSeries = createSonarrSeries({ id: 5, qualityProfileId: 1 });
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(existingSeries);
+    jest.spyOn(mockedSonarrApi, 'searchSeries').mockResolvedValue();
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.updateSeries).toHaveBeenCalledWith({
+      ...existingSeries,
+      qualityProfileId: targetProfileId,
+    });
+    expect(mockedSonarrApi.searchSeries).toHaveBeenCalledWith(5);
+  });
+
+  it('should log warning but continue when search fails after quality profile change', async () => {
+    const targetProfileId = 3;
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: targetProfileId,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    const existingSeries = createSonarrSeries({ id: 5, qualityProfileId: 1 });
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(existingSeries);
+    jest
+      .spyOn(mockedSonarrApi, 'searchSeries')
+      .mockRejectedValue(new Error('Search API error'));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.updateSeries).toHaveBeenCalledWith({
+      ...existingSeries,
+      qualityProfileId: targetProfileId,
+    });
+    expect(mockedSonarrApi.searchSeries).toHaveBeenCalledWith(5);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to trigger search'),
+    );
+  });
+
+  it('should log warning when quality profile action used on SEASONS type', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: 3,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CHANGE_QUALITY_PROFILE is not supported for type',
+      ),
+    );
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+  });
+
+  it('should log warning when quality profile action used on EPISODES type', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: 3,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CHANGE_QUALITY_PROFILE is not supported for type',
+      ),
+    );
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+  });
+
+  it('should log warning when quality profile ID not configured for SHOWS', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: undefined,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('No target quality profile configured'),
+    );
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+  });
 });
