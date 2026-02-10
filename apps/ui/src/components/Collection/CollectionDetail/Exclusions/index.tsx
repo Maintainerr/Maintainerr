@@ -1,5 +1,5 @@
 import { debounce } from 'lodash-es'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ICollection } from '../..'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import OverviewContent, { IPlexMetadata } from '../../../Overview/Content'
@@ -22,54 +22,21 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
   const [data, setData] = useState<IPlexMetadata[]>([])
   // paging
   const pageData = useRef<number>(0)
+  const [pageDataState, setPageDataState] = useState<number>(0)
   const fetchAmount = 25
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
   const dataRef = useRef<IPlexMetadata[]>([])
   const loadingRef = useRef<boolean>(true)
+  const [loading, setLoading] = useState<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
+  const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
   const [page, setPage] = useState(0)
 
-  useEffect(() => {
-    // Initial first fetch
-    setPage(1)
-  }, [])
-
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.scrollHeight * 0.9
-    ) {
-      if (
-        !loadingRef.current &&
-        !loadingExtraRef.current &&
-        !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-      ) {
-        setPage(pageData.current + 1)
-      }
-    }
-  }
-
-  useEffect(() => {
-    if (page !== 0) {
-      // Ignore initial page render
-      pageData.current = pageData.current + 1
-      fetchData()
-    }
-  }, [page])
-
-  useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
-    window.addEventListener('scroll', debouncedScroll)
-    return () => {
-      window.removeEventListener('scroll', debouncedScroll)
-      debouncedScroll.cancel() // Cancel pending debounced calls
-    }
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!loadingRef.current) {
       loadingExtraRef.current = true
+      setLoadingExtra(true)
     }
     // setLoading(true)
     const resp: { totalSize: number; items: IExclusionMedia[] } =
@@ -91,8 +58,48 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
       }),
     ])
     loadingRef.current = false
+    setLoading(false)
     loadingExtraRef.current = false
-  }
+    setLoadingExtra(false)
+  }, [props.collection.id, fetchAmount])
+
+  const handleScroll = useCallback(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+      document.documentElement.scrollHeight * 0.9
+    ) {
+      if (
+        !loadingRef.current &&
+        !loadingExtraRef.current &&
+        !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
+      ) {
+        setPage(pageData.current + 1)
+      }
+    }
+  }, [fetchAmount])
+
+  useEffect(() => {
+    // Initial first fetch
+    setPage(1)
+  }, [])
+
+  useEffect(() => {
+    if (page !== 0) {
+      // Ignore initial page render
+      pageData.current = pageData.current + 1
+      setPageDataState(pageData.current)
+      fetchData()
+    }
+  }, [page, fetchData])
+
+  useEffect(() => {
+    const debouncedScroll = debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll)
+    return () => {
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
+    }
+  }, [handleScroll])
 
   useEffect(() => {
     dataRef.current = data
@@ -107,7 +114,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     ) {
       setPage(page + 1)
     }
-  }, [data])
+  }, [data, page, fetchAmount])
 
   useEffect(() => {
     totalSizeRef.current = totalSize
@@ -117,15 +124,15 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     <OverviewContent
       dataFinished={true}
       fetchData={() => {}}
-      loading={loadingRef.current}
+      loading={loading}
       data={data}
       libraryId={props.libraryId}
       collectionPage={true}
       collectionId={props.collection.id}
       extrasLoading={
-        loadingExtraRef &&
-        !loadingRef.current &&
-        totalSize >= pageData.current * fetchAmount
+        loadingExtra &&
+        !loading &&
+        totalSize >= pageDataState * fetchAmount
       }
       onRemove={(id: string) =>
         setTimeout(() => {

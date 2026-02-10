@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useStopAllRuleExecution } from '../api/rules'
@@ -26,28 +26,28 @@ const RulesListPage = () => {
     },
   })
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (selectedLibrary === 9999) return await GetApiHandler('/rules')
     else return await GetApiHandler(`/rules?libraryId=${selectedLibrary}`)
-  }
+  }, [selectedLibrary])
+
+  const refreshData = useCallback((): void => {
+    fetchData().then((resp) => setData(resp))
+  }, [fetchData])
 
   useEffect(() => {
     fetchData().then((resp) => {
       setData(resp)
       setIsLoading(false)
     })
-  }, [])
+  }, [fetchData])
 
   useEffect(() => {
     refreshData()
-  }, [selectedLibrary])
+  }, [selectedLibrary, refreshData])
 
   const onSwitchLibrary = (libraryId: number) => {
     setSelectedLibrary(libraryId)
-  }
-
-  const refreshData = (): void => {
-    fetchData().then((resp) => setData(resp))
   }
 
   const editHandler = (group: IRuleGroup): void => {

@@ -1,5 +1,8 @@
+import { ServarrAction } from '@maintainerr/contracts';
 import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { CollectionMedia } from '../entities/collection_media.entities';
+
+export { ServarrAction };
 
 export interface ICollection {
   id?: number;
@@ -22,13 +25,7 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number;
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
+  radarrQualityProfileId?: number;
+  sonarrQualityProfileId?: number;
   sortTitle?: string;
-}
-
-export enum ServarrAction {
-  DELETE,
-  UNMONITOR_DELETE_ALL,
-  UNMONITOR_DELETE_EXISTING,
-  UNMONITOR,
-  DO_NOTHING,
 }
