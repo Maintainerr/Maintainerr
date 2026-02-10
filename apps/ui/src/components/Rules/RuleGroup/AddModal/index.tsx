@@ -41,6 +41,7 @@ import LoadingSpinner from '../../../Common/LoadingSpinner'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
+import QualityProfileSelector from './QualityProfileSelector'
 
 const YamlImporterModal = lazy(
   () => import('../../../Common/YamlImporterModal'),
@@ -175,6 +176,8 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    radarrQualityProfileId: z.number().int().nullable().optional(),
+    sonarrQualityProfileId: z.number().int().nullable().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -215,12 +218,35 @@ const ruleGroupFormSchema = z
     (data) =>
       data.arrAction === undefined ||
       data.arrAction === ServarrAction.DO_NOTHING ||
+      data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE ||
       data.deleteAfterDays !== undefined,
     {
       path: ['deleteAfterDays'],
       message: 'Take action after days is required for this action',
     },
   )
+  .superRefine((data, ctx) => {
+    if (data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
+      const isMovie = data.dataType === 'movie'
+      const isShow = data.dataType === 'show'
+
+      if (isMovie && data.radarrQualityProfileId === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['radarrQualityProfileId'],
+          message: 'Quality profile is required for this action',
+        })
+      }
+
+      if (isShow && data.sonarrQualityProfileId === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sonarrQualityProfileId'],
+          message: 'Quality profile is required for this action',
+        })
+      }
+    }
+  })
 
 type RuleGroupFormValues = z.infer<typeof ruleGroupFormSchema>
 type RuleGroupFormInput = z.input<typeof ruleGroupFormSchema>
@@ -250,6 +276,12 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     : undefined,
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
+    : undefined,
+  radarrQualityProfileId: editData
+    ? (editData.collection?.radarrQualityProfileId ?? null)
+    : undefined,
+  sonarrQualityProfileId: editData
+    ? (editData.collection?.sonarrQualityProfileId ?? null)
     : undefined,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
@@ -346,6 +378,12 @@ const AddModal = (props: AddModal) => {
     scrollStore.getServerSnapshot,
   )
 
+  // Clear quality profile IDs when media type changes
+  useEffect(() => {
+    setValue('radarrQualityProfileId', undefined)
+    setValue('sonarrQualityProfileId', undefined)
+  }, [selectedType, setValue])
+
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
   const seerrEnabled =
@@ -365,6 +403,8 @@ const AddModal = (props: AddModal) => {
 
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
+    setValue('radarrQualityProfileId', undefined)
+    setValue('sonarrQualityProfileId', undefined)
     updateArrOption(ServarrAction.DELETE)
 
     // Clear rules that reference *arr servers since we're resetting them
@@ -378,10 +418,20 @@ const AddModal = (props: AddModal) => {
   function updateArrOption(value: number | undefined) {
     setValue('arrAction', value)
 
-    if (value === undefined || value === ServarrAction.DO_NOTHING) {
+    if (
+      value === undefined ||
+      value === ServarrAction.DO_NOTHING ||
+      value === ServarrAction.CHANGE_QUALITY_PROFILE
+    ) {
       setValue('deleteAfterDays', undefined)
     } else if (getValues('deleteAfterDays') === undefined) {
       setValue('deleteAfterDays', 30)
+    }
+
+    // Clear quality profile IDs when switching away from action 5
+    if (value !== 5) {
+      setValue('radarrQualityProfileId', undefined)
+      setValue('sonarrQualityProfileId', undefined)
     }
   }
 
@@ -515,12 +565,15 @@ const AddModal = (props: AddModal) => {
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
+      radarrQualityProfileId: data.radarrQualityProfileId ?? undefined,
+      sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
         deleteAfterDays:
           data.arrAction === undefined ||
-          data.arrAction === ServarrAction.DO_NOTHING
+          data.arrAction === ServarrAction.DO_NOTHING ||
+          data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE
             ? undefined
             : data.deleteAfterDays,
         manualCollection: data.manualCollection,
@@ -726,9 +779,27 @@ const AddModal = (props: AddModal) => {
                           id: ServarrAction.DO_NOTHING,
                           name: 'Do nothing',
                         },
+                        {
+                          id: ServarrAction.CHANGE_QUALITY_PROFILE,
+                          name: 'Change quality profile and search',
+                        },
                       ]}
                     />
                   )}
+
+                  {selectedLibraryType &&
+                    selectedLibraryType === 'movie' &&
+                    arrActionValue === ServarrAction.CHANGE_QUALITY_PROFILE && (
+                      <QualityProfileSelector
+                        type="Radarr"
+                        settingId={radarrSettingsId}
+                        qualityProfileId={watch('radarrQualityProfileId')}
+                        onUpdate={(qualityProfileId) => {
+                          setValue('radarrQualityProfileId', qualityProfileId)
+                        }}
+                        error={errors.radarrQualityProfileId?.message}
+                      />
+                    )}
 
                   {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
@@ -805,6 +876,10 @@ const AddModal = (props: AddModal) => {
                                   id: ServarrAction.DO_NOTHING,
                                   name: 'Do nothing',
                                 },
+                                {
+                                  id: ServarrAction.CHANGE_QUALITY_PROFILE,
+                                  name: 'Change quality profile and search',
+                                },
                               ]
                             : selectedType === 'season'
                               ? [
@@ -855,11 +930,24 @@ const AddModal = (props: AddModal) => {
                           {errors.sonarrSettingsId.message}
                         </p>
                       )}
+
+                      {arrActionValue === ServarrAction.CHANGE_QUALITY_PROFILE && (
+                        <QualityProfileSelector
+                          type="Sonarr"
+                          settingId={sonarrSettingsId}
+                          qualityProfileId={watch('sonarrQualityProfileId')}
+                          onUpdate={(qualityProfileId) => {
+                            setValue('sonarrQualityProfileId', qualityProfileId)
+                          }}
+                          error={errors.sonarrQualityProfileId?.message}
+                        />
+                      )}
                     </>
                   )}
 
                   {arrActionValue !== undefined &&
-                    arrActionValue !== ServarrAction.DO_NOTHING && (
+                    arrActionValue !== ServarrAction.DO_NOTHING &&
+                    arrActionValue !== ServarrAction.CHANGE_QUALITY_PROFILE && (
                       <div className="form-row items-center">
                         <label
                           htmlFor="collection_deleteDays"

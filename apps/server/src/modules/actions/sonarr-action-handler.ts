@@ -329,125 +329,53 @@ export class SonarrActionHandler {
             );
             return false;
         }
-    }
+        break;
+      case ServarrAction.CHANGE_QUALITY_PROFILE: {
+        if (
+          collection.type === 'season' ||
+          collection.type === 'episode'
+        ) {
+          this.logger.warn(
+            `[Sonarr] CHANGE_QUALITY_PROFILE is not supported for type: ${collection.type}. Quality profiles can only be changed for entire shows.`,
+          );
+          break;
+        }
 
-    return false;
-  }
+        const targetProfileId = collection.sonarrQualityProfileId;
 
-  private getEpisodeLookup(mediaData?: MediaItem):
-    | {
-        seasonNumber: number;
-        episodeNumbers: number[];
-        airDate?: Date;
-      }
-    | undefined {
-    if (mediaData?.parentIndex === undefined) {
-      return undefined;
-    }
+        if (!targetProfileId) {
+          this.logger.warn(
+            `No target quality profile configured for collection ${collection.title}`,
+          );
+          break;
+        }
 
-    if (mediaData.index !== undefined) {
-      return {
-        seasonNumber: mediaData.parentIndex,
-        episodeNumbers: [mediaData.index],
-      };
-    }
+        if (!Number.isInteger(targetProfileId) || targetProfileId <= 0) {
+          this.logger.warn(
+            `[Sonarr] Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
+          );
+          break;
+        }
 
-    if (mediaData.originallyAvailableAt) {
-      return {
-        seasonNumber: mediaData.parentIndex,
-        episodeNumbers: [],
-        airDate: mediaData.originallyAvailableAt,
-      };
-    }
+        sonarrMedia.qualityProfileId = targetProfileId;
+        await sonarrApiClient.updateSeries(sonarrMedia);
 
-    return undefined;
-  }
-
-  private getEpisodeLogLabel(mediaData?: MediaItem): string {
-    if (mediaData?.index !== undefined) {
-      return `episode ${mediaData.index}`;
-    }
-
-    if (mediaData?.originallyAvailableAt) {
-      return `episode airing ${
-        mediaData.originallyAvailableAt.toISOString().split('T')[0]
-      }`;
-    }
-
-    return 'episode';
-  }
-
-  private async deleteShowIfEmpty(
-    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
-    lookupCandidate: { providerKey: string; id: number },
-    tmdbId: number | undefined,
-    removedSeasonNumber: number | undefined,
-    listExclusions: boolean | undefined,
-  ): Promise<void> {
-    const series = await this.refetchSeries(sonarrApiClient, lookupCandidate);
-
-    if (!series?.id || !this.isShowEmpty(series, 'files')) {
-      return;
-    }
-
-    const hasSeerrCheckInputs =
-      tmdbId !== undefined && removedSeasonNumber !== undefined;
-
-    if (this.seerrApi.isConfigured() && hasSeerrCheckInputs) {
-      const hasRemainingRequests =
-        await this.seerrApi.hasRemainingSeasonRequests(
-          tmdbId,
-          removedSeasonNumber,
+        this.logger.log(
+          `[Sonarr] Changed quality profile for show '${sonarrMedia.title}' to profile ID ${targetProfileId}`,
         );
 
-      // Bail on true (remaining requests) or undefined (Seerr lookup failed) — only delete on explicit false
-      if (hasRemainingRequests !== false) {
-        return;
+        try {
+          await sonarrApiClient.searchSeries(sonarrMedia.id);
+          this.logger.log(
+            `[Sonarr] Triggered search for show '${sonarrMedia.title}'`,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `[Sonarr] Failed to trigger search for show '${sonarrMedia.title}': ${error.message}`,
+          );
+        }
+        break;
       }
-
-      await sonarrApiClient.deleteShow(series.id, true, listExclusions);
-      this.logger.log(
-        `[Sonarr] Show '${series.title}' has no files and no remaining Seerr season requests - deleted from Sonarr`,
-      );
-      return;
-    }
-
-    if (!this.isShowEmptyAndEnded(series, 'monitored')) {
-      return;
-    }
-
-    await sonarrApiClient.deleteShow(series.id, true, listExclusions);
-    this.logger.log(
-      `[Sonarr] Show '${series.title}' is ended with no files or monitored seasons remaining - deleted from Sonarr`,
-    );
-  }
-
-  private async unmonitorShowIfEmptyAndEnded(
-    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
-    lookupCandidate: { providerKey: string; id: number },
-  ): Promise<void> {
-    const series = await this.refetchSeries(sonarrApiClient, lookupCandidate);
-
-    if (!series || !this.isShowEmptyAndEnded(series, 'monitored')) {
-      return;
-    }
-
-    series.monitored = false;
-    await sonarrApiClient.updateSeries(series);
-    this.logger.log(
-      `[Sonarr] Show '${series.title}' is ended with no monitored seasons - unmonitored show`,
-    );
-  }
-
-  private async refetchSeries(
-    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
-    lookupCandidate: { providerKey: string; id: number },
-  ): Promise<SonarrSeries | undefined> {
-    switch (lookupCandidate.providerKey) {
-      case 'tvdb':
-        return sonarrApiClient.getSeriesByTvdbId(lookupCandidate.id);
-      default:
-        return undefined;
     }
   }
 
