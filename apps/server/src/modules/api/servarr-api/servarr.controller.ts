@@ -34,13 +34,22 @@ export class ServarrController {
       const profiles = await radarrApiClient.getProfiles();
       const validatedProfiles = this.validateProfiles(profiles);
 
-      if (profiles && !validatedProfiles.length && Array.isArray(profiles) && profiles.length > 0) {
-        this.logger.warn(`Invalid quality profiles response from Radarr settings ${id}`);
+      if (
+        profiles &&
+        !validatedProfiles.length &&
+        Array.isArray(profiles) &&
+        profiles.length > 0
+      ) {
+        this.logger.warn(
+          `Invalid quality profiles response from Radarr settings ${id}`,
+        );
       }
 
       return validatedProfiles;
     } catch (error) {
-      this.logger.error(`Failed to fetch Radarr profiles for settings ${id}: ${error.message}`);
+      this.logger.error(
+        `Failed to fetch Radarr profiles for settings ${id}: ${error.message}`,
+      );
       return [];
     }
   }
@@ -52,13 +61,22 @@ export class ServarrController {
       const profiles = await sonarrApiClient.getProfiles();
       const validatedProfiles = this.validateProfiles(profiles);
 
-      if (profiles && !validatedProfiles.length && Array.isArray(profiles) && profiles.length > 0) {
-        this.logger.warn(`Invalid quality profiles response from Sonarr settings ${id}`);
+      if (
+        profiles &&
+        !validatedProfiles.length &&
+        Array.isArray(profiles) &&
+        profiles.length > 0
+      ) {
+        this.logger.warn(
+          `Invalid quality profiles response from Sonarr settings ${id}`,
+        );
       }
 
       return validatedProfiles;
     } catch (error) {
-      this.logger.error(`Failed to fetch Sonarr profiles for settings ${id}: ${error.message}`);
+      this.logger.error(
+        `Failed to fetch Sonarr profiles for settings ${id}: ${error.message}`,
+      );
       return [];
     }
   }
