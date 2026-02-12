@@ -12,3 +12,5 @@ export const tautulliSettingSchema = z.object({
     }),
   api_key: z.string().trim(),
 })
+
+export type TautulliSetting = z.infer<typeof tautulliSettingSchema>

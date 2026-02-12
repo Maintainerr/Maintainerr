@@ -19,5 +19,6 @@ export const logSettingSchema = z.object({
   max_files: z.number({ error: () => 'Max backups must be a number' }).min(1),
 })
 
+export type LogSetting = z.infer<typeof logSettingSchema>
 export type LogSettingSchemaInput = z.input<typeof logSettingSchema>
 export type LogSettingSchemaOutput = z.output<typeof logSettingSchema>

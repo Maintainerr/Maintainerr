@@ -1,7 +1,13 @@
 import {
   BasicResponseDto,
+  JellyseerrSetting,
+  jellyseerrSettingSchema,
   JellyseerrSettingDto,
+  OverseerrSetting,
+  overseerrSettingSchema,
   OverseerrSettingDto,
+  TautulliSetting,
+  tautulliSettingSchema,
   TautulliSettingDto,
 } from '@maintainerr/contracts';
 import {
@@ -22,6 +28,7 @@ import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
 import { SettingsService } from './settings.service';
+import { ZodValidationPipe } from 'nestjs-zod';
 
 @Controller('/api/settings')
 export class SettingsController {
@@ -131,7 +138,10 @@ export class SettingsController {
   }
 
   @Post('/tautulli')
-  async updateTautlliSetting(@Body() payload: TautulliSettingDto) {
+  async updateTautlliSetting(
+    @Body(new ZodValidationPipe(tautulliSettingSchema))
+    payload: TautulliSetting,
+  ) {
     return await this.settingsService.updateTautulliSetting(payload);
   }
 
@@ -141,7 +151,10 @@ export class SettingsController {
   }
 
   @Post('/test/tautulli')
-  testTautulli(@Body() payload: TautulliSettingDto): Promise<BasicResponseDto> {
+  testTautulli(
+    @Body(new ZodValidationPipe(tautulliSettingSchema))
+    payload: TautulliSetting,
+  ): Promise<BasicResponseDto> {
     return this.settingsService.testTautulli(payload);
   }
 
@@ -176,7 +189,10 @@ export class SettingsController {
   }
 
   @Post('/jellyseerr')
-  async updateJellyseerrSetting(@Body() payload: JellyseerrSettingDto) {
+  async updateJellyseerrSetting(
+    @Body(new ZodValidationPipe(jellyseerrSettingSchema))
+    payload: JellyseerrSetting,
+  ) {
     return await this.settingsService.updateJellyseerrSetting(payload);
   }
 
@@ -187,13 +203,17 @@ export class SettingsController {
 
   @Post('/test/jellyseerr')
   testJellyseerr(
-    @Body() payload: JellyseerrSettingDto,
+    @Body(new ZodValidationPipe(jellyseerrSettingSchema))
+    payload: JellyseerrSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testJellyseerr(payload);
   }
 
   @Post('/overseerr')
-  async updateOverseerrSetting(@Body() payload: OverseerrSettingDto) {
+  async updateOverseerrSetting(
+    @Body(new ZodValidationPipe(overseerrSettingSchema))
+    payload: OverseerrSetting,
+  ) {
     return await this.settingsService.updateOverseerrSetting(payload);
   }
 
@@ -204,7 +224,8 @@ export class SettingsController {
 
   @Post('/test/overseerr')
   testOverseerr(
-    @Body() payload: OverseerrSettingDto,
+    @Body(new ZodValidationPipe(overseerrSettingSchema))
+    payload: OverseerrSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testOverseerr(payload);
   }
