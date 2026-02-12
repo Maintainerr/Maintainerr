@@ -1,4 +1,4 @@
-import { LogSettingDto } from '@maintainerr/contracts';
+import { LogSettingDto, logSettingSchema } from '@maintainerr/contracts';
 import { Injectable, LoggerService, Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,24 +25,26 @@ export class LogSettingsService {
   }
 
   public async update(settings: LogSettingDto): Promise<void> {
-    this.logger.level = settings.level;
+    const parsedSettings = logSettingSchema.parse(settings);
+
+    this.logger.level = parsedSettings.level;
 
     const rotateTransport = this.logger.transports.find(
       (x): x is DailyRotateFile => x instanceof DailyRotateFile,
     );
 
     if (rotateTransport) {
-      rotateTransport.options.maxFiles = settings.max_files;
-      rotateTransport.options.maxSize = `${settings.max_size}m`;
+      rotateTransport.options.maxFiles = parsedSettings.max_files;
+      rotateTransport.options.maxSize = `${parsedSettings.max_size}m`;
     }
 
     const logSetting = await this.logSettingsRepo.findOne({ where: {} });
 
     const data = {
       ...logSetting,
-      level: settings.level,
-      max_size: settings.max_size,
-      max_files: settings.max_files,
+      level: parsedSettings.level,
+      max_size: parsedSettings.max_size,
+      max_files: parsedSettings.max_files,
     } satisfies LogSettings;
 
     await this.logSettingsRepo.save(data);

@@ -3,6 +3,9 @@ import {
   MaintainerrEvent,
   OverseerrSettingDto,
   TautulliSettingDto,
+  jellyseerrSettingSchema,
+  overseerrSettingSchema,
+  tautulliSettingSchema,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -294,16 +297,17 @@ export class SettingsService implements SettingDto {
     settings: TautulliSettingDto,
   ): Promise<BasicResponseDto> {
     try {
+      const parsedSettings = tautulliSettingSchema.parse(settings);
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
       await this.saveSettings({
         ...settingsDb,
-        tautulli_url: settings.url,
-        tautulli_api_key: settings.api_key,
+        tautulli_url: parsedSettings.url,
+        tautulli_api_key: parsedSettings.api_key,
       });
 
-      this.tautulli_url = settings.url;
-      this.tautulli_api_key = settings.api_key;
+      this.tautulli_url = parsedSettings.url;
+      this.tautulli_api_key = parsedSettings.api_key;
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -338,16 +342,17 @@ export class SettingsService implements SettingDto {
     settings: OverseerrSettingDto,
   ): Promise<BasicResponseDto> {
     try {
+      const parsedSettings = overseerrSettingSchema.parse(settings);
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
       await this.saveSettings({
         ...settingsDb,
-        overseerr_url: settings.url,
-        overseerr_api_key: settings.api_key,
+        overseerr_url: parsedSettings.url,
+        overseerr_api_key: parsedSettings.api_key,
       });
 
-      this.overseerr_url = settings.url;
-      this.overseerr_api_key = settings.api_key;
+      this.overseerr_url = parsedSettings.url;
+      this.overseerr_api_key = parsedSettings.api_key;
       this.overseerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -597,11 +602,15 @@ export class SettingsService implements SettingDto {
   public async testOverseerr(
     setting?: OverseerrSettingDto,
   ): Promise<BasicResponseDto> {
+    const parsedSetting = setting
+      ? overseerrSettingSchema.parse(setting)
+      : undefined;
+
     return await this.overseerr.testConnection(
-      setting
+      parsedSetting
         ? {
-            apiKey: setting.api_key,
-            url: setting.url,
+            apiKey: parsedSetting.api_key,
+            url: parsedSetting.url,
           }
         : undefined,
     );
@@ -610,11 +619,15 @@ export class SettingsService implements SettingDto {
   public async testJellyseerr(
     setting?: JellyseerrSettingDto,
   ): Promise<BasicResponseDto> {
+    const parsedSetting = setting
+      ? jellyseerrSettingSchema.parse(setting)
+      : undefined;
+
     return await this.jellyseerr.testConnection(
-      setting
+      parsedSetting
         ? {
-            apiKey: setting.api_key,
-            url: setting.url,
+            apiKey: parsedSetting.api_key,
+            url: parsedSetting.url,
           }
         : undefined,
     );
@@ -645,16 +658,17 @@ export class SettingsService implements SettingDto {
     settings: JellyseerrSettingDto,
   ): Promise<BasicResponseDto> {
     try {
+      const parsedSettings = jellyseerrSettingSchema.parse(settings);
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
       await this.saveSettings({
         ...settingsDb,
-        jellyseerr_url: settings.url,
-        jellyseerr_api_key: settings.api_key,
+        jellyseerr_url: parsedSettings.url,
+        jellyseerr_api_key: parsedSettings.api_key,
       });
 
-      this.jellyseerr_url = settings.url;
-      this.jellyseerr_api_key = settings.api_key;
+      this.jellyseerr_url = parsedSettings.url;
+      this.jellyseerr_api_key = parsedSettings.api_key;
       this.jellyseerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -668,9 +682,10 @@ export class SettingsService implements SettingDto {
     setting?: TautulliSettingDto,
   ): Promise<BasicResponseDto> {
     if (setting) {
+      const parsedSetting = tautulliSettingSchema.parse(setting);
       return await this.tautulli.testConnection({
-        apiKey: setting.api_key,
-        url: setting.url,
+        apiKey: parsedSetting.api_key,
+        url: parsedSetting.url,
       });
     }
 
