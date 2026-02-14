@@ -1,17 +1,16 @@
-import { CollectionLogMeta } from '@maintainerr/contracts';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import { CollectionLogMeta, MediaItemType } from '@maintainerr/contracts';
 
 export interface ICollectionMedia {
   id: number;
   collectionId: number;
-  plexId: number;
+  mediaServerId: string;
   tmdbId: number;
   tvdbid: number;
   addDate: Date;
 }
 
 export interface AddRemoveCollectionMedia {
-  plexId: number;
+  mediaServerId: string;
   reason?: CollectionLogMeta;
 }
 
@@ -19,5 +18,5 @@ export interface IAlterableMediaDto {
   id: number;
   index?: number;
   parenIndex?: number;
-  type: EPlexDataType;
+  type: MediaItemType;
 }

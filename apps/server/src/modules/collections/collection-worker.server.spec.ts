@@ -7,7 +7,6 @@ import {
 } from '../../../test/utils/data';
 import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
 import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
-import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
 import { SettingsService } from '../settings/settings.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -93,7 +92,7 @@ describe('CollectionWorkerService', () => {
 
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      type: EPlexDataType.SHOWS,
+      type: 'show',
     });
     const collectionMedia = createCollectionMedia(collection);
 

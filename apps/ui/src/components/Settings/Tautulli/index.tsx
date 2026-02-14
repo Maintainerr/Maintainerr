@@ -2,11 +2,11 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
-  TautulliSettingDto,
+  TautulliSetting,
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
   DeleteApiHandler,
@@ -38,7 +38,7 @@ const stripLeadingSlashes = (url: string) => url.replace(/\/+$/, '')
 
 const TautulliSettings = () => {
   const [testedSettings, setTestedSettings] = useState<
-    TautulliSettingDto | undefined
+    TautulliSetting | undefined
   >()
 
   const [testing, setTesting] = useState(false)
@@ -49,14 +49,13 @@ const TautulliSettings = () => {
   const {
     register,
     handleSubmit,
-    watch,
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
   } = useForm<TautulliSettingFormResult, any, TautulliSettingFormResult>({
     resolver: zodResolver(TautulliSettingFormSchema),
     defaultValues: async () => {
-      const resp = await GetApiHandler<TautulliSettingDto>('/settings/tautulli')
+      const resp = await GetApiHandler<TautulliSetting>('/settings/tautulli')
       return {
         url: resp.url ?? '',
         api_key: resp.api_key ?? '',
@@ -64,8 +63,8 @@ const TautulliSettings = () => {
     },
   })
 
-  const url = watch('url')
-  const api_key = watch('api_key')
+  const url = useWatch({ control, name: 'url' })
+  const api_key = useWatch({ control, name: 'api_key' })
 
   const isGoingToRemoveSetting = url === '' && api_key === ''
   const enteredSettingsAreSameAsSaved =
@@ -81,7 +80,7 @@ const TautulliSettings = () => {
     !isSubmitting &&
     !isLoading
 
-  const onSubmit = async (data: TautulliSettingDto) => {
+  const onSubmit = async (data: TautulliSetting) => {
     setSubmitError(false)
     setIsSubmitSuccessful(false)
 
@@ -110,7 +109,7 @@ const TautulliSettings = () => {
     await PostApiHandler<BasicResponseDto>('/settings/test/tautulli', {
       api_key: api_key,
       url,
-    } satisfies TautulliSettingDto)
+    } satisfies TautulliSetting)
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,

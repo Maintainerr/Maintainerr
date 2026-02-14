@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PlexApiService } from '../../api/plex-api/plex-api.service';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Collection } from '../../collections/entities/collection.entities';
+import { CollectionsService } from '../../collections/collections.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { TaskBase } from '../../tasks/task.base';
@@ -21,7 +22,8 @@ export class RuleMaintenanceService extends TaskBase {
     private readonly rulesService: RulesService,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly collectionsService: CollectionsService,
   ) {
     logger.setContext(RuleMaintenanceService.name);
     super(taskService, logger);
@@ -30,18 +32,22 @@ export class RuleMaintenanceService extends TaskBase {
   protected async executeTask() {
     try {
       this.logger.log('Starting maintenance');
-      const appStatus = await this.settings.testConnections();
+      const mediaServerReachable =
+        await this.settings.testMediaServerConnection();
 
-      if (appStatus) {
+      if (mediaServerReachable) {
         // remove media exclusions that are no longer available
         await this.removeLeftoverExclusions();
-        await this.removeCollectionsWithoutRule();
-        this.logger.log('Maintenance done');
+        // remove collection media entries for items deleted from media server
+        await this.collectionsService.removeStaleCollectionMedia();
       } else {
-        this.logger.error(
-          `Maintenance skipped, not all applications were reachable.`,
+        this.logger.warn(
+          'Skipping media server cleanup; media server was not reachable.',
         );
       }
+
+      await this.removeCollectionsWithoutRule();
+      this.logger.log('Maintenance done');
     } catch (e) {
       this.logger.error(`Rule Maintenance failed : ${e.message}`);
     }
@@ -50,12 +56,13 @@ export class RuleMaintenanceService extends TaskBase {
   private async removeLeftoverExclusions() {
     // get all exclusions
     const exclusions = await this.rulesService.getAllExclusions();
+    const mediaServer = await this.mediaServerFactory.getService();
     // loop through exclusions
     for (const exclusion of exclusions) {
       // check if media still exists
-      const resp = await this.plexApi.getMetadata(exclusion.plexId.toString());
+      const resp = await mediaServer.getMetadata(exclusion.mediaServerId);
       // remove when not
-      if (!resp?.ratingKey) {
+      if (!resp?.id) {
         await this.rulesService.removeExclusion(exclusion.id);
       }
     }

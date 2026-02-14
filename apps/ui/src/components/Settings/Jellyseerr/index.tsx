@@ -2,11 +2,11 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
-  JellyseerrSettingDto,
+  JellyseerrSetting,
   jellyseerrSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
   DeleteApiHandler,
@@ -38,7 +38,7 @@ const stripLeadingSlashes = (url: string) => url.replace(/\/+$/, '')
 
 const JellyseerrSettings = () => {
   const [testedSettings, setTestedSettings] = useState<
-    JellyseerrSettingDto | undefined
+    JellyseerrSetting | undefined
   >()
 
   const [testing, setTesting] = useState(false)
@@ -49,14 +49,13 @@ const JellyseerrSettings = () => {
   const {
     register,
     handleSubmit,
-    watch,
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
   } = useForm<JellyseerrSettingFormResult, any, JellyseerrSettingFormResult>({
     resolver: zodResolver(JellyseerrSettingFormSchema),
     defaultValues: async () => {
-      const resp = await GetApiHandler<JellyseerrSettingDto>(
+      const resp = await GetApiHandler<JellyseerrSetting>(
         '/settings/jellyseerr',
       )
       return {
@@ -66,8 +65,8 @@ const JellyseerrSettings = () => {
     },
   })
 
-  const url = watch('url')
-  const api_key = watch('api_key')
+  const url = useWatch({ control, name: 'url' })
+  const api_key = useWatch({ control, name: 'api_key' })
 
   const isGoingToRemoveSetting = url === '' && api_key === ''
   const enteredSettingsAreSameAsSaved =
@@ -83,7 +82,7 @@ const JellyseerrSettings = () => {
     !isSubmitting &&
     !isLoading
 
-  const onSubmit = async (data: JellyseerrSettingDto) => {
+  const onSubmit = async (data: JellyseerrSetting) => {
     setSubmitError(false)
     setIsSubmitSuccessful(false)
 
@@ -112,7 +111,7 @@ const JellyseerrSettings = () => {
     await PostApiHandler<BasicResponseDto>('/settings/test/jellyseerr', {
       api_key: api_key,
       url,
-    } satisfies JellyseerrSettingDto)
+    } satisfies JellyseerrSetting)
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,

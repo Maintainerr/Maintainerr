@@ -1,14 +1,13 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
   createCollectionMedia,
-  createPlexLibraryItem,
+  createMediaItem,
   createRadarrMovie,
   createRadarrMovieFile,
   createRadarrQuality,
   createRulesDto,
 } from '../../../../test/utils/data';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
-import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interfaces';
 import { RadarrApi } from '../../api/servarr-api/helpers/radarr.helper';
 import { RadarrMovie } from '../../api/servarr-api/interfaces/radarr.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
@@ -39,13 +38,13 @@ describe('RadarrGetterService', () => {
 
   describe('fileQualityCutoffMet', () => {
     let collectionMedia: CollectionMedia;
-    let plexLibraryItem: PlexLibraryItem;
+    let mediaItem: MediaItem;
 
     beforeEach(() => {
-      collectionMedia = createCollectionMedia(EPlexDataType.MOVIES);
+      collectionMedia = createCollectionMedia('movie');
       collectionMedia.collection.radarrSettingsId = 1;
-      plexLibraryItem = createPlexLibraryItem('movie');
-      tmdbIdService.getTmdbIdFromPlexRatingKey.mockResolvedValue({
+      mediaItem = createMediaItem({ type: 'movie' });
+      tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue({
         type: 'movie',
         id: 1,
       });
@@ -61,10 +60,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         20,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -81,10 +80,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         20,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -99,10 +98,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         20,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -112,13 +111,13 @@ describe('RadarrGetterService', () => {
 
   describe('fileQualityName', () => {
     let collectionMedia: CollectionMedia;
-    let plexLibraryItem: PlexLibraryItem;
+    let mediaItem: MediaItem;
 
     beforeEach(() => {
-      collectionMedia = createCollectionMedia(EPlexDataType.MOVIES);
+      collectionMedia = createCollectionMedia('movie');
       collectionMedia.collection.radarrSettingsId = 1;
-      plexLibraryItem = createPlexLibraryItem('movie');
-      tmdbIdService.getTmdbIdFromPlexRatingKey.mockResolvedValue({
+      mediaItem = createMediaItem({ type: 'movie' });
+      tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue({
         type: 'movie',
         id: 1,
       });
@@ -138,10 +137,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         21,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -156,10 +155,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         21,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -169,13 +168,13 @@ describe('RadarrGetterService', () => {
 
   describe('fileAudioLanguages', () => {
     let collectionMedia: CollectionMedia;
-    let plexLibraryItem: PlexLibraryItem;
+    let mediaItem: MediaItem;
 
     beforeEach(() => {
-      collectionMedia = createCollectionMedia(EPlexDataType.MOVIES);
+      collectionMedia = createCollectionMedia('movie');
       collectionMedia.collection.radarrSettingsId = 1;
-      plexLibraryItem = createPlexLibraryItem('movie');
-      tmdbIdService.getTmdbIdFromPlexRatingKey.mockResolvedValue({
+      mediaItem = createMediaItem({ type: 'movie' });
+      tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue({
         type: 'movie',
         id: 1,
       });
@@ -191,10 +190,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         22,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -209,10 +208,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         22,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 
@@ -229,10 +228,10 @@ describe('RadarrGetterService', () => {
 
       const response = await radarrGetterService.get(
         22,
-        plexLibraryItem,
+        mediaItem,
         createRulesDto({
           collection: collectionMedia.collection,
-          dataType: EPlexDataType.MOVIES,
+          dataType: 'movie',
         }),
       );
 

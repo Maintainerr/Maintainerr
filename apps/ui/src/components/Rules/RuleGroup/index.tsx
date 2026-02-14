@@ -4,12 +4,12 @@ import {
   StopIcon,
   TrashIcon,
 } from '@heroicons/react/solid'
-import { EPlexDataType } from '@maintainerr/contracts'
+import { type MediaItemType } from '@maintainerr/contracts'
 import { isAxiosError } from 'axios'
 import clsx from 'clsx'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
-import { usePlexLibraries } from '../../../api/plex'
+import { useMediaServerLibraries } from '../../../api/media-server'
 import {
   useExecuteRuleGroup,
   useStopRuleGroupExecution,
@@ -26,12 +26,12 @@ export interface IRuleGroup {
   id: number
   name: string
   description: string
-  libraryId: number
+  libraryId: string
   isActive: boolean
   collectionId: number
   rules: IRuleJson[]
   useRules: boolean
-  dataType: EPlexDataType
+  dataType: MediaItemType
   notifications?: AgentConfiguration[]
   collection?: ICollection
   ruleHandlerCronSchedule?: string | null
@@ -43,7 +43,7 @@ const RuleGroup = (props: {
   onEdit: (group: IRuleGroup) => void
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
-  const { data: plexLibraries } = usePlexLibraries()
+  const { data: libraries } = useMediaServerLibraries()
   const { queueStatus } = useTaskStatusContext()
   const { mutate: executeRules } = useExecuteRuleGroup({
     onError(error) {
@@ -87,6 +87,7 @@ const RuleGroup = (props: {
   const isQueued = queueStatus?.queue.includes(props.group.id)
   const ruleExecutingOrQueued =
     queueStatus?.executingRuleGroupId === props.group.id || isQueued
+  const hasNoLibrary = !props.group.libraryId || props.group.libraryId === ''
 
   return (
     <>
@@ -152,10 +153,17 @@ const RuleGroup = (props: {
               Library
             </div>
             <div className="flex justify-center text-amber-500">
-              {`${
-                plexLibraries?.find((el) => +el.key === +props.group.libraryId)
-                  ?.title ?? ''
-              }`}
+              {hasNoLibrary ? (
+                <span
+                  className="flex justify-center text-red-500"
+                  title="Please edit this rule and select a library"
+                >
+                  Not set
+                </span>
+              ) : (
+                (libraries?.find((lib) => lib.id === props.group.libraryId)
+                  ?.title ?? '')
+              )}
             </div>
           </div>
           <div>

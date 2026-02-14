@@ -34,6 +34,7 @@ export interface PlexMetadata {
   parentTitle?: string;
   grandparentTitle?: string;
   Rating?: PlexRating[];
+  contentRating?: string;
 }
 
 export interface Media {

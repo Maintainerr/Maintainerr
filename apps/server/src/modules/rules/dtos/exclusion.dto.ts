@@ -1,14 +1,14 @@
 import { IAlterableMediaDto } from '../../collections/interfaces/collection-media.interface';
 
 export class ExclusionDto {
-  plexId: number;
+  mediaServerId: string;
   ruleGroupId?: number;
   collectionId?: number;
   action?: ExclusionAction;
 }
 
 export interface ExclusionContextDto {
-  mediaId: number;
+  mediaId: string;
   context: IAlterableMediaDto;
   collectionId: number;
   ruleGroupId: number;

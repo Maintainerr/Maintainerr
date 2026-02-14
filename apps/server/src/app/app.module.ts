@@ -10,10 +10,11 @@ import { ExternalApiModule } from '../modules/api/external-api/external-api.modu
 import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
 import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';
 import { JellyseerrApiService } from '../modules/api/jellyseerr-api/jellyseerr-api.service';
+import { MediaServerFactory } from '../modules/api/media-server/media-server.factory';
+import { MediaServerModule } from '../modules/api/media-server/media-server.module';
 import { OverseerrApiModule } from '../modules/api/overseerr-api/overseerr-api.module';
 import { OverseerrApiService } from '../modules/api/overseerr-api/overseerr-api.service';
 import { PlexApiModule } from '../modules/api/plex-api/plex-api.module';
-import { PlexApiService } from '../modules/api/plex-api/plex-api.service';
 import { ServarrApiModule } from '../modules/api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../modules/api/tautulli-api/tautulli-api.module';
 import { TautulliApiService } from '../modules/api/tautulli-api/tautulli-api.service';
@@ -40,6 +41,7 @@ import ormConfig from './config/typeOrmConfig';
     LogsModule,
     SettingsModule,
     PlexApiModule,
+    MediaServerModule,
     ExternalApiModule,
     GitHubApiModule,
     TmdbApiModule,
@@ -61,9 +63,7 @@ import ormConfig from './config/typeOrmConfig';
           {
             rootPath: join(__dirname, '..', 'ui'),
             serveRoot: process.env.BASE_PATH || undefined,
-            serveStaticOptions: {
-              extensions: ['html'],
-            },
+            exclude: ['/api/{*path}'],
           },
         ];
       },
@@ -81,7 +81,7 @@ import ormConfig from './config/typeOrmConfig';
 export class AppModule implements OnModuleInit {
   constructor(
     private readonly settings: SettingsService,
-    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly overseerApi: OverseerrApiService,
     private readonly tautulliApi: TautulliApiService,
     private readonly notificationService: NotificationService,
@@ -90,7 +90,10 @@ export class AppModule implements OnModuleInit {
   async onModuleInit() {
     // Initialize modules requiring settings
     await this.settings.init();
-    await this.plexApi.initialize();
+
+    // Initialize configured media server (Plex or Jellyfin)
+    await this.mediaServerFactory.initialize();
+
     this.overseerApi.init();
     this.tautulliApi.init();
     this.jellyseerrApi.init();

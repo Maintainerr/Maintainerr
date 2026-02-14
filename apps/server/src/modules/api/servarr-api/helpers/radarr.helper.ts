@@ -113,12 +113,11 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       if (options?.addImportExclusion) {
-        const res = await this.post(`/exclusions`, {
+        await this.post(`/exclusions`, {
           tmdbId: movieData.tmdbId,
           movieTitle: movieData.title,
           movieYear: movieData.year,
         } satisfies RadarrImportListExclusion);
-        console.log({ res });
       }
     } catch (e) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");

@@ -17,6 +17,10 @@
 <!-- License -->  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/maintainerr/maintainerr?style=flat"></picture>
 </p>
 
+<p>
+<b> THIS IS A DEVELOPMENT BRANCH, INTRODUCING JELLYFIN SUPPORT. YOU SHOULD NOT USE IT IN PRODUCTION. </b>
+</p>
+
 <b>Maintainerr</b> makes managing your media easy.
 
 - Do you hate being the janitor of your server?
@@ -28,7 +32,7 @@ It's a one-stop-shop for handling those outlying shows and movies that take up p
 
 # Features
 
-- Configure rules specific to your needs, based on several available options from Plex, Overseerr, Jellyseerr, Radarr, Sonarr and Tautulli.
+- Configure rules specific to your needs, based on several available options from Plex, Jellyfin, Overseerr, Jellyseerr, Radarr, Sonarr and Tautulli.
 - Manually add media to a collection, in case it's not included after rule execution. (one-off items that don't match a rule set)
 - Selectively exclude media from being added to a collection, even if it matches a rule.
 - Show a collection, containing rule matched media, on the Plex home screen for a specific duration before deletion. Think "Leaving soon".
@@ -42,6 +46,7 @@ It's a one-stop-shop for handling those outlying shows and movies that take up p
 Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 
 - Plex
+- Jellyfin
 - Overseerr
 - Jellyseerr
 - Radarr
@@ -80,8 +85,6 @@ ghcr.io/maintainerr/maintainerr:latest
 Docker-compose:
 
 ```Yaml
-version: '3'
-
 services:
     maintainerr:
         image: ghcr.io/maintainerr/maintainerr:latest # or maintainerr/maintainerr:latest

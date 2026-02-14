@@ -1,14 +1,17 @@
 import {
   BasicResponseDto,
+  JellyfinSetting,
+  jellyfinSettingSchema,
   JellyseerrSetting,
   jellyseerrSettingSchema,
-  JellyseerrSettingDto,
+  MediaServerSwitchPreview,
+  MediaServerType,
   OverseerrSetting,
   overseerrSettingSchema,
-  OverseerrSettingDto,
+  SwitchMediaServerRequest,
+  SwitchMediaServerResponse,
   TautulliSetting,
   tautulliSettingSchema,
-  TautulliSettingDto,
 } from '@maintainerr/contracts';
 import {
   Body,
@@ -27,12 +30,16 @@ import { SettingDto } from "./dto's/setting.dto";
 import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
+import { MediaServerSwitchService } from './media-server-switch.service';
 import { SettingsService } from './settings.service';
 import { ZodValidationPipe } from 'nestjs-zod';
 
 @Controller('/api/settings')
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly mediaServerSwitchService: MediaServerSwitchService,
+  ) {}
 
   @Get()
   getSettings() {
@@ -124,7 +131,7 @@ export class SettingsController {
   }
 
   @Get('/tautulli')
-  async getTautulliSetting(): Promise<TautulliSettingDto | BasicResponseDto> {
+  async getTautulliSetting(): Promise<TautulliSetting | BasicResponseDto> {
     const settings = await this.settingsService.getSettings();
 
     if (!(settings instanceof Settings)) {
@@ -159,9 +166,7 @@ export class SettingsController {
   }
 
   @Get('/jellyseerr')
-  async getJellyseerrSetting(): Promise<
-    JellyseerrSettingDto | BasicResponseDto
-  > {
+  async getJellyseerrSetting(): Promise<JellyseerrSetting | BasicResponseDto> {
     const settings = await this.settingsService.getSettings();
 
     if (!(settings instanceof Settings)) {
@@ -175,7 +180,7 @@ export class SettingsController {
   }
 
   @Get('/overseerr')
-  async getOverseerrSetting(): Promise<OverseerrSettingDto | BasicResponseDto> {
+  async getOverseerrSetting(): Promise<OverseerrSetting | BasicResponseDto> {
     const settings = await this.settingsService.getSettings();
 
     if (!(settings instanceof Settings)) {
@@ -230,6 +235,27 @@ export class SettingsController {
     return this.settingsService.testOverseerr(payload);
   }
 
+  @Post('/jellyfin/test')
+  testJellyfin(
+    @Body(new ZodValidationPipe(jellyfinSettingSchema))
+    payload: JellyfinSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsService.testJellyfin(payload);
+  }
+
+  @Post('/jellyfin')
+  async saveJellyfinSettings(
+    @Body(new ZodValidationPipe(jellyfinSettingSchema))
+    payload: JellyfinSetting,
+  ): Promise<BasicResponseDto> {
+    return await this.settingsService.saveJellyfinSettings(payload);
+  }
+
+  @Delete('/jellyfin')
+  async removeJellyfinSettings(): Promise<BasicResponseDto> {
+    return await this.settingsService.removeJellyfinSettings();
+  }
+
   @Delete('/sonarr/:id')
   async deleteSonarrSetting(@Param('id', new ParseIntPipe()) id: number) {
     return await this.settingsService.deleteSonarrSetting(id);
@@ -250,5 +276,27 @@ export class SettingsController {
     return this.settingsService.cronIsValid(payload.schedule)
       ? { status: 'OK', code: 1, message: 'Success' }
       : { status: 'NOK', code: 0, message: 'Failure' };
+  }
+
+  /**
+   * Preview what data will be cleared when switching media servers
+   */
+  @Get('/media-server/switch/preview/:targetServerType')
+  async previewMediaServerSwitch(
+    @Param('targetServerType') targetServerType: MediaServerType,
+  ): Promise<MediaServerSwitchPreview> {
+    return this.mediaServerSwitchService.previewSwitch(targetServerType);
+  }
+
+  /**
+   * Switch media server type and clear media server-specific data
+   * Keeps: general settings, *arr settings, notification settings
+   * Clears: collections, collection media, exclusions, collection logs
+   */
+  @Post('/media-server/switch')
+  async switchMediaServer(
+    @Body() payload: SwitchMediaServerRequest,
+  ): Promise<SwitchMediaServerResponse> {
+    return this.mediaServerSwitchService.executeSwitch(payload);
   }
 }

@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   LogEvent,
   LogFile,
-  LogSettingDto,
+  LogSetting,
   logSettingSchema,
   LogSettingSchemaInput,
   LogSettingSchemaOutput,
@@ -45,7 +45,7 @@ const LogSettingsForm = () => {
   } = useForm<LogSettingSchemaInput, unknown, LogSettingSchemaOutput>({
     resolver: zodResolver(logSettingSchema),
     defaultValues: async () =>
-      await GetApiHandler<LogSettingDto>('/logs/settings'),
+      await GetApiHandler<LogSetting>('/logs/settings'),
   })
 
   const onSubmit = async (data: LogSettingSchemaOutput) => {

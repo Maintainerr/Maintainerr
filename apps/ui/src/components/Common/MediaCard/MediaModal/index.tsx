@@ -1,9 +1,11 @@
+import { MediaItem } from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
+import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
 
 interface ModalContentProps {
   onClose: () => void
-  id: number
+  id: number | string
   image?: string
   userScore?: number
   backdrop?: string
@@ -14,7 +16,7 @@ interface ModalContentProps {
   canExpand?: boolean
   inProgress?: boolean
   tmdbid?: string
-  libraryId?: number
+  libraryId?: string
   type?: 1 | 2 | 3 | 4
   daysLeft?: number
   exclusionId?: number
@@ -23,37 +25,23 @@ interface ModalContentProps {
   isManual?: boolean
 }
 
-interface Metadata {
-  contentRating: string
-  audienceRating: string
-  Genre: { tag: string }[]
-  Rating: { image: string; value: number; type: string }[]
-  Guid: { id: string }[]
-}
-
 const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-const iconMap: Record<string, Record<string, string>> = {
-  imdb: {
-    audience: `${basePath}/icons_logos/imdb_icon.svg`,
-  },
-  rottentomatoes: {
-    critic: `${basePath}/icons_logos/rt_critic.svg`,
-    audience: `${basePath}/icons_logos/rt_audience.svg`,
-  },
-  themoviedb: {
-    audience: `${basePath}/icons_logos/tmdb_icon.svg`,
-  },
+const ratingIcons: Record<string, string> = {
+  audience: `${basePath}/icons_logos/tmdb_icon.svg`,
+  critic: `${basePath}/icons_logos/rt_critic.svg`,
 }
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
   ({ onClose, mediaType, id, summary, year, title, tmdbid }) => {
+    const { isPlex, isJellyfin } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdrop, setBackdrop] = useState<string | null>(null)
     const [machineId, setMachineId] = useState<string | null>(null)
+    const [serverUrl, setServerUrl] = useState<string | null>(null)
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
       null,
     )
-    const [metadata, setMetadata] = useState<Metadata | null>(null)
+    const [metadata, setMetadata] = useState<MediaItem | null>(null)
 
     const mediaTypeOf = useMemo(
       () =>
@@ -64,26 +52,42 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
     useEffect(() => {
-      GetApiHandler('/plex').then((resp) =>
-        setMachineId(resp.machineIdentifier),
-      )
+      GetApiHandler('/media-server').then((resp) => {
+        setMachineId(resp?.machineId)
+        // For Jellyfin, we need the server URL to construct links
+        if (resp?.url) {
+          setServerUrl(resp.url)
+        }
+      })
       GetApiHandler('/settings').then((resp) =>
         setTautulliModalUrl(resp?.tautulli_url || null),
       )
-      GetApiHandler<Metadata>(`/plex/meta/${id}`).then((data) => {
+      GetApiHandler<MediaItem>(`/media-server/meta/${id}`).then((data) => {
         setMetadata(data)
         setLoading(false)
       })
-      GetApiHandler(`/moviedb/backdrop/${mediaType}/${tmdbid}`)
-        .then((resp) => setBackdrop(resp))
-        .catch((error) => {
-          console.error(
-            'Error fetching backdrop image. Check your Plex metadata',
-            error,
-          )
-          setBackdrop(null)
-        })
-    }, [id, mediaType, tmdbid])
+      // Only fetch backdrop if tmdbid is available
+      if (tmdbid) {
+        const backdropType = ['season', 'episode'].includes(mediaType)
+          ? 'show'
+          : mediaType
+        GetApiHandler(`/moviedb/backdrop/${backdropType}/${tmdbid}`)
+          .then((resp) => setBackdrop(resp))
+          .catch((error) => {
+            console.error(
+              'Error fetching backdrop image. Check your media server metadata',
+              error,
+            )
+            setBackdrop(null)
+          })
+      } else {
+        console.warn(
+          `No TMDB ID found for "${title}" (id: ${id}). Backdrop image unavailable. ` +
+            'Please check your media server metadata - the item may not be matched correctly.',
+        )
+        setBackdrop(null)
+      }
+    }, [id, mediaType, tmdbid, title])
 
     useEffect(() => {
       document.body.style.overflow = 'hidden'
@@ -139,42 +143,28 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                 </div>
-                {metadata?.Rating && metadata.Rating.length > 0 ? (
+                {metadata?.ratings && metadata.ratings.length > 0 ? (
                   <div className="flex flex-wrap-reverse gap-1">
-                    {metadata.Rating.map((rating, index) => {
-                      const prefix = rating.image.split('://')[0]
-                      const type = rating.type
-                      const icon = iconMap[prefix]?.[type]
-                      let percentageValue = rating.value
-                      if (
-                        ['themoviedb', 'rottentomatoes'].includes(prefix) &&
-                        typeof rating.value === 'number'
-                      ) {
-                        percentageValue = rating.value * 10
-                      } else if (prefix === 'imdb') {
-                        percentageValue = rating.value
-                      }
-                      const displayValue = [
-                        'themoviedb',
-                        'rottentomatoes',
-                      ].includes(prefix)
-                        ? `${percentageValue}%`
-                        : `${percentageValue}`
+                    {metadata.ratings.map((rating, index) => {
+                      const icon = rating.type
+                        ? ratingIcons[rating.type]
+                        : undefined
                       return (
                         <div
                           key={index}
                           className="flex items-center justify-center space-x-1.5 rounded-lg bg-black bg-opacity-70 px-3 py-1 text-white shadow-lg"
                         >
-                          <img
-                            src={icon}
-                            alt={`${prefix} ${type} Icon`}
-                            width={24}
-                            height={24}
-                            className="h-6 w-6"
-                            title={`${prefix}-${type}`}
-                          />
+                          {icon && (
+                            <img
+                              src={icon}
+                              alt={`${rating.type} rating`}
+                              width={24}
+                              height={24}
+                              className="h-6 w-6"
+                            />
+                          )}
                           <span className="cursor-default text-sm font-medium">
-                            {displayValue}
+                            {rating.value.toFixed(1)}
                           </span>
                         </div>
                       )
@@ -203,22 +193,41 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
-                  <div>
-                    <a
-                      href={`https://app.plex.tv/desktop#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <img
-                        src={`${basePath}/icons_logos/plex_logo.svg`}
-                        alt="Plex Logo"
-                        width={128}
-                        height={32}
-                        className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
-                      />
-                    </a>
-                  </div>
-                  {tautulliModalUrl && (
+                  {isPlex && (
+                    <div>
+                      <a
+                        href={`https://app.plex.tv/desktop#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/plex_logo.svg`}
+                          alt="Plex Logo"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
+                  {isJellyfin && serverUrl && (
+                    <div>
+                      <a
+                        href={`${serverUrl}/web/#/details?id=${id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/jellyfin.svg`}
+                          alt="Jellyfin Logo"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
+                  {isPlex && tautulliModalUrl && (
                     <div>
                       <a
                         href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
@@ -227,7 +236,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       >
                         <img
                           src={`${basePath}/icons_logos/tautulli_logo.svg`}
-                          alt="Plex Logo"
+                          alt="Tautulli Logo"
                           width={128}
                           height={32}
                           className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1.5 shadow-lg"
@@ -236,14 +245,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                 </div>
-                {metadata?.Genre && metadata.Genre.length > 0 ? (
+                {metadata?.genres && metadata.genres.length > 0 ? (
                   <div className="pointer-events-none flex flex-wrap-reverse items-end justify-end gap-1">
-                    {metadata.Genre.map((genre, index) => (
+                    {metadata.genres.map((genre, index) => (
                       <span
                         key={index}
                         className="flex items-center rounded-lg bg-black bg-opacity-70 p-2 text-xs font-medium text-white shadow-lg"
                       >
-                        {genre.tag}
+                        {genre.name}
                       </span>
                     ))}
                   </div>
@@ -257,7 +266,8 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="flex items-center justify-between border-b pb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-100">
-                  {title} ({year})
+                  {title}
+                  {year ? ` (${year})` : ''}
                 </h2>
               </div>
             </div>
@@ -267,19 +277,36 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
 
             <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
-              {metadata?.Guid &&
+              {metadata?.providerIds &&
                 ['movie', 'show'].includes(mediaType) &&
-                metadata.Guid.length > 0 && (
+                (metadata.providerIds.tmdb?.length ||
+                  metadata.providerIds.imdb?.length ||
+                  metadata.providerIds.tvdb?.length) && (
                   <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                    {metadata.Guid.map((guid, index) => (
+                    {metadata.providerIds.tmdb?.map((id) => (
                       <span
-                        key={index}
+                        key={`tmdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
                       >
-                        {guid.id}
+                        tmdb://{id}
                       </span>
                     ))}
-                    (Plex metadata IDs)
+                    {metadata.providerIds.imdb?.map((id) => (
+                      <span
+                        key={`imdb-${id}`}
+                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
+                      >
+                        imdb://{id}
+                      </span>
+                    ))}
+                    {metadata.providerIds.tvdb?.map((id) => (
+                      <span
+                        key={`tvdb-${id}`}
+                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
+                      >
+                        tvdb://{id}
+                      </span>
+                    ))}
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
