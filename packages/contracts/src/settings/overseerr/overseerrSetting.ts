@@ -12,3 +12,5 @@ export const overseerrSettingSchema = z.object({
     }),
   api_key: z.string().trim(),
 })
+
+export type OverseerrSetting = z.infer<typeof overseerrSettingSchema>

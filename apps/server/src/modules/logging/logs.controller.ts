@@ -1,4 +1,9 @@
-import { LogEvent, LogFile, LogSettingDto } from '@maintainerr/contracts';
+import {
+  LogEvent,
+  LogFile,
+  LogSetting,
+  logSettingSchema,
+} from '@maintainerr/contracts';
 import {
   BeforeApplicationShutdown,
   Body,
@@ -15,6 +20,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { Response } from 'express';
 import { createReadStream, readdir } from 'fs';
 import { readdir as readdirp, stat } from 'fs/promises';
@@ -281,12 +287,14 @@ export class LogsController implements BeforeApplicationShutdown {
   }
 
   @Get('settings')
-  async getLogSettings(): Promise<LogSettingDto> {
+  async getLogSettings(): Promise<LogSetting> {
     return await this.logSettingsService.get();
   }
 
   @Post('settings')
-  async setLogSettings(@Body() payload: LogSettingDto) {
+  async setLogSettings(
+    @Body(new ZodValidationPipe(logSettingSchema)) payload: LogSetting,
+  ) {
     return await this.logSettingsService.update(payload);
   }
 }

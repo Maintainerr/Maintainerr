@@ -1,12 +1,12 @@
+import { LogLevel, LogSetting } from '@maintainerr/contracts';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { LogLevel, LogSettingDto } from '@maintainerr/contracts';
 
 export const DEFAULT_LOG_LEVEL = 'info';
 export const DEFAULT_LOG_MAX_SIZE = 20;
 export const DEFAULT_LOG_MAX_FILES = 7;
 
 @Entity()
-export class LogSettings implements LogSettingDto {
+export class LogSettings implements LogSetting {
   @PrimaryGeneratedColumn()
   id: number;
 

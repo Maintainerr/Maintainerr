@@ -12,3 +12,5 @@ export const jellyseerrSettingSchema = z.object({
     }),
   api_key: z.string().trim(),
 })
+
+export type JellyseerrSetting = z.infer<typeof jellyseerrSettingSchema>
