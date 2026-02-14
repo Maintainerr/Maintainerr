@@ -9,11 +9,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { BasicResponseDto } from '../api/plex-api/dto/basic-response.dto';
+import { EPlexDataType } from '../api/plex-api/enums/plex-data-type-enum';
+import { PlexMetadata } from '../api/plex-api/interfaces/media.interface';
 import {
   CreateUpdateCollection,
   PlexCollection,
 } from '../api/plex-api/interfaces/collection.interface';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { ServarrService } from '../api/servarr-api/servarr.service';
 import {
   TmdbMovieDetails,
   TmdbTvDetails,
@@ -58,6 +61,7 @@ export class CollectionsService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     private readonly plexApi: PlexApiService,
+    private readonly servarrService: ServarrService,
     private readonly tmdbApi: TmdbApiService,
     private readonly tmdbIdHelper: TmdbIdService,
     private readonly eventEmitter: EventEmitter2,
@@ -68,10 +72,35 @@ export class CollectionsService {
 
   async getCollection(id?: number, title?: string) {
     try {
+      const buildCollectionWithRuleName = async (
+        collection: Collection | null,
+      ) => {
+        if (!collection) {
+          return collection;
+        }
+
+        const ruleGroup = await this.ruleGroupRepo
+          .createQueryBuilder('rg')
+          .select('rg.name', 'name')
+          .where('rg.collectionId = :collectionId', {
+            collectionId: collection.id,
+          })
+          .getRawOne<{ name: string }>();
+
+        return {
+          ...collection,
+          ruleName: ruleGroup?.name,
+        };
+      };
+
       if (title) {
-        return await this.collectionRepo.findOne({ where: { title: title } });
+        return await buildCollectionWithRuleName(
+          await this.collectionRepo.findOne({ where: { title: title } }),
+        );
       } else {
-        return await this.collectionRepo.findOne({ where: { id: id } });
+        return await buildCollectionWithRuleName(
+          await this.collectionRepo.findOne({ where: { id: id } }),
+        );
       }
     } catch (err) {
       this.logger.error(
@@ -84,9 +113,14 @@ export class CollectionsService {
 
   async getCollectionMedia(id: number) {
     try {
-      return await this.CollectionMediaRepo.find({
+      const media = await this.CollectionMediaRepo.find({
         where: { collectionId: id },
       });
+      const collection = await this.collectionRepo.findOne({
+        where: { id },
+      });
+      await this.hydrateMissingCollectionMediaDetails(media, collection);
+      return media;
     } catch (err) {
       this.logger.error(
         'An error occurred while performing collection actions',
@@ -107,8 +141,9 @@ export class CollectionsService {
     { offset = 0, size = 25 }: { offset?: number; size?: number } = {},
   ): Promise<{ totalSize: number; items: CollectionMediaWithPlexData[] }> {
     try {
-      const queryBuilder =
-        this.CollectionMediaRepo.createQueryBuilder('collection_media');
+      const queryBuilder = this.CollectionMediaRepo.createQueryBuilder(
+        'collection_media',
+      );
 
       queryBuilder
         .where('collection_media.collectionId = :id', { id })
@@ -116,32 +151,49 @@ export class CollectionsService {
         .skip(offset)
         .take(size);
 
-      const itemCount = await queryBuilder.getCount();
+      let itemCount = await queryBuilder.getCount();
       const { entities } = await queryBuilder.getRawAndEntities();
 
-      const entitiesWithPlexData: CollectionMediaWithPlexData[] = (
-        await Promise.all(
-          entities.map(async (el) => {
-            const plexData = await this.plexApi.getMetadata(
-              el.plexId.toString(),
-            );
+      const resolvedEntities = await Promise.all(
+        entities.map(async (el) => {
+          const plexData = await this.plexApi.getMetadata(el.plexId.toString());
 
-            if (plexData?.grandparentRatingKey) {
-              plexData.parentData = await this.plexApi.getMetadata(
-                plexData.grandparentRatingKey.toString(),
-              );
-            } else if (plexData?.parentRatingKey) {
-              plexData.parentData = await this.plexApi.getMetadata(
-                plexData.parentRatingKey.toString(),
-              );
-            }
-            return {
-              ...el,
-              plexData,
-            };
-          }),
-        )
-      ).filter((el) => el.plexData !== undefined);
+          if (!plexData) {
+            return { entity: el, plexData: undefined };
+          }
+
+          if (plexData.grandparentRatingKey) {
+            plexData.parentData = await this.plexApi.getMetadata(
+              plexData.grandparentRatingKey.toString(),
+            );
+          } else if (plexData.parentRatingKey) {
+            plexData.parentData = await this.plexApi.getMetadata(
+              plexData.parentRatingKey.toString(),
+            );
+          }
+
+          return { entity: el, plexData };
+        }),
+      );
+
+      const staleEntityIds = resolvedEntities
+        .filter((el) => el.plexData === undefined)
+        .map((el) => el.entity.id);
+
+      if (staleEntityIds.length > 0) {
+        await this.CollectionMediaRepo.delete(staleEntityIds);
+        itemCount = await this.CollectionMediaRepo.count({
+          where: { collectionId: id },
+        });
+      }
+
+      const entitiesWithPlexData: CollectionMediaWithPlexData[] =
+        resolvedEntities
+          .filter((el) => el.plexData !== undefined)
+          .map((el) => ({
+            ...el.entity,
+            plexData: el.plexData,
+          }));
 
       return {
         totalSize: itemCount,
@@ -220,6 +272,16 @@ export class CollectionsService {
             ? { where: { type: typeId } }
             : undefined,
       );
+      const ruleGroups = await this.ruleGroupRepo
+        .createQueryBuilder('rg')
+        .select('rg.collectionId', 'collectionId')
+        .addSelect('rg.name', 'name')
+        .getRawMany<{ collectionId: number | null; name: string }>();
+      const ruleNamesByCollectionId = new Map<number, string>(
+        ruleGroups
+          .filter((group) => group.collectionId != null)
+          .map((group) => [group.collectionId, group.name]),
+      );
 
       return await Promise.all(
         collections.map(async (col) => {
@@ -228,8 +290,10 @@ export class CollectionsService {
               collectionId: +col.id,
             },
           });
+          await this.hydrateMissingCollectionMediaDetails(colls, col);
           return {
             ...col,
+            ruleName: ruleNamesByCollectionId.get(col.id),
             media: colls,
           };
         }),
@@ -631,6 +695,7 @@ export class CollectionsService {
               childMedia.plexId,
               manual,
               childMedia.reason,
+              collection,
             );
           }
         }
@@ -832,6 +897,7 @@ export class CollectionsService {
     childId: number,
     manual = false,
     logMeta?: CollectionLogMeta,
+    collection?: Collection,
   ) {
     try {
       this.infoLogger(`Adding media with id ${childId} to collection..`);
@@ -839,6 +905,17 @@ export class CollectionsService {
       const tmdb = await this.tmdbIdHelper.getTmdbIdFromPlexRatingKey(
         childId.toString(),
       );
+      const activeCollection =
+        collection ??
+        (await this.collectionRepo.findOne({
+          where: { id: collectionIds.dbId },
+        }));
+      const mediaSize = await this.getManagedMediaSizeBytes(
+        activeCollection,
+        childId,
+      );
+      const plexMetadata = await this.plexApi.getMetadata(childId.toString());
+      const mediaTitle = this.getPlexMediaTitle(plexMetadata);
 
       let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
       switch (tmdb.type) {
@@ -868,6 +945,8 @@ export class CollectionsService {
               addDate: new Date().toDateString(),
               tmdbId: tmdbMedia?.id,
               image_path: tmdbMedia?.poster_path,
+              title: mediaTitle,
+              size: mediaSize,
               isManual: manual,
             },
           ])
@@ -1008,6 +1087,9 @@ export class CollectionsService {
               sonarrSettingsId: collection.sonarrSettingsId,
               radarrSettingsId: collection.radarrSettingsId,
               sortTitle: collection.sortTitle,
+              pathSelectionEnabled:
+                collection.pathSelectionEnabled ?? false,
+              selectedPaths: collection.selectedPaths ?? [],
             },
           ])
           .execute()
@@ -1242,5 +1324,241 @@ export class CollectionsService {
 
   private infoLogger(message: string) {
     this.logger.log(message);
+  }
+
+  private getPlexMediaTitle(metadata?: PlexMetadata): string | null {
+    const title = metadata?.title?.trim();
+    if (!title) {
+      return null;
+    }
+
+    if (metadata?.type === 'season') {
+      const showTitle = metadata.parentTitle?.trim();
+      if (showTitle) {
+        return `${showTitle}: ${title}`;
+      }
+    }
+
+    return title;
+  }
+
+  private async hydrateMissingCollectionMediaDetails(
+    mediaRows: CollectionMedia[],
+    collection?: Collection,
+  ): Promise<void> {
+    const rowsMissingDetails = mediaRows.filter(
+      (row) =>
+        row.size === null ||
+        row.size === undefined ||
+        row.title === null ||
+        row.title === undefined ||
+        row.title.trim() === '',
+    );
+
+    if (rowsMissingDetails.length === 0) {
+      return;
+    }
+
+    const activeCollection =
+      collection ??
+      (await this.collectionRepo.findOne({
+        where: { id: mediaRows[0]?.collectionId },
+      }));
+
+    await Promise.all(
+      rowsMissingDetails.map(async (row) => {
+        try {
+          const updatePayload: Partial<CollectionMedia> = {};
+          const size = await this.getManagedMediaSizeBytes(
+            activeCollection,
+            row.plexId,
+          );
+
+          if (
+            (row.size === null || row.size === undefined) &&
+            size !== null
+          ) {
+            row.size = size;
+            updatePayload.size = size;
+          }
+
+          if (
+            row.title === null ||
+            row.title === undefined ||
+            row.title === ''
+          ) {
+            const metadata = await this.plexApi.getMetadata(row.plexId.toString());
+            const title = this.getPlexMediaTitle(metadata);
+            if (title !== null) {
+              row.title = title;
+              updatePayload.title = title;
+            }
+          }
+
+          if (Object.keys(updatePayload).length > 0) {
+            await this.CollectionMediaRepo.update({ id: row.id }, updatePayload);
+          }
+        } catch (error) {
+          this.logger.debug(
+            `Unable to hydrate media details for plexId ${row.plexId}: ${error}`,
+          );
+        }
+      }),
+    );
+  }
+
+  private async getManagedMediaSizeBytes(
+    collection: Collection | null | undefined,
+    plexId: number,
+  ): Promise<number | null> {
+    if (!collection) {
+      return null;
+    }
+
+    if (
+      collection.type === EPlexDataType.MOVIES &&
+      collection.radarrSettingsId !== null &&
+      collection.radarrSettingsId !== undefined
+    ) {
+      return await this.getRadarrManagedSizeBytes(
+        plexId,
+        collection.radarrSettingsId,
+      );
+    }
+
+    if (
+      collection.sonarrSettingsId === null ||
+      collection.sonarrSettingsId === undefined
+    ) {
+      return null;
+    }
+
+    return await this.getSonarrManagedSizeBytes(
+      plexId,
+      collection.sonarrSettingsId,
+    );
+  }
+
+  private async getRadarrManagedSizeBytes(
+    plexId: number,
+    radarrSettingsId: number,
+  ): Promise<number | null> {
+    const tmdb = await this.tmdbIdHelper.getTmdbIdFromPlexRatingKey(
+      plexId.toString(),
+    );
+    if (!tmdb?.id) {
+      return null;
+    }
+
+    const radarrApiClient = await this.servarrService.getRadarrApiClient(
+      radarrSettingsId,
+    );
+    const movie = await radarrApiClient.getMovieByTmdbId(tmdb.id);
+
+    return movie?.sizeOnDisk ?? movie?.movieFile?.size ?? null;
+  }
+
+  private async getSonarrManagedSizeBytes(
+    plexId: number,
+    sonarrSettingsId: number,
+  ): Promise<number | null> {
+    const sonarrApiClient = await this.servarrService.getSonarrApiClient(
+      sonarrSettingsId,
+    );
+    const metadata = await this.plexApi.getMetadata(plexId.toString());
+    if (!metadata) {
+      return null;
+    }
+
+    let showMetadata = metadata;
+    let seasonNumber: number | undefined;
+    let episodeNumber: number | undefined;
+
+    if (metadata.type === 'season') {
+      seasonNumber = metadata.index;
+      if (metadata.parentRatingKey) {
+        showMetadata = await this.plexApi.getMetadata(metadata.parentRatingKey);
+      }
+    } else if (metadata.type === 'episode') {
+      seasonNumber = metadata.parentIndex;
+      episodeNumber = metadata.index;
+      if (metadata.grandparentRatingKey) {
+        showMetadata = await this.plexApi.getMetadata(
+          metadata.grandparentRatingKey,
+        );
+      }
+    }
+
+    if (!showMetadata) {
+      return null;
+    }
+
+    const tvdbId = await this.findTvdbIdFromPlexMetadata(showMetadata);
+    if (!tvdbId) {
+      return null;
+    }
+
+    const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+    if (!series?.id) {
+      return null;
+    }
+
+    if (episodeNumber !== undefined && seasonNumber !== undefined) {
+      const episodes = await sonarrApiClient.getEpisodes(series.id, seasonNumber, [
+        episodeNumber,
+      ]);
+      const episode = episodes?.[0];
+      if (!episode?.episodeFileId) {
+        return null;
+      }
+      const episodeFile = await sonarrApiClient.getEpisodeFile(
+        episode.episodeFileId,
+      );
+      return episodeFile?.size ?? null;
+    }
+
+    if (seasonNumber !== undefined) {
+      const season = series.seasons?.find((el) => el.seasonNumber === seasonNumber);
+      return season?.statistics?.sizeOnDisk ?? null;
+    }
+
+    return series.statistics?.sizeOnDisk ?? null;
+  }
+
+  private async findTvdbIdFromPlexMetadata(
+    metadata: PlexMetadata,
+  ): Promise<number | null> {
+    const fromGuid = this.extractGuidId(metadata, 'tvdb');
+    if (fromGuid) {
+      return fromGuid;
+    }
+
+    const tmdb = await this.tmdbIdHelper.getTmdbIdFromPlexData(metadata);
+    if (!tmdb?.id) {
+      return null;
+    }
+
+    const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
+    return tmdbShow?.external_ids?.tvdb_id ?? null;
+  }
+
+  private extractGuidId(
+    metadata: PlexMetadata,
+    provider: 'tvdb' | 'tmdb' | 'imdb',
+  ): number | null {
+    if (metadata.Guid?.length) {
+      const guid = metadata.Guid.find((el) => el.id.includes(provider))?.id;
+      if (guid) {
+        const parsed = Number(guid.split('://')[1]);
+        return Number.isNaN(parsed) ? null : parsed;
+      }
+    }
+
+    if (metadata.guid?.includes(provider)) {
+      const parsed = Number(metadata.guid.split('://')[1]?.split('?')[0]);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    return null;
   }
 }

@@ -14,13 +14,12 @@ interface ModalContentProps {
   canExpand?: boolean
   inProgress?: boolean
   tmdbid?: string
-  libraryId?: number
   type?: 1 | 2 | 3 | 4
   daysLeft?: number
   exclusionId?: number
   exclusionType?: 'global' | 'specific' | undefined
-  collectionId?: number
   isManual?: boolean
+  managedSize?: number
 }
 
 interface Metadata {
@@ -46,7 +45,16 @@ const iconMap: Record<string, Record<string, string>> = {
 }
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
-  ({ onClose, mediaType, id, summary, year, title, tmdbid }) => {
+  ({
+    onClose,
+    mediaType,
+    id,
+    summary,
+    year,
+    title,
+    tmdbid,
+    managedSize,
+  }) => {
     const [loading, setLoading] = useState<boolean>(true)
     const [backdrop, setBackdrop] = useState<string | null>(null)
     const [machineId, setMachineId] = useState<string | null>(null)
@@ -84,6 +92,17 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           setBackdrop(null)
         })
     }, [id, mediaType, tmdbid])
+
+    const formatBytes = (bytes: number) => {
+      if (bytes <= 0) return 'Unknown'
+      const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+      const index = Math.min(
+        Math.floor(Math.log(bytes) / Math.log(1024)),
+        units.length - 1,
+      )
+      const value = bytes / Math.pow(1024, index)
+      return `${value >= 100 ? value.toFixed(0) : value.toFixed(2)} ${units[index]}`
+    }
 
     useEffect(() => {
       document.body.style.overflow = 'hidden'
@@ -265,6 +284,12 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="mt-2 text-gray-300">
               <p>{summary || 'No summary available.'}</p>
             </div>
+            {managedSize !== undefined && (
+              <div className="mt-3 text-sm text-zinc-300">
+                <span className="font-semibold text-zinc-200">Size: </span>
+                <span>{formatBytes(managedSize)}</span>
+              </div>
+            )}
 
             <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
               {metadata?.Guid &&

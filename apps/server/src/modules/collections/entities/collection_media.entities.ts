@@ -4,6 +4,7 @@ import {
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
+  ValueTransformer,
 } from 'typeorm';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { Collection } from './collection.entities';
@@ -11,6 +12,12 @@ import { Collection } from './collection.entities';
 @Entity()
 @Index('idx_collection_media_collection_id', ['collectionId'])
 export class CollectionMedia {
+  private static readonly bigintToNumberTransformer: ValueTransformer = {
+    to: (value?: number | null) => value,
+    from: (value: string | number | null) =>
+      value === null || value === undefined ? null : Number(value),
+  };
+
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -28,6 +35,16 @@ export class CollectionMedia {
 
   @Column({ nullable: true })
   image_path: string;
+
+  @Column({ nullable: true })
+  title?: string;
+
+  @Column({
+    type: 'bigint',
+    nullable: true,
+    transformer: CollectionMedia.bigintToNumberTransformer,
+  })
+  size?: number;
 
   @Column({ default: false, nullable: true })
   isManual: boolean;

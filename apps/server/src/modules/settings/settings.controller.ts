@@ -15,16 +15,27 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Put,
+  StreamableFile,
 } from '@nestjs/common';
+import { createReadStream } from 'fs';
+import { Readable } from 'stream';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
-import { RadarrSettingRawDto } from "./dto's/radarr-setting.dto";
+import {
+  RadarrSettingRawDto,
+  RadarrSettingTestResponseDto,
+} from "./dto's/radarr-setting.dto";
 import { SettingDto } from "./dto's/setting.dto";
-import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
+import {
+  SonarrSettingRawDto,
+  SonarrSettingTestResponseDto,
+} from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
 import { SettingsService } from './settings.service';
@@ -49,6 +60,23 @@ export class SettingsController {
   @Get('/version')
   getVersion() {
     return this.settingsService.appVersion();
+  }
+
+  @Get('/database/download')
+  downloadDatabase(): StreamableFile {
+    const dbPath = this.settingsService.getDatabaseFilePath();
+    if (!dbPath) {
+      throw new HttpException(
+        'Database file not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const fileStream: Readable = createReadStream(dbPath);
+    return new StreamableFile(fileStream, {
+      type: 'application/octet-stream',
+      disposition: `attachment; filename="maintainerr.sqlite"`,
+    });
   }
 
   @Get('/api/generate')
@@ -77,8 +105,15 @@ export class SettingsController {
     return this.settingsService.testSetup();
   }
   @Post('/test/radarr')
-  testRadarr(@Body() payload: RadarrSettingRawDto) {
+  testRadarr(
+    @Body() payload: RadarrSettingRawDto,
+  ): Promise<RadarrSettingTestResponseDto> {
     return this.settingsService.testRadarr(payload);
+  }
+
+  @Get('/radarr/:id/diskpaths')
+  getRadarrDiskPaths(@Param('id', new ParseIntPipe()) id: number) {
+    return this.settingsService.getRadarrDiskPaths(id);
   }
 
   @Post('/radarr')
@@ -103,8 +138,15 @@ export class SettingsController {
   }
 
   @Post('/test/sonarr')
-  testSonarr(@Body() payload: SonarrSettingRawDto) {
+  testSonarr(
+    @Body() payload: SonarrSettingRawDto,
+  ): Promise<SonarrSettingTestResponseDto> {
     return this.settingsService.testSonarr(payload);
+  }
+
+  @Get('/sonarr/:id/diskpaths')
+  getSonarrDiskPaths(@Param('id', new ParseIntPipe()) id: number) {
+    return this.settingsService.getSonarrDiskPaths(id);
   }
 
   @Post('/sonarr')

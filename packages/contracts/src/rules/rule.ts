@@ -14,6 +14,7 @@ export interface ISectionComparisonResults {
 export interface IRuleComparisonResult {
   firstValueName: string
   firstValue: RuleValueType
+  selectedPaths?: string[]
   secondValueName: string
   secondValue: RuleValueType
   action: string

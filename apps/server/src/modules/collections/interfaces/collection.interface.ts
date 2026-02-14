@@ -7,6 +7,7 @@ export interface ICollection {
   plexId?: number;
   libraryId: number;
   title: string;
+  ruleName?: string;
   description?: string;
   isActive: boolean;
   arrAction: number;
@@ -23,6 +24,8 @@ export interface ICollection {
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
   sortTitle?: string;
+  pathSelectionEnabled?: boolean;
+  selectedPaths?: string[];
 }
 
 export enum ServarrAction {

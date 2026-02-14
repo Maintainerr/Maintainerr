@@ -547,6 +547,13 @@ export class RuleConstants {
           type: RuleType.TEXT,
         },
         {
+          id: 23,
+          name: 'spaceAvailableGib',
+          humanName: 'Space available (GiB)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
+        {
           id: 9,
           name: 'fileQuality',
           humanName: 'File - quality (2160, 1080,..)',
@@ -860,6 +867,13 @@ export class RuleConstants {
           humanName: 'Series type',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
+        },
+        {
+          id: 28,
+          name: 'spaceAvailableGib',
+          humanName: 'Space available (GiB)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
         },
       ],
     },

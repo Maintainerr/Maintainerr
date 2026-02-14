@@ -240,6 +240,158 @@ describe('RadarrGetterService', () => {
     });
   });
 
+  describe('spaceAvailableGib', () => {
+    let collectionMedia: CollectionMedia;
+    let plexLibraryItem: PlexLibraryItem;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia(EPlexDataType.MOVIES);
+      collectionMedia.collection.radarrSettingsId = 1;
+      plexLibraryItem = createPlexLibraryItem('movie');
+      tmdbIdService.getTmdbIdFromPlexRatingKey.mockResolvedValue({
+        type: 'movie',
+        id: 1,
+      });
+    });
+
+    it('should return total available free space in GiB for all diskspace entries when none are selected', async () => {
+      const movie = createRadarrMovie();
+      const mockedRadarrApi = mockRadarrApi(movie);
+      jest.spyOn(mockedRadarrApi, 'getDiskSpace').mockResolvedValue([
+        {
+          path: '/mnt/disk-a',
+          freeSpace: 100 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+        {
+          path: '/mnt/disk-b',
+          freeSpace: 80 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+      ]);
+      const response = await radarrGetterService.get(
+        23,
+        plexLibraryItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(180);
+    });
+
+    it('should filter by selected root folders and return total matching free space in GiB', async () => {
+      const movie = createRadarrMovie();
+      const mockedRadarrApi = mockRadarrApi(movie);
+      jest.spyOn(mockedRadarrApi, 'getDiskSpace').mockResolvedValue([
+        {
+          path: '/mnt/disk-a',
+          freeSpace: 100 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+        {
+          path: '/mnt/disk-b',
+          freeSpace: 40 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+      ]);
+
+      const response = await radarrGetterService.get(
+        23,
+        plexLibraryItem,
+        createRulesDto({
+          collection: {
+            ...collectionMedia.collection,
+            selectedPaths: ['/mnt/disk-a', '/mnt/disk-b'],
+          } as any,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(140);
+    });
+
+    it('should return null when there are no diskspace entries', async () => {
+      const movie = createRadarrMovie();
+      const mockedRadarrApi = mockRadarrApi(movie);
+      jest.spyOn(mockedRadarrApi, 'getDiskSpace').mockResolvedValue([]);
+
+      const response = await radarrGetterService.get(
+        23,
+        plexLibraryItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(null);
+    });
+
+    it('should sum free space for selected diskspace paths', async () => {
+      const movie = createRadarrMovie();
+      const mockedRadarrApi = mockRadarrApi(movie);
+      jest.spyOn(mockedRadarrApi, 'getDiskSpace').mockResolvedValue([
+        {
+          path: '/mnt/storage-a',
+          freeSpace: 100 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+        {
+          path: '/mnt/storage-b',
+          freeSpace: 100 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+      ]);
+
+      const response = await radarrGetterService.get(
+        23,
+        plexLibraryItem,
+        createRulesDto({
+          collection: {
+            ...collectionMedia.collection,
+            selectedPaths: ['/mnt/storage-a', '/mnt/storage-b'],
+          } as any,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(200);
+    });
+
+    it('should sum all diskspace entries in all mode', async () => {
+      const movie = createRadarrMovie();
+      const mockedRadarrApi = mockRadarrApi(movie);
+      jest.spyOn(mockedRadarrApi, 'getDiskSpace').mockResolvedValue([
+        {
+          path: '/mnt/storage-a',
+          freeSpace: 100 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+        {
+          path: '/mnt/storage-b',
+          freeSpace: 100 * 1024 * 1024 * 1024,
+          totalSpace: 500 * 1024 * 1024 * 1024,
+        },
+      ]);
+
+      const response = await radarrGetterService.get(
+        23,
+        plexLibraryItem,
+        createRulesDto({
+          collection: {
+            ...collectionMedia.collection,
+            selectedPaths: ['__ALL__'],
+          } as any,
+          dataType: EPlexDataType.MOVIES,
+        }),
+      );
+
+      expect(response).toBe(200);
+    });
+  });
+
   const mockRadarrApi = (movie?: RadarrMovie) => {
     const mockedRadarrApi = new RadarrApi({} as any, logger as any);
     const mockedServarrService = new ServarrService({} as any, logger as any);

@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { isValidCron } from 'cron-validator'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -25,12 +25,13 @@ import {
   useUpdateRuleGroup,
 } from '../../../../api/rules'
 import { Application } from '../../../../contexts/constants-context'
-import { PostApiHandler } from '../../../../utils/ApiHandler'
+import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import Modal from '../../../Common/Modal'
 import YamlImporterModal from '../../../Common/YamlImporterModal'
 import { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
@@ -45,6 +46,22 @@ interface AddModal {
 }
 
 const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
+const ALL_DISK_PATHS_VALUE = '__ALL__'
+const SPACE_AVAILABLE_PROP_NAME = 'spaceAvailableGib'
+
+type DiskPathsResponse =
+  | {
+      status: 'OK'
+      code: 1
+      message: string
+      data: string[]
+    }
+  | {
+      status: 'NOK'
+      code: 0
+      message: string
+      data?: never
+    }
 
 const numberOrUndefined = (value: unknown): number | undefined => {
   if (value === '' || value === null || value === undefined) {
@@ -66,6 +83,7 @@ const numberOrUndefined = (value: unknown): number | undefined => {
 const ruleGroupFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required'),
+    collectionName: z.string().trim().min(1, 'Plex collection name is required'),
     description: z.string().optional(),
     libraryId: z.string().trim().min(1, 'Library is required'),
     dataType: z.string().trim().min(1, 'Media type is required'),
@@ -114,6 +132,8 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    pathSelectionEnabled: z.boolean(),
+    selectedPaths: z.array(z.string()),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -160,6 +180,14 @@ const ruleGroupFormSchema = z
       message: 'Take action after days is required for this action',
     },
   )
+  .refine(
+    (data) =>
+      !data.pathSelectionEnabled || data.selectedPaths.length > 0,
+    {
+      path: ['selectedPaths'],
+      message: 'Select at least one path',
+    },
+  )
 
 type RuleGroupFormValues = z.infer<typeof ruleGroupFormSchema>
 type RuleGroupFormInput = z.input<typeof ruleGroupFormSchema>
@@ -167,6 +195,7 @@ type RuleGroupFormOutput = z.output<typeof ruleGroupFormSchema>
 
 const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   name: editData?.name ?? '',
+  collectionName: editData?.collection?.title ?? editData?.name ?? '',
   description: editData?.description ?? '',
   libraryId: editData?.libraryId ? editData.libraryId.toString() : '',
   dataType: editData?.dataType ? editData.dataType.toString() : '',
@@ -192,6 +221,13 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
     : undefined,
+  pathSelectionEnabled:
+    editData?.collection?.pathSelectionEnabled ?? false,
+  selectedPaths:
+    editData?.collection?.selectedPaths &&
+    editData.collection.selectedPaths.length > 0
+      ? editData.collection.selectedPaths
+      : [ALL_DISK_PATHS_VALUE],
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
@@ -239,6 +275,8 @@ const AddModal = (props: AddModal) => {
     | number
     | null
     | undefined
+  const pathSelectionEnabled = watch('pathSelectionEnabled')
+  const selectedPaths = watch('selectedPaths') ?? []
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
@@ -258,16 +296,42 @@ const AddModal = (props: AddModal) => {
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const ruleCreatorVersion = useRef<number>(1)
+  const [availableDiskPaths, setAvailableDiskPaths] = useState<string[]>([])
+  const [loadingDiskPaths, setLoadingDiskPaths] = useState(false)
+  const [showDiskPathsModal, setShowDiskPathsModal] = useState(false)
 
   const { data: plexLibraries, isLoading: plexLibrariesLoading } =
     usePlexLibraries()
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
+  const isSpaceAvailableTuple = useCallback(
+    (tuple: [string, string] | undefined) => {
+      if (!tuple || !constants) {
+        return false
+      }
+
+      const appId = Number(tuple[0])
+      const propId = Number(tuple[1])
+
+      if (appId !== Application.RADARR && appId !== Application.SONARR) {
+        return false
+      }
+
+      const property = constants.applications
+        ?.find((app) => app.id === appId)
+        ?.props.find((prop) => prop.id === propId)
+
+      return property?.name === SPACE_AVAILABLE_PROP_NAME
+    },
+    [constants],
+  )
 
   useEffect(() => {
     register('arrAction')
     register('radarrSettingsId')
     register('sonarrSettingsId')
+    register('pathSelectionEnabled')
+    register('selectedPaths')
   }, [register])
 
   useEffect(() => {
@@ -281,9 +345,8 @@ const AddModal = (props: AddModal) => {
     ruleCreatorVersion.current += 1
   }, [props.editData, reset])
 
-  // Filter out Radarr/Sonarr rules when servers are deselected
+  // Filter out rules when app servers are deselected or root-folder selection disables a rule.
   useEffect(() => {
-    // Helper function to check if an app should be filtered
     const shouldFilterApp = (
       appId: number,
       radarrId: number | null | undefined,
@@ -304,18 +367,46 @@ const AddModal = (props: AddModal) => {
       return false
     }
 
+    const shouldFilterTuple = (
+      tuple: [string, string] | undefined,
+      radarrId: number | null | undefined,
+      sonarrId: number | null | undefined,
+    ) => {
+      if (!tuple) {
+        return false
+      }
+
+      const appId = Number(tuple[0])
+
+      if (shouldFilterApp(appId, radarrId, sonarrId)) {
+        return true
+      }
+
+      if (!pathSelectionEnabled && isSpaceAvailableTuple(tuple)) {
+        return true
+      }
+
+      return false
+    }
+
     setRules((prevRules) => {
       const filteredRules = prevRules.filter((rule) => {
-        // Check first value
         if (
-          shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)
+          shouldFilterTuple(
+            rule.firstVal,
+            radarrSettingsId,
+            sonarrSettingsId,
+          )
         ) {
           return false
         }
-        // Check second value if it exists
         if (
           rule.lastVal &&
-          shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)
+          shouldFilterTuple(
+            rule.lastVal,
+            radarrSettingsId,
+            sonarrSettingsId,
+          )
         ) {
           return false
         }
@@ -329,12 +420,143 @@ const AddModal = (props: AddModal) => {
       }
       return prevRules
     })
-  }, [radarrSettingsId, sonarrSettingsId])
+  }, [
+    radarrSettingsId,
+    sonarrSettingsId,
+    pathSelectionEnabled,
+    constants,
+    isSpaceAvailableTuple,
+  ])
+
+  const selectedArrServerType =
+    selectedLibraryType === 'movie'
+      ? 'radarr'
+      : selectedLibraryType === 'show'
+        ? 'sonarr'
+        : undefined
+  const selectedArrServerId =
+    selectedArrServerType === 'radarr' ? radarrSettingsId : sonarrSettingsId
+  const folderLabelPlural = 'Disk paths'
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadDiskPaths = async () => {
+      if (
+        selectedArrServerType === undefined ||
+        selectedArrServerId === undefined ||
+        selectedArrServerId === null
+      ) {
+        setAvailableDiskPaths([])
+        setLoadingDiskPaths(false)
+        setValue('pathSelectionEnabled', false)
+        setValue('selectedPaths', [])
+        return
+      }
+
+      setLoadingDiskPaths(true)
+
+      try {
+        const response = await GetApiHandler<DiskPathsResponse>(
+          `/settings/${selectedArrServerType}/${selectedArrServerId}/diskpaths`,
+        )
+
+        if (cancelled) {
+          return
+        }
+
+        if (response.code === 1) {
+          const sortedFolders = [...response.data].sort((a, b) =>
+            a.localeCompare(b),
+          )
+          setAvailableDiskPaths(sortedFolders)
+
+          const currentSelection = getValues('selectedPaths') ?? []
+          if (currentSelection.length === 0) {
+            setValue('selectedPaths', [ALL_DISK_PATHS_VALUE])
+          } else if (currentSelection.includes(ALL_DISK_PATHS_VALUE)) {
+            setValue('selectedPaths', [ALL_DISK_PATHS_VALUE])
+          } else {
+            setValue(
+              'selectedPaths',
+              currentSelection.filter((folder) =>
+                sortedFolders.includes(folder),
+              ),
+            )
+          }
+        } else {
+          setAvailableDiskPaths([])
+          setValue('pathSelectionEnabled', false)
+          setValue('selectedPaths', [])
+        }
+      } catch {
+        if (!cancelled) {
+          setAvailableDiskPaths([])
+          setValue('pathSelectionEnabled', false)
+          setValue('selectedPaths', [])
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingDiskPaths(false)
+        }
+      }
+    }
+
+    loadDiskPaths()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedArrServerType, selectedArrServerId, getValues, setValue])
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
   const overseerrEnabled =
     constants?.applications?.some((x) => x.id == Application.OVERSEERR) ?? false
+  const allDiskPathsSelected = selectedPaths.includes(
+    ALL_DISK_PATHS_VALUE,
+  )
+  const hasSelectedDiskPath = selectedPaths.length > 0
+  const selectedDiskPathCount = allDiskPathsSelected
+    ? availableDiskPaths.length
+    : selectedPaths.length
+
+  const toggleAllDiskPaths = (checked: boolean) => {
+    if (checked) {
+      setValue('selectedPaths', [ALL_DISK_PATHS_VALUE])
+    } else {
+      setValue('selectedPaths', [])
+    }
+  }
+
+  const toggleDiskPath = (folderPath: string, checked: boolean) => {
+    if (allDiskPathsSelected) {
+      if (checked) {
+        return
+      }
+
+      const allButUnchecked = availableDiskPaths.filter(
+        (folder) => folder !== folderPath,
+      )
+      setValue('selectedPaths', allButUnchecked)
+      return
+    }
+
+    const current = [...(getValues('selectedPaths') ?? [])]
+
+    const next = checked
+      ? [...new Set([...current, folderPath])]
+      : current.filter((folder) => folder !== folderPath)
+
+    if (
+      availableDiskPaths.length > 0 &&
+      next.length === availableDiskPaths.length
+    ) {
+      setValue('selectedPaths', [ALL_DISK_PATHS_VALUE])
+    } else {
+      setValue('selectedPaths', next)
+    }
+  }
 
   function updateLibraryId(value: string) {
     if (!plexLibraries) {
@@ -478,6 +700,7 @@ const AddModal = (props: AddModal) => {
 
     const creationObj: RuleGroupCreatePayload = {
       name: data.name,
+      collectionName: data.collectionName,
       description: data.description ?? '',
       libraryId: +data.libraryId,
       arrAction: data.arrAction ?? 0,
@@ -501,6 +724,10 @@ const AddModal = (props: AddModal) => {
           data.manualCollectionName ?? DEFAULT_MANUAL_COLLECTION_NAME,
         keepLogsForMonths: data.keepLogsForMonths,
         sortTitle: data.sortTitle?.trim() ? data.sortTitle : undefined,
+        pathSelectionEnabled: data.pathSelectionEnabled,
+        selectedPaths: data.pathSelectionEnabled
+          ? data.selectedPaths
+          : [],
       },
       rules: data.useRules ? rules : [],
       notifications: configuredNotificationConfigurations,
@@ -591,9 +818,9 @@ const AddModal = (props: AddModal) => {
                 <div className="space-y-2 md:p-4">
                   <div className="form-row items-center">
                     <label htmlFor="name" className="text-label">
-                      Name *
+                      Rule name *
                       <p className="text-xs font-normal">
-                        Will also be the name of the collection in Plex.
+                        Internal Maintainerr name shown throughout the app.
                       </p>
                     </label>
                     <div className="form-input">
@@ -607,6 +834,28 @@ const AddModal = (props: AddModal) => {
                       {errors.name && (
                         <p className="mt-1 text-xs text-red-400">
                           {errors.name.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-row items-center">
+                    <label htmlFor="collection_name" className="text-label">
+                      Plex collection name *
+                      <p className="text-xs font-normal">
+                        Name used for the collection in Plex.
+                      </p>
+                    </label>
+                    <div className="form-input">
+                      <div className="form-input-field">
+                        <input
+                          id="collection_name"
+                          type="text"
+                          {...register('collectionName')}
+                        ></input>
+                      </div>
+                      {errors.collectionName && (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.collectionName.message}
                         </p>
                       )}
                     </div>
@@ -965,6 +1214,42 @@ const AddModal = (props: AddModal) => {
                       </div>
                     )}
 
+                    {selectedArrServerId != null && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label
+                          htmlFor="root_folder_selection_enabled"
+                          className="text-label"
+                        >
+                          Set Disk paths
+                          <p className="text-xs font-normal">
+                            Limit to specific{' '}
+                            {selectedArrServerType === 'radarr'
+                              ? 'Radarr'
+                              : 'Sonarr'}{' '}
+                            {folderLabelPlural} for this rule group
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              id="root_folder_selection_enabled"
+                              className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                              checked={pathSelectionEnabled}
+                              onChange={(e) => {
+                                const enabled = e.target.checked
+                                setValue('pathSelectionEnabled', enabled)
+                                setValue(
+                                  'selectedPaths',
+                                  enabled ? [ALL_DISK_PATHS_VALUE] : [],
+                                )
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {overseerrEnabled && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="force_overseerr" className="text-label">
@@ -1083,6 +1368,50 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     </div>
+
+                    {selectedArrServerId != null && pathSelectionEnabled && (
+                      <div className="flex flex-row items-center justify-between py-2 md:py-4">
+                        <label
+                          htmlFor="open_root_folders_modal"
+                          className="text-label text-left"
+                        >
+                          {folderLabelPlural}
+                          <p className="text-xs font-normal">
+                            Select one, multiple, or <strong>All</strong>
+                          </p>
+                          {loadingDiskPaths && (
+                            <p className="mt-1 text-xs text-zinc-400">
+                              {`Loading ${folderLabelPlural}...`}
+                            </p>
+                          )}
+                          {!loadingDiskPaths && (
+                            <p className="mt-1 text-xs text-zinc-400">
+                              {allDiskPathsSelected
+                                ? `All ${folderLabelPlural} selected`
+                                : `${selectedDiskPathCount} selected`}
+                            </p>
+                          )}
+                          {errors.selectedPaths && (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.selectedPaths.message}
+                            </p>
+                          )}
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field w-32">
+                            <Button
+                              id="open_root_folders_modal"
+                              buttonType="default"
+                              type="button"
+                              className="w-full !bg-zinc-700 !text-zinc-100 hover:!bg-zinc-600"
+                              onClick={() => setShowDiskPathsModal(true)}
+                            >
+                              Select
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex flex-row items-center justify-between py-2 md:py-4">
                       <label
@@ -1294,7 +1623,6 @@ const AddModal = (props: AddModal) => {
                     selectedAgents={configuredNotificationConfigurations}
                   />
                 )}
-
                 <RuleCreator
                   key={ruleCreatorVersion.current}
                   mediaType={
@@ -1308,6 +1636,7 @@ const AddModal = (props: AddModal) => {
                   editData={{ rules: rules }}
                   radarrSettingsId={radarrSettingsId}
                   sonarrSettingsId={sonarrSettingsId}
+                  pathSelectionEnabled={pathSelectionEnabled}
                   onCancel={cancel}
                   onUpdate={updateRules}
                 />
@@ -1386,6 +1715,55 @@ const AddModal = (props: AddModal) => {
               )}
             </button>
           </div>
+          {showDiskPathsModal && (
+            <Modal
+              title={folderLabelPlural}
+              size="sm"
+              onCancel={() => setShowDiskPathsModal(false)}
+              onOk={() => setShowDiskPathsModal(false)}
+              okDisabled={!hasSelectedDiskPath}
+              okText="Done"
+            >
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-zinc-200">
+                  <input
+                    type="checkbox"
+                    className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:outline-none focus:ring-0"
+                    checked={allDiskPathsSelected}
+                    onChange={(e) => toggleAllDiskPaths(e.target.checked)}
+                  />
+                  <span>All</span>
+                </label>
+
+                {loadingDiskPaths && (
+                  <p className="text-xs text-zinc-400">
+                    {`Loading ${folderLabelPlural}...`}
+                  </p>
+                )}
+
+                {!loadingDiskPaths &&
+                  availableDiskPaths.map((folderPath) => (
+                    <label
+                      key={folderPath}
+                      className="flex items-center gap-2 text-sm text-zinc-200"
+                    >
+                      <input
+                        type="checkbox"
+                        className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:outline-none focus:ring-0"
+                        checked={
+                          allDiskPathsSelected ||
+                          selectedPaths.includes(folderPath)
+                        }
+                        onChange={(e) =>
+                          toggleDiskPath(folderPath, e.target.checked)
+                        }
+                      />
+                      <span className="break-all">{folderPath}</span>
+                    </label>
+                  ))}
+              </div>
+            </Modal>
+          )}
         </form>
       </div>
     </>

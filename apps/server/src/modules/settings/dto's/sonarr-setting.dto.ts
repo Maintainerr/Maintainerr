@@ -12,6 +12,31 @@ export type SonarrSettingDto = {
 
 export type SonarrSettingRawDto = Omit<SonarrSettingDto, 'id'>;
 
+export type SonarrDiskSpaceDto = {
+  path: string;
+  label?: string;
+  freeSpace: number;
+  totalSpace: number;
+};
+
+export type SonarrSettingTestResponseDto =
+  | {
+      status: 'OK';
+      code: 1;
+      message: string;
+      data: {
+        version: string;
+        rootFolders: string[];
+        diskSpace: SonarrDiskSpaceDto[];
+      };
+    }
+  | {
+      status: 'NOK';
+      code: 0;
+      message: string;
+      data?: never;
+    };
+
 export type SonarrSettingResponseDto =
   | {
       status: 'OK';

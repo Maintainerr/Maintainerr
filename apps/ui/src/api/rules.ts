@@ -69,10 +69,13 @@ export interface RuleGroupCollectionPayload {
   manualCollectionName?: string
   keepLogsForMonths?: number
   sortTitle?: string
+  pathSelectionEnabled?: boolean
+  selectedPaths?: string[]
 }
 
 export interface RuleGroupCreatePayload {
   name: string
+  collectionName: string
   description: string
   libraryId: number
   arrAction: number

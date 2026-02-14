@@ -1,5 +1,6 @@
 import { ICollection } from '..'
 import { usePlexLibraries } from '../../../api/plex'
+import { EPlexDataType } from '../../../utils/PlexDataType-enum'
 
 interface ICollectionItem {
   collection: ICollection
@@ -8,6 +9,38 @@ interface ICollectionItem {
 
 const CollectionItem = (props: ICollectionItem) => {
   const { data: plexLibraries } = usePlexLibraries()
+  const displayName = props.collection.ruleName ?? props.collection.title
+  const totalCollectionSize =
+    props.collection.media?.reduce(
+      (sum, media) => sum + (media.size && media.size > 0 ? media.size : 0),
+      0,
+    ) ?? 0
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes <= 0) return '0 B'
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+    const index = Math.min(
+      Math.floor(Math.log(bytes) / Math.log(1024)),
+      units.length - 1,
+    )
+    const value = bytes / Math.pow(1024, index)
+    return `${value >= 100 ? value.toFixed(0) : value.toFixed(2)} ${units[index]}`
+  }
+
+  const getMediaTypeLabel = (type: EPlexDataType) => {
+    switch (type) {
+      case EPlexDataType.MOVIES:
+        return 'Movies'
+      case EPlexDataType.SHOWS:
+        return 'Shows'
+      case EPlexDataType.SEASONS:
+        return 'Seasons'
+      case EPlexDataType.EPISODES:
+        return 'Episodes'
+      default:
+        return 'Unknown'
+    }
+  }
 
   return (
     <>
@@ -41,56 +74,87 @@ const CollectionItem = (props: ICollectionItem) => {
             <div>
               {props.collection.manualCollection
                 ? `${props.collection.manualCollectionName} (manual)`
-                : props.collection.title}
+                : displayName}
             </div>
           </div>
-          <div className="h-12 max-h-12 overflow-y-hidden whitespace-normal text-base text-zinc-400 hover:overflow-y-scroll">
+          <div className="mt-1 h-12 max-h-12 overflow-y-hidden whitespace-normal text-base text-zinc-400 hover:overflow-y-scroll">
             {props.collection.manualCollection
-              ? `Handled by rule: '${props.collection.title}'`
+              ? `Handled by rule: '${displayName}'`
               : props.collection.description}
           </div>
         </div>
 
-        <div className="inset-0 z-0 flex h-fit flex-row p-3 text-base sm:flex-row">
-          <div className="mr-5 flex flex-row sm:mr-0 sm:mt-auto sm:flex-col">
-            <div className="mb-5 mr-5 sm:mr-0">
-              <p className="font-bold">Library</p>
-              <p className="text-amber-500">
+        <div className="inset-0 z-0 p-3 pt-1 text-sm">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-md bg-zinc-900/70 p-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Library
+              </p>
+              <p className="truncate text-amber-500">
                 {plexLibraries?.find(
                   (el) => +el.key === +props.collection.libraryId,
-                )?.title ?? <>&nbsp;</>}
+                )?.title ?? '-'}
               </p>
             </div>
 
-            <div className="mr-5 sm:mr-0">
-              <p className="font-bold">Items</p>
+            {props.collection.type !== EPlexDataType.MOVIES ? (
+              <div className="rounded-md bg-zinc-900/70 p-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Media Type
+                </p>
+                <p className="text-amber-500">
+                  {getMediaTypeLabel(props.collection.type)}
+                </p>
+              </div>
+            ) : (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none rounded-md bg-zinc-900/70 p-2 opacity-0 select-none"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide">
+                  Media Type
+                </p>
+                <p>-</p>
+              </div>
+            )}
+
+            <div className="rounded-md bg-zinc-900/70 p-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Items
+              </p>
               <p className="text-amber-500">
-                {' '}
-                {`${
-                  props.collection.media ? props.collection.media.length : 0
-                }`}
+                {props.collection.media ? props.collection.media.length : 0}
               </p>
             </div>
-          </div>
 
-          <div className="ml-auto flex flex-row text-right sm:mt-auto sm:flex-col">
-            <div className="mb-5 mr-5 sm:mr-0">
-              <p className="font-bold">Status</p>
+            <div className="rounded-md bg-zinc-900/70 p-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Size
+              </p>
+              <p className="text-amber-500">{formatBytes(totalCollectionSize)}</p>
+            </div>
+
+            <div className="rounded-md bg-zinc-900/70 p-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Delete
+              </p>
+              <p className="text-amber-500">
+                {props.collection.deleteAfterDays == null
+                  ? 'Never'
+                  : `After ${props.collection.deleteAfterDays}d`}
+              </p>
+            </div>
+
+            <div className="rounded-md bg-zinc-900/70 p-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Status
+              </p>
               <p>
                 {props.collection.isActive ? (
                   <span className="text-green-500">Active</span>
                 ) : (
                   <span className="text-red-500">Inactive</span>
                 )}
-              </p>
-            </div>
-
-            <div className="mr-0 sm:mr-0">
-              <p className="font-bold">Delete</p>
-              <p className="text-amber-500">
-                {props.collection.deleteAfterDays == null
-                  ? 'Never'
-                  : `After ${props.collection.deleteAfterDays} days`}
               </p>
             </div>
           </div>

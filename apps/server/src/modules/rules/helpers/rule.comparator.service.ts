@@ -9,6 +9,7 @@ import { PlexLibraryItem } from '../../api/plex-api/interfaces/library.interface
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { RuleConstanstService } from '../constants/constants.service';
 import {
+  Application,
   RuleOperators,
   RulePossibility,
   RuleType,
@@ -42,6 +43,9 @@ export class RuleComparatorServiceFactory {
 
 @Injectable()
 export class RuleComparatorService {
+  private static readonly RADARR_SPACE_AVAILABLE_PROP_ID = 23;
+  private static readonly SONARR_SPACE_AVAILABLE_PROP_ID = 28;
+  private static readonly ALL_ROOT_FOLDERS_VALUE = '__ALL__';
   workerData: PlexLibraryItem[];
   resultData: PlexLibraryItem[];
   plexData: PlexLibraryItem[];
@@ -227,6 +231,7 @@ export class RuleComparatorService {
           secondVal,
           plexId,
           comparisonResult,
+          ruleGroup,
         );
 
         // alter workerData
@@ -335,12 +340,23 @@ export class RuleComparatorService {
     secondVal: RuleValueType,
     plexId: number,
     result: boolean,
+    ruleGroup: RulesDto,
   ) {
     const stat = this.statsByPlexId.get(+plexId);
     if (!stat) {
       return;
     }
     const lastSectionIndex = stat.sectionResults.length - 1;
+    const firstValueName = this.ruleConstanstService.getValueHumanName(
+      rule.firstVal,
+    );
+    const secondValueName = rule.lastVal
+      ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
+      : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;
+    const selectedPaths = this.getselectedPathsForRule(
+      rule,
+      ruleGroup,
+    );
 
     // push result to currently last section
     stat.sectionResults[lastSectionIndex].ruleResults.push({
@@ -348,17 +364,90 @@ export class RuleComparatorService {
         ? { operator: RuleOperators[rule.operator] }
         : undefined),
       action: RulePossibility[rule.action].toLowerCase(),
-      firstValueName: this.ruleConstanstService.getValueHumanName(
-        rule.firstVal,
+      firstValueName: this.appendTiBHintToGiBNameIfNeeded(
+        firstValueName,
+        firstVal,
       ),
       firstValue: firstVal,
-      secondValueName: rule.lastVal
-        ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-        : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
-            .type,
+      ...(selectedPaths ? { selectedPaths } : undefined),
+      secondValueName: this.appendTiBHintToSecondValueNameIfNeeded(
+        firstValueName,
+        secondValueName,
+        secondVal,
+      ),
       secondValue: secondVal,
       result: result,
     });
+  }
+
+  private getselectedPathsForRule(
+    rule: RuleDto,
+    ruleGroup: RulesDto,
+  ): string[] | undefined {
+    const isRadarrSpaceRule =
+      rule.firstVal[0] === Application.RADARR &&
+      rule.firstVal[1] === RuleComparatorService.RADARR_SPACE_AVAILABLE_PROP_ID;
+    const isSonarrSpaceRule =
+      rule.firstVal[0] === Application.SONARR &&
+      rule.firstVal[1] === RuleComparatorService.SONARR_SPACE_AVAILABLE_PROP_ID;
+
+    if (!isRadarrSpaceRule && !isSonarrSpaceRule) {
+      return undefined;
+    }
+
+    const selectedPaths =
+      ruleGroup.collection?.selectedPaths?.filter(
+        (path) => path && path.trim().length > 0,
+      ) ?? [];
+
+    if (selectedPaths.length === 0) {
+      return undefined;
+    }
+
+    if (
+      selectedPaths.includes(
+        RuleComparatorService.ALL_ROOT_FOLDERS_VALUE,
+      )
+    ) {
+      return ['All'];
+    }
+
+    return selectedPaths;
+  }
+
+  private appendTiBHintToGiBNameIfNeeded(
+    firstValueName: string,
+    firstValue: RuleValueType,
+  ): string {
+    if (
+      typeof firstValue !== 'number' ||
+      !Number.isFinite(firstValue) ||
+      !firstValueName.includes('(GiB)') ||
+      firstValue < 1024
+    ) {
+      return firstValueName;
+    }
+
+    const tibValue = firstValue / 1024;
+    return `${firstValueName} (~${tibValue.toFixed(2)} TiB)`;
+  }
+
+  private appendTiBHintToSecondValueNameIfNeeded(
+    firstValueName: string,
+    secondValueName: string,
+    secondValue: RuleValueType,
+  ): string {
+    if (
+      typeof secondValue !== 'number' ||
+      !Number.isFinite(secondValue) ||
+      !firstValueName.includes('(GiB)') ||
+      secondValue < 1024
+    ) {
+      return secondValueName;
+    }
+
+    const tibValue = secondValue / 1024;
+    return `${secondValueName} (~${tibValue.toFixed(2)} TiB)`;
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {

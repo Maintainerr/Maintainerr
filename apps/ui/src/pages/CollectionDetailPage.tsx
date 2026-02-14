@@ -75,13 +75,15 @@ const CollectionDetailPage = () => {
     )
   }
 
+  const displayName = collection.ruleName ?? collection.title
+
   return (
     <>
-      <title>{collection.title} - Maintainerr</title>
+      <title>{displayName} - Maintainerr</title>
       <div className="w-full">
         <div className="m-auto mb-3 flex w-full">
           <h1 className="flex w-full justify-center overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-zinc-200 sm:m-0 sm:justify-start xl:m-0">
-            {collection.title}
+            {displayName}
           </h1>
         </div>
 
