@@ -240,6 +240,52 @@ export class SonarrActionHandler {
             break;
         }
         break;
+      case ServarrAction.CHANGE_QUALITY_PROFILE:
+        if (
+          collection.type === EPlexDataType.SEASONS ||
+          collection.type === EPlexDataType.EPISODES
+        ) {
+          this.logger.warn(
+            `[Sonarr] CHANGE_QUALITY_PROFILE is not supported for type: ${collection.type}. Quality profiles can only be changed for entire shows.`,
+          );
+          break;
+        }
+
+        const targetProfileId = collection.sonarrQualityProfileId;
+
+        if (!targetProfileId) {
+          this.logger.warn(
+            `No target quality profile configured for collection ${collection.title}`,
+          );
+          break;
+        }
+
+        if (!Number.isInteger(targetProfileId) || targetProfileId <= 0) {
+          this.logger.warn(
+            `[Sonarr] Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
+          );
+          break;
+        }
+
+        sonarrMedia.qualityProfileId = targetProfileId;
+        await sonarrApiClient.updateSeries(sonarrMedia);
+
+        this.logger.log(
+          `[Sonarr] Changed quality profile for show '${sonarrMedia.title}' to profile ID ${targetProfileId}`,
+        );
+
+        // Trigger search for the series with the new quality profile
+        try {
+          await sonarrApiClient.searchSeries(sonarrMedia.id);
+          this.logger.log(
+            `[Sonarr] Triggered search for show '${sonarrMedia.title}'`,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `[Sonarr] Failed to trigger search for show '${sonarrMedia.title}': ${error.message}`,
+          );
+        }
+        break;
     }
   }
 }

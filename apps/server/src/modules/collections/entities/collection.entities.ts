@@ -97,6 +97,12 @@ export class Collection {
   @Column({ nullable: true })
   sortTitle: string;
 
+  @Column({ nullable: true })
+  radarrQualityProfileId: number;
+
+  @Column({ nullable: true })
+  sonarrQualityProfileId: number;
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,

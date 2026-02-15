@@ -94,12 +94,16 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       deleteFiles?: boolean;
       monitored?: boolean;
       addImportExclusion?: boolean;
+      qualityProfileId?: number;
     },
   ) {
     try {
       const movieData: RadarrMovie = await this.get(`movie/${movieId}`);
       if (options?.monitored !== undefined) {
         movieData.monitored = options.monitored;
+      }
+      if (options?.qualityProfileId !== undefined) {
+        movieData.qualityProfileId = options.qualityProfileId;
       }
       await this.runPut(`movie/${movieId}`, JSON.stringify(movieData));
 
