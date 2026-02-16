@@ -28,9 +28,11 @@ export class ExternalApiService {
     // Validate protocol to prevent non-HTTP request forgery (e.g. file://, ftp://).
     // Note: CodeQL js/request-forgery still flags this because the host is
     // user-configured by design (admin settings for Plex, *arr, etc.).
-    const { protocol } = new URL(baseUrl);
-    if (protocol !== 'http:' && protocol !== 'https:') {
-      throw new Error(`Disallowed URL protocol "${protocol}" in: ${baseUrl}`);
+    if (baseUrl) {
+      const { protocol } = new URL(baseUrl);
+      if (protocol !== 'http:' && protocol !== 'https:') {
+        throw new Error(`Disallowed URL protocol "${protocol}" in: ${baseUrl}`);
+      }
     }
 
     this.axios = axios.create({
