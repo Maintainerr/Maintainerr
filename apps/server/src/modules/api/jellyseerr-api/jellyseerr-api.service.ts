@@ -157,9 +157,13 @@ export class JellyseerrApiService {
   }
 
   public init() {
+    if (!this.settings.jellyseerr_url) {
+      return;
+    }
+
     this.api = new JellyseerrApi(
       {
-        url: `${this.settings.jellyseerr_url?.replace(/\/$/, '')}/api/v1`,
+        url: `${this.settings.jellyseerr_url.replace(/\/$/, '')}/api/v1`,
         apiKey: `${this.settings.jellyseerr_api_key}`,
       },
       this.logger,

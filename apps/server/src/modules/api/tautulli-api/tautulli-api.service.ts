@@ -110,6 +110,10 @@ export class TautulliApiService {
   }
 
   public init() {
+    if (!this.settings.tautulli_url) {
+      return;
+    }
+
     this.api = new TautulliApi(
       {
         url: `${this.settings.tautulli_url}/api/v2`,

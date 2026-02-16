@@ -160,9 +160,13 @@ export class OverseerrApiService {
   }
 
   public init() {
+    if (!this.settings.overseerr_url) {
+      return;
+    }
+
     this.api = new OverseerrApi(
       {
-        url: `${this.settings.overseerr_url?.replace(/\/$/, '')}/api/v1`,
+        url: `${this.settings.overseerr_url.replace(/\/$/, '')}/api/v1`,
         apiKey: `${this.settings.overseerr_api_key}`,
       },
       this.loggerFactory.createLogger(),
