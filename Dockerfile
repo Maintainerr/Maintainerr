@@ -1,14 +1,15 @@
-FROM node:24.13.0-alpine3.22@sha256:bb089be859f2741e5ede9d85f47dc7daca754015b50e9642a7a45c5252807d2c AS base
+FROM node:24.13.1-alpine3.22@sha256:d28696cabe6a72c5addbb608b344818e5a158d849174abd4b1ae85ab48536280 AS base
 LABEL Description="Contains the Maintainerr Docker image"
 
 FROM base AS builder
 
 WORKDIR /app
 
-RUN yarn global add turbo@^2
+RUN corepack enable
 
 # Copy only files needed to resolve/install dependencies first (better Docker layer caching)
 COPY package.json yarn.lock .yarnrc.yml turbo.json ./
+RUN corepack install
 COPY .yarn/releases ./.yarn/releases
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/ui/package.json ./apps/ui/package.json

@@ -10,23 +10,36 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
       - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2.5.0
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          github-token: "${{ steps.app-token.outputs.token }}"
           skip-commit-verification: true
 
-      - name: Approve PR
+      - name: Approve PR + merge after required checks pass
         if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-major' }}
         run: |
+          set -euo pipefail
           review_decision=$(gh pr view "$PR_URL" --json reviewDecision -q .reviewDecision)
           if [ "$review_decision" != "APPROVED" ]; then
             gh pr review --approve "$PR_URL"
           else
             echo "PR already approved."
           fi
-          gh pr merge --auto --squash "$PR_URL"
+
+          echo "Waiting for required checks to complete successfully..."
+          gh pr checks "$PR_URL" --required --watch
+
+          echo "Required checks passed. Merging..."
+          gh pr merge --squash "$PR_URL"
         env:
-          PR_URL: ${{github.event.pull_request.html_url}}
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
