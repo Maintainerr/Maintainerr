@@ -167,7 +167,7 @@ describe('RuleMigrationService', () => {
       expect(updatedJson.firstVal[1]).toBe(0); // Property ID stays the same
     });
 
-    it('should skip rules with incompatible properties when skipIncompatible is true', async () => {
+    it('should delete incompatible rules and clean up empty groups when skipIncompatible is true', async () => {
       const mockRules: Partial<Rules>[] = [
         {
           id: 1,
@@ -197,6 +197,8 @@ describe('RuleMigrationService', () => {
 
       rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
       rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+      rulesRepo.delete.mockResolvedValue({ affected: 1 } as any);
+      ruleGroupRepo.delete.mockResolvedValue({ affected: 1 } as any);
 
       const result = await service.migrateRules(
         MediaServerType.PLEX,
@@ -209,6 +211,10 @@ describe('RuleMigrationService', () => {
       expect(result.skippedRules).toBe(1);
       expect(result.skippedDetails).toHaveLength(1);
       expect(rulesRepo.update).toHaveBeenCalledTimes(1);
+      // Incompatible rule should be deleted
+      expect(rulesRepo.delete).toHaveBeenCalledWith(1);
+      // Group 1 had all rules incompatible, so it should be deleted
+      expect(ruleGroupRepo.delete).toHaveBeenCalledWith(1);
     });
 
     it('should throw error for incompatible rules when skipIncompatible is false', async () => {
@@ -320,6 +326,281 @@ describe('RuleMigrationService', () => {
 
       expect(result.migratedRules).toBe(1);
       expect(result.rules[0].firstVal?.[0]).toBe(6); // 6 = JELLYFIN
+    });
+  });
+
+  describe('rating property migration', () => {
+    it('should migrate rating properties that exist in both Plex and Jellyfin at the same ID', async () => {
+      // rating_rottenTomatoesCritic (id 32) now exists in both Plex and Jellyfin constants
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 32], // rating_rottenTomatoesCritic
+            customVal: { ruleTypeId: 0, value: '7' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'RT Critic Group' } as RuleGroup,
+        },
+        {
+          id: 2,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 34], // rating_tmdb
+            customVal: { ruleTypeId: 0, value: '6' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'RT Critic Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(2);
+      expect(result.skippedRules).toBe(0);
+
+      // Verify IDs mapped to Jellyfin app but kept property IDs
+      const call1 = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(call1.firstVal[0]).toBe(Application.JELLYFIN);
+      expect(call1.firstVal[1]).toBe(32); // Same property ID
+
+      const call2 = JSON.parse(
+        rulesRepo.update.mock.calls[1][1].ruleJson as string,
+      );
+      expect(call2.firstVal[0]).toBe(Application.JELLYFIN);
+      expect(call2.firstVal[1]).toBe(34); // Same property ID
+    });
+
+    it('should preview rating properties as migratable', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 36], // rating_rottenTomatoesCriticShow
+            customVal: { ruleTypeId: 0, value: '5' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Rating Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      ruleGroupRepo.count.mockResolvedValue(1);
+
+      const preview = await service.previewMigration(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(preview.migratableRules).toBe(1);
+      expect(preview.skippedRules).toBe(0);
+    });
+
+    it('should still flag watchlist properties as incompatible', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 28], // watchlist_isListedByUsers - truly incompatible
+            customVal: { ruleTypeId: 4, value: 'testuser' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      ruleGroupRepo.count.mockResolvedValue(1);
+
+      const preview = await service.previewMigration(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(preview.migratableRules).toBe(0);
+      expect(preview.skippedRules).toBe(1);
+      expect(preview.skippedDetails[0].propertyName).toBe(
+        'watchlist_isListedByUsers',
+      );
+    });
+  });
+
+  describe('smart collection remapping', () => {
+    it('should remap smart collection property IDs to non-smart equivalents', async () => {
+      // Plex collectionsIncludingSmart (39) should remap to Jellyfin collections (6)
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 39], // collectionsIncludingSmart
+            customVal: { ruleTypeId: 0, value: '2' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Smart Collections' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.JELLYFIN);
+      // Property ID remapped from 39 (collectionsIncludingSmart) to 6 (collections)
+      expect(updatedJson.firstVal[1]).toBe(6);
+    });
+
+    it('should remap collection_names_including_smart to collection_names', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.CONTAINS,
+            firstVal: [Application.PLEX, 42], // collection_names_including_smart
+            customVal: { ruleTypeId: 4, value: 'Holiday' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Smart Names' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.JELLYFIN);
+      // Property ID remapped from 42 (collection_names_including_smart) to 19 (collection_names)
+      expect(updatedJson.firstVal[1]).toBe(19);
+    });
+
+    it('should remap show-level smart collection properties', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 40], // sw_collections_including_parent_and_smart
+            customVal: { ruleTypeId: 0, value: '1' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Show Smart' } as RuleGroup,
+        },
+        {
+          id: 2,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: RuleOperators.AND,
+            action: RulePossibility.CONTAINS,
+            firstVal: [Application.PLEX, 41], // sw_collection_names_including_parent_and_smart
+            customVal: { ruleTypeId: 4, value: 'Sci-Fi' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Show Smart' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(2);
+      expect(result.skippedRules).toBe(0);
+
+      // 40 -> 25 (sw_collections_including_parent)
+      const call1 = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(call1.firstVal[1]).toBe(25);
+
+      // 41 -> 26 (sw_collection_names_including_parent)
+      const call2 = JSON.parse(
+        rulesRepo.update.mock.calls[1][1].ruleJson as string,
+      );
+      expect(call2.firstVal[1]).toBe(26);
+    });
+
+    it('should also remap lastVal property IDs', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 39], // collectionsIncludingSmart
+            lastVal: [Application.PLEX, 39], // also in lastVal
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Both Vals' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal).toEqual([Application.JELLYFIN, 6]);
+      expect(updatedJson.lastVal).toEqual([Application.JELLYFIN, 6]);
     });
   });
 

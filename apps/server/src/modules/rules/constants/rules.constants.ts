@@ -89,6 +89,14 @@ export interface Property {
   humanName: string;
   cacheReset?: boolean; // for properties that require a cache reset between group executions
   showType?: MediaItemType[]; // if not configured = available for all types
+  /**
+   * When this property doesn't exist on a target server during migration,
+   * fall back to the property with this name instead of marking it incompatible.
+   *
+   * Example: Plex's `collectionsIncludingSmart` sets `migrateTo: 'collections'`
+   * because Jellyfin has no smart-collection concept and uses regular collections.
+   */
+  migrateTo?: string;
 }
 
 export interface ApplicationProperties {
@@ -408,6 +416,7 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
           cacheReset: true,
+          migrateTo: 'collections',
         },
         {
           id: 40,
@@ -418,6 +427,7 @@ export class RuleConstants {
           type: RuleType.NUMBER,
           showType: ['season', 'episode'],
           cacheReset: true,
+          migrateTo: 'sw_collections_including_parent',
         },
         {
           id: 41,
@@ -428,6 +438,7 @@ export class RuleConstants {
           showType: ['season', 'episode'],
           cacheReset: true,
           type: RuleType.TEXT_LIST,
+          migrateTo: 'sw_collection_names_including_parent',
         },
         {
           id: 42,
@@ -437,6 +448,7 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.TEXT_LIST,
           cacheReset: true,
+          migrateTo: 'collection_names',
         },
       ],
     },
@@ -1274,6 +1286,66 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['episode'],
+        },
+        // Rating properties — sourced from Jellyfin's CommunityRating and CriticRating.
+        // CommunityRating is typically from TMDb (or IMDb when OMDb provider is enabled).
+        // CriticRating is typically the Rotten Tomatoes Tomatometer via OMDb.
+        // IDs match Plex so rules migrate without property ID remapping.
+        {
+          id: 32,
+          name: 'rating_rottenTomatoesCritic',
+          humanName: 'Rotten Tomatoes critic rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 33,
+          name: 'rating_rottenTomatoesAudience',
+          humanName: 'Rotten Tomatoes audience rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 34,
+          name: 'rating_tmdb',
+          humanName: 'The Movie Database rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 35,
+          name: 'rating_imdbShow',
+          humanName: 'IMDb rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 36,
+          name: 'rating_rottenTomatoesCriticShow',
+          humanName: 'Rotten Tomatoes critic rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 37,
+          name: 'rating_rottenTomatoesAudienceShow',
+          humanName: 'Rotten Tomatoes audience rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 38,
+          name: 'rating_tmdbShow',
+          humanName: 'The Movie Database rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
         },
       ],
     },

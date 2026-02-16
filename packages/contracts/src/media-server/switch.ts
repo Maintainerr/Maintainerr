@@ -54,6 +54,18 @@ export interface SwitchMediaServerResponse {
 }
 
 /**
+ * Preview of rule migration (what can/cannot be migrated)
+ */
+export interface RuleMigrationPreview {
+  canMigrate: boolean
+  totalGroups: number
+  totalRules: number
+  migratableRules: number
+  skippedRules: number
+  skippedDetails: SkippedRuleDetail[]
+}
+
+/**
  * Preview of data that will be cleared/kept when switching media servers
  */
 export interface MediaServerSwitchPreview {
@@ -74,12 +86,5 @@ export interface MediaServerSwitchPreview {
     tautulliSettings: boolean
     notificationSettings: boolean
   }
-  ruleMigration?: {
-    canMigrate: boolean
-    totalGroups: number
-    totalRules: number
-    migratableRules: number
-    skippedRules: number
-    skippedDetails: SkippedRuleDetail[]
-  }
+  ruleMigration?: RuleMigrationPreview
 }

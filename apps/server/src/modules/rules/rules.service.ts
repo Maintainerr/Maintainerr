@@ -973,7 +973,7 @@ export class RulesService {
   }
 
   private createReturnStatus(success: boolean, result: string): ReturnStatus {
-    return { code: success ? 1 : 0, result: result };
+    return { code: success ? 1 : 0, result: result, message: result };
   }
 
   private async createOrUpdateGroup(

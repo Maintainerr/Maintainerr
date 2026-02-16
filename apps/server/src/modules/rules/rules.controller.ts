@@ -6,7 +6,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   NotFoundException,
   Param,
@@ -103,9 +102,35 @@ export class RulesController {
   @Post('/execute')
   async executeRules() {
     if (this.ruleExecutorJobManagerService.isProcessing()) {
-      throw new HttpException(
-        'The rule executor is already running',
-        HttpStatus.CONFLICT,
+      throw new ConflictException('The rule executor is already running');
+    }
+
+    const allGroups = await this.rulesService.getRuleGroups();
+
+    if (!allGroups || allGroups.length === 0) {
+      throw new ConflictException(
+        'No rule groups found. Create a rule group first.',
+      );
+    }
+
+    const activeGroups = allGroups.filter((rg) => rg.isActive);
+    const anyLibrarySet = allGroups.some(
+      (rg) => rg.libraryId && rg.libraryId !== '',
+    );
+
+    if (activeGroups.length === 0) {
+      const msg = anyLibrarySet
+        ? 'No active rule groups. Activate at least one rule group before running.'
+        : 'No active rule groups and no libraries are set. Please activate your rule groups and assign libraries before running.';
+      throw new ConflictException(msg);
+    }
+
+    const groupsWithLibrary = activeGroups.filter(
+      (rg) => rg.libraryId && rg.libraryId !== '',
+    );
+    if (groupsWithLibrary.length === 0) {
+      throw new ConflictException(
+        'All active rule groups are missing a library. Please edit your rules and assign libraries before running.',
       );
     }
 

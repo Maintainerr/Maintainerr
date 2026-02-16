@@ -1,97 +1,114 @@
-import { MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaServerType,
+  RuleMigrationPreview,
+  RuleMigrationResult,
+  SkippedRuleDetail,
+} from '@maintainerr/contracts';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Application } from '../rules/constants/rules.constants';
+import { Application, RuleConstants } from '../rules/constants/rules.constants';
 import { RuleDto } from '../rules/dtos/rule.dto';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Rules } from '../rules/entities/rules.entities';
 
-/**
- * Properties that exist in Plex but NOT in Jellyfin.
- * Rules using these properties cannot be migrated.
- *
- * From rules.constants.ts, Plex has these properties that Jellyfin doesn't:
- * - 28: watchlist_isListedByUsers (Plex watchlist integration)
- * - 30: watchlist_isWatchlisted (Plex watchlist integration)
- * - 31: rating_imdb (external rating source)
- * - 32: rating_rottenTomatoesCritic (external rating source)
- * - 33: rating_rottenTomatoesAudience (external rating source)
- * - 34: rating_tmdb (external rating source)
- * - 35: rating_imdbShow (external rating source)
- * - 36: rating_rottenTomatoesCriticShow (external rating source)
- * - 37: rating_rottenTomatoesAudienceShow (external rating source)
- * - 38: rating_tmdbShow (external rating source)
- * - 39: collectionsIncludingSmart (smart collections)
- * - 40: sw_collections_including_parent_and_smart (smart collections)
- * - 41: sw_collection_names_including_parent_and_smart (smart collections)
- * - 42: collection_names_including_smart (smart collections)
- *
- * Note: Property 29 (sw_seasonLastEpisodeAiredAt) exists in BOTH Plex and Jellyfin
- */
-const PLEX_ONLY_PROPERTIES = new Set([
-  28, // watchlist_isListedByUsers
-  30, // watchlist_isWatchlisted
-  31, // rating_imdb
-  32, // rating_rottenTomatoesCritic
-  33, // rating_rottenTomatoesAudience
-  34, // rating_tmdb
-  35, // rating_imdbShow
-  36, // rating_rottenTomatoesCriticShow
-  37, // rating_rottenTomatoesAudienceShow
-  38, // rating_tmdbShow
-  39, // collectionsIncludingSmart
-  40, // sw_collections_including_parent_and_smart
-  41, // sw_collection_names_including_parent_and_smart
-  42, // collection_names_including_smart
-]);
+/** Singleton instance – avoids re-creating the constant data on every call. */
+const RULE_CONSTANTS = new RuleConstants();
 
 /**
- * Properties that exist in Jellyfin but NOT in Plex.
- * Rules using these properties cannot be migrated.
+ * Outcome of checking whether a single rule can be migrated.
  */
-const JELLYFIN_ONLY_PROPERTIES = new Set<number>([
-  // Currently none - Jellyfin properties are a subset of Plex
-]);
-
-export interface RuleMigrationResult {
-  /** Total rules processed */
-  totalRules: number;
-  /** Successfully migrated rules */
-  migratedRules: number;
-  /** Rules that couldn't be migrated */
-  skippedRules: number;
-  /** Rule groups that had all rules migrated */
-  fullyMigratedGroups: number;
-  /** Rule groups that had some rules skipped */
-  partiallyMigratedGroups: number;
-  /** Rule groups that couldn't be migrated at all */
-  skippedGroups: number;
-  /** Details about skipped rules */
-  skippedDetails: SkippedRuleDetail[];
-}
-
-export interface SkippedRuleDetail {
-  ruleGroupId: number;
-  ruleGroupName: string;
-  ruleId: number;
+interface RuleAnalysis {
+  canMigrate: boolean;
   reason: string;
   propertyName?: string;
 }
 
-export interface RuleMigrationPreview {
-  /** Can rules be migrated at all */
-  canMigrate: boolean;
-  /** Total rule groups */
-  totalGroups: number;
-  /** Total rules */
-  totalRules: number;
-  /** Rules that can be migrated */
-  migratableRules: number;
-  /** Rules that will be skipped */
-  skippedRules: number;
-  /** Details about what will be skipped */
-  skippedDetails: SkippedRuleDetail[];
+/**
+ * Result of comparing property compatibility between two media server apps.
+ */
+interface PropertyCompatibility {
+  /** Property IDs from the source that have no equivalent in the target. */
+  incompatible: Set<number>;
+  /**
+   * Property IDs that exist in the source under a different name/ID in the
+   * target.  Map key = source property ID, value = target property ID.
+   * During migration the property ID is rewritten so the rule keeps working.
+   *
+   * Example: Plex `collectionsIncludingSmart` (39) → Jellyfin `collections` (6)
+   * because Jellyfin has no smart-collection concept and falls back to regular
+   * collections.
+   */
+  remapping: Map<number, number>;
+}
+
+/**
+ * Dynamically compute the set of property IDs that exist in the source server
+ * but are NOT compatible with the target server, together with a remapping
+ * table for properties that have a different-name equivalent in the target.
+ *
+ * A property is:
+ * - **compatible** if the target has a property with the same `(id, name)`.
+ * - **remappable** if the target has a property with the same `name` (or the
+ *   property declares a `migrateTo` fallback name) that resolves to a target
+ *   property.  The ID will be rewritten during migration.
+ * - **incompatible** if none of the above applies.
+ *
+ * This is fully data-driven from `rules.constants.ts` — no hardcoded lists.
+ */
+function computePropertyCompatibility(
+  sourceApp: Application,
+  targetApp: Application,
+): PropertyCompatibility {
+  const sourceAppDef = RULE_CONSTANTS.applications.find(
+    (a) => a.id === sourceApp,
+  );
+  const targetAppDef = RULE_CONSTANTS.applications.find(
+    (a) => a.id === targetApp,
+  );
+
+  if (!sourceAppDef || !targetAppDef) {
+    return { incompatible: new Set(), remapping: new Map() };
+  }
+
+  // Build target lookups: by (id → name) and by (name → id)
+  const targetIdToName = new Map<number, string>();
+  const targetNameToId = new Map<string, number>();
+  for (const prop of targetAppDef.props) {
+    targetIdToName.set(prop.id, prop.name);
+    targetNameToId.set(prop.name, prop.id);
+  }
+
+  const incompatible = new Set<number>();
+  const remapping = new Map<number, number>();
+
+  for (const prop of sourceAppDef.props) {
+    const targetName = targetIdToName.get(prop.id);
+
+    // Exact (id, name) match → compatible, nothing to do
+    if (targetName === prop.name) continue;
+
+    // Name exists in target at a different ID → remappable
+    const targetId = targetNameToId.get(prop.name);
+    if (targetId !== undefined) {
+      remapping.set(prop.id, targetId);
+      continue;
+    }
+
+    // Check migrateTo fallback declared on the property itself
+    if (prop.migrateTo) {
+      const fallbackTargetId = targetNameToId.get(prop.migrateTo);
+      if (fallbackTargetId !== undefined) {
+        remapping.set(prop.id, fallbackTargetId);
+        continue;
+      }
+    }
+
+    // No match at all → incompatible
+    incompatible.add(prop.id);
+  }
+
+  return { incompatible, remapping };
 }
 
 @Injectable()
@@ -114,12 +131,8 @@ export class RuleMigrationService {
     toServer: MediaServerType,
   ): Promise<RuleMigrationPreview> {
     const sourceApp = this.getApplicationId(fromServer);
-    // Validate target server type (throws if invalid)
-    this.getApplicationId(toServer);
-    const incompatibleProperties = this.getIncompatibleProperties(
-      fromServer,
-      toServer,
-    );
+    const targetApp = this.getApplicationId(toServer);
+    const compat = computePropertyCompatibility(sourceApp, targetApp);
 
     const allRules = await this.rulesRepo.find({
       relations: ['ruleGroup'],
@@ -130,11 +143,7 @@ export class RuleMigrationService {
     let skippedRules = 0;
 
     for (const rule of allRules) {
-      const analysis = this.analyzeRule(
-        rule,
-        sourceApp,
-        incompatibleProperties,
-      );
+      const analysis = this.analyzeRule(rule, sourceApp, compat);
 
       if (analysis.canMigrate) {
         migratableRules++;
@@ -177,14 +186,17 @@ export class RuleMigrationService {
   ): Promise<RuleMigrationResult> {
     const sourceApp = this.getApplicationId(fromServer);
     const targetApp = this.getApplicationId(toServer);
-    const incompatibleProperties = this.getIncompatibleProperties(
-      fromServer,
-      toServer,
-    );
+    const compat = computePropertyCompatibility(sourceApp, targetApp);
 
     this.logger.log(
       `Starting rule migration from ${fromServer} (app ${sourceApp}) to ${toServer} (app ${targetApp})`,
     );
+
+    if (compat.remapping.size > 0) {
+      this.logger.log(
+        `Property remapping: ${[...compat.remapping.entries()].map(([s, t]) => `${getPropertyName(sourceApp, s)} (${s})→${getPropertyName(targetApp, t)} (${t})`).join(', ')}`,
+      );
+    }
 
     const allRules = await this.rulesRepo.find({
       relations: ['ruleGroup'],
@@ -199,16 +211,6 @@ export class RuleMigrationService {
       skippedGroups: 0,
       skippedDetails: [],
     };
-
-    // Group rules by ruleGroupId for tracking group-level stats
-    const rulesByGroup = new Map<number, Rules[]>();
-    for (const rule of allRules) {
-      const groupId = rule.ruleGroupId;
-      if (!rulesByGroup.has(groupId)) {
-        rulesByGroup.set(groupId, []);
-      }
-      rulesByGroup.get(groupId)!.push(rule);
-    }
 
     // Track migration status per group
     const groupMigrationStatus = new Map<
@@ -229,11 +231,7 @@ export class RuleMigrationService {
       const groupStatus = groupMigrationStatus.get(groupId)!;
       groupStatus.total++;
 
-      const analysis = this.analyzeRule(
-        rule,
-        sourceApp,
-        incompatibleProperties,
-      );
+      const analysis = this.analyzeRule(rule, sourceApp, compat);
 
       if (!analysis.canMigrate) {
         if (!skipIncompatible) {
@@ -253,8 +251,9 @@ export class RuleMigrationService {
         });
 
         this.logger.warn(
-          `Skipping rule ${rule.id}: ${analysis.reason}${analysis.propertyName ? ` (property: ${analysis.propertyName})` : ''}`,
+          `Deleting incompatible rule ${rule.id}: ${analysis.reason}${analysis.propertyName ? ` (property: ${analysis.propertyName})` : ''}`,
         );
+        await this.rulesRepo.delete(rule.id);
         continue;
       }
 
@@ -264,6 +263,7 @@ export class RuleMigrationService {
           rule.ruleJson,
           sourceApp,
           targetApp,
+          compat.remapping,
         );
         await this.rulesRepo.update(rule.id, { ruleJson: migratedJson });
         result.migratedRules++;
@@ -285,13 +285,17 @@ export class RuleMigrationService {
       }
     }
 
-    // Calculate group-level statistics
-    for (const [, status] of groupMigrationStatus) {
+    // Calculate group-level statistics and clean up empty groups
+    for (const [groupId, status] of groupMigrationStatus) {
       if (status.skipped === 0 && status.migrated > 0) {
         result.fullyMigratedGroups++;
-      } else if (status.migrated === 0) {
+      } else if (status.migrated === 0 && status.skipped > 0) {
         result.skippedGroups++;
-      } else {
+        await this.ruleGroupRepo.delete(groupId);
+        this.logger.log(
+          `Deleted rule group ${groupId} - all ${status.skipped} rules were incompatible`,
+        );
+      } else if (status.migrated > 0 && status.skipped > 0) {
         result.partiallyMigratedGroups++;
       }
     }
@@ -325,6 +329,9 @@ export class RuleMigrationService {
 
     const targetApp = this.getApplicationId(toServer);
 
+    // Cache compatibility per source app – avoids recomputing for every rule.
+    const compatCache = new Map<Application, PropertyCompatibility>();
+
     let migratedRules = 0;
     let skippedRules = 0;
 
@@ -336,16 +343,15 @@ export class RuleMigrationService {
         return rule;
       }
 
-      const incompatibleProperties = this.getIncompatibleProperties(
-        this.getServerType(sourceApp),
-        toServer,
-      );
+      if (!compatCache.has(sourceApp)) {
+        compatCache.set(
+          sourceApp,
+          computePropertyCompatibility(sourceApp, targetApp),
+        );
+      }
+      const compat = compatCache.get(sourceApp)!;
 
-      const analysis = this.analyzeRuleDto(
-        rule,
-        sourceApp,
-        incompatibleProperties,
-      );
+      const analysis = this.analyzeRuleDto(rule, sourceApp, compat);
       if (!analysis.canMigrate) {
         skippedRules += 1;
         this.logger.warn(
@@ -355,7 +361,7 @@ export class RuleMigrationService {
       }
 
       migratedRules += 1;
-      return this.migrateRuleDto(rule, sourceApp, targetApp);
+      return this.migrateRuleDto(rule, sourceApp, targetApp, compat.remapping);
     });
 
     return {
@@ -380,74 +386,43 @@ export class RuleMigrationService {
   }
 
   /**
-   * Get the MediaServerType for an Application enum value.
-   * This is the inverse of getApplicationId().
-   */
-  private getServerType(
-    app: Application.PLEX | Application.JELLYFIN,
-  ): MediaServerType {
-    switch (app) {
-      case Application.PLEX:
-        return MediaServerType.PLEX;
-      case Application.JELLYFIN:
-        return MediaServerType.JELLYFIN;
-    }
-  }
-
-  /**
-   * Get properties that exist in the source but not in the target server.
-   */
-  private getIncompatibleProperties(
-    fromServer: MediaServerType,
-    toServer: MediaServerType,
-  ): Set<number> {
-    if (
-      fromServer === MediaServerType.PLEX &&
-      toServer === MediaServerType.JELLYFIN
-    ) {
-      return PLEX_ONLY_PROPERTIES;
-    }
-    if (
-      fromServer === MediaServerType.JELLYFIN &&
-      toServer === MediaServerType.PLEX
-    ) {
-      return JELLYFIN_ONLY_PROPERTIES;
-    }
-    return new Set();
-  }
-
-  /**
-   * Analyze a rule to determine if it can be migrated.
+   * Analyze a persisted rule to determine if it can be migrated.
    */
   private analyzeRule(
     rule: Rules,
     sourceApp: Application,
-    incompatibleProperties: Set<number>,
-  ): { canMigrate: boolean; reason: string; propertyName?: string } {
+    compat: PropertyCompatibility,
+  ): RuleAnalysis {
     try {
       const ruleDto: RuleDto = JSON.parse(rule.ruleJson);
-      return this.analyzeRuleDto(ruleDto, sourceApp, incompatibleProperties);
+      return this.analyzeRuleDto(ruleDto, sourceApp, compat);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       return {
         canMigrate: false,
-        reason: `Invalid rule JSON: ${error.message}`,
+        reason: `Invalid rule JSON: ${message}`,
       };
     }
   }
 
+  /**
+   * Analyze an in-memory rule DTO to determine if it can be migrated.
+   * Only the `incompatible` set is checked — remapped properties are compatible
+   * by definition (the two sets are mutually exclusive).
+   */
   private analyzeRuleDto(
     ruleDto: RuleDto,
     sourceApp: Application,
-    incompatibleProperties: Set<number>,
-  ): { canMigrate: boolean; reason: string; propertyName?: string } {
+    { incompatible }: PropertyCompatibility,
+  ): RuleAnalysis {
     // Check firstVal (required)
     if (ruleDto.firstVal && ruleDto.firstVal[0] === sourceApp) {
       const propertyId = ruleDto.firstVal[1];
-      if (incompatibleProperties.has(propertyId)) {
+      if (incompatible.has(propertyId)) {
         return {
           canMigrate: false,
           reason: `Uses property ID ${propertyId} which is not available in target server`,
-          propertyName: this.getPropertyName(sourceApp, propertyId),
+          propertyName: getPropertyName(sourceApp, propertyId),
         };
       }
     }
@@ -455,11 +430,11 @@ export class RuleMigrationService {
     // Check lastVal (optional)
     if (ruleDto.lastVal && ruleDto.lastVal[0] === sourceApp) {
       const propertyId = ruleDto.lastVal[1];
-      if (incompatibleProperties.has(propertyId)) {
+      if (incompatible.has(propertyId)) {
         return {
           canMigrate: false,
           reason: `Uses property ID ${propertyId} in comparison which is not available in target server`,
-          propertyName: this.getPropertyName(sourceApp, propertyId),
+          propertyName: getPropertyName(sourceApp, propertyId),
         };
       }
     }
@@ -488,52 +463,50 @@ export class RuleMigrationService {
     ruleDto: RuleDto,
     sourceApp: Application,
     targetApp: Application,
+    remapping: Map<number, number> = new Map(),
   ): RuleDto {
     const migrated: RuleDto = JSON.parse(JSON.stringify(ruleDto));
 
     if (migrated.firstVal && migrated.firstVal[0] === sourceApp) {
-      migrated.firstVal = [targetApp, migrated.firstVal[1]];
+      const propId = migrated.firstVal[1];
+      migrated.firstVal = [targetApp, remapping.get(propId) ?? propId];
     }
 
     if (migrated.lastVal && migrated.lastVal[0] === sourceApp) {
-      migrated.lastVal = [targetApp, migrated.lastVal[1]];
+      const propId = migrated.lastVal[1];
+      migrated.lastVal = [targetApp, remapping.get(propId) ?? propId];
     }
 
     return migrated;
   }
 
   /**
-   * Migrate a rule JSON string by replacing the source application ID with the target.
+   * Migrate a rule JSON string by replacing the source application ID with the
+   * target, and remapping property IDs where the same property exists at a
+   * different ID in the target.
    */
   private migrateRuleJson(
     ruleJson: string,
     sourceApp: Application,
     targetApp: Application,
+    remapping: Map<number, number> = new Map(),
   ): string {
     const ruleDto: RuleDto = JSON.parse(ruleJson);
-    const migrated = this.migrateRuleDto(ruleDto, sourceApp, targetApp);
+    const migrated = this.migrateRuleDto(
+      ruleDto,
+      sourceApp,
+      targetApp,
+      remapping,
+    );
     return JSON.stringify(migrated);
   }
+}
 
-  /**
-   * Get a human-readable property name for logging.
-   */
-  private getPropertyName(app: Application, propertyId: number): string {
-    // Property names for Plex-specific properties
-    const plexPropertyNames: Record<number, string> = {
-      28: 'watchlist_isListedByUsers',
-      30: 'watchlist_isWatchlisted',
-      31: 'rating_imdb',
-      32: 'rating_rottenTomatoesCritic',
-      33: 'rating_rottenTomatoesAudience',
-      34: 'rating_tmdb',
-      35: 'rating_imdbShow',
-    };
-
-    if (app === Application.PLEX && plexPropertyNames[propertyId]) {
-      return plexPropertyNames[propertyId];
-    }
-
-    return `property_${propertyId}`;
-  }
+/**
+ * Get a human-readable property name for logging.
+ */
+function getPropertyName(app: Application, propertyId: number): string {
+  const appDef = RULE_CONSTANTS.applications.find((a) => a.id === app);
+  const prop = appDef?.props.find((p) => p.id === propertyId);
+  return prop?.name ?? `property_${propertyId}`;
 }

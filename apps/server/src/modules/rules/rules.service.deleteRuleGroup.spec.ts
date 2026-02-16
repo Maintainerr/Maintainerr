@@ -49,7 +49,11 @@ describe('RulesService.updateRules - null guard', () => {
       description: '',
     });
 
-    expect(result).toEqual({ code: 0, result: 'Rule group not found' });
+    expect(result).toEqual({
+      code: 0,
+      result: 'Rule group not found',
+      message: 'Rule group not found',
+    });
   });
 });
 
@@ -134,7 +138,11 @@ describe('RulesService.deleteRuleGroup', () => {
       // TypeError: Cannot read properties of null (reading 'collectionId')
       const result = await service.deleteRuleGroup(999);
 
-      expect(result).toEqual({ code: 1, result: 'Success' });
+      expect(result).toEqual({
+        code: 1,
+        result: 'Success',
+        message: 'Success',
+      });
     });
 
     it('still performs exclusion and ruleGroup deletes when group is null', async () => {
