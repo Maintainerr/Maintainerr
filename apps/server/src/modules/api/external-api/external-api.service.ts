@@ -30,9 +30,7 @@ export class ExternalApiService {
     // user-configured by design (admin settings for Plex, *arr, etc.).
     const { protocol } = new URL(baseUrl);
     if (protocol !== 'http:' && protocol !== 'https:') {
-      throw new Error(
-        `Disallowed URL protocol "${protocol}" in: ${baseUrl}`,
-      );
+      throw new Error(`Disallowed URL protocol "${protocol}" in: ${baseUrl}`);
     }
 
     this.axios = axios.create({
