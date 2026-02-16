@@ -180,7 +180,10 @@ describe('RadarrActionHandler', () => {
   };
 
   const mockRadarrApi = () => {
-    const mockedRadarrApi = new RadarrApi({} as any, logger as any);
+    const mockedRadarrApi = new RadarrApi(
+      { url: 'http://localhost:7878', apiKey: 'test' },
+      logger as any,
+    );
     jest.spyOn(mockedRadarrApi, 'deleteMovie').mockImplementation(jest.fn());
     jest.spyOn(mockedRadarrApi, 'updateMovie').mockImplementation(jest.fn());
 

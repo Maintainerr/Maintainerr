@@ -240,7 +240,10 @@ describe('RadarrGetterService', () => {
   });
 
   const mockRadarrApi = (movie?: RadarrMovie) => {
-    const mockedRadarrApi = new RadarrApi({} as any, logger as any);
+    const mockedRadarrApi = new RadarrApi(
+      { url: 'http://localhost:7878', apiKey: 'test' },
+      logger as any,
+    );
     const mockedServarrService = new ServarrService({} as any, logger as any);
     jest
       .spyOn(mockedServarrService, 'getRadarrApiClient')

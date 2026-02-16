@@ -532,7 +532,10 @@ describe('SonarrGetterService', () => {
   });
 
   const mockSonarrApi = (series?: SonarrSeries) => {
-    const mockedSonarrApi = new SonarrApi({} as any, logger as any);
+    const mockedSonarrApi = new SonarrApi(
+      { url: 'http://localhost:8989', apiKey: 'test' },
+      logger as any,
+    );
     const mockedServarrService = new ServarrService({} as any, logger as any);
     jest
       .spyOn(mockedServarrService, 'getSonarrApiClient')
