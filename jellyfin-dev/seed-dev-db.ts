@@ -4,11 +4,71 @@
  * so you can test the media server switch & rule migration flow in the UI.
  *
  * Usage:
- *   1. Run `yarn dev` to start the server (creates the database and runs migrations).
- *   2. In a separate terminal, run `npx tsx tools/seed-dev-db.ts`
+ *   1. Run `yarn build && yarn dev` to start the server (creates the database).
+ *   2. In a separate terminal, run `npx tsx jellyfin-dev/seed-dev-db.ts`
  *   3. Test in the UI — seeded data is available immediately.
  *
  * To reset: stop the server, delete data/maintainerr.sqlite, and repeat from step 1.
+ *
+ * ----- Jellyfin setup (for testing Plex → Jellyfin migration) -----
+ *
+ * This codespace has Jellyfin installed at /usr/bin/jellyfin.
+ * The default data dirs (/var/cache/jellyfin etc.) are not writable,
+ * so use temp directories instead.
+ *
+ * 1. Start Jellyfin:
+ *      mkdir -p /tmp/jellyfin-{data,cache,config,log}
+ *      nohup jellyfin -d /tmp/jellyfin-data -C /tmp/jellyfin-cache \
+ *        -c /tmp/jellyfin-config -l /tmp/jellyfin-log --nowebclient \
+ *        > /tmp/jellyfin.log 2>&1 &
+ *
+ * 2. Wait ~10 seconds, then complete the startup wizard:
+ *      curl -X POST http://localhost:8096/Startup/User \
+ *        -H 'Content-Type: application/json' \
+ *        -d '{"Name":"admin","Password":"admin123"}'
+ *      curl -X POST http://localhost:8096/Startup/Configuration \
+ *        -H 'Content-Type: application/json' \
+ *        -d '{"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}'
+ *      curl -X POST http://localhost:8096/Startup/RemoteAccess \
+ *        -H 'Content-Type: application/json' \
+ *        -d '{"EnableRemoteAccess":true,"EnableAutomaticPortMapping":false}'
+ *      curl -X POST http://localhost:8096/Startup/Complete
+ *
+ * 3. Authenticate to get an API key and user ID:
+ *      curl -X POST http://localhost:8096/Users/AuthenticateByName \
+ *        -H 'Content-Type: application/json' \
+ *        -H 'X-Emby-Authorization: MediaBrowser Client="Maintainerr", Device="dev", DeviceId="seed", Version="1.0"' \
+ *        -d '{"Username":"admin","Pw":"admin123"}'
+ *    Note the `AccessToken` and `User.Id` from the response.
+ *
+ * 4. Create dummy libraries so Maintainerr can assign them to rule groups:
+ *      mkdir -p /tmp/jellyfin-media/movies /tmp/jellyfin-media/tvshows
+ *      TOKEN="<AccessToken>"
+ *      curl -X POST "http://localhost:8096/Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=false" \
+ *        -H "X-Emby-Token: $TOKEN" -H 'Content-Type: application/json' \
+ *        -d '{"LibraryOptions":{},"PathInfos":[{"Path":"/tmp/jellyfin-media/movies"}]}'
+ *      curl -X POST "http://localhost:8096/Library/VirtualFolders?name=TV%20Shows&collectionType=tvshows&refreshLibrary=false" \
+ *        -H "X-Emby-Token: $TOKEN" -H 'Content-Type: application/json' \
+ *        -d '{"LibraryOptions":{},"PathInfos":[{"Path":"/tmp/jellyfin-media/tvshows"}]}'
+ *
+ * 5. Seed the Jellyfin settings into the Maintainerr database:
+ *      npx tsx -e "
+ *        import Database from 'better-sqlite3';
+ *        const db = new Database('data/maintainerr.sqlite');
+ *        db.prepare(\`UPDATE settings SET
+ *          jellyfin_url = 'http://localhost:8096',
+ *          jellyfin_api_key = '<AccessToken>',
+ *          jellyfin_user_id = '<User.Id>',
+ *          jellyfin_server_name = 'codespaces'
+ *        WHERE id = 1\`).run();
+ *        db.close();
+ *      "
+ *
+ * 6. Now switch from Plex to Jellyfin in the Maintainerr UI (Settings → Media Server)
+ *    and test the migration flow.
+ *
+ * To stop Jellyfin: kill $(pgrep jellyfin)
+ * To reset Jellyfin: rm -rf /tmp/jellyfin-{data,cache,config,log} and repeat from step 1.
  */
 
 import Database from "better-sqlite3";
@@ -90,7 +150,7 @@ const PLEX_PROPS: PropDef[] = [
   { id: 27, type: TYPE_DATE, mediaType: 2, showType: ["show", "season"] }, // sw_lastEpisodeAiredAt
   { id: 29, type: TYPE_DATE, mediaType: 2, showType: ["episode"] }, // sw_seasonLastEpisodeAiredAt
 
-  // Plex-only properties (incompatible with Jellyfin)
+  // Plex-only properties (truly incompatible — no Jellyfin equivalent)
   { id: 28, type: TYPE_TEXT_LIST, mediaType: 0, incompatible: true }, // watchlist_isListedByUsers
   { id: 30, type: TYPE_BOOL, mediaType: 0, incompatible: true }, // watchlist_isWatchlisted
   {
@@ -99,72 +159,70 @@ const PLEX_PROPS: PropDef[] = [
     mediaType: 0,
     showType: ["episode", "show"],
     incompatible: true,
-  }, // rating_imdb
+  }, // rating_imdb (Jellyfin ID 31 is sw_playCount — different property)
+
+  // Rating properties — IDs 32-38 exist in both Plex and Jellyfin with same name+ID.
+  // These migrate without remapping.
   {
     id: 32,
     type: TYPE_NUMBER,
     mediaType: 0,
     showType: ["episode", "show"],
-    incompatible: true,
   }, // rating_rottenTomatoesCritic
   {
     id: 33,
     type: TYPE_NUMBER,
     mediaType: 0,
     showType: ["episode", "show"],
-    incompatible: true,
   }, // rating_rottenTomatoesAudience
   {
     id: 34,
     type: TYPE_NUMBER,
     mediaType: 0,
     showType: ["episode", "show"],
-    incompatible: true,
   }, // rating_tmdb
   {
     id: 35,
     type: TYPE_NUMBER,
     mediaType: 2,
     showType: ["season", "episode"],
-    incompatible: true,
   }, // rating_imdbShow
   {
     id: 36,
     type: TYPE_NUMBER,
     mediaType: 2,
     showType: ["season", "episode"],
-    incompatible: true,
   }, // rating_rottenTomatoesCriticShow
   {
     id: 37,
     type: TYPE_NUMBER,
     mediaType: 2,
     showType: ["season", "episode"],
-    incompatible: true,
   }, // rating_rottenTomatoesAudienceShow
   {
     id: 38,
     type: TYPE_NUMBER,
     mediaType: 2,
     showType: ["season", "episode"],
-    incompatible: true,
   }, // rating_tmdbShow
-  { id: 39, type: TYPE_NUMBER, mediaType: 0, incompatible: true }, // collectionsIncludingSmart
+
+  // Smart collection properties — remappable via migrateTo (not incompatible).
+  // 39→collections(6), 40→sw_collections_including_parent(25),
+  // 41→sw_collection_names_including_parent(26), 42→collection_names(19)
+  { id: 39, type: TYPE_NUMBER, mediaType: 0 }, // collectionsIncludingSmart → collections
   {
     id: 40,
     type: TYPE_NUMBER,
     mediaType: 2,
     showType: ["season", "episode"],
-    incompatible: true,
-  }, // sw_collections_including_parent_and_smart
+  }, // sw_collections_including_parent_and_smart → sw_collections_including_parent
   {
     id: 41,
     type: TYPE_TEXT_LIST,
     mediaType: 2,
     showType: ["season", "episode"],
-    incompatible: true,
-  }, // sw_collection_names_including_parent_and_smart
-  { id: 42, type: TYPE_TEXT_LIST, mediaType: 0, incompatible: true }, // collection_names_including_smart
+  }, // sw_collection_names_including_parent_and_smart → sw_collection_names_including_parent
+  { id: 42, type: TYPE_TEXT_LIST, mediaType: 0 }, // collection_names_including_smart → collection_names
 ];
 
 /** Valid actions per RuleType */
@@ -187,22 +245,62 @@ const ACTIONS_BY_TYPE: Record<number, number[]> = {
   [TYPE_TEXT_LIST]: [ACTION_EQUALS, ACTION_NOT_EQUALS, ACTION_CONTAINS],
 };
 
+function generateValue(type: number, action: number): string {
+  switch (type) {
+    case TYPE_DATE:
+      // IN_LAST uses seconds (e.g. 30 days = 2592000)
+      if (action === ACTION_IN_LAST) {
+        return String(pick([7, 14, 30, 60, 90, 180, 365]) * 86400);
+      }
+      // Other date actions use date strings
+      {
+        const d = new Date();
+        d.setDate(d.getDate() - Math.floor(Math.random() * 365));
+        return d.toISOString().split("T")[0]!; // "YYYY-MM-DD"
+      }
+    case TYPE_BOOL:
+      return pick(["true", "false"]);
+    case TYPE_TEXT:
+    case TYPE_TEXT_LIST:
+      return pick([
+        "Action",
+        "Comedy",
+        "Drama",
+        "Sci-Fi",
+        "Horror",
+        "user1",
+        "user2",
+      ]);
+    case TYPE_NUMBER:
+    default:
+      return String(Math.floor(Math.random() * 100));
+  }
+}
+
 function makeRule(
   prop: PropDef,
   opts: { operator?: string | null; value?: string } = {},
 ) {
   const actions = ACTIONS_BY_TYPE[prop.type] ?? [ACTION_EQUALS];
   const action = pick(actions);
-  const value =
-    prop.type === TYPE_BOOL
-      ? pick(["true", "false"])
-      : (opts.value ?? String(Math.floor(Math.random() * 100)));
+  const value = opts.value ?? generateValue(prop.type, action);
+
+  // Match what the real UI stores for ruleTypeId:
+  // - TEXT_LIST properties → ruleTypeId: 2 (TEXT), not 4 (legacy)
+  // - DATE + IN_LAST action → ruleTypeId: 0 (NUMBER), value in seconds
+  // - DATE + other actions → ruleTypeId: 1 (DATE), value as "YYYY-MM-DD"
+  let ruleTypeId = prop.type;
+  if (prop.type === TYPE_TEXT_LIST) {
+    ruleTypeId = TYPE_TEXT;
+  } else if (prop.type === TYPE_DATE && action === ACTION_IN_LAST) {
+    ruleTypeId = TYPE_NUMBER;
+  }
 
   return JSON.stringify({
     operator: opts.operator ?? null,
     action,
     firstVal: [APP_PLEX, prop.id],
-    customVal: { ruleTypeId: prop.type, value },
+    customVal: { ruleTypeId, value },
     section: 0,
   });
 }
