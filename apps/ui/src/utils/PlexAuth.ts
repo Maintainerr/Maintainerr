@@ -15,7 +15,7 @@ interface PlexHeaders extends Record<string, string> {
   'X-Plex-Language': string
 }
 
-export interface PlexPin {
+interface PlexPin {
   id: number
   code: string
 }
@@ -72,6 +72,10 @@ class PlexOAuth {
     this.openPopup({ title: 'Plex Auth', w: 600, h: 700 })
   }
 
+  public hasPopup(): boolean {
+    return !!this.popup && !this.popup.closed
+  }
+
   public async login(): Promise<string> {
     this.initializeHeaders()
     await this.getPin()
@@ -80,7 +84,7 @@ class PlexOAuth {
       throw new Error('Unable to call login if class is not initialized.')
     }
 
-    const params = {
+    const params = new URLSearchParams({
       clientID: this.plexHeaders['X-Plex-Client-Identifier'],
       'context[device][product]': this.plexHeaders['X-Plex-Product'],
       'context[device][version]': this.plexHeaders['X-Plex-Version'],
@@ -94,12 +98,10 @@ class PlexOAuth {
         this.plexHeaders['X-Plex-Device-Screen-Resolution'],
       'context[device][layout]': 'desktop',
       code: this.pin.code,
-    }
+    })
 
     if (this.popup) {
-      this.popup.location.href = `https://app.plex.tv/auth/#!?${this.encodeData(
-        params,
-      )}`
+      this.popup.location.href = `https://app.plex.tv/auth/#!?${params}`
     }
 
     return this.pinPoll()
@@ -152,57 +154,20 @@ class PlexOAuth {
     w: number
     h: number
   }): Window | void {
-    if (!window) {
-      throw new Error(
-        'Window is undefined. Are you running this in the browser?',
-      )
-    }
-    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+    const left = Math.round(window.screenLeft + (window.innerWidth - w) / 2)
+    const top = Math.round(window.screenTop + (window.innerHeight - h) / 2)
 
-    // Fixes dual-screen position                         Most browsers      Firefox
-    const dualScreenLeft =
-      window.screenLeft != undefined ? window.screenLeft : window.screenX
-    const dualScreenTop =
-      window.screenTop != undefined ? window.screenTop : window.screenY
-    const width = window.innerWidth
-      ? window.innerWidth
-      : document.documentElement.clientWidth
-        ? document.documentElement.clientWidth
-        : screen.width
-    const height = window.innerHeight
-      ? window.innerHeight
-      : document.documentElement.clientHeight
-        ? document.documentElement.clientHeight
-        : screen.height
-    const left = width / 2 - w / 2 + dualScreenLeft
-    const top = height / 2 - h / 2 + dualScreenTop
-
-    //Set url to login/plex/loading so browser doesn't block popup
     const newWindow = window.open(
-      `${basePath}/login/plex/loading`,
+      'about:blank',
       title,
-      'scrollbars=yes, width=' +
-        w +
-        ', height=' +
-        h +
-        ', top=' +
-        top +
-        ', left=' +
-        left,
+      `scrollbars=yes,width=${w},height=${h},top=${top},left=${left}`,
     )
+
     if (newWindow) {
       newWindow.focus()
       this.popup = newWindow
       return this.popup
     }
-  }
-
-  private encodeData(data: Record<string, string>): string {
-    return Object.keys(data)
-      .map(function (key) {
-        return [key, data[key]].map(encodeURIComponent).join('=')
-      })
-      .join('&')
   }
 }
 

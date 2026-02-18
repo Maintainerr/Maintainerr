@@ -20,7 +20,6 @@ import CollectionInfoPage from './pages/CollectionInfoPage'
 import CollectionMediaPage from './pages/CollectionMediaPage'
 import CollectionsListPage from './pages/CollectionsListPage'
 import DocsPage from './pages/DocsPage'
-import PlexLoadingPage from './pages/PlexLoadingPage'
 import RuleFormPage from './pages/RuleFormPage'
 import RulesListPage from './pages/RulesListPage'
 
@@ -92,10 +91,6 @@ export const router = createBrowserRouter(
         {
           path: 'docs',
           element: <DocsPage />,
-        },
-        {
-          path: 'login/plex/loading',
-          element: <PlexLoadingPage />,
         },
         {
           path: 'settings',

@@ -94,7 +94,8 @@ const PlexSettings = () => {
     isError: deletePlexAuthError,
     isPending: deletePlexAuthPending,
   } = useDeletePlexAuth()
-  const { mutateAsync: updatePlexAuth } = useUpdatePlexAuth()
+  const { mutateAsync: updatePlexAuth, isPending: updatePlexAuthPending } =
+    useUpdatePlexAuth()
   const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement> | undefined) => {
@@ -481,6 +482,7 @@ const PlexSettings = () => {
                     <PlexLoginButton
                       onAuthToken={authsuccess}
                       onError={authFailed}
+                      isProcessing={updatePlexAuthPending}
                     ></PlexLoginButton>
                   )}
                 </div>
