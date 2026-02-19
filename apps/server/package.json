@@ -99,7 +99,14 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(ts|js)$": ["ts-jest", { "tsconfig": { "allowJs": true } }]
+      "^.+\\.(ts|js)$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "allowJs": true
+          }
+        }
+      ]
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk)/)"
