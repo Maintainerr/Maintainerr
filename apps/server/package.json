@@ -10,7 +10,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest",
+    "test": "yarn test:runtime:jellyfin-sdk && jest",
+    "test:runtime:jellyfin-sdk": "node ./test/jellyfin-sdk-runtime-smoke.cjs",
     "test:clear": "jest --clearCache",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -98,7 +99,7 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(ts|js)$": "ts-jest"
+      "^.+\\.(ts|js)$": ["ts-jest", { "tsconfig": { "allowJs": true } }]
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk)/)"

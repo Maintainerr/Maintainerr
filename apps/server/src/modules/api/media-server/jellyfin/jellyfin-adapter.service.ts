@@ -15,7 +15,7 @@ import {
   getSystemApi,
   getTvShowsApi,
   getUserApi,
-} from '@jellyfin/sdk/lib/utils/api';
+} from '@jellyfin/sdk/lib/utils/api/index.js';
 import {
   MediaServerFeature,
   MediaServerType,

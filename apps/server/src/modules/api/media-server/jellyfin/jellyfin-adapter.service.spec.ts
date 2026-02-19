@@ -47,7 +47,7 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
   },
 }));
 
-jest.mock('@jellyfin/sdk/lib/utils/api', () => ({
+jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   __esModule: true,
   getSystemApi: jest.fn().mockReturnValue({
     getPublicSystemInfo: jest.fn().mockResolvedValue({

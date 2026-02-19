@@ -516,7 +516,8 @@ export class SettingsService implements SettingDto {
   ): Promise<string | undefined> {
     try {
       const { Jellyfin } = await import('@jellyfin/sdk');
-      const { getUserApi } = await import('@jellyfin/sdk/lib/utils/api');
+      const { getUserApi } =
+        await import('@jellyfin/sdk/lib/utils/api/index.js');
 
       const jellyfin = new Jellyfin({
         clientInfo: { name: 'Maintainerr', version: '2.0.0' },
