@@ -1,6 +1,6 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import {
   Application,
   RuleOperators,
@@ -601,6 +601,141 @@ describe('RuleMigrationService', () => {
       );
       expect(updatedJson.firstVal).toEqual([Application.JELLYFIN, 6]);
       expect(updatedJson.lastVal).toEqual([Application.JELLYFIN, 6]);
+    });
+  });
+
+  describe('migrateRules with EntityManager (transactional path)', () => {
+    let mockManager: { getRepository: jest.Mock };
+    let txRulesRepo: Partial<Mocked<Repository<Rules>>>;
+    let txRuleGroupRepo: Partial<Mocked<Repository<RuleGroup>>>;
+
+    beforeEach(() => {
+      txRulesRepo = {
+        find: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      };
+      txRuleGroupRepo = {
+        delete: jest.fn(),
+      };
+      mockManager = {
+        getRepository: jest.fn((entity) => {
+          if (entity === Rules) return txRulesRepo;
+          if (entity === RuleGroup) return txRuleGroupRepo;
+          throw new Error(`Unexpected entity: ${entity}`);
+        }),
+      };
+    });
+
+    it('should use transactional repos from EntityManager instead of injected repos', async () => {
+      const originalRule: Partial<Rules> = {
+        id: 1,
+        ruleGroupId: 1,
+        ruleJson: JSON.stringify({
+          operator: RuleOperators.AND,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0],
+          customVal: { ruleTypeId: 1, value: '30' },
+          section: 0,
+        }),
+        ruleGroup: { id: 1, name: 'Test Group' } as RuleGroup,
+      };
+
+      txRulesRepo.find.mockResolvedValue([originalRule as Rules]);
+      txRulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+        mockManager as unknown as EntityManager,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+
+      // Verify transactional repos were used
+      expect(txRulesRepo.find).toHaveBeenCalledTimes(1);
+      expect(txRulesRepo.update).toHaveBeenCalledTimes(1);
+
+      // Verify injected repos were NOT used
+      expect(rulesRepo.find).not.toHaveBeenCalled();
+      expect(rulesRepo.update).not.toHaveBeenCalled();
+
+      // Verify the updated ruleJson has Jellyfin application ID
+      const updateCall = txRulesRepo.update.mock.calls[0];
+      const updatedJson = JSON.parse(updateCall[1].ruleJson as string);
+      expect(updatedJson.firstVal[0]).toBe(Application.JELLYFIN);
+    });
+
+    it('should delete incompatible rules via transactional repo', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 30], // watchlist - incompatible
+            customVal: { ruleTypeId: 3, value: 'true' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
+        },
+      ];
+
+      txRulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      txRulesRepo.delete.mockResolvedValue({ affected: 1 } as any);
+      txRuleGroupRepo.delete.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+        mockManager as unknown as EntityManager,
+      );
+
+      expect(result.skippedRules).toBe(1);
+      expect(result.skippedGroups).toBe(1);
+
+      // Verify transactional repos were used for deletion
+      expect(txRulesRepo.delete).toHaveBeenCalledWith(1);
+      expect(txRuleGroupRepo.delete).toHaveBeenCalledWith(1);
+
+      // Verify injected repos were NOT used
+      expect(rulesRepo.delete).not.toHaveBeenCalled();
+      expect(ruleGroupRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to injected repos when no EntityManager is provided', async () => {
+      const originalRule: Partial<Rules> = {
+        id: 1,
+        ruleGroupId: 1,
+        ruleJson: JSON.stringify({
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0],
+          customVal: { ruleTypeId: 1, value: '30' },
+          section: 0,
+        }),
+        ruleGroup: { id: 1, name: 'Test Group' } as RuleGroup,
+      };
+
+      rulesRepo.find.mockResolvedValue([originalRule as Rules]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+        // no EntityManager passed
+      );
+
+      expect(result.migratedRules).toBe(1);
+
+      // Verify injected repos WERE used
+      expect(rulesRepo.find).toHaveBeenCalledTimes(1);
+      expect(rulesRepo.update).toHaveBeenCalledTimes(1);
     });
   });
 

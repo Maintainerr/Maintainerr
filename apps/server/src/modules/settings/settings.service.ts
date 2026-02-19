@@ -1094,39 +1094,6 @@ export class SettingsService implements SettingDto {
     return this.sonarrSettingsRepo.count();
   }
 
-  /**
-   * Update media server type and clear old server credentials.
-   * Called by MediaServerSwitchService during server switch.
-   */
-  public async updateMediaServerType(
-    targetServerType: MediaServerType,
-    currentServerType: MediaServerType | null,
-  ): Promise<void> {
-    const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-    const updatedSettings: Partial<Settings> = {
-      ...settingsDb,
-      media_server_type: targetServerType,
-    };
-
-    // Clear the credentials of the server we're switching FROM
-    if (currentServerType === MediaServerType.PLEX) {
-      updatedSettings.plex_name = null;
-      updatedSettings.plex_hostname = null;
-      updatedSettings.plex_port = null;
-      updatedSettings.plex_ssl = null;
-      updatedSettings.plex_auth_token = null;
-    } else if (currentServerType === MediaServerType.JELLYFIN) {
-      updatedSettings.jellyfin_url = null;
-      updatedSettings.jellyfin_api_key = null;
-      updatedSettings.jellyfin_user_id = null;
-      updatedSettings.jellyfin_server_name = null;
-    }
-
-    await this.settingsRepo.save(updatedSettings);
-    await this.init();
-  }
-
   // Test if all required settings are set.
   public async testSetup(): Promise<boolean> {
     try {

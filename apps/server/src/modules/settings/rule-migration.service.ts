@@ -6,7 +6,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Application, RuleConstants } from '../rules/constants/rules.constants';
 import { RuleDto } from '../rules/dtos/rule.dto';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
@@ -183,7 +183,13 @@ export class RuleMigrationService {
     fromServer: MediaServerType,
     toServer: MediaServerType,
     skipIncompatible = true,
+    manager?: EntityManager,
   ): Promise<RuleMigrationResult> {
+    const rulesRepo = manager ? manager.getRepository(Rules) : this.rulesRepo;
+    const ruleGroupRepo = manager
+      ? manager.getRepository(RuleGroup)
+      : this.ruleGroupRepo;
+
     const sourceApp = this.getApplicationId(fromServer);
     const targetApp = this.getApplicationId(toServer);
     const compat = computePropertyCompatibility(sourceApp, targetApp);
@@ -198,7 +204,7 @@ export class RuleMigrationService {
       );
     }
 
-    const allRules = await this.rulesRepo.find({
+    const allRules = await rulesRepo.find({
       relations: ['ruleGroup'],
     });
 
@@ -253,7 +259,7 @@ export class RuleMigrationService {
         this.logger.warn(
           `Deleting incompatible rule ${rule.id}: ${analysis.reason}${analysis.propertyName ? ` (property: ${analysis.propertyName})` : ''}`,
         );
-        await this.rulesRepo.delete(rule.id);
+        await rulesRepo.delete(rule.id);
         continue;
       }
 
@@ -265,7 +271,7 @@ export class RuleMigrationService {
           targetApp,
           compat.remapping,
         );
-        await this.rulesRepo.update(rule.id, { ruleJson: migratedJson });
+        await rulesRepo.update(rule.id, { ruleJson: migratedJson });
         result.migratedRules++;
         groupStatus.migrated++;
 
@@ -291,7 +297,7 @@ export class RuleMigrationService {
         result.fullyMigratedGroups++;
       } else if (status.migrated === 0 && status.skipped > 0) {
         result.skippedGroups++;
-        await this.ruleGroupRepo.delete(groupId);
+        await ruleGroupRepo.delete(groupId);
         this.logger.log(
           `Deleted rule group ${groupId} - all ${status.skipped} rules were incompatible`,
         );
