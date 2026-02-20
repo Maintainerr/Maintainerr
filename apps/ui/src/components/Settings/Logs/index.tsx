@@ -232,7 +232,9 @@ const Logs = () => {
                 <span className={`font-semibold ${levelColor} px-2`}>
                   {row.level}
                 </span>
-                <pre className="inline whitespace-pre-wrap break-words text-white">{row.message}</pre>
+                <pre className="inline whitespace-pre-wrap break-words text-white">
+                  {row.message}
+                </pre>
               </div>
             )
           })}
