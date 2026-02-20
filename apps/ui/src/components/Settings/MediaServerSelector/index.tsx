@@ -18,6 +18,8 @@ interface MediaServerSelectorProps {
   onSwitch?: () => void
 }
 
+const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+
 const serverOptions: {
   value: MediaServerType
   name: string
@@ -28,13 +30,13 @@ const serverOptions: {
     value: MediaServerType.PLEX,
     name: 'Plex',
     description: 'Plex Media Server',
-    icon: '/icons_logos/plex_logo.svg',
+    icon: `${basePath}/icons_logos/plex_logo.svg`,
   },
   {
     value: MediaServerType.JELLYFIN,
     name: 'Jellyfin',
     description: 'Jellyfin Media Server',
-    icon: '/icons_logos/jellyfin.svg',
+    icon: `${basePath}/icons_logos/jellyfin.svg`,
   },
 ]
 
