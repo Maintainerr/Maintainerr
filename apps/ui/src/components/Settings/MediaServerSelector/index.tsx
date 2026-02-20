@@ -1,4 +1,8 @@
-import { ArrowNarrowRightIcon, CheckCircleIcon } from '@heroicons/react/solid'
+import {
+  ArrowNarrowRightIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@heroicons/react/solid'
 import {
   MediaServerSwitchPreview,
   MediaServerType,
@@ -50,6 +54,7 @@ const MediaServerSelector = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [migrateRules, setMigrateRules] = useState(true)
   const [isSwitchComplete, setIsSwitchComplete] = useState(false)
+  const [switchError, setSwitchError] = useState<string | null>(null)
 
   const { mutateAsync: previewSwitch, isPending: isPreviewPending } =
     usePreviewMediaServerSwitch()
@@ -105,31 +110,43 @@ const MediaServerSelector = ({
   const handleConfirmSwitch = async () => {
     if (!pendingType) return
 
+    setSwitchError(null)
+
     try {
-      await switchServer({
+      const result = await switchServer({
         targetServerType: pendingType,
         migrateRules,
       })
 
-      setIsSwitchComplete(true)
-
-      // Invalidate queries
-      await queryClient.invalidateQueries({ queryKey: ['settings'] })
+      if (result.status === 'NOK') {
+        setSwitchError(result.message || 'Failed to switch media server')
+      } else {
+        setIsSwitchComplete(true)
+      }
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
         err?.message ||
         'Failed to switch media server'
-      toast.error(message)
+      setSwitchError(message)
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setShowConfirmModal(false)
     onSwitch?.()
     const type = pendingType
     setPendingType(null)
     setIsSwitchComplete(false)
+
+    // Invalidate queries only when the user dismisses the modal
+    // to prevent the parent from re-rendering while the modal is still open
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['settings'] }),
+      queryClient.invalidateQueries({ queryKey: ['collections'] }),
+      queryClient.invalidateQueries({ queryKey: ['rules'] }),
+    ])
+
     navigate(`/settings/${type}`)
   }
 
@@ -139,6 +156,7 @@ const MediaServerSelector = ({
     setPreviewData(null)
     setMigrateRules(true)
     setIsSwitchComplete(false)
+    setSwitchError(null)
   }
 
   const hasDataToDelete =
@@ -339,17 +357,24 @@ const MediaServerSelector = ({
                 </p>
               ))}
 
-            {/* Progress Bar */}
-            {(isSwitchPending || isSwitchComplete) && (
-              <div className="relative mb-4 h-8 w-full overflow-hidden rounded bg-zinc-700">
-                <div
-                  className={`h-full bg-amber-500 transition-all duration-500 ${
-                    isSwitchComplete ? 'w-full' : 'w-full animate-pulse'
-                  }`}
-                />
-                <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-white drop-shadow-md">
-                  {isSwitchComplete ? '100% Completed' : 'Switching...'}
+            {/* Result indicator */}
+            {isSwitchComplete && (
+              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-green-900/30 p-3 text-green-400">
+                <CheckCircleIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">Success</span>
+              </div>
+            )}
+            {switchError && (
+              <div className="mb-4 rounded bg-red-900/30 p-3 text-red-400">
+                <div className="flex items-center space-x-2">
+                  <XCircleIcon className="h-5 w-5 shrink-0" />
+                  <span className="text-sm font-medium">
+                    Something went wrong: {switchError}
+                  </span>
                 </div>
+                <p className="mt-1 pl-7 text-xs text-red-400/70">
+                  Close this dialog and try again.
+                </p>
               </div>
             )}
 

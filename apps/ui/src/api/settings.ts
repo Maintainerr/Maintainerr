@@ -268,12 +268,10 @@ type UseSwitchMediaServerOptions = Omit<
     Error,
     SwitchMediaServerRequest
   >,
-  'mutationFn' | 'mutationKey' | 'onSuccess'
+  'mutationFn' | 'mutationKey'
 >
 
 export const useSwitchMediaServer = (options?: UseSwitchMediaServerOptions) => {
-  const queryClient = useQueryClient()
-
   return useMutation<
     SwitchMediaServerResponse,
     Error,
@@ -285,15 +283,6 @@ export const useSwitchMediaServer = (options?: UseSwitchMediaServerOptions) => {
         '/settings/media-server/switch',
         payload,
       )
-    },
-    onSuccess: () => {
-      // Invalidate all relevant queries after switching
-      queryClient.invalidateQueries({
-        queryKey: ['settings'] satisfies UseSettingsQueryKey,
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['collections'],
-      })
     },
     ...options,
   })
