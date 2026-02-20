@@ -324,14 +324,24 @@ const MediaServerSelector = ({
               (hasDataToDelete ? (
                 <>
                   <p className="mb-3 text-zinc-100">
-                    The following data will be permanently deleted:
+                    {migrateRules
+                      ? 'The following data will be cleared or reset:'
+                      : 'The following data will be permanently deleted:'}
                   </p>
                   <ul className="mb-4 list-inside list-disc space-y-1 text-sm text-zinc-100">
-                    {previewData!.dataToBeCleared.collections > 0 && (
-                      <li>
-                        {previewData!.dataToBeCleared.collections} collection(s)
-                      </li>
-                    )}
+                    {previewData!.dataToBeCleared.collections > 0 &&
+                      (migrateRules ? (
+                        <li>
+                          {previewData!.dataToBeCleared.collections}{' '}
+                          collection(s) will be preserved (media server
+                          references reset)
+                        </li>
+                      ) : (
+                        <li>
+                          {previewData!.dataToBeCleared.collections}{' '}
+                          collection(s)
+                        </li>
+                      ))}
                     {previewData!.dataToBeCleared.collectionMedia > 0 && (
                       <li>
                         {previewData!.dataToBeCleared.collectionMedia}{' '}

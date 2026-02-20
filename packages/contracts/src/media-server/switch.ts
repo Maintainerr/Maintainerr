@@ -69,7 +69,7 @@ export interface RuleMigrationPreview {
  * Preview of data that will be cleared/kept when switching media servers
  */
 export interface MediaServerSwitchPreview {
-  currentServerType: MediaServerType
+  currentServerType: MediaServerType | null
   targetServerType: MediaServerType
   dataToBeCleared: {
     collections: number

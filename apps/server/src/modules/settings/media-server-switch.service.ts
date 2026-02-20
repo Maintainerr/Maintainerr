@@ -192,11 +192,17 @@ export class MediaServerSwitchService {
 
       return response;
     } catch (error) {
-      this.logger.error(`Error switching media server: ${error}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Error switching media server: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       return {
         status: 'NOK',
         code: 0,
-        message: `Failed to switch media server: ${error.message || error}`,
+        message:
+          'Failed to switch media server. Please check your configuration and try again.',
       };
     }
   }
