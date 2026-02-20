@@ -171,7 +171,7 @@ const Logs = () => {
     if (!scrollToBottom || !logsRef.current) return
 
     logsRef.current.scrollTop = logsRef.current.scrollHeight
-  }, [filteredLogLines])
+  }, [filteredLogLines, scrollToBottom])
 
   return (
     <div className="section">
