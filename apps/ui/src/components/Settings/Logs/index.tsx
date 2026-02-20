@@ -232,12 +232,7 @@ const Logs = () => {
                 <span className={`font-semibold ${levelColor} px-2`}>
                   {row.level}
                 </span>
-                <pre
-                  className="inline whitespace-pre-wrap break-words text-white"
-                  dangerouslySetInnerHTML={{
-                    __html: row.message.replace(/(?:\r\n|\r|\n)/g, '<br>'),
-                  }}
-                ></pre>
+                <pre className="inline whitespace-pre-wrap break-words text-white">{row.message}</pre>
               </div>
             )
           })}
