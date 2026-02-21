@@ -656,6 +656,48 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
+   * Get user IDs of all users who have favorited an item.
+   * Iterates over all users and checks UserData.IsFavorite.
+   */
+  async getItemFavoritedBy(itemId: string): Promise<string[]> {
+    if (!this.api) return [];
+
+    try {
+      const users = await this.getUsers();
+      const favoritedBy: string[] = [];
+
+      for (
+        let i = 0;
+        i < users.length;
+        i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
+      ) {
+        const batch = users.slice(
+          i,
+          i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY,
+        );
+
+        const results = await Promise.allSettled(
+          batch.map((user) => this.getItemUserData(itemId, user.id)),
+        );
+
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled' && result.value?.IsFavorite) {
+            favoritedBy.push(batch[idx].id);
+          }
+        });
+      }
+
+      return favoritedBy;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get favorited-by list for ${itemId}`,
+        error,
+      );
+      return [];
+    }
+  }
+
+  /**
    * Get total play count for an item across all users.
    * This includes partial/unfinished plays (PlayCount > 0 but Played = false).
    * Only meaningful for Movies and Episodes (Series/Seasons always return 0).
