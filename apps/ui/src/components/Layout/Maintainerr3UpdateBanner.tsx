@@ -47,7 +47,7 @@ const Maintainerr3UpdateBanner = () => {
               View Maintainerr 3.0 preparation information.
             </p>
           </div>
-          <div className="relative mt-1 flex w-full items-center min-h-[2.25rem] sm:mt-0 sm:w-auto sm:min-h-0 sm:flex-nowrap sm:items-center sm:gap-2">
+          <div className="relative mt-1 flex min-h-[2.25rem] w-full items-center sm:mt-0 sm:min-h-0 sm:w-auto sm:flex-nowrap sm:items-center sm:gap-2">
             <Button
               buttonType="primary"
               className="absolute left-1/2 -translate-x-1/2 !border-zinc-900 !bg-zinc-900 hover:!border-zinc-800 hover:!bg-zinc-800 sm:static sm:translate-x-0"
