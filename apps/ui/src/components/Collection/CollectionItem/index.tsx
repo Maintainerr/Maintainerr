@@ -60,38 +60,25 @@ const CollectionItem = (props: ICollectionItem) => {
           </div>
         </div>
 
-        <div className="inset-0 z-0 flex h-fit flex-row p-3 text-base sm:flex-row">
-          <div className="mr-5 flex flex-row sm:mr-0 sm:mt-auto sm:flex-col">
-            <div className="mb-5 mr-5 sm:mr-0">
-              <p className="font-bold">Library</p>
-              <p className="text-amber-500">
-                {libraries?.find(
-                  (lib) =>
-                    String(lib.id) === String(props.collection.libraryId),
-                )?.title ?? <>&nbsp;</>}
-              </p>
-            </div>
-
-            <div className="mr-5 sm:mr-0">
-              <p className="font-bold">Items</p>
-              <p className="text-amber-500">
-                {' '}
-                {`${
-                  props.collection.media ? props.collection.media.length : 0
-                }`}
-              </p>
-            </div>
-
-            <div className="mr-5 sm:mr-0">
-              <p className="font-bold">Size</p>
-              <p className="text-amber-500">
-                {formatSize(props.collection.totalSizeBytes)}
-              </p>
-            </div>
+        <div className="inset-0 z-0 h-fit p-3 pt-1 text-base">
+          <div className="mb-3">
+            <p className="font-bold">Library</p>
+            <p className="text-amber-500">
+              {libraries?.find(
+                (lib) => String(lib.id) === String(props.collection.libraryId),
+              )?.title ?? <>&nbsp;</>}
+            </p>
           </div>
 
-          <div className="ml-auto flex flex-row text-right sm:mt-auto sm:flex-col">
-            <div className="mb-5 mr-5 sm:mr-0">
+          <div className="grid grid-cols-2 gap-y-3">
+            <div>
+              <p className="font-bold">Items</p>
+              <p className="text-amber-500">
+                {`${props.collection.media ? props.collection.media.length : 0}`}
+              </p>
+            </div>
+
+            <div className="text-right">
               <p className="font-bold">Status</p>
               <p>
                 {props.collection.isActive ? (
@@ -102,7 +89,14 @@ const CollectionItem = (props: ICollectionItem) => {
               </p>
             </div>
 
-            <div className="mr-0 sm:mr-0">
+            <div>
+              <p className="font-bold">Size</p>
+              <p className="text-amber-500">
+                {formatSize(props.collection.totalSizeBytes)}
+              </p>
+            </div>
+
+            <div className="text-right">
               <p className="font-bold">Delete</p>
               <p className="text-amber-500">
                 {props.collection.deleteAfterDays == null
