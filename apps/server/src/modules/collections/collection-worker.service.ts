@@ -9,8 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { delay } from '../../utils/delay';
-import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
-import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionMediaHandledDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
@@ -32,8 +31,7 @@ export class CollectionWorkerService extends TaskBase {
     private readonly collectionRepo: Repository<Collection>,
     @InjectRepository(CollectionMedia)
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
-    private readonly overseerrApi: OverseerrApiService,
-    private readonly jellyseerrApi: JellyseerrApiService,
+    private readonly seerrApi: SeerrApiService,
     protected readonly taskService: TasksService,
     private readonly settings: SettingsService,
     private readonly eventEmitter: EventEmitter2,
@@ -178,50 +176,24 @@ export class CollectionWorkerService extends TaskBase {
       }
 
       if (handledCollectionMedia > 0) {
-        const promises = [];
-        if (this.settings.overseerrConfigured()) {
-          promises.push(
-            delay(7000, async () => {
-              try {
-                await this.overseerrApi.api.post(
-                  '/settings/jobs/availability-sync/run',
-                );
+        if (this.settings.seerrConfigured()) {
+          await delay(7000, async () => {
+            try {
+              await this.seerrApi.api.post(
+                '/settings/jobs/availability-sync/run',
+              );
 
-                this.infoLogger(
-                  `All collections handled. Triggered Overseerr's availability-sync because media was altered`,
-                );
-              } catch (err) {
-                this.logger.error(
-                  `Failed to trigger Overseerr's availability-sync`,
-                  err,
-                );
-              }
-            }),
-          );
+              this.infoLogger(
+                `All collections handled. Triggered Seerr's availability-sync because media was altered`,
+              );
+            } catch (err) {
+              this.logger.error(
+                `Failed to trigger Seerr's availability-sync`,
+                err,
+              );
+            }
+          });
         }
-
-        if (this.settings.jellyseerrConfigured()) {
-          promises.push(
-            delay(7000, async () => {
-              try {
-                await this.jellyseerrApi.api.post(
-                  '/settings/jobs/availability-sync/run',
-                );
-
-                this.infoLogger(
-                  `All collections handled. Triggered Jellyseerr's availability-sync because media was altered`,
-                );
-              } catch (err) {
-                this.logger.error(
-                  `Failed to trigger Jellyseerr's availability-sync`,
-                  err,
-                );
-              }
-            }),
-          );
-        }
-
-        await Promise.all(promises);
       } else {
         this.infoLogger(`All collections handled. No data was altered`);
       }

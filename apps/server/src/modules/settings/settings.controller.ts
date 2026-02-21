@@ -2,12 +2,10 @@ import {
   BasicResponseDto,
   JellyfinSetting,
   jellyfinSettingSchema,
-  JellyseerrSetting,
-  jellyseerrSettingSchema,
   MediaServerSwitchPreview,
   MediaServerType,
-  OverseerrSetting,
-  overseerrSettingSchema,
+  SeerrSetting,
+  seerrSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   switchMediaServerSchema,
@@ -189,8 +187,9 @@ export class SettingsController {
     return this.settingsService.testTautulli(payload);
   }
 
-  @Get('/jellyseerr')
-  async getJellyseerrSetting(): Promise<JellyseerrSetting | BasicResponseDto> {
+  // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)
+  @Get(['/seerr', '/overseerr', '/jellyseerr'])
+  async getSeerrSetting(): Promise<SeerrSetting | BasicResponseDto> {
     const settings = await this.settingsService.getSettings();
 
     if (!(settings instanceof Settings)) {
@@ -198,65 +197,30 @@ export class SettingsController {
     }
 
     return {
-      api_key: settings.jellyseerr_api_key,
-      url: settings.jellyseerr_url,
+      api_key: settings.seerr_api_key,
+      url: settings.seerr_url,
     };
   }
 
-  @Get('/overseerr')
-  async getOverseerrSetting(): Promise<OverseerrSetting | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
-
-    if (!(settings instanceof Settings)) {
-      return settings;
-    }
-
-    return {
-      api_key: settings.overseerr_api_key,
-      url: settings.overseerr_url,
-    };
-  }
-
-  @Post('/jellyseerr')
-  async updateJellyseerrSetting(
-    @Body(new ZodValidationPipe(jellyseerrSettingSchema))
-    payload: JellyseerrSetting,
+  @Post(['/seerr', '/overseerr', '/jellyseerr'])
+  async updateSeerrSetting(
+    @Body(new ZodValidationPipe(seerrSettingSchema))
+    payload: SeerrSetting,
   ) {
-    return await this.settingsService.updateJellyseerrSetting(payload);
+    return await this.settingsService.updateSeerrSetting(payload);
   }
 
-  @Delete('/jellyseerr')
-  async removeJellyseerrSetting() {
-    return await this.settingsService.removeJellyseerrSetting();
+  @Delete(['/seerr', '/overseerr', '/jellyseerr'])
+  async removeSeerrSetting() {
+    return await this.settingsService.removeSeerrSetting();
   }
 
-  @Post('/test/jellyseerr')
-  testJellyseerr(
-    @Body(new ZodValidationPipe(jellyseerrSettingSchema))
-    payload: JellyseerrSetting,
+  @Post(['/test/seerr', '/test/overseerr', '/test/jellyseerr'])
+  testSeerr(
+    @Body(new ZodValidationPipe(seerrSettingSchema))
+    payload: SeerrSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testJellyseerr(payload);
-  }
-
-  @Post('/overseerr')
-  async updateOverseerrSetting(
-    @Body(new ZodValidationPipe(overseerrSettingSchema))
-    payload: OverseerrSetting,
-  ) {
-    return await this.settingsService.updateOverseerrSetting(payload);
-  }
-
-  @Delete('/overseerr')
-  async removeOverseerrSetting() {
-    return await this.settingsService.removeOverseerrSetting();
-  }
-
-  @Post('/test/overseerr')
-  testOverseerr(
-    @Body(new ZodValidationPipe(overseerrSettingSchema))
-    payload: OverseerrSetting,
-  ): Promise<BasicResponseDto> {
-    return this.settingsService.testOverseerr(payload);
+    return this.settingsService.testSeerr(payload);
   }
 
   @Get('/jellyfin')

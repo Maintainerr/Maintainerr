@@ -54,7 +54,7 @@ export const createCollection = (
     collectionLog: [],
     collectionMedia: [],
     deleteAfterDays: 30,
-    forceOverseerr: false,
+    forceSeerr: false,
     handledMediaAmount: 0,
     keepLogsForMonths: 6,
     lastDurationInSeconds: 0,

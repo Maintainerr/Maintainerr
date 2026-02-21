@@ -15,7 +15,7 @@ export class RulesDto {
   ruleHandlerCronSchedule?: string | null;
   collection?: ICollection;
   listExclusions?: boolean;
-  forceOverseerr?: boolean;
+  forceSeerr?: boolean;
   rules: RuleDto[] | RuleDbDto[];
   manualCollection?: boolean;
   manualCollectionName?: string;

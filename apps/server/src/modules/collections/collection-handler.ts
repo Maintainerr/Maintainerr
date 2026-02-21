@@ -3,7 +3,7 @@ import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
-import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
@@ -16,7 +16,7 @@ export class CollectionHandler {
   constructor(
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly collectionService: CollectionsService,
-    private readonly overseerrApi: OverseerrApiService,
+    private readonly seerrApi: SeerrApiService,
     private readonly settings: SettingsService,
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
@@ -81,8 +81,8 @@ export class CollectionHandler {
 
     // Only remove requests & file if needed
     if (collection.arrAction !== ServarrAction.UNMONITOR) {
-      // overseerr, if forced. Otherwise rely on media sync
-      if (this.settings.overseerrConfigured() && collection.forceOverseerr) {
+      // Seerr, if forced. Otherwise rely on media sync
+      if (this.settings.seerrConfigured() && collection.forceSeerr) {
         switch (collection.type) {
           case 'season':
             const mediaDataSeason = await mediaServer.getMetadata(
@@ -90,13 +90,13 @@ export class CollectionHandler {
             );
 
             if (mediaDataSeason?.index !== undefined) {
-              await this.overseerrApi.removeSeasonRequest(
+              await this.seerrApi.removeSeasonRequest(
                 media.tmdbId,
                 mediaDataSeason.index,
               );
 
               this.logger.log(
-                `[Overseerr] Removed request of season ${mediaDataSeason.index} from show with tmdbid '${media.tmdbId}'`,
+                `[Seerr] Removed request of season ${mediaDataSeason.index} from show with tmdbid '${media.tmdbId}'`,
               );
             }
             break;
@@ -106,23 +106,23 @@ export class CollectionHandler {
             );
 
             if (mediaDataEpisode?.parentIndex !== undefined) {
-              await this.overseerrApi.removeSeasonRequest(
+              await this.seerrApi.removeSeasonRequest(
                 media.tmdbId,
                 mediaDataEpisode.parentIndex,
               );
 
               this.logger.log(
-                `[Overseerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with tmdbid '${media.tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.'`,
+                `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with tmdbid '${media.tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.'`,
               );
             }
             break;
           default:
-            await this.overseerrApi.removeMediaByTmdbId(
+            await this.seerrApi.removeMediaByTmdbId(
               media.tmdbId,
               library?.type === 'show' ? 'tv' : 'movie',
             );
             this.logger.log(
-              `[Overseerr] Removed requests of media with tmdbid '${media.tmdbId}'`,
+              `[Seerr] Removed requests of media with tmdbid '${media.tmdbId}'`,
             );
             break;
         }

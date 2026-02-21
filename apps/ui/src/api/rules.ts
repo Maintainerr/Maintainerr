@@ -82,7 +82,7 @@ export interface RuleGroupCreatePayload {
   isActive: boolean
   useRules: boolean
   listExclusions: boolean
-  forceOverseerr: boolean
+  forceSeerr: boolean
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number

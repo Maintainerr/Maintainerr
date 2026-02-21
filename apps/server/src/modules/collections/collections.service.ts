@@ -1222,7 +1222,7 @@ export class CollectionsService {
             visibleOnHome: collection.visibleOnHome,
             deleteAfterDays: collection.deleteAfterDays,
             listExclusions: collection.listExclusions,
-            forceOverseerr: collection.forceOverseerr,
+            forceSeerr: collection.forceSeerr,
             keepLogsForMonths: collection.keepLogsForMonths,
             tautulliWatchedPercentOverride:
               collection.tautulliWatchedPercentOverride ?? null,

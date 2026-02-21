@@ -60,7 +60,7 @@ export class Collection {
   listExclusions: boolean;
 
   @Column({ nullable: false, default: false })
-  forceOverseerr: boolean;
+  forceSeerr: boolean;
 
   @Column({ nullable: false, default: 'movie' })
   type: MediaItemType;
