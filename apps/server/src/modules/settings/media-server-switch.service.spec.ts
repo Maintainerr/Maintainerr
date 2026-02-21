@@ -50,8 +50,7 @@ describe('MediaServerSwitchService', () => {
   const setupCommonPreviewMocks = () => {
     settingsService.getRadarrSettingsCount.mockResolvedValue(0);
     settingsService.getSonarrSettingsCount.mockResolvedValue(0);
-    settingsService.overseerrConfigured.mockReturnValue(false);
-    settingsService.jellyseerrConfigured.mockReturnValue(false);
+    settingsService.seerrConfigured.mockReturnValue(false);
     settingsService.tautulliConfigured.mockReturnValue(false);
 
     collectionRepo.count.mockResolvedValue(3);

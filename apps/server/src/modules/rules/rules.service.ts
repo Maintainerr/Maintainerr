@@ -93,10 +93,10 @@ export class RulesService {
 
     const localConstants = _.cloneDeep(this.ruleConstants);
     if (settings) {
-      // remove overseerr if not configured
-      if (!settings.overseerr_api_key || !settings.overseerr_url) {
+      // remove seerr if not configured
+      if (!settings.seerr_api_key || !settings.seerr_url) {
         localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.OVERSEERR,
+          (el) => el.id !== Application.SEERR,
         );
       }
 
@@ -118,13 +118,6 @@ export class RulesService {
       if (!settings.tautulli_url || !settings.tautulli_api_key) {
         localConstants.applications = localConstants.applications.filter(
           (el) => el.id !== Application.TAUTULLI,
-        );
-      }
-
-      // remove jellyseerr if not configured
-      if (!settings.jellyseerr_url || !settings.jellyseerr_api_key) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.JELLYSEERR,
         );
       }
     }
@@ -338,7 +331,7 @@ export class RulesService {
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
-          forceOverseerr: params.forceOverseerr ? params.forceOverseerr : false,
+          forceSeerr: params.forceSeerr ? params.forceSeerr : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -487,7 +480,7 @@ export class RulesService {
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
-          forceOverseerr: params.forceOverseerr ? params.forceOverseerr : false,
+          forceSeerr: params.forceSeerr ? params.forceSeerr : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -1265,9 +1258,8 @@ export class RulesService {
     // flush caches
     const mediaServer = await this.getMediaServer();
     mediaServer.resetMetadataCache(mediaId);
-    cacheManager.getCache('overseerr').data.flushAll();
+    cacheManager.getCache('seerr').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
-    cacheManager.getCache('jellyseerr').flush();
     cacheManager
       .getCachesByType('radarr')
       .forEach((cache) => cache.data.flushAll());
