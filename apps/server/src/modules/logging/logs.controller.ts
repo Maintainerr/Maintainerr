@@ -43,6 +43,7 @@ import {
 } from 'rxjs';
 import { Readable } from 'stream';
 import { formatLogMessage } from './logFormatting';
+import { MaintainerrLogger } from './logs.service';
 import { LogSettingsService } from './logs.service';
 
 const logsDirectory =
@@ -57,7 +58,10 @@ export class LogsController implements BeforeApplicationShutdown {
   constructor(
     private readonly logSettingsService: LogSettingsService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(LogsController.name);
+  }
 
   connectedClients = new Map<
     string,
@@ -296,5 +300,33 @@ export class LogsController implements BeforeApplicationShutdown {
     @Body(new ZodValidationPipe(logSettingSchema)) payload: LogSetting,
   ) {
     return await this.logSettingsService.update(payload);
+  }
+
+  @Post('client-error')
+  logClientError(
+    @Body()
+    payload: {
+      message?: string;
+      stack?: string;
+      context?: string;
+      details?: string;
+    },
+  ) {
+    const message = payload?.message || 'Client error';
+    this.logger.error(
+      {
+        message,
+        details: payload?.details,
+        source: 'ui',
+      },
+      payload?.stack,
+      payload?.context || 'UI',
+    );
+
+    return {
+      status: 'OK',
+      code: 1,
+      message: 'Logged',
+    };
   }
 }

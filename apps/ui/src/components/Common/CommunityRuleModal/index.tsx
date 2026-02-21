@@ -2,6 +2,7 @@ import { UploadIcon } from '@heroicons/react/solid'
 import { compareVersions } from 'compare-versions'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
+import { logClientError } from '../../../utils/ClientLogger'
 import { IRule } from '../../Rules/Rule/RuleCreator'
 import CommunityRuleUpload from '../../Rules/Rule/RuleCreator/CommunityRuleUpload'
 import Alert from '../Alert'
@@ -76,7 +77,11 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
       ])
         .catch((e) => {
           setError(true)
-          console.error(e)
+          void logClientError(
+            'Failed to fetch community rules modal data',
+            e,
+            'Common.CommunityRuleModal.fetchData',
+          )
         })
         .finally(() => {
           setLoading(false)

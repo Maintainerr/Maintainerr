@@ -18,13 +18,17 @@ import {
   AddRemoveCollectionMedia,
   IAlterableMediaDto,
 } from './interfaces/collection-media.interface';
+import { MaintainerrLogger } from '../logging/logs.service';
 
 @Controller('api/collections')
 export class CollectionsController {
   constructor(
     private readonly collectionService: CollectionsService,
     private readonly collectionWorkerService: CollectionWorkerService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(CollectionsController.name);
+  }
   @Post()
   async createCollection(@Body() request: any) {
     await this.collectionService.createCollectionWithChildren(
@@ -73,7 +77,15 @@ export class CollectionsController {
       );
     }
 
-    this.collectionWorkerService.execute().catch((e) => console.error(e));
+    this.collectionWorkerService.execute().catch((e) =>
+      this.logger.error(
+        {
+          message: 'Failed to start collection handler execution',
+          error: e,
+        },
+        e instanceof Error ? e.stack : undefined,
+      ),
+    );
   }
 
   @Put('/schedule/update')

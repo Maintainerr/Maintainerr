@@ -15,6 +15,7 @@ import {
   usePreviewMediaServerSwitch,
   useSwitchMediaServer,
 } from '../../../api/settings'
+import { logClientError } from '../../../utils/ClientLogger'
 import Modal from '../../Common/Modal'
 
 interface MediaServerSelectorProps {
@@ -89,8 +90,12 @@ const MediaServerSelector = ({
         // Navigate to the new media server's settings page
         navigate(`/settings/${type}`, { replace: true })
       } catch (err) {
-        console.error('Failed to set media server:', err)
-        toast.error('Failed to set media server')
+        void logClientError(
+          'Failed to set media server',
+          err,
+          'Settings.MediaServerSelector.handleServerChange',
+        )
+        toast.error('Failed to set media server. Check logs for details.')
         setPendingType(null)
       }
       return

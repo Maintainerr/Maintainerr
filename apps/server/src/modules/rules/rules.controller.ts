@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
 import { RulesDto } from './dtos/rules.dto';
@@ -30,7 +31,10 @@ export class RulesController {
     private readonly rulesService: RulesService,
     private readonly ruleExecutorSchedulerService: RuleExecutorSchedulerService,
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(RulesController.name);
+  }
 
   @Get('/constants')
   async getRuleConstants() {
@@ -134,9 +138,15 @@ export class RulesController {
       );
     }
 
-    this.ruleExecutorSchedulerService
-      .enqueueAllActiveRuleGroups()
-      .catch((e) => console.error(e));
+    this.ruleExecutorSchedulerService.enqueueAllActiveRuleGroups().catch((e) =>
+      this.logger.error(
+        {
+          message: 'Failed to enqueue all active rule groups',
+          error: e,
+        },
+        e instanceof Error ? e.stack : undefined,
+      ),
+    );
   }
 
   @Post('/:id/execute')
@@ -195,9 +205,15 @@ export class RulesController {
       return;
     }
 
-    this.ruleExecutorJobManagerService
-      .stopProcessing()
-      .catch((e) => console.error(e));
+    this.ruleExecutorJobManagerService.stopProcessing().catch((e) =>
+      this.logger.error(
+        {
+          message: 'Failed to stop rule execution processing',
+          error: e,
+        },
+        e instanceof Error ? e.stack : undefined,
+      ),
+    );
     res.status(HttpStatus.ACCEPTED).send();
   }
 

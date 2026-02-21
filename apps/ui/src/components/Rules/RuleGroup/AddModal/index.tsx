@@ -31,6 +31,7 @@ import {
 } from '../../../../api/rules'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import { PostApiHandler } from '../../../../utils/ApiHandler'
+import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
@@ -537,7 +538,12 @@ const AddModal = (props: AddModal) => {
 
       props.onSuccess()
     } catch (mutationError) {
-      console.error('Failed to save rule group', mutationError)
+      void logClientError(
+        'Failed to save rule group',
+        mutationError,
+        'RuleGroup.AddModal.handleSave',
+      )
+      toast.error('Failed to save rule group. Check logs for details.')
     }
   }
 

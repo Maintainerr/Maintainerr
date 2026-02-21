@@ -4,7 +4,9 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
 import LoadingSpinner from '../../Common/LoadingSpinner'
@@ -66,8 +68,13 @@ const RadarrSettings = () => {
           setCollectionsInUseWarning(resp.data.collectionsInUse)
         }
       })
-      .catch((err) => {
-        console.log(err)
+      .catch((err: unknown) => {
+        void logClientError(
+          'Failed to delete Radarr setting',
+          err,
+          'Settings.Radarr.confirmedDelete',
+        )
+        toast.error('Failed to delete Radarr setting. Check logs for details.')
       })
   }
 

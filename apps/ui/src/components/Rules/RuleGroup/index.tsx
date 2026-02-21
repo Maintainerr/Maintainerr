@@ -16,6 +16,7 @@ import {
 } from '../../../api/rules'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import DeleteButton from '../../Common/DeleteButton'
 import EditButton from '../../Common/EditButton'
@@ -77,10 +78,15 @@ const RuleGroup = (props: {
     DeleteApiHandler(`/rules/${props.group.id}`)
       .then((resp) => {
         if (resp.code === 1) props.onDelete()
-        else console.log('Error while deleting Rulegroup')
+        else toast.error('Failed to delete rule group.')
       })
-      .catch((err) => {
-        console.log(err)
+      .catch((err: unknown) => {
+        void logClientError(
+          'Failed to delete rule group.',
+          err,
+          'RuleGroup.confirmedDelete',
+        )
+        toast.error('Failed to delete rule group. Check logs for details.')
       })
   }
 
