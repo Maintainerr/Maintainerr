@@ -1,3 +1,17 @@
+# [2.27.0](https://github.com/maintainerr/Maintainerr/compare/v2.26.1...v2.27.0) (2026-02-21)
+
+
+### Bug Fixes
+
+* correct syntax for conditional check in guard-manual.yml ([40e4685](https://github.com/maintainerr/Maintainerr/commit/40e4685fe378aacbb40176898339ad9250c07db5))
+* **ui:** open 3.0 prep modal directly from banner without navigation ([#2388](https://github.com/maintainerr/Maintainerr/issues/2388)) ([1e5241e](https://github.com/maintainerr/Maintainerr/commit/1e5241ee9233d5743bf300565064eeffeeae65c2))
+
+
+### Features
+
+* **database:** implement database download functionality ([#2387](https://github.com/maintainerr/Maintainerr/issues/2387)) ([eb19b27](https://github.com/maintainerr/Maintainerr/commit/eb19b2732b6fecc74a780d00a21f0c0df07899d0))
+* **ui:** add apple touch icon for webapp ([#2391](https://github.com/maintainerr/Maintainerr/issues/2391)) ([3a93ed5](https://github.com/maintainerr/Maintainerr/commit/3a93ed5334bb218e6239334e0e1f0053ad9cb9a9))
+
 ## [2.26.1](https://github.com/maintainerr/Maintainerr/compare/v2.26.0...v2.26.1) (2026-01-20)
 
 

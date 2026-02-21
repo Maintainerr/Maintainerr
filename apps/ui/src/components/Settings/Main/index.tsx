@@ -1,4 +1,4 @@
-import { RefreshIcon, SaveIcon } from '@heroicons/react/solid'
+import { DownloadIcon, RefreshIcon, SaveIcon } from '@heroicons/react/solid'
 import React, { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
@@ -6,12 +6,14 @@ import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import DatabaseBackupModal from './DatabaseBackupModal'
 import MediaServerSelector from '../MediaServerSelector'
 
 const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
   const apiKeyRef = useRef<HTMLInputElement>(null)
   const [missingValuesError, setMissingValuesError] = useState<boolean>()
+  const [showDownloadModal, setShowDownloadModal] = useState(false)
   const { settings } = useSettingsOutletContext()
   const {
     mutateAsync: updateSettings,
@@ -57,17 +59,22 @@ const MainSettings = () => {
         {isSuccess && (
           <Alert type="info" title="Settings successfully updated" />
         )}
+
+        {showDownloadModal && (
+          <DatabaseBackupModal onClose={() => setShowDownloadModal(false)} />
+        )}
+
         <div className="section">
           <form onSubmit={submit}>
             <div className="form-row">
-              <label htmlFor="name" className="text-label">
+              <label htmlFor="hostname" className="text-label">
                 Hostname
               </label>
               <div className="form-input">
                 <div className="form-input-field">
                   <input
-                    name="name"
-                    id="name"
+                    name="hostname"
+                    id="hostname"
                     type="text"
                     ref={hostnameRef}
                     defaultValue={settings.applicationUrl}
@@ -77,14 +84,15 @@ const MainSettings = () => {
             </div>
 
             <div className="form-row">
-              <label htmlFor="name" className="text-label">
+              <label htmlFor="api-key" className="text-label">
                 API key
               </label>
               <div className="form-input">
                 <div className="form-input-field">
                   <input
-                    name="name"
-                    id="name"
+                    className="!rounded-r-none"
+                    name="api-key"
+                    id="api-key"
                     type="text"
                     ref={apiKeyRef}
                     defaultValue={settings.apikey}
@@ -101,24 +109,33 @@ const MainSettings = () => {
                 </div>
               </div>
             </div>
-
             <div className="actions mt-5 w-full">
-              <div className="flex justify-end">
-                <div className="flex w-full">
-                  <span className="mr-auto flex rounded-md shadow-sm">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex rounded-md shadow-sm">
                     <DocsButton />
                   </span>
-                  <span className="ml-auto flex rounded-md shadow-sm">
+                  <span className="flex rounded-md shadow-sm">
                     <Button
-                      buttonType="primary"
-                      type="submit"
-                      disabled={isPending}
+                      buttonType="default"
+                      type="button"
+                      onClick={() => setShowDownloadModal(true)}
                     >
-                      <SaveIcon />
-                      <span>Save Changes</span>
+                      <DownloadIcon />
+                      <span>Backup Database</span>
                     </Button>
                   </span>
                 </div>
+                <span className="flex rounded-md shadow-sm sm:ml-auto">
+                  <Button
+                    buttonType="primary"
+                    type="submit"
+                    disabled={isPending}
+                  >
+                    <SaveIcon />
+                    <span>Save Changes</span>
+                  </Button>
+                </span>
               </div>
             </div>
           </form>
