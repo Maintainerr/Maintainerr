@@ -42,6 +42,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
     <section>
       <title>Maintainerr</title>
       <link rel="icon" href={`${basePath}/favicon.ico`} />
+      <link rel="apple-touch-icon" sizes="180x180" href={`${basePath}/apple-touch-icon.png`} />
       <div className="flex h-full min-h-full min-w-0 bg-zinc-900">
         <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-zinc-700 md:border-t" />
         <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-zinc-800 to-zinc-900">
