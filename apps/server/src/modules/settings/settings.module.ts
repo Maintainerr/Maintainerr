@@ -44,7 +44,12 @@ import { SettingsService } from './settings.service';
       Rules,
     ]),
   ],
-  providers: [SettingsService, RuleMigrationService, MediaServerSwitchService, DatabaseDownloadService],
+  providers: [
+    SettingsService,
+    RuleMigrationService,
+    MediaServerSwitchService,
+    DatabaseDownloadService,
+  ],
   exports: [SettingsService, RuleMigrationService],
   controllers: [SettingsController],
 })
