@@ -175,7 +175,7 @@ describe('JellyfinGetterService', () => {
         id: 22,
         name: 'rating_critics',
         overrides: {
-          ratings: [{ source: 'critic', value: 75, type: 'critic' as const }],
+          ratings: [{ source: 'critic', value: 7.5, type: 'critic' as const }],
         },
         expected: 7.5,
       },
