@@ -5,7 +5,7 @@ import { MediaServerType } from './enums'
  * Zod schema for validating switch media server requests
  */
 export const switchMediaServerSchema = z.object({
-  targetServerType: z.nativeEnum(MediaServerType),
+  targetServerType: z.enum(MediaServerType),
   migrateRules: z.boolean().optional(),
 })
 
