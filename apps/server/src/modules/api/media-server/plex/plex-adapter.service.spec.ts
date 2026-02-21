@@ -41,28 +41,14 @@ describe('PlexAdapterService', () => {
   });
 
   describe('feature detection', () => {
-    it('should support LABELS feature', () => {
-      expect(service.supportsFeature(MediaServerFeature.LABELS)).toBe(true);
-    });
-
-    it('should support PLAYLISTS feature', () => {
-      expect(service.supportsFeature(MediaServerFeature.PLAYLISTS)).toBe(true);
-    });
-
-    it('should support COLLECTION_VISIBILITY feature', () => {
-      expect(
-        service.supportsFeature(MediaServerFeature.COLLECTION_VISIBILITY),
-      ).toBe(true);
-    });
-
-    it('should support WATCHLIST feature', () => {
-      expect(service.supportsFeature(MediaServerFeature.WATCHLIST)).toBe(true);
-    });
-
-    it('should support CENTRAL_WATCH_HISTORY feature', () => {
-      expect(
-        service.supportsFeature(MediaServerFeature.CENTRAL_WATCH_HISTORY),
-      ).toBe(true);
+    it.each([
+      [MediaServerFeature.LABELS, true],
+      [MediaServerFeature.PLAYLISTS, true],
+      [MediaServerFeature.COLLECTION_VISIBILITY, true],
+      [MediaServerFeature.WATCHLIST, true],
+      [MediaServerFeature.CENTRAL_WATCH_HISTORY, true],
+    ])('supportsFeature(%s) is %s', (feature, expected) => {
+      expect(service.supportsFeature(feature)).toBe(expected);
     });
   });
 

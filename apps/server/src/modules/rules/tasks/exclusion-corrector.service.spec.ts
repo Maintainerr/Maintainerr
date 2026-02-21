@@ -1,13 +1,8 @@
+import { createMockLogger } from '../../../../test/utils/data';
 import { ExclusionTypeCorrectorService } from './exclusion-corrector.service';
 
 describe('ExclusionTypeCorrectorService', () => {
-  const logger = {
-    setContext: jest.fn(),
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  } as const;
+  const logger = createMockLogger();
 
   const createQueryBuilder = (results: any[]) => ({
     where: jest.fn().mockReturnThis(),

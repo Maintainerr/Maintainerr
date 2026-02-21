@@ -5,15 +5,17 @@ import {
   createCollectionMedia,
   createRadarrMovie,
 } from '../../../test/utils/data';
+import {
+  mockRadarrApi,
+  validateNoRadarrActionsTaken,
+} from '../../../test/utils/servarr-mock';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
-import { RadarrApi } from '../api/servarr-api/helpers/radarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { RadarrActionHandler } from './radarr-action-handler';
-
 describe('RadarrActionHandler', () => {
   let radarrActionHandler: RadarrActionHandler;
   let mediaServerFactory: Mocked<MediaServerFactory>;
@@ -53,7 +55,7 @@ describe('RadarrActionHandler', () => {
 
     tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue(undefined);
 
-    const mockedRadarrApi = mockRadarrApi();
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
@@ -71,7 +73,7 @@ describe('RadarrActionHandler', () => {
       tmdbId: 1,
     });
 
-    const mockedRadarrApi = mockRadarrApi();
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
     jest
       .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
       .mockResolvedValue(undefined);
@@ -101,7 +103,7 @@ describe('RadarrActionHandler', () => {
         tmdbId: 1,
       });
 
-      const mockedRadarrApi = mockRadarrApi();
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
       jest
         .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 5 }));
@@ -130,7 +132,7 @@ describe('RadarrActionHandler', () => {
         tmdbId: 1,
       });
 
-      const mockedRadarrApi = mockRadarrApi();
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
       jest
         .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 5 }));
@@ -158,7 +160,7 @@ describe('RadarrActionHandler', () => {
         tmdbId: 1,
       });
 
-      const mockedRadarrApi = mockRadarrApi();
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
       jest
         .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 5 }));
@@ -173,22 +175,4 @@ describe('RadarrActionHandler', () => {
       expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
     },
   );
-
-  const validateNoRadarrActionsTaken = (radarrApi: RadarrApi) => {
-    expect(radarrApi.updateMovie).not.toHaveBeenCalled();
-    expect(radarrApi.deleteMovie).not.toHaveBeenCalled();
-  };
-
-  const mockRadarrApi = () => {
-    const mockedRadarrApi = new RadarrApi(
-      { url: 'http://localhost:7878', apiKey: 'test' },
-      logger as any,
-    );
-    jest.spyOn(mockedRadarrApi, 'deleteMovie').mockImplementation(jest.fn());
-    jest.spyOn(mockedRadarrApi, 'updateMovie').mockImplementation(jest.fn());
-
-    servarrService.getRadarrApiClient.mockResolvedValue(mockedRadarrApi);
-
-    return mockedRadarrApi;
-  };
 });

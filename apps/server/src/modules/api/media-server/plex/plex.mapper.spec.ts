@@ -10,56 +10,34 @@ import { PlexMapper } from './plex.mapper';
 
 describe('PlexMapper', () => {
   describe('toMediaItemType', () => {
-    it('should map movie type correctly', () => {
-      expect(PlexMapper.toMediaItemType('movie')).toBe('movie');
-    });
-
-    it('should map show type correctly', () => {
-      expect(PlexMapper.toMediaItemType('show')).toBe('show');
-    });
-
-    it('should map season type correctly', () => {
-      expect(PlexMapper.toMediaItemType('season')).toBe('season');
-    });
-
-    it('should map episode type correctly', () => {
-      expect(PlexMapper.toMediaItemType('episode')).toBe('episode');
-    });
-
-    it('should map collection type to movie as fallback', () => {
-      expect(PlexMapper.toMediaItemType('collection')).toBe('movie');
+    it.each([
+      ['movie', 'movie'],
+      ['show', 'show'],
+      ['season', 'season'],
+      ['episode', 'episode'],
+      ['collection', 'movie'],
+    ])('maps %s to %s', (input, expected) => {
+      expect(PlexMapper.toMediaItemType(input as any)).toBe(expected);
     });
   });
 
   describe('toPlexDataType', () => {
-    it('should map MOVIE to MOVIES', () => {
-      expect(PlexMapper.toPlexDataType('movie')).toBe(EPlexDataType.MOVIES);
-    });
-
-    it('should map SHOW to SHOWS', () => {
-      expect(PlexMapper.toPlexDataType('show')).toBe(EPlexDataType.SHOWS);
-    });
-
-    it('should map SEASON to SEASONS', () => {
-      expect(PlexMapper.toPlexDataType('season')).toBe(EPlexDataType.SEASONS);
-    });
-
-    it('should map EPISODE to EPISODES', () => {
-      expect(PlexMapper.toPlexDataType('episode')).toBe(EPlexDataType.EPISODES);
+    it.each([
+      ['movie', EPlexDataType.MOVIES],
+      ['show', EPlexDataType.SHOWS],
+      ['season', EPlexDataType.SEASONS],
+      ['episode', EPlexDataType.EPISODES],
+    ])('maps %s to %s', (input, expected) => {
+      expect(PlexMapper.toPlexDataType(input as any)).toBe(expected);
     });
   });
 
   describe('plexDataTypeToMediaItemType', () => {
-    it('should map MOVIES to MOVIE', () => {
-      expect(PlexMapper.plexDataTypeToMediaItemType(EPlexDataType.MOVIES)).toBe(
-        'movie',
-      );
-    });
-
-    it('should map SHOWS to SHOW', () => {
-      expect(PlexMapper.plexDataTypeToMediaItemType(EPlexDataType.SHOWS)).toBe(
-        'show',
-      );
+    it.each([
+      [EPlexDataType.MOVIES, 'movie'],
+      [EPlexDataType.SHOWS, 'show'],
+    ])('maps %s to %s', (input, expected) => {
+      expect(PlexMapper.plexDataTypeToMediaItemType(input)).toBe(expected);
     });
   });
 

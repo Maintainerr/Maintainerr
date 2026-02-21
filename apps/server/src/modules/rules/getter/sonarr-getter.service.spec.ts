@@ -237,7 +237,7 @@ describe('SonarrGetterService', () => {
     });
   });
 
-  describe('fileQualityCutoffMet', () => {
+  describe('episode file properties', () => {
     let collectionMedia: CollectionMedia;
     let mockedSonarrApi: SonarrApi;
     let series: SonarrSeries;
@@ -256,138 +256,190 @@ describe('SonarrGetterService', () => {
       mediaItem = createMediaItem({ type: 'episode' });
     });
 
-    it('should return true when the cut off is met', async () => {
-      const episodeFile = createSonarrEpisodeFile({
-        qualityCutoffNotMet: false,
-      });
-      const episode = createSonarrEpisode({
-        episodeFileId: episodeFile.id,
-      });
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest
-        .spyOn(mockedSonarrApi, 'getEpisodeFile')
-        .mockResolvedValue(episodeFile);
+    describe('fileQualityCutoffMet', () => {
+      it('should return true when the cut off is met', async () => {
+        const episodeFile = createSonarrEpisodeFile({
+          qualityCutoffNotMet: false,
+        });
+        const episode = createSonarrEpisode({
+          episodeFileId: episodeFile.id,
+        });
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
+        jest
+          .spyOn(mockedSonarrApi, 'getEpisodeFile')
+          .mockResolvedValue(episodeFile);
 
-      const response = await sonarrGetterService.get(
-        23,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
+        const response = await sonarrGetterService.get(
+          23,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
 
-      expect(response).toBe(true);
+        expect(response).toBe(true);
+      });
+
+      it('should return false when the cut off is not met', async () => {
+        const episodeFile = createSonarrEpisodeFile({
+          qualityCutoffNotMet: true,
+        });
+        const episode = createSonarrEpisode({
+          episodeFileId: episodeFile.id,
+        });
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
+        jest
+          .spyOn(mockedSonarrApi, 'getEpisodeFile')
+          .mockResolvedValue(episodeFile);
+
+        const response = await sonarrGetterService.get(
+          23,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
+
+        expect(response).toBe(false);
+      });
+
+      it('should return false when no episode file exists', async () => {
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
+
+        const response = await sonarrGetterService.get(
+          23,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
+
+        expect(response).toBe(false);
+      });
     });
 
-    it('should return false when the cut off is not met', async () => {
-      const episodeFile = createSonarrEpisodeFile({
-        qualityCutoffNotMet: true,
-      });
-      const episode = createSonarrEpisode({
-        episodeFileId: episodeFile.id,
-      });
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest
-        .spyOn(mockedSonarrApi, 'getEpisodeFile')
-        .mockResolvedValue(episodeFile);
-
-      const response = await sonarrGetterService.get(
-        23,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
-
-      expect(response).toBe(false);
-    });
-
-    it('should return false when no episode file exists', async () => {
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
-
-      const response = await sonarrGetterService.get(
-        23,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
-
-      expect(response).toBe(false);
-    });
-  });
-
-  describe('fileQualityName', () => {
-    let collectionMedia: CollectionMedia;
-    let mockedSonarrApi: SonarrApi;
-    let series: SonarrSeries;
-    let mediaItem: MediaItem;
-
-    beforeEach(() => {
-      collectionMedia = createCollectionMedia('episode');
-      collectionMedia.collection.sonarrSettingsId = 1;
-      mockMediaServer.getMetadata.mockResolvedValue(
-        createMediaItem({
-          type: 'show',
-        }),
-      );
-      series = createSonarrSeries();
-      mockedSonarrApi = mockSonarrApi(series);
-      mediaItem = createMediaItem({ type: 'episode' });
-    });
-
-    it('should return quality name', async () => {
-      const episodeFile = createSonarrEpisodeFile({
-        quality: {
+    describe('fileQualityName', () => {
+      it('should return quality name', async () => {
+        const episodeFile = createSonarrEpisodeFile({
           quality: {
-            id: 1,
-            name: 'WEBDL-1080p',
-            source: 'web',
-            resolution: 1080,
+            quality: {
+              id: 1,
+              name: 'WEBDL-1080p',
+              source: 'web',
+              resolution: 1080,
+            },
           },
-        },
-      });
-      const episode = createSonarrEpisode({
-        episodeFileId: episodeFile.id,
-      });
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest
-        .spyOn(mockedSonarrApi, 'getEpisodeFile')
-        .mockResolvedValue(episodeFile);
+        });
+        const episode = createSonarrEpisode({
+          episodeFileId: episodeFile.id,
+        });
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
+        jest
+          .spyOn(mockedSonarrApi, 'getEpisodeFile')
+          .mockResolvedValue(episodeFile);
 
-      const response = await sonarrGetterService.get(
-        24,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
+        const response = await sonarrGetterService.get(
+          24,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
 
-      expect(response).toBe('WEBDL-1080p');
+        expect(response).toBe('WEBDL-1080p');
+      });
+
+      it('should return null when no episode file exists', async () => {
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
+
+        const response = await sonarrGetterService.get(
+          24,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
+
+        expect(response).toBe(null);
+      });
     });
 
-    it('should return null when no episode file exists', async () => {
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
+    describe('fileAudioLanguages', () => {
+      it('should return audio languages', async () => {
+        const episodeFile = createSonarrEpisodeFile({
+          mediaInfo: { audioLanguages: 'eng' } as any,
+        });
+        const episode = createSonarrEpisode({
+          episodeFileId: episodeFile.id,
+        });
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
+        jest
+          .spyOn(mockedSonarrApi, 'getEpisodeFile')
+          .mockResolvedValue(episodeFile);
 
-      const response = await sonarrGetterService.get(
-        24,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
+        const response = await sonarrGetterService.get(
+          26,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
 
-      expect(response).toBe(null);
+        expect(response).toBe('eng');
+      });
+
+      it('should return null when no episode file exists', async () => {
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
+
+        const response = await sonarrGetterService.get(
+          26,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
+
+        expect(response).toBe(null);
+      });
+
+      it('should return null when no media info exists', async () => {
+        const episodeFile = createSonarrEpisodeFile({
+          mediaInfo: undefined,
+        });
+        const episode = createSonarrEpisode({
+          episodeFileId: episodeFile.id,
+        });
+        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
+        jest
+          .spyOn(mockedSonarrApi, 'getEpisodeFile')
+          .mockResolvedValue(episodeFile);
+
+        const response = await sonarrGetterService.get(
+          26,
+          mediaItem,
+          'episode',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'episode',
+          }),
+        );
+
+        expect(response).toBe(null);
+      });
     });
   });
 
@@ -443,92 +495,6 @@ describe('SonarrGetterService', () => {
         expect(response).toBe('WEBDL-720p');
       },
     );
-  });
-
-  describe('fileAudioLanguages', () => {
-    let collectionMedia: CollectionMedia;
-    let mockedSonarrApi: SonarrApi;
-    let series: SonarrSeries;
-    let mediaItem: MediaItem;
-
-    beforeEach(() => {
-      collectionMedia = createCollectionMedia('episode');
-      collectionMedia.collection.sonarrSettingsId = 1;
-      mockMediaServer.getMetadata.mockResolvedValue(
-        createMediaItem({
-          type: 'show',
-        }),
-      );
-      series = createSonarrSeries();
-      mockedSonarrApi = mockSonarrApi(series);
-      mediaItem = createMediaItem({ type: 'episode' });
-    });
-
-    it('should return audio languages', async () => {
-      const episodeFile = createSonarrEpisodeFile({
-        mediaInfo: { audioLanguages: 'eng' } as any,
-      });
-      const episode = createSonarrEpisode({
-        episodeFileId: episodeFile.id,
-      });
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest
-        .spyOn(mockedSonarrApi, 'getEpisodeFile')
-        .mockResolvedValue(episodeFile);
-
-      const response = await sonarrGetterService.get(
-        26,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
-
-      expect(response).toBe('eng');
-    });
-
-    it('should return null when no episode file exists', async () => {
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
-
-      const response = await sonarrGetterService.get(
-        26,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
-
-      expect(response).toBe(null);
-    });
-
-    it('should return null when no media info exists', async () => {
-      const episodeFile = createSonarrEpisodeFile({
-        mediaInfo: undefined,
-      });
-      const episode = createSonarrEpisode({
-        episodeFileId: episodeFile.id,
-      });
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest
-        .spyOn(mockedSonarrApi, 'getEpisodeFile')
-        .mockResolvedValue(episodeFile);
-
-      const response = await sonarrGetterService.get(
-        26,
-        mediaItem,
-        'episode',
-        createRulesDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
-
-      expect(response).toBe(null);
-    });
   });
 
   const mockSonarrApi = (series?: SonarrSeries) => {

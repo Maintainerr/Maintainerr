@@ -95,38 +95,128 @@ describe('JellyfinGetterService', () => {
     });
   });
 
-  describe('addDate (id: 0)', () => {
-    it('should return the addedAt date', async () => {
-      const mediaItem = createMediaItem({
-        addedAt: new Date('2024-03-15'),
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+  describe('simple property getters', () => {
+    it.each([
+      {
+        id: 0,
+        name: 'addDate',
+        overrides: { addedAt: new Date('2024-03-15') },
+        expected: new Date('2024-03-15'),
+      },
+      {
+        id: 0,
+        name: 'addDate (missing)',
+        overrides: { addedAt: undefined as unknown as Date },
+        expected: null,
+      },
+      {
+        id: 2,
+        name: 'releaseDate',
+        overrides: { originallyAvailableAt: new Date('2024-01-01') },
+        expected: new Date('2024-01-01'),
+      },
+      {
+        id: 3,
+        name: 'rating_user',
+        overrides: { userRating: 8 },
+        expected: 8,
+      },
+      {
+        id: 3,
+        name: 'rating_user (missing)',
+        overrides: { userRating: undefined },
+        expected: 0,
+      },
+      {
+        id: 4,
+        name: 'people',
+        overrides: {
+          actors: [{ name: 'Actor One' }, { name: 'Actor Two' }],
+        },
+        expected: ['Actor One', 'Actor Two'],
+      },
+      {
+        id: 4,
+        name: 'people (missing)',
+        overrides: { actors: undefined },
+        expected: null,
+      },
+      {
+        id: 8,
+        name: 'fileVideoResolution',
+        overrides: {},
+        expected: '1080p',
+      },
+      {
+        id: 8,
+        name: 'fileVideoResolution (no sources)',
+        overrides: { mediaSources: [] },
+        expected: null,
+      },
+      {
+        id: 9,
+        name: 'fileBitrate',
+        overrides: {},
+        expected: 8000000,
+      },
+      {
+        id: 10,
+        name: 'fileVideoCodec',
+        overrides: {},
+        expected: 'h264',
+      },
+      {
+        id: 11,
+        name: 'genre',
+        overrides: { genres: [{ name: 'Action' }, { name: 'Comedy' }] },
+        expected: ['Action', 'Comedy'],
+      },
+      {
+        id: 22,
+        name: 'rating_critics',
+        overrides: {
+          ratings: [{ source: 'critic', value: 75, type: 'critic' as const }],
+        },
+        expected: 7.5,
+      },
+      {
+        id: 22,
+        name: 'rating_critics (missing)',
+        overrides: { ratings: [] },
+        expected: 0,
+      },
+      {
+        id: 23,
+        name: 'rating_audience',
+        overrides: {
+          ratings: [
+            { source: 'audience', value: 8.5, type: 'audience' as const },
+          ],
+        },
+        expected: 8.5,
+      },
+      {
+        id: 24,
+        name: 'labels',
+        overrides: { labels: ['tag1', 'tag2'] },
+        expected: ['tag1', 'tag2'],
+      },
+    ])(
+      'returns $expected for $name (id: $id)',
+      async ({ id, overrides, expected }) => {
+        const mediaItem = createMediaItem({ type: 'movie', ...overrides });
+        jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
 
-      const response = await jellyfinGetterService.get(
-        0,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
+        const response = await jellyfinGetterService.get(
+          id,
+          mediaItem,
+          'movie',
+          createRulesDto({ dataType: 'movie' }),
+        );
 
-      expect(response).toEqual(new Date('2024-03-15'));
-    });
-
-    it('should return null when addedAt is missing', async () => {
-      const mediaItem = createMediaItem({
-        addedAt: undefined as unknown as Date,
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        0,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBeNull();
-    });
+        expect(response).toEqual(expected);
+      },
+    );
   });
 
   describe('seenBy (id: 1)', () => {
@@ -166,86 +256,6 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toEqual([]);
-    });
-  });
-
-  describe('releaseDate (id: 2)', () => {
-    it('should return the originallyAvailableAt date', async () => {
-      const mediaItem = createMediaItem({
-        originallyAvailableAt: new Date('2024-01-01'),
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        2,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toEqual(new Date('2024-01-01'));
-    });
-  });
-
-  describe('rating_user (id: 3)', () => {
-    it('should return user rating', async () => {
-      const mediaItem = createMediaItem({ userRating: 8 });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        3,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe(8);
-    });
-
-    it('should return 0 when no user rating exists', async () => {
-      const mediaItem = createMediaItem({ userRating: undefined });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        3,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe(0);
-    });
-  });
-
-  describe('people (id: 4)', () => {
-    it('should return list of actor names', async () => {
-      const mediaItem = createMediaItem({
-        actors: [{ name: 'Actor One' }, { name: 'Actor Two' }],
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        4,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toEqual(['Actor One', 'Actor Two']);
-    });
-
-    it('should return null when no actors exist', async () => {
-      const mediaItem = createMediaItem({ actors: undefined });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        4,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBeNull();
     });
   });
 
@@ -308,152 +318,6 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toBeNull();
-    });
-  });
-
-  describe('fileVideoResolution (id: 8)', () => {
-    it('should return video resolution from media sources', async () => {
-      const mediaItem = createMediaItem();
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        8,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe('1080p');
-    });
-
-    it('should return null when no media sources', async () => {
-      const mediaItem = createMediaItem({ mediaSources: [] });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        8,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBeNull();
-    });
-  });
-
-  describe('fileBitrate (id: 9)', () => {
-    it('should return bitrate from media sources', async () => {
-      const mediaItem = createMediaItem();
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        9,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe(8000000);
-    });
-  });
-
-  describe('fileVideoCodec (id: 10)', () => {
-    it('should return video codec from media sources', async () => {
-      const mediaItem = createMediaItem();
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        10,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe('h264');
-    });
-  });
-
-  describe('genre (id: 11)', () => {
-    it('should return list of genre names', async () => {
-      const mediaItem = createMediaItem({
-        genres: [{ name: 'Action' }, { name: 'Comedy' }],
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        11,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toEqual(['Action', 'Comedy']);
-    });
-  });
-
-  describe('labels (id: 24)', () => {
-    it('should return tags as labels', async () => {
-      const mediaItem = createMediaItem({ labels: ['tag1', 'tag2'] });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        24,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toEqual(['tag1', 'tag2']);
-    });
-  });
-
-  describe('rating_critics (id: 22)', () => {
-    it('should return normalized critic rating (0-10 scale)', async () => {
-      const mediaItem = createMediaItem({
-        ratings: [{ source: 'critic', value: 75, type: 'critic' }],
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        22,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe(7.5);
-    });
-
-    it('should return 0 when no critic rating', async () => {
-      const mediaItem = createMediaItem({ ratings: [] });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        22,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe(0);
-    });
-  });
-
-  describe('rating_audience (id: 23)', () => {
-    it('should return audience rating', async () => {
-      const mediaItem = createMediaItem({
-        ratings: [{ source: 'audience', value: 8.5, type: 'audience' }],
-      });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        23,
-        mediaItem,
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(response).toBe(8.5);
     });
   });
 

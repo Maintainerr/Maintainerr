@@ -1,14 +1,9 @@
 import { MaintainerrEvent } from '@maintainerr/contracts';
+import { createMockLogger } from '../../../test/utils/data';
 import { RulesService } from './rules.service';
 
 describe('RulesService.updateRules - null guard', () => {
-  const logger = {
-    setContext: jest.fn(),
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  } as const;
+  const logger = createMockLogger();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -58,13 +53,7 @@ describe('RulesService.updateRules - null guard', () => {
 });
 
 describe('RulesService.deleteRuleGroup', () => {
-  const logger = {
-    setContext: jest.fn(),
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  } as const;
+  const logger = createMockLogger();
 
   const createRulesService = (options?: { group?: any }) => {
     const { group = undefined } = options ?? {};

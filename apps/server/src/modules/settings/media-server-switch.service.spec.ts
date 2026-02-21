@@ -208,5 +208,145 @@ describe('MediaServerSwitchService', () => {
       ).not.toHaveBeenCalled();
       expect(queryRunner.release).toHaveBeenCalled();
     });
+
+    it('should return NOK when target server matches current server', async () => {
+      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+
+      const result = await service.executeSwitch({
+        targetServerType: MediaServerType.PLEX,
+        migrateRules: false,
+      });
+
+      expect(result).toEqual({
+        status: 'NOK',
+        code: 0,
+        message: 'Already using plex as media server',
+      });
+      expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
+    });
+
+    it('should reject concurrent switch attempts with ConflictException', async () => {
+      const originalInternal = (
+        service as unknown as {
+          executeSwitchInternal: (request: {
+            targetServerType: MediaServerType;
+            migrateRules?: boolean;
+          }) => Promise<unknown>;
+        }
+      ).executeSwitchInternal;
+
+      let unblock: () => void = () => undefined;
+      const pending = new Promise<void>((resolve) => {
+        unblock = resolve;
+      });
+
+      (
+        service as unknown as {
+          executeSwitchInternal: jest.Mock;
+        }
+      ).executeSwitchInternal = jest.fn(async () => {
+        await pending;
+        return {
+          status: 'OK',
+          code: 1,
+          message: 'done',
+          clearedData: {
+            collections: 0,
+            collectionMedia: 0,
+            exclusions: 0,
+            collectionLogs: 0,
+          },
+        };
+      });
+
+      const firstSwitch = service.executeSwitch({
+        targetServerType: MediaServerType.JELLYFIN,
+        migrateRules: false,
+      });
+
+      await expect(
+        service.executeSwitch({
+          targetServerType: MediaServerType.PLEX,
+          migrateRules: false,
+        }),
+      ).rejects.toThrow('A media server switch is already in progress');
+
+      unblock();
+      await firstSwitch;
+
+      (
+        service as unknown as {
+          executeSwitchInternal: typeof originalInternal;
+        }
+      ).executeSwitchInternal = originalInternal;
+    });
+
+    it.each([
+      {
+        from: MediaServerType.PLEX,
+        to: MediaServerType.JELLYFIN,
+        existingSettings: {
+          media_server_type: MediaServerType.PLEX,
+          plex_name: 'My Plex',
+          plex_hostname: 'plex.local',
+          plex_port: 32400,
+          plex_ssl: 1,
+          plex_auth_token: 'plex-token',
+        },
+        clearedFields: {
+          media_server_type: MediaServerType.JELLYFIN,
+          plex_name: null,
+          plex_hostname: null,
+          plex_port: null,
+          plex_ssl: null,
+          plex_auth_token: null,
+        },
+      },
+      {
+        from: MediaServerType.JELLYFIN,
+        to: MediaServerType.PLEX,
+        existingSettings: {
+          media_server_type: MediaServerType.JELLYFIN,
+          jellyfin_url: 'http://jf.local:8096',
+          jellyfin_api_key: 'jf-key',
+          jellyfin_user_id: 'jf-user',
+          jellyfin_server_name: 'Jellyfin',
+        },
+        clearedFields: {
+          media_server_type: MediaServerType.PLEX,
+          jellyfin_url: null,
+          jellyfin_api_key: null,
+          jellyfin_user_id: null,
+          jellyfin_server_name: null,
+        },
+      },
+    ])(
+      'should clear old $from credentials when switching from $from to $to',
+      async ({ from, to, existingSettings, clearedFields }) => {
+        const queryRunner = createQueryRunnerMock();
+        queryRunner.manager.findOne.mockResolvedValue({
+          id: 1,
+          ...existingSettings,
+        });
+        dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
+
+        settingsService.getMediaServerType.mockReturnValue(from);
+        settingsService.init.mockResolvedValue(undefined);
+        collectionRepo.count.mockResolvedValue(0);
+        collectionMediaRepo.count.mockResolvedValue(0);
+        collectionLogRepo.count.mockResolvedValue(0);
+        exclusionRepo.count.mockResolvedValue(0);
+
+        await service.executeSwitch({
+          targetServerType: to,
+          migrateRules: false,
+        });
+
+        expect(queryRunner.manager.save).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.objectContaining(clearedFields),
+        );
+      },
+    );
   });
 });

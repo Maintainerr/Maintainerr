@@ -1,10 +1,10 @@
 import { faker } from '@faker-js/faker';
 import {
-  MediaServerType,
   MediaItem,
   MediaItemType,
   MediaItemWithParent,
   MediaLibrary,
+  MediaServerType,
 } from '@maintainerr/contracts';
 import {
   PlexLibrary,
@@ -29,6 +29,7 @@ import {
   CollectionMediaWithMetadata,
 } from '../../src/modules/collections/entities/collection_media.entities';
 import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
+import { MaintainerrLogger } from '../../src/modules/logging/logs.service';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
 
 export const createCollection = (
@@ -539,3 +540,16 @@ export const createRulesDto = (
   description: faker.string.sample(10),
   ...properties,
 });
+
+/**
+ * Create a mock MaintainerrLogger for use in tests that construct services manually.
+ * Tests using @suites/unit TestBed get this automatically.
+ */
+export const createMockLogger = (): jest.Mocked<MaintainerrLogger> =>
+  ({
+    setContext: jest.fn(),
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  }) as unknown as jest.Mocked<MaintainerrLogger>;

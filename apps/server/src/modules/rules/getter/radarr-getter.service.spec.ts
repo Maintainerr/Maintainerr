@@ -36,7 +36,7 @@ describe('RadarrGetterService', () => {
     jest.useRealTimers();
   });
 
-  describe('fileQualityCutoffMet', () => {
+  describe('movie file properties', () => {
     let collectionMedia: CollectionMedia;
     let mediaItem: MediaItem;
 
@@ -107,21 +107,6 @@ describe('RadarrGetterService', () => {
 
       expect(response).toBe(false);
     });
-  });
-
-  describe('fileQualityName', () => {
-    let collectionMedia: CollectionMedia;
-    let mediaItem: MediaItem;
-
-    beforeEach(() => {
-      collectionMedia = createCollectionMedia('movie');
-      collectionMedia.collection.radarrSettingsId = 1;
-      mediaItem = createMediaItem({ type: 'movie' });
-      tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue({
-        type: 'movie',
-        id: 1,
-      });
-    });
 
     it('should return quality name', async () => {
       const movie = createRadarrMovie({
@@ -147,7 +132,7 @@ describe('RadarrGetterService', () => {
       expect(response).toBe('WEBDL-1080p');
     });
 
-    it('should return null when no episode file exists', async () => {
+    it('should return null when no movie file exists (quality)', async () => {
       const movie = createRadarrMovie({
         movieFile: undefined,
       });
@@ -163,21 +148,6 @@ describe('RadarrGetterService', () => {
       );
 
       expect(response).toBe(null);
-    });
-  });
-
-  describe('fileAudioLanguages', () => {
-    let collectionMedia: CollectionMedia;
-    let mediaItem: MediaItem;
-
-    beforeEach(() => {
-      collectionMedia = createCollectionMedia('movie');
-      collectionMedia.collection.radarrSettingsId = 1;
-      mediaItem = createMediaItem({ type: 'movie' });
-      tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue({
-        type: 'movie',
-        id: 1,
-      });
     });
 
     it('should return audio languages', async () => {
@@ -200,7 +170,7 @@ describe('RadarrGetterService', () => {
       expect(response).toBe('eng');
     });
 
-    it('should return null when no movie file exists', async () => {
+    it('should return null when no movie file exists (audio)', async () => {
       const movie = createRadarrMovie({
         movieFile: undefined,
       });

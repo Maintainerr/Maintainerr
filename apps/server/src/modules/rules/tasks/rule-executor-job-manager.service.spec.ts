@@ -1,3 +1,4 @@
+import { createMockLogger } from '../../../../test/utils/data';
 import { ExecutionLockService } from '../../tasks/execution-lock.service';
 import { RuleExecutorJobManagerService } from './rule-executor-job-manager.service';
 
@@ -13,13 +14,7 @@ const createDeferred = () => {
 };
 
 describe('RuleExecutorJobManagerService', () => {
-  const logger = {
-    setContext: jest.fn(),
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  } as const;
+  const logger = createMockLogger();
 
   const buildService = (executeMock?: ExecuteMock) => {
     const ruleExecutorService = {

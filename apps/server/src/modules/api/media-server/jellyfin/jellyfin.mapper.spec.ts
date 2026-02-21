@@ -7,57 +7,28 @@ import { JellyfinMapper } from './jellyfin.mapper';
 
 describe('JellyfinMapper', () => {
   describe('toMediaItemType', () => {
-    it('should map Movie type correctly', () => {
-      expect(JellyfinMapper.toMediaItemType(BaseItemKind.Movie)).toBe('movie');
-    });
-
-    it('should map Movie string correctly', () => {
-      expect(JellyfinMapper.toMediaItemType('Movie')).toBe('movie');
-    });
-
-    it('should map Series type correctly', () => {
-      expect(JellyfinMapper.toMediaItemType(BaseItemKind.Series)).toBe('show');
-    });
-
-    it('should map Series string correctly', () => {
-      expect(JellyfinMapper.toMediaItemType('Series')).toBe('show');
-    });
-
-    it('should map Season type correctly', () => {
-      expect(JellyfinMapper.toMediaItemType(BaseItemKind.Season)).toBe(
-        'season',
-      );
-    });
-
-    it('should map Episode type correctly', () => {
-      expect(JellyfinMapper.toMediaItemType(BaseItemKind.Episode)).toBe(
-        'episode',
-      );
-    });
-
-    it('should default to MOVIE for unknown types', () => {
-      expect(JellyfinMapper.toMediaItemType(undefined)).toBe('movie');
-      expect(JellyfinMapper.toMediaItemType('Unknown')).toBe('movie');
+    it.each([
+      [BaseItemKind.Movie, 'movie'],
+      ['Movie', 'movie'],
+      [BaseItemKind.Series, 'show'],
+      ['Series', 'show'],
+      [BaseItemKind.Season, 'season'],
+      [BaseItemKind.Episode, 'episode'],
+      [undefined, 'movie'],
+      ['Unknown', 'movie'],
+    ])('maps %s to %s', (input, expected) => {
+      expect(JellyfinMapper.toMediaItemType(input as any)).toBe(expected);
     });
   });
 
   describe('toBaseItemKind', () => {
-    it('should map MOVIE to Movie', () => {
-      expect(JellyfinMapper.toBaseItemKind('movie')).toBe(BaseItemKind.Movie);
-    });
-
-    it('should map SHOW to Series', () => {
-      expect(JellyfinMapper.toBaseItemKind('show')).toBe(BaseItemKind.Series);
-    });
-
-    it('should map SEASON to Season', () => {
-      expect(JellyfinMapper.toBaseItemKind('season')).toBe(BaseItemKind.Season);
-    });
-
-    it('should map EPISODE to Episode', () => {
-      expect(JellyfinMapper.toBaseItemKind('episode')).toBe(
-        BaseItemKind.Episode,
-      );
+    it.each([
+      ['movie', BaseItemKind.Movie],
+      ['show', BaseItemKind.Series],
+      ['season', BaseItemKind.Season],
+      ['episode', BaseItemKind.Episode],
+    ])('maps %s to %s', (input, expected) => {
+      expect(JellyfinMapper.toBaseItemKind(input as any)).toBe(expected);
     });
   });
 

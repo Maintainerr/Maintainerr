@@ -170,28 +170,14 @@ describe('JellyfinAdapterService', () => {
   });
 
   describe('feature detection', () => {
-    it('should support LABELS feature', () => {
-      expect(service.supportsFeature(MediaServerFeature.LABELS)).toBe(true);
-    });
-
-    it('should support PLAYLISTS feature', () => {
-      expect(service.supportsFeature(MediaServerFeature.PLAYLISTS)).toBe(true);
-    });
-
-    it('should NOT support COLLECTION_VISIBILITY feature', () => {
-      expect(
-        service.supportsFeature(MediaServerFeature.COLLECTION_VISIBILITY),
-      ).toBe(false);
-    });
-
-    it('should NOT support WATCHLIST feature', () => {
-      expect(service.supportsFeature(MediaServerFeature.WATCHLIST)).toBe(false);
-    });
-
-    it('should NOT support CENTRAL_WATCH_HISTORY feature', () => {
-      expect(
-        service.supportsFeature(MediaServerFeature.CENTRAL_WATCH_HISTORY),
-      ).toBe(false);
+    it.each([
+      [MediaServerFeature.LABELS, true],
+      [MediaServerFeature.PLAYLISTS, true],
+      [MediaServerFeature.COLLECTION_VISIBILITY, false],
+      [MediaServerFeature.WATCHLIST, false],
+      [MediaServerFeature.CENTRAL_WATCH_HISTORY, false],
+    ])('supportsFeature(%s) is %s', (feature, expected) => {
+      expect(service.supportsFeature(feature)).toBe(expected);
     });
   });
 
@@ -205,52 +191,25 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
-  describe('getStatus', () => {
-    it('should return undefined when not initialized', async () => {
-      const status = await service.getStatus();
-      expect(status).toBeUndefined();
-    });
-  });
-
-  describe('getUsers', () => {
-    it('should return empty array when not initialized', async () => {
-      const users = await service.getUsers();
-      expect(users).toEqual([]);
-    });
-  });
-
-  describe('getLibraries', () => {
-    it('should return empty array when not initialized', async () => {
-      const libraries = await service.getLibraries();
-      expect(libraries).toEqual([]);
-    });
-  });
-
-  describe('getMetadata', () => {
-    it('should return undefined when not initialized', async () => {
-      const metadata = await service.getMetadata('item123');
-      expect(metadata).toBeUndefined();
-    });
-  });
-
-  describe('getWatchHistory', () => {
-    it('should return empty array when not initialized', async () => {
-      const history = await service.getWatchHistory('item123');
-      expect(history).toEqual([]);
-    });
-  });
-
-  describe('getCollections', () => {
-    it('should return empty array when not initialized', async () => {
-      const collections = await service.getCollections('lib123');
-      expect(collections).toEqual([]);
-    });
-  });
-
-  describe('searchContent', () => {
-    it('should return empty array when not initialized', async () => {
-      const results = await service.searchContent('test');
-      expect(results).toEqual([]);
-    });
+  describe('uninitialized state', () => {
+    it.each([
+      ['getStatus', undefined, () => service.getStatus()],
+      ['getMetadata', undefined, () => service.getMetadata('item123')],
+      ['getUsers', [], () => service.getUsers()],
+      ['getLibraries', [], () => service.getLibraries()],
+      ['getWatchHistory', [], () => service.getWatchHistory('item123')],
+      ['getCollections', [], () => service.getCollections('lib123')],
+      ['searchContent', [], () => service.searchContent('test')],
+    ] as [string, unknown, () => Promise<unknown>][])(
+      '%s returns %j when not initialized',
+      async (_method, expected, call) => {
+        const result = await call();
+        if (expected === undefined) {
+          expect(result).toBeUndefined();
+        } else {
+          expect(result).toEqual(expected);
+        }
+      },
+    );
   });
 });
