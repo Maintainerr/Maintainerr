@@ -7,14 +7,12 @@ import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import DatabaseBackupModal from './DatabaseBackupModal'
-import Maintainerr3UpdateModal from './Maintainerr3UpdateModal'
 
 const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
   const apiKeyRef = useRef<HTMLInputElement>(null)
   const [missingValuesError, setMissingValuesError] = useState<boolean>()
   const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const [showPrepModal, setShowPrepModal] = useState(false)
   const { settings } = useSettingsOutletContext()
   const {
     mutateAsync: updateSettings,
@@ -63,10 +61,6 @@ const MainSettings = () => {
 
         {showDownloadModal && (
           <DatabaseBackupModal onClose={() => setShowDownloadModal(false)} />
-        )}
-
-        {showPrepModal && (
-          <Maintainerr3UpdateModal onClose={() => setShowPrepModal(false)} />
         )}
 
         <div className="section">
