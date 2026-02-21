@@ -409,6 +409,31 @@ export class SonarrGetterService {
         case 'seriesType': {
           return showResponse.seriesType ?? null;
         }
+        case 'missing_episodes': {
+          if ('episode' == dataType) {
+            const episode = await getEpisode();
+            return episode?.hasFile != null ? (episode.hasFile ? 1 : 0) : null;
+          } else if ('season' == dataType) {
+            return season?.statistics
+              ? season.statistics.episodeCount - season.statistics.episodeFileCount
+              : null;
+          }
+
+          return showResponse.statistics
+            ? showResponse.statistics.episodeCount - showResponse.statistics.episodeFileCount
+            : null;
+        }
+        case 'missing_episodes_season': {
+          // Season and Episode
+          return season?.statistics
+            ? season.statistics.episodeCount - season.statistics.episodeFileCount
+            : null;
+        }
+        case 'missing_episodes_show': {
+          return showResponse.statistics
+            ? showResponse.statistics.episodeCount - showResponse.statistics.episodeFileCount
+            : null;
+        }
       }
     } catch (e) {
       this.logger.warn(
