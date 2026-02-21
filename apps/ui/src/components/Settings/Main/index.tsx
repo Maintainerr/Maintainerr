@@ -1,9 +1,4 @@
-import {
-  ArrowNarrowRightIcon,
-  DownloadIcon,
-  RefreshIcon,
-  SaveIcon,
-} from '@heroicons/react/solid'
+import { DownloadIcon, RefreshIcon, SaveIcon } from '@heroicons/react/solid'
 import React, { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
@@ -100,6 +95,7 @@ const MainSettings = () => {
               <div className="form-input">
                 <div className="form-input-field">
                   <input
+                    className="!rounded-r-none"
                     name="api-key"
                     id="api-key"
                     type="text"
@@ -118,27 +114,6 @@ const MainSettings = () => {
                 </div>
               </div>
             </div>
-
-            <div className="form-row">
-              <label htmlFor="prepare-maintainerr-3" className="text-label">
-                Maintainerr 3.0
-              </label>
-              <div className="form-input">
-                <div className="form-input-field items-center gap-2">
-                  <ArrowNarrowRightIcon className="h-6 w-6 text-amber-400" />
-                  <Button
-                    id="prepare-maintainerr-3"
-                    buttonType="primary"
-                    className="!border-zinc-900 !bg-zinc-900 hover:!border-zinc-800 hover:!bg-zinc-800"
-                    type="button"
-                    onClick={() => setShowPrepModal(true)}
-                  >
-                    <span>Click here for more info</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
