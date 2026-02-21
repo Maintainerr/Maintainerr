@@ -4,6 +4,10 @@ import { AxiosError, CanceledError } from 'axios';
 import _ from 'lodash';
 import { SettingsService } from '../../..//modules/settings/settings.service';
 import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../utils/connection-error';
+import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
@@ -343,16 +347,13 @@ export class TautulliApiService {
         };
       }
     } catch (e) {
-      this.logger.warn(
-        `A failure occurred testing Tautulli connectivity: ${e}`,
-      );
+      logConnectionTestError(this.logger, 'Tautulli', e);
 
       if (e instanceof CanceledError) {
         return {
           status: 'NOK',
           code: 0,
-          message:
-            'Failured, connection timed out after 10 seconds with no response.',
+          message: 'Connection timed out after 10 seconds with no response.',
         };
       } else if (e instanceof AxiosError) {
         if (e.response?.status === 400) {
@@ -366,19 +367,16 @@ export class TautulliApiService {
               message: data.response.message,
             };
           }
-        } else if (e.response?.status) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: `Failure, received response: ${e.response?.status} ${e.response?.statusText}.`,
-          };
         }
       }
 
       return {
         status: 'NOK',
         code: 0,
-        message: `Failure: ${e.message}`,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Tautulli. Verify URL and API key.',
+        ),
       };
     }
   }

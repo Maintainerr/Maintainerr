@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { ISonarrSetting } from '..'
+import {
+  getApiErrorMessage,
+  normalizeConnectionErrorMessage,
+} from '../../../../utils/ApiError'
 import { PostApiHandler, PutApiHandler } from '../../../../utils/ApiHandler'
 import {
   addPortToUrl,
@@ -172,7 +176,10 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,
-          version: resp.message,
+          version: normalizeConnectionErrorMessage(
+            resp.message,
+            'Failed to connect to Sonarr. Verify URL and API key.',
+          ),
         })
 
         if (resp.code == 1) {
@@ -183,13 +190,14 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
             apiKey,
           })
         }
-
-        setTesting(false)
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         setTestResult({
           status: false,
-          version: '0',
+          version: getApiErrorMessage(
+            err,
+            'Failed to connect to Sonarr. Verify URL and API key.',
+          ),
         })
       })
       .finally(() => {

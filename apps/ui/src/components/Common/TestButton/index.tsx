@@ -1,5 +1,9 @@
 import { BeakerIcon, CheckIcon, ExclamationIcon } from '@heroicons/react/solid'
 import { useState } from 'react'
+import {
+  getApiErrorMessage,
+  normalizeConnectionErrorMessage,
+} from '../../../utils/ApiError'
 import GetApiHandler, { PostApiHandler } from '../../../utils/ApiHandler'
 import Button from '../Button'
 import { SmallLoadingSpinner } from '../LoadingSpinner'
@@ -35,14 +39,26 @@ const TestButton = <T,>(props: ITestButton<T>) => {
       ? PostApiHandler(props.testUrl, props.payload)
       : GetApiHandler(props.testUrl)
 
-    await handler.then((resp: BasicResponse) => {
-      setClicked({ clicked: true, status: resp.code == 1 ? true : false })
-      props.onTestComplete?.({
-        status: resp.code === 1 ? true : false,
-        message: resp.message,
+    await handler
+      .then((resp: BasicResponse) => {
+        const message = normalizeConnectionErrorMessage(resp.message)
+
+        setClicked({ clicked: true, status: resp.code == 1 ? true : false })
+        props.onTestComplete?.({
+          status: resp.code === 1 ? true : false,
+          message,
+        })
       })
-      setLoading(false)
-    })
+      .catch((err: unknown) => {
+        setClicked({ clicked: true, status: false })
+        props.onTestComplete?.({
+          status: false,
+          message: getApiErrorMessage(err),
+        })
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   return (
