@@ -122,11 +122,10 @@ export class JellyfinGetterService {
         }
 
         case 'rating_critics': {
-          // Jellyfin CriticRating is on a 0-100 scale, normalize to 0-10
           const criticRating = metadata.ratings?.find(
             (r) => r.type === 'critic',
           )?.value;
-          return criticRating !== undefined ? criticRating / 10 : 0;
+          return criticRating ?? 0;
         }
 
         case 'rating_audience': {
