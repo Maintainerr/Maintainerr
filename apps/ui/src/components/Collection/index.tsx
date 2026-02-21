@@ -25,6 +25,7 @@ export interface ICollection {
   radarrSettingsId?: number
   sonarrSettingsId?: number
   sortTitle?: string
+  totalSizeBytes?: number | null
 }
 
 export interface ICollectionMedia {
