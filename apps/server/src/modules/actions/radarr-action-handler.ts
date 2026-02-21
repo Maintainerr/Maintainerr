@@ -69,6 +69,43 @@ export class RadarrActionHandler {
               `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             break;
+          case ServarrAction.CHANGE_QUALITY_PROFILE:
+            const targetProfileId = collection.radarrQualityProfileId;
+
+            if (!targetProfileId) {
+              this.logger.warn(
+                `No target quality profile configured for collection ${collection.title}`,
+              );
+              break;
+            }
+
+            if (!Number.isInteger(targetProfileId) || targetProfileId <= 0) {
+              this.logger.warn(
+                `Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
+              );
+              break;
+            }
+
+            await radarrApiClient.updateMovie(radarrMedia.id, {
+              qualityProfileId: targetProfileId,
+            });
+
+            this.logger.log(
+              `Changed quality profile for movie with tmdb id ${tmdbid} to profile ID ${targetProfileId} in Radarr`,
+            );
+
+            // Trigger search for the movie with the new quality profile
+            try {
+              await radarrApiClient.searchMovie(radarrMedia.id);
+              this.logger.log(
+                `Triggered search for movie with tmdb id ${tmdbid} in Radarr`,
+              );
+            } catch (error) {
+              this.logger.warn(
+                `Failed to trigger search for movie with tmdb id ${tmdbid} in Radarr: ${error.message}`,
+              );
+            }
+            break;
         }
       } else {
         if (collection.arrAction !== ServarrAction.UNMONITOR) {

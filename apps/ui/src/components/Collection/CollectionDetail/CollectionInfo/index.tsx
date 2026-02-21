@@ -13,7 +13,7 @@ import {
 } from '@maintainerr/contracts'
 import { Editor } from '@monaco-editor/react'
 import { debounce } from 'lodash-es'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
@@ -49,7 +49,9 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const totalSizeRef = useRef<number>(999)
   const dataRef = useRef<CollectionLogDto[]>([])
   const loadingRef = useRef<boolean>(true)
+  const [loading, setLoading] = useState<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
+  const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
   const [searchFilter, debouncedSearchFilter, setSearchFilter] =
     useDebouncedState('')
   const [currentSort, setCurrentSort] = useState<'ASC' | 'DESC'>('DESC')
@@ -60,6 +62,43 @@ const CollectionInfo = (props: ICollectionInfo) => {
     useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
 
   const fetchAmount = 25
+
+  const resetAll = useCallback(() => {
+    // set loading
+    loadingRef.current = true
+    setLoading(true)
+    loadingExtraRef.current = false
+    setLoadingExtra(false)
+
+    // reset all
+    pageData.current = 0
+    setPage(0)
+    totalSizeRef.current = 999
+    setTotalSize(999)
+    dataRef.current = []
+    setData([])
+  }, [])
+
+  const fetchData = useCallback(async () => {
+    if (!loadingRef.current) {
+      loadingExtraRef.current = true
+      setLoadingExtra(true)
+    }
+
+    const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
+      `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
+        debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
+      }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
+    )
+
+    setTotalSize(resp.totalSize)
+
+    setData([...dataRef.current, ...resp.items])
+    loadingRef.current = false
+    setLoading(false)
+    loadingExtraRef.current = false
+    setLoadingExtra(false)
+  }, [props.collection.id, debouncedSearchFilter, currentSort, currentFilter])
 
   useEffect(() => {
     // Initial first fetch
@@ -83,7 +122,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
     setTimeout(() => {
       setPage(1)
     }, 500)
-  }, [debouncedSearchFilter, currentSort, currentFilter])
+  }, [debouncedSearchFilter, currentSort, currentFilter, resetAll])
 
   useEffect(() => {
     if (page !== 0) {
@@ -91,9 +130,9 @@ const CollectionInfo = (props: ICollectionInfo) => {
       pageData.current = pageData.current + 1
       fetchData()
     }
-  }, [page])
+  }, [page, fetchData])
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (
       window.innerHeight + document.documentElement.scrollTop >=
       document.documentElement.scrollHeight * 0.9
@@ -106,7 +145,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
         setPage(pageData.current + 1)
       }
     }
-  }
+  }, [])
 
   useEffect(() => {
     const debouncedScroll = debounce(handleScroll, 200)
@@ -115,25 +154,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
       window.removeEventListener('scroll', debouncedScroll)
       debouncedScroll.cancel() // Cancel pending debounced calls
     }
-  }, [])
-
-  const fetchData = async () => {
-    if (!loadingRef.current) {
-      loadingExtraRef.current = true
-    }
-
-    const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
-      `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
-        debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
-      }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
-    )
-
-    setTotalSize(resp.totalSize)
-
-    setData([...dataRef.current, ...resp.items])
-    loadingRef.current = false
-    loadingExtraRef.current = false
-  }
+  }, [handleScroll])
 
   useEffect(() => {
     dataRef.current = data
@@ -148,25 +169,11 @@ const CollectionInfo = (props: ICollectionInfo) => {
     ) {
       setPage(page + 1)
     }
-  }, [data])
+  }, [data, page])
 
   useEffect(() => {
     totalSizeRef.current = totalSize
   }, [totalSize])
-
-  const resetAll = () => {
-    // set loading
-    loadingRef.current = true
-    loadingExtraRef.current = false
-
-    // reset all
-    pageData.current = 0
-    setPage(0)
-    totalSizeRef.current = 999
-    setTotalSize(999)
-    dataRef.current = []
-    setData([])
-  }
 
   return (
     <>
@@ -284,7 +291,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
               </tr>
             </thead>
             <Table.TBody>
-              {loadingRef.current ? (
+              {loading ? (
                 <tr>
                   <Table.TD colSpan={4} noPadding>
                     <LoadingSpinner />
@@ -357,7 +364,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                     )
                   })}
 
-                  {loadingExtraRef.current ? (
+                  {loadingExtra ? (
                     <tr>
                       <Table.TD colSpan={2} noPadding>
                         <SmallLoadingSpinner className="m-auto mb-2 mt-2 w-8" />
