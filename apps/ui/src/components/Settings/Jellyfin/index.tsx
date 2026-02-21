@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { useSettingsOutletContext } from '..'
 import {
   useDeleteJellyfinSettings,
+  useJellyfinSettings,
   useSaveJellyfinSettings,
   useTestJellyfin,
 } from '../../../api/settings'
@@ -55,6 +56,10 @@ const JellyfinSettings = () => {
 
   const { settings } = useSettingsOutletContext()
 
+  const { data: jellyfinData } = useJellyfinSettings({
+    enabled: !!settings,
+  })
+
   const { mutateAsync: testJellyfin, isPending: isTestPending } =
     useTestJellyfin()
   const {
@@ -90,21 +95,21 @@ const JellyfinSettings = () => {
   const jellyfinUrl = useWatch({ control, name: 'jellyfin_url' })
   const jellyfinApiKey = useWatch({ control, name: 'jellyfin_api_key' })
 
-  // Initialize form when settings load
+  // Initialize form when jellyfin settings load (from dedicated endpoint with real values)
   useEffect(() => {
-    if (settings) {
+    if (jellyfinData) {
       reset({
-        jellyfin_url: settings.jellyfin_url ?? '',
-        jellyfin_api_key: settings.jellyfin_api_key ?? '',
-        jellyfin_user_id: settings.jellyfin_user_id ?? '',
+        jellyfin_url: jellyfinData.jellyfin_url ?? '',
+        jellyfin_api_key: jellyfinData.jellyfin_api_key ?? '',
+        jellyfin_user_id: jellyfinData.jellyfin_user_id ?? '',
       })
     }
-  }, [settings, reset])
+  }, [jellyfinData, reset])
 
   const isGoingToRemoveSettings = jellyfinUrl === '' && jellyfinApiKey === ''
   const enteredSettingsAreSameAsSaved =
-    jellyfinUrl === (settings?.jellyfin_url ?? '') &&
-    jellyfinApiKey === (settings?.jellyfin_api_key ?? '')
+    jellyfinUrl === (jellyfinData?.jellyfin_url ?? '') &&
+    jellyfinApiKey === (jellyfinData?.jellyfin_api_key ?? '')
   const enteredSettingsHaveBeenTested =
     jellyfinUrl === testedSettings?.url &&
     jellyfinApiKey === testedSettings?.apiKey &&

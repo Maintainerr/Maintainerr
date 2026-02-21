@@ -10,6 +10,7 @@ import {
   overseerrSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
+  switchMediaServerSchema,
   TautulliSetting,
   tautulliSettingSchema,
 } from '@maintainerr/contracts';
@@ -20,6 +21,7 @@ import {
   Get,
   Header,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -28,16 +30,16 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { ZodValidationPipe } from 'nestjs-zod';
+import { DatabaseDownloadService } from './database-download.service';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { RadarrSettingRawDto } from "./dto's/radarr-setting.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
-import { DatabaseDownloadService } from './database-download.service';
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { SettingsService } from './settings.service';
-import { ZodValidationPipe } from 'nestjs-zod';
 
 @Controller('/api/settings')
 export class SettingsController {
@@ -49,7 +51,7 @@ export class SettingsController {
 
   @Get()
   getSettings() {
-    return this.settingsService.getSettings();
+    return this.settingsService.getPublicSettings();
   }
   @Get('/radarr')
   getRadarrSettings() {
@@ -257,6 +259,21 @@ export class SettingsController {
     return this.settingsService.testOverseerr(payload);
   }
 
+  @Get('/jellyfin')
+  async getJellyfinSetting(): Promise<JellyfinSetting | BasicResponseDto> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      jellyfin_url: settings.jellyfin_url,
+      jellyfin_api_key: settings.jellyfin_api_key,
+      jellyfin_user_id: settings.jellyfin_user_id,
+    };
+  }
+
   @Post('/jellyfin/test')
   testJellyfin(
     @Body(new ZodValidationPipe(jellyfinSettingSchema))
@@ -305,7 +322,8 @@ export class SettingsController {
    */
   @Get('/media-server/switch/preview/:targetServerType')
   async previewMediaServerSwitch(
-    @Param('targetServerType') targetServerType: MediaServerType,
+    @Param('targetServerType', new ParseEnumPipe(MediaServerType))
+    targetServerType: MediaServerType,
   ): Promise<MediaServerSwitchPreview> {
     return this.mediaServerSwitchService.previewSwitch(targetServerType);
   }
@@ -317,7 +335,8 @@ export class SettingsController {
    */
   @Post('/media-server/switch')
   async switchMediaServer(
-    @Body() payload: SwitchMediaServerRequest,
+    @Body(new ZodValidationPipe(switchMediaServerSchema))
+    payload: SwitchMediaServerRequest,
   ): Promise<SwitchMediaServerResponse> {
     return this.mediaServerSwitchService.executeSwitch(payload);
   }

@@ -1,17 +1,18 @@
+import { z } from 'zod'
 import { MediaServerType } from './enums'
+
+/**
+ * Zod schema for validating switch media server requests
+ */
+export const switchMediaServerSchema = z.object({
+  targetServerType: z.nativeEnum(MediaServerType),
+  migrateRules: z.boolean().optional(),
+})
 
 /**
  * Request for switching media server type
  */
-export interface SwitchMediaServerRequest {
-  targetServerType: MediaServerType
-  /**
-   * Whether to attempt migrating rules to the new media server.
-   * Rules that use properties only available in the source server will be skipped.
-   * Default: false (rules are cleared like other data)
-   */
-  migrateRules?: boolean
-}
+export type SwitchMediaServerRequest = z.infer<typeof switchMediaServerSchema>
 
 /**
  * Details about a rule that was skipped during migration

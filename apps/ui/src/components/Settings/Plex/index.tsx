@@ -183,29 +183,30 @@ const PlexSettings = () => {
   }
 
   const verifyToken = (token?: string) => {
-    const authToken = token || settings?.plex_auth_token
-    if (authToken) {
-      const controller = new AbortController()
-
+    if (token) {
+      // Fresh token from Plex OAuth — verify directly with plex.tv
       axios
         .get('https://plex.tv/api/v2/user', {
           headers: {
             'X-Plex-Product': 'Maintainerr',
             'X-Plex-Version': '2.0',
             'X-Plex-Client-Identifier': '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
-            'X-Plex-Token': authToken,
+            'X-Plex-Token': token,
           },
-          signal: controller.signal,
         })
         .then((response) => {
           setTokenValid(response.status === 200 ? true : false)
         })
         .catch(() => setTokenValid(false))
-
-      // Cancel the request if component unmounts
-      return () => {
-        controller.abort()
-      }
+    } else if (settings?.plex_auth_token) {
+      // Existing token (masked in settings) — verify via server-side test endpoint
+      GetApiHandler<{ status: string; code: number; message: string }>(
+        '/settings/test/plex',
+      )
+        .then((result) => {
+          setTokenValid(result.status === 'OK')
+        })
+        .catch(() => setTokenValid(false))
     } else {
       setTokenValid(false)
     }

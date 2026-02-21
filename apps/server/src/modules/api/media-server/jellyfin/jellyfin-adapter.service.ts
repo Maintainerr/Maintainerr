@@ -1173,11 +1173,21 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async deleteFromDisk(itemId: string): Promise<void> {
-    if (!this.api) return;
+    if (!this.api) {
+      throw new Error(
+        'Jellyfin API not initialized — cannot delete item from disk',
+      );
+    }
+
+    if (!itemId || itemId.trim() === '') {
+      throw new Error(
+        'deleteFromDisk called with empty itemId — aborting to prevent unintended deletion',
+      );
+    }
 
     try {
       await getLibraryApi(this.api).deleteItem({ itemId });
-      this.logger.log(`Deleted item ${itemId} from disk`);
+      this.logger.log(`Successfully deleted Jellyfin item ${itemId} from disk`);
     } catch (error) {
       this.logger.error(`Failed to delete item ${itemId} from disk`, error);
       throw error;

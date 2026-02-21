@@ -178,6 +178,17 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  /**
+   * Mask a secret string by showing only the first 4 and last 4 characters.
+   * Returns null if the value is empty/undefined/null.
+   * Returns '****' if the value is shorter than 8 characters.
+   */
+  private maskSecret(value: string | null | undefined): string | null {
+    if (!value) return null;
+    if (value.length <= 8) return '****';
+    return `${value.slice(0, 4)}...${value.slice(-4)}`;
+  }
+
   public async getSettings() {
     try {
       return this.settingsRepo.findOne({ where: {} });
@@ -187,6 +198,27 @@ export class SettingsService implements SettingDto {
       );
       return { status: 'NOK', code: 0, message: err } as BasicResponseDto;
     }
+  }
+
+  /**
+   * Returns settings with sensitive fields masked.
+   * Used for the public GET /settings endpoint to avoid exposing secrets.
+   */
+  public async getPublicSettings() {
+    const settings = await this.getSettings();
+
+    if (!settings || !(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      ...settings,
+      plex_auth_token: this.maskSecret(settings.plex_auth_token),
+      jellyfin_api_key: this.maskSecret(settings.jellyfin_api_key),
+      overseerr_api_key: this.maskSecret(settings.overseerr_api_key),
+      tautulli_api_key: this.maskSecret(settings.tautulli_api_key),
+      jellyseerr_api_key: this.maskSecret(settings.jellyseerr_api_key),
+    };
   }
 
   public async getRadarrSettings() {

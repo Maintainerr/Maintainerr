@@ -50,7 +50,7 @@ import { SettingsService } from './settings.service';
     MediaServerSwitchService,
     DatabaseDownloadService,
   ],
-  exports: [SettingsService, RuleMigrationService],
+  exports: [SettingsService, RuleMigrationService, MediaServerSwitchService],
   controllers: [SettingsController],
 })
 export class SettingsModule {}

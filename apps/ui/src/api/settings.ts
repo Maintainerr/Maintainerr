@@ -1,4 +1,3 @@
-import axios from 'axios'
 import {
   BasicResponseDto,
   JellyfinSetting,
@@ -14,6 +13,7 @@ import {
   useQueryClient,
   UseQueryOptions,
 } from '@tanstack/react-query'
+import axios from 'axios'
 import GetApiHandler, {
   API_BASE_PATH,
   DeleteApiHandler,
@@ -135,6 +135,36 @@ export const useDeletePlexAuth = (options?: UseDeletePlexAuthOptions) => {
 }
 
 export type UseDeletePlexAuthResult = ReturnType<typeof useDeletePlexAuth>
+
+type UseJellyfinSettingsQueryKey = ['settings', 'jellyfin']
+
+type UseJellyfinSettingsOptions = Omit<
+  UseQueryOptions<
+    JellyfinSetting,
+    Error,
+    JellyfinSetting,
+    UseJellyfinSettingsQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const useJellyfinSettings = (options?: UseJellyfinSettingsOptions) => {
+  return useQuery<
+    JellyfinSetting,
+    Error,
+    JellyfinSetting,
+    UseJellyfinSettingsQueryKey
+  >({
+    queryKey: ['settings', 'jellyfin'],
+    queryFn: async () => {
+      return await GetApiHandler<JellyfinSetting>(`/settings/jellyfin`)
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseJellyfinSettingsResult = ReturnType<typeof useJellyfinSettings>
 
 type UseUpdatePlexAuthOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, string>,

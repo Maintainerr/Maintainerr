@@ -4,7 +4,12 @@ import {
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  forwardRef,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -34,6 +39,16 @@ interface MediaServerDataCounts {
  */
 @Injectable()
 export class MediaServerSwitchService {
+  private switching = false;
+
+  /**
+   * Whether a media server switch is currently in progress.
+   * Used by MediaServerFactory to reject requests during the switch window.
+   */
+  public isSwitching(): boolean {
+    return this.switching;
+  }
+
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settingsService: SettingsService,
@@ -96,6 +111,23 @@ export class MediaServerSwitchService {
    * Optionally migrates rules if migrateRules is true
    */
   async executeSwitch(
+    request: SwitchMediaServerRequest,
+  ): Promise<SwitchMediaServerResponse> {
+    if (this.switching) {
+      throw new ConflictException(
+        'A media server switch is already in progress',
+      );
+    }
+    this.switching = true;
+
+    try {
+      return await this.executeSwitchInternal(request);
+    } finally {
+      this.switching = false;
+    }
+  }
+
+  private async executeSwitchInternal(
     request: SwitchMediaServerRequest,
   ): Promise<SwitchMediaServerResponse> {
     const { targetServerType, migrateRules } = request;

@@ -1,6 +1,13 @@
 import { MediaServerType } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Settings } from '../../settings/entities/settings.entities';
+import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import { SettingsService } from '../../settings/settings.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { IMediaServerService } from './media-server.interface';
@@ -29,6 +36,8 @@ export class MediaServerFactory {
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settingsService: SettingsService,
+    @Inject(forwardRef(() => MediaServerSwitchService))
+    private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly plexAdapter: PlexAdapterService,
     private readonly jellyfinAdapter: JellyfinAdapterService,
   ) {}
@@ -60,6 +69,12 @@ export class MediaServerFactory {
    * This method reads from settings on each call to support runtime configuration changes.
    */
   async getService(): Promise<IMediaServerService> {
+    if (this.mediaServerSwitchService.isSwitching()) {
+      throw new ServiceUnavailableException(
+        'Media server switch is in progress. Please try again shortly.',
+      );
+    }
+
     const serverType = await this.getConfiguredServerType();
     if (!serverType) {
       throw new Error('No media server type configured');
