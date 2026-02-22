@@ -34,10 +34,8 @@ describe('SettingsController', () => {
     Object.assign(new Settings(), {
       tautulli_api_key: null,
       tautulli_url: null,
-      jellyseerr_api_key: null,
-      jellyseerr_url: null,
-      overseerr_api_key: null,
-      overseerr_url: null,
+      seerr_api_key: null,
+      seerr_url: null,
       jellyfin_url: null,
       jellyfin_api_key: null,
       jellyfin_user_id: null,
@@ -68,27 +66,15 @@ describe('SettingsController', () => {
         },
       },
       {
-        name: 'Jellyseerr',
-        method: 'getJellyseerrSetting' as const,
+        name: 'Seerr',
+        method: 'getSeerrSetting' as const,
         entityOverrides: {
-          jellyseerr_url: 'http://jellyseerr.local',
-          jellyseerr_api_key: 'jellyseerr-key',
+          seerr_url: 'http://seerr.local',
+          seerr_api_key: 'seerr-key',
         },
         expected: {
-          api_key: 'jellyseerr-key',
-          url: 'http://jellyseerr.local',
-        },
-      },
-      {
-        name: 'Overseerr',
-        method: 'getOverseerrSetting' as const,
-        entityOverrides: {
-          overseerr_url: 'http://overseerr.local',
-          overseerr_api_key: 'overseerr-key',
-        },
-        expected: {
-          api_key: 'overseerr-key',
-          url: 'http://overseerr.local',
+          api_key: 'seerr-key',
+          url: 'http://seerr.local',
         },
       },
       {
@@ -118,8 +104,7 @@ describe('SettingsController', () => {
 
     it.each([
       { name: 'Tautulli', method: 'getTautulliSetting' as const },
-      { name: 'Jellyseerr', method: 'getJellyseerrSetting' as const },
-      { name: 'Overseerr', method: 'getOverseerrSetting' as const },
+      { name: 'Seerr', method: 'getSeerrSetting' as const },
       { name: 'Jellyfin', method: 'getJellyfinSetting' as const },
     ])(
       'passes through non-entity response for $name settings',

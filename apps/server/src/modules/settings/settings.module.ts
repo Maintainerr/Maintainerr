@@ -1,9 +1,8 @@
 import { forwardRef, Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InternalApiModule } from '../api/internal-api/internal-api.module';
-import { JellyseerrApiModule } from '../api/jellyseerr-api/jellyseerr-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
-import { OverseerrApiModule } from '../api/overseerr-api/overseerr-api.module';
+import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
@@ -28,8 +27,7 @@ import { SettingsService } from './settings.service';
     forwardRef(() => PlexApiModule),
     forwardRef(() => MediaServerModule),
     forwardRef(() => ServarrApiModule),
-    forwardRef(() => OverseerrApiModule),
-    forwardRef(() => JellyseerrApiModule),
+    forwardRef(() => SeerrApiModule),
     forwardRef(() => TautulliApiModule),
     forwardRef(() => InternalApiModule),
     TypeOrmModule.forFeature([

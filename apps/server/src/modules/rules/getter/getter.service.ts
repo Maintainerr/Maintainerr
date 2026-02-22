@@ -9,10 +9,9 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import { Application } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { JellyfinGetterService } from './jellyfin-getter.service';
-import { JellyseerrGetterService } from './jellyseerr-getter.service';
-import { OverseerrGetterService } from './overseerr-getter.service';
 import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
+import { SeerrGetterService } from './seerr-getter.service';
 import { SonarrGetterService } from './sonarr-getter.service';
 import { TautulliGetterService } from './tautulli-getter.service';
 
@@ -22,9 +21,8 @@ export class ValueGetterService {
     private readonly plexGetter: PlexGetterService,
     private readonly radarrGetter: RadarrGetterService,
     private readonly sonarrGetter: SonarrGetterService,
-    private readonly overseerGetter: OverseerrGetterService,
+    private readonly seerrGetter: SeerrGetterService,
     private readonly tautulliGetter: TautulliGetterService,
-    private readonly jellyseerrGetter: JellyseerrGetterService,
     private readonly jellyfinGetter: JellyfinGetterService,
     private readonly mediaServerFactory: MediaServerFactory,
   ) {}
@@ -58,19 +56,11 @@ export class ValueGetterService {
       case Application.SONARR: {
         return await this.sonarrGetter.get(val2, libItem, dataType, ruleGroup);
       }
-      case Application.OVERSEERR: {
-        return await this.overseerGetter.get(val2, libItem, dataType);
+      case Application.SEERR: {
+        return await this.seerrGetter.get(val2, libItem, dataType);
       }
       case Application.TAUTULLI: {
-        return await this.tautulliGetter.get(
-          val2,
-          libItem,
-          dataType,
-          ruleGroup,
-        );
-      }
-      case Application.JELLYSEERR: {
-        return await this.jellyseerrGetter.get(val2, libItem, dataType);
+        return await this.tautulliGetter.get(val2, libItem, dataType);
       }
       default: {
         return null;

@@ -2,8 +2,8 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
-  OverseerrSetting,
-  overseerrSettingSchema,
+  SeerrSetting,
+  seerrSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -22,23 +22,23 @@ interface TestStatus {
   message: string
 }
 
-const OverseerrSettingDeleteSchema = z.object({
+const SeerrSettingDeleteSchema = z.object({
   url: z.literal(''),
   api_key: z.literal(''),
 })
 
-const OverseerrSettingFormSchema = z.union([
-  overseerrSettingSchema,
-  OverseerrSettingDeleteSchema,
+const SeerrSettingFormSchema = z.union([
+  seerrSettingSchema,
+  SeerrSettingDeleteSchema,
 ])
 
-type OverseerrSettingFormResult = z.infer<typeof OverseerrSettingFormSchema>
+type SeerrSettingFormResult = z.infer<typeof SeerrSettingFormSchema>
 
 const stripLeadingSlashes = (url: string) => url.replace(/\/+$/, '')
 
-const OverseerrSettings = () => {
+const SeerrSettings = () => {
   const [testedSettings, setTestedSettings] = useState<
-    OverseerrSetting | undefined
+    SeerrSetting | undefined
   >()
 
   const [testing, setTesting] = useState(false)
@@ -52,10 +52,10 @@ const OverseerrSettings = () => {
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
-  } = useForm<OverseerrSettingFormResult, any, OverseerrSettingFormResult>({
-    resolver: zodResolver(OverseerrSettingFormSchema),
+  } = useForm<SeerrSettingFormResult, any, SeerrSettingFormResult>({
+    resolver: zodResolver(SeerrSettingFormSchema),
     defaultValues: async () => {
-      const resp = await GetApiHandler<OverseerrSetting>('/settings/overseerr')
+      const resp = await GetApiHandler<SeerrSetting>('/settings/seerr')
       return {
         url: resp.url ?? '',
         api_key: resp.api_key ?? '',
@@ -80,7 +80,7 @@ const OverseerrSettings = () => {
     !isSubmitting &&
     !isLoading
 
-  const onSubmit = async (data: OverseerrSetting) => {
+  const onSubmit = async (data: SeerrSetting) => {
     setSubmitError(false)
     setIsSubmitSuccessful(false)
 
@@ -88,8 +88,8 @@ const OverseerrSettings = () => {
 
     try {
       const resp = await (removingSetting
-        ? DeleteApiHandler<BasicResponseDto>('/settings/overseerr')
-        : PostApiHandler<BasicResponseDto>('/settings/overseerr', data))
+        ? DeleteApiHandler<BasicResponseDto>('/settings/seerr')
+        : PostApiHandler<BasicResponseDto>('/settings/seerr', data))
 
       if (resp.code) {
         setIsSubmitSuccessful(true)
@@ -106,10 +106,10 @@ const OverseerrSettings = () => {
 
     setTesting(true)
 
-    await PostApiHandler<BasicResponseDto>('/settings/test/overseerr', {
+    await PostApiHandler<BasicResponseDto>('/settings/test/seerr', {
       api_key: api_key,
       url,
-    } satisfies OverseerrSetting)
+    } satisfies SeerrSetting)
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,
@@ -136,23 +136,25 @@ const OverseerrSettings = () => {
 
   return (
     <>
-      <title>Overseerr settings - Maintainerr</title>
+      <title>Seerr settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Overseerr Settings</h3>
-          <p className="description">Overseerr configuration</p>
+          <h3 className="heading">Seerr Settings</h3>
+          <p className="description">
+            Seerr configuration (also compatible with Overseerr and Jellyseerr)
+          </p>
         </div>
         {submitError ? (
           <Alert type="warning" title="Something went wrong" />
         ) : isSubmitSuccessful ? (
-          <Alert type="info" title="Overseerr settings successfully updated" />
+          <Alert type="info" title="Seerr settings successfully updated" />
         ) : undefined}
 
         {testResult != null &&
           (testResult?.status ? (
             <Alert
               type="info"
-              title={`Successfully connected to Overseerr (${testResult.message})`}
+              title={`Successfully connected to Seerr (${testResult.message})`}
             />
           ) : (
             <Alert type="error" title={testResult.message} />
@@ -185,11 +187,11 @@ const OverseerrSettings = () => {
                       </span>
                       ,{' '}
                       <span className="whitespace-nowrap">
-                        http://192.168.1.5/overseerr
+                        http://192.168.1.5/seerr
                       </span>
                       ,{' '}
                       <span className="whitespace-nowrap">
-                        https://overseerr.example.com
+                        https://seerr.example.com
                       </span>
                     </>
                   }
@@ -208,7 +210,7 @@ const OverseerrSettings = () => {
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">
                 <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
-                  <DocsButton page="Configuration/#overseerr" />
+                  <DocsButton page="Configuration/#seerr" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
                   <Button
@@ -238,4 +240,4 @@ const OverseerrSettings = () => {
     </>
   )
 }
-export default OverseerrSettings
+export default SeerrSettings

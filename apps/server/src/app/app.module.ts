@@ -8,13 +8,11 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { join } from 'path';
 import { ExternalApiModule } from '../modules/api/external-api/external-api.module';
 import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
-import { JellyseerrApiModule } from '../modules/api/jellyseerr-api/jellyseerr-api.module';
-import { JellyseerrApiService } from '../modules/api/jellyseerr-api/jellyseerr-api.service';
 import { MediaServerFactory } from '../modules/api/media-server/media-server.factory';
 import { MediaServerModule } from '../modules/api/media-server/media-server.module';
-import { OverseerrApiModule } from '../modules/api/overseerr-api/overseerr-api.module';
-import { OverseerrApiService } from '../modules/api/overseerr-api/overseerr-api.service';
 import { PlexApiModule } from '../modules/api/plex-api/plex-api.module';
+import { SeerrApiModule } from '../modules/api/seerr-api/seerr-api.module';
+import { SeerrApiService } from '../modules/api/seerr-api/seerr-api.service';
 import { ServarrApiModule } from '../modules/api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../modules/api/tautulli-api/tautulli-api.module';
 import { TautulliApiService } from '../modules/api/tautulli-api/tautulli-api.service';
@@ -46,9 +44,8 @@ import ormConfig from './config/typeOrmConfig';
     GitHubApiModule,
     TmdbApiModule,
     ServarrApiModule,
-    OverseerrApiModule,
+    SeerrApiModule,
     TautulliApiModule,
-    JellyseerrApiModule,
     RulesModule,
     CollectionsModule,
     NotificationsModule,
@@ -82,10 +79,9 @@ export class AppModule implements OnModuleInit {
   constructor(
     private readonly settings: SettingsService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly overseerApi: OverseerrApiService,
+    private readonly seerrApi: SeerrApiService,
     private readonly tautulliApi: TautulliApiService,
     private readonly notificationService: NotificationService,
-    private readonly jellyseerrApi: JellyseerrApiService,
   ) {}
   async onModuleInit() {
     // Initialize modules requiring settings
@@ -94,9 +90,8 @@ export class AppModule implements OnModuleInit {
     // Initialize configured media server (Plex or Jellyfin)
     await this.mediaServerFactory.initialize();
 
-    this.overseerApi.init();
+    this.seerrApi.init();
     this.tautulliApi.init();
-    this.jellyseerrApi.init();
 
     // intialize notification agents
     await this.notificationService.registerConfiguredAgents();

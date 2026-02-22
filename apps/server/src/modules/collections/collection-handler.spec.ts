@@ -7,7 +7,7 @@ import {
 } from '../../../test/utils/data';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
-import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MediaItem } from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -23,7 +23,7 @@ describe('CollectionHandler', () => {
   let collectionsService: Mocked<CollectionsService>;
   let radarrActionHandler: Mocked<RadarrActionHandler>;
   let sonarrActionHandler: Mocked<SonarrActionHandler>;
-  let overseerrApi: Mocked<OverseerrApiService>;
+  let seerrApi: Mocked<SeerrApiService>;
   let settings: Mocked<SettingsService>;
 
   beforeEach(async () => {
@@ -35,7 +35,7 @@ describe('CollectionHandler', () => {
     collectionsService = unitRef.get(CollectionsService);
     radarrActionHandler = unitRef.get(RadarrActionHandler);
     sonarrActionHandler = unitRef.get(SonarrActionHandler);
-    overseerrApi = unitRef.get(OverseerrApiService);
+    seerrApi = unitRef.get(SeerrApiService);
     settings = unitRef.get(SettingsService);
 
     // Setup media server mock
@@ -134,12 +134,12 @@ describe('CollectionHandler', () => {
   it('should call removeSeasonRequest for seasons', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      forceOverseerr: true,
+      forceSeerr: true,
       type: 'season',
     });
     const collectionMedia = createCollectionMediaWithMetadata(collection);
 
-    settings.overseerrConfigured.mockReturnValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
 
     mediaServer.getLibraries.mockResolvedValue(
       createMediaLibraries({
@@ -151,22 +151,22 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledWith(
+    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
       collectionMedia.mediaData.index,
     );
-    expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
+    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should call removeSeasonRequest for episodes', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      forceOverseerr: true,
+      forceSeerr: true,
       type: 'episode',
     });
     const collectionMedia = createCollectionMediaWithMetadata(collection);
 
-    settings.overseerrConfigured.mockReturnValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
 
     mediaServer.getLibraries.mockResolvedValue(
       createMediaLibraries({
@@ -178,22 +178,22 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledWith(
+    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
       collectionMedia.mediaData.parentIndex,
     );
-    expect(overseerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
+    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should call removeMediaByTmdbId for movies', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      forceOverseerr: true,
+      forceSeerr: true,
       type: 'movie',
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    settings.overseerrConfigured.mockReturnValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
 
     mediaServer.getLibraries.mockResolvedValue(
       createMediaLibraries({
@@ -204,22 +204,22 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    expect(overseerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
       'movie',
     );
-    expect(overseerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
   });
 
   it('should call removeMediaByTmdbId for shows', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      forceOverseerr: true,
+      forceSeerr: true,
       type: 'show',
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    settings.overseerrConfigured.mockReturnValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
 
     mediaServer.getLibraries.mockResolvedValue(
       createMediaLibraries({
@@ -230,17 +230,17 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    expect(overseerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
       'tv',
     );
-    expect(overseerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
   });
 
-  it('should not call OverseerrApiService if forceOverseerr is false', async () => {
+  it('should not call SeerrApiService if forceSeerr is false', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      forceOverseerr: false,
+      forceSeerr: false,
       type: 'movie',
     });
     const collectionMedia = createCollectionMedia(collection);
@@ -254,19 +254,19 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    expect(overseerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
-    expect(overseerrApi.removeSeasonRequest).not.toHaveBeenCalled();
+    expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
+    expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
   });
 
-  it('should not call OverseerrApiService if Overseerr is not configured', async () => {
+  it('should not call SeerrApiService if Seerr is not configured', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
-      forceOverseerr: false,
+      forceSeerr: false,
       type: 'movie',
     });
     const collectionMedia = createCollectionMedia(collection);
 
-    settings.overseerrConfigured.mockReturnValue(false);
+    settings.seerrConfigured.mockReturnValue(false);
 
     mediaServer.getLibraries.mockResolvedValue(
       createMediaLibraries({
@@ -277,7 +277,7 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    expect(overseerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
-    expect(overseerrApi.removeSeasonRequest).not.toHaveBeenCalled();
+    expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
+    expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
   });
 });

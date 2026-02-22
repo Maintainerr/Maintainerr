@@ -11,7 +11,7 @@ export interface ICollection {
   visibleOnHome?: boolean
   deleteAfterDays?: number
   listExclusions?: boolean
-  forceOverseerr?: boolean
+  forceSeerr?: boolean
   type: MediaItemType
   arrAction: number
   media: ICollectionMedia[]

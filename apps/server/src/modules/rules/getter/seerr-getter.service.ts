@@ -9,13 +9,13 @@ import _ from 'lodash';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import {
-  OverseerrApiService,
-  OverSeerrMovieResponse,
-  OverseerrSeasonRequest,
-  OverSeerrSeasonResponse,
-  OverseerrTVRequest,
-  OverSeerrTVResponse,
-} from '../../api/overseerr-api/overseerr-api.service';
+  SeerrApiService,
+  SeerrMovieResponse,
+  SeerrSeasonRequest,
+  SeerrSeasonResponse,
+  SeerrTVRequest,
+  SeerrTVResponse,
+} from '../../api/seerr-api/seerr-api.service';
 import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -26,20 +26,20 @@ import {
 } from '../constants/rules.constants';
 
 @Injectable()
-export class OverseerrGetterService {
+export class SeerrGetterService {
   appProperties: Property[];
 
   constructor(
-    private readonly overseerrApi: OverseerrApiService,
+    private readonly seerrApi: SeerrApiService,
     private readonly tmdbApi: TmdbApiService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly tmdbIdHelper: TmdbIdService,
     private readonly logger: MaintainerrLogger,
   ) {
-    logger.setContext(OverseerrGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.appProperties = ruleConstanst.applications.find(
-      (el) => el.id === Application.OVERSEERR,
+    logger.setContext(SeerrGetterService.name);
+    const ruleConstants = new RuleConstants();
+    this.appProperties = ruleConstants.applications.find(
+      (el) => el.id === Application.SEERR,
     ).props;
   }
 
@@ -50,9 +50,9 @@ export class OverseerrGetterService {
   async get(id: number, libItem: MediaItem, dataType?: MediaItemType) {
     try {
       let origLibItem: MediaItem = undefined;
-      let seasonMediaResponse: OverSeerrSeasonResponse = undefined;
-      let tvMediaResponse: OverSeerrTVResponse = undefined;
-      let movieMediaResponse: OverSeerrMovieResponse = undefined;
+      let seasonMediaResponse: SeerrSeasonResponse = undefined;
+      let tvMediaResponse: SeerrTVResponse = undefined;
+      let movieMediaResponse: SeerrMovieResponse = undefined;
 
       // get original show in case of season / episode
       if (dataType === 'season' || dataType === 'episode') {
@@ -65,38 +65,35 @@ export class OverseerrGetterService {
 
       const prop = this.appProperties.find((el) => el.id === id);
       const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaItem(libItem);
-      // const overseerrUsers = await this.overseerrApi.getUsers();
 
       if (tmdb && tmdb.id) {
         if (libItem.type === 'movie') {
-          movieMediaResponse = await this.overseerrApi.getMovie(
-            tmdb.id.toString(),
-          );
+          movieMediaResponse = await this.seerrApi.getMovie(tmdb.id.toString());
         } else {
-          tvMediaResponse = await this.overseerrApi.getShow(tmdb.id.toString());
+          tvMediaResponse = await this.seerrApi.getShow(tmdb.id.toString());
           if (dataType === 'season' || dataType === 'episode') {
             const seasonNumber =
               dataType === 'season'
                 ? origLibItem.index
                 : origLibItem.parentIndex;
-            seasonMediaResponse = await this.overseerrApi.getSeason(
+            seasonMediaResponse = await this.seerrApi.getSeason(
               tmdb.id.toString(),
               seasonNumber?.toString(),
             );
             if (!seasonMediaResponse) {
               this.logger.debug(
-                `Couldn't fetch season data for '${libItem.title}' season ${seasonNumber} from Overseerr. As a result, unreliable results are expected.`,
+                `Couldn't fetch season data for '${libItem.title}' season ${seasonNumber} from Seerr. As a result, unreliable results are expected.`,
               );
             }
           }
         }
       } else {
         this.logger.debug(
-          `Couldn't find tmdb id for media '${libItem.title}' with id '${libItem.id}'. As a result, no Overseerr query could be made.`,
+          `Couldn't find tmdb id for media '${libItem.title}' with id '${libItem.id}'. As a result, no Seerr query could be made.`,
         );
       }
 
-      const mediaResponse: OverSeerrTVResponse | OverSeerrMovieResponse =
+      const mediaResponse: SeerrTVResponse | SeerrMovieResponse =
         tvMediaResponse ?? movieMediaResponse;
 
       if (mediaResponse?.mediaInfo) {
@@ -105,11 +102,9 @@ export class OverseerrGetterService {
             try {
               const userNames: string[] = [];
               if (mediaResponse.mediaInfo.requests) {
-                // Only fetch media server users if we need them (for Plex user lookup)
                 let mediaServerUsers: MediaUser[] | null = null;
 
                 for (const request of mediaResponse.mediaInfo.requests) {
-                  // for seasons, only add if user requested the correct season
                   if (
                     (dataType === 'season' || dataType === 'episode') &&
                     request.type === 'tv'
@@ -137,7 +132,6 @@ export class OverseerrGetterService {
                       }
                     }
                   } else {
-                    // for shows and movies, add every request user
                     const username = await this.resolveRequestUsername(
                       request,
                       mediaServerUsers,
@@ -154,11 +148,11 @@ export class OverseerrGetterService {
                     }
                   }
                 }
-                return [...new Set(userNames)]; // return only unique usernames
+                return [...new Set(userNames)];
               }
               return [];
             } catch (e) {
-              this.logger.warn("Couldn't get addUser from Overseerr");
+              this.logger.warn("Couldn't get addUser from Seerr");
               this.logger.debug(e);
             }
           }
@@ -264,13 +258,13 @@ export class OverseerrGetterService {
         }
       } else {
         this.logger.debug(
-          `Couldn't fetch Overseerr metadate for media '${libItem.title}' with id '${libItem.id}'. As a result, no Overseerr query could be made.`,
+          `Couldn't fetch Seerr metadata for media '${libItem.title}' with id '${libItem.id}'. As a result, no Seerr query could be made.`,
         );
         return null;
       }
     } catch (e) {
       this.logger.warn(
-        `Overseerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
+        `Seerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
       );
       this.logger.debug(e);
       return undefined;
@@ -279,9 +273,9 @@ export class OverseerrGetterService {
 
   private getSeasonRequests(
     libItem: MediaItem,
-    mediaResponse: OverSeerrTVResponse,
+    mediaResponse: SeerrTVResponse,
   ) {
-    const seasonRequests: OverseerrTVRequest[] = [];
+    const seasonRequests: SeerrTVRequest[] = [];
     mediaResponse.mediaInfo?.requests.forEach((el) => {
       const season = el.seasons.find(
         (season) =>
@@ -295,10 +289,7 @@ export class OverseerrGetterService {
     return seasonRequests;
   }
 
-  private includesSeason(
-    seasons: OverseerrSeasonRequest[],
-    seasonNumber: number,
-  ) {
+  private includesSeason(seasons: SeerrSeasonRequest[], seasonNumber: number) {
     const season = seasons.find(
       (season) => season.seasonNumber === seasonNumber,
     );
@@ -306,14 +297,20 @@ export class OverseerrGetterService {
   }
 
   /**
-   * Resolves the username from an Overseerr request.
-   * Handles different user types:
+   * Resolves the username from a Seerr request.
+   * Handles all user types (Plex, local, Jellyfin, Emby):
    * - userType 2: Local user - uses username directly
+   * - userType 3/4: Jellyfin/Emby user - uses jellyfinUsername directly
    * - userType 1 (or other): Plex user - looks up in media server users by ID
    */
   private async resolveRequestUsername(
     request: {
-      requestedBy?: { userType?: number; username?: string; plexId?: number };
+      requestedBy?: {
+        userType?: number;
+        username?: string;
+        jellyfinUsername?: string;
+        plexId?: number;
+      };
     },
     cachedUsers: MediaUser[] | null,
     fetchUsers: () => Promise<MediaUser[]>,
@@ -326,7 +323,12 @@ export class OverseerrGetterService {
       return requestedBy.username;
     }
 
-    // Plex user - look up in media server users
+    // Jellyfin/Emby user - use jellyfinUsername directly
+    if (requestedBy.userType === 3 || requestedBy.userType === 4) {
+      return requestedBy.jellyfinUsername;
+    }
+
+    // Plex user (or unknown) - look up in media server users
     if (requestedBy.plexId) {
       const users = cachedUsers ?? (await fetchUsers());
       const user = users.find((u) => u.id === String(requestedBy.plexId));

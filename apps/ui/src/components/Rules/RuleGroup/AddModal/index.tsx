@@ -160,7 +160,7 @@ const ruleGroupFormSchema = z
     showRecommended: z.boolean(),
     showHome: z.boolean(),
     listExclusions: z.boolean(),
-    forceOverseerr: z.boolean(),
+    forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
     manualCollectionName: z.string().optional(),
     sortTitle: z.string().optional(),
@@ -232,7 +232,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   showRecommended: editData?.collection?.visibleOnRecommended ?? true,
   showHome: editData?.collection?.visibleOnHome ?? true,
   listExclusions: editData?.collection?.listExclusions ?? true,
-  forceOverseerr: editData?.collection?.forceOverseerr ?? false,
+  forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
   manualCollectionName: editData?.collection?.manualCollectionName ?? '',
   sortTitle: editData?.collection?.sortTitle ?? '',
@@ -341,8 +341,8 @@ const AddModal = (props: AddModal) => {
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
-  const overseerrEnabled =
-    constants?.applications?.some((x) => x.id == Application.OVERSEERR) ?? false
+  const seerrEnabled =
+    constants?.applications?.some((x) => x.id == Application.SEERR) ?? false
 
   function updateLibraryId(value: string) {
     if (!libraries) {
@@ -504,7 +504,7 @@ const AddModal = (props: AddModal) => {
       isActive: data.active,
       useRules: data.useRules,
       listExclusions: data.listExclusions,
-      forceOverseerr: data.forceOverseerr,
+      forceSeerr: data.forceSeerr,
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
@@ -985,12 +985,12 @@ const AddModal = (props: AddModal) => {
                       </div>
                     )}
 
-                    {overseerrEnabled && (
+                    {seerrEnabled && (
                       <div className="flex flex-row items-center justify-between py-4">
-                        <label htmlFor="force_overseerr" className="text-label">
-                          Force delete Overseerr request
+                        <label htmlFor="force_seerr" className="text-label">
+                          Force delete Seerr request
                           <p className="text-xs font-normal">
-                            Deletes the Overseerr request instead of relying on
+                            Deletes the Seerr request instead of relying on
                             media availability sync
                           </p>
                         </label>
@@ -998,9 +998,9 @@ const AddModal = (props: AddModal) => {
                           <div className="form-input-field">
                             <input
                               type="checkbox"
-                              id="force_overseerr"
+                              id="force_seerr"
                               className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                              {...register('forceOverseerr')}
+                              {...register('forceSeerr')}
                             />
                           </div>
                         </div>

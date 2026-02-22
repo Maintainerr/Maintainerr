@@ -4,12 +4,11 @@ import Overview from './components/Overview'
 import Settings from './components/Settings'
 import SettingsAbout from './components/Settings/About'
 import SettingsJellyfin from './components/Settings/Jellyfin'
-import SettingsJellyseerr from './components/Settings/Jellyseerr'
+import SettingsSeerr from './components/Settings/Seerr'
 import SettingsJobs from './components/Settings/Jobs'
 import SettingsLogs from './components/Settings/Logs'
 import SettingsMain from './components/Settings/Main'
 import SettingsNotifications from './components/Settings/Notifications'
-import SettingsOverseerr from './components/Settings/Overseerr'
 import SettingsPlex from './components/Settings/Plex'
 import SettingsRadarr from './components/Settings/Radarr'
 import SettingsSonarr from './components/Settings/Sonarr'
@@ -121,12 +120,8 @@ export const router = createBrowserRouter(
               element: <SettingsRadarr />,
             },
             {
-              path: 'overseerr',
-              element: <SettingsOverseerr />,
-            },
-            {
-              path: 'jellyseerr',
-              element: <SettingsJellyseerr />,
+              path: 'seerr',
+              element: <SettingsSeerr />,
             },
             {
               path: 'tautulli',

@@ -5,8 +5,7 @@ import {
   createCollection,
   createCollectionMedia,
 } from '../../../test/utils/data';
-import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
-import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { SettingsService } from '../settings/settings.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -24,8 +23,7 @@ describe('CollectionWorkerService', () => {
   let settings: Mocked<SettingsService>;
   let collectionRepository: Mocked<Repository<Collection>>;
   let collectionMediaRepository: Mocked<Repository<CollectionMedia>>;
-  let overseerrApi: Mocked<OverseerrApiService>;
-  let jellyseerrApi: Mocked<JellyseerrApiService>;
+  let seerrApi: Mocked<SeerrApiService>;
   let collectionHandler: Mocked<CollectionHandler>;
   let executionLock: Mocked<ExecutionLockService>;
 
@@ -43,8 +41,7 @@ describe('CollectionWorkerService', () => {
     collectionMediaRepository = unitRef.get(
       getRepositoryToken(CollectionMedia) as string,
     );
-    overseerrApi = unitRef.get(OverseerrApiService);
-    jellyseerrApi = unitRef.get(JellyseerrApiService);
+    seerrApi = unitRef.get(SeerrApiService);
     collectionHandler = unitRef.get(CollectionHandler);
     executionLock = unitRef.get(ExecutionLockService);
 
@@ -87,8 +84,7 @@ describe('CollectionWorkerService', () => {
 
   it('should handle media for collection and trigger availability syncs', async () => {
     settings.testConnections.mockResolvedValue(true);
-    settings.overseerrConfigured.mockReturnValue(true);
-    settings.jellyseerrConfigured.mockReturnValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
@@ -103,7 +99,6 @@ describe('CollectionWorkerService', () => {
 
     expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
-    expect(overseerrApi.api.post).toHaveBeenCalled();
-    expect(jellyseerrApi.api.post).toHaveBeenCalled();
+    expect(seerrApi.api.post).toHaveBeenCalled();
   });
 });

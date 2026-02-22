@@ -61,9 +61,8 @@ export enum Application {
   PLEX = 0,
   RADARR = 1,
   SONARR = 2,
-  OVERSEERR = 3,
+  SEERR = 3,
   TAUTULLI = 4,
-  JELLYSEERR = 5,
   JELLYFIN = 6,
 }
 
@@ -74,9 +73,8 @@ export const ApplicationNames: Record<Application, string> = {
   [Application.PLEX]: 'Plex',
   [Application.RADARR]: 'Radarr',
   [Application.SONARR]: 'Sonarr',
-  [Application.OVERSEERR]: 'Overseerr',
+  [Application.SEERR]: 'Seerr',
   [Application.TAUTULLI]: 'Tautulli',
-  [Application.JELLYSEERR]: 'Jellyseerr',
   [Application.JELLYFIN]: 'Jellyfin',
 }
 

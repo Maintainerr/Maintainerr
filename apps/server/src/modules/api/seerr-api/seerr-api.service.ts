@@ -1,11 +1,14 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
-import { JellyseerrApi } from './helpers/jellyseerr-api.helper';
+import { SettingsService } from '../../../modules/settings/settings.service';
+import {
+  MaintainerrLogger,
+  MaintainerrLoggerFactory,
+} from '../../logging/logs.service';
+import { SeerrApi } from './helpers/seerr-api.helper';
 
-interface JellyseerrMediaInfo {
+interface SeerrMediaInfo {
   id: number;
   tmdbId: number;
   tvdbId: number;
@@ -16,38 +19,38 @@ interface JellyseerrMediaInfo {
   externalServiceId4k: number;
 }
 
-export interface JellyseerrMovieResponse {
+export interface SeerrMovieResponse {
   id: number;
-  mediaInfo?: JellyseerrMovieInfo;
+  mediaInfo?: SeerrMovieInfo;
   releaseDate?: Date;
 }
 
-interface JellyseerrMovieInfo extends JellyseerrMediaInfo {
+interface SeerrMovieInfo extends SeerrMediaInfo {
   mediaType: 'movie';
-  requests?: JellyseerrMovieRequest[];
+  requests?: SeerrMovieRequest[];
 }
 
-export interface JellyseerrTVResponse {
+export interface SeerrTVResponse {
   id: number;
-  mediaInfo?: JellyseerrTVInfo;
+  mediaInfo?: SeerrTVInfo;
   firstAirDate?: Date;
 }
 
-interface JellyseerrTVInfo extends JellyseerrMediaInfo {
+interface SeerrTVInfo extends SeerrMediaInfo {
   mediaType: 'tv';
-  requests?: JellyseerrTVRequest[];
-  seasons?: JellyseerrSeasonResponse[];
+  requests?: SeerrTVRequest[];
+  seasons?: SeerrSeasonResponse[];
 }
 
-export interface JellyseerrSeasonResponse {
+export interface SeerrSeasonResponse {
   id: number;
   name: string;
   airDate?: string;
   seasonNumber: number;
-  episodes: JellyseerrEpisode[];
+  episodes: SeerrEpisode[];
 }
 
-interface JellyseerrEpisode {
+interface SeerrEpisode {
   id: number;
   name: string;
   airDate?: string;
@@ -55,33 +58,33 @@ interface JellyseerrEpisode {
   episodeNumber: number;
 }
 
-export type JellyseerrBaseRequest = {
+export type SeerrBaseRequest = {
   id: number;
   status: number;
   createdAt: string;
   updatedAt: string;
-  requestedBy: JellyseerrUser;
-  modifiedBy: JellyseerrUser;
+  requestedBy: SeerrUser;
+  modifiedBy: SeerrUser;
   is4k: false;
   serverId: number;
   profileId: number;
   rootFolder: string;
 };
 
-export type JellyseerrTVRequest = JellyseerrBaseRequest & {
+export type SeerrTVRequest = SeerrBaseRequest & {
   type: 'tv';
-  media: JellyseerrTVInfo;
-  seasons: JellyseerrSeasonRequest[];
+  media: SeerrTVInfo;
+  seasons: SeerrSeasonRequest[];
 };
 
-export type JellyseerrMovieRequest = JellyseerrBaseRequest & {
+export type SeerrMovieRequest = SeerrBaseRequest & {
   type: 'movie';
-  media: JellyseerrMovieInfo;
+  media: SeerrMovieInfo;
 };
 
-export type JellyseerrRequest = JellyseerrMovieRequest | JellyseerrTVRequest;
+export type SeerrRequest = SeerrMovieRequest | SeerrTVRequest;
 
-interface JellyseerrUser {
+interface SeerrUser {
   id: number;
   email: string;
   username: string;
@@ -97,39 +100,39 @@ interface JellyseerrUser {
   requestCount: number;
 }
 
-export interface JellyseerrSeasonRequest {
+export interface SeerrSeasonRequest {
   id: number;
   name: string;
   seasonNumber: number;
 }
 
-interface JellyseerrStatus {
+interface SeerrStatus {
   version: string;
   commitTag: string;
   updateAvailable: boolean;
   commitsBehind: number;
 }
 
-interface JellyseerrAbout {
+interface SeerrAbout {
   version: string;
 }
 
-export interface JellyseerrBasicApiResponse {
+export interface SeerrBasicApiResponse {
   code: string;
   description: string;
 }
 
-interface JellyseerrUserResponse {
+interface SeerrUserResponse {
   pageInfo: {
     pages: number;
     pageSize: number;
     results: number;
     page: number;
   };
-  results: JellyseerrUserResponseResult[];
+  results: SeerrUserResponseResult[];
 }
 
-interface JellyseerrUserResponseResult {
+interface SeerrUserResponseResult {
   permissions: number;
   id: number;
   email: string;
@@ -145,58 +148,55 @@ interface JellyseerrUserResponseResult {
 }
 
 @Injectable()
-export class JellyseerrApiService {
-  api: JellyseerrApi;
+export class SeerrApiService {
+  api: SeerrApi;
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settings: SettingsService,
     private readonly logger: MaintainerrLogger,
+    private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
-    this.logger.setContext(JellyseerrApiService.name);
+    this.logger.setContext(SeerrApiService.name);
   }
 
   public init() {
-    if (!this.settings.jellyseerr_url) {
+    if (!this.settings.seerr_url) {
       return;
     }
 
-    this.api = new JellyseerrApi(
+    this.api = new SeerrApi(
       {
-        url: `${this.settings.jellyseerr_url.replace(/\/$/, '')}/api/v1`,
-        apiKey: `${this.settings.jellyseerr_api_key}`,
+        url: `${this.settings.seerr_url.replace(/\/$/, '')}/api/v1`,
+        apiKey: `${this.settings.seerr_api_key}`,
       },
-      this.logger,
+      this.loggerFactory.createLogger(),
     );
   }
 
-  public async getMovie(id: string | number): Promise<JellyseerrMovieResponse> {
+  public async getMovie(id: string | number): Promise<SeerrMovieResponse> {
     try {
-      const response: JellyseerrMovieResponse = await this.api.get(
-        `/movie/${id}`,
-      );
+      const response: SeerrMovieResponse = await this.api.get(`/movie/${id}`);
       return response;
     } catch (err) {
       this.logger.warn(
-        'Jellyseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
     }
   }
 
-  public async getShow(showId: string | number): Promise<JellyseerrTVResponse> {
+  public async getShow(showId: string | number): Promise<SeerrTVResponse> {
     try {
       if (showId) {
-        const response: JellyseerrTVResponse = await this.api.get(
-          `/tv/${showId}`,
-        );
+        const response: SeerrTVResponse = await this.api.get(`/tv/${showId}`);
         return response;
       }
       return undefined;
     } catch (err) {
       this.logger.warn(
-        'Jellyseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
@@ -206,10 +206,10 @@ export class JellyseerrApiService {
   public async getSeason(
     showId: string | number,
     season: string,
-  ): Promise<JellyseerrSeasonResponse> {
+  ): Promise<SeerrSeasonResponse> {
     try {
       if (showId) {
-        const response: JellyseerrSeasonResponse = await this.api.get(
+        const response: SeerrSeasonResponse = await this.api.get(
           `/tv/${showId}/season/${season}`,
         );
         return response;
@@ -217,23 +217,23 @@ export class JellyseerrApiService {
       return undefined;
     } catch (err) {
       this.logger.warn(
-        'Jellyseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
     }
   }
 
-  public async getUsers(): Promise<any> {
+  public async getUsers(): Promise<SeerrUserResponseResult[]> {
     try {
       const size = 50;
       let hasNext = true;
       let skip = 0;
 
-      const users: JellyseerrUserResponseResult[] = [];
+      const users: SeerrUserResponseResult[] = [];
 
       while (hasNext) {
-        const resp: JellyseerrUserResponse = await this.api.get(
+        const resp: SeerrUserResponse = await this.api.get(
           `/user?take=${size}&skip=${skip}`,
         );
 
@@ -248,7 +248,7 @@ export class JellyseerrApiService {
       return users;
     } catch (err) {
       this.logger.warn(
-        `Couldn't fetch Jellyseerr users. Is the application running?`,
+        `Couldn't fetch Seerr users. Is the application running?`,
       );
       this.logger.debug(err);
       return [];
@@ -257,13 +257,13 @@ export class JellyseerrApiService {
 
   public async deleteRequest(requestId: string) {
     try {
-      const response: JellyseerrBasicApiResponse = await this.api.delete(
+      const response: SeerrBasicApiResponse = await this.api.delete(
         `/request/${requestId}`,
       );
       return response;
     } catch (err) {
       this.logger.warn(
-        'Jellyseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
@@ -274,7 +274,7 @@ export class JellyseerrApiService {
     try {
       const media = await this.getShow(tmdbid);
 
-      if (media && media.mediaInfo) {
+      if (media?.mediaInfo) {
         const requests = media.mediaInfo.requests.filter((el) =>
           el.seasons.find((s) => s.seasonNumber === season),
         );
@@ -283,13 +283,13 @@ export class JellyseerrApiService {
             await this.deleteRequest(el.id.toString());
           }
         } else {
-          // no requests ? clear data and let Jellyseerr refetch.
+          // no requests? clear data and let Seerr refetch.
           await this.api.delete(`/media/${media.id}`);
         }
       }
     } catch (err) {
       this.logger.warn(
-        'Jellyseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
@@ -298,13 +298,13 @@ export class JellyseerrApiService {
 
   public async deleteMediaItem(mediaId: string | number) {
     try {
-      const response: JellyseerrBasicApiResponse = await this.api.delete(
+      const response: SeerrBasicApiResponse = await this.api.delete(
         `/media/${mediaId}`,
       );
       return response;
     } catch (e) {
       this.logger.log(
-        `Couldn't delete media ${mediaId}. Does it exist in Jellyseerr? ${e.message}`,
+        `Couldn't delete media ${mediaId}. Does it exist in Seerr? ${e.message}`,
       );
       this.logger.debug(e);
       return null;
@@ -313,7 +313,7 @@ export class JellyseerrApiService {
 
   public async removeMediaByTmdbId(id: string | number, type: 'movie' | 'tv') {
     try {
-      let media: JellyseerrMovieResponse | JellyseerrTVResponse;
+      let media: SeerrMovieResponse | SeerrTVResponse;
       if (type === 'movie') {
         media = await this.getMovie(id);
       } else {
@@ -328,52 +328,49 @@ export class JellyseerrApiService {
         await this.deleteMediaItem(media.mediaInfo.id.toString());
       } catch (e) {
         this.logger.log(
-          `Couldn't delete media by TMDB ID ${id}. Does it exist in Jellyseerr? ${e.message}`,
+          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr? ${e.message}`,
         );
       }
     } catch (err) {
       this.logger.warn(
-        'Jellyseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
     }
   }
 
-  public async status(): Promise<JellyseerrStatus> {
+  public async status(): Promise<SeerrStatus> {
     try {
-      const response: JellyseerrStatus = await this.api.getWithoutCache(
-        `/status`,
-        {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
-        },
-      );
+      const response: SeerrStatus = await this.api.getWithoutCache(`/status`, {
+        signal: AbortSignal.timeout(10000),
+      });
       return response;
     } catch (e) {
-      this.logger.log(`Couldn't fetch Jellyseerr status: ${e.message}`);
+      this.logger.log(`Couldn't fetch Seerr status: ${e.message}`);
       this.logger.debug(e);
       return null;
     }
   }
 
   public async testConnection(
-    params?: ConstructorParameters<typeof JellyseerrApi>[0],
+    params?: ConstructorParameters<typeof SeerrApi>[0],
   ): Promise<BasicResponseDto> {
     const api = params
-      ? new JellyseerrApi(
+      ? new SeerrApi(
           {
             apiKey: params.apiKey,
             url: `${params.url?.replace(/\/$/, '')}/api/v1`,
           },
-          this.logger,
+          this.loggerFactory.createLogger(),
         )
       : this.api;
 
     try {
-      const response = await api.getRawWithoutCache<JellyseerrAbout>(
+      const response = await api.getRawWithoutCache<SeerrAbout>(
         `/settings/about`,
         {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+          signal: AbortSignal.timeout(10000),
         },
       );
 
@@ -392,9 +389,7 @@ export class JellyseerrApiService {
         message: response.data.version,
       };
     } catch (e) {
-      this.logger.warn(
-        `A failure occurred testing Jellyseerr connectivity: ${e}`,
-      );
+      this.logger.warn(`A failure occurred testing Seerr connectivity: ${e}`);
 
       if (e instanceof AxiosError) {
         if (e.response?.status === 403) {

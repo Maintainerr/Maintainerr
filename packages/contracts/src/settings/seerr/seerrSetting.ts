@@ -1,6 +1,6 @@
 import z from 'zod'
 
-export const jellyseerrSettingSchema = z.object({
+export const seerrSettingSchema = z.object({
   url: z
     .string()
     .trim()
@@ -13,4 +13,4 @@ export const jellyseerrSettingSchema = z.object({
   api_key: z.string().trim(),
 })
 
-export type JellyseerrSetting = z.infer<typeof jellyseerrSettingSchema>
+export type SeerrSetting = z.infer<typeof seerrSettingSchema>

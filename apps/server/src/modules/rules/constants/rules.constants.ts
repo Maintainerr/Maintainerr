@@ -863,17 +863,18 @@ export class RuleConstants {
       ],
     },
     {
-      id: Application.OVERSEERR,
-      name: 'Overseerr',
+      id: Application.SEERR,
+      name: 'Seerr',
       mediaType: MediaType.BOTH,
       props: [
         {
           id: 0,
           name: 'addUser',
-          humanName: 'Requested by user (Plex or local username)',
+          humanName:
+            'Requested by user (Jellyfin, Emby, Plex or local username)',
           mediaType: MediaType.BOTH,
           type: RuleType.TEXT,
-        }, //  returns username[]
+        },
         {
           id: 1,
           name: 'requestDate',
@@ -912,7 +913,7 @@ export class RuleConstants {
         {
           id: 6,
           name: 'isRequested',
-          humanName: 'Requested in Overseerr',
+          humanName: 'Requested in Seerr',
           mediaType: MediaType.BOTH,
           type: RuleType.BOOL,
         },
@@ -989,63 +990,6 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
-        },
-      ],
-    },
-    {
-      id: Application.JELLYSEERR,
-      name: 'Jellyseerr',
-      mediaType: MediaType.BOTH,
-      props: [
-        {
-          id: 0,
-          name: 'addUser',
-          humanName:
-            'Requested by user (Jellyfin, Emby, Plex or local username)',
-          mediaType: MediaType.BOTH,
-          type: RuleType.TEXT,
-        }, //  returns username[]
-        {
-          id: 1,
-          name: 'requestDate',
-          humanName: 'Request date',
-          mediaType: MediaType.BOTH,
-          type: RuleType.DATE,
-        },
-        {
-          id: 2,
-          name: 'releaseDate',
-          humanName: 'Release/air date',
-          mediaType: MediaType.BOTH,
-          type: RuleType.DATE,
-        },
-        {
-          id: 3,
-          name: 'approvalDate',
-          humanName: 'Approval date',
-          mediaType: MediaType.BOTH,
-          type: RuleType.DATE,
-        },
-        {
-          id: 4,
-          name: 'mediaAddedAt',
-          humanName: 'Media downloaded date',
-          mediaType: MediaType.BOTH,
-          type: RuleType.DATE,
-        },
-        {
-          id: 5,
-          name: 'amountRequested',
-          humanName: 'Amount of requests',
-          mediaType: MediaType.BOTH,
-          type: RuleType.NUMBER,
-        },
-        {
-          id: 6,
-          name: 'isRequested',
-          humanName: 'Requested in Jellyseerr',
-          mediaType: MediaType.BOTH,
-          type: RuleType.BOOL,
         },
       ],
     },
