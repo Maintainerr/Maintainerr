@@ -23,12 +23,12 @@ jobs:
           days-before-issue-stale: 30
           days-before-issue-close: 14
           exempt-issue-labels: never-stale,bug,enhancement
-          exempt-issue-assignees: jorenn92,ydkmlt84
+          exempt-issue-assignees: ydkmlt84,enoch85
           stale-issue-label: "stale"
           close-issue-label: "stale-closed"
           stale-issue-message: "This issue has been marked stale because it has been 30 days with no activity."
           close-issue-message: "This issue was closed because it has been inactive for 14 days since being marked as stale."
           days-before-pr-stale: -1
           days-before-pr-close: -1
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.ACTIONS_TOKEN }}
           debug-only: false
