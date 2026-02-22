@@ -1,7 +1,10 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
 import { SettingsService } from '../../../modules/settings/settings.service';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../utils/connection-error';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -395,30 +398,15 @@ export class OverseerrApiService {
         message: response.data.version,
       };
     } catch (e) {
-      this.logger.warn(
-        `A failure occurred testing Overseerr connectivity: ${e}`,
-      );
-
-      if (e instanceof AxiosError) {
-        if (e.response?.status === 403) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: 'Invalid API key',
-          };
-        } else if (e.response?.status) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: `Failure, received response: ${e.response?.status} ${e.response?.statusText}.`,
-          };
-        }
-      }
+      logConnectionTestError(this.logger, 'Overseerr', e);
 
       return {
         status: 'NOK',
         code: 0,
-        message: `Failure: ${e.message}`,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Overseerr. Verify URL and API key.',
+        ),
       };
     }
   }

@@ -13,6 +13,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../utils/connection-error';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
 import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -444,25 +448,40 @@ export class SettingsService implements SettingDto {
       users?: Array<{ id: string; name: string }>;
     }
   > {
-    const result = await this.mediaServerFactory.testJellyfinConnection(
-      settings.jellyfin_url,
-      settings.jellyfin_api_key,
-    );
+    try {
+      const result = await this.mediaServerFactory.testJellyfinConnection(
+        settings.jellyfin_url,
+        settings.jellyfin_api_key,
+      );
 
-    if (result.success) {
-      return {
-        status: 'OK',
-        code: 1,
-        message: `Connected to ${result.serverName}`,
-        serverName: result.serverName,
-        version: result.version,
-        users: result.users,
-      };
-    } else {
+      if (result.success) {
+        return {
+          status: 'OK',
+          code: 1,
+          message: `Connected to ${result.serverName}`,
+          serverName: result.serverName,
+          version: result.version,
+          users: result.users,
+        };
+      }
+
       return {
         status: 'NOK',
         code: 0,
-        message: result.error || 'Connection failed',
+        message: formatConnectionFailureMessage(
+          result.error,
+          'Failed to connect to Jellyfin. Verify URL and API key.',
+        ),
+      };
+    } catch (e) {
+      logConnectionTestError(this.logger, 'Jellyfin', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Jellyfin. Verify URL and API key.',
+        ),
       };
     }
   }
@@ -941,8 +960,15 @@ export class SettingsService implements SettingDto {
           }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Tautulli', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Tautulli. Verify URL and API key.',
+        ),
+      };
     }
   }
 
@@ -965,8 +991,15 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Radarr', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Radarr. Verify URL and API key.',
+        ),
+      };
     }
   }
 
@@ -989,8 +1022,15 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Sonarr', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Sonarr. Verify URL and API key.',
+        ),
+      };
     }
   }
 
@@ -1001,8 +1041,15 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Plex', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Plex. Verify host and credentials.',
+        ),
+      };
     }
   }
 

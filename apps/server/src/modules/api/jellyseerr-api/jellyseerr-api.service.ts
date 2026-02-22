@@ -1,6 +1,9 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../utils/connection-error';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { JellyseerrApi } from './helpers/jellyseerr-api.helper';
@@ -392,30 +395,15 @@ export class JellyseerrApiService {
         message: response.data.version,
       };
     } catch (e) {
-      this.logger.warn(
-        `A failure occurred testing Jellyseerr connectivity: ${e}`,
-      );
-
-      if (e instanceof AxiosError) {
-        if (e.response?.status === 403) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: 'Invalid API key',
-          };
-        } else if (e.response?.status) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: `Failure, received response: ${e.response?.status} ${e.response?.statusText}.`,
-          };
-        }
-      }
+      logConnectionTestError(this.logger, 'Jellyseerr', e);
 
       return {
         status: 'NOK',
         code: 0,
-        message: `Failure: ${e.message}`,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Jellyseerr. Verify URL and API key.',
+        ),
       };
     }
   }

@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { IRadarrSetting } from '..'
+import {
+  getApiErrorMessage,
+  normalizeConnectionErrorMessage,
+} from '../../../../utils/ApiError'
 import { PostApiHandler, PutApiHandler } from '../../../../utils/ApiHandler'
 import {
   addPortToUrl,
@@ -172,7 +176,10 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,
-          version: resp.message,
+          version: normalizeConnectionErrorMessage(
+            resp.message,
+            'Failed to connect to Radarr. Verify URL and API key.',
+          ),
         })
 
         if (resp.code == 1) {
@@ -183,13 +190,14 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
             apiKey,
           })
         }
-
-        setTesting(false)
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         setTestResult({
           status: false,
-          version: '0',
+          version: getApiErrorMessage(
+            err,
+            'Failed to connect to Radarr. Verify URL and API key.',
+          ),
         })
       })
       .finally(() => {
