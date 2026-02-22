@@ -30,9 +30,20 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    GetApiHandler('/settings/test/setup').then((setupDone) => {
+    // Check if setup is complete, if not redirect to appropriate settings page
+    Promise.all([
+      GetApiHandler('/settings/test/setup'),
+      GetApiHandler('/settings'),
+    ]).then(([setupDone, settings]) => {
       if (!setupDone) {
-        navigate('/settings/plex')
+        const mediaServerType = settings?.media_server_type
+        if (mediaServerType) {
+          // User has chosen a media server, redirect to its settings
+          navigate(`/settings/${mediaServerType}`)
+        } else {
+          // No media server chosen yet, go to main settings to choose
+          navigate('/settings/main')
+        }
       }
     })
   }, [navigate, location.pathname])

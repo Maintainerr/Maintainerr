@@ -16,6 +16,26 @@ describe('RuleComparatorService', () => {
   });
 
   describe('doRuleAction', () => {
+    it('returns false for NOT_CONTAINS when searched tag exists in list (reported keep-tag scenario)', () => {
+      const result = ruleComparatorService['doRuleAction'](
+        ['9-simon', 'anime', 'huntarr-upgrade', 'keep'],
+        'keep',
+        RulePossibility.NOT_CONTAINS,
+      );
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true for NOT_CONTAINS when searched tag does not exist in list', () => {
+      const result = ruleComparatorService['doRuleAction'](
+        ['9-simon', 'anime', 'huntarr-upgrade'],
+        'keep',
+        RulePossibility.NOT_CONTAINS,
+      );
+
+      expect(result).toBe(true);
+    });
+
     const equalsData = [
       [true, 'abc', 'abc'],
       [true, 'abc', 'ABC'],

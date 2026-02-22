@@ -8,12 +8,14 @@ import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { NotificationTimerService } from './notifications-timer.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { CollectionsModule } from '../collections/collections.module';
+import { MediaServerModule } from '../api/media-server/media-server.module';
 
 @Module({
   imports: [
     PlexApiModule,
     CollectionsModule,
     TasksModule,
+    MediaServerModule,
     TypeOrmModule.forFeature([Notification, RuleGroup]),
   ],
   providers: [NotificationService, NotificationTimerService],

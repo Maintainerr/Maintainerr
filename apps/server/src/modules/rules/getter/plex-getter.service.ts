@@ -1,12 +1,14 @@
-import { RuleValueType } from '@maintainerr/contracts';
+import {
+  MediaItem,
+  MediaItemType,
+  RuleValueType,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import {
-  PlexLibraryItem,
   PlexSeenBy,
   SimplePlexUser,
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -15,6 +17,7 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
+import { buildCollectionExcludeNames } from '../helpers/collection-exclude.helper';
 
 @Injectable()
 export class PlexGetterService {
@@ -33,17 +36,16 @@ export class PlexGetterService {
 
   async get(
     id: number,
-    libItem: PlexLibraryItem,
-    dataType?: EPlexDataType,
+    libItem: MediaItem,
+    dataType?: MediaItemType,
     ruleGroup?: RulesDto,
   ): Promise<RuleValueType> {
     try {
       const prop = this.plexProperties.find((el) => el.id === id);
 
       // fetch metadata, parent & grandparent from cache, this data is more complete
-      const metadata: PlexMetadata = await this.plexApi.getMetadata(
-        libItem.ratingKey,
-      );
+      // libItem.id maps to Plex's ratingKey
+      const metadata: PlexMetadata = await this.plexApi.getMetadata(libItem.id);
 
       // Parent/grandparent metadata is only needed for some properties.
       // Lazy-load and memoize so we don't fetch unless a case uses it.
@@ -108,27 +110,18 @@ export class PlexGetterService {
         case 'labels': {
           const item =
             metadata.type === 'episode'
-              ? (((await getGrandparent()) as unknown as PlexLibraryItem) ??
-                metadata)
+              ? ((await getGrandparent()) ?? metadata)
               : metadata.type === 'season'
-                ? (((await getParent()) as unknown as PlexLibraryItem) ??
-                  metadata)
+                ? ((await getParent()) ?? metadata)
                 : metadata;
 
           return item.Label ? item.Label.map((l) => l.tag) : [];
         }
         case 'collections': {
+          const excludeNames = buildCollectionExcludeNames(ruleGroup);
           return metadata.Collection
             ? metadata.Collection.filter(
-                (el) =>
-                  el.tag.toLowerCase().trim() !==
-                  (ruleGroup?.collection?.manualCollection &&
-                  ruleGroup?.collection?.manualCollectionName
-                    ? ruleGroup.collection.manualCollectionName
-                    : ruleGroup.name
-                  )
-                    .toLowerCase()
-                    .trim(),
+                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
               ).length
             : 0;
         }
@@ -141,17 +134,10 @@ export class PlexGetterService {
             ...(grandparent?.Collection || []),
           ];
 
+          const excludeNames = buildCollectionExcludeNames(ruleGroup);
           return combinedCollections
             ? combinedCollections.filter(
-                (el) =>
-                  el.tag.toLowerCase().trim() !==
-                  (ruleGroup?.collection?.manualCollection &&
-                  ruleGroup?.collection?.manualCollectionName
-                    ? ruleGroup.collection.manualCollectionName
-                    : ruleGroup.name
-                  )
-                    .toLowerCase()
-                    .trim(),
+                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
               ).length
             : 0;
         }
@@ -274,11 +260,9 @@ export class PlexGetterService {
         case 'genre': {
           const item =
             metadata.type === 'episode'
-              ? (((await getGrandparent()) as unknown as PlexLibraryItem) ??
-                metadata)
+              ? ((await getGrandparent()) ?? metadata)
               : metadata.type === 'season'
-                ? (((await getParent()) as unknown as PlexLibraryItem) ??
-                  metadata)
+                ? ((await getParent()) ?? metadata)
                 : metadata;
           return item.Genre ? item.Genre.map((el) => el.tag) : null;
         }
@@ -633,17 +617,10 @@ export class PlexGetterService {
             }
           }
 
+          const excludeNames = buildCollectionExcludeNames(ruleGroup);
           const normalCollectionCount = metadata.Collection
             ? metadata.Collection.filter(
-                (el) =>
-                  el.tag.toLowerCase().trim() !==
-                  (ruleGroup?.collection?.manualCollection &&
-                  ruleGroup?.collection?.manualCollectionName
-                    ? ruleGroup.collection.manualCollectionName
-                    : ruleGroup.name
-                  )
-                    .toLowerCase()
-                    .trim(),
+                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
               ).length
             : 0;
 
@@ -681,17 +658,10 @@ export class PlexGetterService {
             ).length;
           }
 
+          const excludeNames = buildCollectionExcludeNames(ruleGroup);
           const normalCollectionCount = combinedCollections
             ? combinedCollections.filter(
-                (el) =>
-                  el.tag.toLowerCase().trim() !==
-                  (ruleGroup?.collection?.manualCollection &&
-                  ruleGroup?.collection?.manualCollectionName
-                    ? ruleGroup.collection.manualCollectionName
-                    : ruleGroup.name
-                  )
-                    .toLowerCase()
-                    .trim(),
+                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
               ).length
             : 0;
 
@@ -773,7 +743,7 @@ export class PlexGetterService {
       }
     } catch (e) {
       this.logger.warn(
-        `Plex-Getter - Action failed for '${libItem.title}' with id '${libItem.ratingKey}': ${e.message}`,
+        `Plex-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
       );
       this.logger.debug(e);
       return undefined;

@@ -10,9 +10,9 @@ export class TmdbApiController {
     return this.movieDbApi.getPerson({ personId: personId });
   }
   @Get('/movie/imdb/:id')
-  getMovie(@Param('id') imdbId: number) {
+  getMovie(@Param('id') imdbId: string) {
     return this.movieDbApi.getByExternalId({
-      externalId: imdbId.toString(),
+      externalId: imdbId,
       type: 'imdb',
     });
   }

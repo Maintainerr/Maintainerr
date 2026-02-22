@@ -1,4 +1,4 @@
-import { RuleExecuteStatusDto } from '@maintainerr/contracts';
+import { MediaItemType, RuleExecuteStatusDto } from '@maintainerr/contracts';
 import {
   Body,
   ConflictException,
@@ -6,7 +6,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   NotFoundException,
   Param,
@@ -18,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
 import { RulesDto } from './dtos/rules.dto';
@@ -31,7 +31,10 @@ export class RulesController {
     private readonly rulesService: RulesService,
     private readonly ruleExecutorSchedulerService: RuleExecutorSchedulerService,
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(RulesController.name);
+  }
 
   @Get('/constants')
   async getRuleConstants() {
@@ -54,8 +57,12 @@ export class RulesController {
   }
 
   @Get('/exclusion')
-  getExclusion(@Query() query: { rulegroupId?: number; plexId?: number }) {
-    return this.rulesService.getExclusions(query.rulegroupId, query.plexId);
+  getExclusion(
+    @Query('rulegroupId', new ParseIntPipe({ optional: true }))
+    rulegroupId?: number,
+    @Query('mediaServerId') mediaServerId?: string,
+  ) {
+    return this.rulesService.getExclusions(rulegroupId, mediaServerId);
   }
 
   @Get('/count')
@@ -75,17 +82,14 @@ export class RulesController {
 
   @Get()
   getRuleGroups(
-    @Query()
-    query: {
-      activeOnly?: boolean;
-      libraryId?: number;
-      typeId?: number;
-    },
+    @Query('activeOnly') activeOnly?: string,
+    @Query('libraryId') libraryId?: string,
+    @Query('typeId', new ParseIntPipe({ optional: true })) typeId?: number,
   ) {
     return this.rulesService.getRuleGroups(
-      query.activeOnly !== undefined ? query.activeOnly : false,
-      query.libraryId ? query.libraryId : undefined,
-      query.typeId ? query.typeId : undefined,
+      activeOnly !== undefined ? activeOnly === 'true' : false,
+      libraryId ? libraryId : undefined,
+      typeId ? typeId : undefined,
     );
   }
 
@@ -102,15 +106,47 @@ export class RulesController {
   @Post('/execute')
   async executeRules() {
     if (this.ruleExecutorJobManagerService.isProcessing()) {
-      throw new HttpException(
-        'The rule executor is already running',
-        HttpStatus.CONFLICT,
+      throw new ConflictException('The rule executor is already running');
+    }
+
+    const allGroups = await this.rulesService.getRuleGroups();
+
+    if (!allGroups || allGroups.length === 0) {
+      throw new ConflictException(
+        'No rule groups found. Create a rule group first.',
       );
     }
 
-    this.ruleExecutorSchedulerService
-      .enqueueAllActiveRuleGroups()
-      .catch((e) => console.error(e));
+    const activeGroups = allGroups.filter((rg) => rg.isActive);
+    const anyLibrarySet = allGroups.some(
+      (rg) => rg.libraryId && rg.libraryId !== '',
+    );
+
+    if (activeGroups.length === 0) {
+      const msg = anyLibrarySet
+        ? 'No active rule groups. Activate at least one rule group before running.'
+        : 'No active rule groups and no libraries are set. Please activate your rule groups and assign libraries before running.';
+      throw new ConflictException(msg);
+    }
+
+    const groupsWithLibrary = activeGroups.filter(
+      (rg) => rg.libraryId && rg.libraryId !== '',
+    );
+    if (groupsWithLibrary.length === 0) {
+      throw new ConflictException(
+        'All active rule groups are missing a library. Please edit your rules and assign libraries before running.',
+      );
+    }
+
+    this.ruleExecutorSchedulerService.enqueueAllActiveRuleGroups().catch((e) =>
+      this.logger.error(
+        {
+          message: 'Failed to enqueue all active rule groups',
+          error: e,
+        },
+        e instanceof Error ? e.stack : undefined,
+      ),
+    );
   }
 
   @Post('/:id/execute')
@@ -122,6 +158,12 @@ export class RulesController {
 
     if (!ruleGroup.isActive) {
       throw new ConflictException('Rule group is not active');
+    }
+
+    if (!ruleGroup.libraryId || ruleGroup.libraryId === '') {
+      throw new ConflictException(
+        'Rule group has no library assigned. Please edit the rule and select a library before running.',
+      );
     }
 
     if (this.ruleExecutorJobManagerService.isRuleGroupProcessingOrQueued(id)) {
@@ -163,9 +205,15 @@ export class RulesController {
       return;
     }
 
-    this.ruleExecutorJobManagerService
-      .stopProcessing()
-      .catch((e) => console.error(e));
+    this.ruleExecutorJobManagerService.stopProcessing().catch((e) =>
+      this.logger.error(
+        {
+          message: 'Failed to stop rule execution processing',
+          error: e,
+        },
+        e instanceof Error ? e.stack : undefined,
+      ),
+    );
     res.status(HttpStatus.ACCEPTED).send();
   }
 
@@ -213,11 +261,11 @@ export class RulesController {
     return await this.rulesService.removeExclusion(id);
   }
 
-  @Delete('/exclusions/:plexId')
+  @Delete('/exclusions/:mediaServerId')
   async removeAllExclusion(
-    @Param('plexId', ParseIntPipe) plexId: number,
+    @Param('mediaServerId') mediaServerId: string,
   ): Promise<ReturnStatus> {
-    return await this.rulesService.removeAllExclusion(plexId);
+    return await this.rulesService.removeAllExclusion(mediaServerId);
   }
 
   @Put()
@@ -264,7 +312,7 @@ export class RulesController {
    */
   @Post('/yaml/encode')
   async yamlEncode(
-    @Body() body: { rules: string; mediaType: number },
+    @Body() body: { rules: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.encodeToYaml(
@@ -287,7 +335,7 @@ export class RulesController {
    */
   @Post('/yaml/decode')
   async yamlDecode(
-    @Body() body: { yaml: string; mediaType: number },
+    @Body() body: { yaml: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.decodeFromYaml(body.yaml, body.mediaType);
@@ -305,5 +353,22 @@ export class RulesController {
       body.rulegroupId,
       body.mediaId,
     );
+  }
+
+  /**
+   * Migrates rules to match the configured media server type.
+   * Used for community rule imports to convert Plex ↔ Jellyfin rules.
+   */
+  @Post('/migrate')
+  async migrateRules(@Body() body: { rules: string }): Promise<ReturnStatus> {
+    try {
+      const rules = JSON.parse(body.rules);
+      return await this.rulesService.migrateRules(rules);
+    } catch (err) {
+      return {
+        code: 0,
+        result: 'Invalid input',
+      };
+    }
   }
 }

@@ -1,20 +1,22 @@
+import { MediaItemType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
-import { EPlexDataType } from '../../utils/PlexDataType-enum'
 import Alert from '../Common/Alert'
 import FormItem from '../Common/FormItem'
 import Modal from '../Common/Modal'
 import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 
 const AddModal = (props: IAddModal) => {
-  const [selectedCollection, setSelectedCollection] = useState<number>()
+  const [selectedCollection, setSelectedCollection] = useState<
+    number | string
+  >()
   const [loading, setLoading] = useState(true)
   const [alert, setAlert] = useState(false)
   const [forceRemovalcheck, setForceRemovalCheck] = useState(false)
   const [selectedAction, setSelectedAction] = useState<number>(0)
   // For show only
-  const [selectedSeasons, setSelectedSeasons] = useState<number>(-1)
-  const [selectedEpisodes, setSelectedEpisodes] = useState<number>(-1)
+  const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
+  const [selectedEpisodes, setSelectedEpisodes] = useState<number | string>(-1)
 
   const [collectionOptions, setCollectionOptions] = useState<
     ICollectionMedia[]
@@ -46,22 +48,22 @@ const AddModal = (props: IAddModal) => {
   )
 
   const selectedMediaId = useMemo(() => {
-    return props.type === 1
+    return props.type === 'movie'
       ? -1
       : selectedEpisodes !== -1
         ? selectedEpisodes
         : selectedSeasons
   }, [selectedSeasons, selectedEpisodes])
 
-  const selectedContext = useMemo(() => {
-    return props.type === 2
+  const selectedContext = useMemo((): MediaItemType => {
+    return props.type === 'show'
       ? selectedEpisodes !== -1
-        ? EPlexDataType.EPISODES
+        ? 'episode'
         : selectedSeasons !== -1
-          ? EPlexDataType.SEASONS
-          : EPlexDataType.SHOWS
-      : EPlexDataType.MOVIES
-  }, [selectedSeasons, selectedEpisodes])
+          ? 'season'
+          : 'show'
+      : 'movie'
+  }, [selectedSeasons, selectedEpisodes, props.type])
 
   const handleCancel = () => {
     props.onCancel()
@@ -76,14 +78,14 @@ const AddModal = (props: IAddModal) => {
 
       if (props.modalType === 'add') {
         PostApiHandler(`/collections/media/add`, {
-          mediaId: props.plexId,
+          mediaId: props.mediaServerId,
           context: mediaDto,
           collectionId: selectedCollection,
           action: selectedAction,
         })
       } else {
         PostApiHandler('/rules/exclusion', {
-          mediaId: props.plexId,
+          mediaId: props.mediaServerId,
           context: mediaDto,
           collectionId:
             selectedCollection !== -1 ? selectedCollection : undefined,
@@ -101,7 +103,7 @@ const AddModal = (props: IAddModal) => {
     setForceRemovalCheck(false)
     if (props.modalType === 'add') {
       PostApiHandler(`/collections/media/add`, {
-        mediaId: props.plexId,
+        mediaId: props.mediaServerId,
         context: { id: -1, type: props.type },
         collectionId: undefined,
         action: 1,
@@ -114,10 +116,10 @@ const AddModal = (props: IAddModal) => {
     setSelectedSeasons(-1)
     setSelectedEpisodes(-1)
 
-    if (props.type && props.type === 2) {
+    if (props.type && props.type === 'show') {
       // get seasons
-      GetApiHandler(`/plex/meta/${props.plexId}/children`).then(
-        (resp: [{ ratingKey: number; title: string }]) => {
+      GetApiHandler(`/media-server/meta/${props.mediaServerId}/children`).then(
+        (resp: { id: string; title: string }[]) => {
           setSeasonOptions([
             {
               id: -1,
@@ -125,9 +127,9 @@ const AddModal = (props: IAddModal) => {
             },
             ...resp.map((el) => {
               return {
-                id: el.ratingKey,
+                id: el.id,
                 title: el.title,
-              }
+              } as ICollectionMedia
             }),
           ])
           setLoading(false)
@@ -145,8 +147,8 @@ const AddModal = (props: IAddModal) => {
       setLoading(true)
 
       // get episodes
-      GetApiHandler(`/plex/meta/${selectedSeasons}/children`).then(
-        (resp: [{ ratingKey: number; index: number }]) => {
+      GetApiHandler(`/media-server/meta/${selectedSeasons}/children`).then(
+        (resp: { id: string; index: number }[]) => {
           setEpisodeOptions([
             {
               id: -1,
@@ -154,9 +156,9 @@ const AddModal = (props: IAddModal) => {
             },
             ...resp.map((el) => {
               return {
-                id: el.ratingKey,
+                id: el.id,
                 title: `Episode ${el.index}`,
-              }
+              } as ICollectionMedia
             }),
           ])
           setLoading(false)
@@ -171,26 +173,26 @@ const AddModal = (props: IAddModal) => {
   useEffect(() => {
     setLoading(true)
 
-    if (props.type === 2) {
+    if (props.type === 'show') {
       if (selectedEpisodes !== -1) {
-        GetApiHandler(`/collections?typeId=4`).then((resp) => {
+        GetApiHandler(`/collections?typeId=episode`).then((resp) => {
           // get collections for episodes
           setCollectionOptions([...origCollectionOptions, ...resp])
           setLoading(false)
         })
       } else if (selectedSeasons !== -1) {
-        GetApiHandler(`/collections?typeId=3`).then((resp) => {
+        GetApiHandler(`/collections?typeId=season`).then((resp) => {
           // get collections for episodes and seasons
-          GetApiHandler(`/collections?typeId=4`).then((resp2) => {
+          GetApiHandler(`/collections?typeId=episode`).then((resp2) => {
             setCollectionOptions([...origCollectionOptions, ...resp, ...resp2])
             setLoading(false)
           })
         })
       } else {
-        GetApiHandler(`/collections?typeId=2`).then((resp) => {
+        GetApiHandler(`/collections?typeId=show`).then((resp) => {
           // get collections for episodes, seasons and shows
-          GetApiHandler(`/collections?typeId=3`).then((resp2) => {
-            GetApiHandler(`/collections?typeId=4`).then((resp3) => {
+          GetApiHandler(`/collections?typeId=season`).then((resp2) => {
+            GetApiHandler(`/collections?typeId=episode`).then((resp3) => {
               setCollectionOptions([
                 ...origCollectionOptions,
                 ...resp,
@@ -203,13 +205,13 @@ const AddModal = (props: IAddModal) => {
         })
       }
     } else {
-      GetApiHandler(`/collections?typeId=1`).then((resp) => {
+      GetApiHandler(`/collections?typeId=movie`).then((resp) => {
         // get collections for movies
         setCollectionOptions([...origCollectionOptions, ...resp])
         setLoading(false)
       })
     }
-  }, [selectedSeasons, selectedEpisodes])
+  }, [selectedSeasons, selectedEpisodes, props.type])
 
   return (
     <>
@@ -275,14 +277,15 @@ const AddModal = (props: IAddModal) => {
           </FormItem>
 
           {/* For shows */}
-          {props.type === 2 ? (
+          {props.type === 'show' ? (
             <FormItem label="Seasons">
               <select
                 name={`Seasons-field`}
                 id={`Seasons-field`}
                 value={selectedSeasons}
                 onChange={(e: { target: { value: string } }) => {
-                  setSelectedSeasons(+e.target.value)
+                  const value = e.target.value
+                  setSelectedSeasons(value === '-1' ? -1 : value)
                 }}
               >
                 {seasonOptions.map((e: ICollectionMedia) => {
@@ -296,14 +299,15 @@ const AddModal = (props: IAddModal) => {
             </FormItem>
           ) : undefined}
           {/* For shows and specific seasons */}
-          {props.type === 2 && selectedSeasons !== -1 ? (
+          {props.type === 'show' && selectedSeasons !== -1 ? (
             <FormItem label="Episodes">
               <select
                 name={`Episodes-field`}
                 id={`Episodes-field`}
                 value={selectedEpisodes}
                 onChange={(e: { target: { value: string } }) => {
-                  setSelectedEpisodes(+e.target.value)
+                  const value = e.target.value
+                  setSelectedEpisodes(value === '-1' ? -1 : value)
                 }}
               >
                 {episodeOptions.map((e: ICollectionMedia) => {

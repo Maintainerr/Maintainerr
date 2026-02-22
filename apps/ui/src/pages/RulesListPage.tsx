@@ -14,7 +14,7 @@ import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 const RulesListPage = () => {
   const navigate = useNavigate()
   const [data, setData] = useState<IRuleGroup[]>()
-  const [selectedLibrary, setSelectedLibrary] = useState<number>(9999)
+  const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
   const { ruleHandlerRunning } = useTaskStatusContext()
   const { mutate: stopAllExecution } = useStopAllRuleExecution({
@@ -27,7 +27,7 @@ const RulesListPage = () => {
   })
 
   const fetchData = async () => {
-    if (selectedLibrary === 9999) return await GetApiHandler('/rules')
+    if (selectedLibrary === 'all') return await GetApiHandler('/rules')
     else return await GetApiHandler(`/rules?libraryId=${selectedLibrary}`)
   }
 
@@ -42,7 +42,7 @@ const RulesListPage = () => {
     refreshData()
   }, [selectedLibrary])
 
-  const onSwitchLibrary = (libraryId: number) => {
+  const onSwitchLibrary = (libraryId: string) => {
     setSelectedLibrary(libraryId)
   }
 
@@ -57,14 +57,12 @@ const RulesListPage = () => {
   const sync = async () => {
     try {
       await PostApiHandler(`/rules/execute`, {})
+      toast.success('Rule execution started.')
     } catch (e) {
-      if (e instanceof AxiosError) {
-        if (e.response?.status === 409) {
-          toast.error('Rule execution is already running.')
-          return
-        }
+      if (e instanceof AxiosError && e.response?.data?.message) {
+        toast.error(e.response.data.message)
+        return
       }
-
       toast.error('Failed to initiate rule execution.')
     }
   }

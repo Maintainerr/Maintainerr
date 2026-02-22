@@ -10,23 +10,28 @@ import {
   UploadIcon,
 } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  Application,
+  MediaItemType,
+  MediaLibrary,
+} from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
-import { useEffect, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useState, useSyncExternalStore } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
-import { ILibrary, usePlexLibraries } from '../../../../api/plex'
+import { useMediaServerLibraries } from '../../../../api/media-server'
 import {
   RuleGroupCreatePayload,
   useCreateRuleGroup,
   useRuleConstants,
   useUpdateRuleGroup,
 } from '../../../../api/rules'
-import { Application } from '../../../../contexts/constants-context'
+import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import { PostApiHandler } from '../../../../utils/ApiHandler'
-import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
+import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
@@ -44,7 +49,56 @@ interface AddModal {
   onSuccess: () => void
 }
 
-const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
+// Helper function to check if an app should be filtered
+const shouldFilterApp = (
+  appId: number,
+  radarrId: number | null | undefined,
+  sonarrId: number | null | undefined,
+): boolean => {
+  if (
+    appId === Application.RADARR &&
+    (radarrId === undefined || radarrId === null)
+  ) {
+    return true
+  }
+  if (
+    appId === Application.SONARR &&
+    (sonarrId === undefined || sonarrId === null)
+  ) {
+    return true
+  }
+  return false
+}
+
+// Filter rules that reference deselected *arr servers
+const filterRulesForArrSettings = (
+  rules: IRule[],
+  radarrId: number | null | undefined,
+  sonarrId: number | null | undefined,
+): IRule[] => {
+  return rules.filter((rule) => {
+    if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) return false
+    if (
+      rule.lastVal &&
+      Array.isArray(rule.lastVal) &&
+      shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)
+    ) {
+      return false
+    }
+    return true
+  })
+}
+
+// Scroll detection using useSyncExternalStore (no useEffect needed)
+const scrollStore = {
+  subscribe: (callback: () => void) => {
+    window.addEventListener('scroll', callback)
+    return () => window.removeEventListener('scroll', callback)
+  },
+  getSnapshot: () =>
+    window.innerHeight + window.scrollY >= document.body.offsetHeight - 50,
+  getServerSnapshot: () => false,
+}
 
 const numberOrUndefined = (value: unknown): number | undefined => {
   if (value === '' || value === null || value === undefined) {
@@ -180,9 +234,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   listExclusions: editData?.collection?.listExclusions ?? true,
   forceOverseerr: editData?.collection?.forceOverseerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
-  manualCollectionName:
-    editData?.collection?.manualCollectionName ??
-    DEFAULT_MANUAL_COLLECTION_NAME,
+  manualCollectionName: editData?.collection?.manualCollectionName ?? '',
   sortTitle: editData?.collection?.sortTitle ?? '',
   active: editData?.isActive ?? true,
   useRules: editData?.useRules ?? true,
@@ -197,11 +249,20 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
 
 const AddModal = (props: AddModal) => {
   const navigate = useNavigate()
+  const { isPlex, isJellyfin } = useMediaServerType()
+  const mediaServerName = isPlex
+    ? 'Plex'
+    : isJellyfin
+      ? 'Jellyfin'
+      : 'your media server'
+  // Both Plex and Jellyfin call them "Collections" in their GUI
+  // (Jellyfin's internal API type is "BoxSet" but the user-facing term is "Collection")
+  const collectionTerm = 'collection'
+  const collectionTermCapitalized = 'Collection'
   const {
     register,
     handleSubmit,
-    watch,
-    reset,
+    control,
     setValue,
     getValues,
     formState: { errors },
@@ -221,21 +282,28 @@ const AddModal = (props: AddModal) => {
     isPending: isUpdatePending,
   } = useUpdateRuleGroup()
 
-  const selectedLibraryId = watch('libraryId') ?? ''
-  const selectedType = watch('dataType') ?? ''
+  const selectedLibraryId = useWatch({ control, name: 'libraryId' }) ?? ''
+  const selectedType = useWatch({ control, name: 'dataType' }) ?? ''
+  // dataType is now stored as MediaItemType string ('movie', 'show', 'season', 'episode')
   const selectedLibraryType: undefined | 'movie' | 'show' = selectedType
-    ? +selectedType === EPlexDataType.MOVIES
+    ? selectedType === 'movie'
       ? 'movie'
       : 'show'
     : undefined
-  const manualCollectionEnabled = watch('manualCollection')
-  const useRulesEnabled = watch('useRules')
-  const arrActionValue = watch('arrAction') as number | undefined
-  const radarrSettingsId = watch('radarrSettingsId') as
+
+  const manualCollectionEnabled = useWatch({
+    control,
+    name: 'manualCollection',
+  })
+  const useRulesEnabled = useWatch({ control, name: 'useRules' })
+  const arrActionValue = useWatch({ control, name: 'arrAction' }) as
+    | number
+    | undefined
+  const radarrSettingsId = useWatch({ control, name: 'radarrSettingsId' }) as
     | number
     | null
     | undefined
-  const sonarrSettingsId = watch('sonarrSettingsId') as
+  const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
     | number
     | null
     | undefined
@@ -244,7 +312,7 @@ const AddModal = (props: AddModal) => {
   const [configureNotificionModal, setConfigureNotificationModal] =
     useState(false)
 
-  const yaml = useRef<string>(undefined)
+  const [yaml, setYaml] = useState<string | undefined>(undefined)
   const [
     configuredNotificationConfigurations,
     setConfiguredNotificationConfigurations,
@@ -257,79 +325,19 @@ const AddModal = (props: AddModal) => {
       : [],
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
-  const ruleCreatorVersion = useRef<number>(1)
+  const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
 
-  const { data: plexLibraries, isLoading: plexLibrariesLoading } =
-    usePlexLibraries()
+  const { data: libraries, isLoading: librariesLoading } =
+    useMediaServerLibraries()
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
-  useEffect(() => {
-    register('arrAction')
-    register('radarrSettingsId')
-    register('sonarrSettingsId')
-  }, [register])
-
-  useEffect(() => {
-    reset(buildFormDefaults(props.editData))
-    setConfiguredNotificationConfigurations(props.editData?.notifications ?? [])
-    setRules(
-      props.editData?.rules
-        ? props.editData.rules.map((r) => JSON.parse(r.ruleJson) as IRule)
-        : [],
-    )
-    ruleCreatorVersion.current += 1
-  }, [props.editData, reset])
-
-  // Filter out Radarr/Sonarr rules when servers are deselected
-  useEffect(() => {
-    // Helper function to check if an app should be filtered
-    const shouldFilterApp = (
-      appId: number,
-      radarrId: number | null | undefined,
-      sonarrId: number | null | undefined,
-    ): boolean => {
-      if (
-        appId === Application.RADARR &&
-        (radarrId === undefined || radarrId === null)
-      ) {
-        return true
-      }
-      if (
-        appId === Application.SONARR &&
-        (sonarrId === undefined || sonarrId === null)
-      ) {
-        return true
-      }
-      return false
-    }
-
-    setRules((prevRules) => {
-      const filteredRules = prevRules.filter((rule) => {
-        // Check first value
-        if (
-          shouldFilterApp(+rule.firstVal[0], radarrSettingsId, sonarrSettingsId)
-        ) {
-          return false
-        }
-        // Check second value if it exists
-        if (
-          rule.lastVal &&
-          shouldFilterApp(+rule.lastVal[0], radarrSettingsId, sonarrSettingsId)
-        ) {
-          return false
-        }
-        return true
-      })
-
-      // Only update if rules actually changed
-      if (filteredRules.length !== prevRules.length) {
-        ruleCreatorVersion.current += 1
-        return filteredRules
-      }
-      return prevRules
-    })
-  }, [radarrSettingsId, sonarrSettingsId])
+  // Scroll detection without useEffect
+  const atBottom = useSyncExternalStore(
+    scrollStore.subscribe,
+    scrollStore.getSnapshot,
+    scrollStore.getServerSnapshot,
+  )
 
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
@@ -337,24 +345,27 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.OVERSEERR) ?? false
 
   function updateLibraryId(value: string) {
-    if (!plexLibraries) {
-      throw new Error('Plex libraries not loaded')
+    if (!libraries) {
+      throw new Error('Libraries not loaded')
     }
 
-    const lib = plexLibraries.find((el: ILibrary) => +el.key === +value)
+    const lib = libraries.find((el: MediaLibrary) => el.id === value)
 
     if (lib) {
-      setValue(
-        'dataType',
-        lib.type === 'movie'
-          ? EPlexDataType.MOVIES.toString()
-          : EPlexDataType.SHOWS.toString(),
-      )
+      // Store MediaItemType string directly ('movie' or 'show')
+      setValue('dataType', lib.type)
     }
 
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
     updateArrOption(0)
+
+    // Clear rules that reference *arr servers since we're resetting them
+    const filtered = filterRulesForArrSettings(rules, undefined, undefined)
+    if (filtered.length !== rules.length) {
+      setRules(filtered)
+      setRuleCreatorVersion((v) => v + 1)
+    }
   }
 
   function updateArrOption(value: number | undefined) {
@@ -374,12 +385,17 @@ const AddModal = (props: AddModal) => {
   ) => {
     updateArrOption(arrAction)
 
-    if (type === 'Radarr') {
-      setValue('sonarrSettingsId', undefined)
-      setValue('radarrSettingsId', settingId)
-    } else if (type === 'Sonarr') {
-      setValue('radarrSettingsId', undefined)
-      setValue('sonarrSettingsId', settingId)
+    const newRadarrId = type === 'Radarr' ? settingId : undefined
+    const newSonarrId = type === 'Sonarr' ? settingId : undefined
+
+    setValue('radarrSettingsId', newRadarrId)
+    setValue('sonarrSettingsId', newSonarrId)
+
+    // Filter out rules that reference the deselected *arr server
+    const filtered = filterRulesForArrSettings(rules, newRadarrId, newSonarrId)
+    if (filtered.length !== rules.length) {
+      setRules(filtered)
+      setRuleCreatorVersion((v) => v + 1)
     }
   }
 
@@ -402,7 +418,7 @@ const AddModal = (props: AddModal) => {
     })
 
     if (response.code === 1) {
-      yaml.current = response.result
+      setYaml(response.result)
 
       if (!yamlImporterModal) {
         setYamlImporterModal(true)
@@ -416,7 +432,7 @@ const AddModal = (props: AddModal) => {
     if (selectedLibraryType == null) {
       alert('Please select a library first.')
     } else {
-      yaml.current = undefined
+      setYaml(undefined)
       if (!yamlImporterModal) {
         setYamlImporterModal(true)
       } else {
@@ -435,7 +451,7 @@ const AddModal = (props: AddModal) => {
       const result: { mediaType: string; rules: IRule[] } = JSON.parse(
         response.result,
       )
-      handleLoadRules(result.rules)
+      handleLoadRulesFromYaml(result.rules)
       toast.success('Successfully imported rules from Yaml.', {
         autoClose: 5000,
       })
@@ -444,29 +460,32 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  const handleLoadRules = (rules: IRule[]) => {
-    updateRules(rules)
-    ruleCreatorVersion.current = ruleCreatorVersion.current + 1
+  const handleLoadRulesFromCommunity = async (rules: IRule[]) => {
+    // Migrate rules to the configured media server before displaying
+    const response = await PostApiHandler('/rules/migrate', {
+      rules: JSON.stringify(rules),
+    })
+
+    if (response && response.code === 1) {
+      const migratedRules = JSON.parse(response.result) as IRule[]
+      updateRules(migratedRules)
+    } else {
+      // If migration fails, use original rules
+      updateRules(rules)
+    }
+    setRuleCreatorVersion((v) => v + 1)
     setShowCommunityModal(false)
+  }
+
+  const handleLoadRulesFromYaml = (rules: IRule[]) => {
+    // YAML decode already migrates rules on the backend
+    updateRules(rules)
+    setRuleCreatorVersion((v) => v + 1)
   }
 
   const cancel = () => {
     props.onCancel()
   }
-
-  const [atBottom, setAtBottom] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrolledToBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 50
-
-      setAtBottom(scrolledToBottom)
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const onSubmit = async (data: RuleGroupFormOutput) => {
     if (data.useRules && rules.length === 0) {
@@ -479,9 +498,9 @@ const AddModal = (props: AddModal) => {
     const creationObj: RuleGroupCreatePayload = {
       name: data.name,
       description: data.description ?? '',
-      libraryId: +data.libraryId,
+      libraryId: data.libraryId,
       arrAction: data.arrAction ?? 0,
-      dataType: +data.dataType as EPlexDataType,
+      dataType: data.dataType as MediaItemType,
       isActive: data.active,
       useRules: data.useRules,
       listExclusions: data.listExclusions,
@@ -498,7 +517,7 @@ const AddModal = (props: AddModal) => {
             : data.deleteAfterDays,
         manualCollection: data.manualCollection,
         manualCollectionName:
-          data.manualCollectionName ?? DEFAULT_MANUAL_COLLECTION_NAME,
+          data.manualCollectionName ?? `My custom ${collectionTerm}`,
         keepLogsForMonths: data.keepLogsForMonths,
         sortTitle: data.sortTitle?.trim() ? data.sortTitle : undefined,
       },
@@ -519,7 +538,12 @@ const AddModal = (props: AddModal) => {
 
       props.onSuccess()
     } catch (mutationError) {
-      console.error('Failed to save rule group', mutationError)
+      void logClientError(
+        'Failed to save rule group',
+        mutationError,
+        'RuleGroup.AddModal.handleSave',
+      )
+      toast.error('Failed to save rule group. Check logs for details.')
     }
   }
 
@@ -529,7 +553,7 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  if (plexLibrariesLoading || constantsLoading) {
+  if (librariesLoading || constantsLoading) {
     return <LoadingSpinner />
   }
 
@@ -593,7 +617,8 @@ const AddModal = (props: AddModal) => {
                     <label htmlFor="name" className="text-label">
                       Name *
                       <p className="text-xs font-normal">
-                        Will also be the name of the collection in Plex.
+                        Will also be the name of the {collectionTerm} in{' '}
+                        {mediaServerName}.
                       </p>
                     </label>
                     <div className="form-input">
@@ -647,9 +672,9 @@ const AddModal = (props: AddModal) => {
                               {selectedLibraryId === '' && (
                                 <option value="" disabled></option>
                               )}
-                              {plexLibraries?.map((data: ILibrary) => {
+                              {libraries?.map((data: MediaLibrary) => {
                                 return (
-                                  <option key={data.key} value={data.key}>
+                                  <option key={data.id} value={data.id}>
                                     {data.title}
                                   </option>
                                 )
@@ -668,6 +693,7 @@ const AddModal = (props: AddModal) => {
                   {selectedLibraryType && selectedLibraryType === 'movie' && (
                     <ArrAction
                       type="Radarr"
+                      mediaServerName={mediaServerName}
                       accActionError={errors.arrAction?.message}
                       arrAction={arrActionValue}
                       settingIdError={errors.radarrSettingsId?.message}
@@ -718,28 +744,16 @@ const AddModal = (props: AddModal) => {
                                     updateArrOption(0)
                                   }}
                                 >
-                                  {Object.keys(EPlexDataType)
-                                    .filter((v) => isNaN(Number(v)))
-                                    .filter((v) => v !== 'MOVIES')
-                                    .map((data: string) => {
-                                      return (
-                                        <option
-                                          key={
-                                            EPlexDataType[
-                                              data as keyof typeof EPlexDataType
-                                            ]
-                                          }
-                                          value={
-                                            EPlexDataType[
-                                              data as keyof typeof EPlexDataType
-                                            ]
-                                          }
-                                        >
-                                          {data[0].toUpperCase() +
-                                            data.slice(1).toLowerCase()}
-                                        </option>
-                                      )
-                                    })}
+                                  {/* Show TV-related types: show, season, episode */}
+                                  {(['show', 'season', 'episode'] as const).map(
+                                    (mediaType) => (
+                                      <option key={mediaType} value={mediaType}>
+                                        {mediaType[0].toUpperCase() +
+                                          mediaType.slice(1) +
+                                          's'}
+                                      </option>
+                                    ),
+                                  )}
                                 </select>
                               )
                             })()}
@@ -754,13 +768,14 @@ const AddModal = (props: AddModal) => {
 
                       <ArrAction
                         type="Sonarr"
+                        mediaServerName={mediaServerName}
                         arrAction={arrActionValue}
                         settingId={sonarrSettingsId}
                         onUpdate={(e: number, settingId) => {
                           handleUpdateArrAction('Sonarr', e, settingId)
                         }}
                         options={
-                          +selectedType === EPlexDataType.SHOWS
+                          selectedType === 'show'
                             ? [
                                 {
                                   id: 0,
@@ -783,7 +798,7 @@ const AddModal = (props: AddModal) => {
                                   name: 'Do nothing',
                                 },
                               ]
-                            : +selectedType === EPlexDataType.SEASONS
+                            : selectedType === 'season'
                               ? [
                                   {
                                     id: 0,
@@ -835,7 +850,7 @@ const AddModal = (props: AddModal) => {
                       >
                         Take action after days*
                         <p className="text-xs font-normal">
-                          Duration of days media remains in the collection
+                          Duration of days media remains in the {collectionTerm}
                           before deletion/unmonitor
                         </p>
                       </label>
@@ -886,56 +901,61 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
 
-                    <div className="flex flex-row items-center justify-between py-4">
-                      <label
-                        htmlFor="collection_visible_library"
-                        className="text-label"
-                      >
-                        Show on Plex library recommended
-                        <p className="text-xs font-normal">
-                          Show the collection on the Plex library recommended
-                          screen
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="checkbox"
-                            id="collection_visible_library"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            {...register('showRecommended')}
-                          />
+                    {/* Plex-only visibility options - Jellyfin doesn't support collection visibility settings */}
+                    {isPlex && (
+                      <>
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="collection_visible_library"
+                            className="text-label"
+                          >
+                            Show on {mediaServerName} library recommended
+                            <p className="text-xs font-normal">
+                              Show the {collectionTerm} on the {mediaServerName}{' '}
+                              library recommended screen
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="collection_visible_library"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('showRecommended')}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="flex flex-row items-center justify-between py-4">
-                      <label
-                        htmlFor="collection_visible"
-                        className="text-label"
-                      >
-                        Show on Plex home
-                        <p className="text-xs font-normal">
-                          Show the collection on the Plex home screen
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="checkbox"
-                            id="collection_visible"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                            {...register('showHome')}
-                          />
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="collection_visible"
+                            className="text-label"
+                          >
+                            Show on {mediaServerName} home
+                            <p className="text-xs font-normal">
+                              Show the {collectionTerm} on the {mediaServerName}{' '}
+                              home screen
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="collection_visible"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('showHome')}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
 
                     {(radarrSettingsId != null ||
                       (sonarrSettingsId != null &&
                         arrActionValue === 0 &&
-                        (+selectedType as EPlexDataType) ===
-                          EPlexDataType.SHOWS)) && (
+                        selectedType === 'show')) && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="list_exclusions" className="text-label">
                           Add import list exclusions
@@ -1007,9 +1027,9 @@ const AddModal = (props: AddModal) => {
                     </div>
                     <div className="flex flex-row items-center justify-between py-4">
                       <label htmlFor="manual_collection" className="text-label">
-                        Custom collection
+                        Custom {collectionTerm}
                         <p className="text-xs font-normal">
-                          Toggle internal collection system
+                          Toggle internal {collectionTerm} system
                         </p>
                       </label>
                       <div className="form-input">
@@ -1030,9 +1050,10 @@ const AddModal = (props: AddModal) => {
                         htmlFor="manual_collection_name"
                         className="text-label"
                       >
-                        Custom collection name
+                        Custom {collectionTerm} name
                         <p className="text-xs font-normal">
-                          Collection must exist in Plex
+                          {collectionTermCapitalized} must exist in{' '}
+                          {mediaServerName}
                         </p>
                       </label>
 
@@ -1041,6 +1062,7 @@ const AddModal = (props: AddModal) => {
                           <input
                             type="text"
                             id="manual_collection_name"
+                            placeholder={`My custom ${collectionTerm}`}
                             {...register('manualCollectionName')}
                           />
                         </div>
@@ -1091,8 +1113,8 @@ const AddModal = (props: AddModal) => {
                       >
                         Keep logs for months*
                         <p className="text-xs font-normal">
-                          Duration for which collection logs should be retained,
-                          measured in months (0 = forever)
+                          Duration for which {collectionTerm} logs should be
+                          retained, measured in months (0 = forever)
                         </p>
                       </label>
                       <div className="form-input">
@@ -1119,7 +1141,8 @@ const AddModal = (props: AddModal) => {
                       >
                         Sort title
                         <p className="text-xs font-normal">
-                          Custom sort title for the collection in Plex
+                          Custom sort title for the {collectionTerm} in{' '}
+                          {mediaServerName}
                         </p>
                       </label>
                       <div className="flex justify-end px-2 py-2">
@@ -1127,14 +1150,14 @@ const AddModal = (props: AddModal) => {
                           <input
                             type="text"
                             id="sort_title"
-                            placeholder="e.g., 001 My Collection"
+                            placeholder={`e.g., 001 My ${collectionTermCapitalized}`}
                             {...register('sortTitle')}
                           />
                         </div>
                       </div>
                     </div>
 
-                    {tautulliEnabled && useRulesEnabled && (
+                    {isPlex && tautulliEnabled && useRulesEnabled && (
                       <div className="flex flex-row items-center justify-between py-2 md:py-4">
                         <label
                           htmlFor="tautulli_watched_percent_override"
@@ -1265,13 +1288,13 @@ const AddModal = (props: AddModal) => {
                   <CommunityRuleModal
                     currentRules={rules}
                     type={selectedLibraryType}
-                    onUpdate={handleLoadRules}
+                    onUpdate={handleLoadRulesFromCommunity}
                     onCancel={() => setShowCommunityModal(false)}
                   />
                 )}
                 {yamlImporterModal && (
                   <YamlImporterModal
-                    yaml={yaml.current ? yaml.current : undefined}
+                    yaml={yaml}
                     onImport={(yaml: string) => {
                       importRulesFromYaml(yaml)
                       setYamlImporterModal(false)
@@ -1296,7 +1319,7 @@ const AddModal = (props: AddModal) => {
                 )}
 
                 <RuleCreator
-                  key={ruleCreatorVersion.current}
+                  key={ruleCreatorVersion}
                   mediaType={
                     selectedLibraryType != null
                       ? selectedLibraryType === 'movie'
@@ -1304,7 +1327,7 @@ const AddModal = (props: AddModal) => {
                         : 2
                       : 0
                   }
-                  dataType={+selectedType as EPlexDataType}
+                  dataType={(selectedType as MediaItemType) || undefined}
                   editData={{ rules: rules }}
                   radarrSettingsId={radarrSettingsId}
                   sonarrSettingsId={sonarrSettingsId}

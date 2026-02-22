@@ -38,6 +38,14 @@ export interface RootFolder {
   }[];
 }
 
+export interface DiskSpaceResource {
+  id: number;
+  path: string | null;
+  label: string | null;
+  freeSpace: number;
+  totalSpace: number;
+}
+
 export interface QualityProfile {
   id: number;
   name: string;

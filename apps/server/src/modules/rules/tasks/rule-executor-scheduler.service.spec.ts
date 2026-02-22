@@ -1,3 +1,4 @@
+import { createMockLogger } from '../../../../test/utils/data';
 import { RuleExecutorSchedulerService } from './rule-executor-scheduler.service';
 
 // Mock cron to avoid starting real timers while still exposing setTime
@@ -20,13 +21,7 @@ jest.mock('cron', () => {
 });
 
 describe('RuleExecutorSchedulerService', () => {
-  const logger = {
-    setContext: jest.fn(),
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  } as const;
+  const logger = createMockLogger();
 
   const createScheduler = () => {
     const schedulerRegistry = {

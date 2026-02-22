@@ -1,8 +1,7 @@
+import { MediaItem, MediaItemType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PlexLibraryItem } from '../../../modules/api/plex-api/interfaces/library.interfaces';
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import {
   TautulliApiService,
@@ -38,13 +37,13 @@ export class TautulliGetterService {
 
   async get(
     id: number,
-    libItem: PlexLibraryItem,
-    dataType?: EPlexDataType,
+    libItem: MediaItem,
+    dataType?: MediaItemType,
     ruleGroup?: RulesDto,
   ) {
     try {
       const prop = this.appProperties.find((el) => el.id === id);
-      const metadata = await this.tautulliApi.getMetadata(libItem.ratingKey);
+      const metadata = await this.tautulliApi.getMetadata(libItem.id);
       const collection = await this.collectionRepository.findOne({
         where: { id: ruleGroup.collection.id },
       });
@@ -199,7 +198,7 @@ export class TautulliGetterService {
       }
     } catch (e) {
       this.logger.warn(
-        `Tautulli-Getter - Action failed for '${libItem.title}' with id '${libItem.ratingKey}': ${e.message}`,
+        `Tautulli-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
       );
       this.logger.debug(e);
       return undefined;

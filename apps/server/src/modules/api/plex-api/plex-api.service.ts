@@ -10,12 +10,11 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
+import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { Settings } from '../../settings/entities/settings.entities';
-import { PlexSettings } from '../../settings/interfaces/plex-settings.interface';
 import { SettingsService } from '../../settings/settings.service';
 import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
-import { BasicResponseDto } from './dto/basic-response.dto';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
@@ -60,7 +59,7 @@ export class PlexApiService {
     this.logger.setContext(PlexApiService.name);
   }
 
-  private getDbSettings(): PlexSettings {
+  private getDbSettings(): PlexSetting {
     return {
       name: this.settings.plex_name,
       machineId: this.machineId,
@@ -68,7 +67,6 @@ export class PlexApiService {
       port: this.settings.plex_port,
       auth_token: this.settings.plex_auth_token,
       useSsl: this.settings.plex_ssl === 1 ? true : false,
-      libraries: [],
       webAppUrl: this.settings.plex_hostname,
     };
   }
@@ -124,6 +122,10 @@ export class PlexApiService {
 
   public async getStatus() {
     try {
+      if (!this.isPlexSetup()) {
+        this.logger.debug('Plex client not initialized, skipping getStatus');
+        return undefined;
+      }
       const response: PlexStatusResponse = await this.plexClient.query(
         '/',
         false,
@@ -535,12 +537,15 @@ export class PlexApiService {
         },
         false,
       );
-      const collection: PlexCollection = response.MediaContainer
-        .Metadata as PlexCollection;
+      // Metadata can be a single object or an array - handle both
+      const metadata = response.MediaContainer.Metadata;
+      const collection = (
+        Array.isArray(metadata) ? metadata[0] : metadata
+      ) as PlexCollection;
 
       return collection;
     } catch (err) {
-      this.logger.error(
+      this.logger.debug(
         `Couldn't find collection with id ${+collectionId}`,
         err,
       );

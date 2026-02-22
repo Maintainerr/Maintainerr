@@ -1,31 +1,33 @@
+import { type MediaItem } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import { ICollection } from '../..'
 import GetApiHandler from '../../../../utils/ApiHandler'
-import OverviewContent, { IPlexMetadata } from '../../../Overview/Content'
+import OverviewContent from '../../../Overview/Content'
 
 interface ICollectionExclusions {
   collection: ICollection
-  libraryId: number
+  libraryId: string
 }
 
 export interface IExclusionMedia {
   id: number
-  plexId: number
+  mediaServerId: string
   ruleGroupId: number
   parent: number
   type: number
-  plexData?: IPlexMetadata
+  /** Server-agnostic media metadata */
+  mediaData?: MediaItem
 }
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
-  const [data, setData] = useState<IPlexMetadata[]>([])
+  const [data, setData] = useState<MediaItem[]>([])
   // paging
   const pageData = useRef<number>(0)
   const fetchAmount = 25
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
-  const dataRef = useRef<IPlexMetadata[]>([])
+  const dataRef = useRef<MediaItem[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
   const [page, setPage] = useState(0)
@@ -83,11 +85,13 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     setData([
       ...dataRef.current,
       ...resp.items.map((el) => {
-        el.plexData!.maintainerrExclusionId = el.id
-        el.plexData!.maintainerrExclusionType = el.ruleGroupId
-          ? 'specific'
-          : 'global'
-        return el.plexData ? el.plexData : ({} as IPlexMetadata)
+        if (el.mediaData) {
+          el.mediaData.maintainerrExclusionId = el.id
+          el.mediaData.maintainerrExclusionType = el.ruleGroupId
+            ? 'specific'
+            : 'global'
+        }
+        return el.mediaData ? el.mediaData : ({} as MediaItem)
       }),
     ])
     loadingRef.current = false
@@ -129,7 +133,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
       }
       onRemove={(id: string) =>
         setTimeout(() => {
-          setData(dataRef.current.filter((el) => +el.ratingKey !== +id))
+          setData(dataRef.current.filter((el) => el.id !== id))
         }, 500)
       }
     />

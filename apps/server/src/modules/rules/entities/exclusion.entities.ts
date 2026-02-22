@@ -1,22 +1,22 @@
-import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { MediaItemType, MediaItemWithParent } from '@maintainerr/contracts';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Exclusion {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  plexId: number;
+  @Column({ nullable: true })
+  mediaServerId: string;
 
   @Column({ nullable: true })
   ruleGroupId: number;
 
   @Column({ nullable: true })
-  parent: number;
+  parent: string;
 
   @Column({ nullable: true }) // nullable because old exclusions don't have the type. They'll be added by a maintenance task
-  type: 1 | 2 | 3 | 4 | undefined;
+  type: MediaItemType | undefined;
 
-  plexData: PlexMetadata; // this will be added programatically
+  mediaData: MediaItemWithParent;
 }

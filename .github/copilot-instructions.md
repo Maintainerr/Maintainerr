@@ -1,5 +1,19 @@
 # Maintainerr - Custom Copilot Instructions
 
+## Important: Workspace Commands
+
+**When running yarn commands (build, test, etc.), always execute from the workspace root:**
+
+```bash
+cd /workspaces/Maintainerr  <--- ensure you are in the root workspace
+yarn build | tail -20
+yarn test | tail -20
+```
+
+**Do NOT run from subdirectories** unless specifically needed for package-specific commands.
+
+---
+
 ## Project Overview
 
 Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, and Tautulli to provide comprehensive media lifecycle management.

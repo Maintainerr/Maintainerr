@@ -114,14 +114,6 @@ interface JellyseerrAbout {
   version: string;
 }
 
-export enum JellyseerrMediaStatus {
-  UNKNOWN = 1,
-  PENDING,
-  PROCESSING,
-  PARTIALLY_AVAILABLE,
-  AVAILABLE,
-}
-
 export interface JellyseerrBasicApiResponse {
   code: string;
   description: string;
@@ -165,9 +157,13 @@ export class JellyseerrApiService {
   }
 
   public init() {
+    if (!this.settings.jellyseerr_url) {
+      return;
+    }
+
     this.api = new JellyseerrApi(
       {
-        url: `${this.settings.jellyseerr_url?.replace(/\/$/, '')}/api/v1`,
+        url: `${this.settings.jellyseerr_url.replace(/\/$/, '')}/api/v1`,
         apiKey: `${this.settings.jellyseerr_api_key}`,
       },
       this.logger,
@@ -290,19 +286,6 @@ export class JellyseerrApiService {
           // no requests ? clear data and let Jellyseerr refetch.
           await this.api.delete(`/media/${media.id}`);
         }
-
-        // can't clear season data. Overserr doesn't have media ID's for seasons...
-
-        // const seasons = media.mediaInfo.seasons?.filter(
-        //   (el) => el.seasonNumber === season,
-        // );
-
-        // if (seasons.length > 0) {
-        //   for (const el of seasons) {
-        //     const resp = await this.api.post(`/media/${el.id}/unknown`);
-        //     console.log(resp);
-        //   }
-        // }
       }
     } catch (err) {
       this.logger.warn(

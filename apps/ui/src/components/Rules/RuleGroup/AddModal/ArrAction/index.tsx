@@ -13,6 +13,7 @@ interface ArrActionProps {
   onUpdate: (arrAction: number, settingId?: number | null) => void
   accActionError?: string
   settingIdError?: string
+  mediaServerName?: string
 }
 
 interface Option {
@@ -118,7 +119,10 @@ const ArrAction = (props: ArrActionProps) => {
       </div>
       <div className="form-row items-center">
         <label htmlFor={`${props.type}-action`} className="text-label">
-          {noneServerSelected ? 'Plex' : props.type} action
+          {noneServerSelected
+            ? props.mediaServerName || 'Media server'
+            : props.type}{' '}
+          action
         </label>
         <div className="form-input">
           <div className="form-input-field">

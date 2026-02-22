@@ -1,43 +1,40 @@
 import { useEffect, useRef } from 'react'
-import { usePlexLibraries } from '../../../api/plex'
+import { useMediaServerLibraries } from '../../../api/media-server'
 
 interface ILibrarySwitcher {
-  onLibraryChange: (libraryId: number) => void
+  onLibraryChange: (libraryId: string) => void
   shouldShowAllOption?: boolean
 }
 
 const LibrarySwitcher = (props: ILibrarySwitcher) => {
   const { onLibraryChange, shouldShowAllOption } = props
   const {
-    data: plexLibraries,
-    error: plexLibrariesError,
-    isLoading: plexLibrariesLoading,
-  } = usePlexLibraries()
-  const lastAutoSelectedLibraryKey = useRef<number | null>(null)
+    data: libraries,
+    error: librariesError,
+    isLoading: librariesLoading,
+  } = useMediaServerLibraries()
+  const lastAutoSelectedLibraryId = useRef<string | null>(null)
 
   const onSwitchLibrary = (event: { target: { value: string } }) => {
-    onLibraryChange(+event.target.value)
+    onLibraryChange(event.target.value)
   }
 
   useEffect(() => {
-    if (!plexLibraries || plexLibraries.length === 0) {
+    if (!libraries || libraries.length === 0) {
       return
     }
 
     if (shouldShowAllOption === false) {
-      const firstKey = Number(plexLibraries[0].key)
+      const firstId = libraries[0].id
 
-      if (
-        !Number.isNaN(firstKey) &&
-        lastAutoSelectedLibraryKey.current !== firstKey
-      ) {
-        lastAutoSelectedLibraryKey.current = firstKey
-        onLibraryChange(firstKey)
+      if (firstId && lastAutoSelectedLibraryId.current !== firstId) {
+        lastAutoSelectedLibraryId.current = firstId
+        onLibraryChange(firstId)
       }
     } else {
-      lastAutoSelectedLibraryKey.current = null
+      lastAutoSelectedLibraryId.current = null
     }
-  }, [plexLibraries, shouldShowAllOption, onLibraryChange])
+  }, [libraries, shouldShowAllOption, onLibraryChange])
 
   return (
     <>
@@ -47,11 +44,11 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
             className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
             onChange={onSwitchLibrary}
           >
-            {plexLibrariesLoading ? (
+            {librariesLoading ? (
               <option disabled={true} value="">
                 Loading libraries...
               </option>
-            ) : plexLibrariesError ? (
+            ) : librariesError ? (
               <option disabled={true} value="">
                 Could not fetch libraries
               </option>
@@ -59,13 +56,13 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
               <>
                 {(props.shouldShowAllOption === undefined ||
                   props.shouldShowAllOption) && (
-                  <option value={9999}>All</option>
+                  <option value="all">All</option>
                 )}
 
-                {plexLibraries?.map((el) => {
+                {libraries?.map((lib) => {
                   return (
-                    <option key={el.key} value={el.key}>
-                      {el.title}
+                    <option key={lib.id} value={lib.id}>
+                      {lib.title}
                     </option>
                   )
                 })}

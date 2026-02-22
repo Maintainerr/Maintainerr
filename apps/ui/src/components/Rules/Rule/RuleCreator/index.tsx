@@ -1,7 +1,6 @@
 import { ClipboardListIcon, DocumentAddIcon } from '@heroicons/react/solid'
+import { type MediaItemType, MediaType } from '@maintainerr/contracts'
 import { useRef, useState } from 'react'
-import { MediaType } from '../../../../contexts/constants-context'
-import { EPlexDataType } from '../../../../utils/PlexDataType-enum'
 import Alert from '../../../Common/Alert'
 import SectionHeading from '../../../Common/SectionHeading'
 import RuleInput from './RuleInput'
@@ -27,7 +26,7 @@ export interface ILoadedRule {
 
 interface iRuleCreator {
   mediaType?: MediaType
-  dataType?: EPlexDataType
+  dataType?: MediaItemType
   editData?: { rules: IRule[] }
   onUpdate: (rules: IRule[]) => void
   onCancel: () => void
@@ -80,7 +79,9 @@ const calculateRuleAmountArr = (ruleAmount: [number, number[]]) => {
 
 const RuleCreator = (props: iRuleCreator) => {
   const initialSections =
-    props.editData && props.editData.rules.length > 0
+    props.editData &&
+    Array.isArray(props.editData.rules) &&
+    props.editData.rules.length > 0
       ? props.editData.rules[props.editData.rules.length - 1].section! + 1
       : undefined
   const initialRuleAmount: [number, number[]] = initialSections

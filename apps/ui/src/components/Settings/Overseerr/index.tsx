@@ -2,11 +2,11 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
-  OverseerrSettingDto,
+  OverseerrSetting,
   overseerrSettingSchema,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import GetApiHandler, {
   DeleteApiHandler,
@@ -38,7 +38,7 @@ const stripLeadingSlashes = (url: string) => url.replace(/\/+$/, '')
 
 const OverseerrSettings = () => {
   const [testedSettings, setTestedSettings] = useState<
-    OverseerrSettingDto | undefined
+    OverseerrSetting | undefined
   >()
 
   const [testing, setTesting] = useState(false)
@@ -49,16 +49,13 @@ const OverseerrSettings = () => {
   const {
     register,
     handleSubmit,
-    watch,
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
   } = useForm<OverseerrSettingFormResult, any, OverseerrSettingFormResult>({
     resolver: zodResolver(OverseerrSettingFormSchema),
     defaultValues: async () => {
-      const resp = await GetApiHandler<OverseerrSettingDto>(
-        '/settings/overseerr',
-      )
+      const resp = await GetApiHandler<OverseerrSetting>('/settings/overseerr')
       return {
         url: resp.url ?? '',
         api_key: resp.api_key ?? '',
@@ -66,8 +63,8 @@ const OverseerrSettings = () => {
     },
   })
 
-  const url = watch('url')
-  const api_key = watch('api_key')
+  const url = useWatch({ control, name: 'url' })
+  const api_key = useWatch({ control, name: 'api_key' })
 
   const isGoingToRemoveSetting = url === '' && api_key === ''
   const enteredSettingsAreSameAsSaved =
@@ -83,7 +80,7 @@ const OverseerrSettings = () => {
     !isSubmitting &&
     !isLoading
 
-  const onSubmit = async (data: OverseerrSettingDto) => {
+  const onSubmit = async (data: OverseerrSetting) => {
     setSubmitError(false)
     setIsSubmitSuccessful(false)
 
@@ -112,7 +109,7 @@ const OverseerrSettings = () => {
     await PostApiHandler<BasicResponseDto>('/settings/test/overseerr', {
       api_key: api_key,
       url,
-    } satisfies OverseerrSettingDto)
+    } satisfies OverseerrSetting)
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,

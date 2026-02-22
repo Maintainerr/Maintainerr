@@ -116,14 +116,6 @@ interface OverseerrAbout {
   version: string;
 }
 
-export enum OverseerrMediaStatus {
-  UNKNOWN = 1,
-  PENDING,
-  PROCESSING,
-  PARTIALLY_AVAILABLE,
-  AVAILABLE,
-}
-
 export interface OverseerBasicApiResponse {
   code: string;
   description: string;
@@ -168,9 +160,13 @@ export class OverseerrApiService {
   }
 
   public init() {
+    if (!this.settings.overseerr_url) {
+      return;
+    }
+
     this.api = new OverseerrApi(
       {
-        url: `${this.settings.overseerr_url?.replace(/\/$/, '')}/api/v1`,
+        url: `${this.settings.overseerr_url.replace(/\/$/, '')}/api/v1`,
         apiKey: `${this.settings.overseerr_api_key}`,
       },
       this.loggerFactory.createLogger(),
@@ -293,19 +289,6 @@ export class OverseerrApiService {
           // no requests ? clear data and let Overseerr refetch.
           await this.api.delete(`/media/${media.id}`);
         }
-
-        // can't clear season data. Overserr doesn't have media ID's for seasons...
-
-        // const seasons = media.mediaInfo.seasons?.filter(
-        //   (el) => el.seasonNumber === season,
-        // );
-
-        // if (seasons.length > 0) {
-        //   for (const el of seasons) {
-        //     const resp = await this.api.post(`/media/${el.id}/unknown`);
-        //     console.log(resp);
-        //   }
-        // }
       }
     } catch (err) {
       this.logger.warn(

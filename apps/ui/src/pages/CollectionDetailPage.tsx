@@ -1,12 +1,14 @@
 import { PlayIcon } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
 import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
 import GetApiHandler from '../utils/ApiHandler'
+import { logClientError } from '../utils/ClientLogger'
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate()
@@ -37,7 +39,12 @@ const CollectionDetailPage = () => {
           setIsLoading(false)
         })
         .catch((err) => {
-          console.error('Failed to load collection:', err)
+          void logClientError(
+            'Failed to load collection',
+            err,
+            'CollectionDetailPage.useEffect.fetchCollection',
+          )
+          toast.error('Failed to load collection. Check logs for details.')
           setIsLoading(false)
         })
     }

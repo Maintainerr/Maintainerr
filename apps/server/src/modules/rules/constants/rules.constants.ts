@@ -1,51 +1,18 @@
-import { EPlexDataType } from '../../api/plex-api/enums/plex-data-type-enum';
+import {
+  Application,
+  MediaItemType,
+  MediaType,
+  RuleOperators,
+  RulePossibility,
+} from '@maintainerr/contracts';
 
-export enum RulePossibility {
-  BIGGER,
-  SMALLER,
-  EQUALS,
-  NOT_EQUALS,
-  CONTAINS,
-  BEFORE,
-  AFTER,
-  IN_LAST,
-  IN_NEXT,
-  NOT_CONTAINS,
-  CONTAINS_PARTIAL,
-  NOT_CONTAINS_PARTIAL,
-  CONTAINS_ALL,
-  NOT_CONTAINS_ALL,
-  COUNT_EQUALS,
-  COUNT_NOT_EQUALS,
-  COUNT_BIGGER,
-  COUNT_SMALLER,
-}
-
-export enum RuleOperators {
-  AND,
-  OR,
-}
-
-export enum Application {
-  PLEX = 0,
-  RADARR = 1,
-  SONARR = 2,
-  OVERSEERR = 3,
-  TAUTULLI = 4,
-  JELLYSEERR = 5,
-}
+export { Application, MediaType, RuleOperators, RulePossibility };
 
 export const enum ArrAction {
   DELETE,
-  UNMONITOR, // this also deletes
+  UNMONITOR,
   SW_UNMONITOR_EXISTING_SEASONS,
   UNMONITOR_NO_DELETE,
-}
-
-export const enum MediaType {
-  BOTH,
-  MOVIE,
-  SHOW,
 }
 
 export class RuleType {
@@ -121,7 +88,15 @@ export interface Property {
   mediaType: MediaType;
   humanName: string;
   cacheReset?: boolean; // for properties that require a cache reset between group executions
-  showType?: EPlexDataType[]; // if not configured = available for all types
+  showType?: MediaItemType[]; // if not configured = available for all types
+  /**
+   * When this property doesn't exist on a target server during migration,
+   * fall back to the property with this name instead of marking it incompatible.
+   *
+   * Example: Plex's `collectionsIncludingSmart` sets `migrateTo: 'collections'`
+   * because Jellyfin has no smart-collection concept and uses regular collections.
+   */
+  migrateTo?: string;
 }
 
 export interface ApplicationProperties {
@@ -228,7 +203,7 @@ export class RuleConstants {
           humanName: '[list] Users that saw all available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 13,
@@ -236,7 +211,7 @@ export class RuleConstants {
           humanName: 'Newest episode view date',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 14,
@@ -244,7 +219,7 @@ export class RuleConstants {
           humanName: 'Amount of available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 15,
@@ -252,7 +227,7 @@ export class RuleConstants {
           humanName: 'Amount of watched episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 16,
@@ -260,7 +235,7 @@ export class RuleConstants {
           humanName: 'Last episode added at',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 17,
@@ -275,11 +250,7 @@ export class RuleConstants {
           humanName: '[list] Users that watch the show/season/episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
-          ],
+          showType: ['show', 'season', 'episode'],
         },
         {
           id: 19,
@@ -330,7 +301,7 @@ export class RuleConstants {
           humanName: 'Present in amount of other collections (incl. parents)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
           cacheReset: true,
         },
         {
@@ -339,7 +310,7 @@ export class RuleConstants {
           humanName:
             '[list] Collections media is present in (titles) (incl. parents)',
           mediaType: MediaType.SHOW,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
           cacheReset: true,
           type: RuleType.TEXT_LIST,
         },
@@ -349,7 +320,7 @@ export class RuleConstants {
           humanName: 'Last episode aired at',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 28,
@@ -371,7 +342,7 @@ export class RuleConstants {
           humanName: 'Last episode aired at (season)',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
         },
         {
           id: 31,
@@ -379,7 +350,7 @@ export class RuleConstants {
           humanName: 'IMDb rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: ['episode', 'show'],
         },
         {
           id: 35,
@@ -387,7 +358,7 @@ export class RuleConstants {
           humanName: 'IMDb rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
         },
         {
           id: 32,
@@ -395,7 +366,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes critic rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: ['episode', 'show'],
         },
         {
           id: 36,
@@ -403,7 +374,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes critic rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
         },
         {
           id: 33,
@@ -411,7 +382,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes audience rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: ['episode', 'show'],
         },
         {
           id: 37,
@@ -419,7 +390,7 @@ export class RuleConstants {
           humanName: 'Rotten Tomatoes audience rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
         },
         {
           id: 34,
@@ -427,7 +398,7 @@ export class RuleConstants {
           humanName: 'The Movie Database rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SHOWS],
+          showType: ['episode', 'show'],
         },
         {
           id: 38,
@@ -435,7 +406,7 @@ export class RuleConstants {
           humanName: 'The Movie Database rating (show) (scale 1-10)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
         },
         {
           id: 39,
@@ -445,6 +416,7 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
           cacheReset: true,
+          migrateTo: 'collections',
         },
         {
           id: 40,
@@ -453,8 +425,9 @@ export class RuleConstants {
             'Present in amount of other collections (incl. parents and smart collections)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
           cacheReset: true,
+          migrateTo: 'sw_collections_including_parent',
         },
         {
           id: 41,
@@ -462,9 +435,10 @@ export class RuleConstants {
           humanName:
             '[list] Collections media is present in (titles) (incl. parents and smart collections)',
           mediaType: MediaType.SHOW,
-          showType: [EPlexDataType.SEASONS, EPlexDataType.EPISODES],
+          showType: ['season', 'episode'],
           cacheReset: true,
           type: RuleType.TEXT_LIST,
+          migrateTo: 'sw_collection_names_including_parent',
         },
         {
           id: 42,
@@ -474,6 +448,7 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.TEXT_LIST,
           cacheReset: true,
+          migrateTo: 'collection_names',
         },
       ],
     },
@@ -637,6 +612,20 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
+        {
+          id: 23,
+          name: 'diskspace_remaining_gb',
+          humanName: 'Remaining disk space (GB)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 24,
+          name: 'diskspace_total_gb',
+          humanName: 'Total disk space (GB)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
       ],
     },
     {
@@ -650,7 +639,7 @@ export class RuleConstants {
           humanName: 'Date added',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS],
+          showType: ['show'],
         },
         {
           id: 1,
@@ -658,11 +647,7 @@ export class RuleConstants {
           humanName: 'Files - Disk size in MB ',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
-          ],
+          showType: ['show', 'season', 'episode'],
         },
         {
           id: 2,
@@ -698,7 +683,7 @@ export class RuleConstants {
           humanName: 'Number of seasons / episodes (also unavailable)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 6,
@@ -706,7 +691,7 @@ export class RuleConstants {
           humanName: 'Status (continuing, ended)',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 7,
@@ -714,7 +699,7 @@ export class RuleConstants {
           humanName: 'Show ended',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 8,
@@ -736,7 +721,7 @@ export class RuleConstants {
           humanName: 'Has unaired episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 11,
@@ -744,7 +729,7 @@ export class RuleConstants {
           humanName: 'Number of monitored seasons / episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 12,
@@ -752,7 +737,7 @@ export class RuleConstants {
           humanName: 'Season has unaired episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
         },
         {
           id: 13,
@@ -760,7 +745,7 @@ export class RuleConstants {
           humanName: 'Is (part of) latest aired/airing season',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SEASONS],
+          showType: ['episode', 'season'],
         },
         {
           id: 14,
@@ -782,7 +767,7 @@ export class RuleConstants {
           humanName: 'Has season finale episode',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SEASONS],
+          showType: ['season'],
         },
         {
           id: 17,
@@ -790,7 +775,7 @@ export class RuleConstants {
           humanName: 'Has series finale episode',
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 18,
@@ -798,7 +783,7 @@ export class RuleConstants {
           humanName: 'Season number',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.EPISODES, EPlexDataType.SEASONS],
+          showType: ['episode', 'season'],
         },
         {
           id: 19,
@@ -818,7 +803,7 @@ export class RuleConstants {
           id: 22,
           name: 'episodeNumber',
           humanName: 'Episode number',
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
         },
@@ -826,7 +811,7 @@ export class RuleConstants {
           id: 21,
           name: 'episodeFilePath',
           humanName: 'Episode file path',
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
@@ -834,7 +819,7 @@ export class RuleConstants {
           id: 23,
           name: 'fileQualityCutoffMet',
           humanName: 'Episode file quality cutoff met',
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
           mediaType: MediaType.SHOW,
           type: RuleType.BOOL,
         },
@@ -842,7 +827,7 @@ export class RuleConstants {
           id: 24,
           name: 'fileQualityName',
           humanName: 'Episode file quality',
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
@@ -850,7 +835,7 @@ export class RuleConstants {
           id: 26,
           name: 'fileAudioLanguages',
           humanName: 'Episode file audio languages',
-          showType: [EPlexDataType.EPISODES],
+          showType: ['episode'],
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
         },
@@ -860,6 +845,20 @@ export class RuleConstants {
           humanName: 'Series type',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT,
+        },
+        {
+          id: 28,
+          name: 'diskspace_remaining_gb',
+          humanName: 'Remaining disk space (GB)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 29,
+          name: 'diskspace_total_gb',
+          humanName: 'Total disk space (GB)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
         },
       ],
     },
@@ -937,7 +936,7 @@ export class RuleConstants {
           humanName: '[list] Users that saw all available episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 2,
@@ -973,7 +972,7 @@ export class RuleConstants {
           humanName: 'Amount of watched episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 7,
@@ -981,7 +980,7 @@ export class RuleConstants {
           humanName: 'Newest episode view date',
           mediaType: MediaType.SHOW,
           type: RuleType.DATE,
-          showType: [EPlexDataType.SHOWS, EPlexDataType.SEASONS],
+          showType: ['show', 'season'],
         },
         {
           id: 8,
@@ -989,11 +988,7 @@ export class RuleConstants {
           humanName: '[list] Users that watch the show/season/episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
-          showType: [
-            EPlexDataType.SHOWS,
-            EPlexDataType.SEASONS,
-            EPlexDataType.EPISODES,
-          ],
+          showType: ['show', 'season', 'episode'],
         },
       ],
     },
@@ -1051,6 +1046,306 @@ export class RuleConstants {
           humanName: 'Requested in Jellyseerr',
           mediaType: MediaType.BOTH,
           type: RuleType.BOOL,
+        },
+      ],
+    },
+    {
+      id: Application.JELLYFIN,
+      name: 'Jellyfin',
+      mediaType: MediaType.BOTH,
+      props: [
+        {
+          id: 0,
+          name: 'addDate',
+          humanName: 'Date added',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
+        {
+          id: 1,
+          name: 'seenBy',
+          humanName: '[list] Viewed by (username)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT_LIST, // returns usernames []
+        },
+        {
+          id: 2,
+          name: 'releaseDate',
+          humanName: 'Release date',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
+        {
+          id: 3,
+          name: 'rating_user',
+          humanName: 'User rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 4,
+          name: 'people',
+          humanName: '[list] People involved',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST, // return text[]
+        },
+        {
+          id: 5,
+          name: 'viewCount',
+          humanName: 'Times viewed',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 6,
+          name: 'collections',
+          humanName: 'Present in amount of other collections',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          cacheReset: true,
+        },
+        {
+          id: 7,
+          name: 'lastViewedAt',
+          humanName: 'Last view date',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
+        {
+          id: 8,
+          name: 'fileVideoResolution',
+          humanName: 'Media file resolution (4k, 1080,..)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 9,
+          name: 'fileBitrate',
+          humanName: 'Media file bitrate',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 10,
+          name: 'fileVideoCodec',
+          humanName: 'Media file codec',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 11,
+          name: 'genre',
+          humanName: '[list] List of genres (Action, Adventure,..)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST, // return text[]
+        },
+        {
+          id: 12,
+          name: 'sw_allEpisodesSeenBy',
+          humanName: '[list] Users that saw all available episodes',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // return usernames []
+          showType: ['show', 'season'],
+        },
+        {
+          id: 13,
+          name: 'sw_lastWatched',
+          humanName: 'Newest episode view date',
+          mediaType: MediaType.SHOW,
+          type: RuleType.DATE,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 14,
+          name: 'sw_episodes',
+          humanName: 'Amount of available episodes',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 15,
+          name: 'sw_viewedEpisodes',
+          humanName: 'Amount of watched episodes',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 16,
+          name: 'sw_lastEpisodeAddedAt',
+          humanName: 'Last episode added at',
+          mediaType: MediaType.SHOW,
+          type: RuleType.DATE,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 17,
+          name: 'sw_amountOfViews',
+          humanName: 'Total views',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 18,
+          name: 'sw_watchers',
+          humanName: '[list] Users that watch the show/season/episode',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // return usernames []
+          showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 19,
+          name: 'collection_names',
+          humanName: '[list] Collections media is present in (titles)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST,
+          cacheReset: true,
+        },
+        {
+          id: 20,
+          name: 'playlists',
+          humanName: 'Present in amount of playlists',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 21,
+          name: 'playlist_names',
+          humanName: '[list] Playlists media is present in (titles)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST,
+        },
+        {
+          id: 22,
+          name: 'rating_critics',
+          humanName: 'Critics rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 23,
+          name: 'rating_audience',
+          humanName: 'Audience rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 24,
+          name: 'labels',
+          humanName: '[list] Tags',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST,
+        },
+        {
+          id: 25,
+          name: 'sw_collections_including_parent',
+          humanName: 'Present in amount of other collections (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+          cacheReset: true,
+        },
+        {
+          id: 26,
+          name: 'sw_collection_names_including_parent',
+          humanName:
+            '[list] Collections media is present in (titles) (incl. parents)',
+          mediaType: MediaType.SHOW,
+          showType: ['season', 'episode'],
+          cacheReset: true,
+          type: RuleType.TEXT_LIST,
+        },
+        {
+          id: 27,
+          name: 'sw_lastEpisodeAiredAt',
+          humanName: 'Last episode aired at',
+          mediaType: MediaType.SHOW,
+          type: RuleType.DATE,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 29,
+          name: 'sw_seasonLastEpisodeAiredAt',
+          humanName: 'Last episode aired at (season)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.DATE,
+          showType: ['episode'],
+        },
+        {
+          id: 30,
+          name: 'playCount',
+          humanName: 'Total play attempts (including unfinished)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 31,
+          name: 'sw_playCount',
+          humanName: 'Total play attempts (including unfinished)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['episode'],
+        },
+        // Rating properties — sourced from Jellyfin's CommunityRating and CriticRating.
+        // CommunityRating is typically from TMDb (or IMDb when OMDb provider is enabled).
+        // CriticRating is typically the Rotten Tomatoes Tomatometer via OMDb.
+        // IDs match Plex so rules migrate without property ID remapping.
+        {
+          id: 32,
+          name: 'rating_rottenTomatoesCritic',
+          humanName: 'Rotten Tomatoes critic rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 33,
+          name: 'rating_rottenTomatoesAudience',
+          humanName: 'Rotten Tomatoes audience rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 34,
+          name: 'rating_tmdb',
+          humanName: 'The Movie Database rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 35,
+          name: 'rating_imdbShow',
+          humanName: 'IMDb rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 36,
+          name: 'rating_rottenTomatoesCriticShow',
+          humanName: 'Rotten Tomatoes critic rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 37,
+          name: 'rating_rottenTomatoesAudienceShow',
+          humanName: 'Rotten Tomatoes audience rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 38,
+          name: 'rating_tmdbShow',
+          humanName: 'The Movie Database rating (show) (scale 1-10)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season', 'episode'],
         },
       ],
     },

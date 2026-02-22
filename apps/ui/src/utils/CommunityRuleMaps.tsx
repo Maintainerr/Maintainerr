@@ -1,27 +1,10 @@
+import { Application, ApplicationNames } from '@maintainerr/contracts'
 import { IRule } from '../components/Rules/Rule/RuleCreator'
-
-export enum Application {
-  PLEX,
-  RADARR,
-  SONARR,
-  OVERSEERR,
-  TAUTULLI,
-  JELLYSEERR,
-}
 
 export enum TVLevel {
   SHOW = 'show',
   SEASON = 'season',
   EPISODE = 'episode',
-}
-
-export const applicationNames: Record<number, string> = {
-  [Application.PLEX]: 'Plex',
-  [Application.RADARR]: 'Radarr',
-  [Application.SONARR]: 'Sonarr',
-  [Application.OVERSEERR]: 'Overseerr',
-  [Application.TAUTULLI]: 'Tautulli',
-  [Application.JELLYSEERR]: 'Jellyseerr',
 }
 
 export function detectRequiredServices(rules: IRule[]): string[] {
@@ -38,6 +21,6 @@ export function detectRequiredServices(rules: IRule[]): string[] {
   }
 
   return Array.from(usedAppIds)
-    .map((id) => applicationNames[id])
+    .map((id) => ApplicationNames[id as Application])
     .filter((name): name is string => !!name)
 }

@@ -1,10 +1,11 @@
+import { type MediaItem } from '@maintainerr/contracts'
 import { clone } from 'lodash'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { usePlexLibraries } from '../../api/plex'
+import { useMediaServerLibraries } from '../../api/media-server'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
-import OverviewContent, { IPlexMetadata } from './Content'
+import OverviewContent from './Content'
 
 const Overview = () => {
   // const [isLoading, setIsLoading] = useState<Boolean>(false)
@@ -12,20 +13,20 @@ const Overview = () => {
 
   const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
 
-  const [data, setData] = useState<IPlexMetadata[]>([])
-  const dataRef = useRef<IPlexMetadata[]>([])
+  const [data, setData] = useState<MediaItem[]>([])
+  const dataRef = useRef<MediaItem[]>([])
 
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
 
-  const [selectedLibrary, setSelectedLibrary] = useState<number>()
-  const selectedLibraryRef = useRef<number>(undefined)
+  const [selectedLibrary, setSelectedLibrary] = useState<string>()
+  const selectedLibraryRef = useRef<string | undefined>(undefined)
   const [searchUsed, setSearchUsed] = useState<boolean>(false)
 
   const pageData = useRef<number>(0)
   const SearchCtx = useContext(SearchContext)
 
-  const { data: plexLibraries } = usePlexLibraries()
+  const { data: libraries } = useMediaServerLibraries()
 
   const fetchAmount = 30
 
@@ -34,7 +35,9 @@ const Overview = () => {
   }
 
   useEffect(() => {
-    if (!plexLibraries || plexLibraries.length === 0) return
+    if (!libraries || libraries.length === 0) {
+      return
+    }
 
     setTimeout(() => {
       if (
@@ -42,7 +45,7 @@ const Overview = () => {
         data.length === 0 &&
         SearchCtx.search.text === ''
       ) {
-        switchLib(selectedLibrary ? selectedLibrary : +plexLibraries[0].key)
+        switchLib(selectedLibrary ? selectedLibrary : libraries[0].id)
       }
     }, 300)
 
@@ -53,14 +56,14 @@ const Overview = () => {
       totalSizeRef.current = 999
       pageData.current = 0
     }
-  }, [plexLibraries])
+  }, [libraries])
 
   useEffect(() => {
-    if (!plexLibraries || plexLibraries.length === 0) return
+    if (!libraries || libraries.length === 0) return
 
     if (SearchCtx.search.text !== '') {
-      GetApiHandler(`/plex/search/${SearchCtx.search.text}`).then(
-        (resp: IPlexMetadata[]) => {
+      GetApiHandler(`/media-server/search/${SearchCtx.search.text}`).then(
+        (resp: MediaItem[]) => {
           setSearchUsed(true)
           setTotalSize(resp.length)
           pageData.current = resp.length * 50
@@ -68,7 +71,7 @@ const Overview = () => {
           setIsLoading(false)
         },
       )
-      setSelectedLibrary(+plexLibraries[0]?.key)
+      setSelectedLibrary(libraries[0]?.id)
     } else {
       setSearchUsed(false)
       setData([])
@@ -92,8 +95,7 @@ const Overview = () => {
     totalSizeRef.current = totalSize
   }, [totalSize])
 
-  const switchLib = (libraryId: number) => {
-    // get all movies & shows from plex
+  const switchLib = (libraryId: string) => {
     setIsLoading(true)
     pageData.current = 0
     setTotalSize(999)
@@ -104,7 +106,6 @@ const Overview = () => {
   }
 
   const fetchData = async () => {
-    // This function didn't work with normal state. Used a state/ref hack as a result.
     if (
       selectedLibraryRef.current &&
       SearchCtx.search.text === '' &&
@@ -112,15 +113,14 @@ const Overview = () => {
     ) {
       const askedLib = clone(selectedLibraryRef.current)
 
-      const resp: { totalSize: number; items: IPlexMetadata[] } =
+      const resp: { totalSize: number; items: MediaItem[] } =
         await GetApiHandler(
-          `/plex/library/${selectedLibraryRef.current}/content/${
+          `/media-server/library/${selectedLibraryRef.current}/content?page=${
             pageData.current + 1
-          }?amount=${fetchAmount}`,
+          }&limit=${fetchAmount}`,
         )
 
       if (askedLib === selectedLibraryRef.current) {
-        // check lib again, we don't want to change array when lib was changed
         setTotalSize(resp.totalSize)
         pageData.current = pageData.current + 1
         setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
@@ -157,7 +157,7 @@ const Overview = () => {
               totalSizeRef.current >= pageData.current * fetchAmount
             }
             data={data}
-            libraryId={selectedLibrary}
+            libraryId={selectedLibrary!}
           />
         ) : undefined}
       </div>

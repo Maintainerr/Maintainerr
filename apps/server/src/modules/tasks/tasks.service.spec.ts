@@ -1,5 +1,6 @@
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
+import { createMockLogger } from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { StatusService } from './status.service';
 import { TasksService } from './tasks.service';
@@ -23,12 +24,7 @@ describe('TasksService', () => {
 
   let schedulerRegistry: MockSchedulerRegistry;
   let tasksService: TasksService;
-  const logger = {
-    log: jest.fn(),
-    error: jest.fn(),
-    setContext: jest.fn(),
-    warn: jest.fn(),
-  } as unknown as MaintainerrLogger;
+  const logger = createMockLogger() as unknown as MaintainerrLogger;
 
   beforeEach(() => {
     schedulerRegistry = new MockSchedulerRegistry();

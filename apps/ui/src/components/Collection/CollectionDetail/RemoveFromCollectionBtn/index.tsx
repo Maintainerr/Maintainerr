@@ -5,7 +5,7 @@ import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
 
 interface IRemoveFromCollectionBtn {
-  plexId: number
+  mediaServerId: number | string
   collectionId: number
   exclusionId?: number
   popup?: boolean
@@ -26,11 +26,11 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
     e?.stopPropagation()
     if (!props.exclusionId) {
       DeleteApiHandler(
-        `/collections/media?mediaId=${props.plexId}&collectionId=${props.collectionId}`,
+        `/collections/media?mediaId=${props.mediaServerId}&collectionId=${props.collectionId}`,
       )
       PostApiHandler('/rules/exclusion', {
         collectionId: props.collectionId,
-        mediaId: props.plexId,
+        mediaId: props.mediaServerId,
         action: 0,
       })
     } else {

@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   LogEvent,
   LogFile,
-  LogSettingDto,
+  LogSetting,
   logSettingSchema,
   LogSettingSchemaInput,
   LogSettingSchemaOutput,
@@ -45,7 +45,7 @@ const LogSettingsForm = () => {
   } = useForm<LogSettingSchemaInput, unknown, LogSettingSchemaOutput>({
     resolver: zodResolver(logSettingSchema),
     defaultValues: async () =>
-      await GetApiHandler<LogSettingDto>('/logs/settings'),
+      await GetApiHandler<LogSetting>('/logs/settings'),
   })
 
   const onSubmit = async (data: LogSettingSchemaOutput) => {
@@ -171,7 +171,7 @@ const Logs = () => {
     if (!scrollToBottom || !logsRef.current) return
 
     logsRef.current.scrollTop = logsRef.current.scrollHeight
-  }, [filteredLogLines])
+  }, [filteredLogLines, scrollToBottom])
 
   return (
     <div className="section">
@@ -232,12 +232,9 @@ const Logs = () => {
                 <span className={`font-semibold ${levelColor} px-2`}>
                   {row.level}
                 </span>
-                <pre
-                  className="inline text-white"
-                  dangerouslySetInnerHTML={{
-                    __html: row.message.replace(/(?:\r\n|\r|\n)/g, '<br>'),
-                  }}
-                ></pre>
+                <pre className="inline whitespace-pre-wrap break-words text-white">
+                  {row.message}
+                </pre>
               </div>
             )
           })}

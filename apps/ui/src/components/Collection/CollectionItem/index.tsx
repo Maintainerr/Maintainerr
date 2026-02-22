@@ -1,5 +1,5 @@
 import { ICollection } from '..'
-import { usePlexLibraries } from '../../../api/plex'
+import { useMediaServerLibraries } from '../../../api/media-server'
 
 interface ICollectionItem {
   collection: ICollection
@@ -7,7 +7,7 @@ interface ICollectionItem {
 }
 
 const CollectionItem = (props: ICollectionItem) => {
-  const { data: plexLibraries } = usePlexLibraries()
+  const { data: libraries } = useMediaServerLibraries()
 
   return (
     <>
@@ -56,8 +56,9 @@ const CollectionItem = (props: ICollectionItem) => {
             <div className="mb-5 mr-5 sm:mr-0">
               <p className="font-bold">Library</p>
               <p className="text-amber-500">
-                {plexLibraries?.find(
-                  (el) => +el.key === +props.collection.libraryId,
+                {libraries?.find(
+                  (lib) =>
+                    String(lib.id) === String(props.collection.libraryId),
                 )?.title ?? <>&nbsp;</>}
               </p>
             </div>

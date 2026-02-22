@@ -1,5 +1,15 @@
+/**
+ * Media type filter for rules
+ * Determines which rules apply to which type of media
+ */
+export enum MediaType {
+  BOTH = 0,
+  MOVIE = 1,
+  SHOW = 2,
+}
+
 export interface IComparisonStatistics {
-  plexId: number
+  mediaServerId: string
   result: boolean
   sectionResults: ISectionComparisonResults[]
 }
