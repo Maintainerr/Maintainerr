@@ -53,16 +53,13 @@ describe('RadarrActionHandler', () => {
       tmdbId: undefined,
     });
 
-    metadataService.resolveTmdbId.mockResolvedValue({
-      type: 'movie',
-      id: undefined,
-    });
+    metadataService.resolveIds.mockResolvedValue(undefined);
 
     const mockedRadarrApi = mockRadarrApi(servarrService, logger);
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(metadataService.resolveTmdbId).toHaveBeenCalled();
+    expect(metadataService.resolveIds).toHaveBeenCalled();
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 

@@ -2,10 +2,12 @@ import { forwardRef, Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InternalApiModule } from '../api/internal-api/internal-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
-import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
+import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
+import { TmdbApiModule } from '../api/tmdb-api/tmdb.module';
+import { TvdbApiModule } from '../api/tvdb-api/tvdb.module';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -29,6 +31,8 @@ import { SettingsService } from './settings.service';
     forwardRef(() => ServarrApiModule),
     forwardRef(() => SeerrApiModule),
     forwardRef(() => TautulliApiModule),
+    forwardRef(() => TmdbApiModule),
+    forwardRef(() => TvdbApiModule),
     forwardRef(() => InternalApiModule),
     TypeOrmModule.forFeature([
       Settings,

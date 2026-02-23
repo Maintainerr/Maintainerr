@@ -1,30 +1,13 @@
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
-import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { MetadataService } from './metadata.service';
 
 /**
  * HTTP controller for metadata endpoints.
- * Keeps backward-compatible /api/moviedb routes but returns full image URLs.
+ * All metadata flows through MetadataService which handles provider preference.
  */
 @Controller('api/moviedb')
 export class MetadataController {
-  constructor(
-    private readonly metadata: MetadataService,
-    private readonly tmdbApi: TmdbApiService,
-  ) {}
-
-  @Get('/person/:personId')
-  getPerson(@Param('personId', new ParseIntPipe()) personId: number) {
-    return this.tmdbApi.getPerson({ personId });
-  }
-
-  @Get('/movie/imdb/:id')
-  getMovie(@Param('id') imdbId: string) {
-    return this.tmdbApi.getByExternalId({
-      externalId: imdbId,
-      type: 'imdb',
-    });
-  }
+  constructor(private readonly metadata: MetadataService) {}
 
   /**
    * Returns a full backdrop image URL (not just a TMDB path).

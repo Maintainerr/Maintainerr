@@ -1,14 +1,14 @@
 import {
-  MediaItem,
   MaintainerrEvent,
+  MediaItem,
   MetadataProviderPreference,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
-import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
 import { MetadataDetails, ResolvedMediaIds } from './interfaces/metadata.types';
@@ -105,6 +105,7 @@ export class MetadataService {
 
   /**
    * Resolve external IDs from a MediaItem (provider IDs already available).
+   * Tries to resolve both tmdbId and tvdbId using the preferred provider first.
    */
   async resolveIdsFromMediaItem(
     item: MediaItem,
@@ -118,7 +119,7 @@ export class MetadataService {
 
       const ids: ResolvedMediaIds = { type };
 
-      // Extract direct provider IDs
+      // Extract direct provider IDs from media server metadata
       if (item.providerIds?.tmdb?.length) {
         ids.tmdbId = +item.providerIds.tmdb[0] || undefined;
       }
@@ -129,32 +130,16 @@ export class MetadataService {
         ids.imdbId = item.providerIds.imdb[0] || undefined;
       }
 
-      // If we have TMDB, we can get the other IDs from TMDB details
-      if (ids.tmdbId && (!ids.tvdbId || !ids.imdbId)) {
-        await this.enrichFromTmdb(ids);
-      }
+      // Already have both — nothing to resolve
+      if (ids.tmdbId && ids.tvdbId) return ids;
 
-      // If we still don't have a TMDB ID, try to resolve it
-      if (!ids.tmdbId) {
-        const tmdbResult =
-          await this.tmdbIdService.getTmdbIdFromMediaItem(item);
-        if (tmdbResult?.id) {
-          ids.tmdbId = tmdbResult.id;
-          await this.enrichFromTmdb(ids);
-        }
-      }
-
-      // If we have TVDB available and still don't have a TVDB ID, try TVDB search
-      if (!ids.tvdbId && this.tvdbAvailable && ids.imdbId) {
-        const tvdbResults = await this.tvdbApi.searchByRemoteId(ids.imdbId);
-        if (tvdbResults?.length) {
-          const match = tvdbResults[0];
-          if (type === 'tv' && match.series) {
-            ids.tvdbId = match.series.id;
-          } else if (type === 'movie' && match.movie) {
-            ids.tvdbId = match.movie.id;
-          }
-        }
+      // Fill missing ID using the preferred provider first
+      if (this.preferTvdb) {
+        await this.fillTvdbFromTmdb(ids);
+        await this.fillTmdbFromTvdb(ids, item);
+      } else {
+        await this.fillTmdbFromTvdb(ids, item);
+        await this.fillTvdbFromTmdb(ids);
       }
 
       return ids;
@@ -166,22 +151,11 @@ export class MetadataService {
   }
 
   /**
-   * Convenience: resolve only the TMDB ID from a media server ID.
-   */
-  async resolveTmdbId(
-    mediaServerId: string,
-  ): Promise<{ type: 'movie' | 'tv'; id: number | undefined }> {
-    const ids = await this.resolveIds(mediaServerId);
-    return ids
-      ? { type: ids.type, id: ids.tmdbId }
-      : { type: 'movie', id: undefined };
-  }
-
-  /**
    * Resolve a TVDB ID for a media item. Uses direct provider IDs when
    * available, then TVDB search, and falls back to TMDB external_ids.
+   * Used internally and by resolveAllSeriesIds.
    */
-  async resolveTvdbId(
+  private async resolveTvdbId(
     mediaServerId: string,
     tmdbId?: number | null,
   ): Promise<number | undefined> {
@@ -230,10 +204,11 @@ export class MetadataService {
   }
 
   /**
-   * Resolve all TVDB IDs for a media item (can return multiple when upstream
-   * providers have multiple TVDB entries). Used by SonarrGetterService.
+   * Resolve all series-matching IDs for a media item (can return multiple when
+   * upstream providers list multiple entries). Used by SonarrGetterService for
+   * Sonarr series lookup.
    */
-  async resolveAllTvdbIds(item: MediaItem): Promise<number[]> {
+  async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
     const tvdbIds: number[] = [];
 
     // Direct provider IDs
@@ -262,9 +237,7 @@ export class MetadataService {
 
     // If TVDB is available, search by IMDB ID
     if (tvdbIds.length === 0 && this.tvdbAvailable) {
-      const imdbId =
-        item.providerIds?.imdb?.[0] ??
-        (await this.resolveIdsFromMediaItem(item))?.imdbId;
+      const imdbId = item.providerIds?.imdb?.[0];
       if (imdbId) {
         const results = await this.tvdbApi.searchByRemoteId(imdbId);
         if (results?.length) {
@@ -288,6 +261,83 @@ export class MetadataService {
     }
 
     return tvdbIds;
+  }
+
+  /**
+   * Resolve all movie-matching TMDB IDs for a media item (can return multiple
+   * when upstream providers list multiple entries). Used by RadarrGetterService
+   * for Radarr movie lookup.
+   */
+  async resolveAllMovieIds(item: MediaItem): Promise<number[]> {
+    const tmdbIds: number[] = [];
+
+    // Direct provider IDs
+    if (item.providerIds?.tmdb) {
+      for (const tmdbId of item.providerIds.tmdb) {
+        const numId = Number(tmdbId);
+        if (numId && !tmdbIds.includes(numId)) {
+          tmdbIds.push(numId);
+        }
+      }
+    }
+
+    // Try fetching fresh metadata from media server
+    if (tmdbIds.length === 0) {
+      const mediaServer = await this.mediaServerFactory.getService();
+      const metadata = await mediaServer.getMetadata(item.id);
+      if (metadata?.providerIds?.tmdb) {
+        for (const tmdbId of metadata.providerIds.tmdb) {
+          const numId = Number(tmdbId);
+          if (numId && !tmdbIds.includes(numId)) {
+            tmdbIds.push(numId);
+          }
+        }
+      }
+    }
+
+    // Cross-reference via IMDB → TMDB find
+    if (tmdbIds.length === 0) {
+      const imdbId = item.providerIds?.imdb?.[0];
+      if (imdbId) {
+        const resp = await this.tmdbApi.getByExternalId({
+          externalId: imdbId,
+          type: 'imdb',
+        });
+        if (resp?.movie_results?.length) {
+          for (const m of resp.movie_results) {
+            if (m.id && !tmdbIds.includes(m.id)) tmdbIds.push(m.id);
+          }
+        }
+      }
+    }
+
+    // Cross-reference via TVDB → TMDB find
+    if (tmdbIds.length === 0 && item.providerIds?.tvdb?.length) {
+      for (const tvdbId of item.providerIds.tvdb) {
+        const numTvdbId = Number(tvdbId);
+        if (!numTvdbId) continue;
+        const resp = await this.tmdbApi.getByExternalId({
+          externalId: numTvdbId,
+          type: 'tvdb',
+        });
+        if (resp?.movie_results?.length) {
+          for (const m of resp.movie_results) {
+            if (m.id && !tmdbIds.includes(m.id)) tmdbIds.push(m.id);
+          }
+        }
+        if (tmdbIds.length > 0) break;
+      }
+    }
+
+    // Last resort: GUID-based resolver
+    if (tmdbIds.length === 0) {
+      const tmdbResp = await this.tmdbIdService.getTmdbIdFromMediaItem(item);
+      if (tmdbResp?.id) {
+        tmdbIds.push(tmdbResp.id);
+      }
+    }
+
+    return tmdbIds;
   }
 
   // ───── Media Details ─────
@@ -552,31 +602,63 @@ export class MetadataService {
     return this.tvdbApi.getBackdropUrl(record);
   }
 
-  // ───── Enrichment ─────
+  // ───── ID Resolution helpers ─────
 
   /**
-   * Enrich a ResolvedMediaIds object with TVDB/IMDB IDs from TMDB details.
+   * If we have a TMDB ID but no TVDB ID, look up TMDB's external_ids
+   * to fill the gap.
    */
-  private async enrichFromTmdb(ids: ResolvedMediaIds): Promise<void> {
-    if (!ids.tmdbId) return;
+  private async fillTvdbFromTmdb(ids: ResolvedMediaIds): Promise<void> {
+    if (ids.tvdbId || !ids.tmdbId) return;
 
     try {
-      if (ids.type === 'movie') {
-        const movie = await this.tmdbApi.getMovie({ movieId: ids.tmdbId });
-        if (movie?.external_ids) {
-          ids.tvdbId ??= movie.external_ids.tvdb_id ?? undefined;
-          ids.imdbId ??=
-            movie.external_ids.imdb_id ?? movie.imdb_id ?? undefined;
-        }
-      } else {
-        const show = await this.tmdbApi.getTvShow({ tvId: ids.tmdbId });
-        if (show?.external_ids) {
-          ids.tvdbId ??= show.external_ids.tvdb_id ?? undefined;
-          ids.imdbId ??= show.external_ids.imdb_id ?? undefined;
-        }
+      const externalIds =
+        ids.type === 'movie'
+          ? (await this.tmdbApi.getMovie({ movieId: ids.tmdbId }))?.external_ids
+          : (await this.tmdbApi.getTvShow({ tvId: ids.tmdbId }))?.external_ids;
+
+      if (externalIds?.tvdb_id) {
+        ids.tvdbId = externalIds.tvdb_id;
       }
     } catch (e) {
-      this.logger.debug(`Failed to enrich IDs from TMDB: ${e.message}`);
+      this.logger.debug(`Failed to resolve TVDB ID from TMDB: ${e.message}`);
+    }
+  }
+
+  /**
+   * If we have a TVDB ID but no TMDB ID, search TMDB by external ID.
+   * Falls back to the GUID-based TmdbIdService resolver.
+   */
+  private async fillTmdbFromTvdb(
+    ids: ResolvedMediaIds,
+    item: MediaItem,
+  ): Promise<void> {
+    if (ids.tmdbId) return;
+
+    try {
+      // Try TVDB → TMDB cross-reference
+      if (ids.tvdbId) {
+        const resp = await this.tmdbApi.getByExternalId({
+          externalId: ids.tvdbId,
+          type: 'tvdb',
+        });
+        const id =
+          ids.type === 'movie'
+            ? resp?.movie_results?.[0]?.id
+            : resp?.tv_results?.[0]?.id;
+        if (id) {
+          ids.tmdbId = id;
+          return;
+        }
+      }
+
+      // Last resort: GUID-based resolver
+      const tmdbResult = await this.tmdbIdService.getTmdbIdFromMediaItem(item);
+      if (tmdbResult?.id) {
+        ids.tmdbId = tmdbResult.id;
+      }
+    } catch (e) {
+      this.logger.debug(`Failed to resolve TMDB ID: ${e.message}`);
     }
   }
 }

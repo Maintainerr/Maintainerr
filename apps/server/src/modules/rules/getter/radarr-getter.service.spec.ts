@@ -11,15 +11,15 @@ import {
 import { RadarrApi } from '../../api/servarr-api/helpers/radarr.helper';
 import { RadarrMovie } from '../../api/servarr-api/interfaces/radarr.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import { RadarrGetterService } from './radarr-getter.service';
 
 describe('RadarrGetterService', () => {
   let radarrGetterService: RadarrGetterService;
   let servarrService: Mocked<ServarrService>;
-  let tmdbIdService: Mocked<TmdbIdService>;
+  let metadataService: Mocked<MetadataService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -28,7 +28,7 @@ describe('RadarrGetterService', () => {
 
     radarrGetterService = unit;
     servarrService = unitRef.get(ServarrService);
-    tmdbIdService = unitRef.get(TmdbIdService);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
   });
 
@@ -44,10 +44,7 @@ describe('RadarrGetterService', () => {
       collectionMedia = createCollectionMedia('movie');
       collectionMedia.collection.radarrSettingsId = 1;
       mediaItem = createMediaItem({ type: 'movie' });
-      tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue({
-        type: 'movie',
-        id: 1,
-      });
+      metadataService.resolveAllMovieIds.mockResolvedValue([1]);
     });
 
     it('should return true when the cut off is met', async () => {
@@ -221,10 +218,12 @@ describe('RadarrGetterService', () => {
 
     if (movie) {
       jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(movie);
+      metadataService.resolveAllMovieIds.mockResolvedValue([movie.tmdbId ?? 1]);
     } else {
       jest
         .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
         .mockImplementation(jest.fn());
+      metadataService.resolveAllMovieIds.mockResolvedValue([]);
     }
 
     servarrService.getRadarrApiClient.mockResolvedValue(mockedRadarrApi);

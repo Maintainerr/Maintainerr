@@ -16,8 +16,7 @@ import { SeerrApiService } from '../modules/api/seerr-api/seerr-api.service';
 import { ServarrApiModule } from '../modules/api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../modules/api/tautulli-api/tautulli-api.module';
 import { TautulliApiService } from '../modules/api/tautulli-api/tautulli-api.service';
-import { TmdbApiModule } from '../modules/api/tmdb-api/tmdb.module';
-import { TvdbApiModule } from '../modules/api/tvdb-api/tvdb.module';
+
 import { CollectionsModule } from '../modules/collections/collections.module';
 import { EventsModule } from '../modules/events/events.module';
 import { LogsModule } from '../modules/logging/logs.module';
@@ -44,8 +43,6 @@ import ormConfig from './config/typeOrmConfig';
     MediaServerModule,
     ExternalApiModule,
     GitHubApiModule,
-    TmdbApiModule,
-    TvdbApiModule,
     ServarrApiModule,
     SeerrApiModule,
     TautulliApiModule,

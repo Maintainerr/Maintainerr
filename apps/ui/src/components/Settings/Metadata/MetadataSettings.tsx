@@ -289,9 +289,7 @@ const MetadataSettings = () => {
               value={preference}
               disabled={preferenceLoading || preferenceSaving}
               onChange={(e) =>
-                savePreference(
-                  e.target.value as MetadataProviderPreference,
-                )
+                savePreference(e.target.value as MetadataProviderPreference)
               }
             >
               <option value={MetadataProviderPreference.TMDB_PRIMARY}>

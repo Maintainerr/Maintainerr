@@ -452,6 +452,6 @@ export class SonarrGetterService {
   public async findAllTvdbIdsFromMediaItem(
     libItem: MediaItem,
   ): Promise<number[]> {
-    return this.metadataService.resolveAllTvdbIds(libItem);
+    return this.metadataService.resolveAllSeriesIds(libItem);
   }
 }

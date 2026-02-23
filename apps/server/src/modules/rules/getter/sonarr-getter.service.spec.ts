@@ -514,12 +514,12 @@ describe('SonarrGetterService', () => {
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockResolvedValue(series);
-      metadataService.resolveAllTvdbIds.mockResolvedValue([series.tvdbId]);
+      metadataService.resolveAllSeriesIds.mockResolvedValue([series.tvdbId]);
     } else {
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockImplementation(jest.fn());
-      metadataService.resolveAllTvdbIds.mockResolvedValue([]);
+      metadataService.resolveAllSeriesIds.mockResolvedValue([]);
     }
 
     servarrService.getSonarrApiClient.mockResolvedValue(mockedSonarrApi);

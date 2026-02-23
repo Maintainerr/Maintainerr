@@ -7,14 +7,12 @@ import { CollectionMedia } from '../collections/entities/collection_media.entiti
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
-import { MediaIdFinder } from './media-id-finder';
 
 @Injectable()
 export class SonarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
     private readonly metadataService: MetadataService,
-    private readonly mediaIdFinder: MediaIdFinder,
     private readonly logger: MaintainerrLogger,
     private readonly mediaServerFactory: MediaServerFactory,
   ) {
@@ -32,40 +30,23 @@ export class SonarrActionHandler {
 
     let mediaData: MediaItem | undefined = undefined;
 
-    // get the tvdb id
-    let tvdbId: number | undefined = undefined;
+    // Determine the media server ID to resolve (walk up for seasons/episodes)
+    let resolveId = media.mediaServerId;
     switch (collection.type) {
       case 'season':
         mediaData = await mediaServer.getMetadata(media.mediaServerId);
-        tvdbId = await this.mediaIdFinder.findTvdbId(
-          mediaData?.parentId,
-          media.tmdbId,
-        );
-        media.tmdbId = media.tmdbId
-          ? media.tmdbId
-          : (await this.metadataService.resolveTmdbId(mediaData?.parentId))?.id;
+        resolveId = mediaData?.parentId ?? media.mediaServerId;
         break;
       case 'episode':
         mediaData = await mediaServer.getMetadata(media.mediaServerId);
-        tvdbId = await this.mediaIdFinder.findTvdbId(
-          mediaData?.grandparentId,
-          media.tmdbId,
-        );
-        media.tmdbId = media.tmdbId
-          ? media.tmdbId
-          : (await this.metadataService.resolveTmdbId(mediaData?.grandparentId))
-              ?.id;
-        break;
-      default:
-        tvdbId = await this.mediaIdFinder.findTvdbId(
-          media.mediaServerId,
-          media.tmdbId,
-        );
-        media.tmdbId = media.tmdbId
-          ? media.tmdbId
-          : (await this.metadataService.resolveTmdbId(media.mediaServerId))?.id;
+        resolveId = mediaData?.grandparentId ?? media.mediaServerId;
         break;
     }
+
+    // Resolve all IDs through the metadata layer in one call
+    const ids = await this.metadataService.resolveIds(resolveId);
+    const tvdbId = ids?.tvdbId;
+    media.tmdbId = media.tmdbId ?? ids?.tmdbId;
 
     if (!tvdbId) {
       this.logger.log(

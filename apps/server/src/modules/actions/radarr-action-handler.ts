@@ -26,10 +26,12 @@ export class RadarrActionHandler {
       collection.radarrSettingsId,
     );
 
-    // find tmdbid
-    const tmdbid = media.tmdbId
-      ? media.tmdbId
-      : (await this.metadataService.resolveTmdbId(media.mediaServerId))?.id;
+    // resolve all IDs through the metadata layer
+    const ids = media.tmdbId
+      ? { tmdbId: media.tmdbId }
+      : await this.metadataService.resolveIds(media.mediaServerId);
+
+    const tmdbid = ids?.tmdbId;
 
     if (tmdbid) {
       const radarrMedia = await radarrApiClient.getMovieByTmdbId(tmdbid);
