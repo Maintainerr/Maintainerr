@@ -4,11 +4,13 @@ import { TmdbApiModule } from '../api/tmdb-api/tmdb.module';
 import { TvdbApiModule } from '../api/tvdb-api/tvdb.module';
 import { MetadataController } from './metadata.controller';
 import { MetadataService } from './metadata.service';
+import { TmdbMetadataProvider } from './providers/tmdb-metadata.provider';
+import { TvdbMetadataProvider } from './providers/tvdb-metadata.provider';
 
 @Module({
   imports: [TmdbApiModule, TvdbApiModule, MediaServerModule],
   controllers: [MetadataController],
-  providers: [MetadataService],
+  providers: [MetadataService, TmdbMetadataProvider, TvdbMetadataProvider],
   exports: [MetadataService],
 })
 export class MetadataModule {}

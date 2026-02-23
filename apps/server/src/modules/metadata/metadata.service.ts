@@ -6,13 +6,12 @@ import {
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
-import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
+import { IMetadataProvider } from './interfaces/metadata-provider.interface';
 import { MetadataDetails, ResolvedMediaIds } from './interfaces/metadata.types';
-
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+import { TmdbMetadataProvider } from './providers/tmdb-metadata.provider';
+import { TvdbMetadataProvider } from './providers/tvdb-metadata.provider';
 
 @Injectable()
 export class MetadataService {
@@ -20,8 +19,8 @@ export class MetadataService {
     MetadataProviderPreference.TMDB_PRIMARY;
 
   constructor(
-    private readonly tmdbApi: TmdbApiService,
-    private readonly tvdbApi: TvdbApiService,
+    private readonly tmdbProvider: TmdbMetadataProvider,
+    private readonly tvdbProvider: TvdbMetadataProvider,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly settings: SettingsService,
     private readonly logger: MaintainerrLogger,
@@ -44,89 +43,39 @@ export class MetadataService {
     }
   }
 
-  // ───── Availability helpers ─────
+  // ───── Provider ordering & fallback ─────
 
-  /** TMDB always available (has a default key). */
-  private get tmdbAvailable(): boolean {
-    return true;
-  }
-
-  /** TVDB only available when the user has supplied a key and auth succeeded. */
-  private get tvdbAvailable(): boolean {
-    return this.tvdbApi.isAvailable();
-  }
-
-  /** Whether TVDB is the preferred (first-try) provider. */
-  private get preferTvdb(): boolean {
-    return (
-      this.preference === MetadataProviderPreference.TVDB_PRIMARY &&
-      this.tvdbAvailable
-    );
-  }
-
-  // ───── Shared helpers ─────
-
-  /** Determine normalised media type from a MediaItem. */
-  private mediaTypeFromItem(item: MediaItem): 'movie' | 'tv' {
-    return ['show', 'season', 'episode'].includes(item.type) ? 'tv' : 'movie';
+  /**
+   * Build an ordered list of available providers based on user preference.
+   * The preferred provider comes first; unavailable providers are omitted.
+   */
+  private getOrderedProviders(): IMetadataProvider[] {
+    if (this.preference === MetadataProviderPreference.TVDB_PRIMARY) {
+      return this.tvdbProvider.isAvailable()
+        ? [this.tvdbProvider, this.tmdbProvider]
+        : [this.tmdbProvider];
+    }
+    return this.tvdbProvider.isAvailable()
+      ? [this.tmdbProvider, this.tvdbProvider]
+      : [this.tmdbProvider];
   }
 
   /**
-   * Try the preferred provider first, then fall back to the other.
-   * Avoids duplicating the preference/fallback if-else in every public method.
+   * Try each provider in preference order until one returns a result.
+   * Each provider is only attempted if it has a matching ID.
    */
   private async withProviderFallback<T>(
     ids: { tmdbId?: number; tvdbId?: number },
-    tmdbFn: (tmdbId: number) => Promise<T | undefined>,
-    tvdbFn: (tvdbId: number) => Promise<T | undefined>,
+    fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
   ): Promise<T | undefined> {
-    if (this.preferTvdb && ids.tvdbId) {
-      const result = await tvdbFn(ids.tvdbId);
-      if (result !== undefined) return result;
+    for (const provider of this.getOrderedProviders()) {
+      const id = provider.extractId(ids);
+      if (id !== undefined) {
+        const result = await fn(provider, id);
+        if (result !== undefined) return result;
+      }
     }
-
-    if (ids.tmdbId) {
-      const result = await tmdbFn(ids.tmdbId);
-      if (result !== undefined) return result;
-    }
-
-    // Fallback to the other provider
-    if (!this.preferTvdb && ids.tvdbId && this.tvdbAvailable) {
-      return tvdbFn(ids.tvdbId);
-    }
-
     return undefined;
-  }
-
-  /**
-   * Collect direct provider IDs from a MediaItem, falling back to fresh
-   * metadata from the media server. Returns unique numeric IDs.
-   */
-  private async collectDirectIds(
-    item: MediaItem,
-    providerKey: 'tmdb' | 'tvdb',
-  ): Promise<number[]> {
-    const ids: number[] = [];
-
-    if (item.providerIds?.[providerKey]) {
-      for (const rawId of item.providerIds[providerKey]) {
-        const numId = Number(rawId);
-        if (numId && !ids.includes(numId)) ids.push(numId);
-      }
-    }
-
-    if (ids.length === 0) {
-      const mediaServer = await this.mediaServerFactory.getService();
-      const metadata = await mediaServer.getMetadata(item.id);
-      if (metadata?.providerIds?.[providerKey]) {
-        for (const rawId of metadata.providerIds[providerKey]) {
-          const numId = Number(rawId);
-          if (numId && !ids.includes(numId)) ids.push(numId);
-        }
-      }
-    }
-
-    return ids;
   }
 
   // ───── ID Resolution ─────
@@ -175,7 +124,6 @@ export class MetadataService {
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const type = this.mediaTypeFromItem(item);
-
       const ids: ResolvedMediaIds = { type };
 
       // Extract direct provider IDs from media server metadata
@@ -192,8 +140,8 @@ export class MetadataService {
       // Already have both — nothing to resolve
       if (ids.tmdbId && ids.tvdbId) return ids;
 
-      // Fill missing ID using the preferred provider first
-      if (this.preferTvdb) {
+      // Fill missing IDs — try preferred provider direction first
+      if (this.preference === MetadataProviderPreference.TVDB_PRIMARY) {
         await this.fillTvdbFromTmdb(ids);
         await this.fillTmdbFromTvdb(ids, item);
       } else {
@@ -217,11 +165,11 @@ export class MetadataService {
   async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
     const tvdbIds = await this.collectDirectIds(item, 'tvdb');
 
-    // If TVDB is available, search by IMDB ID
-    if (tvdbIds.length === 0 && this.tvdbAvailable) {
+    // If TVDB provider is available, search by IMDB ID
+    if (tvdbIds.length === 0 && this.tvdbProvider.isAvailable()) {
       const imdbId = item.providerIds?.imdb?.[0];
       if (imdbId) {
-        const results = await this.tvdbApi.searchByRemoteId(imdbId);
+        const results = await this.tvdbProvider.searchByRemoteId(imdbId);
         if (results?.length) {
           for (const r of results) {
             const id = r.series?.id ?? r.movie?.id;
@@ -235,9 +183,9 @@ export class MetadataService {
     if (tvdbIds.length === 0) {
       const tmdbResp = await this.resolveTmdbIdFromMediaItem(item);
       if (tmdbResp?.id) {
-        const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdbResp.id });
-        if (tmdbShow?.external_ids?.tvdb_id) {
-          tvdbIds.push(tmdbShow.external_ids.tvdb_id);
+        const details = await this.tmdbProvider.getTvShowDetails(tmdbResp.id);
+        if (details?.externalIds?.tvdbId) {
+          tvdbIds.push(details.externalIds.tvdbId);
         }
       }
     }
@@ -257,7 +205,7 @@ export class MetadataService {
     if (tmdbIds.length === 0) {
       const imdbId = item.providerIds?.imdb?.[0];
       if (imdbId) {
-        const resp = await this.tmdbApi.getByExternalId({
+        const resp = await this.tmdbProvider.findByExternalId({
           externalId: imdbId,
           type: 'imdb',
         });
@@ -274,7 +222,7 @@ export class MetadataService {
       for (const tvdbId of item.providerIds.tvdb) {
         const numTvdbId = Number(tvdbId);
         if (!numTvdbId) continue;
-        const resp = await this.tmdbApi.getByExternalId({
+        const resp = await this.tmdbProvider.findByExternalId({
           externalId: numTvdbId,
           type: 'tvdb',
         });
@@ -307,10 +255,8 @@ export class MetadataService {
     tmdbId?: number;
     tvdbId?: number;
   }): Promise<MetadataDetails | undefined> {
-    return this.withProviderFallback(
-      ids,
-      (tmdbId) => this.getMovieDetailsFromTmdb(tmdbId),
-      (tvdbId) => this.getMovieDetailsFromTvdb(tvdbId),
+    return this.withProviderFallback(ids, (provider, id) =>
+      provider.getMovieDetails(id),
     );
   }
 
@@ -321,10 +267,8 @@ export class MetadataService {
     tmdbId?: number;
     tvdbId?: number;
   }): Promise<MetadataDetails | undefined> {
-    return this.withProviderFallback(
-      ids,
-      (tmdbId) => this.getTvShowDetailsFromTmdb(tmdbId),
-      (tvdbId) => this.getTvShowDetailsFromTvdb(tvdbId),
+    return this.withProviderFallback(ids, (provider, id) =>
+      provider.getTvShowDetails(id),
     );
   }
 
@@ -350,10 +294,8 @@ export class MetadataService {
     type: 'movie' | 'tv',
     size = 'w500',
   ): Promise<string | undefined> {
-    return this.withProviderFallback(
-      ids,
-      (tmdbId) => this.getPosterFromTmdb(tmdbId, type, size),
-      (tvdbId) => this.getPosterFromTvdb(tvdbId, type),
+    return this.withProviderFallback(ids, (provider, id) =>
+      provider.getPosterUrl(id, type, size),
     );
   }
 
@@ -365,158 +307,48 @@ export class MetadataService {
     type: 'movie' | 'tv',
     size = 'w1280',
   ): Promise<string | undefined> {
-    return this.withProviderFallback(
-      ids,
-      (tmdbId) => this.getBackdropFromTmdb(tmdbId, type, size),
-      (tvdbId) => this.getBackdropFromTvdb(tvdbId, type),
+    return this.withProviderFallback(ids, (provider, id) =>
+      provider.getBackdropUrl(id, type, size),
     );
   }
 
-  // ───── TMDB helpers ─────
+  // ───── Private helpers ─────
 
-  private async getMovieDetailsFromTmdb(
-    tmdbId: number,
-  ): Promise<MetadataDetails | undefined> {
-    const movie = await this.tmdbApi.getMovie({ movieId: tmdbId });
-    if (!movie) return undefined;
-
-    return {
-      id: movie.id,
-      title: movie.title,
-      overview: movie.overview,
-      posterUrl: movie.poster_path
-        ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}`
-        : undefined,
-      backdropUrl: movie.backdrop_path
-        ? `${TMDB_IMAGE_BASE}/w1280${movie.backdrop_path}`
-        : undefined,
-      externalIds: {
-        tmdbId: movie.id,
-        tvdbId: movie.external_ids?.tvdb_id ?? undefined,
-        imdbId: movie.external_ids?.imdb_id ?? movie.imdb_id ?? undefined,
-        type: 'movie',
-      },
-      type: 'movie',
-    };
+  /** Determine normalised media type from a MediaItem. */
+  private mediaTypeFromItem(item: MediaItem): 'movie' | 'tv' {
+    return ['show', 'season', 'episode'].includes(item.type) ? 'tv' : 'movie';
   }
 
-  private async getTvShowDetailsFromTmdb(
-    tmdbId: number,
-  ): Promise<MetadataDetails | undefined> {
-    const show = await this.tmdbApi.getTvShow({ tvId: tmdbId });
-    if (!show) return undefined;
+  /**
+   * Collect direct provider IDs from a MediaItem, falling back to fresh
+   * metadata from the media server. Returns unique numeric IDs.
+   */
+  private async collectDirectIds(
+    item: MediaItem,
+    providerKey: 'tmdb' | 'tvdb',
+  ): Promise<number[]> {
+    const ids: number[] = [];
 
-    return {
-      id: show.id,
-      title: show.name,
-      overview: show.overview,
-      posterUrl: show.poster_path
-        ? `${TMDB_IMAGE_BASE}/w500${show.poster_path}`
-        : undefined,
-      backdropUrl: show.backdrop_path
-        ? `${TMDB_IMAGE_BASE}/w1280${show.backdrop_path}`
-        : undefined,
-      externalIds: {
-        tmdbId: show.id,
-        tvdbId: show.external_ids?.tvdb_id ?? undefined,
-        imdbId: show.external_ids?.imdb_id ?? undefined,
-        type: 'tv',
-      },
-      type: 'tv',
-    };
+    if (item.providerIds?.[providerKey]) {
+      for (const rawId of item.providerIds[providerKey]) {
+        const numId = Number(rawId);
+        if (numId && !ids.includes(numId)) ids.push(numId);
+      }
+    }
+
+    if (ids.length === 0) {
+      const mediaServer = await this.mediaServerFactory.getService();
+      const metadata = await mediaServer.getMetadata(item.id);
+      if (metadata?.providerIds?.[providerKey]) {
+        for (const rawId of metadata.providerIds[providerKey]) {
+          const numId = Number(rawId);
+          if (numId && !ids.includes(numId)) ids.push(numId);
+        }
+      }
+    }
+
+    return ids;
   }
-
-  private async getPosterFromTmdb(
-    tmdbId: number,
-    type: 'movie' | 'tv',
-    size: string,
-  ): Promise<string | undefined> {
-    const path =
-      type === 'movie'
-        ? (await this.tmdbApi.getMovie({ movieId: tmdbId }))?.poster_path
-        : (await this.tmdbApi.getTvShow({ tvId: tmdbId }))?.poster_path;
-    return path ? `${TMDB_IMAGE_BASE}/${size}${path}` : undefined;
-  }
-
-  private async getBackdropFromTmdb(
-    tmdbId: number,
-    type: 'movie' | 'tv',
-    size: string,
-  ): Promise<string | undefined> {
-    const path =
-      type === 'movie'
-        ? (await this.tmdbApi.getMovie({ movieId: tmdbId }))?.backdrop_path
-        : (await this.tmdbApi.getTvShow({ tvId: tmdbId }))?.backdrop_path;
-    return path ? `${TMDB_IMAGE_BASE}/${size}${path}` : undefined;
-  }
-
-  // ───── TVDB helpers ─────
-
-  private async getMovieDetailsFromTvdb(
-    tvdbId: number,
-  ): Promise<MetadataDetails | undefined> {
-    const movie = await this.tvdbApi.getMovie(tvdbId);
-    if (!movie) return undefined;
-
-    return {
-      id: movie.id,
-      title: movie.name,
-      overview: movie.overview ?? undefined,
-      posterUrl: this.tvdbApi.getPosterUrl(movie),
-      backdropUrl: this.tvdbApi.getBackdropUrl(movie),
-      externalIds: {
-        tvdbId: movie.id,
-        imdbId: this.tvdbApi.getImdbId(movie),
-        type: 'movie',
-      },
-      type: 'movie',
-    };
-  }
-
-  private async getTvShowDetailsFromTvdb(
-    tvdbId: number,
-  ): Promise<MetadataDetails | undefined> {
-    const series = await this.tvdbApi.getSeries(tvdbId);
-    if (!series) return undefined;
-
-    return {
-      id: series.id,
-      title: series.name,
-      overview: series.overview ?? undefined,
-      posterUrl: this.tvdbApi.getPosterUrl(series),
-      backdropUrl: this.tvdbApi.getBackdropUrl(series),
-      externalIds: {
-        tvdbId: series.id,
-        imdbId: this.tvdbApi.getImdbId(series),
-        type: 'tv',
-      },
-      type: 'tv',
-    };
-  }
-
-  private async getPosterFromTvdb(
-    tvdbId: number,
-    type: 'movie' | 'tv',
-  ): Promise<string | undefined> {
-    const record =
-      type === 'movie'
-        ? await this.tvdbApi.getMovie(tvdbId)
-        : await this.tvdbApi.getSeries(tvdbId);
-    return this.tvdbApi.getPosterUrl(record);
-  }
-
-  private async getBackdropFromTvdb(
-    tvdbId: number,
-    type: 'movie' | 'tv',
-  ): Promise<string | undefined> {
-    const record =
-      type === 'movie'
-        ? await this.tvdbApi.getMovie(tvdbId)
-        : await this.tvdbApi.getSeries(tvdbId);
-    return this.tvdbApi.getBackdropUrl(record);
-  }
-
-  // ───── ID Resolution helpers ─────
 
   /**
    * If we have a TMDB ID but no TVDB ID, look up TMDB's external_ids
@@ -526,13 +358,13 @@ export class MetadataService {
     if (ids.tvdbId || !ids.tmdbId) return;
 
     try {
-      const externalIds =
+      const details =
         ids.type === 'movie'
-          ? (await this.tmdbApi.getMovie({ movieId: ids.tmdbId }))?.external_ids
-          : (await this.tmdbApi.getTvShow({ tvId: ids.tmdbId }))?.external_ids;
+          ? await this.tmdbProvider.getMovieDetails(ids.tmdbId)
+          : await this.tmdbProvider.getTvShowDetails(ids.tmdbId);
 
-      if (externalIds?.tvdb_id) {
-        ids.tvdbId = externalIds.tvdb_id;
+      if (details?.externalIds?.tvdbId) {
+        ids.tvdbId = details.externalIds.tvdbId;
       }
     } catch (e) {
       this.logger.debug(`Failed to resolve TVDB ID from TMDB: ${e.message}`);
@@ -552,7 +384,7 @@ export class MetadataService {
     try {
       // Try TVDB → TMDB cross-reference
       if (ids.tvdbId) {
-        const resp = await this.tmdbApi.getByExternalId({
+        const resp = await this.tmdbProvider.findByExternalId({
           externalId: ids.tvdbId,
           type: 'tvdb',
         });
@@ -596,7 +428,7 @@ export class MetadataService {
 
         if (!id) {
           for (const tvdbId of item.providerIds.tvdb || []) {
-            const resp = await this.tmdbApi.getByExternalId({
+            const resp = await this.tmdbProvider.findByExternalId({
               externalId: +tvdbId,
               type: 'tvdb',
             });
@@ -612,7 +444,7 @@ export class MetadataService {
 
         if (!id) {
           for (const imdbId of item.providerIds.imdb || []) {
-            const resp = await this.tmdbApi.getByExternalId({
+            const resp = await this.tmdbProvider.findByExternalId({
               externalId: imdbId,
               type: 'imdb',
             });
