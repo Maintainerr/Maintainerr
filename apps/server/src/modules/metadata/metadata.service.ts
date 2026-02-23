@@ -6,7 +6,6 @@ import {
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -22,7 +21,6 @@ export class MetadataService {
 
   constructor(
     private readonly tmdbApi: TmdbApiService,
-    private readonly tmdbIdService: TmdbIdService,
     private readonly tvdbApi: TvdbApiService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly settings: SettingsService,
@@ -189,7 +187,7 @@ export class MetadataService {
     // 3. Fallback: resolve via TMDB → external_ids.tvdb_id
     if (!tmdbId && mediaData) {
       const tmdbResult =
-        await this.tmdbIdService.getTmdbIdFromMediaItem(mediaData);
+        await this.resolveTmdbIdFromMediaItem(mediaData);
       tmdbId = tmdbResult?.id;
     }
 
@@ -251,7 +249,7 @@ export class MetadataService {
 
     // Last resort: TMDB → external_ids.tvdb_id
     if (tvdbIds.length === 0) {
-      const tmdbResp = await this.tmdbIdService.getTmdbIdFromMediaItem(item);
+      const tmdbResp = await this.resolveTmdbIdFromMediaItem(item);
       if (tmdbResp?.id) {
         const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdbResp.id });
         if (tmdbShow?.external_ids?.tvdb_id) {
@@ -331,7 +329,7 @@ export class MetadataService {
 
     // Last resort: GUID-based resolver
     if (tmdbIds.length === 0) {
-      const tmdbResp = await this.tmdbIdService.getTmdbIdFromMediaItem(item);
+      const tmdbResp = await this.resolveTmdbIdFromMediaItem(item);
       if (tmdbResp?.id) {
         tmdbIds.push(tmdbResp.id);
       }
@@ -627,7 +625,7 @@ export class MetadataService {
 
   /**
    * If we have a TVDB ID but no TMDB ID, search TMDB by external ID.
-   * Falls back to the GUID-based TmdbIdService resolver.
+   * Falls back to the provider-ID-based resolver.
    */
   private async fillTmdbFromTvdb(
     ids: ResolvedMediaIds,
@@ -652,13 +650,79 @@ export class MetadataService {
         }
       }
 
-      // Last resort: GUID-based resolver
-      const tmdbResult = await this.tmdbIdService.getTmdbIdFromMediaItem(item);
+      // Last resort: full provider-ID resolver
+      const tmdbResult = await this.resolveTmdbIdFromMediaItem(item);
       if (tmdbResult?.id) {
         ids.tmdbId = tmdbResult.id;
       }
     } catch (e) {
       this.logger.debug(`Failed to resolve TMDB ID: ${e.message}`);
+    }
+  }
+
+  // ───── TMDB ID Resolution ─────
+
+  /**
+   * Resolve a TMDB ID from a MediaItem's provider IDs.
+   * Checks tmdb → tvdb → imdb, using TMDB's external-ID lookup as fallback.
+   */
+  private async resolveTmdbIdFromMediaItem(
+    item: MediaItem,
+  ): Promise<{ type: 'movie' | 'tv'; id: number | undefined } | undefined> {
+    try {
+      let id: number | undefined = undefined;
+
+      if (item.providerIds) {
+        for (const tmdbId of item.providerIds.tmdb || []) {
+          id = +tmdbId;
+          if (id) break;
+        }
+
+        if (!id) {
+          for (const tvdbId of item.providerIds.tvdb || []) {
+            const resp = await this.tmdbApi.getByExternalId({
+              externalId: +tvdbId,
+              type: 'tvdb',
+            });
+            if (resp) {
+              id =
+                resp.movie_results?.length > 0
+                  ? resp.movie_results[0]?.id
+                  : resp.tv_results?.[0]?.id;
+              if (id) break;
+            }
+          }
+        }
+
+        if (!id) {
+          for (const imdbId of item.providerIds.imdb || []) {
+            const resp = await this.tmdbApi.getByExternalId({
+              externalId: imdbId,
+              type: 'imdb',
+            });
+            if (resp) {
+              id =
+                resp.movie_results?.length > 0
+                  ? resp.movie_results[0]?.id
+                  : resp.tv_results?.[0]?.id;
+              if (id) break;
+            }
+          }
+        }
+      }
+
+      return {
+        type: ['show', 'season', 'episode'].includes(item.type)
+          ? 'tv'
+          : 'movie',
+        id,
+      };
+    } catch (e) {
+      this.logger.warn(
+        `Failed to resolve TMDB ID from provider IDs: ${e.message}`,
+      );
+      this.logger.debug(e);
+      return undefined;
     }
   }
 }
