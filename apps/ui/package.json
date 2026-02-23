@@ -29,7 +29,7 @@
     "lodash-es": "^4.17.23",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.71.2",
     "react-markdown": "10.1.0",
     "react-router-dom": "^7.13.0",
     "react-select": "^5.10.2",
