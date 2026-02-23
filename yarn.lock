@@ -13343,9 +13343,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"knip@npm:^5.83.0":
-  version: 5.83.0
-  resolution: "knip@npm:5.83.0"
+"knip@npm:^5.85.0":
+  version: 5.85.0
+  resolution: "knip@npm:5.85.0"
   dependencies:
     "@nodelib/fs.walk": "npm:^1.2.3"
     fast-glob: "npm:^3.3.3"
@@ -13365,7 +13365,7 @@ __metadata:
   bin:
     knip: bin/knip.js
     knip-bun: bin/knip-bun.js
-  checksum: 10c0/17087d7fbdf02d77004105cb8b020a6b04742078a8b98f6ff817560dd45663a00b47f4f507cbf8af034b4d5a1f7ef7a6be88bf836428fa482a31ac8f09e92823
+  checksum: 10c0/d1eb6c85bb24cd357cedf67d02f9697261b70721a59eed48bd0be716e99b86ceb3e55ee9e6cfef60110272303e2de8dc6ea0621936f9e209490eaf5c24b2697f
   languageName: node
   linkType: hard
 
@@ -13917,7 +13917,7 @@ __metadata:
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^10.0.1"
     "@types/node": "npm:^22.19.11"
-    knip: "npm:^5.83.0"
+    knip: "npm:^5.85.0"
     semantic-release: "npm:^25.0.3"
     turbo: "npm:^2.8.3"
     typescript: "npm:^5.9.3"
