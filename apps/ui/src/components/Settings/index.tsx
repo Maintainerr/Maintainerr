@@ -81,6 +81,11 @@ const SettingsWrapper = () => {
         regex: /^\/settings\/notifications$/,
       },
       {
+        text: 'Metadata',
+        route: '/settings/metadata',
+        regex: /^\/settings\/metadata$/,
+      },
+      {
         text: 'Logs',
         route: '/settings/logs',
         regex: /^\/settings\/logs$/,

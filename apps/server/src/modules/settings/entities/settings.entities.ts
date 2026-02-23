@@ -71,6 +71,10 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   tautulli_api_key: string;
 
+  // Metadata provider keys
+  @Column({ nullable: true })
+  tmdb_api_key?: string;
+
   @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
   collection_handler_job_cron: string;
 

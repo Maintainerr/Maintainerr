@@ -11,6 +11,8 @@ import {
   switchMediaServerSchema,
   TautulliSetting,
   tautulliSettingSchema,
+  TmdbSetting,
+  tmdbSettingSchema,
 } from '@maintainerr/contracts';
 import {
   Body,
@@ -185,6 +187,40 @@ export class SettingsController {
     payload: TautulliSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testTautulli(payload);
+  }
+
+  @Get('/tmdb')
+  async getTmdbSetting(): Promise<TmdbSetting | BasicResponseDto> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      api_key: settings.tmdb_api_key ?? '',
+    };
+  }
+
+  @Post('/tmdb')
+  async updateTmdbSetting(
+    @Body(new ZodValidationPipe(tmdbSettingSchema))
+    payload: TmdbSetting,
+  ) {
+    return await this.settingsService.updateTmdbSetting(payload);
+  }
+
+  @Delete('/tmdb')
+  async removeTmdbSetting() {
+    return await this.settingsService.removeTmdbSetting();
+  }
+
+  @Post('/test/tmdb')
+  testTmdb(
+    @Body(new ZodValidationPipe(tmdbSettingSchema))
+    payload: TmdbSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsService.testTmdb(payload);
   }
 
   // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)

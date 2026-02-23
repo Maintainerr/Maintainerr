@@ -1,5 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { SettingsService } from '../../settings/settings.service';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
 import {
@@ -9,20 +12,62 @@ import {
   TmdbTvDetails,
 } from './interfaces/tmdb.interface';
 
+const TMDB_DEFAULT_API_KEY = 'db55323b8d3e4154498498a75642b381';
+
 @Injectable()
 export class TmdbApiService extends ExternalApiService {
-  constructor(protected readonly logger: MaintainerrLogger) {
+  constructor(
+    @Inject(forwardRef(() => SettingsService))
+    private readonly settings: SettingsService,
+    protected readonly logger: MaintainerrLogger,
+  ) {
     logger.setContext(TmdbApiService.name);
     super(
       'https://api.themoviedb.org/3',
       {
-        api_key: 'db55323b8d3e4154498498a75642b381',
+        api_key: TMDB_DEFAULT_API_KEY,
       },
       logger,
       {
         nodeCache: cacheManager.getCache('tmdb').data,
       },
     );
+  }
+
+  /**
+   * Called after NestJS has resolved all dependencies.
+   * Sets the API key from settings if one is configured.
+   */
+  onModuleInit() {
+    const customKey = this.settings.tmdb_api_key;
+    if (customKey) {
+      this.updateApiKey(customKey);
+    }
+  }
+
+  @OnEvent(MaintainerrEvent.Settings_Updated)
+  handleSettingsUpdate(payload: {
+    oldSettings: { tmdb_api_key?: string };
+    settings: { tmdb_api_key?: string };
+  }) {
+    const newKey = payload.settings.tmdb_api_key;
+    const oldKey = payload.oldSettings.tmdb_api_key;
+
+    if (newKey !== oldKey) {
+      this.updateApiKey(newKey || TMDB_DEFAULT_API_KEY);
+      this.logger.log(
+        newKey
+          ? 'TMDB API key updated to user-configured key'
+          : 'TMDB API key reset to default',
+      );
+    }
+  }
+
+  private updateApiKey(apiKey: string) {
+    this.axios.defaults.params = {
+      ...this.axios.defaults.params,
+      api_key: apiKey,
+    };
   }
 
   public getPerson = async ({
@@ -136,6 +181,42 @@ export class TmdbApiService extends ExternalApiService {
       this.logger.debug(e);
     }
   };
+
+  /**
+   * Test connectivity to the TMDB API.
+   * When an API key is provided, it temporarily overrides the configured key for the test.
+   */
+  public async testConnection(apiKey?: string): Promise<BasicResponseDto> {
+    if (!apiKey && !this.axios.defaults.params?.api_key) {
+      return { status: 'NOK', code: 0, message: 'No TMDB API key configured' };
+    }
+
+    const previousParams = { ...this.axios.defaults.params };
+
+    if (apiKey) {
+      this.updateApiKey(apiKey);
+    }
+
+    try {
+      const data = await this.get<{ id: number }>('/movie/550');
+
+      return data?.id
+        ? { status: 'OK', code: 1, message: 'Success' }
+        : { status: 'NOK', code: 0, message: 'Unexpected response' };
+    } catch (e) {
+      this.logger.warn(`A failure occurred testing TMDB connectivity: ${e}`);
+
+      const message =
+        e.response?.status === 401
+          ? 'Invalid API key'
+          : `Connection failed: ${e.message}`;
+      return { status: 'NOK', code: 0, message };
+    } finally {
+      if (apiKey) {
+        this.axios.defaults.params = previousParams;
+      }
+    }
+  }
 
   public async getByExternalId({
     externalId,
