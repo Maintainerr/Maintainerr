@@ -64,6 +64,71 @@ export class MetadataService {
     );
   }
 
+  // ───── Shared helpers ─────
+
+  /** Determine normalised media type from a MediaItem. */
+  private mediaTypeFromItem(item: MediaItem): 'movie' | 'tv' {
+    return ['show', 'season', 'episode'].includes(item.type) ? 'tv' : 'movie';
+  }
+
+  /**
+   * Try the preferred provider first, then fall back to the other.
+   * Avoids duplicating the preference/fallback if-else in every public method.
+   */
+  private async withProviderFallback<T>(
+    ids: { tmdbId?: number; tvdbId?: number },
+    tmdbFn: (tmdbId: number) => Promise<T | undefined>,
+    tvdbFn: (tvdbId: number) => Promise<T | undefined>,
+  ): Promise<T | undefined> {
+    if (this.preferTvdb && ids.tvdbId) {
+      const result = await tvdbFn(ids.tvdbId);
+      if (result !== undefined) return result;
+    }
+
+    if (ids.tmdbId) {
+      const result = await tmdbFn(ids.tmdbId);
+      if (result !== undefined) return result;
+    }
+
+    // Fallback to the other provider
+    if (!this.preferTvdb && ids.tvdbId && this.tvdbAvailable) {
+      return tvdbFn(ids.tvdbId);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Collect direct provider IDs from a MediaItem, falling back to fresh
+   * metadata from the media server. Returns unique numeric IDs.
+   */
+  private async collectDirectIds(
+    item: MediaItem,
+    providerKey: 'tmdb' | 'tvdb',
+  ): Promise<number[]> {
+    const ids: number[] = [];
+
+    if (item.providerIds?.[providerKey]) {
+      for (const rawId of item.providerIds[providerKey]) {
+        const numId = Number(rawId);
+        if (numId && !ids.includes(numId)) ids.push(numId);
+      }
+    }
+
+    if (ids.length === 0) {
+      const mediaServer = await this.mediaServerFactory.getService();
+      const metadata = await mediaServer.getMetadata(item.id);
+      if (metadata?.providerIds?.[providerKey]) {
+        for (const rawId of metadata.providerIds[providerKey]) {
+          const numId = Number(rawId);
+          if (numId && !ids.includes(numId)) ids.push(numId);
+        }
+      }
+    }
+
+    return ids;
+  }
+
   // ───── ID Resolution ─────
 
   /**
@@ -109,11 +174,7 @@ export class MetadataService {
     item: MediaItem,
   ): Promise<ResolvedMediaIds | undefined> {
     try {
-      const type: 'movie' | 'tv' = ['show', 'season', 'episode'].includes(
-        item.type,
-      )
-        ? 'tv'
-        : 'movie';
+      const type = this.mediaTypeFromItem(item);
 
       const ids: ResolvedMediaIds = { type };
 
@@ -149,88 +210,12 @@ export class MetadataService {
   }
 
   /**
-   * Resolve a TVDB ID for a media item. Uses direct provider IDs when
-   * available, then TVDB search, and falls back to TMDB external_ids.
-   * Used internally and by resolveAllSeriesIds.
-   */
-  private async resolveTvdbId(
-    mediaServerId: string,
-    tmdbId?: number | null,
-  ): Promise<number | undefined> {
-    // 1. Check media server metadata for direct TVDB ID
-    const mediaServer = await this.mediaServerFactory.getService();
-    let mediaData = await mediaServer.getMetadata(mediaServerId);
-
-    // Walk up hierarchy for seasons/episodes
-    mediaData = mediaData?.grandparentId
-      ? await mediaServer.getMetadata(mediaData.grandparentId)
-      : mediaData?.parentId
-        ? await mediaServer.getMetadata(mediaData.parentId)
-        : mediaData;
-
-    if (mediaData?.providerIds?.tvdb?.length) {
-      const directId = Number(mediaData.providerIds.tvdb[0]);
-      if (directId) return directId;
-    }
-
-    // 2. If TVDB service is available and we have an IMDB ID, search TVDB directly
-    if (this.tvdbAvailable && mediaData?.providerIds?.imdb?.length) {
-      const imdbId = mediaData.providerIds.imdb[0];
-      const results = await this.tvdbApi.searchByRemoteId(imdbId);
-      if (results?.length) {
-        const match = results[0];
-        const tvdbId = match.series?.id ?? match.movie?.id;
-        if (tvdbId) return tvdbId;
-      }
-    }
-
-    // 3. Fallback: resolve via TMDB → external_ids.tvdb_id
-    if (!tmdbId && mediaData) {
-      const tmdbResult = await this.resolveTmdbIdFromMediaItem(mediaData);
-      tmdbId = tmdbResult?.id;
-    }
-
-    if (tmdbId) {
-      const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdbId });
-      if (tmdbShow?.external_ids?.tvdb_id) {
-        return tmdbShow.external_ids.tvdb_id;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
    * Resolve all series-matching IDs for a media item (can return multiple when
    * upstream providers list multiple entries). Used by SonarrGetterService for
    * Sonarr series lookup.
    */
   async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
-    const tvdbIds: number[] = [];
-
-    // Direct provider IDs
-    if (item.providerIds?.tvdb) {
-      for (const tvdbId of item.providerIds.tvdb) {
-        const numId = Number(tvdbId);
-        if (numId && !tvdbIds.includes(numId)) {
-          tvdbIds.push(numId);
-        }
-      }
-    }
-
-    // Try fetching fresh metadata from media server
-    if (tvdbIds.length === 0) {
-      const mediaServer = await this.mediaServerFactory.getService();
-      const metadata = await mediaServer.getMetadata(item.id);
-      if (metadata?.providerIds?.tvdb) {
-        for (const tvdbId of metadata.providerIds.tvdb) {
-          const numId = Number(tvdbId);
-          if (numId && !tvdbIds.includes(numId)) {
-            tvdbIds.push(numId);
-          }
-        }
-      }
-    }
+    const tvdbIds = await this.collectDirectIds(item, 'tvdb');
 
     // If TVDB is available, search by IMDB ID
     if (tvdbIds.length === 0 && this.tvdbAvailable) {
@@ -266,31 +251,7 @@ export class MetadataService {
    * for Radarr movie lookup.
    */
   async resolveAllMovieIds(item: MediaItem): Promise<number[]> {
-    const tmdbIds: number[] = [];
-
-    // Direct provider IDs
-    if (item.providerIds?.tmdb) {
-      for (const tmdbId of item.providerIds.tmdb) {
-        const numId = Number(tmdbId);
-        if (numId && !tmdbIds.includes(numId)) {
-          tmdbIds.push(numId);
-        }
-      }
-    }
-
-    // Try fetching fresh metadata from media server
-    if (tmdbIds.length === 0) {
-      const mediaServer = await this.mediaServerFactory.getService();
-      const metadata = await mediaServer.getMetadata(item.id);
-      if (metadata?.providerIds?.tmdb) {
-        for (const tmdbId of metadata.providerIds.tmdb) {
-          const numId = Number(tmdbId);
-          if (numId && !tmdbIds.includes(numId)) {
-            tmdbIds.push(numId);
-          }
-        }
-      }
-    }
+    const tmdbIds = await this.collectDirectIds(item, 'tmdb');
 
     // Cross-reference via IMDB → TMDB find
     if (tmdbIds.length === 0) {
@@ -346,22 +307,11 @@ export class MetadataService {
     tmdbId?: number;
     tvdbId?: number;
   }): Promise<MetadataDetails | undefined> {
-    if (this.preferTvdb && ids.tvdbId) {
-      const tvdb = await this.getMovieDetailsFromTvdb(ids.tvdbId);
-      if (tvdb) return tvdb;
-    }
-
-    if (ids.tmdbId) {
-      const tmdb = await this.getMovieDetailsFromTmdb(ids.tmdbId);
-      if (tmdb) return tmdb;
-    }
-
-    // Fallback to the other provider
-    if (!this.preferTvdb && ids.tvdbId && this.tvdbAvailable) {
-      return this.getMovieDetailsFromTvdb(ids.tvdbId);
-    }
-
-    return undefined;
+    return this.withProviderFallback(
+      ids,
+      (tmdbId) => this.getMovieDetailsFromTmdb(tmdbId),
+      (tvdbId) => this.getMovieDetailsFromTvdb(tvdbId),
+    );
   }
 
   /**
@@ -371,22 +321,11 @@ export class MetadataService {
     tmdbId?: number;
     tvdbId?: number;
   }): Promise<MetadataDetails | undefined> {
-    if (this.preferTvdb && ids.tvdbId) {
-      const tvdb = await this.getTvShowDetailsFromTvdb(ids.tvdbId);
-      if (tvdb) return tvdb;
-    }
-
-    if (ids.tmdbId) {
-      const tmdb = await this.getTvShowDetailsFromTmdb(ids.tmdbId);
-      if (tmdb) return tmdb;
-    }
-
-    // Fallback to the other provider
-    if (!this.preferTvdb && ids.tvdbId && this.tvdbAvailable) {
-      return this.getTvShowDetailsFromTvdb(ids.tvdbId);
-    }
-
-    return undefined;
+    return this.withProviderFallback(
+      ids,
+      (tmdbId) => this.getTvShowDetailsFromTmdb(tmdbId),
+      (tvdbId) => this.getTvShowDetailsFromTvdb(tvdbId),
+    );
   }
 
   /**
@@ -411,22 +350,11 @@ export class MetadataService {
     type: 'movie' | 'tv',
     size = 'w500',
   ): Promise<string | undefined> {
-    if (this.preferTvdb && ids.tvdbId) {
-      const url = await this.getPosterFromTvdb(ids.tvdbId, type);
-      if (url) return url;
-    }
-
-    if (ids.tmdbId) {
-      const url = await this.getPosterFromTmdb(ids.tmdbId, type, size);
-      if (url) return url;
-    }
-
-    // Fallback
-    if (!this.preferTvdb && ids.tvdbId && this.tvdbAvailable) {
-      return this.getPosterFromTvdb(ids.tvdbId, type);
-    }
-
-    return undefined;
+    return this.withProviderFallback(
+      ids,
+      (tmdbId) => this.getPosterFromTmdb(tmdbId, type, size),
+      (tvdbId) => this.getPosterFromTvdb(tvdbId, type),
+    );
   }
 
   /**
@@ -437,22 +365,11 @@ export class MetadataService {
     type: 'movie' | 'tv',
     size = 'w1280',
   ): Promise<string | undefined> {
-    if (this.preferTvdb && ids.tvdbId) {
-      const url = await this.getBackdropFromTvdb(ids.tvdbId, type);
-      if (url) return url;
-    }
-
-    if (ids.tmdbId) {
-      const url = await this.getBackdropFromTmdb(ids.tmdbId, type, size);
-      if (url) return url;
-    }
-
-    // Fallback
-    if (!this.preferTvdb && ids.tvdbId && this.tvdbAvailable) {
-      return this.getBackdropFromTvdb(ids.tvdbId, type);
-    }
-
-    return undefined;
+    return this.withProviderFallback(
+      ids,
+      (tmdbId) => this.getBackdropFromTmdb(tmdbId, type, size),
+      (tvdbId) => this.getBackdropFromTvdb(tvdbId, type),
+    );
   }
 
   // ───── TMDB helpers ─────
@@ -711,9 +628,7 @@ export class MetadataService {
       }
 
       return {
-        type: ['show', 'season', 'episode'].includes(item.type)
-          ? 'tv'
-          : 'movie',
+        type: this.mediaTypeFromItem(item),
         id,
       };
     } catch (e) {
