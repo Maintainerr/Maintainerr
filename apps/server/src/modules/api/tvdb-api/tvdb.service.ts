@@ -28,7 +28,7 @@ export class TvdbApiService extends ExternalApiService {
   ) {
     logger.setContext(TvdbApiService.name);
     super(TVDB_BASE_URL, {}, logger, {
-      nodeCache: cacheManager.getCache('tmdb').data,
+      nodeCache: cacheManager.getCache('tvdb').data,
     });
   }
 

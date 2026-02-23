@@ -184,23 +184,24 @@ export class TmdbApiService extends ExternalApiService {
 
   /**
    * Test connectivity to the TMDB API.
-   * When an API key is provided, it temporarily overrides the configured key for the test.
+   * Uses a direct request that bypasses the cache so we actually validate
+   * the supplied key against the upstream API.
    */
   public async testConnection(apiKey?: string): Promise<BasicResponseDto> {
-    if (!apiKey && !this.axios.defaults.params?.api_key) {
+    const testKey = apiKey || this.axios.defaults.params?.api_key;
+
+    if (!testKey) {
       return { status: 'NOK', code: 0, message: 'No TMDB API key configured' };
     }
 
-    const previousParams = { ...this.axios.defaults.params };
-
-    if (apiKey) {
-      this.updateApiKey(apiKey);
-    }
-
     try {
-      const data = await this.get<{ id: number }>('/movie/550');
+      // Use a direct axios call — bypasses the node-cache and lets errors
+      // propagate so we can inspect the HTTP status code.
+      const response = await this.axios.get<{ id: number }>('/movie/550', {
+        params: { api_key: testKey },
+      });
 
-      return data?.id
+      return response.data?.id
         ? { status: 'OK', code: 1, message: 'Success' }
         : { status: 'NOK', code: 0, message: 'Unexpected response' };
     } catch (e) {
@@ -211,10 +212,6 @@ export class TmdbApiService extends ExternalApiService {
           ? 'Invalid API key'
           : `Connection failed: ${e.message}`;
       return { status: 'NOK', code: 0, message };
-    } finally {
-      if (apiKey) {
-        this.axios.defaults.params = previousParams;
-      }
     }
   }
 

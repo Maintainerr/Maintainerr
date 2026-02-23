@@ -385,8 +385,8 @@ const MetadataSettings = () => {
         <div className="section">
           <h4 className="text-lg font-bold text-amber-500">TVDB</h4>
           <p className="mt-1 text-sm text-zinc-400">
-            TheTVDB provides TV show, movie, and person metadata. You can obtain
-            an API key at{' '}
+            TheTVDB provides TV show and movie metadata. You can obtain an API
+            key at{' '}
             <a
               href="https://thetvdb.com/dashboard/account/apikey"
               target="_blank"
