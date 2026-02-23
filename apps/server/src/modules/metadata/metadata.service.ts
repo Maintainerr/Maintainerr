@@ -186,8 +186,7 @@ export class MetadataService {
 
     // 3. Fallback: resolve via TMDB → external_ids.tvdb_id
     if (!tmdbId && mediaData) {
-      const tmdbResult =
-        await this.resolveTmdbIdFromMediaItem(mediaData);
+      const tmdbResult = await this.resolveTmdbIdFromMediaItem(mediaData);
       tmdbId = tmdbResult?.id;
     }
 
