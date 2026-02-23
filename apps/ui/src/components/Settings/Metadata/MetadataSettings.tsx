@@ -2,6 +2,7 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
+  MetadataProviderPreference,
   TmdbSetting,
   tmdbSettingSchema,
   TvdbSetting,
@@ -10,6 +11,10 @@ import {
 import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import {
+  useMetadataProviderPreference,
+  useUpdateMetadataProviderPreference,
+} from '../../../api/settings'
 import GetApiHandler, {
   DeleteApiHandler,
   PostApiHandler,
@@ -46,6 +51,19 @@ const TvdbSettingFormSchema = z.union([
 type TvdbSettingFormResult = z.infer<typeof TvdbSettingFormSchema>
 
 const MetadataSettings = () => {
+  // Provider preference via TanStack Query
+  const {
+    data: preference = MetadataProviderPreference.TMDB_PRIMARY,
+    isLoading: preferenceLoading,
+  } = useMetadataProviderPreference()
+
+  const {
+    mutate: savePreference,
+    isPending: preferenceSaving,
+    isSuccess: preferenceSuccess,
+    isError: preferenceError,
+  } = useUpdateMetadataProviderPreference()
+
   // TMDB state
   const [tmdbTestedSettings, setTmdbTestedSettings] = useState<
     TmdbSetting | undefined
@@ -240,6 +258,50 @@ const MetadataSettings = () => {
             Configure API keys for metadata providers. If left empty, the
             built-in default key will be used where available.
           </p>
+        </div>
+
+        {/* Provider Preference */}
+        {preferenceError ? (
+          <Alert type="warning" title="Failed to update provider preference" />
+        ) : preferenceSuccess ? (
+          <Alert type="info" title="Provider preference updated successfully" />
+        ) : undefined}
+
+        <div className="section">
+          <h4 className="text-lg font-bold text-amber-500">
+            Provider Preference
+          </h4>
+          <p className="mt-1 text-sm text-zinc-400">
+            Choose which metadata provider is tried first for images and media
+            details. The other provider is used as a fallback when available.
+          </p>
+
+          <div className="mt-4">
+            <label
+              htmlFor="metadata-preference"
+              className="block text-sm font-medium text-zinc-300"
+            >
+              Primary Provider
+            </label>
+            <select
+              id="metadata-preference"
+              className="mt-1 block w-full rounded-md border-zinc-600 bg-zinc-700 px-3 py-2 text-white shadow-sm focus:border-amber-500 focus:outline-none focus:ring-amber-500 sm:w-64"
+              value={preference}
+              disabled={preferenceLoading || preferenceSaving}
+              onChange={(e) =>
+                savePreference(
+                  e.target.value as MetadataProviderPreference,
+                )
+              }
+            >
+              <option value={MetadataProviderPreference.TMDB_PRIMARY}>
+                TMDB (default)
+              </option>
+              <option value={MetadataProviderPreference.TVDB_PRIMARY}>
+                TVDB
+              </option>
+            </select>
+          </div>
         </div>
 
         {/* TMDB Section */}

@@ -3,6 +3,7 @@ import {
   JellyfinSetting,
   MediaServerSwitchPreview,
   MediaServerType,
+  MetadataProviderPreference,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
 } from '@maintainerr/contracts'
@@ -49,6 +50,7 @@ interface ISettings {
   // Metadata provider keys
   tmdb_api_key?: string
   tvdb_api_key?: string
+  metadata_provider_preference?: string
   collection_handler_job_cron: string
   rules_handler_job_cron: string
 }
@@ -350,4 +352,47 @@ export const downloadDatabase = async (
   setTimeout(() => {
     URL.revokeObjectURL(fileUrl)
   }, 0)
+}
+
+// --- Metadata provider preference ---
+
+type UseMetadataPreferenceQueryKey = ['settings', 'metadata-provider']
+
+export const useMetadataProviderPreference = () => {
+  return useQuery<
+    MetadataProviderPreference,
+    Error,
+    MetadataProviderPreference,
+    UseMetadataPreferenceQueryKey
+  >({
+    queryKey: ['settings', 'metadata-provider'],
+    queryFn: async () => {
+      const resp = await GetApiHandler<{
+        preference: MetadataProviderPreference
+      }>('/settings/metadata-provider')
+      return resp.preference ?? MetadataProviderPreference.TMDB_PRIMARY
+    },
+  })
+}
+
+export const useUpdateMetadataProviderPreference = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, MetadataProviderPreference>({
+    mutationKey: ['settings', 'metadata-provider', 'update'],
+    mutationFn: async (preference) => {
+      return await PostApiHandler<BasicResponseDto>(
+        '/settings/metadata-provider',
+        { preference },
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          'settings',
+          'metadata-provider',
+        ] satisfies UseMetadataPreferenceQueryKey,
+      })
+    },
+  })
 }

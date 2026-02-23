@@ -3,6 +3,7 @@ import {
   JellyfinSetting,
   MaintainerrEvent,
   MediaServerType,
+  MetadataProviderPreference,
   SeerrSetting,
   TautulliSetting,
   TmdbSetting,
@@ -85,6 +86,8 @@ export class SettingsService implements SettingDto {
 
   tvdb_api_key?: string;
 
+  metadata_provider_preference?: MetadataProviderPreference;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;
@@ -145,6 +148,9 @@ export class SettingsService implements SettingDto {
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
       this.tmdb_api_key = settingsDb?.tmdb_api_key;
       this.tvdb_api_key = settingsDb?.tvdb_api_key;
+      this.metadata_provider_preference =
+        settingsDb?.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY;
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
@@ -478,6 +484,29 @@ export class SettingsService implements SettingDto {
 
   public async testTvdb(setting?: TvdbSetting): Promise<BasicResponseDto> {
     return await this.tvdbApi.testConnection(setting?.api_key);
+  }
+
+  public async updateMetadataProviderPreference(
+    preference: MetadataProviderPreference,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        metadata_provider_preference: preference,
+      });
+
+      this.metadata_provider_preference = preference;
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error(
+        'Error while updating metadata provider preference: ',
+        e,
+      );
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
   }
 
   public async removeSeerrSetting() {

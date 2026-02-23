@@ -111,7 +111,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
               style={{
                 backgroundImage: backdrop
-                  ? `url(https://image.tmdb.org/t/p/w1280${backdrop})`
+                  ? `url(${backdrop})`
                   : 'linear-gradient(to bottom, #1e293b, #1e293b)',
               }}
             ></div>

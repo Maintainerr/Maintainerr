@@ -6,6 +6,14 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
+import {
+  TvdbApiResponse,
+  TvdbArtwork,
+  TvdbArtworkType,
+  TvdbMovieBase,
+  TvdbRemoteIdResult,
+  TvdbSeriesBase,
+} from './interfaces/tvdb.interface';
 
 const TVDB_BASE_URL = 'https://api4.thetvdb.com/v4';
 
@@ -20,7 +28,7 @@ export class TvdbApiService extends ExternalApiService {
   ) {
     logger.setContext(TvdbApiService.name);
     super(TVDB_BASE_URL, {}, logger, {
-      nodeCache: cacheManager.getCache('tvdb').data,
+      nodeCache: cacheManager.getCache('tmdb').data,
     });
   }
 
@@ -124,5 +132,128 @@ export class TvdbApiService extends ExternalApiService {
           : `Connection failed: ${e.message}`;
       return { status: 'NOK', code: 0, message };
     }
+  }
+
+  /**
+   * Whether the TVDB service is authenticated and ready for API calls.
+   */
+  public isAvailable(): boolean {
+    return !!this.bearerToken;
+  }
+
+  /**
+   * Fetch a movie by its TVDB ID.
+   */
+  public async getMovie(tvdbId: number): Promise<TvdbMovieBase | undefined> {
+    try {
+      const resp = await this.get<TvdbApiResponse<TvdbMovieBase>>(
+        `/movies/${tvdbId}/extended`,
+        { params: { short: true } },
+        3600, // 1h cache
+      );
+      return resp?.data;
+    } catch (e) {
+      this.logger.warn(`Failed to fetch TVDB movie ${tvdbId}: ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
+  /**
+   * Fetch a TV series by its TVDB ID.
+   */
+  public async getSeries(tvdbId: number): Promise<TvdbSeriesBase | undefined> {
+    try {
+      const resp = await this.get<TvdbApiResponse<TvdbSeriesBase>>(
+        `/series/${tvdbId}/extended`,
+        { params: { short: true } },
+        3600, // 1h cache
+      );
+      return resp?.data;
+    } catch (e) {
+      this.logger.warn(`Failed to fetch TVDB series ${tvdbId}: ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
+  /**
+   * Search by a remote ID (e.g. IMDB ID) to find the corresponding TVDB records.
+   * Returns an array of results, each potentially containing a series or movie.
+   */
+  public async searchByRemoteId(
+    remoteId: string,
+  ): Promise<TvdbRemoteIdResult[] | undefined> {
+    try {
+      const resp = await this.get<TvdbApiResponse<TvdbRemoteIdResult[]>>(
+        `/search/remoteid/${remoteId}`,
+      );
+      return resp?.data;
+    } catch (e) {
+      this.logger.warn(
+        `Failed to search TVDB by remote ID ${remoteId}: ${e.message}`,
+      );
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
+  /**
+   * Get the poster URL for a series or movie.
+   * Returns the primary image from the base record, or the highest-scored poster artwork.
+   */
+  public getPosterUrl(
+    record: TvdbSeriesBase | TvdbMovieBase | undefined,
+  ): string | undefined {
+    if (!record) return undefined;
+
+    // The base record `image` field is typically the poster
+    if (record.image) return record.image;
+
+    // Fallback: find the highest-scored poster artwork
+    const poster = this.findBestArtwork(
+      record.artworks,
+      TvdbArtworkType.POSTER,
+    );
+    return poster?.image;
+  }
+
+  /**
+   * Get a backdrop/fanart URL for a series or movie.
+   * Returns the highest-scored background artwork.
+   */
+  public getBackdropUrl(
+    record: TvdbSeriesBase | TvdbMovieBase | undefined,
+  ): string | undefined {
+    if (!record) return undefined;
+
+    const backdrop = this.findBestArtwork(
+      record.artworks,
+      TvdbArtworkType.BACKGROUND,
+    );
+    return backdrop?.image;
+  }
+
+  /**
+   * Find the IMDB ID from a TVDB record's remote IDs.
+   */
+  public getImdbId(
+    record: TvdbSeriesBase | TvdbMovieBase | undefined,
+  ): string | undefined {
+    if (!record?.remoteIds) return undefined;
+    const imdbRemote = record.remoteIds.find(
+      (r) => r.sourceName === 'IMDB' || r.id?.startsWith('tt'),
+    );
+    return imdbRemote?.id;
+  }
+
+  private findBestArtwork(
+    artworks: TvdbArtwork[] | undefined,
+    type: TvdbArtworkType,
+  ): TvdbArtwork | undefined {
+    if (!artworks?.length) return undefined;
+    return artworks
+      .filter((a) => a.type === type)
+      .sort((a, b) => b.score - a.score)[0];
   }
 }

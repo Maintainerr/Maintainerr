@@ -52,10 +52,7 @@ export class Cache {
 
 class CacheManager {
   private availableCaches: Record<AvailableCacheIds, Cache> = {
-    tmdb: new Cache('tmdb', 'The Movie Database API', 'tmdb', {
-      stdTtl: 21600, // 6 hours
-      checkPeriod: 60 * 30,
-    }),
+    tmdb: new Cache('tmdb', 'Metadata API', 'tmdb'),
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
     plextv: new Cache('plextv', 'Plex.tv', 'plextv'),
     seerr: new Cache('seerr', 'Seerr API', 'seerr'),

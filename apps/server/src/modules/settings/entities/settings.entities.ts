@@ -1,4 +1,7 @@
-import { MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaServerType,
+  MetadataProviderPreference,
+} from '@maintainerr/contracts';
 import { CronExpression } from '@nestjs/schedule';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { SettingDto } from "../dto's/setting.dto";
@@ -77,6 +80,13 @@ export class Settings implements SettingDto {
 
   @Column({ nullable: true })
   tvdb_api_key?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    default: MetadataProviderPreference.TMDB_PRIMARY,
+  })
+  metadata_provider_preference?: MetadataProviderPreference;
 
   @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
   collection_handler_job_cron: string;

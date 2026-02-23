@@ -18,13 +18,8 @@ import { Brackets, DataSource, LessThan, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
-import {
-  TmdbMovieDetails,
-  TmdbTvDetails,
-} from '../api/tmdb-api/interfaces/tmdb.interface';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsService } from '../settings/settings.service';
@@ -65,8 +60,7 @@ export class CollectionsService {
     private readonly connection: DataSource,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly settingsService: SettingsService,
-    private readonly tmdbApi: TmdbApiService,
-    private readonly tmdbIdHelper: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -1072,17 +1066,10 @@ export class CollectionsService {
       const mediaServer = await this.getMediaServer();
       this.infoLogger(`Adding media with id ${childId} to collection..`);
 
-      const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(childId);
-
-      let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
-      switch (tmdb.type) {
-        case 'movie':
-          tmdbMedia = await this.tmdbApi.getMovie({ movieId: tmdb.id });
-          break;
-        case 'tv':
-          tmdbMedia = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
-          break;
-      }
+      const ids = await this.metadataService.resolveIds(childId);
+      const details = ids
+        ? await this.metadataService.getDetails(ids)
+        : undefined;
 
       try {
         await mediaServer.addToCollection(collectionIds.mediaServerId, childId);
@@ -1096,8 +1083,8 @@ export class CollectionsService {
               collectionId: collectionIds.dbId,
               mediaServerId: childId,
               addDate: new Date().toDateString(),
-              tmdbId: tmdbMedia?.id,
-              image_path: tmdbMedia?.poster_path,
+              tmdbId: ids?.tmdbId ?? details?.externalIds?.tmdbId,
+              image_path: details?.posterUrl,
               isManual: manual,
             },
           ])

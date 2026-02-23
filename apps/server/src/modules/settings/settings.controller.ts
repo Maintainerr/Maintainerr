@@ -4,6 +4,7 @@ import {
   jellyfinSettingSchema,
   MediaServerSwitchPreview,
   MediaServerType,
+  MetadataProviderPreference,
   SeerrSetting,
   seerrSettingSchema,
   SwitchMediaServerRequest,
@@ -257,6 +258,32 @@ export class SettingsController {
     payload: TvdbSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testTvdb(payload);
+  }
+
+  @Get('/metadata-provider')
+  async getMetadataProviderPreference(): Promise<{
+    preference: MetadataProviderPreference;
+  }> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return { preference: MetadataProviderPreference.TMDB_PRIMARY };
+    }
+
+    return {
+      preference:
+        settings.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY,
+    };
+  }
+
+  @Post('/metadata-provider')
+  async updateMetadataProviderPreference(
+    @Body() payload: { preference: MetadataProviderPreference },
+  ): Promise<BasicResponseDto> {
+    return this.settingsService.updateMetadataProviderPreference(
+      payload.preference,
+    );
   }
 
   // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)

@@ -1,52 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class MediaIdFinder {
-  constructor(
-    private mediaServerFactory: MediaServerFactory,
-    private tmdbApi: TmdbApiService,
-    private tmdbIdHelper: TmdbIdService,
-  ) {}
+  constructor(private readonly metadataService: MetadataService) {}
 
   public async findTvdbId(
     mediaServerId: string | number,
     tmdbId?: number | null,
   ) {
-    let tvdbid = undefined;
-    if (!tmdbId && mediaServerId) {
-      tmdbId = (
-        await this.tmdbIdHelper.getTmdbIdFromMediaServerId(
-          mediaServerId.toString(),
-        )
-      )?.id;
-    }
-
-    const tmdbShow = tmdbId
-      ? await this.tmdbApi.getTvShow({ tvId: tmdbId })
-      : undefined;
-
-    if (!tmdbShow?.external_ids?.tvdb_id) {
-      const mediaServer = await this.mediaServerFactory.getService();
-      let mediaData = await mediaServer.getMetadata(mediaServerId.toString());
-      // fetch correct record for seasons & episodes (go up to show level)
-      mediaData = mediaData?.grandparentId
-        ? await mediaServer.getMetadata(mediaData.grandparentId)
-        : mediaData?.parentId
-          ? await mediaServer.getMetadata(mediaData.parentId)
-          : mediaData;
-
-      // Check providerIds for tvdb
-      const tvdbFromProviders = mediaData?.providerIds?.tvdb;
-      if (tvdbFromProviders) {
-        tvdbid = tvdbFromProviders;
-      }
-    } else {
-      tvdbid = tmdbShow.external_ids.tvdb_id;
-    }
-
-    return tvdbid;
+    return this.metadataService.resolveTvdbId(mediaServerId.toString(), tmdbId);
   }
 }

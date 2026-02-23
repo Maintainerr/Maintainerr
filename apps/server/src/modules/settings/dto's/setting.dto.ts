@@ -1,4 +1,7 @@
-import { MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaServerType,
+  MetadataProviderPreference,
+} from '@maintainerr/contracts';
 
 export class SettingDto {
   id: number;
@@ -49,6 +52,8 @@ export class SettingDto {
   tmdb_api_key?: string;
 
   tvdb_api_key?: string;
+
+  metadata_provider_preference?: MetadataProviderPreference;
 
   collection_handler_job_cron: string;
 

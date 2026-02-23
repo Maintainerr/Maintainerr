@@ -21,6 +21,7 @@ import { TvdbApiModule } from '../modules/api/tvdb-api/tvdb.module';
 import { CollectionsModule } from '../modules/collections/collections.module';
 import { EventsModule } from '../modules/events/events.module';
 import { LogsModule } from '../modules/logging/logs.module';
+import { MetadataModule } from '../modules/metadata/metadata.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { NotificationService } from '../modules/notifications/notifications.service';
 import { RulesModule } from '../modules/rules/rules.module';
@@ -48,6 +49,7 @@ import ormConfig from './config/typeOrmConfig';
     ServarrApiModule,
     SeerrApiModule,
     TautulliApiModule,
+    MetadataModule,
     RulesModule,
     CollectionsModule,
     NotificationsModule,

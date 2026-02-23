@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class RadarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly tmdbIdService: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RadarrActionHandler.name);
@@ -29,11 +29,7 @@ export class RadarrActionHandler {
     // find tmdbid
     const tmdbid = media.tmdbId
       ? media.tmdbId
-      : (
-          await this.tmdbIdService.getTmdbIdFromMediaServerId(
-            media.mediaServerId,
-          )
-        )?.id;
+      : (await this.metadataService.resolveTmdbId(media.mediaServerId))?.id;
 
     if (tmdbid) {
       const radarrMedia = await radarrApiClient.getMovieByTmdbId(tmdbid);

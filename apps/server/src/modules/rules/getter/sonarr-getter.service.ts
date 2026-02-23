@@ -8,12 +8,11 @@ import {
   SonarrSeries,
 } from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
-import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import {
   Application,
   Property,
@@ -28,8 +27,7 @@ export class SonarrGetterService {
   constructor(
     private readonly servarrService: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly tmdbApi: TmdbApiService,
-    private readonly tmdbIdHelper: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SonarrGetterService.name);
@@ -454,42 +452,6 @@ export class SonarrGetterService {
   public async findAllTvdbIdsFromMediaItem(
     libItem: MediaItem,
   ): Promise<number[]> {
-    const tvdbIds: number[] = [];
-
-    if (libItem.providerIds?.tvdb) {
-      for (const tvdbId of libItem.providerIds.tvdb) {
-        const numId = Number(tvdbId);
-        if (numId && !tvdbIds.includes(numId)) {
-          tvdbIds.push(numId);
-        }
-      }
-    }
-
-    if (tvdbIds.length === 0) {
-      const mediaServer = await this.getMediaServer();
-      const metadata = await mediaServer.getMetadata(libItem.id);
-      if (metadata?.providerIds?.tvdb) {
-        for (const tvdbId of metadata.providerIds.tvdb) {
-          const numId = Number(tvdbId);
-          if (numId && !tvdbIds.includes(numId)) {
-            tvdbIds.push(numId);
-          }
-        }
-      }
-    }
-
-    // Last resort: try to get TVDB via TMDB
-    if (tvdbIds.length === 0) {
-      const tmdbResp = await this.tmdbIdHelper.getTmdbIdFromMediaItem(libItem);
-      const tmdbId = tmdbResp?.id;
-      if (tmdbId) {
-        const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdbId });
-        if (tmdbShow?.external_ids?.tvdb_id) {
-          tvdbIds.push(tmdbShow.external_ids.tvdb_id);
-        }
-      }
-    }
-
-    return tvdbIds;
+    return this.metadataService.resolveAllTvdbIds(libItem);
   }
 }
