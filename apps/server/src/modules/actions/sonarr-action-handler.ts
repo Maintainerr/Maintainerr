@@ -46,11 +46,11 @@ export class SonarrActionHandler {
     // Resolve all IDs through the metadata layer in one call
     const ids = await this.metadataService.resolveIds(resolveId);
     const tvdbId = ids?.tvdbId ?? media.tvdbId;
-    media.tmdbId = media.tmdbId ?? ids?.tmdbId;
+    const tmdbId = media.tmdbId ?? ids?.tmdbId;
 
     if (!tvdbId) {
       this.logger.log(
-        `Couldn't find correct tvdb id. No action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Please check this show manually`,
+        `Couldn't find correct TVDB ID. No action was taken for show: https://www.themoviedb.org/tv/${tmdbId}. Please check this show manually`,
       );
       return;
     }
@@ -60,12 +60,12 @@ export class SonarrActionHandler {
     if (!sonarrMedia?.id) {
       if (collection.arrAction !== ServarrAction.UNMONITOR) {
         this.logger.log(
-          `Couldn't find correct tvdb id. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Attempting to remove from the filesystem via media server.`,
+          `Couldn't find correct TVDB ID. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${tmdbId}. Attempting to remove from the filesystem via media server.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
       } else {
         this.logger.log(
-          `Couldn't find correct tvdb id. No unmonitor action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}`,
+          `Couldn't find correct TVDB ID. No unmonitor action was taken for show: https://www.themoviedb.org/tv/${tmdbId}`,
         );
       }
       return;
@@ -183,7 +183,7 @@ export class SonarrActionHandler {
               true,
             );
             this.logger.log(
-              `[Sonarr] Removed exisiting episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed existing episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
           case 'show':
@@ -198,7 +198,7 @@ export class SonarrActionHandler {
               sonarrMedia.monitored = false;
               await sonarrApiClient.updateSeries(sonarrMedia);
               this.logger.log(
-                `[Sonarr] Unmonitored show '${sonarrMedia.title}' and Removed exisiting episodes`,
+                `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed existing episodes`,
               );
             }
 

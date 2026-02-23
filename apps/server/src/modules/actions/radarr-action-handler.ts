@@ -28,10 +28,10 @@ export class RadarrActionHandler {
 
     // Always resolve IDs through the metadata layer
     const ids = await this.metadataService.resolveIds(media.mediaServerId);
-    const tmdbid = ids?.tmdbId ?? media.tmdbId;
+    const tmdbId = ids?.tmdbId ?? media.tmdbId;
 
-    if (tmdbid) {
-      const radarrMedia = await radarrApiClient.getMovieByTmdbId(tmdbid);
+    if (tmdbId) {
+      const radarrMedia = await radarrApiClient.getMovieByTmdbId(tmdbId);
       if (radarrMedia?.id) {
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
@@ -42,7 +42,7 @@ export class RadarrActionHandler {
               collection.listExclusions,
             );
             this.logger.log(
-              `Removed movie with tmdb id ${tmdbid} from filesystem & Radarr`,
+              `Removed movie with TMDB ID ${tmdbId} from filesystem & Radarr`,
             );
             break;
           case ServarrAction.UNMONITOR:
@@ -51,7 +51,7 @@ export class RadarrActionHandler {
               addImportExclusion: collection.listExclusions,
             });
             this.logger.log(
-              `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
+              `Unmonitored movie with TMDB ID ${tmdbId}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
             );
             break;
           case ServarrAction.UNMONITOR_DELETE_ALL:
@@ -61,26 +61,26 @@ export class RadarrActionHandler {
               addImportExclusion: collection.listExclusions,
             });
             this.logger.log(
-              `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
+              `Unmonitored movie with TMDB ID ${tmdbId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             break;
         }
       } else {
         if (collection.arrAction !== ServarrAction.UNMONITOR) {
           this.logger.log(
-            `Couldn't find movie with tmdb id ${tmdbid} in Radarr, so no Radarr action was taken for movie with media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
+            `Couldn't find movie with TMDB ID ${tmdbId} in Radarr, so no Radarr action was taken for movie with media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
           );
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);
         } else {
           this.logger.log(
-            `Radarr unmonitor action was not possible, couldn't find movie with tmdb id ${tmdbid} in Radarr. No action was taken for movie with media server ID ${media.mediaServerId}`,
+            `Radarr unmonitor action was not possible, couldn't find movie with TMDB ID ${tmdbId} in Radarr. No action was taken for movie with media server ID ${media.mediaServerId}`,
           );
         }
       }
     } else {
       this.logger.log(
-        `Couldn't find correct tmdb id. No action taken for movie with media server ID: ${media.mediaServerId}. Please check this movie manually`,
+        `Couldn't find correct TMDB ID. No action taken for movie with media server ID: ${media.mediaServerId}. Please check this movie manually`,
       );
     }
   }

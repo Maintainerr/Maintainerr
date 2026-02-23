@@ -107,7 +107,7 @@ export class CollectionHandler {
                 );
 
                 this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataSeason.index} from show with tmdbid '${tmdbId}'`,
+                  `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
                 );
               }
               break;
@@ -124,7 +124,7 @@ export class CollectionHandler {
                 );
 
                 this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with tmdbid '${tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.'`,
+                  `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with TMDB ID '${tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.`,
                 );
               }
               break;
@@ -135,7 +135,7 @@ export class CollectionHandler {
                 library?.type === 'show' ? 'tv' : 'movie',
               );
               this.logger.log(
-                `[Seerr] Removed requests of media with tmdbid '${tmdbId}'`,
+                `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
               );
               break;
           }

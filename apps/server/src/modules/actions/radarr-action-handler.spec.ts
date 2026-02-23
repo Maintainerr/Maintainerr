@@ -43,7 +43,7 @@ describe('RadarrActionHandler', () => {
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
 
-  it('should do nothing when tmdbid failed lookup', async () => {
+  it('should do nothing when tmdbId failed lookup', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       radarrSettingsId: 1,
