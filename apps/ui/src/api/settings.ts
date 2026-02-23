@@ -48,6 +48,7 @@ interface ISettings {
   tautulli_api_key: string
   // Metadata provider keys
   tmdb_api_key?: string
+  tvdb_api_key?: string
   collection_handler_job_cron: string
   rules_handler_job_cron: string
 }

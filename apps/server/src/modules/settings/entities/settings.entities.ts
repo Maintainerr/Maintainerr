@@ -75,6 +75,9 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   tmdb_api_key?: string;
 
+  @Column({ nullable: true })
+  tvdb_api_key?: string;
+
   @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
   collection_handler_job_cron: string;
 
