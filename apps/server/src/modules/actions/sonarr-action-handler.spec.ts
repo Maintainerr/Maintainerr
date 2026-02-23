@@ -60,7 +60,7 @@ describe('SonarrActionHandler', () => {
       title: 'EPISODES',
     },
   ])(
-    'should do nothing for $title when Show tmdbid failed lookup',
+    'should do nothing for $title when Show tvdbId failed lookup',
     async ({ type }: { type: string }) => {
       const collection = createCollection({
         arrAction: ServarrAction.DELETE,
@@ -69,6 +69,7 @@ describe('SonarrActionHandler', () => {
       });
       const collectionMedia = createCollectionMediaWithMetadata(collection, {
         tmdbId: 1,
+        tvdbId: undefined,
       });
 
       mockMediaServerMetadata(collectionMedia.mediaData);

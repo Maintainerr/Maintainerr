@@ -1084,6 +1084,7 @@ export class CollectionsService {
               mediaServerId: childId,
               addDate: new Date().toDateString(),
               tmdbId: ids?.tmdbId ?? details?.externalIds?.tmdbId,
+              tvdbId: ids?.tvdbId ?? details?.externalIds?.tvdbId,
               image_path: details?.posterUrl,
               isManual: manual,
             },

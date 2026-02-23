@@ -45,7 +45,7 @@ export class SonarrActionHandler {
 
     // Resolve all IDs through the metadata layer in one call
     const ids = await this.metadataService.resolveIds(resolveId);
-    const tvdbId = ids?.tvdbId;
+    const tvdbId = ids?.tvdbId ?? media.tvdbId;
     media.tmdbId = media.tmdbId ?? ids?.tmdbId;
 
     if (!tvdbId) {
