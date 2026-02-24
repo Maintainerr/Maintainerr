@@ -68,13 +68,9 @@ export class SeerrGetterService {
       const tmdbId = resolvedIds?.['tmdb'] as number | undefined;
       if (tmdbId) {
         if (libItem.type === 'movie') {
-          movieMediaResponse = await this.seerrApi.getMovie(
-            tmdbId.toString(),
-          );
+          movieMediaResponse = await this.seerrApi.getMovie(tmdbId.toString());
         } else {
-          tvMediaResponse = await this.seerrApi.getShow(
-            tmdbId.toString(),
-          );
+          tvMediaResponse = await this.seerrApi.getShow(tmdbId.toString());
           if (dataType === 'season' || dataType === 'episode') {
             const seasonNumber =
               dataType === 'season'
