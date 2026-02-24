@@ -360,6 +360,30 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           </span>
                         )),
                     )}
+                    {/* Show resolved provider ID from backdrop if not already in metadata */}
+                    {metadataProvider &&
+                      metadataProviderId != null &&
+                      (() => {
+                        const key =
+                          metadataProviderLogos[
+                            metadataProvider
+                          ]?.providerIdKey
+                        if (
+                          !key ||
+                          metadata.providerIds[key]?.includes(
+                            String(metadataProviderId),
+                          )
+                        )
+                          return null
+                        return (
+                          <span
+                            key={`${key}-${metadataProviderId}`}
+                            className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
+                          >
+                            {key}://{metadataProviderId}
+                          </span>
+                        )
+                      })()}
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
