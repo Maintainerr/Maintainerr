@@ -35,10 +35,11 @@ export class TmdbApiService extends ExternalApiService {
   }
 
   /**
-   * Called after NestJS has resolved all dependencies.
-   * Sets the API key from settings if one is configured.
+   * Called after all onModuleInit hooks have run (including AppModule which
+   * loads settings from the DB). Using onApplicationBootstrap ensures the
+   * custom API key is available from SettingsService.
    */
-  onModuleInit() {
+  onApplicationBootstrap() {
     const customKey = this.settings.tmdb_api_key;
     if (customKey) {
       this.updateApiKey(customKey);

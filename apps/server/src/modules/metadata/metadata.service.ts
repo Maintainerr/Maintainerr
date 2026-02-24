@@ -33,7 +33,7 @@ export class MetadataService {
     logger.setContext(MetadataService.name);
   }
 
-  onModuleInit() {
+  onApplicationBootstrap() {
     this.preference =
       this.settings.metadata_provider_preference ??
       MetadataProviderPreference.TMDB_PRIMARY;
@@ -77,12 +77,7 @@ export class MetadataService {
       `[DEBUG] Ordered providers: ${ordered.map((p) => p.name).join(', ')}`,
     );
 
-    // DEBUG: Force TVDB-only for testing (remove TMDB from the chain)
-    const tvdbOnly = ordered.filter((p) => p.name === 'TVDB');
-    this.logger.debug(
-      `[DEBUG] FORCED TVDB-only: ${tvdbOnly.map((p) => p.name).join(', ') || 'NONE'}`,
-    );
-    return tvdbOnly.length > 0 ? tvdbOnly : ordered;
+    return ordered;
   }
 
   /**

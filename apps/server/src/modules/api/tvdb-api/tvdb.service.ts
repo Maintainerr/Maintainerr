@@ -34,10 +34,11 @@ export class TvdbApiService extends ExternalApiService {
   }
 
   /**
-   * Called after NestJS has resolved all dependencies.
-   * Authenticates with TVDB if an API key is configured.
+   * Called after all onModuleInit hooks have run (including AppModule which
+   * loads settings from the DB). Using onApplicationBootstrap instead of
+   * onModuleInit ensures the TVDB API key is available from SettingsService.
    */
-  async onModuleInit() {
+  async onApplicationBootstrap() {
     const customKey = this.settings.tvdb_api_key;
     if (customKey) {
       await this.authenticate(customKey);
@@ -149,7 +150,7 @@ export class TvdbApiService extends ExternalApiService {
     try {
       const resp = await this.get<TvdbApiResponse<TvdbMovieBase>>(
         `/movies/${tvdbId}/extended`,
-        { params: { short: true } },
+        {},
         3600, // 1h cache
       );
       return resp?.data;
@@ -167,7 +168,7 @@ export class TvdbApiService extends ExternalApiService {
     try {
       const resp = await this.get<TvdbApiResponse<TvdbSeriesBase>>(
         `/series/${tvdbId}/extended`,
-        { params: { short: true } },
+        {},
         3600, // 1h cache
       );
       return resp?.data;
