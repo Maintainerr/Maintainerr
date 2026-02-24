@@ -13,7 +13,7 @@ import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 import { TasksModule } from '../tasks/tasks.module';
-import { RuleConstanstService } from './constants/constants.service';
+import { RuleConstantsService } from './constants/constants.service';
 import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
@@ -78,7 +78,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     ValueGetterService,
     RuleYamlService,
     RuleComparatorService,
-    RuleConstanstService,
+    RuleConstantsService,
     RuleComparatorServiceFactory,
   ],
   controllers: [RulesController],

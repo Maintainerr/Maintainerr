@@ -7,7 +7,7 @@ export interface ICustomIdentifier {
 }
 
 @Injectable()
-export class RuleConstanstService {
+export class RuleConstantsService {
   ruleConstants: RuleConstants;
 
   constructor() {
