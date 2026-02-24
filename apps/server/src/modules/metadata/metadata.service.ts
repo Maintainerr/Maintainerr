@@ -277,7 +277,7 @@ export class MetadataService {
     }
   }
 
-  /** Run a provider image lookup with fallback, returning { url, provider, id }. */
+  /** Resolve IDs then run a provider image lookup, returning { url, provider, id }. */
   private async resolveImageUrl(
     ids: ProviderIds,
     type: 'movie' | 'tv',
@@ -286,9 +286,24 @@ export class MetadataService {
       id: number,
     ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
+    await this.resolveImageIds(ids, type);
     const result = await this.withProviderFallbackDetailed(ids, fn);
     if (!result) return undefined;
     return { url: result.result, provider: result.provider, id: result.id };
+  }
+
+  /**
+   * Ensure all provider IDs are resolved before image lookup.
+   * Calls getDetails which cross-fixes wrong IDs and provides
+   * externalIds to fill gaps. Relies on the underlying API cache
+   * (6h TMDB / 1h TVDB) for performance on repeat requests.
+   */
+  private async resolveImageIds(
+    ids: ProviderIds,
+    type: 'movie' | 'tv',
+  ): Promise<void> {
+    const details = await this.getDetails(ids, type);
+    if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
   }
 
   /** Determine normalised media type from a MediaItem. */
