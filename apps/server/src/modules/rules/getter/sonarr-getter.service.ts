@@ -101,7 +101,7 @@ export class SonarrGetterService {
 
       if (!tvdbIds || tvdbIds.length === 0) {
         this.logger.warn(
-          `[TVDB] Failed to fetch tvdb id for '${libItem.title}' with id '${libItem.id}. As a result, no Sonarr query could be made.`,
+          `Failed to resolve series ID for '${libItem.title}' with id '${libItem.id}'. As a result, no Sonarr query could be made.`,
         );
         return null;
       }
@@ -118,7 +118,7 @@ export class SonarrGetterService {
         if (showResponse?.id) {
           if (attemptCount > 1) {
             this.logger.debug(
-              `[TVDB] Found '${libItem.title}' in Sonarr using TVDB ID ${tvdbId} (attempt ${attemptCount}/${tvdbIds.length}). Consider checking upstream provider data quality.`,
+              `Found '${libItem.title}' in Sonarr using TVDB ID ${tvdbId} (attempt ${attemptCount}/${tvdbIds.length}). Consider checking upstream provider data quality.`,
             );
           }
           break;
@@ -127,7 +127,7 @@ export class SonarrGetterService {
 
       if (!showResponse?.id) {
         this.logger.warn(
-          `[TVDB] None of the TVDB IDs [${tvdbIds.join(', ')}] for '${libItem.title}' matched a series in Sonarr.`,
+          `None of the resolved TVDB IDs [${tvdbIds.join(', ')}] for '${libItem.title}' matched a series in Sonarr.`,
         );
         return null;
       }

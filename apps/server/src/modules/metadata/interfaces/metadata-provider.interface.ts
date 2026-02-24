@@ -4,17 +4,23 @@ import {
   PersonDetails,
 } from './metadata.types';
 
+/** NestJS injection token for the array of all registered metadata providers. */
+export const MetadataProviders = Symbol('MetadataProviders');
+
 /**
  * A metadata provider that can supply normalised details and images.
  * Implemented by each concrete provider (TMDB, TVDB, etc.).
  * MetadataService iterates providers in preference order with automatic fallback.
  *
- * Adding a new provider:
+ * Adding a new provider (zero changes to MetadataService):
  * 1. Create the API service in modules/api/xxx-api/
- * 2. Copy an existing provider file (e.g. tmdb-metadata.provider.ts),
- *    replace the API calls and field mappings
- * 3. Register it in MetadataModule (providers + imports)
- * 4. Add it to getOrderedProviders() in MetadataService
+ * 2. Create a provider class implementing IMetadataProvider
+ *    (copy an existing provider as a template, e.g. tmdb-metadata.provider.ts)
+ * 3. In MetadataModule: import its API module, register the class,
+ *    and add it to the MetadataProviders useFactory array
+ * 4. Add one enum value to MetadataProviderPreference in @maintainerr/contracts
+ *    (e.g. FANART_PRIMARY = 'fanart_primary') — the value prefix must match
+ *    the provider's `name` field (case-insensitive)
  */
 export interface IMetadataProvider {
   /** Human-readable name (for logging). */
@@ -26,11 +32,14 @@ export interface IMetadataProvider {
   /** Pick out the ID this provider uses from a bag of resolved IDs. */
   extractId(ids: { tmdbId?: number; tvdbId?: number }): number | undefined;
 
-  /** Normalised movie details. */
-  getMovieDetails(id: number): Promise<MetadataDetails | undefined>;
+  /** Write this provider's ID into a bag of resolved IDs (inverse of extractId). */
+  assignId(ids: { tmdbId?: number; tvdbId?: number }, id: number): void;
 
-  /** Normalised TV show details. */
-  getTvShowDetails(id: number): Promise<MetadataDetails | undefined>;
+  /** Normalised movie or TV show details. */
+  getDetails(
+    id: number,
+    type: 'movie' | 'tv',
+  ): Promise<MetadataDetails | undefined>;
 
   /** Full poster image URL. `sizeHint` is provider-specific (ignored when N/A). */
   getPosterUrl(

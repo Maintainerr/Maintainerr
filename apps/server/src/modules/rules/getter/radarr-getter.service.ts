@@ -64,7 +64,7 @@ export class RadarrGetterService {
 
       if (!tmdbIds || tmdbIds.length === 0) {
         this.logger.warn(
-          `[TMDb] Failed to fetch TMDB id for '${libItem.title}' with id '${libItem.id}'. As a result, no Radarr query could be made.`,
+          `Failed to resolve movie ID for '${libItem.title}' with id '${libItem.id}'. As a result, no Radarr query could be made.`,
         );
         return null;
       }
@@ -81,7 +81,7 @@ export class RadarrGetterService {
         if (movieResponse) {
           if (attemptCount > 1) {
             this.logger.debug(
-              `[TMDb] Found '${libItem.title}' in Radarr using TMDB ID ${tmdbId} (attempt ${attemptCount}/${tmdbIds.length}). Consider checking upstream provider data quality.`,
+              `Found '${libItem.title}' in Radarr using TMDB ID ${tmdbId} (attempt ${attemptCount}/${tmdbIds.length}). Consider checking upstream provider data quality.`,
             );
           }
           break;
@@ -90,7 +90,7 @@ export class RadarrGetterService {
 
       if (!movieResponse) {
         this.logger.warn(
-          `[TMDb] None of the TMDB IDs [${tmdbIds.join(', ')}] for '${libItem.title}' matched a movie in Radarr.`,
+          `None of the resolved TMDB IDs [${tmdbIds.join(', ')}] for '${libItem.title}' matched a movie in Radarr.`,
         );
         return null;
       }

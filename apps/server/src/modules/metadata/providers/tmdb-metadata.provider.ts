@@ -23,6 +23,10 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     return ids.tmdbId;
   }
 
+  assignId(ids: { tmdbId?: number }, id: number): void {
+    ids.tmdbId = id;
+  }
+
   private buildImageUrl(
     path: string | undefined | null,
     size: string,
@@ -30,43 +34,32 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     return path ? `${TMDB_IMAGE_BASE}/${size}${path}` : undefined;
   }
 
-  async getMovieDetails(tmdbId: number): Promise<MetadataDetails | undefined> {
-    const movie = await this.tmdbApi.getMovie({ movieId: tmdbId });
-    if (!movie) return undefined;
+  async getDetails(
+    tmdbId: number,
+    type: 'movie' | 'tv',
+  ): Promise<MetadataDetails | undefined> {
+    const record =
+      type === 'movie'
+        ? await this.tmdbApi.getMovie({ movieId: tmdbId })
+        : await this.tmdbApi.getTvShow({ tvId: tmdbId });
+    if (!record) return undefined;
 
     return {
-      id: movie.id,
-      title: movie.title,
-      overview: movie.overview,
-      posterUrl: this.buildImageUrl(movie.poster_path, 'w500'),
-      backdropUrl: this.buildImageUrl(movie.backdrop_path, 'w1280'),
+      id: record.id,
+      title: 'title' in record ? record.title : record.name,
+      overview: record.overview,
+      posterUrl: this.buildImageUrl(record.poster_path, 'w500'),
+      backdropUrl: this.buildImageUrl(record.backdrop_path, 'w1280'),
       externalIds: {
-        tmdbId: movie.id,
-        tvdbId: movie.external_ids?.tvdb_id ?? undefined,
-        imdbId: movie.external_ids?.imdb_id ?? movie.imdb_id ?? undefined,
-        type: 'movie',
+        tmdbId: record.id,
+        tvdbId: record.external_ids?.tvdb_id ?? undefined,
+        imdbId:
+          record.external_ids?.imdb_id ??
+          ('imdb_id' in record ? record.imdb_id : undefined) ??
+          undefined,
+        type,
       },
-      type: 'movie',
-    };
-  }
-
-  async getTvShowDetails(tmdbId: number): Promise<MetadataDetails | undefined> {
-    const show = await this.tmdbApi.getTvShow({ tvId: tmdbId });
-    if (!show) return undefined;
-
-    return {
-      id: show.id,
-      title: show.name,
-      overview: show.overview,
-      posterUrl: this.buildImageUrl(show.poster_path, 'w500'),
-      backdropUrl: this.buildImageUrl(show.backdrop_path, 'w1280'),
-      externalIds: {
-        tmdbId: show.id,
-        tvdbId: show.external_ids?.tvdb_id ?? undefined,
-        imdbId: show.external_ids?.imdb_id ?? undefined,
-        type: 'tv',
-      },
-      type: 'tv',
+      type,
     };
   }
 

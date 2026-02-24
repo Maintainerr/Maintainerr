@@ -21,41 +21,33 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     return ids.tvdbId;
   }
 
-  async getMovieDetails(tvdbId: number): Promise<MetadataDetails | undefined> {
-    const movie = await this.tvdbApi.getMovie(tvdbId);
-    if (!movie) return undefined;
-
-    return {
-      id: movie.id,
-      title: movie.name,
-      overview: movie.overview ?? undefined,
-      posterUrl: this.tvdbApi.getPosterUrl(movie),
-      backdropUrl: this.tvdbApi.getBackdropUrl(movie),
-      externalIds: {
-        tvdbId: movie.id,
-        imdbId: this.tvdbApi.getImdbId(movie),
-        type: 'movie',
-      },
-      type: 'movie',
-    };
+  assignId(ids: { tvdbId?: number }, id: number): void {
+    ids.tvdbId = id;
   }
 
-  async getTvShowDetails(tvdbId: number): Promise<MetadataDetails | undefined> {
-    const series = await this.tvdbApi.getSeries(tvdbId);
-    if (!series) return undefined;
+  async getDetails(
+    tvdbId: number,
+    type: 'movie' | 'tv',
+  ): Promise<MetadataDetails | undefined> {
+    const record =
+      type === 'movie'
+        ? await this.tvdbApi.getMovie(tvdbId)
+        : await this.tvdbApi.getSeries(tvdbId);
+    if (!record) return undefined;
 
     return {
-      id: series.id,
-      title: series.name,
-      overview: series.overview ?? undefined,
-      posterUrl: this.tvdbApi.getPosterUrl(series),
-      backdropUrl: this.tvdbApi.getBackdropUrl(series),
+      id: record.id,
+      title: record.name,
+      overview: record.overview ?? undefined,
+      posterUrl: this.tvdbApi.getPosterUrl(record),
+      backdropUrl: this.tvdbApi.getBackdropUrl(record),
       externalIds: {
-        tvdbId: series.id,
-        imdbId: this.tvdbApi.getImdbId(series),
-        type: 'tv',
+        tmdbId: this.tvdbApi.getTmdbId(record),
+        tvdbId: record.id,
+        imdbId: this.tvdbApi.getImdbId(record),
+        type,
       },
-      type: 'tv',
+      type,
     };
   }
 

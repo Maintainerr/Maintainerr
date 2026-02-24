@@ -268,6 +268,23 @@ export class TvdbApiService extends ExternalApiService {
     return imdbRemote?.id;
   }
 
+  /**
+   * Find the TMDB ID from a TVDB record's remote IDs.
+   */
+  public getTmdbId(
+    record: TvdbSeriesBase | TvdbMovieBase | undefined,
+  ): number | undefined {
+    if (!record?.remoteIds) return undefined;
+    const tmdbRemote = record.remoteIds.find(
+      (r) =>
+        r.sourceName === 'TheMovieDB.com' ||
+        r.sourceName === 'TMDB' ||
+        r.sourceName === 'themoviedb',
+    );
+    const id = tmdbRemote ? Number(tmdbRemote.id) : undefined;
+    return id && !isNaN(id) ? id : undefined;
+  }
+
   private findBestArtwork(
     artworks: TvdbArtwork[] | undefined,
     type: TvdbArtworkType,

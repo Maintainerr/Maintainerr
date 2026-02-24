@@ -1068,7 +1068,7 @@ export class CollectionsService {
 
       const ids = await this.metadataService.resolveIds(childId);
       const details = ids
-        ? await this.metadataService.getDetails(ids)
+        ? await this.metadataService.getDetails(ids, ids.type)
         : undefined;
 
       try {
