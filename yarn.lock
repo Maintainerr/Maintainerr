@@ -3137,7 +3137,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:^5.1.4"
     autoprefixer: "npm:10.4.24"
     axios: "npm:^1.13.5"
-    bowser: "npm:^2.13.1"
+    bowser: "npm:^2.14.1"
     clsx: "npm:^2.1.1"
     compare-versions: "npm:^6.1.1"
     cron-validator: "npm:^1.4.0"
@@ -7357,10 +7357,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bowser@npm:^2.13.1":
-  version: 2.13.1
-  resolution: "bowser@npm:2.13.1"
-  checksum: 10c0/a57ef440c68e80ce736b95017e13f65d1476cdfa3cae10e0958ab71a8ed3e804aad761c5809b98fbaeaacd8cd1986d46ee7c317937c601897c9b1d17971bc8d1
+"bowser@npm:^2.14.1":
+  version: 2.14.1
+  resolution: "bowser@npm:2.14.1"
+  checksum: 10c0/bb69b55ba7f0456e3dc07d0cfd9467f985581f640ba8fd426b08754a6737ee0d6cf3b50607941e5255f04c83075b952ece0599f978dd4d20f1e95461104c5ffd
   languageName: node
   linkType: hard
 
