@@ -3,12 +3,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
   MetadataProviderPreference,
-  TmdbSetting,
-  tmdbSettingSchema,
-  TvdbSetting,
-  tvdbSettingSchema,
 } from '@maintainerr/contracts'
-import { useState } from 'react'
+import { ReactNode, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import {
@@ -23,35 +19,250 @@ import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import { InputGroup } from '../../Forms/Input'
 
+// ───── Provider config ─────
+
+interface ProviderConfig {
+  key: string
+  title: string
+  description: ReactNode
+  helpText?: string
+}
+
+const providers: ProviderConfig[] = [
+  {
+    key: 'tmdb',
+    title: 'TMDB',
+    description: (
+      <>
+        The Movie Database (TMDB) is used for fetching movie and TV show
+        metadata. You can obtain a free API key at{' '}
+        <a
+          href="https://www.themoviedb.org/settings/api"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-500 underline hover:text-amber-400"
+        >
+          themoviedb.org
+        </a>
+        .
+      </>
+    ),
+    helpText: 'Leave empty to use the default shared key',
+  },
+  {
+    key: 'tvdb',
+    title: 'TVDB',
+    description: (
+      <>
+        TheTVDB provides TV show and movie metadata. You can obtain an API key
+        at{' '}
+        <a
+          href="https://thetvdb.com/dashboard/account/apikey"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-500 underline hover:text-amber-400"
+        >
+          thetvdb.com
+        </a>
+        .
+      </>
+    ),
+  },
+]
+
+// ───── Reusable provider form hook ─────
+
+const apiKeyFormSchema = z.union([
+  z.object({ api_key: z.string().trim().min(1, 'API key is required') }),
+  z.object({ api_key: z.literal('') }),
+])
+
+type ApiKeyFormResult = z.infer<typeof apiKeyFormSchema>
+
 interface TestStatus {
   status: boolean
   message: string
 }
 
-const TmdbSettingDeleteSchema = z.object({
-  api_key: z.literal(''),
-})
+function useProviderForm(config: ProviderConfig) {
+  const [testedSettings, setTestedSettings] = useState<
+    { api_key: string } | undefined
+  >()
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<TestStatus>()
+  const [submitError, setSubmitError] = useState(false)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
-const TmdbSettingFormSchema = z.union([
-  tmdbSettingSchema,
-  TmdbSettingDeleteSchema,
-])
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    control,
+    formState: { errors, isSubmitting, isLoading, defaultValues },
+  } = useForm<ApiKeyFormResult, any, ApiKeyFormResult>({
+    resolver: zodResolver(apiKeyFormSchema),
+    defaultValues: async () => {
+      const resp = await GetApiHandler<{ api_key: string }>(
+        `/settings/${config.key}`,
+      )
+      return { api_key: resp.api_key ?? '' }
+    },
+  })
 
-type TmdbSettingFormResult = z.infer<typeof TmdbSettingFormSchema>
+  const apiKey = useWatch({ control, name: 'api_key' })
 
-const TvdbSettingDeleteSchema = z.object({
-  api_key: z.literal(''),
-})
+  const isGoingToRemove = apiKey === ''
+  const sameAsSaved = apiKey === defaultValues?.api_key
+  const hasBeenTested = apiKey === testedSettings?.api_key && testResult?.status
+  const canSave =
+    (sameAsSaved || hasBeenTested || isGoingToRemove) &&
+    !isSubmitting &&
+    !isLoading
 
-const TvdbSettingFormSchema = z.union([
-  tvdbSettingSchema,
-  TvdbSettingDeleteSchema,
-])
+  const onSubmit = async (data: ApiKeyFormResult) => {
+    setSubmitError(false)
+    setSubmitSuccess(false)
 
-type TvdbSettingFormResult = z.infer<typeof TvdbSettingFormSchema>
+    try {
+      const resp = await (data.api_key === ''
+        ? DeleteApiHandler<BasicResponseDto>(`/settings/${config.key}`)
+        : PostApiHandler<BasicResponseDto>(`/settings/${config.key}`, data))
+
+      if (resp.code) {
+        setSubmitSuccess(true)
+      } else {
+        setSubmitError(true)
+      }
+    } catch {
+      setSubmitError(true)
+    }
+  }
+
+  const performTest = async () => {
+    if (testing || !(await trigger())) return
+
+    setTesting(true)
+
+    await PostApiHandler<BasicResponseDto>(`/settings/test/${config.key}`, {
+      api_key: apiKey,
+    })
+      .then((resp) => {
+        setTestResult({
+          status: resp.code === 1,
+          message: resp.message ?? 'Unknown error',
+        })
+        if (resp.code === 1) {
+          setTestedSettings({ api_key: apiKey })
+        }
+      })
+      .catch(() => {
+        setTestResult({ status: false, message: 'Unknown error' })
+      })
+      .finally(() => {
+        setTesting(false)
+      })
+  }
+
+  return {
+    register,
+    handleSubmit,
+    errors,
+    apiKey,
+    testing,
+    testResult,
+    submitError,
+    submitSuccess,
+    isGoingToRemove,
+    canSave,
+    onSubmit,
+    performTest,
+  }
+}
+
+// ───── Provider section component ─────
+
+function ProviderSection({ config }: { config: ProviderConfig }) {
+  const {
+    register,
+    handleSubmit,
+    errors,
+    testing,
+    testResult,
+    submitError,
+    submitSuccess,
+    isGoingToRemove,
+    canSave,
+    onSubmit,
+    performTest,
+  } = useProviderForm(config)
+
+  return (
+    <>
+      {submitError ? (
+        <Alert type="warning" title="Something went wrong" />
+      ) : submitSuccess ? (
+        <Alert
+          type="info"
+          title={`${config.title} settings successfully updated`}
+        />
+      ) : undefined}
+
+      {testResult != null &&
+        (testResult.status ? (
+          <Alert
+            type="info"
+            title={`Successfully connected to ${config.title}`}
+          />
+        ) : (
+          <Alert type="error" title={testResult.message} />
+        ))}
+
+      <div className="section">
+        <h4 className="text-lg font-bold text-amber-500">{config.title}</h4>
+        <p className="mt-1 text-sm text-zinc-400">{config.description}</p>
+
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <InputGroup
+            label="API Key"
+            type="password"
+            {...register('api_key')}
+            error={errors.api_key?.message}
+            helpText={config.helpText}
+          />
+
+          <div className="actions mt-5 w-full">
+            <div className="flex w-full flex-wrap justify-end sm:flex-nowrap">
+              <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+                <Button
+                  buttonType="success"
+                  onClick={performTest}
+                  className="ml-3"
+                  disabled={testing || isGoingToRemove}
+                >
+                  {testing ? 'Testing...' : 'Test'}
+                </Button>
+                <span className="ml-3 inline-flex rounded-md shadow-sm">
+                  <Button
+                    buttonType="primary"
+                    type="submit"
+                    disabled={!canSave}
+                  >
+                    <SaveIcon />
+                    <span>Save Changes</span>
+                  </Button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </>
+  )
+}
+
+// ───── Main component ─────
 
 const MetadataSettings = () => {
-  // Provider preference via TanStack Query
   const {
     data: preference = MetadataProviderPreference.TMDB_PRIMARY,
     isLoading: preferenceLoading,
@@ -63,190 +274,6 @@ const MetadataSettings = () => {
     isSuccess: preferenceSuccess,
     isError: preferenceError,
   } = useUpdateMetadataProviderPreference()
-
-  // TMDB state
-  const [tmdbTestedSettings, setTmdbTestedSettings] = useState<
-    TmdbSetting | undefined
-  >()
-  const [tmdbTesting, setTmdbTesting] = useState(false)
-  const [tmdbTestResult, setTmdbTestResult] = useState<TestStatus>()
-  const [tmdbSubmitError, setTmdbSubmitError] = useState<boolean>(false)
-  const [tmdbSubmitSuccess, setTmdbSubmitSuccess] = useState<boolean>(false)
-
-  // TVDB state
-  const [tvdbTestedSettings, setTvdbTestedSettings] = useState<
-    TvdbSetting | undefined
-  >()
-  const [tvdbTesting, setTvdbTesting] = useState(false)
-  const [tvdbTestResult, setTvdbTestResult] = useState<TestStatus>()
-  const [tvdbSubmitError, setTvdbSubmitError] = useState<boolean>(false)
-  const [tvdbSubmitSuccess, setTvdbSubmitSuccess] = useState<boolean>(false)
-
-  // TMDB form
-  const {
-    register: tmdbRegister,
-    handleSubmit: tmdbHandleSubmit,
-    trigger: tmdbTrigger,
-    control: tmdbControl,
-    formState: {
-      errors: tmdbErrors,
-      isSubmitting: tmdbIsSubmitting,
-      isLoading: tmdbIsLoading,
-      defaultValues: tmdbDefaultValues,
-    },
-  } = useForm<TmdbSettingFormResult, any, TmdbSettingFormResult>({
-    resolver: zodResolver(TmdbSettingFormSchema),
-    defaultValues: async () => {
-      const resp = await GetApiHandler<TmdbSetting>('/settings/tmdb')
-      return {
-        api_key: resp.api_key ?? '',
-      }
-    },
-  })
-
-  const tmdbApiKey = useWatch({ control: tmdbControl, name: 'api_key' })
-
-  const tmdbIsGoingToRemove = tmdbApiKey === ''
-  const tmdbSameAsSaved = tmdbApiKey === tmdbDefaultValues?.api_key
-  const tmdbHasBeenTested =
-    tmdbApiKey === tmdbTestedSettings?.api_key && tmdbTestResult?.status
-  const tmdbCanSave =
-    (tmdbSameAsSaved || tmdbHasBeenTested || tmdbIsGoingToRemove) &&
-    !tmdbIsSubmitting &&
-    !tmdbIsLoading
-
-  const onTmdbSubmit = async (data: TmdbSettingFormResult) => {
-    setTmdbSubmitError(false)
-    setTmdbSubmitSuccess(false)
-
-    const removingSetting = data.api_key === ''
-
-    try {
-      const resp = await (removingSetting
-        ? DeleteApiHandler<BasicResponseDto>('/settings/tmdb')
-        : PostApiHandler<BasicResponseDto>('/settings/tmdb', data))
-
-      if (resp.code) {
-        setTmdbSubmitSuccess(true)
-      } else {
-        setTmdbSubmitError(true)
-      }
-    } catch (err) {
-      setTmdbSubmitError(true)
-    }
-  }
-
-  const performTmdbTest = async () => {
-    if (tmdbTesting || !(await tmdbTrigger())) return
-
-    setTmdbTesting(true)
-
-    await PostApiHandler<BasicResponseDto>('/settings/test/tmdb', {
-      api_key: tmdbApiKey,
-    } satisfies TmdbSetting)
-      .then((resp) => {
-        setTmdbTestResult({
-          status: resp.code === 1,
-          message: resp.message ?? 'Unknown error',
-        })
-
-        if (resp.code === 1) {
-          setTmdbTestedSettings({ api_key: tmdbApiKey })
-        }
-      })
-      .catch(() => {
-        setTmdbTestResult({
-          status: false,
-          message: 'Unknown error',
-        })
-      })
-      .finally(() => {
-        setTmdbTesting(false)
-      })
-  }
-
-  // TVDB form
-  const {
-    register: tvdbRegister,
-    handleSubmit: tvdbHandleSubmit,
-    trigger: tvdbTrigger,
-    control: tvdbControl,
-    formState: {
-      errors: tvdbErrors,
-      isSubmitting: tvdbIsSubmitting,
-      isLoading: tvdbIsLoading,
-      defaultValues: tvdbDefaultValues,
-    },
-  } = useForm<TvdbSettingFormResult, any, TvdbSettingFormResult>({
-    resolver: zodResolver(TvdbSettingFormSchema),
-    defaultValues: async () => {
-      const resp = await GetApiHandler<TvdbSetting>('/settings/tvdb')
-      return {
-        api_key: resp.api_key ?? '',
-      }
-    },
-  })
-
-  const tvdbApiKey = useWatch({ control: tvdbControl, name: 'api_key' })
-
-  const tvdbIsGoingToRemove = tvdbApiKey === ''
-  const tvdbSameAsSaved = tvdbApiKey === tvdbDefaultValues?.api_key
-  const tvdbHasBeenTested =
-    tvdbApiKey === tvdbTestedSettings?.api_key && tvdbTestResult?.status
-  const tvdbCanSave =
-    (tvdbSameAsSaved || tvdbHasBeenTested || tvdbIsGoingToRemove) &&
-    !tvdbIsSubmitting &&
-    !tvdbIsLoading
-
-  const onTvdbSubmit = async (data: TvdbSettingFormResult) => {
-    setTvdbSubmitError(false)
-    setTvdbSubmitSuccess(false)
-
-    const removingSetting = data.api_key === ''
-
-    try {
-      const resp = await (removingSetting
-        ? DeleteApiHandler<BasicResponseDto>('/settings/tvdb')
-        : PostApiHandler<BasicResponseDto>('/settings/tvdb', data))
-
-      if (resp.code) {
-        setTvdbSubmitSuccess(true)
-      } else {
-        setTvdbSubmitError(true)
-      }
-    } catch (err) {
-      setTvdbSubmitError(true)
-    }
-  }
-
-  const performTvdbTest = async () => {
-    if (tvdbTesting || !(await tvdbTrigger())) return
-
-    setTvdbTesting(true)
-
-    await PostApiHandler<BasicResponseDto>('/settings/test/tvdb', {
-      api_key: tvdbApiKey,
-    } satisfies TvdbSetting)
-      .then((resp) => {
-        setTvdbTestResult({
-          status: resp.code === 1,
-          message: resp.message ?? 'Unknown error',
-        })
-
-        if (resp.code === 1) {
-          setTvdbTestedSettings({ api_key: tvdbApiKey })
-        }
-      })
-      .catch(() => {
-        setTvdbTestResult({
-          status: false,
-          message: 'Unknown error',
-        })
-      })
-      .finally(() => {
-        setTvdbTesting(false)
-      })
-  }
 
   return (
     <>
@@ -302,136 +329,9 @@ const MetadataSettings = () => {
           </div>
         </div>
 
-        {/* TMDB Section */}
-        {tmdbSubmitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : tmdbSubmitSuccess ? (
-          <Alert type="info" title="TMDB settings successfully updated" />
-        ) : undefined}
-
-        {tmdbTestResult != null &&
-          (tmdbTestResult.status ? (
-            <Alert type="info" title="Successfully connected to TMDB" />
-          ) : (
-            <Alert type="error" title={tmdbTestResult.message} />
-          ))}
-
-        <div className="section">
-          <h4 className="text-lg font-bold text-amber-500">TMDB</h4>
-          <p className="mt-1 text-sm text-zinc-400">
-            The Movie Database (TMDB) is used for fetching movie and TV show
-            metadata. You can obtain a free API key at{' '}
-            <a
-              href="https://www.themoviedb.org/settings/api"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-500 underline hover:text-amber-400"
-            >
-              themoviedb.org
-            </a>
-            .
-          </p>
-
-          <form onSubmit={tmdbHandleSubmit(onTmdbSubmit)}>
-            <InputGroup
-              label="API Key"
-              type="password"
-              {...tmdbRegister('api_key')}
-              error={tmdbErrors.api_key?.message}
-              helpText="Leave empty to use the default shared key"
-            />
-
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap justify-end sm:flex-nowrap">
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <Button
-                    buttonType="success"
-                    onClick={performTmdbTest}
-                    className="ml-3"
-                    disabled={tmdbTesting || tmdbIsGoingToRemove}
-                  >
-                    {tmdbTesting ? 'Testing...' : 'Test'}
-                  </Button>
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
-                      buttonType="primary"
-                      type="submit"
-                      disabled={!tmdbCanSave}
-                    >
-                      <SaveIcon />
-                      <span>Save Changes</span>
-                    </Button>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-
-        {/* TVDB Section */}
-        {tvdbSubmitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : tvdbSubmitSuccess ? (
-          <Alert type="info" title="TVDB settings successfully updated" />
-        ) : undefined}
-
-        {tvdbTestResult != null &&
-          (tvdbTestResult.status ? (
-            <Alert type="info" title="Successfully connected to TVDB" />
-          ) : (
-            <Alert type="error" title={tvdbTestResult.message} />
-          ))}
-
-        <div className="section">
-          <h4 className="text-lg font-bold text-amber-500">TVDB</h4>
-          <p className="mt-1 text-sm text-zinc-400">
-            TheTVDB provides TV show and movie metadata. You can obtain an API
-            key at{' '}
-            <a
-              href="https://thetvdb.com/dashboard/account/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-500 underline hover:text-amber-400"
-            >
-              thetvdb.com
-            </a>
-            .
-          </p>
-
-          <form onSubmit={tvdbHandleSubmit(onTvdbSubmit)}>
-            <InputGroup
-              label="API Key"
-              type="password"
-              {...tvdbRegister('api_key')}
-              error={tvdbErrors.api_key?.message}
-            />
-
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap justify-end sm:flex-nowrap">
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <Button
-                    buttonType="success"
-                    onClick={performTvdbTest}
-                    className="ml-3"
-                    disabled={tvdbTesting || tvdbIsGoingToRemove}
-                  >
-                    {tvdbTesting ? 'Testing...' : 'Test'}
-                  </Button>
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
-                      buttonType="primary"
-                      type="submit"
-                      disabled={!tvdbCanSave}
-                    >
-                      <SaveIcon />
-                      <span>Save Changes</span>
-                    </Button>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
+        {providers.map((config) => (
+          <ProviderSection key={config.key} config={config} />
+        ))}
       </div>
     </>
   )

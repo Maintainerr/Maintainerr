@@ -75,11 +75,19 @@ export class MetadataService {
     ids: { tmdbId?: number; tvdbId?: number },
     fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
   ): Promise<T | undefined> {
+    return (await this.withProviderFallbackTagged(ids, fn))?.result;
+  }
+
+  /** Same as withProviderFallback but also returns which provider produced the result. */
+  private async withProviderFallbackTagged<T>(
+    ids: { tmdbId?: number; tvdbId?: number },
+    fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
+  ): Promise<{ result: T; provider: string } | undefined> {
     for (const provider of this.getOrderedProviders()) {
       const id = provider.extractId(ids);
       if (id !== undefined) {
         const result = await fn(provider, id);
-        if (result !== undefined) return result;
+        if (result !== undefined) return { result, provider: provider.name };
       }
     }
     return undefined;
@@ -124,25 +132,13 @@ export class MetadataService {
 
   /**
    * Resolve external IDs from a MediaItem (provider IDs already available).
-   * Tries to resolve both tmdbId and tvdbId using the preferred provider first.
+   * Extracts what's directly available, then fills gaps via provider fallback.
    */
   async resolveIdsFromMediaItem(
     item: MediaItem,
   ): Promise<ResolvedMediaIds | undefined> {
     try {
-      const type = this.mediaTypeFromItem(item);
-      const ids: ResolvedMediaIds = { type };
-
-      // Extract direct provider IDs from media server metadata
-      if (item.providerIds?.tmdb?.length) {
-        ids.tmdbId = +item.providerIds.tmdb[0] || undefined;
-      }
-      if (item.providerIds?.tvdb?.length) {
-        ids.tvdbId = +item.providerIds.tvdb[0] || undefined;
-      }
-      if (item.providerIds?.imdb?.length) {
-        ids.imdbId = item.providerIds.imdb[0] || undefined;
-      }
+      const ids = this.extractDirectIds(item);
 
       // Fill in any missing IDs — provider-agnostic
       await this.resolveAllIds(ids);
@@ -156,33 +152,33 @@ export class MetadataService {
   }
 
   /**
-   * Resolve all series-matching TVDB IDs for a media item (can return multiple
-   * when upstream providers list multiple entries). Used by SonarrGetterService.
+   * Resolve all IDs for a specific provider from a media item.
+   * Can return multiple when upstream providers list multiple entries.
    */
-  async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
-    const tvdbIds = await this.collectDirectIds(item, 'tvdb');
+  async resolveAllIdsForProvider(
+    item: MediaItem,
+    providerKey: 'tmdb' | 'tvdb',
+  ): Promise<number[]> {
+    const ids = await this.collectDirectIds(item, providerKey);
 
-    if (tvdbIds.length === 0) {
-      const resolved = await this.resolveIdFromProviderIds(item);
-      if (resolved?.tvdbId) tvdbIds.push(resolved.tvdbId);
+    if (ids.length === 0) {
+      const resolved = await this.resolveIdsFromMediaItem(item);
+      const resolvedId =
+        resolved?.[`${providerKey}Id` as keyof ResolvedMediaIds];
+      if (typeof resolvedId === 'number') ids.push(resolvedId);
     }
 
-    return tvdbIds;
+    return ids;
   }
 
-  /**
-   * Resolve all movie-matching TMDB IDs for a media item (can return multiple
-   * when upstream providers list multiple entries). Used by RadarrGetterService.
-   */
+  /** Used by SonarrGetterService. */
+  async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
+    return this.resolveAllIdsForProvider(item, 'tvdb');
+  }
+
+  /** Used by RadarrGetterService. */
   async resolveAllMovieIds(item: MediaItem): Promise<number[]> {
-    const tmdbIds = await this.collectDirectIds(item, 'tmdb');
-
-    if (tmdbIds.length === 0) {
-      const resolved = await this.resolveIdFromProviderIds(item);
-      if (resolved?.tmdbId) tmdbIds.push(resolved.tmdbId);
-    }
-
-    return tmdbIds;
+    return this.resolveAllIdsForProvider(item, 'tmdb');
   }
 
   // ───── Media Details ─────
@@ -218,30 +214,36 @@ export class MetadataService {
   // ───── Image URLs ─────
 
   /**
-   * Get a full poster image URL.
+   * Get a full poster image URL and which provider served it.
    * @param size Provider-specific size hint (e.g. 'w500' for TMDB; ignored by TVDB)
    */
   async getPosterUrl(
     ids: { tmdbId?: number; tvdbId?: number },
     type: 'movie' | 'tv',
     size = 'w500',
-  ): Promise<string | undefined> {
-    return this.withProviderFallback(ids, (provider, id) =>
+  ): Promise<{ url: string; provider: string } | undefined> {
+    const tagged = await this.withProviderFallbackTagged(ids, (provider, id) =>
       provider.getPosterUrl(id, type, size),
     );
+    return tagged
+      ? { url: tagged.result, provider: tagged.provider }
+      : undefined;
   }
 
   /**
-   * Get a full backdrop/fanart image URL.
+   * Get a full backdrop/fanart image URL and which provider served it.
    */
   async getBackdropUrl(
     ids: { tmdbId?: number; tvdbId?: number },
     type: 'movie' | 'tv',
     size = 'w1280',
-  ): Promise<string | undefined> {
-    return this.withProviderFallback(ids, (provider, id) =>
+  ): Promise<{ url: string; provider: string } | undefined> {
+    const tagged = await this.withProviderFallbackTagged(ids, (provider, id) =>
       provider.getBackdropUrl(id, type, size),
     );
+    return tagged
+      ? { url: tagged.result, provider: tagged.provider }
+      : undefined;
   }
 
   // ───── Private helpers ─────
@@ -249,6 +251,23 @@ export class MetadataService {
   /** Determine normalised media type from a MediaItem. */
   private mediaTypeFromItem(item: MediaItem): 'movie' | 'tv' {
     return ['show', 'season', 'episode'].includes(item.type) ? 'tv' : 'movie';
+  }
+
+  /** Extract provider IDs directly available on a MediaItem. */
+  private extractDirectIds(item: MediaItem): ResolvedMediaIds {
+    const ids: ResolvedMediaIds = { type: this.mediaTypeFromItem(item) };
+
+    if (item.providerIds?.tmdb?.length) {
+      ids.tmdbId = +item.providerIds.tmdb[0] || undefined;
+    }
+    if (item.providerIds?.tvdb?.length) {
+      ids.tvdbId = +item.providerIds.tvdb[0] || undefined;
+    }
+    if (item.providerIds?.imdb?.length) {
+      ids.imdbId = item.providerIds.imdb[0] || undefined;
+    }
+
+    return ids;
   }
 
   /**
@@ -332,37 +351,6 @@ export class MetadataService {
         }
       }
       if (ids.tmdbId && ids.tvdbId) return;
-    }
-  }
-
-  /**
-   * Resolve IDs from a MediaItem's provider IDs by extracting what's available
-   * directly, then filling gaps via resolveAllIds.
-   */
-  private async resolveIdFromProviderIds(
-    item: MediaItem,
-  ): Promise<ResolvedMediaIds | undefined> {
-    try {
-      const type = this.mediaTypeFromItem(item);
-      const ids: ResolvedMediaIds = { type };
-
-      if (item.providerIds?.tmdb?.length) {
-        ids.tmdbId = +item.providerIds.tmdb[0] || undefined;
-      }
-      if (item.providerIds?.tvdb?.length) {
-        ids.tvdbId = +item.providerIds.tvdb[0] || undefined;
-      }
-      if (item.providerIds?.imdb?.length) {
-        ids.imdbId = item.providerIds.imdb[0] || undefined;
-      }
-
-      await this.resolveAllIds(ids);
-
-      return ids;
-    } catch (e) {
-      this.logger.warn(`Failed to resolve ID from provider IDs: ${e.message}`);
-      this.logger.debug(e);
-      return undefined;
     }
   }
 }

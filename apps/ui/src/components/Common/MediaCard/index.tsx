@@ -1,6 +1,6 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
-import { MediaItemType } from '@maintainerr/contracts'
+import { MediaItemType, MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
@@ -17,7 +17,7 @@ interface IMediaCard {
   title: string
   userScore: number
   inProgress?: boolean
-  tmdbid?: string
+  providerIds?: MediaProviderIds
   libraryId?: string
   type?: MediaItemType
   collectionPage: boolean
@@ -40,7 +40,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   collectionId = 0,
   daysLeft = 9999,
   exclusionId = undefined,
-  tmdbid = undefined,
+  providerIds = undefined,
   userScore,
   collectionPage = false,
   exclusionType = undefined,
@@ -61,13 +61,19 @@ const MediaCard: React.FC<IMediaCard> = ({
   const closeMediaModal = () => setShowMediaModal(false)
 
   useEffect(() => {
-    if (tmdbid) {
+    if (providerIds) {
       const imageType = ['season', 'episode'].includes(mediaType)
         ? 'show'
         : mediaType
-      GetApiHandler(`/metadata/image/${imageType}/${tmdbid}`).then((resp) =>
-        setImage(resp),
-      )
+      const params = new URLSearchParams()
+      for (const [key, values] of Object.entries(providerIds)) {
+        if (values?.[0]) params.set(`${key}Id`, values[0])
+      }
+      if (params.toString()) {
+        GetApiHandler<{ url: string; provider: string }>(
+          `/metadata/image/${imageType}?${params.toString()}`,
+        ).then((resp) => setImage(resp?.url))
+      }
     }
     getExclusions()
   }, [])
@@ -336,7 +342,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           title={title}
           summary={summary || 'No description available.'}
           mediaType={mediaType}
-          tmdbid={tmdbid}
+          providerIds={providerIds}
           year={year}
           userScore={userScore}
         />

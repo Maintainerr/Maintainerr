@@ -1,56 +1,61 @@
-import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { MetadataService } from './metadata.service';
 
 /**
  * HTTP controller for metadata endpoints.
  * All metadata flows through MetadataService which handles provider preference.
  *
- * The `provider` query param (default: 'tmdb') tells the controller which
- * provider the supplied `:id` belongs to, keeping the controller agnostic.
+ * Callers pass all known provider IDs as query params (e.g. ?tmdbId=123&tvdbId=456);
+ * the service picks the best provider based on user preference and falls back automatically.
  */
 @Controller('api/metadata')
 export class MetadataController {
   constructor(private readonly metadata: MetadataService) {}
 
-  private buildIds(
-    id: number,
-    provider: string,
-  ): { tmdbId?: number; tvdbId?: number } {
-    return provider === 'tvdb' ? { tvdbId: id } : { tmdbId: id };
+  /**
+   * Extract all `*Id` query params into a numeric ID map.
+   * Any query param ending in "Id" with a valid numeric value is included.
+   */
+  private parseIds(
+    query: Record<string, string>,
+  ): Record<string, number> | undefined {
+    const ids: Record<string, number> = {};
+    for (const [key, value] of Object.entries(query)) {
+      if (key.endsWith('Id') && value) {
+        const num = +value;
+        if (num) ids[key] = num;
+      }
+    }
+    return Object.keys(ids).length ? ids : undefined;
   }
 
   /**
-   * Returns a full backdrop image URL.
+   * Returns a full backdrop image URL and which provider served it.
    * Falls back across providers based on user preference.
    */
-  @Get('/backdrop/:type/:id')
+  @Get('/backdrop/:type')
   async getBackdropImage(
-    @Param('id', new ParseIntPipe()) id: number,
     @Param('type') type: 'movie' | 'show',
-    @Query('provider') provider = 'tmdb',
-  ): Promise<string | undefined> {
+    @Query() query: Record<string, string>,
+  ): Promise<{ url: string; provider: string } | undefined> {
+    const ids = this.parseIds(query);
+    if (!ids) return undefined;
     const providerType = type === 'show' ? 'tv' : 'movie';
-    return this.metadata.getBackdropUrl(
-      this.buildIds(id, provider),
-      providerType,
-    );
+    return this.metadata.getBackdropUrl(ids, providerType);
   }
 
   /**
-   * Returns a full poster image URL.
+   * Returns a full poster image URL and which provider served it.
    * Falls back across providers based on user preference.
    */
-  @Get('/image/:type/:id')
+  @Get('/image/:type')
   async getImage(
-    @Param('id', new ParseIntPipe()) id: number,
     @Param('type') type: 'movie' | 'show',
-    @Query('provider') provider = 'tmdb',
-  ): Promise<string | undefined> {
+    @Query() query: Record<string, string>,
+  ): Promise<{ url: string; provider: string } | undefined> {
+    const ids = this.parseIds(query);
+    if (!ids) return undefined;
     const providerType = type === 'show' ? 'tv' : 'movie';
-    return this.metadata.getPosterUrl(
-      this.buildIds(id, provider),
-      providerType,
-      'w300_and_h450_face',
-    );
+    return this.metadata.getPosterUrl(ids, providerType, 'w300_and_h450_face');
   }
 }

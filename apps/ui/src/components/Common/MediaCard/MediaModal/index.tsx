@@ -1,4 +1,4 @@
-import { MediaItem } from '@maintainerr/contracts'
+import { MediaItem, MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
@@ -15,7 +15,7 @@ interface ModalContentProps {
   title: string
   canExpand?: boolean
   inProgress?: boolean
-  tmdbid?: string
+  providerIds?: MediaProviderIds
   libraryId?: string
   type?: 1 | 2 | 3 | 4
   daysLeft?: number
@@ -31,8 +31,40 @@ const ratingIcons: Record<string, string> = {
   critic: `${basePath}/icons_logos/rt_critic.svg`,
 }
 
+const metadataProviderLogos: Record<
+  string,
+  {
+    logo: string
+    alt: string
+    buildUrl: (mediaType: string, id: string) => string
+    providerIdKey: keyof MediaProviderIds
+  }
+> = {
+  TMDB: {
+    logo: `${basePath}/icons_logos/tmdb_logo.svg`,
+    alt: 'TMDB Logo',
+    buildUrl: (mediaType, id) => `https://themoviedb.org/${mediaType}/${id}`,
+    providerIdKey: 'tmdb',
+  },
+  TVDB: {
+    logo: `${basePath}/icons_logos/tvdb_logo.svg`,
+    alt: 'TheTVDB Logo',
+    buildUrl: (mediaType, id) =>
+      `https://thetvdb.com/dereferrer/${mediaType === 'tv' ? 'series' : 'movie'}/${id}`,
+    providerIdKey: 'tvdb',
+  },
+}
+
 const MediaModalContent: React.FC<ModalContentProps> = memo(
-  ({ onClose, mediaType, id, summary, year, title, tmdbid }) => {
+  ({
+    onClose,
+    mediaType,
+    id,
+    summary,
+    year,
+    title,
+    providerIds: propProviderIds,
+  }) => {
     const { isPlex, isJellyfin } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdrop, setBackdrop] = useState<string | null>(null)
@@ -42,6 +74,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       null,
     )
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
+    const [metadataProvider, setMetadataProvider] = useState<string | null>(
+      null,
+    )
 
     const mediaTypeOf = useMemo(
       () =>
@@ -49,7 +84,27 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       [mediaType],
     )
 
-    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+    // Fallback IDs from parent props (before metadata loads)
+    const fallbackIds: Record<string, string | undefined> = useMemo(() => {
+      const ids: Record<string, string | undefined> = {}
+      if (propProviderIds) {
+        for (const [key, values] of Object.entries(propProviderIds)) {
+          if (values?.[0]) ids[key] = values[0]
+        }
+      }
+      return ids
+    }, [propProviderIds])
+
+    const providerLogo = useMemo(() => {
+      if (!metadataProvider) return null
+      const cfg = metadataProviderLogos[metadataProvider]
+      if (!cfg) return null
+      const linkId =
+        metadata?.providerIds?.[cfg.providerIdKey]?.[0] ??
+        fallbackIds[cfg.providerIdKey]
+      if (!linkId) return null
+      return { ...cfg, linkId }
+    }, [metadataProvider, metadata, fallbackIds])
 
     useEffect(() => {
       GetApiHandler('/media-server').then((resp) => {
@@ -68,31 +123,41 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       })
     }, [id])
 
-    // Fetch backdrop using the best available provider ID
+    // Send all available provider IDs so the backend preference engine picks the best one
     useEffect(() => {
       if (!metadata) return
 
       const backdropType = ['season', 'episode'].includes(mediaType)
         ? 'show'
         : mediaType
-      const metaTmdbId = metadata.providerIds?.tmdb?.[0] ?? tmdbid
-      const metaTvdbId = metadata.providerIds?.tvdb?.[0]
 
-      let url: string | undefined
-      if (metaTmdbId) {
-        url = `/metadata/backdrop/${backdropType}/${metaTmdbId}?provider=tmdb`
-      } else if (metaTvdbId) {
-        url = `/metadata/backdrop/${backdropType}/${metaTvdbId}?provider=tvdb`
+      const params = new URLSearchParams()
+      for (const [, cfg] of Object.entries(metadataProviderLogos)) {
+        const pid =
+          metadata.providerIds?.[cfg.providerIdKey]?.[0] ??
+          fallbackIds[cfg.providerIdKey]
+        if (pid) {
+          params.set(`${cfg.providerIdKey}Id`, pid)
+        }
       }
 
-      if (url) {
-        GetApiHandler(url)
-          .then((resp) => setBackdrop(resp))
+      if (params.toString()) {
+        GetApiHandler<{ url: string; provider: string }>(
+          `/metadata/backdrop/${backdropType}?${params.toString()}`,
+        )
+          .then((resp) => {
+            if (resp?.url) {
+              setBackdrop(resp.url)
+              setMetadataProvider(resp.provider)
+            } else {
+              setBackdrop(null)
+            }
+          })
           .catch(() => setBackdrop(null))
       } else {
         setBackdrop(null)
       }
-    }, [metadata, mediaType, tmdbid])
+    }, [metadata, mediaType, fallbackIds])
 
     useEffect(() => {
       document.body.style.overflow = 'hidden'
@@ -181,36 +246,22 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
               <div className="flex flex-col items-end">
                 <div className="max-w-fit grow">
-                  {(tmdbid || metadata?.providerIds?.tmdb?.[0]) && (
+                  {providerLogo && (
                     <div>
                       <a
-                        href={`https://themoviedb.org/${mediaTypeOf}/${metadata?.providerIds?.tmdb?.[0] ?? tmdbid}`}
+                        href={providerLogo.buildUrl(
+                          mediaTypeOf,
+                          providerLogo.linkId,
+                        )}
                         target="_blank"
                         rel="noreferrer"
                       >
                         <img
-                          src={`${basePath}/icons_logos/tmdb_logo.svg`}
-                          alt="TMDB Logo"
+                          src={providerLogo.logo}
+                          alt={providerLogo.alt}
                           width={128}
                           height={32}
                           className="h-8 w-32 rounded-lg bg-black bg-opacity-70 p-2 shadow-lg"
-                        />
-                      </a>
-                    </div>
-                  )}
-                  {metadata?.providerIds?.tvdb?.[0] && (
-                    <div>
-                      <a
-                        href={`https://thetvdb.com/dereferrer/${mediaTypeOf === 'tv' ? 'series' : 'movie'}/${metadata.providerIds.tvdb[0]}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <img
-                          src={`${basePath}/icons_logos/tvdb_logo.svg`}
-                          alt="TheTVDB Logo"
-                          width={128}
-                          height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-2 shadow-lg"
                         />
                       </a>
                     </div>
@@ -300,35 +351,19 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
             <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
               {metadata?.providerIds &&
-                ['movie', 'show'].includes(mediaType) &&
-                (metadata.providerIds.tmdb?.length ||
-                  metadata.providerIds.imdb?.length ||
-                  metadata.providerIds.tvdb?.length) && (
+                ['movie', 'show'].includes(mediaType) && (
                   <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                    {metadata.providerIds.tmdb?.map((id) => (
-                      <span
-                        key={`tmdb-${id}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        tmdb://{id}
-                      </span>
-                    ))}
-                    {metadata.providerIds.imdb?.map((id) => (
-                      <span
-                        key={`imdb-${id}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        imdb://{id}
-                      </span>
-                    ))}
-                    {metadata.providerIds.tvdb?.map((id) => (
-                      <span
-                        key={`tvdb-${id}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        tvdb://{id}
-                      </span>
-                    ))}
+                    {Object.entries(metadata.providerIds).flatMap(
+                      ([provider, ids]) =>
+                        (ids ?? []).map((id: string) => (
+                          <span
+                            key={`${provider}-${id}`}
+                            className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
+                          >
+                            {provider}://{id}
+                          </span>
+                        )),
+                    )}
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
