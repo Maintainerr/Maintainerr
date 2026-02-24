@@ -262,11 +262,14 @@ export class MetadataService {
   ): Promise<void> {
     if (ids.tmdbId && ids.tvdbId) return;
 
-    const details = await this.getDetails(ids, type);
-    if (details?.externalIds) {
-      ids.tmdbId ??= details.externalIds.tmdbId;
-      ids.tvdbId ??= details.externalIds.tvdbId;
-    }
+    const resolved: ResolvedMediaIds = {
+      tmdbId: ids.tmdbId,
+      tvdbId: ids.tvdbId,
+      type,
+    };
+    await this.resolveAllIds(resolved);
+    ids.tmdbId ??= resolved.tmdbId;
+    ids.tvdbId ??= resolved.tvdbId;
   }
 
   /** Determine normalised media type from a MediaItem. */
