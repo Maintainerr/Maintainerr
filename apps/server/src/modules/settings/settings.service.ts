@@ -402,88 +402,71 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  // ── Metadata provider API key helpers ──
+
+  private async updateMetadataApiKey(
+    provider: string,
+    apiKey: string,
+  ): Promise<BasicResponseDto> {
+    const column = `${provider}_api_key`;
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+      await this.saveSettings({ ...settingsDb, [column]: apiKey });
+      this[column] = apiKey;
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error(
+        `Error while updating ${provider.toUpperCase()} settings: `,
+        e,
+      );
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  private async removeMetadataApiKey(
+    provider: string,
+  ): Promise<BasicResponseDto> {
+    const column = `${provider}_api_key`;
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+      await this.saveSettings({ ...settingsDb, [column]: null });
+      this[column] = undefined;
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error(
+        `Error removing ${provider.toUpperCase()} settings: `,
+        e,
+      );
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async updateTmdbSetting(
     settings: TmdbSetting,
   ): Promise<BasicResponseDto> {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        tmdb_api_key: settings.api_key,
-      });
-
-      this.tmdb_api_key = settings.api_key;
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating TMDB settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
+    return this.updateMetadataApiKey('tmdb', settings.api_key);
   }
 
   public async removeTmdbSetting(): Promise<BasicResponseDto> {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        tmdb_api_key: null,
-      });
-
-      this.tmdb_api_key = undefined;
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error removing TMDB settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
+    return this.removeMetadataApiKey('tmdb');
   }
 
   public async testTmdb(setting?: TmdbSetting): Promise<BasicResponseDto> {
-    return await this.tmdbApi.testConnection(setting?.api_key);
+    return this.tmdbApi.testConnection(setting?.api_key);
   }
 
   public async updateTvdbSetting(
     settings: TvdbSetting,
   ): Promise<BasicResponseDto> {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        tvdb_api_key: settings.api_key,
-      });
-
-      this.tvdb_api_key = settings.api_key;
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating TVDB settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
+    return this.updateMetadataApiKey('tvdb', settings.api_key);
   }
 
   public async removeTvdbSetting(): Promise<BasicResponseDto> {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        tvdb_api_key: null,
-      });
-
-      this.tvdb_api_key = undefined;
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error removing TVDB settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
+    return this.removeMetadataApiKey('tvdb');
   }
 
   public async testTvdb(setting?: TvdbSetting): Promise<BasicResponseDto> {
-    return await this.tvdbApi.testConnection(setting?.api_key);
+    return this.tvdbApi.testConnection(setting?.api_key);
   }
 
   public async updateMetadataProviderPreference(

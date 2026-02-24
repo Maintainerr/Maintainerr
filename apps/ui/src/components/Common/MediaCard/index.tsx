@@ -3,6 +3,11 @@ import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType, MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
+import {
+  buildProviderIdParams,
+  mediaTypeBgColor,
+  toImageEndpointType,
+} from '../../../utils/mediaTypeUtils'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
@@ -62,13 +67,8 @@ const MediaCard: React.FC<IMediaCard> = ({
 
   useEffect(() => {
     if (providerIds) {
-      const imageType = ['season', 'episode'].includes(mediaType)
-        ? 'show'
-        : mediaType
-      const params = new URLSearchParams()
-      for (const [key, values] of Object.entries(providerIds)) {
-        if (values?.[0]) params.set(`${key}Id`, values[0])
-      }
+      const imageType = toImageEndpointType(mediaType)
+      const params = buildProviderIdParams(providerIds)
       if (params.toString()) {
         GetApiHandler<{ url: string; provider: string }>(
           `/metadata/image/${imageType}?${params.toString()}`,
@@ -142,15 +142,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           ) : undefined}
           <div className="absolute left-0 right-0 flex items-center justify-between p-2">
             <div
-              className={`pointer-events-none z-40 rounded-full shadow ${
-                mediaType === 'movie'
-                  ? 'bg-zinc-900'
-                  : mediaType === 'show'
-                    ? 'bg-amber-900'
-                    : mediaType === 'season'
-                      ? 'bg-yellow-700'
-                      : 'bg-rose-900'
-              }`}
+              className={`pointer-events-none z-40 rounded-full shadow ${mediaTypeBgColor(mediaType)}`}
             >
               <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
                 {mediaType}
@@ -160,15 +152,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           {hasExclusion && !collectionPage ? (
             <div className="absolute right-0 flex items-center justify-between p-2">
               <div
-                className={`pointer-events-none z-40 rounded-full shadow ${
-                  mediaType === 'movie'
-                    ? 'bg-zinc-900'
-                    : mediaType === 'show'
-                      ? 'bg-amber-900'
-                      : mediaType === 'season'
-                        ? 'bg-yellow-700'
-                        : 'bg-rose-900'
-                }`}
+                className={`pointer-events-none z-40 rounded-full shadow ${mediaTypeBgColor(mediaType)}`}
               >
                 <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
                   {'EXCL'}
@@ -181,15 +165,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           {collectionPage && isManual && !showDetail ? (
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 transform items-center justify-between p-2">
               <div
-                className={`pointer-events-none z-40 rounded-full shadow ${
-                  mediaType === 'movie'
-                    ? 'bg-zinc-900'
-                    : mediaType === 'show'
-                      ? 'bg-amber-900'
-                      : mediaType === 'season'
-                        ? 'bg-yellow-700'
-                        : 'bg-rose-900'
-                }`}
+                className={`pointer-events-none z-40 rounded-full shadow ${mediaTypeBgColor(mediaType)}`}
               >
                 <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
                   {'MANUAL'}
@@ -202,17 +178,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           {collectionPage && !exclusionType && daysLeft !== 9999 ? (
             <div className="absolute right-0 flex items-center justify-between p-2">
               <div
-                className={`pointer-events-none z-40 rounded-full shadow ${
-                  daysLeft < 0
-                    ? 'bg-red-700'
-                    : mediaType === 'movie'
-                      ? 'bg-zinc-900'
-                      : mediaType === 'show'
-                        ? 'bg-amber-900'
-                        : mediaType === 'season'
-                          ? 'bg-yellow-700'
-                          : 'bg-rose-900'
-                } `}
+                className={`pointer-events-none z-40 rounded-full shadow ${daysLeft < 0 ? 'bg-red-700' : mediaTypeBgColor(mediaType)}`}
               >
                 <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
                   {daysLeft}
@@ -225,15 +191,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           {collectionPage && exclusionType === 'global' ? (
             <div className="absolute right-0 flex items-center justify-between p-2">
               <div
-                className={`pointer-events-none z-40 rounded-full shadow ${
-                  mediaType === 'movie'
-                    ? 'bg-zinc-900'
-                    : mediaType === 'show'
-                      ? 'bg-amber-900'
-                      : mediaType === 'season'
-                        ? 'bg-yellow-700'
-                        : 'bg-rose-900'
-                }`}
+                className={`pointer-events-none z-40 rounded-full shadow ${mediaTypeBgColor(mediaType)}`}
               >
                 <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
                   {exclusionType.toUpperCase()}

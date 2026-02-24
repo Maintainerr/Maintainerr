@@ -260,6 +260,16 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
   )
 }
 
+// ───── Preference options ─────
+
+const preferenceOptions: {
+  value: MetadataProviderPreference
+  label: string
+}[] = [
+  { value: MetadataProviderPreference.TMDB_PRIMARY, label: 'TMDB (default)' },
+  { value: MetadataProviderPreference.TVDB_PRIMARY, label: 'TVDB' },
+]
+
 // ───── Main component ─────
 
 const MetadataSettings = () => {
@@ -319,12 +329,11 @@ const MetadataSettings = () => {
                 savePreference(e.target.value as MetadataProviderPreference)
               }
             >
-              <option value={MetadataProviderPreference.TMDB_PRIMARY}>
-                TMDB (default)
-              </option>
-              <option value={MetadataProviderPreference.TVDB_PRIMARY}>
-                TVDB
-              </option>
+              {preferenceOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

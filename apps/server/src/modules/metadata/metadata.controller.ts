@@ -37,7 +37,7 @@ export class MetadataController {
   async getBackdropImage(
     @Param('type') type: 'movie' | 'show',
     @Query() query: Record<string, string>,
-  ): Promise<{ url: string; provider: string } | undefined> {
+  ): Promise<{ url: string; provider: string; id: number } | undefined> {
     const ids = this.parseIds(query);
     if (!ids) return undefined;
     const providerType = type === 'show' ? 'tv' : 'movie';
@@ -52,7 +52,7 @@ export class MetadataController {
   async getImage(
     @Param('type') type: 'movie' | 'show',
     @Query() query: Record<string, string>,
-  ): Promise<{ url: string; provider: string } | undefined> {
+  ): Promise<{ url: string; provider: string; id: number } | undefined> {
     const ids = this.parseIds(query);
     if (!ids) return undefined;
     const providerType = type === 'show' ? 'tv' : 'movie';

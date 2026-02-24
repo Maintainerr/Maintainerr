@@ -242,7 +242,11 @@ describe('MetadataService', () => {
 
     const result = await service.getBackdropUrl({ tmdbId: 1 }, 'movie');
 
-    expect(result).toEqual({ url: 'https://img/bg.jpg', provider: 'TMDB', id: 1 });
+    expect(result).toEqual({
+      url: 'https://img/bg.jpg',
+      provider: 'TMDB',
+      id: 1,
+    });
   });
 
   it('getPersonDetails delegates to provider', async () => {

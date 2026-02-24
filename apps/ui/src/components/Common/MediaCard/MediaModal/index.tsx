@@ -2,6 +2,11 @@ import { MediaItem, MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import {
+  mediaTypeBgColor,
+  toApiMediaType,
+  toImageEndpointType,
+} from '../../../../utils/mediaTypeUtils'
 
 interface ModalContentProps {
   onClose: () => void
@@ -77,15 +82,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [metadataProvider, setMetadataProvider] = useState<string | null>(
       null,
     )
-    const [metadataProviderId, setMetadataProviderId] = useState<
-      number | null
-    >(null)
-
-    const mediaTypeOf = useMemo(
-      () =>
-        ['show', 'season', 'episode'].includes(mediaType) ? 'tv' : mediaType,
-      [mediaType],
+    const [metadataProviderId, setMetadataProviderId] = useState<number | null>(
+      null,
     )
+
+    const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
 
     // Fallback IDs from parent props (before metadata loads)
     const fallbackIds: Record<string, string | undefined> = useMemo(() => {
@@ -131,9 +132,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     useEffect(() => {
       if (!metadata) return
 
-      const backdropType = ['season', 'episode'].includes(mediaType)
-        ? 'show'
-        : mediaType
+      const backdropType = toImageEndpointType(mediaType)
 
       const params = new URLSearchParams()
       for (const [, cfg] of Object.entries(metadataProviderLogos)) {
@@ -200,15 +199,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <div className="flex grow flex-col">
                 <div className="max-w-fit grow">
                   <div
-                    className={`pointer-events-none flex justify-center rounded-lg bg-opacity-70 p-2 text-xs font-medium uppercase text-zinc-200 ${
-                      mediaType === 'movie'
-                        ? 'bg-black'
-                        : mediaType === 'show'
-                          ? 'bg-amber-900'
-                          : mediaType === 'season'
-                            ? 'bg-yellow-700'
-                            : 'bg-rose-900'
-                    }`}
+                    className={`pointer-events-none flex justify-center rounded-lg bg-opacity-70 p-2 text-xs font-medium uppercase text-zinc-200 ${mediaTypeBgColor(mediaType)}`}
                   >
                     {mediaType}
                   </div>

@@ -56,8 +56,6 @@ export class MetadataService {
    * registration order. Unavailable providers are omitted.
    */
   private getOrderedProviders(): IMetadataProvider[] {
-    // Preference values follow the pattern "tmdb_primary" / "tvdb_primary".
-    // Extract the prefix and match against provider names (case-insensitive).
     const primaryName = this.preference.replace('_primary', '').toUpperCase();
     const preferred = this.providers.find((p) => p.name === primaryName);
 
@@ -247,7 +245,10 @@ export class MetadataService {
   private async resolveImageUrl(
     ids: { tmdbId?: number; tvdbId?: number },
     type: 'movie' | 'tv',
-    fn: (provider: IMetadataProvider, id: number) => Promise<string | undefined>,
+    fn: (
+      provider: IMetadataProvider,
+      id: number,
+    ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
     await this.resolveImageIds(ids, type);
     const tagged = await this.withProviderFallbackTagged(ids, fn);

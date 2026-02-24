@@ -34,14 +34,17 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     return path ? `${TMDB_IMAGE_BASE}/${size}${path}` : undefined;
   }
 
+  private getRecord(tmdbId: number, type: 'movie' | 'tv') {
+    return type === 'movie'
+      ? this.tmdbApi.getMovie({ movieId: tmdbId })
+      : this.tmdbApi.getTvShow({ tvId: tmdbId });
+  }
+
   async getDetails(
     tmdbId: number,
     type: 'movie' | 'tv',
   ): Promise<MetadataDetails | undefined> {
-    const record =
-      type === 'movie'
-        ? await this.tmdbApi.getMovie({ movieId: tmdbId })
-        : await this.tmdbApi.getTvShow({ tvId: tmdbId });
+    const record = await this.getRecord(tmdbId, type);
     if (!record) return undefined;
 
     return {
@@ -69,11 +72,8 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     type: 'movie' | 'tv',
     sizeHint = 'w500',
   ): Promise<string | undefined> {
-    const path =
-      type === 'movie'
-        ? (await this.tmdbApi.getMovie({ movieId: tmdbId }))?.poster_path
-        : (await this.tmdbApi.getTvShow({ tvId: tmdbId }))?.poster_path;
-    return this.buildImageUrl(path, sizeHint);
+    const record = await this.getRecord(tmdbId, type);
+    return this.buildImageUrl(record?.poster_path, sizeHint);
   }
 
   async getBackdropUrl(
@@ -81,11 +81,8 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     type: 'movie' | 'tv',
     sizeHint = 'w1280',
   ): Promise<string | undefined> {
-    const path =
-      type === 'movie'
-        ? (await this.tmdbApi.getMovie({ movieId: tmdbId }))?.backdrop_path
-        : (await this.tmdbApi.getTvShow({ tvId: tmdbId }))?.backdrop_path;
-    return this.buildImageUrl(path, sizeHint);
+    const record = await this.getRecord(tmdbId, type);
+    return this.buildImageUrl(record?.backdrop_path, sizeHint);
   }
 
   async getPersonDetails(

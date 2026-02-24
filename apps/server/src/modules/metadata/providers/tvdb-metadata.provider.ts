@@ -25,14 +25,17 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     ids.tvdbId = id;
   }
 
+  private getRecord(tvdbId: number, type: 'movie' | 'tv') {
+    return type === 'movie'
+      ? this.tvdbApi.getMovie(tvdbId)
+      : this.tvdbApi.getSeries(tvdbId);
+  }
+
   async getDetails(
     tvdbId: number,
     type: 'movie' | 'tv',
   ): Promise<MetadataDetails | undefined> {
-    const record =
-      type === 'movie'
-        ? await this.tvdbApi.getMovie(tvdbId)
-        : await this.tvdbApi.getSeries(tvdbId);
+    const record = await this.getRecord(tvdbId, type);
     if (!record) return undefined;
 
     return {
@@ -56,10 +59,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     tvdbId: number,
     type: 'movie' | 'tv',
   ): Promise<string | undefined> {
-    const record =
-      type === 'movie'
-        ? await this.tvdbApi.getMovie(tvdbId)
-        : await this.tvdbApi.getSeries(tvdbId);
+    const record = await this.getRecord(tvdbId, type);
     return this.tvdbApi.getPosterUrl(record, type);
   }
 
@@ -67,10 +67,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     tvdbId: number,
     type: 'movie' | 'tv',
   ): Promise<string | undefined> {
-    const record =
-      type === 'movie'
-        ? await this.tvdbApi.getMovie(tvdbId)
-        : await this.tvdbApi.getSeries(tvdbId);
+    const record = await this.getRecord(tvdbId, type);
     return this.tvdbApi.getBackdropUrl(record, type);
   }
 

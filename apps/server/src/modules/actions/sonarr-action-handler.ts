@@ -28,29 +28,20 @@ export class SonarrActionHandler {
       collection.sonarrSettingsId,
     );
 
+    // Fetch media data for index info (needed for season/episode actions)
     let mediaData: MediaItem | undefined = undefined;
-
-    // Determine the media server ID to resolve (walk up for seasons/episodes)
-    let resolveId = media.mediaServerId;
-    switch (collection.type) {
-      case 'season':
-        mediaData = await mediaServer.getMetadata(media.mediaServerId);
-        resolveId = mediaData?.parentId ?? media.mediaServerId;
-        break;
-      case 'episode':
-        mediaData = await mediaServer.getMetadata(media.mediaServerId);
-        resolveId = mediaData?.grandparentId ?? media.mediaServerId;
-        break;
+    if (['season', 'episode'].includes(collection.type)) {
+      mediaData = await mediaServer.getMetadata(media.mediaServerId);
     }
 
-    // Resolve all IDs through the metadata layer in one call
-    const ids = await this.metadataService.resolveIds(resolveId);
+    // resolveIds() handles the hierarchy walk (episode→season→show) internally
+    const ids = await this.metadataService.resolveIds(media.mediaServerId);
     const tvdbId = ids?.tvdbId ?? media.tvdbId;
     const tmdbId = ids?.tmdbId ?? media.tmdbId;
 
     if (!tvdbId) {
       this.logger.log(
-        `Couldn't find correct TVDB ID. No action was taken for show: https://www.themoviedb.org/tv/${tmdbId}. Please check this show manually`,
+        `Couldn't find correct TVDB ID for media server item ${media.mediaServerId}${tmdbId ? ` (TMDB: ${tmdbId})` : ''}. No action was taken. Please check this show manually`,
       );
       return;
     }
@@ -60,12 +51,12 @@ export class SonarrActionHandler {
     if (!sonarrMedia?.id) {
       if (collection.arrAction !== ServarrAction.UNMONITOR) {
         this.logger.log(
-          `Couldn't find correct TVDB ID. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${tmdbId}. Attempting to remove from the filesystem via media server.`,
+          `Couldn't find show with TVDB ID ${tvdbId} in Sonarr for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
       } else {
         this.logger.log(
-          `Couldn't find correct TVDB ID. No unmonitor action was taken for show: https://www.themoviedb.org/tv/${tmdbId}`,
+          `Couldn't find show with TVDB ID ${tvdbId} in Sonarr for media server item ${media.mediaServerId}. No unmonitor action was taken.`,
         );
       }
       return;
@@ -101,7 +92,7 @@ export class SonarrActionHandler {
               true,
               collection.listExclusions,
             );
-            this.logger.log(`Removed show ${sonarrMedia.title}' from Sonarr`);
+            this.logger.log(`Removed show '${sonarrMedia.title}' from Sonarr`);
             break;
         }
         break;
