@@ -65,14 +65,15 @@ export class SeerrGetterService {
       const resolvedIds =
         await this.metadataService.resolveIdsFromMediaItem(libItem);
 
-      if (resolvedIds?.tmdbId) {
+      const tmdbId = resolvedIds?.['tmdb'] as number | undefined;
+      if (tmdbId) {
         if (libItem.type === 'movie') {
           movieMediaResponse = await this.seerrApi.getMovie(
-            resolvedIds.tmdbId.toString(),
+            tmdbId.toString(),
           );
         } else {
           tvMediaResponse = await this.seerrApi.getShow(
-            resolvedIds.tmdbId.toString(),
+            tmdbId.toString(),
           );
           if (dataType === 'season' || dataType === 'episode') {
             const seasonNumber =
@@ -80,7 +81,7 @@ export class SeerrGetterService {
                 ? origLibItem.index
                 : origLibItem.parentIndex;
             seasonMediaResponse = await this.seerrApi.getSeason(
-              resolvedIds.tmdbId.toString(),
+              tmdbId.toString(),
               seasonNumber?.toString(),
             );
             if (!seasonMediaResponse) {
