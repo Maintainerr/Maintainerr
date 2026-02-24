@@ -1,8 +1,8 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts';
+import { createMediaItem, createMockLogger } from '../../../test/utils/data';
 import { IMetadataProvider } from './interfaces/metadata-provider.interface';
 import { MetadataDetails } from './interfaces/metadata.types';
 import { MetadataService } from './metadata.service';
-import { createMediaItem, createMockLogger } from '../../../test/utils/data';
 
 const createMockProvider = (
   name: string,
@@ -313,6 +313,67 @@ describe('MetadataService', () => {
 
     await service.resolveIdsFromMediaItem(item);
 
+    // resolveAllIds short-circuits, so no getDetails call from it
+    expect(tmdb.getDetails).not.toHaveBeenCalled();
+  });
+
+  it('getDetails cross-fixes bad IDs when a provider fails and fallback succeeds', async () => {
+    const { service, tmdb, tvdb } = createService(
+      MetadataProviderPreference.TVDB_PRIMARY,
+    );
+    // TVDB is primary but fails (e.g. 404 due to wrong ID from media server)
+    tvdb.getDetails.mockResolvedValue(undefined);
+    // TMDB fallback succeeds and includes the correct TVDB ID in externalIds
+    tmdb.getDetails.mockResolvedValue({
+      id: 550,
+      title: 'Test',
+      type: 'tv',
+      externalIds: { tmdbId: 550, tvdbId: 81189, type: 'tv' },
+    });
+
+    const ids = { tmdbId: 550, tvdbId: 2028943 };
+    const result = await service.getDetails(ids, 'tv');
+
+    expect(result?.title).toBe('Test');
+    // The bad TVDB ID should be corrected in-place
+    expect(ids.tvdbId).toBe(81189);
+  });
+
+  it('getDetails does not alter IDs when primary provider succeeds', async () => {
+    const { service, tmdb, tvdb } = createService(
+      MetadataProviderPreference.TVDB_PRIMARY,
+    );
+    tvdb.getDetails.mockResolvedValue({
+      id: 81189,
+      title: 'Test',
+      type: 'tv',
+      externalIds: { tmdbId: 550, tvdbId: 81189, type: 'tv' },
+    });
+
+    const ids = { tmdbId: 550, tvdbId: 81189 };
+    await service.getDetails(ids, 'tv');
+
+    // IDs remain unchanged — no cross-fix needed
+    expect(ids.tmdbId).toBe(550);
+    expect(ids.tvdbId).toBe(81189);
+    expect(tmdb.getDetails).not.toHaveBeenCalled();
+  });
+
+  it('resolveAllSeriesIds returns direct tvdb IDs without cross-resolving', async () => {
+    const item = createMediaItem({
+      type: 'show',
+      providerIds: { tvdb: ['2028943'], tmdb: ['550'] },
+    });
+    const { service, tvdb, tmdb } = createService(
+      MetadataProviderPreference.TVDB_PRIMARY,
+    );
+
+    const ids = await service.resolveAllSeriesIds(item);
+
+    // Returns the direct ID only — cross-resolution is not resolveAllIdsForProvider's job
+    expect(ids).toEqual([2028943]);
+    // No provider API calls needed when direct IDs exist
+    expect(tvdb.getDetails).not.toHaveBeenCalled();
     expect(tmdb.getDetails).not.toHaveBeenCalled();
   });
 });

@@ -73,11 +73,11 @@ export class MetadataService {
     ids: { tmdbId?: number; tvdbId?: number },
     fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
   ): Promise<T | undefined> {
-    return (await this.withProviderFallbackTagged(ids, fn))?.result;
+    return (await this.withProviderFallbackDetailed(ids, fn))?.result;
   }
 
   /** Same as withProviderFallback but also returns which provider produced the result. */
-  private async withProviderFallbackTagged<T>(
+  private async withProviderFallbackDetailed<T>(
     ids: { tmdbId?: number; tvdbId?: number },
     fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
   ): Promise<{ result: T; provider: string; id: number } | undefined> {
@@ -185,14 +185,43 @@ export class MetadataService {
   /**
    * Get normalised details for a movie or TV show,
    * using the preferred provider with fallback.
+   *
+   * When the successful result includes externalIds that differ from the
+   * IDs we called with, update `ids` in-place. This corrects bad IDs from
+   * the media server (e.g. wrong TVDB ID) using cross-references from
+   * whichever provider actually returned data.
    */
   async getDetails(
     ids: { tmdbId?: number; tvdbId?: number },
     type: 'movie' | 'tv',
   ): Promise<MetadataDetails | undefined> {
-    return this.withProviderFallback(ids, (provider, id) =>
-      provider.getDetails(id, type),
+    const providerResult = await this.withProviderFallbackDetailed(
+      ids,
+      (provider, id) => provider.getDetails(id, type),
     );
+    if (!providerResult) return undefined;
+
+    const ext = providerResult.result.externalIds;
+    if (ext) {
+      if (ext.tmdbId && ids.tmdbId && ext.tmdbId !== ids.tmdbId) {
+        this.logger.warn(
+          `Corrected TMDB ID: ${ids.tmdbId} → ${ext.tmdbId} ` +
+            `(via ${providerResult.provider} cross-reference). ` +
+            `The media server may have incorrect metadata for this item.`,
+        );
+        ids.tmdbId = ext.tmdbId;
+      }
+      if (ext.tvdbId && ids.tvdbId && ext.tvdbId !== ids.tvdbId) {
+        this.logger.warn(
+          `Corrected TVDB ID: ${ids.tvdbId} → ${ext.tvdbId} ` +
+            `(via ${providerResult.provider} cross-reference). ` +
+            `The media server may have incorrect metadata for this item.`,
+        );
+        ids.tvdbId = ext.tvdbId;
+      }
+    }
+
+    return providerResult.result;
   }
 
   // ───── Person Details ─────
@@ -251,9 +280,13 @@ export class MetadataService {
     ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
     await this.resolveImageIds(ids, type);
-    const tagged = await this.withProviderFallbackTagged(ids, fn);
-    return tagged
-      ? { url: tagged.result, provider: tagged.provider, id: tagged.id }
+    const providerResult = await this.withProviderFallbackDetailed(ids, fn);
+    return providerResult
+      ? {
+          url: providerResult.result,
+          provider: providerResult.provider,
+          id: providerResult.id,
+        }
       : undefined;
   }
 
