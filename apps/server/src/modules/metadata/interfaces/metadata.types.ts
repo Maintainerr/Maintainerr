@@ -4,13 +4,20 @@
  * a result came from TMDB, TVDB, or both.
  */
 
-/** All known external IDs that have been resolved for a media item. */
-export interface ResolvedMediaIds {
-  tmdbId?: number;
-  tvdbId?: number;
-  imdbId?: string;
-  type: 'movie' | 'tv';
-}
+/**
+ * Dynamic bag of provider IDs keyed by lowercase provider name
+ * (e.g. { tmdb: 550, tvdb: 81189, imdb: 'tt0137523' }).
+ *
+ * Fully dynamic — adding a new provider requires NO changes to this type.
+ * Providers read/write their own key via extractId / assignId.
+ */
+export type ProviderIds = Record<string, string | number | undefined>;
+
+/**
+ * Resolved provider IDs with a guaranteed media type.
+ * Returned by resolveIds / resolveIdsFromMediaItem.
+ */
+export type ResolvedMediaIds = ProviderIds & { type: 'movie' | 'tv' };
 
 /** Provider-agnostic result from a cross-provider external ID search. */
 export interface ExternalIdSearchResult {

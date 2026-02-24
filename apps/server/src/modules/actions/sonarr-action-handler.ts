@@ -36,8 +36,8 @@ export class SonarrActionHandler {
 
     // resolveIds() handles the hierarchy walk (episode→season→show) internally
     const ids = await this.metadataService.resolveIds(media.mediaServerId);
-    const tvdbId = ids?.tvdbId ?? media.tvdbId;
-    const tmdbId = ids?.tmdbId ?? media.tmdbId;
+    const tvdbId = (ids?.['tvdb'] as number | undefined) ?? media.tvdbId;
+    const tmdbId = (ids?.['tmdb'] as number | undefined) ?? media.tmdbId;
 
     if (!tvdbId) {
       this.logger.log(

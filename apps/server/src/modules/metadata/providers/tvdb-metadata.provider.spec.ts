@@ -23,19 +23,20 @@ describe('TvdbMetadataProvider', () => {
     expect(createProvider(true).provider.isAvailable()).toBe(true);
   });
 
-  it('extracts and assigns tvdbId', () => {
+  it('extracts and assigns ID using dynamic key', () => {
     const { provider } = createProvider();
-    expect(provider.extractId({ tvdbId: 81189 })).toBe(81189);
+    expect(provider.extractId({ tvdb: 200 })).toBe(200);
     expect(provider.extractId({})).toBeUndefined();
+    expect(provider.extractId({ tvdb: 'not-a-number' })).toBeUndefined();
 
-    const ids: { tvdbId?: number } = {};
+    const ids: Record<string, number | undefined> = {};
     provider.assignId(ids, 99);
-    expect(ids.tvdbId).toBe(99);
+    expect(ids['tvdb']).toBe(99);
   });
 
   it('getDetails builds normalised response with cross-provider IDs', async () => {
     const { provider, tvdbApi } = createProvider();
-    const series = { id: 81189, name: 'Test Series', overview: 'A show' };
+    const series = { id: 200, name: 'Test Series', overview: 'A show' };
     tvdbApi.getSeries.mockResolvedValue(series as any);
     tvdbApi.getPosterUrl.mockReturnValue(
       'https://artworks.thetvdb.com/poster.jpg',
@@ -43,19 +44,19 @@ describe('TvdbMetadataProvider', () => {
     tvdbApi.getBackdropUrl.mockReturnValue(
       'https://artworks.thetvdb.com/bg.jpg',
     );
-    tvdbApi.getTmdbId.mockReturnValue(1396);
-    tvdbApi.getImdbId.mockReturnValue('tt0903747');
+    tvdbApi.getTmdbId.mockReturnValue(10);
+    tvdbApi.getImdbId.mockReturnValue('tt0000010');
 
-    const result = await provider.getDetails(81189, 'tv');
+    const result = await provider.getDetails(200, 'tv');
 
     expect(result).toEqual(
       expect.objectContaining({
-        id: 81189,
+        id: 200,
         title: 'Test Series',
-        externalIds: expect.objectContaining({ tmdbId: 1396, tvdbId: 81189 }),
+        externalIds: expect.objectContaining({ tmdb: 10, tvdb: 200 }),
       }),
     );
-    expect(tvdbApi.getSeries).toHaveBeenCalledWith(81189);
+    expect(tvdbApi.getSeries).toHaveBeenCalledWith(200);
   });
 
   it('getDetails uses getMovie for movie type', async () => {
@@ -73,16 +74,16 @@ describe('TvdbMetadataProvider', () => {
 
   it('findByExternalId only supports IMDB type', async () => {
     const { provider, tvdbApi } = createProvider();
-    expect(await provider.findByExternalId(1396, 'tmdb')).toBeUndefined();
-    expect(await provider.findByExternalId(81189, 'tvdb')).toBeUndefined();
+    expect(await provider.findByExternalId(10, 'tmdb')).toBeUndefined();
+    expect(await provider.findByExternalId(200, 'tvdb')).toBeUndefined();
 
     tvdbApi.searchByRemoteId.mockResolvedValue([
-      { series: { id: 81189 } as any, movie: null },
+      { series: { id: 200 } as any, movie: null },
     ]);
 
-    const results = await provider.findByExternalId('tt0903747', 'imdb');
+    const results = await provider.findByExternalId('tt0000010', 'imdb');
 
-    expect(results).toEqual([{ tvShowId: 81189 }]);
+    expect(results).toEqual([{ tvShowId: 200 }]);
   });
 
   it('getPosterUrl delegates to tvdbApi for tv', async () => {
@@ -117,7 +118,7 @@ describe('TvdbMetadataProvider', () => {
     const { provider, tvdbApi } = createProvider();
     tvdbApi.getPerson.mockResolvedValue({
       id: 100,
-      name: 'Actor',
+      name: 'Test Actor',
       image: 'https://img.tvdb.com/actor.jpg',
       birth: '1980-01-01',
       death: null,
@@ -125,16 +126,16 @@ describe('TvdbMetadataProvider', () => {
         { biography: 'Biografie', language: 'deu' },
         { biography: 'English bio', language: 'eng' },
       ],
-      remoteIds: [{ id: 'nm0001', sourceName: 'IMDB', type: 2 }],
+      remoteIds: [{ id: 'nm0000100', sourceName: 'IMDB', type: 2 }],
     } as any);
 
     const result = await provider.getPersonDetails(100);
 
     expect(result).toEqual(
       expect.objectContaining({
-        name: 'Actor',
+        name: 'Test Actor',
         biography: 'English bio',
-        imdbId: 'nm0001',
+        imdbId: 'nm0000100',
       }),
     );
   });

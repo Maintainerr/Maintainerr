@@ -2,6 +2,7 @@ import {
   ExternalIdSearchResult,
   MetadataDetails,
   PersonDetails,
+  ProviderIds,
 } from './metadata.types';
 
 /** NestJS injection token for the array of all registered metadata providers. */
@@ -26,14 +27,17 @@ export interface IMetadataProvider {
   /** Human-readable name (for logging). */
   readonly name: string;
 
+  /** Key used in ProviderIds and MediaProviderIds (e.g. 'tmdb', 'tvdb'). */
+  readonly idKey: string;
+
   /** Whether this provider is configured and ready for API calls. */
   isAvailable(): boolean;
 
   /** Pick out the ID this provider uses from a bag of resolved IDs. */
-  extractId(ids: { tmdbId?: number; tvdbId?: number }): number | undefined;
+  extractId(ids: ProviderIds): number | undefined;
 
   /** Write this provider's ID into a bag of resolved IDs (inverse of extractId). */
-  assignId(ids: { tmdbId?: number; tvdbId?: number }, id: number): void;
+  assignId(ids: ProviderIds, id: number): void;
 
   /** Normalised movie or TV show details. */
   getDetails(
@@ -65,6 +69,6 @@ export interface IMetadataProvider {
    */
   findByExternalId(
     externalId: string | number,
-    type: 'imdb' | 'tvdb' | 'tmdb',
+    type: string,
   ): Promise<ExternalIdSearchResult[] | undefined>;
 }

@@ -5,6 +5,7 @@ import {
   ExternalIdSearchResult,
   MetadataDetails,
   PersonDetails,
+  ProviderIds,
 } from '../interfaces/metadata.types';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -12,19 +13,21 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 @Injectable()
 export class TmdbMetadataProvider implements IMetadataProvider {
   readonly name = 'TMDB';
+  readonly idKey = 'tmdb';
 
   constructor(private readonly tmdbApi: TmdbApiService) {}
 
   isAvailable(): boolean {
-    return true; // TMDB always available (has a default key)
+    return true;
   }
 
-  extractId(ids: { tmdbId?: number }): number | undefined {
-    return ids.tmdbId;
+  extractId(ids: ProviderIds): number | undefined {
+    const v = ids[this.idKey];
+    return typeof v === 'number' ? v : undefined;
   }
 
-  assignId(ids: { tmdbId?: number }, id: number): void {
-    ids.tmdbId = id;
+  assignId(ids: ProviderIds, id: number): void {
+    ids[this.idKey] = id;
   }
 
   private buildImageUrl(
@@ -55,9 +58,9 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       backdropUrl: this.buildImageUrl(record.backdrop_path, 'w1280'),
       rating: record.vote_average || undefined,
       externalIds: {
-        tmdbId: record.id,
-        tvdbId: record.external_ids?.tvdb_id ?? undefined,
-        imdbId:
+        tmdb: record.id,
+        tvdb: record.external_ids?.tvdb_id ?? undefined,
+        imdb:
           record.external_ids?.imdb_id ??
           ('imdb_id' in record ? record.imdb_id : undefined) ??
           undefined,
@@ -105,7 +108,7 @@ export class TmdbMetadataProvider implements IMetadataProvider {
 
   async findByExternalId(
     externalId: string | number,
-    type: 'imdb' | 'tvdb' | 'tmdb',
+    type: string,
   ): Promise<ExternalIdSearchResult[] | undefined> {
     if (type === 'tmdb') return undefined; // Can't search TMDB by its own IDs
 

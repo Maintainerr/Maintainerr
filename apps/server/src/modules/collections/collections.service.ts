@@ -1083,8 +1083,12 @@ export class CollectionsService {
               collectionId: collectionIds.dbId,
               mediaServerId: childId,
               addDate: new Date().toDateString(),
-              tmdbId: ids?.tmdbId ?? details?.externalIds?.tmdbId,
-              tvdbId: ids?.tvdbId ?? details?.externalIds?.tvdbId,
+              tmdbId:
+                (ids?.['tmdb'] as number | undefined) ??
+                (details?.externalIds?.['tmdb'] as number | undefined),
+              tvdbId:
+                (ids?.['tvdb'] as number | undefined) ??
+                (details?.externalIds?.['tvdb'] as number | undefined),
               image_path: details?.posterUrl,
               isManual: manual,
             },

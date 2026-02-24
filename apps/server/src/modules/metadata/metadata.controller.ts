@@ -13,18 +13,19 @@ export class MetadataController {
   constructor(private readonly metadata: MetadataService) {}
 
   /**
-   * Extract all `*Id` query params into a numeric ID map.
-   * Any query param ending in "Id" with a valid numeric value is included.
+   * Extract provider ID query params into a ProviderIds map.
+   * Accepts params like ?tmdbId=123&tvdbId=456 and normalises keys
+   * to lowercase provider names (tmdb, tvdb) matching provider idKey.
    */
   private parseIds(
     query: Record<string, string>,
   ): Record<string, number> | undefined {
     const ids: Record<string, number> = {};
     for (const [key, value] of Object.entries(query)) {
-      if (key.endsWith('Id') && value) {
-        const num = +value;
-        if (num) ids[key] = num;
-      }
+      if (!key.endsWith('Id') || !value) continue;
+      const num = +value;
+      if (!num) continue;
+      ids[key.slice(0, -2).toLowerCase()] = num;
     }
     return Object.keys(ids).length ? ids : undefined;
   }

@@ -5,11 +5,13 @@ import {
   ExternalIdSearchResult,
   MetadataDetails,
   PersonDetails,
+  ProviderIds,
 } from '../interfaces/metadata.types';
 
 @Injectable()
 export class TvdbMetadataProvider implements IMetadataProvider {
   readonly name = 'TVDB';
+  readonly idKey = 'tvdb';
 
   constructor(private readonly tvdbApi: TvdbApiService) {}
 
@@ -17,12 +19,13 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     return this.tvdbApi.isAvailable();
   }
 
-  extractId(ids: { tvdbId?: number }): number | undefined {
-    return ids.tvdbId;
+  extractId(ids: ProviderIds): number | undefined {
+    const v = ids[this.idKey];
+    return typeof v === 'number' ? v : undefined;
   }
 
-  assignId(ids: { tvdbId?: number }, id: number): void {
-    ids.tvdbId = id;
+  assignId(ids: ProviderIds, id: number): void {
+    ids[this.idKey] = id;
   }
 
   private getRecord(tvdbId: number, type: 'movie' | 'tv') {
@@ -46,9 +49,9 @@ export class TvdbMetadataProvider implements IMetadataProvider {
       backdropUrl: this.tvdbApi.getBackdropUrl(record, type),
       rating: record.score || undefined,
       externalIds: {
-        tmdbId: this.tvdbApi.getTmdbId(record),
-        tvdbId: record.id,
-        imdbId: this.tvdbApi.getImdbId(record),
+        tmdb: this.tvdbApi.getTmdbId(record),
+        tvdb: record.id,
+        imdb: this.tvdbApi.getImdbId(record),
         type,
       },
       type,
@@ -98,7 +101,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
 
   async findByExternalId(
     externalId: string | number,
-    type: 'imdb' | 'tvdb' | 'tmdb',
+    type: string,
   ): Promise<ExternalIdSearchResult[] | undefined> {
     // TVDB only supports search by IMDB remote ID
     if (type !== 'imdb') return undefined;
