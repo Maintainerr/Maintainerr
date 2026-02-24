@@ -77,6 +77,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [metadataProvider, setMetadataProvider] = useState<string | null>(
       null,
     )
+    const [metadataProviderId, setMetadataProviderId] = useState<
+      number | null
+    >(null)
 
     const mediaTypeOf = useMemo(
       () =>
@@ -100,11 +103,12 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       const cfg = metadataProviderLogos[metadataProvider]
       if (!cfg) return null
       const linkId =
+        metadataProviderId?.toString() ??
         metadata?.providerIds?.[cfg.providerIdKey]?.[0] ??
         fallbackIds[cfg.providerIdKey]
       if (!linkId) return null
       return { ...cfg, linkId }
-    }, [metadataProvider, metadata, fallbackIds])
+    }, [metadataProvider, metadataProviderId, metadata, fallbackIds])
 
     useEffect(() => {
       GetApiHandler('/media-server').then((resp) => {
@@ -142,13 +146,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
 
       if (params.toString()) {
-        GetApiHandler<{ url: string; provider: string }>(
+        GetApiHandler<{ url: string; provider: string; id: number }>(
           `/metadata/backdrop/${backdropType}?${params.toString()}`,
         )
           .then((resp) => {
             if (resp?.url) {
               setBackdrop(resp.url)
               setMetadataProvider(resp.provider)
+              setMetadataProviderId(resp.id ?? null)
             } else {
               setBackdrop(null)
             }

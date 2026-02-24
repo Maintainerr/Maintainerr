@@ -155,6 +155,7 @@ describe('MetadataService', () => {
     expect(result).toEqual({
       url: 'https://image.tmdb.org/t/p/w500/poster.jpg',
       provider: 'TMDB',
+      id: 550,
     });
   });
 
@@ -241,7 +242,7 @@ describe('MetadataService', () => {
 
     const result = await service.getBackdropUrl({ tmdbId: 1 }, 'movie');
 
-    expect(result).toEqual({ url: 'https://img/bg.jpg', provider: 'TMDB' });
+    expect(result).toEqual({ url: 'https://img/bg.jpg', provider: 'TMDB', id: 1 });
   });
 
   it('getPersonDetails delegates to provider', async () => {

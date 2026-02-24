@@ -82,12 +82,13 @@ export class MetadataService {
   private async withProviderFallbackTagged<T>(
     ids: { tmdbId?: number; tvdbId?: number },
     fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
-  ): Promise<{ result: T; provider: string } | undefined> {
+  ): Promise<{ result: T; provider: string; id: number } | undefined> {
     for (const provider of this.getOrderedProviders()) {
       const id = provider.extractId(ids);
       if (id !== undefined) {
         const result = await fn(provider, id);
-        if (result !== undefined) return { result, provider: provider.name };
+        if (result !== undefined)
+          return { result, provider: provider.name, id };
       }
     }
     return undefined;
@@ -221,14 +222,10 @@ export class MetadataService {
     ids: { tmdbId?: number; tvdbId?: number },
     type: 'movie' | 'tv',
     size = 'w500',
-  ): Promise<{ url: string; provider: string } | undefined> {
-    await this.resolveImageIds(ids, type);
-    const tagged = await this.withProviderFallbackTagged(ids, (provider, id) =>
+  ): Promise<{ url: string; provider: string; id: number } | undefined> {
+    return this.resolveImageUrl(ids, type, (provider, id) =>
       provider.getPosterUrl(id, type, size),
     );
-    return tagged
-      ? { url: tagged.result, provider: tagged.provider }
-      : undefined;
   }
 
   /**
@@ -238,17 +235,26 @@ export class MetadataService {
     ids: { tmdbId?: number; tvdbId?: number },
     type: 'movie' | 'tv',
     size = 'w1280',
-  ): Promise<{ url: string; provider: string } | undefined> {
-    await this.resolveImageIds(ids, type);
-    const tagged = await this.withProviderFallbackTagged(ids, (provider, id) =>
+  ): Promise<{ url: string; provider: string; id: number } | undefined> {
+    return this.resolveImageUrl(ids, type, (provider, id) =>
       provider.getBackdropUrl(id, type, size),
     );
-    return tagged
-      ? { url: tagged.result, provider: tagged.provider }
-      : undefined;
   }
 
   // ───── Private helpers ─────
+
+  /** Resolve IDs then run a provider image lookup, returning { url, provider, id }. */
+  private async resolveImageUrl(
+    ids: { tmdbId?: number; tvdbId?: number },
+    type: 'movie' | 'tv',
+    fn: (provider: IMetadataProvider, id: number) => Promise<string | undefined>,
+  ): Promise<{ url: string; provider: string; id: number } | undefined> {
+    await this.resolveImageIds(ids, type);
+    const tagged = await this.withProviderFallbackTagged(ids, fn);
+    return tagged
+      ? { url: tagged.result, provider: tagged.provider, id: tagged.id }
+      : undefined;
+  }
 
   /**
    * Fill in missing provider IDs before the image fallback chain.
