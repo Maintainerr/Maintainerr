@@ -41,6 +41,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
       overview: record.overview ?? undefined,
       posterUrl: this.tvdbApi.getPosterUrl(record),
       backdropUrl: this.tvdbApi.getBackdropUrl(record),
+      rating: record.score || undefined,
       externalIds: {
         tmdbId: this.tvdbApi.getTmdbId(record),
         tvdbId: record.id,

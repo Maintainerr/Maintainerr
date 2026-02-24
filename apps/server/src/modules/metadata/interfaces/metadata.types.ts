@@ -41,6 +41,8 @@ export interface MetadataDetails {
   posterUrl?: string;
   /** Full backdrop / fanart URL. */
   backdropUrl?: string;
+  /** Community / audience rating (0–10 scale). */
+  rating?: number;
   /** Known external IDs extracted from the details response. */
   externalIds: ResolvedMediaIds;
   type: 'movie' | 'tv';

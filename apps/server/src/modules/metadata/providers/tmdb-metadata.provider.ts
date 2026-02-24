@@ -50,6 +50,7 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       overview: record.overview,
       posterUrl: this.buildImageUrl(record.poster_path, 'w500'),
       backdropUrl: this.buildImageUrl(record.backdrop_path, 'w1280'),
+      rating: record.vote_average || undefined,
       externalIds: {
         tmdbId: record.id,
         tvdbId: record.external_ids?.tvdb_id ?? undefined,
