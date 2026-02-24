@@ -60,7 +60,7 @@ export class ValueGetterService {
         return await this.seerrGetter.get(val2, libItem, dataType);
       }
       case Application.TAUTULLI: {
-        return await this.tautulliGetter.get(val2, libItem, dataType);
+        return await this.tautulliGetter.get(val2, libItem, dataType, ruleGroup);
       }
       default: {
         return null;
