@@ -66,28 +66,33 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         setMetadata(data)
         setLoading(false)
       })
-      // Only fetch backdrop if tmdbid is available
-      if (tmdbid) {
-        const backdropType = ['season', 'episode'].includes(mediaType)
-          ? 'show'
-          : mediaType
-        GetApiHandler(`/metadata/backdrop/${backdropType}/${tmdbid}`)
+    }, [id])
+
+    // Fetch backdrop using the best available provider ID
+    useEffect(() => {
+      if (!metadata) return
+
+      const backdropType = ['season', 'episode'].includes(mediaType)
+        ? 'show'
+        : mediaType
+      const metaTmdbId = metadata.providerIds?.tmdb?.[0] ?? tmdbid
+      const metaTvdbId = metadata.providerIds?.tvdb?.[0]
+
+      let url: string | undefined
+      if (metaTmdbId) {
+        url = `/metadata/backdrop/${backdropType}/${metaTmdbId}?provider=tmdb`
+      } else if (metaTvdbId) {
+        url = `/metadata/backdrop/${backdropType}/${metaTvdbId}?provider=tvdb`
+      }
+
+      if (url) {
+        GetApiHandler(url)
           .then((resp) => setBackdrop(resp))
-          .catch((error) => {
-            console.error(
-              'Error fetching backdrop image. Check your media server metadata',
-              error,
-            )
-            setBackdrop(null)
-          })
+          .catch(() => setBackdrop(null))
       } else {
-        console.warn(
-          `No TMDB ID found for "${title}" (id: ${id}). Backdrop image unavailable. ` +
-            'Please check your media server metadata - the item may not be matched correctly.',
-        )
         setBackdrop(null)
       }
-    }, [id, mediaType, tmdbid, title])
+    }, [metadata, mediaType, tmdbid])
 
     useEffect(() => {
       document.body.style.overflow = 'hidden'
@@ -176,10 +181,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
               <div className="flex flex-col items-end">
                 <div className="max-w-fit grow">
-                  {tmdbid && (
+                  {(tmdbid || metadata?.providerIds?.tmdb?.[0]) && (
                     <div>
                       <a
-                        href={`https://themoviedb.org/${mediaTypeOf}/${tmdbid}`}
+                        href={`https://themoviedb.org/${mediaTypeOf}/${metadata?.providerIds?.tmdb?.[0] ?? tmdbid}`}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -189,6 +194,23 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           width={128}
                           height={32}
                           className="h-8 w-32 rounded-lg bg-black bg-opacity-70 p-2 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
+                  {metadata?.providerIds?.tvdb?.[0] && (
+                    <div>
+                      <a
+                        href={`https://thetvdb.com/dereferrer/${mediaTypeOf === 'tv' ? 'series' : 'movie'}/${metadata.providerIds.tvdb[0]}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/tvdb_logo.svg`}
+                          alt="TheTVDB Logo"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-2 shadow-lg"
                         />
                       </a>
                     </div>
