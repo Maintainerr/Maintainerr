@@ -294,16 +294,26 @@ export class MetadataService {
 
   /**
    * Ensure all provider IDs are resolved and correct before image lookup.
-   * Calls getDetails which both cross-fixes wrong IDs (in-place) and
-   * provides externalIds to fill any gaps.
+   * Uses the full resolution chain (details cross-fix + external ID search)
+   * so that e.g. a movie with only a TMDB ID can resolve its TVDB ID via
+   * IMDB cross-reference, allowing TVDB to serve the image when preferred.
+   * Skips entirely when all provider IDs are already present.
    * Results are cached by the underlying provider API calls (6h).
    */
   private async resolveImageIds(
     ids: ProviderIds,
     type: 'movie' | 'tv',
   ): Promise<void> {
-    const details = await this.getDetails(ids, type);
-    if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
+    if (this.allIdsPresent(ids)) return;
+
+    const bag: ResolvedMediaIds = { ...ids, type };
+    await this.resolveAllIds(bag);
+
+    // Copy all resolved values (including corrected ones) back to ids
+    for (const [key, value] of Object.entries(bag)) {
+      if (key === 'type' || value === undefined) continue;
+      ids[key] = value;
+    }
   }
 
   /** Determine normalised media type from a MediaItem. */

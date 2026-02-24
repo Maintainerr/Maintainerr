@@ -19,13 +19,13 @@ export class MetadataController {
    */
   private parseIds(
     query: Record<string, string>,
-  ): Record<string, number> | undefined {
-    const ids: Record<string, number> = {};
+  ): Record<string, string | number> | undefined {
+    const ids: Record<string, string | number> = {};
     for (const [key, value] of Object.entries(query)) {
       if (!key.endsWith('Id') || !value) continue;
+      const normalizedKey = key.slice(0, -2).toLowerCase();
       const num = +value;
-      if (!num) continue;
-      ids[key.slice(0, -2).toLowerCase()] = num;
+      ids[normalizedKey] = Number.isFinite(num) ? num : value;
     }
     return Object.keys(ids).length ? ids : undefined;
   }
