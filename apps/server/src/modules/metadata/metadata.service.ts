@@ -239,6 +239,7 @@ export class MetadataService {
     type: 'movie' | 'tv',
     size = 'w500',
   ): Promise<{ url: string; provider: string } | undefined> {
+    await this.resolveImageIds(ids, type);
     const tagged = await this.withProviderFallbackTagged(ids, (provider, id) =>
       provider.getPosterUrl(id, type, size),
     );
@@ -255,6 +256,7 @@ export class MetadataService {
     type: 'movie' | 'tv',
     size = 'w1280',
   ): Promise<{ url: string; provider: string } | undefined> {
+    await this.resolveImageIds(ids, type);
     const tagged = await this.withProviderFallbackTagged(ids, (provider, id) =>
       provider.getBackdropUrl(id, type, size),
     );
@@ -264,6 +266,25 @@ export class MetadataService {
   }
 
   // ───── Private helpers ─────
+
+  /**
+   * Fill in missing provider IDs before the image fallback chain.
+   * E.g. Jellyfin only provides tmdbId for movies — this resolves the
+   * tvdbId so TVDB can be tried when it's the preferred provider.
+   * Results are cached by the underlying provider API calls (1h).
+   */
+  private async resolveImageIds(
+    ids: { tmdbId?: number; tvdbId?: number },
+    type: 'movie' | 'tv',
+  ): Promise<void> {
+    if (ids.tmdbId && ids.tvdbId) return;
+
+    const details = await this.getDetails(ids, type);
+    if (details?.externalIds) {
+      ids.tmdbId ??= details.externalIds.tmdbId;
+      ids.tvdbId ??= details.externalIds.tvdbId;
+    }
+  }
 
   /** Determine normalised media type from a MediaItem. */
   private mediaTypeFromItem(item: MediaItem): 'movie' | 'tv' {
