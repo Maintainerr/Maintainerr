@@ -15,6 +15,8 @@ type CacheType = AvailableCacheIds | 'radarr' | 'sonarr';
 
 const DEFAULT_TTL = 300; // 5 min
 const DEFAULT_CHECK_PERIOD = 120; // 2 min
+const METADATA_TTL = 21600; // 6 hours
+const METADATA_CHECK_PERIOD = 60 * 30; // 30 min
 
 type CacheOptions = {
   stdTtl?: number;
@@ -53,8 +55,14 @@ export class Cache {
 
 class CacheManager {
   private availableCaches: Record<AvailableCacheIds, Cache> = {
-    tmdb: new Cache('tmdb', 'TMDB API', 'tmdb'),
-    tvdb: new Cache('tvdb', 'TVDB API', 'tvdb'),
+    tmdb: new Cache('tmdb', 'TMDB API', 'tmdb', {
+      stdTtl: METADATA_TTL,
+      checkPeriod: METADATA_CHECK_PERIOD,
+    }),
+    tvdb: new Cache('tvdb', 'TVDB API', 'tvdb', {
+      stdTtl: METADATA_TTL,
+      checkPeriod: METADATA_CHECK_PERIOD,
+    }),
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
     plextv: new Cache('plextv', 'Plex.tv', 'plextv'),
     seerr: new Cache('seerr', 'Seerr API', 'seerr'),
