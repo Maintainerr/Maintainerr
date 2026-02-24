@@ -142,10 +142,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
 
       if (params.toString()) {
-        GetApiHandler<{ url: string; provider: string }>(
-          `/metadata/backdrop/${backdropType}?${params.toString()}`,
-        )
+        const url = `/metadata/backdrop/${backdropType}?${params.toString()}`
+        console.log('[DEBUG] Fetching backdrop:', url)
+        GetApiHandler<{ url: string; provider: string }>(url)
           .then((resp) => {
+            console.log('[DEBUG] Backdrop response:', resp)
             if (resp?.url) {
               setBackdrop(resp.url)
               setMetadataProvider(resp.provider)
@@ -153,7 +154,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               setBackdrop(null)
             }
           })
-          .catch(() => setBackdrop(null))
+          .catch((err) => {
+            console.error('[DEBUG] Backdrop fetch error:', err)
+            setBackdrop(null)
+          })
       } else {
         setBackdrop(null)
       }
