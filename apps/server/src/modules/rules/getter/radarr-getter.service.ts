@@ -12,15 +12,15 @@ import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class RadarrGetterService {
-  plexProperties: Property[];
+  appProperties: Property[];
   constructor(
     private readonly servarrService: ServarrService,
     private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RadarrGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.plexProperties = ruleConstanst.applications.find(
+    const ruleConstants = new RuleConstants();
+    this.appProperties = ruleConstants.applications.find(
       (el) => el.id === Application.RADARR,
     ).props;
   }
@@ -34,7 +34,7 @@ export class RadarrGetterService {
     }
 
     try {
-      const prop = this.plexProperties.find((el) => el.id === id);
+      const prop = this.appProperties.find((el) => el.id === id);
 
       // ARR diskspace check doesn't require a movie lookup - handle early
       if (

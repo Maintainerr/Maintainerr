@@ -22,7 +22,7 @@ import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class SonarrGetterService {
-  plexProperties: Property[];
+  appProperties: Property[];
 
   constructor(
     private readonly servarrService: ServarrService,
@@ -31,8 +31,8 @@ export class SonarrGetterService {
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SonarrGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.plexProperties = ruleConstanst.applications.find(
+    const ruleConstants = new RuleConstants();
+    this.appProperties = ruleConstants.applications.find(
       (el) => el.id === Application.SONARR,
     ).props;
   }
@@ -55,7 +55,7 @@ export class SonarrGetterService {
     }
 
     try {
-      const prop = this.plexProperties.find((el) => el.id === id);
+      const prop = this.appProperties.find((el) => el.id === id);
 
       // ARR diskspace check doesn't require a show lookup - handle early
       if (

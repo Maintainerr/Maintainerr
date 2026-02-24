@@ -109,6 +109,25 @@ export interface TvdbSearchResult {
   thumbnail: string;
 }
 
+export interface TvdbBiography {
+  biography: string;
+  language: string;
+}
+
+/** Extended person record from /people/{id}/extended */
+export interface TvdbPersonExtended {
+  id: number;
+  name: string;
+  image: string | null;
+  birth: string | null;
+  death: string | null;
+  birthPlace: string | null;
+  gender: number;
+  slug: string;
+  biographies: TvdbBiography[];
+  remoteIds: TvdbRemoteId[];
+}
+
 /** Result from /search/remoteid/{remoteId} */
 export interface TvdbRemoteIdResult {
   series: TvdbSeriesBase | null;

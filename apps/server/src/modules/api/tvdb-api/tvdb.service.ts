@@ -11,6 +11,7 @@ import {
   TvdbArtwork,
   TvdbArtworkType,
   TvdbMovieBase,
+  TvdbPersonExtended,
   TvdbRemoteIdResult,
   TvdbSeriesBase,
 } from './interfaces/tvdb.interface';
@@ -172,6 +173,26 @@ export class TvdbApiService extends ExternalApiService {
       return resp?.data;
     } catch (e) {
       this.logger.warn(`Failed to fetch TVDB series ${tvdbId}: ${e.message}`);
+      this.logger.debug(e);
+      return undefined;
+    }
+  }
+
+  /**
+   * Fetch a person by their TVDB ID (extended record includes biographies & remote IDs).
+   */
+  public async getPerson(
+    tvdbId: number,
+  ): Promise<TvdbPersonExtended | undefined> {
+    try {
+      const resp = await this.get<TvdbApiResponse<TvdbPersonExtended>>(
+        `/people/${tvdbId}/extended`,
+        {},
+        3600, // 1h cache
+      );
+      return resp?.data;
+    } catch (e) {
+      this.logger.warn(`Failed to fetch TVDB person ${tvdbId}: ${e.message}`);
       this.logger.debug(e);
       return undefined;
     }

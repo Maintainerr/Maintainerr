@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
-import { MetadataDetails } from '../interfaces/metadata.types';
+import {
+  ExternalIdSearchResult,
+  MetadataDetails,
+  PersonDetails,
+} from '../interfaces/metadata.types';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
@@ -19,6 +23,13 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     return ids.tmdbId;
   }
 
+  private buildImageUrl(
+    path: string | undefined | null,
+    size: string,
+  ): string | undefined {
+    return path ? `${TMDB_IMAGE_BASE}/${size}${path}` : undefined;
+  }
+
   async getMovieDetails(tmdbId: number): Promise<MetadataDetails | undefined> {
     const movie = await this.tmdbApi.getMovie({ movieId: tmdbId });
     if (!movie) return undefined;
@@ -27,12 +38,8 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       id: movie.id,
       title: movie.title,
       overview: movie.overview,
-      posterUrl: movie.poster_path
-        ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}`
-        : undefined,
-      backdropUrl: movie.backdrop_path
-        ? `${TMDB_IMAGE_BASE}/w1280${movie.backdrop_path}`
-        : undefined,
+      posterUrl: this.buildImageUrl(movie.poster_path, 'w500'),
+      backdropUrl: this.buildImageUrl(movie.backdrop_path, 'w1280'),
       externalIds: {
         tmdbId: movie.id,
         tvdbId: movie.external_ids?.tvdb_id ?? undefined,
@@ -43,9 +50,7 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     };
   }
 
-  async getTvShowDetails(
-    tmdbId: number,
-  ): Promise<MetadataDetails | undefined> {
+  async getTvShowDetails(tmdbId: number): Promise<MetadataDetails | undefined> {
     const show = await this.tmdbApi.getTvShow({ tvId: tmdbId });
     if (!show) return undefined;
 
@@ -53,12 +58,8 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       id: show.id,
       title: show.name,
       overview: show.overview,
-      posterUrl: show.poster_path
-        ? `${TMDB_IMAGE_BASE}/w500${show.poster_path}`
-        : undefined,
-      backdropUrl: show.backdrop_path
-        ? `${TMDB_IMAGE_BASE}/w1280${show.backdrop_path}`
-        : undefined,
+      posterUrl: this.buildImageUrl(show.poster_path, 'w500'),
+      backdropUrl: this.buildImageUrl(show.backdrop_path, 'w1280'),
       externalIds: {
         tmdbId: show.id,
         tvdbId: show.external_ids?.tvdb_id ?? undefined,
@@ -78,7 +79,7 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       type === 'movie'
         ? (await this.tmdbApi.getMovie({ movieId: tmdbId }))?.poster_path
         : (await this.tmdbApi.getTvShow({ tvId: tmdbId }))?.poster_path;
-    return path ? `${TMDB_IMAGE_BASE}/${sizeHint}${path}` : undefined;
+    return this.buildImageUrl(path, sizeHint);
   }
 
   async getBackdropUrl(
@@ -90,18 +91,47 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       type === 'movie'
         ? (await this.tmdbApi.getMovie({ movieId: tmdbId }))?.backdrop_path
         : (await this.tmdbApi.getTvShow({ tvId: tmdbId }))?.backdrop_path;
-    return path ? `${TMDB_IMAGE_BASE}/${sizeHint}${path}` : undefined;
+    return this.buildImageUrl(path, sizeHint);
   }
 
-  // ───── Provider-specific methods (not part of IMetadataProvider) ─────
+  async getPersonDetails(
+    tmdbPersonId: number,
+  ): Promise<PersonDetails | undefined> {
+    const person = await this.tmdbApi.getPerson({ personId: tmdbPersonId });
+    if (!person) return undefined;
 
-  /**
-   * Look up TMDB entries by an external ID (IMDB or TVDB).
-   * Used by MetadataService for cross-provider ID resolution.
-   */
+    return {
+      id: person.id,
+      name: person.name,
+      biography: person.biography || undefined,
+      birthday: person.birthday || undefined,
+      deathday: person.deathday || undefined,
+      knownForDepartment: person.known_for_department || undefined,
+      profileUrl: this.buildImageUrl(person.profile_path, 'w500'),
+      imdbId: person.imdb_id,
+    };
+  }
+
   async findByExternalId(
-    ...args: Parameters<TmdbApiService['getByExternalId']>
-  ) {
-    return this.tmdbApi.getByExternalId(...args);
+    externalId: string | number,
+    type: 'imdb' | 'tvdb' | 'tmdb',
+  ): Promise<ExternalIdSearchResult[] | undefined> {
+    if (type === 'tmdb') return undefined; // Can't search TMDB by its own IDs
+
+    const resp = await this.tmdbApi.getByExternalId({
+      externalId: type === 'imdb' ? String(externalId) : Number(externalId),
+      type,
+    } as Parameters<TmdbApiService['getByExternalId']>[0]);
+
+    if (!resp) return undefined;
+
+    const results: ExternalIdSearchResult[] = [];
+    for (const m of resp.movie_results || []) {
+      if (m.id) results.push({ movieId: m.id });
+    }
+    for (const t of resp.tv_results || []) {
+      if (t.id) results.push({ tvShowId: t.id });
+    }
+    return results.length > 0 ? results : undefined;
   }
 }

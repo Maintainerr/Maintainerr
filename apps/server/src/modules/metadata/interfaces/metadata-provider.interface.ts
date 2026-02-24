@@ -1,9 +1,20 @@
-import { MetadataDetails } from './metadata.types';
+import {
+  ExternalIdSearchResult,
+  MetadataDetails,
+  PersonDetails,
+} from './metadata.types';
 
 /**
  * A metadata provider that can supply normalised details and images.
  * Implemented by each concrete provider (TMDB, TVDB, etc.).
  * MetadataService iterates providers in preference order with automatic fallback.
+ *
+ * Adding a new provider:
+ * 1. Create the API service in modules/api/xxx-api/
+ * 2. Copy an existing provider file (e.g. tmdb-metadata.provider.ts),
+ *    replace the API calls and field mappings
+ * 3. Register it in MetadataModule (providers + imports)
+ * 4. Add it to getOrderedProviders() in MetadataService
  */
 export interface IMetadataProvider {
   /** Human-readable name (for logging). */
@@ -34,4 +45,17 @@ export interface IMetadataProvider {
     type: 'movie' | 'tv',
     sizeHint?: string,
   ): Promise<string | undefined>;
+
+  /** Normalised person details (actor, director, etc.). */
+  getPersonDetails(id: number): Promise<PersonDetails | undefined>;
+
+  /**
+   * Search for entries by an external ID (e.g. IMDB, TVDB, TMDB).
+   * Return undefined for unsupported ID types.
+   * Used by MetadataService for cross-provider ID resolution.
+   */
+  findByExternalId(
+    externalId: string | number,
+    type: 'imdb' | 'tvdb' | 'tmdb',
+  ): Promise<ExternalIdSearchResult[] | undefined>;
 }

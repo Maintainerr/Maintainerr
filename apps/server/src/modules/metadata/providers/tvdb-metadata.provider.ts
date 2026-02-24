@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { TvdbApiService } from '../../api/tvdb-api/tvdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
-import { MetadataDetails } from '../interfaces/metadata.types';
+import {
+  ExternalIdSearchResult,
+  MetadataDetails,
+  PersonDetails,
+} from '../interfaces/metadata.types';
 
 @Injectable()
 export class TvdbMetadataProvider implements IMetadataProvider {
@@ -36,9 +40,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     };
   }
 
-  async getTvShowDetails(
-    tvdbId: number,
-  ): Promise<MetadataDetails | undefined> {
+  async getTvShowDetails(tvdbId: number): Promise<MetadataDetails | undefined> {
     const series = await this.tvdbApi.getSeries(tvdbId);
     if (!series) return undefined;
 
@@ -79,13 +81,46 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     return this.tvdbApi.getBackdropUrl(record);
   }
 
-  // ───── Provider-specific methods (not part of IMetadataProvider) ─────
+  async getPersonDetails(
+    tvdbPersonId: number,
+  ): Promise<PersonDetails | undefined> {
+    const person = await this.tvdbApi.getPerson(tvdbPersonId);
+    if (!person) return undefined;
 
-  /**
-   * Search TVDB by a remote ID (e.g. IMDB ID).
-   * Used by MetadataService for cross-provider ID resolution.
-   */
-  async searchByRemoteId(remoteId: string) {
-    return this.tvdbApi.searchByRemoteId(remoteId);
+    const biography = person.biographies?.find(
+      (b) => b.language === 'eng',
+    )?.biography;
+
+    const imdbRemote = person.remoteIds?.find(
+      (r) => r.sourceName === 'IMDB' || r.id?.startsWith('nm'),
+    );
+
+    return {
+      id: person.id,
+      name: person.name,
+      biography: biography || undefined,
+      birthday: person.birth || undefined,
+      deathday: person.death || undefined,
+      profileUrl: person.image || undefined,
+      imdbId: imdbRemote?.id,
+    };
+  }
+
+  async findByExternalId(
+    externalId: string | number,
+    type: 'imdb' | 'tvdb' | 'tmdb',
+  ): Promise<ExternalIdSearchResult[] | undefined> {
+    // TVDB only supports search by IMDB remote ID
+    if (type !== 'imdb') return undefined;
+
+    const resp = await this.tvdbApi.searchByRemoteId(String(externalId));
+    if (!resp?.length) return undefined;
+
+    const results: ExternalIdSearchResult[] = [];
+    for (const r of resp) {
+      if (r.series?.id) results.push({ tvShowId: r.series.id });
+      if (r.movie?.id) results.push({ movieId: r.movie.id });
+    }
+    return results.length > 0 ? results : undefined;
   }
 }

@@ -12,9 +12,9 @@ import { MetadataService } from '../metadata/metadata.service';
 export class SonarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
-    private readonly mediaServerFactory: MediaServerFactory,
   ) {
     logger.setContext(SonarrActionHandler.name);
   }
@@ -46,7 +46,7 @@ export class SonarrActionHandler {
     // Resolve all IDs through the metadata layer in one call
     const ids = await this.metadataService.resolveIds(resolveId);
     const tvdbId = ids?.tvdbId ?? media.tvdbId;
-    const tmdbId = media.tmdbId ?? ids?.tmdbId;
+    const tmdbId = ids?.tmdbId ?? media.tmdbId;
 
     if (!tvdbId) {
       this.logger.log(

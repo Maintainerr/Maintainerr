@@ -65,7 +65,7 @@ const MediaCard: React.FC<IMediaCard> = ({
       const imageType = ['season', 'episode'].includes(mediaType)
         ? 'show'
         : mediaType
-      GetApiHandler(`/moviedb/image/${imageType}/${tmdbid}`).then((resp) =>
+      GetApiHandler(`/metadata/image/${imageType}/${tmdbid}`).then((resp) =>
         setImage(resp),
       )
     }

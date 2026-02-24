@@ -70,13 +70,13 @@ export class TmdbApiService extends ExternalApiService {
     };
   }
 
-  public getPerson = async ({
+  public async getPerson({
     personId,
     language = 'en',
   }: {
     personId: number;
     language?: string;
-  }): Promise<TmdbPersonDetail> => {
+  }): Promise<TmdbPersonDetail | undefined> {
     try {
       const data = await this.get<TmdbPersonDetail>(`/person/${personId}`, {
         params: { language },
@@ -86,16 +86,17 @@ export class TmdbApiService extends ExternalApiService {
     } catch (e) {
       this.logger.warn(`Failed to fetch person details: ${e.message}`);
       this.logger.debug(e);
+      return undefined;
     }
-  };
+  }
 
-  public getMovie = async ({
+  public async getMovie({
     movieId,
     language = 'en',
   }: {
     movieId: number;
     language?: string;
-  }): Promise<TmdbMovieDetails> => {
+  }): Promise<TmdbMovieDetails | undefined> {
     try {
       const data = await this.get<TmdbMovieDetails>(
         `/movie/${movieId}`,
@@ -113,16 +114,17 @@ export class TmdbApiService extends ExternalApiService {
     } catch (e) {
       this.logger.warn(`Failed to fetch movie details: ${e.message}`);
       this.logger.debug(e);
+      return undefined;
     }
-  };
+  }
 
-  public getTvShow = async ({
+  public async getTvShow({
     tvId,
     language = 'en',
   }: {
     tvId: number;
     language?: string;
-  }): Promise<TmdbTvDetails> => {
+  }): Promise<TmdbTvDetails | undefined> {
     try {
       const data = await this.get<TmdbTvDetails>(
         `/tv/${tvId}`,
@@ -140,47 +142,9 @@ export class TmdbApiService extends ExternalApiService {
     } catch (e) {
       this.logger.warn(`Failed to fetch TV show details: ${e.message}`);
       this.logger.debug(e);
+      return undefined;
     }
-  };
-
-  // TODO: ADD CACHING!!!!
-  public getImagePath = async ({
-    tmdbId,
-    type,
-  }: {
-    tmdbId: number;
-    type: 'movie' | 'show';
-  }): Promise<string> => {
-    try {
-      if (type === 'movie') {
-        return (await this.getMovie({ movieId: tmdbId }))?.poster_path;
-      } else {
-        return (await this.getTvShow({ tvId: tmdbId }))?.poster_path;
-      }
-    } catch (e) {
-      this.logger.warn(`Failed to fetch image path: ${e.message}`);
-      this.logger.debug(e);
-    }
-  };
-
-  public getBackdropImagePath = async ({
-    tmdbId,
-    type,
-  }: {
-    tmdbId: number;
-    type: 'movie' | 'show';
-  }): Promise<string> => {
-    try {
-      if (type === 'movie') {
-        return (await this.getMovie({ movieId: tmdbId }))?.backdrop_path;
-      } else {
-        return (await this.getTvShow({ tvId: tmdbId }))?.backdrop_path;
-      }
-    } catch (e) {
-      this.logger.warn(`Failed to fetch backdrop image path: ${e.message}`);
-      this.logger.debug(e);
-    }
-  };
+  }
 
   /**
    * Test connectivity to the TMDB API.
@@ -229,7 +193,7 @@ export class TmdbApiService extends ExternalApiService {
         externalId: number;
         type: 'tvdb';
         language?: string;
-      }): Promise<TmdbExternalIdResponse> {
+      }): Promise<TmdbExternalIdResponse | undefined> {
     try {
       const data = await this.get<TmdbExternalIdResponse>(
         `/find/${externalId}`,
@@ -244,6 +208,7 @@ export class TmdbApiService extends ExternalApiService {
     } catch (e) {
       this.logger.warn(`Failed to find by external ID: ${e.message}`);
       this.logger.debug(e);
+      return undefined;
     }
   }
 }

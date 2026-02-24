@@ -71,7 +71,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         const backdropType = ['season', 'episode'].includes(mediaType)
           ? 'show'
           : mediaType
-        GetApiHandler(`/moviedb/backdrop/${backdropType}/${tmdbid}`)
+        GetApiHandler(`/metadata/backdrop/${backdropType}/${tmdbid}`)
           .then((resp) => setBackdrop(resp))
           .catch((error) => {
             console.error(

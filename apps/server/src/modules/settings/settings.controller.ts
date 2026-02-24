@@ -172,7 +172,7 @@ export class SettingsController {
   }
 
   @Post('/tautulli')
-  async updateTautlliSetting(
+  async updateTautulliSetting(
     @Body(new ZodValidationPipe(tautulliSettingSchema))
     payload: TautulliSetting,
   ) {
@@ -180,7 +180,7 @@ export class SettingsController {
   }
 
   @Delete('/tautulli')
-  async removeTautlliSetting() {
+  async removeTautulliSetting() {
     return await this.settingsService.removeTautulliSetting();
   }
 
