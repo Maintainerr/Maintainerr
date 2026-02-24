@@ -304,6 +304,18 @@ export class MetadataService {
   ): Promise<void> {
     const details = await this.getDetails(ids, type);
     if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
+
+    if (this.allIdsPresent(ids)) return;
+
+    // Strategy 2: search by non-provider external IDs (e.g. IMDB → TVDB for movies)
+    const bag: ResolvedMediaIds = { ...ids, type };
+    const providerKeys = new Set(this.providers.map((p) => p.idKey));
+    for (const [key, value] of Object.entries(bag)) {
+      if (!value || key === 'type' || providerKeys.has(key)) continue;
+      await this.fillIdsFromExternalSearch(bag, value, key);
+      if (this.allIdsPresent(bag)) break;
+    }
+    this.fillMissingIds(ids, bag);
   }
 
   /** Determine normalised media type from a MediaItem. */
