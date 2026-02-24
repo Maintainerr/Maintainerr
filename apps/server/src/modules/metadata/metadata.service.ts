@@ -277,7 +277,7 @@ export class MetadataService {
     }
   }
 
-  /** Resolve IDs then run a provider image lookup, returning { url, provider, id }. */
+  /** Run a provider image lookup with fallback, returning { url, provider, id }. */
   private async resolveImageUrl(
     ids: ProviderIds,
     type: 'movie' | 'tv',
@@ -286,34 +286,9 @@ export class MetadataService {
       id: number,
     ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
-    await this.resolveImageIds(ids, type);
     const result = await this.withProviderFallbackDetailed(ids, fn);
     if (!result) return undefined;
     return { url: result.result, provider: result.provider, id: result.id };
-  }
-
-  /**
-   * Ensure all provider IDs are resolved and correct before image lookup.
-   * Uses the full resolution chain (details cross-fix + external ID search)
-   * so that e.g. a movie with only a TMDB ID can resolve its TVDB ID via
-   * IMDB cross-reference, allowing TVDB to serve the image when preferred.
-   * Skips entirely when all provider IDs are already present.
-   * Results are cached by the underlying provider API calls (6h).
-   */
-  private async resolveImageIds(
-    ids: ProviderIds,
-    type: 'movie' | 'tv',
-  ): Promise<void> {
-    if (this.allIdsPresent(ids)) return;
-
-    const bag: ResolvedMediaIds = { ...ids, type };
-    await this.resolveAllIds(bag);
-
-    // Copy all resolved values (including corrected ones) back to ids
-    for (const [key, value] of Object.entries(bag)) {
-      if (key === 'type' || value === undefined) continue;
-      ids[key] = value;
-    }
   }
 
   /** Determine normalised media type from a MediaItem. */
