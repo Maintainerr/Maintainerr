@@ -220,12 +220,36 @@ export class TvdbApiService extends ExternalApiService {
     }
   }
 
+  /** Artwork type mapping keyed by media type and artwork kind. */
+  private static readonly artworkTypeMap: Record<
+    'movie' | 'tv',
+    Record<string, TvdbArtworkType>
+  > = {
+    tv: {
+      poster: TvdbArtworkType.SERIES_POSTER,
+      background: TvdbArtworkType.SERIES_BACKGROUND,
+      banner: TvdbArtworkType.SERIES_BANNER,
+      icon: TvdbArtworkType.SERIES_ICON,
+      clearart: TvdbArtworkType.SERIES_CLEAR_ART,
+      clearlogo: TvdbArtworkType.SERIES_CLEAR_LOGO,
+    },
+    movie: {
+      poster: TvdbArtworkType.MOVIE_POSTER,
+      background: TvdbArtworkType.MOVIE_BACKGROUND,
+      banner: TvdbArtworkType.MOVIE_BANNER,
+      icon: TvdbArtworkType.MOVIE_ICON,
+      clearart: TvdbArtworkType.MOVIE_CLEAR_ART,
+      clearlogo: TvdbArtworkType.MOVIE_CLEAR_LOGO,
+    },
+  };
+
   /**
    * Get the poster URL for a series or movie.
    * Returns the primary image from the base record, or the highest-scored poster artwork.
    */
   public getPosterUrl(
     record: TvdbSeriesBase | TvdbMovieBase | undefined,
+    type: 'movie' | 'tv' = 'tv',
   ): string | undefined {
     if (!record) return undefined;
 
@@ -233,11 +257,10 @@ export class TvdbApiService extends ExternalApiService {
     if (record.image) return record.image;
 
     // Fallback: find the highest-scored poster artwork
-    const poster = this.findBestArtwork(
+    return this.findBestArtwork(
       record.artworks,
-      TvdbArtworkType.POSTER,
-    );
-    return poster?.image;
+      TvdbApiService.artworkTypeMap[type].poster,
+    )?.image;
   }
 
   /**
@@ -246,14 +269,14 @@ export class TvdbApiService extends ExternalApiService {
    */
   public getBackdropUrl(
     record: TvdbSeriesBase | TvdbMovieBase | undefined,
+    type: 'movie' | 'tv' = 'tv',
   ): string | undefined {
     if (!record) return undefined;
 
-    const backdrop = this.findBestArtwork(
+    return this.findBestArtwork(
       record.artworks,
-      TvdbArtworkType.BACKGROUND,
-    );
-    return backdrop?.image;
+      TvdbApiService.artworkTypeMap[type].background,
+    )?.image;
   }
 
   /**

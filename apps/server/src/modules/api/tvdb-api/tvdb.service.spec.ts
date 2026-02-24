@@ -17,17 +17,27 @@ const createService = () => {
   return new TvdbApiService(settings, logger);
 };
 
-const makeRecord = (
-  overrides: Partial<TvdbSeriesBase> = {},
-): TvdbSeriesBase =>
+const makeRecord = (overrides: Partial<TvdbSeriesBase> = {}): TvdbSeriesBase =>
   ({
     id: 81189,
-    name: 'Breaking Bad',
+    name: 'Test Series',
     image: '',
     artworks: [],
     remoteIds: [],
     ...overrides,
   }) as TvdbSeriesBase;
+
+const makeMovieRecord = (
+  overrides: Partial<TvdbMovieBase> = {},
+): TvdbMovieBase =>
+  ({
+    id: 1234,
+    name: 'Test Movie',
+    image: '',
+    artworks: [],
+    remoteIds: [],
+    ...overrides,
+  }) as TvdbMovieBase;
 
 describe('TvdbApiService', () => {
   let service: TvdbApiService;
@@ -56,12 +66,54 @@ describe('TvdbApiService', () => {
       const record = makeRecord({
         image: '',
         artworks: [
-          { id: 1, image: 'low.jpg', type: TvdbArtworkType.POSTER, score: 10 } as any,
-          { id: 2, image: 'high.jpg', type: TvdbArtworkType.POSTER, score: 50 } as any,
-          { id: 3, image: 'bg.jpg', type: TvdbArtworkType.BACKGROUND, score: 100 } as any,
+          {
+            id: 1,
+            image: 'low.jpg',
+            type: TvdbArtworkType.SERIES_POSTER,
+            score: 10,
+          } as any,
+          {
+            id: 2,
+            image: 'high.jpg',
+            type: TvdbArtworkType.SERIES_POSTER,
+            score: 50,
+          } as any,
+          {
+            id: 3,
+            image: 'bg.jpg',
+            type: TvdbArtworkType.SERIES_BACKGROUND,
+            score: 100,
+          } as any,
         ],
       });
       expect(service.getPosterUrl(record)).toBe('high.jpg');
+    });
+
+    it('falls back to highest-scored movie poster artwork', () => {
+      const record = makeMovieRecord({
+        image: '',
+        artworks: [
+          {
+            id: 1,
+            image: 'low.jpg',
+            type: TvdbArtworkType.MOVIE_POSTER,
+            score: 10,
+          } as any,
+          {
+            id: 2,
+            image: 'high.jpg',
+            type: TvdbArtworkType.MOVIE_POSTER,
+            score: 50,
+          } as any,
+          {
+            id: 3,
+            image: 'bg.jpg',
+            type: TvdbArtworkType.MOVIE_BACKGROUND,
+            score: 100,
+          } as any,
+        ],
+      });
+      expect(service.getPosterUrl(record, 'movie')).toBe('high.jpg');
     });
   });
 
@@ -69,8 +121,18 @@ describe('TvdbApiService', () => {
     it('returns the highest-scored background artwork', () => {
       const record = makeRecord({
         artworks: [
-          { id: 1, image: 'bg1.jpg', type: TvdbArtworkType.BACKGROUND, score: 5 } as any,
-          { id: 2, image: 'bg2.jpg', type: TvdbArtworkType.BACKGROUND, score: 20 } as any,
+          {
+            id: 1,
+            image: 'bg1.jpg',
+            type: TvdbArtworkType.SERIES_BACKGROUND,
+            score: 5,
+          } as any,
+          {
+            id: 2,
+            image: 'bg2.jpg',
+            type: TvdbArtworkType.SERIES_BACKGROUND,
+            score: 20,
+          } as any,
         ],
       });
       expect(service.getBackdropUrl(record)).toBe('bg2.jpg');
@@ -78,6 +140,26 @@ describe('TvdbApiService', () => {
 
     it('returns undefined when no background artwork exists', () => {
       expect(service.getBackdropUrl(makeRecord())).toBeUndefined();
+    });
+
+    it('returns the highest-scored movie background artwork', () => {
+      const record = makeMovieRecord({
+        artworks: [
+          {
+            id: 1,
+            image: 'bg1.jpg',
+            type: TvdbArtworkType.MOVIE_BACKGROUND,
+            score: 5,
+          } as any,
+          {
+            id: 2,
+            image: 'bg2.jpg',
+            type: TvdbArtworkType.MOVIE_BACKGROUND,
+            score: 20,
+          } as any,
+        ],
+      });
+      expect(service.getBackdropUrl(record, 'movie')).toBe('bg2.jpg');
     });
   });
 

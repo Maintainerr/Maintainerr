@@ -35,19 +35,26 @@ describe('TvdbMetadataProvider', () => {
 
   it('getDetails builds normalised response with cross-provider IDs', async () => {
     const { provider, tvdbApi } = createProvider();
-    const series = { id: 81189, name: 'Breaking Bad', overview: 'A show' };
+    const series = { id: 81189, name: 'Test Series', overview: 'A show' };
     tvdbApi.getSeries.mockResolvedValue(series as any);
-    tvdbApi.getPosterUrl.mockReturnValue('https://artworks.thetvdb.com/poster.jpg');
-    tvdbApi.getBackdropUrl.mockReturnValue('https://artworks.thetvdb.com/bg.jpg');
+    tvdbApi.getPosterUrl.mockReturnValue(
+      'https://artworks.thetvdb.com/poster.jpg',
+    );
+    tvdbApi.getBackdropUrl.mockReturnValue(
+      'https://artworks.thetvdb.com/bg.jpg',
+    );
     tvdbApi.getTmdbId.mockReturnValue(1396);
     tvdbApi.getImdbId.mockReturnValue('tt0903747');
 
     const result = await provider.getDetails(81189, 'tv');
 
-    expect(result).toEqual(expect.objectContaining({
-      id: 81189, title: 'Breaking Bad',
-      externalIds: expect.objectContaining({ tmdbId: 1396, tvdbId: 81189 }),
-    }));
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 81189,
+        title: 'Test Series',
+        externalIds: expect.objectContaining({ tmdbId: 1396, tvdbId: 81189 }),
+      }),
+    );
     expect(tvdbApi.getSeries).toHaveBeenCalledWith(81189);
   });
 
@@ -92,7 +99,9 @@ describe('TvdbMetadataProvider', () => {
     tvdbApi.getMovie.mockResolvedValue({ id: 2 } as any);
     tvdbApi.getPosterUrl.mockReturnValue('https://movie-poster.jpg');
 
-    expect(await provider.getPosterUrl(2, 'movie')).toBe('https://movie-poster.jpg');
+    expect(await provider.getPosterUrl(2, 'movie')).toBe(
+      'https://movie-poster.jpg',
+    );
     expect(tvdbApi.getMovie).toHaveBeenCalledWith(2);
   });
 
@@ -107,9 +116,11 @@ describe('TvdbMetadataProvider', () => {
   it('getPersonDetails extracts english biography and IMDB ID', async () => {
     const { provider, tvdbApi } = createProvider();
     tvdbApi.getPerson.mockResolvedValue({
-      id: 100, name: 'Actor',
+      id: 100,
+      name: 'Actor',
       image: 'https://img.tvdb.com/actor.jpg',
-      birth: '1980-01-01', death: null,
+      birth: '1980-01-01',
+      death: null,
       biographies: [
         { biography: 'Biografie', language: 'deu' },
         { biography: 'English bio', language: 'eng' },
@@ -119,8 +130,12 @@ describe('TvdbMetadataProvider', () => {
 
     const result = await provider.getPersonDetails(100);
 
-    expect(result).toEqual(expect.objectContaining({
-      name: 'Actor', biography: 'English bio', imdbId: 'nm0001',
-    }));
+    expect(result).toEqual(
+      expect.objectContaining({
+        name: 'Actor',
+        biography: 'English bio',
+        imdbId: 'nm0001',
+      }),
+    );
   });
 });

@@ -39,8 +39,8 @@ export class TvdbMetadataProvider implements IMetadataProvider {
       id: record.id,
       title: record.name,
       overview: record.overview ?? undefined,
-      posterUrl: this.tvdbApi.getPosterUrl(record),
-      backdropUrl: this.tvdbApi.getBackdropUrl(record),
+      posterUrl: this.tvdbApi.getPosterUrl(record, type),
+      backdropUrl: this.tvdbApi.getBackdropUrl(record, type),
       rating: record.score || undefined,
       externalIds: {
         tmdbId: this.tvdbApi.getTmdbId(record),
@@ -60,7 +60,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
       type === 'movie'
         ? await this.tvdbApi.getMovie(tvdbId)
         : await this.tvdbApi.getSeries(tvdbId);
-    return this.tvdbApi.getPosterUrl(record);
+    return this.tvdbApi.getPosterUrl(record, type);
   }
 
   async getBackdropUrl(
@@ -71,7 +71,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
       type === 'movie'
         ? await this.tvdbApi.getMovie(tvdbId)
         : await this.tvdbApi.getSeries(tvdbId);
-    return this.tvdbApi.getBackdropUrl(record);
+    return this.tvdbApi.getBackdropUrl(record, type);
   }
 
   async getPersonDetails(

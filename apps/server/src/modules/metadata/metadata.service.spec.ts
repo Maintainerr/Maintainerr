@@ -49,7 +49,9 @@ describe('MetadataService', () => {
       MetadataProviderPreference.TVDB_PRIMARY,
     );
     const details: MetadataDetails = {
-      id: 81189, title: 'Breaking Bad', type: 'tv',
+      id: 81189,
+      title: 'Test Series',
+      type: 'tv',
       externalIds: { tvdbId: 81189, type: 'tv' },
     };
     tvdb.getDetails.mockResolvedValue(details);
@@ -64,7 +66,9 @@ describe('MetadataService', () => {
     const { service, tmdb, tvdb } = createService();
     tmdb.getDetails.mockResolvedValue(undefined);
     tvdb.getDetails.mockResolvedValue({
-      id: 42, title: 'Fallback', type: 'movie',
+      id: 42,
+      title: 'Fallback',
+      type: 'movie',
       externalIds: { tvdbId: 42, type: 'movie' },
     });
 
@@ -78,12 +82,14 @@ describe('MetadataService', () => {
   it('skips unavailable providers entirely', async () => {
     const tmdb = createMockProvider('TMDB', false);
     const tvdb = createMockProvider('TVDB', true);
-    const { service } = createService(
-      MetadataProviderPreference.TMDB_PRIMARY,
-      [tmdb, tvdb],
-    );
+    const { service } = createService(MetadataProviderPreference.TMDB_PRIMARY, [
+      tmdb,
+      tvdb,
+    ]);
     tvdb.getDetails.mockResolvedValue({
-      id: 1, title: 'X', type: 'movie',
+      id: 1,
+      title: 'X',
+      type: 'movie',
       externalIds: { tvdbId: 1, type: 'movie' },
     });
 
@@ -97,10 +103,14 @@ describe('MetadataService', () => {
       MetadataProviderPreference.TMDB_PRIMARY,
     );
     service.handleSettingsUpdate({
-      settings: { metadata_provider_preference: MetadataProviderPreference.TVDB_PRIMARY },
+      settings: {
+        metadata_provider_preference: MetadataProviderPreference.TVDB_PRIMARY,
+      },
     });
     tvdb.getDetails.mockResolvedValue({
-      id: 1, title: 'X', type: 'tv',
+      id: 1,
+      title: 'X',
+      type: 'tv',
       externalIds: { tvdbId: 1, type: 'tv' },
     });
 
@@ -116,18 +126,29 @@ describe('MetadataService', () => {
     });
     const { service, tmdb } = createService();
     tmdb.getDetails.mockResolvedValue({
-      id: 550, title: 'Fight Club', type: 'movie',
-      externalIds: { tmdbId: 550, tvdbId: 42, imdbId: 'tt0137523', type: 'movie' },
+      id: 550,
+      title: 'Test Movie',
+      type: 'movie',
+      externalIds: {
+        tmdbId: 550,
+        tvdbId: 42,
+        imdbId: 'tt0137523',
+        type: 'movie',
+      },
     });
 
     const result = await service.resolveIdsFromMediaItem(item);
 
-    expect(result).toEqual(expect.objectContaining({ tmdbId: 550, tvdbId: 42 }));
+    expect(result).toEqual(
+      expect.objectContaining({ tmdbId: 550, tvdbId: 42 }),
+    );
   });
 
   it('returns poster url tagged with the serving provider', async () => {
     const { service, tmdb } = createService();
-    tmdb.getPosterUrl.mockResolvedValue('https://image.tmdb.org/t/p/w500/poster.jpg');
+    tmdb.getPosterUrl.mockResolvedValue(
+      'https://image.tmdb.org/t/p/w500/poster.jpg',
+    );
 
     const result = await service.getPosterUrl({ tmdbId: 550 }, 'movie');
 
@@ -139,10 +160,13 @@ describe('MetadataService', () => {
 
   it('walks up hierarchy for episodes before resolving IDs', async () => {
     const episode = createMediaItem({
-      type: 'episode', grandparentId: 'show-1', providerIds: {},
+      type: 'episode',
+      grandparentId: 'show-1',
+      providerIds: {},
     });
     const show = createMediaItem({
-      id: 'show-1', type: 'show',
+      id: 'show-1',
+      type: 'show',
       providerIds: { tmdb: ['1396'], tvdb: ['81189'] },
     });
 
@@ -154,15 +178,20 @@ describe('MetadataService', () => {
     const result = await service.resolveIds('ep-1');
 
     expect(mediaServerService.getMetadata).toHaveBeenCalledWith('show-1');
-    expect(result).toEqual(expect.objectContaining({ tmdbId: 1396, tvdbId: 81189 }));
+    expect(result).toEqual(
+      expect.objectContaining({ tmdbId: 1396, tvdbId: 81189 }),
+    );
   });
 
   it('walks up via parentId for seasons', async () => {
     const season = createMediaItem({
-      type: 'season', parentId: 'show-2', providerIds: {},
+      type: 'season',
+      parentId: 'show-2',
+      providerIds: {},
     });
     const show = createMediaItem({
-      id: 'show-2', type: 'show',
+      id: 'show-2',
+      type: 'show',
       providerIds: { tmdb: ['100'], tvdb: ['200'] },
     });
 
@@ -174,7 +203,9 @@ describe('MetadataService', () => {
     const result = await service.resolveIds('season-1');
 
     expect(mediaServerService.getMetadata).toHaveBeenCalledWith('show-2');
-    expect(result).toEqual(expect.objectContaining({ tmdbId: 100, tvdbId: 200 }));
+    expect(result).toEqual(
+      expect.objectContaining({ tmdbId: 100, tvdbId: 200 }),
+    );
   });
 
   it('resolveIds returns undefined when media server returns null', async () => {
@@ -193,9 +224,14 @@ describe('MetadataService', () => {
 
   it('resolveIdsFromMediaItem returns undefined on error', async () => {
     const { service, tmdb } = createService();
-    tmdb.extractId.mockImplementation(() => { throw new Error('oops'); });
+    tmdb.extractId.mockImplementation(() => {
+      throw new Error('oops');
+    });
 
-    const item = createMediaItem({ type: 'movie', providerIds: { tmdb: ['1'] } });
+    const item = createMediaItem({
+      type: 'movie',
+      providerIds: { tmdb: ['1'] },
+    });
     expect(await service.resolveIdsFromMediaItem(item)).toBeUndefined();
   });
 
@@ -220,7 +256,8 @@ describe('MetadataService', () => {
   it('resolveAllMovieIds falls back to full resolution when no direct tmdb IDs', async () => {
     // Item has only IMDB, no tmdb — collectDirectIds returns [], triggers fallback
     const item = createMediaItem({
-      type: 'movie', providerIds: { imdb: ['tt999'] },
+      type: 'movie',
+      providerIds: { imdb: ['tt999'] },
     });
     const { service, mediaServerService, tmdb, tvdb } = createService();
     mediaServerService.getMetadata.mockResolvedValue(
@@ -237,7 +274,8 @@ describe('MetadataService', () => {
 
   it('resolveAllSeriesIds returns tvdb IDs directly', async () => {
     const item = createMediaItem({
-      type: 'show', providerIds: { tvdb: ['300'] },
+      type: 'show',
+      providerIds: { tvdb: ['300'] },
     });
     const { service } = createService();
 
@@ -246,7 +284,8 @@ describe('MetadataService', () => {
 
   it('fillIdsFromExternalSearch assigns IDs from IMDB search', async () => {
     const item = createMediaItem({
-      type: 'movie', providerIds: { imdb: ['tt999'] },
+      type: 'movie',
+      providerIds: { imdb: ['tt999'] },
     });
     const { service, tmdb, tvdb } = createService();
     tmdb.getDetails.mockResolvedValue(undefined);
@@ -262,7 +301,8 @@ describe('MetadataService', () => {
 
   it('skips resolveAllIds when both IDs already present', async () => {
     const item = createMediaItem({
-      type: 'movie', providerIds: { tmdb: ['1'], tvdb: ['2'] },
+      type: 'movie',
+      providerIds: { tmdb: ['1'], tvdb: ['2'] },
     });
     const { service, tmdb } = createService();
 

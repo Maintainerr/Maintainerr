@@ -135,21 +135,25 @@ export interface TvdbRemoteIdResult {
 }
 
 /**
- * TVDB Artwork types (from their documentation):
- *  1 = Banner
- *  2 = Poster
- *  3 = Background/Fanart
- *  6 = Series icon
- *  7 = Season poster
- * 14 = ClearArt
- * 15 = ClearLogo
+ * TVDB Artwork types — series and movies use different type IDs.
+ * Source: official TVDB Kodi plugins
+ *   Series: github.com/thetvdb/metadata.tvshows.thetvdb.com.v4.python
+ *   Movies: github.com/thetvdb/metadata.movies.thetvdb.com.v4.python
  */
 export enum TvdbArtworkType {
-  BANNER = 1,
-  POSTER = 2,
-  BACKGROUND = 3,
-  ICON = 6,
+  // Series
+  SERIES_BANNER = 1,
+  SERIES_POSTER = 2,
+  SERIES_BACKGROUND = 3,
+  SERIES_ICON = 5,
   SEASON_POSTER = 7,
-  CLEAR_ART = 14,
-  CLEAR_LOGO = 15,
+  SERIES_CLEAR_ART = 22,
+  SERIES_CLEAR_LOGO = 23,
+  // Movie
+  MOVIE_POSTER = 14,
+  MOVIE_BACKGROUND = 15,
+  MOVIE_BANNER = 16,
+  MOVIE_ICON = 18,
+  MOVIE_CLEAR_ART = 24,
+  MOVIE_CLEAR_LOGO = 25,
 }

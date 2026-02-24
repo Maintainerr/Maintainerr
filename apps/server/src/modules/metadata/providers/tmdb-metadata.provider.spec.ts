@@ -30,30 +30,40 @@ describe('TmdbMetadataProvider', () => {
   it('getDetails returns normalised movie details with externalIds', async () => {
     const { provider, tmdbApi } = createProvider();
     tmdbApi.getMovie.mockResolvedValue({
-      id: 550, title: 'Fight Club', overview: 'A movie',
-      poster_path: '/poster.jpg', backdrop_path: '/bg.jpg',
+      id: 550,
+      title: 'Test Movie',
+      overview: 'A movie',
+      poster_path: '/poster.jpg',
+      backdrop_path: '/bg.jpg',
       external_ids: { tvdb_id: 42, imdb_id: 'tt0137523' },
     } as any);
 
     const result = await provider.getDetails(550, 'movie');
 
-    expect(result).toEqual(expect.objectContaining({
-      id: 550, title: 'Fight Club',
-      posterUrl: 'https://image.tmdb.org/t/p/w500/poster.jpg',
-      externalIds: expect.objectContaining({ tmdbId: 550, tvdbId: 42 }),
-    }));
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 550,
+        title: 'Test Movie',
+        posterUrl: 'https://image.tmdb.org/t/p/w500/poster.jpg',
+        externalIds: expect.objectContaining({ tmdbId: 550, tvdbId: 42 }),
+      }),
+    );
   });
 
   it('getDetails fetches TV show for type=tv', async () => {
     const { provider, tmdbApi } = createProvider();
     tmdbApi.getTvShow.mockResolvedValue({
-      id: 1396, name: 'Breaking Bad', overview: 'A show',
-      poster_path: null, backdrop_path: null, external_ids: {},
+      id: 1396,
+      name: 'Test Series',
+      overview: 'A show',
+      poster_path: null,
+      backdrop_path: null,
+      external_ids: {},
     } as any);
 
     const result = await provider.getDetails(1396, 'tv');
 
-    expect(result?.title).toBe('Breaking Bad');
+    expect(result?.title).toBe('Test Series');
     expect(tmdbApi.getTvShow).toHaveBeenCalledWith({ tvId: 1396 });
   });
 
@@ -109,16 +119,24 @@ describe('TmdbMetadataProvider', () => {
   it('getPersonDetails maps TMDB person response', async () => {
     const { provider, tmdbApi } = createProvider();
     tmdbApi.getPerson.mockResolvedValue({
-      id: 287, name: 'Brad Pitt', biography: 'Actor',
-      birthday: '1963-12-18', deathday: null,
+      id: 287,
+      name: 'Test Actor',
+      biography: 'Actor',
+      birthday: '1963-12-18',
+      deathday: null,
       known_for_department: 'Acting',
-      profile_path: '/brad.jpg', imdb_id: 'nm0000093',
+      profile_path: '/actor.jpg',
+      imdb_id: 'nm0000093',
     } as any);
 
     const result = await provider.getPersonDetails(287);
 
-    expect(result).toEqual(expect.objectContaining({
-      id: 287, name: 'Brad Pitt', imdbId: 'nm0000093',
-    }));
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 287,
+        name: 'Test Actor',
+        imdbId: 'nm0000093',
+      }),
+    );
   });
 });
