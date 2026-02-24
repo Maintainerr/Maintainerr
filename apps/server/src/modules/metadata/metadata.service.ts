@@ -61,23 +61,10 @@ export class MetadataService {
     const primaryName = this.preference.replace('_primary', '').toUpperCase();
     const preferred = this.providers.find((p) => p.name === primaryName);
 
-    const ordered = [
+    return [
       ...(preferred ? [preferred] : []),
       ...this.providers.filter((p) => p !== preferred),
     ].filter((p) => p.isAvailable());
-
-    // DEBUG: log provider order and availability
-    this.logger.debug(
-      `[DEBUG] Preference: ${this.preference}, Primary: ${primaryName}`,
-    );
-    this.logger.debug(
-      `[DEBUG] All providers: ${this.providers.map((p) => `${p.name}(avail=${p.isAvailable()})`).join(', ')}`,
-    );
-    this.logger.debug(
-      `[DEBUG] Ordered providers: ${ordered.map((p) => p.name).join(', ')}`,
-    );
-
-    return ordered;
   }
 
   /**
@@ -96,17 +83,13 @@ export class MetadataService {
     ids: { tmdbId?: number; tvdbId?: number },
     fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
   ): Promise<{ result: T; provider: string } | undefined> {
-    this.logger.debug(`[DEBUG] withProviderFallbackTagged called with ids: ${JSON.stringify(ids)}`);
     for (const provider of this.getOrderedProviders()) {
       const id = provider.extractId(ids);
-      this.logger.debug(`[DEBUG] Provider ${provider.name}: extractId returned ${id}`);
       if (id !== undefined) {
         const result = await fn(provider, id);
-        this.logger.debug(`[DEBUG] Provider ${provider.name}: fn returned ${result !== undefined ? JSON.stringify(result).substring(0, 200) : 'undefined'}`);
         if (result !== undefined) return { result, provider: provider.name };
       }
     }
-    this.logger.debug(`[DEBUG] withProviderFallbackTagged: no provider returned a result`);
     return undefined;
   }
 

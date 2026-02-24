@@ -38,7 +38,7 @@ const createService = (
     { metadata_provider_preference: preference } as any,
     createMockLogger(),
   );
-  service.onModuleInit();
+  service.onApplicationBootstrap();
 
   return { service, tmdb, tvdb, providers, mediaServerService };
 };

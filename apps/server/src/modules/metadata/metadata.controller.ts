@@ -38,14 +38,10 @@ export class MetadataController {
     @Param('type') type: 'movie' | 'show',
     @Query() query: Record<string, string>,
   ): Promise<{ url: string; provider: string } | undefined> {
-    console.log('[DEBUG] getBackdropImage query:', query);
     const ids = this.parseIds(query);
-    console.log('[DEBUG] getBackdropImage parsed ids:', ids);
     if (!ids) return undefined;
     const providerType = type === 'show' ? 'tv' : 'movie';
-    const result = await this.metadata.getBackdropUrl(ids, providerType);
-    console.log('[DEBUG] getBackdropImage result:', result);
-    return result;
+    return this.metadata.getBackdropUrl(ids, providerType);
   }
 
   /**
