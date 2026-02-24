@@ -296,7 +296,7 @@ export class MetadataService {
    * Ensure all provider IDs are resolved before image lookup.
    * Calls getDetails which cross-fixes wrong IDs and provides
    * externalIds to fill gaps. Relies on the underlying API cache
-   * (6h TMDB / 1h TVDB) for performance on repeat requests.
+   * for performance on repeat requests.
    */
   private async resolveImageIds(
     ids: ProviderIds,
