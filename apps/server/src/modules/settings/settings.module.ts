@@ -11,6 +11,7 @@ import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 import { JellyseerrApiModule } from '../api/jellyseerr-api/jellyseerr-api.module';
+import { DatabaseDownloadService } from './database-download.service';
 
 @Global()
 @Module({
@@ -24,7 +25,7 @@ import { JellyseerrApiModule } from '../api/jellyseerr-api/jellyseerr-api.module
     TypeOrmModule.forFeature([Settings, RadarrSettings]),
     TypeOrmModule.forFeature([Settings, SonarrSettings]),
   ],
-  providers: [SettingsService],
+  providers: [SettingsService, DatabaseDownloadService],
   exports: [SettingsService],
   controllers: [SettingsController],
 })

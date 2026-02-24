@@ -12,7 +12,7 @@ export interface ISearch {
 
 const SearchContext = createContext({
   search: {} as ISearch,
-  addText: (input: string) => {},
+  addText: (_input: string) => {},
   removeText: () => {},
 })
 

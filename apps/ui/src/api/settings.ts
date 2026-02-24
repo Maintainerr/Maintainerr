@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { BasicResponseDto } from '@maintainerr/contracts'
 import {
   useMutation,
@@ -7,6 +8,7 @@ import {
   UseQueryOptions,
 } from '@tanstack/react-query'
 import GetApiHandler, {
+  API_BASE_PATH,
   DeleteApiHandler,
   PatchApiHandler,
   PostApiHandler,
@@ -130,3 +132,32 @@ export const useUpdatePlexAuth = (options?: UseUpdatePlexAuthOptions) => {
 }
 
 export type UseUpdatePlexAuthResult = ReturnType<typeof useUpdatePlexAuth>
+
+export const downloadDatabase = async (
+  customFilename?: string,
+): Promise<void> => {
+  const response = await axios.get<Blob>(
+    `${API_BASE_PATH}/api/settings/database/download`,
+    {
+      responseType: 'blob',
+    },
+  )
+
+  const fileUrl = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  const contentDisposition = response.headers['content-disposition']
+  const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/)
+  const normalizedCustomFilename = customFilename?.trim()
+
+  link.href = fileUrl
+  link.download =
+    normalizedCustomFilename && normalizedCustomFilename.length > 0
+      ? normalizedCustomFilename
+      : (filenameMatch?.[1] ?? 'maintainerr.sqlite')
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => {
+    URL.revokeObjectURL(fileUrl)
+  }, 0)
+}

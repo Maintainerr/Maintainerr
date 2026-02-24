@@ -5,10 +5,11 @@ FROM base AS builder
 
 WORKDIR /app
 
-RUN yarn global add turbo@^2
+RUN corepack enable
 
 # Copy only files needed to resolve/install dependencies first (better Docker layer caching)
 COPY package.json yarn.lock .yarnrc.yml turbo.json ./
+RUN corepack install
 COPY .yarn/releases ./.yarn/releases
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/ui/package.json ./apps/ui/package.json

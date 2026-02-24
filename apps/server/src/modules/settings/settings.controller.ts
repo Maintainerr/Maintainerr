@@ -15,24 +15,32 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Put,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { RadarrSettingRawDto } from "./dto's/radarr-setting.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
+import { DatabaseDownloadService } from './database-download.service';
 import { Settings } from './entities/settings.entities';
 import { SettingsService } from './settings.service';
 import { ZodValidationPipe } from 'nestjs-zod';
 
 @Controller('/api/settings')
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly databaseDownloadService: DatabaseDownloadService,
+  ) {}
 
   @Get()
   getSettings() {
@@ -49,6 +57,22 @@ export class SettingsController {
   @Get('/version')
   getVersion() {
     return this.settingsService.appVersion();
+  }
+
+  @Get('/database/download')
+  @Header('Content-Type', 'application/x-sqlite3')
+  @Header('X-Content-Type-Options', 'nosniff')
+  async downloadDatabase(
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { fileStream, fileName, fileSize } =
+      await this.databaseDownloadService.getDatabaseDownload();
+
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', fileSize.toString());
+    res.setHeader('Cache-Control', 'no-store');
+
+    return new StreamableFile(fileStream);
   }
 
   @Get('/api/generate')
