@@ -335,24 +335,18 @@ export class MetadataService {
    * 2. External ID search — e.g. IMDB → TVDB for movies
    */
   private async resolveAllIds(ids: ResolvedMediaIds): Promise<void> {
-    this.logger.debug(`resolveAllIds called with: ${JSON.stringify(ids)}`);
-
     if (this.providers.some((p) => p.extractId(ids) !== undefined)) {
-      this.logger.debug(`Strategy 1: getDetails lookup`);
       const details = await this.getDetails(ids, ids.type);
       if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
       if (this.hasRequiredIds(ids)) {
-        this.logger.debug(`All IDs resolved after Strategy 1`);
         return;
       }
     }
 
-    this.logger.debug(`Strategy 2: external ID search`);
     const providerKeys = new Set(this.providers.map((p) => p.idKey));
     for (const [key, value] of Object.entries(ids)) {
       if (!value || key === 'type' || providerKeys.has(key)) continue;
 
-      this.logger.debug(`Searching ${key}=${value} via findByExternalId`);
       for (const provider of this.getOrderedProviders()) {
         if (provider.extractId(ids) !== undefined) continue;
 
@@ -365,7 +359,6 @@ export class MetadataService {
         }
       }
       if (this.hasRequiredIds(ids)) {
-        this.logger.debug(`All IDs resolved after Strategy 2`);
         return;
       }
     }
