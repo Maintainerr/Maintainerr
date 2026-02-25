@@ -36,11 +36,6 @@ export class RadarrGetterService {
     try {
       const prop = this.appProperties.find((el) => el.id === id);
 
-      this.logger.debug(
-        `Looking up property '${prop?.name}' for '${libItem.title}' (id: ${libItem.id}, type: ${libItem.type}). ` +
-          `ProviderIds: ${JSON.stringify(libItem.providerIds)}`,
-      );
-
       // ARR diskspace check doesn't require a movie lookup - handle early
       if (
         prop?.name === 'diskspace_remaining_gb' ||
@@ -66,10 +61,6 @@ export class RadarrGetterService {
       }
 
       const tmdbIds = await this.findAllTmdbIdsFromMediaItem(libItem);
-
-      this.logger.debug(
-        `TMDB ID resolution for '${libItem.title}': resolved IDs = [${tmdbIds?.join(', ') ?? 'null'}]`,
-      );
 
       if (!tmdbIds || tmdbIds.length === 0) {
         this.logger.warn(
