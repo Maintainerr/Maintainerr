@@ -137,7 +137,13 @@ export class MetadataService {
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const ids = this.extractDirectIds(item);
+      this.logger.debug(
+        `[resolveIdsFromMediaItem] Extracted direct IDs for '${item.title}': ${JSON.stringify(ids)}`,
+      );
       await this.resolveAllIds(ids);
+      this.logger.debug(
+        `[resolveIdsFromMediaItem] After resolveAllIds for '${item.title}': ${JSON.stringify(ids)}`,
+      );
       return ids;
     } catch (e) {
       this.logger.warn(`Failed to resolve IDs from media item: ${e.message}`);
@@ -154,15 +160,48 @@ export class MetadataService {
     item: MediaItem,
     providerKey: string,
   ): Promise<number[]> {
+    this.logger.debug(
+      `[resolveAllIdsForProvider] Starting for '${item.title}' (id: ${item.id}), providerKey: '${providerKey}'. ` +
+        `Item providerIds: ${JSON.stringify(item.providerIds)}`,
+    );
+
     const ids = await this.collectDirectIds(item, providerKey);
-    if (ids.length > 0) return ids;
+    if (ids.length > 0) {
+      this.logger.debug(
+        `[resolveAllIdsForProvider] Direct IDs found for '${item.title}': [${ids.join(', ')}]`,
+      );
+      return ids;
+    }
+
+    this.logger.debug(
+      `[resolveAllIdsForProvider] No direct '${providerKey}' IDs for '${item.title}', falling back to resolveIdsFromMediaItem`,
+    );
 
     const resolved = await this.resolveIdsFromMediaItem(item);
     const provider = this.providers.find((p) => p.idKey === providerKey);
-    if (!resolved || !provider) return ids;
+
+    this.logger.debug(
+      `[resolveAllIdsForProvider] resolveIdsFromMediaItem result for '${item.title}': ${JSON.stringify(resolved)}`,
+    );
+
+    if (!resolved || !provider) {
+      this.logger.debug(
+        `[resolveAllIdsForProvider] Cannot extract '${providerKey}' ID for '${item.title}': resolved=${!!resolved}, provider=${!!provider}`,
+      );
+      return ids;
+    }
 
     const resolvedId = provider.extractId(resolved);
-    if (resolvedId !== undefined) ids.push(resolvedId);
+    if (resolvedId !== undefined) {
+      this.logger.debug(
+        `[resolveAllIdsForProvider] Extracted '${providerKey}' ID ${resolvedId} for '${item.title}' via cross-provider resolution`,
+      );
+      ids.push(resolvedId);
+    } else {
+      this.logger.debug(
+        `[resolveAllIdsForProvider] Could not extract '${providerKey}' ID from resolved IDs for '${item.title}'`,
+      );
+    }
 
     return ids;
   }
@@ -366,15 +405,33 @@ export class MetadataService {
     };
 
     const directIds = item.providerIds?.[providerKey];
+    this.logger.debug(
+      `[collectDirectIds] '${item.title}' (id: ${item.id}): item.providerIds['${providerKey}'] = ${JSON.stringify(directIds)}`,
+    );
     if (directIds) pushUniqueIds(directIds);
 
-    if (ids.length > 0) return ids;
+    if (ids.length > 0) {
+      this.logger.debug(
+        `[collectDirectIds] '${item.title}': found direct IDs [${ids.join(', ')}] from item`,
+      );
+      return ids;
+    }
 
+    this.logger.debug(
+      `[collectDirectIds] '${item.title}': no direct '${providerKey}' IDs on item, fetching fresh metadata from media server`,
+    );
     const mediaServer = await this.mediaServerFactory.getService();
     const metadata = await mediaServer.getMetadata(item.id);
     const freshIds = metadata?.providerIds?.[providerKey];
+    this.logger.debug(
+      `[collectDirectIds] '${item.title}': fresh metadata providerIds = ${JSON.stringify(metadata?.providerIds)}, ` +
+        `freshIds['${providerKey}'] = ${JSON.stringify(freshIds)}`,
+    );
     if (freshIds) pushUniqueIds(freshIds);
 
+    this.logger.debug(
+      `[collectDirectIds] '${item.title}': final result = [${ids.join(', ')}]`,
+    );
     return ids;
   }
 
@@ -386,22 +443,55 @@ export class MetadataService {
    * then falls back to external ID search (e.g. IMDB -> provider lookup).
    */
   private async resolveAllIds(ids: ResolvedMediaIds): Promise<void> {
-    if (this.allIdsPresent(ids)) return;
+    this.logger.debug(
+      `[resolveAllIds] Starting with IDs: ${JSON.stringify(ids)}`,
+    );
+
+    if (this.allIdsPresent(ids)) {
+      this.logger.debug(`[resolveAllIds] All IDs already present, skipping`);
+      return;
+    }
 
     // Strategy 1: cross-provider IDs from a details lookup
-    if (this.providers.some((p) => p.extractId(ids) !== undefined)) {
+    const hasAnyProviderId = this.providers.some(
+      (p) => p.extractId(ids) !== undefined,
+    );
+    this.logger.debug(
+      `[resolveAllIds] Strategy 1: hasAnyProviderId = ${hasAnyProviderId}`,
+    );
+
+    if (hasAnyProviderId) {
       const details = await this.getDetails(ids, ids.type);
+      this.logger.debug(
+        `[resolveAllIds] Strategy 1: getDetails returned externalIds = ${JSON.stringify(details?.externalIds)}`,
+      );
       if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
+      this.logger.debug(
+        `[resolveAllIds] Strategy 1: IDs after fill = ${JSON.stringify(ids)}`,
+      );
       if (this.allIdsPresent(ids)) return;
     }
 
     // Strategy 2: search by any non-provider external IDs across providers
     const providerKeys = new Set(this.providers.map((p) => p.idKey));
-    for (const [key, value] of Object.entries(ids)) {
-      if (!value || key === 'type' || providerKeys.has(key)) continue;
+    const externalEntries = Object.entries(ids).filter(
+      ([key, value]) => value && key !== 'type' && !providerKeys.has(key),
+    );
+    this.logger.debug(
+      `[resolveAllIds] Strategy 2: external IDs to search = ${JSON.stringify(externalEntries)}`,
+    );
+
+    for (const [key, value] of externalEntries) {
       await this.fillIdsFromExternalSearch(ids, value, key);
+      this.logger.debug(
+        `[resolveAllIds] Strategy 2: IDs after searching '${key}' = ${JSON.stringify(ids)}`,
+      );
       if (this.allIdsPresent(ids)) return;
     }
+
+    this.logger.debug(
+      `[resolveAllIds] Finished. Final IDs: ${JSON.stringify(ids)}`,
+    );
   }
 
   /**
@@ -413,13 +503,25 @@ export class MetadataService {
     externalId: string | number,
     idType: string,
   ): Promise<void> {
+    this.logger.debug(
+      `[fillIdsFromExternalSearch] Searching for ${idType} = '${externalId}' (media type: ${ids.type})`,
+    );
+
     for (const provider of this.getOrderedProviders()) {
       const results = await provider.findByExternalId(externalId, idType);
+      this.logger.debug(
+        `[fillIdsFromExternalSearch] ${provider.name}.findByExternalId(${externalId}, ${idType}) = ${JSON.stringify(results)}`,
+      );
       if (!results?.length) continue;
 
       for (const r of results) {
         const id = ids.type === 'movie' ? r.movieId : r.tvShowId;
-        if (id !== undefined) provider.assignId(ids, id);
+        if (id !== undefined) {
+          this.logger.debug(
+            `[fillIdsFromExternalSearch] Assigning ${provider.name} ID = ${id} (from ${idType} = '${externalId}')`,
+          );
+          provider.assignId(ids, id);
+        }
       }
       if (this.allIdsPresent(ids)) return;
     }
