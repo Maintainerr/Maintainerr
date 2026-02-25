@@ -3157,7 +3157,7 @@ __metadata:
     react-router-dom: "npm:^7.13.1"
     react-select: "npm:^5.10.2"
     react-toastify: "npm:^11.0.5"
-    reconnecting-eventsource: "npm:^1.6.4"
+    reconnecting-eventsource: "npm:^1.6.5"
     tailwindcss: "npm:^3.4.19"
     typescript: "npm:^5.9.3"
     vite: "npm:^7.3.1"
@@ -17236,10 +17236,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"reconnecting-eventsource@npm:^1.6.4":
-  version: 1.6.4
-  resolution: "reconnecting-eventsource@npm:1.6.4"
-  checksum: 10c0/ce760895524473e6b77e026ba9b62401a0f59bd60335c8f69d0c461b10f9f65d753a6c40843a3a1a67c28ee36341c2a6019632719e8df27a8b2110eb2486c32d
+"reconnecting-eventsource@npm:^1.6.5":
+  version: 1.6.5
+  resolution: "reconnecting-eventsource@npm:1.6.5"
+  checksum: 10c0/5e7a1d0a2a67f8fa0e563ca22df3f8188becad868eac3ec02d229d553f00cd95a799420778ae43a0fc650352b77c0fe8e38a1678f791ed7c2a77dc053009b69f
   languageName: node
   linkType: hard
 
