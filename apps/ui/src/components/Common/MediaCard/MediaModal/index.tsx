@@ -365,9 +365,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       metadataProviderId != null &&
                       (() => {
                         const key =
-                          metadataProviderLogos[
-                            metadataProvider
-                          ]?.providerIdKey
+                          metadataProviderLogos[metadataProvider]?.providerIdKey
                         if (
                           !key ||
                           metadata.providerIds[key]?.includes(

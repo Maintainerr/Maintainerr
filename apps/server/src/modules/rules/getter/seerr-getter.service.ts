@@ -62,8 +62,10 @@ export class SeerrGetterService {
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
-      const resolvedIds =
-        await this.metadataService.resolveIdsFromMediaItem(libItem);
+      const resolvedIds = await this.metadataService.resolveIdsFromMediaItem(
+        libItem,
+        'tmdb',
+      );
 
       const tmdbId = resolvedIds?.['tmdb'] as number | undefined;
       if (tmdbId) {

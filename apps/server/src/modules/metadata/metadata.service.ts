@@ -230,7 +230,10 @@ export class MetadataService {
   // ───── Private helpers ─────
 
   /** Check if the required ID(s) are present. */
-  private hasRequiredIds(ids: ProviderIds, targetProviderKey?: string): boolean {
+  private hasRequiredIds(
+    ids: ProviderIds,
+    targetProviderKey?: string,
+  ): boolean {
     if (targetProviderKey) {
       const provider = this.providers.find(
         (p) => p.idKey === targetProviderKey,
@@ -332,9 +335,7 @@ export class MetadataService {
    * 2. External ID search — e.g. IMDB → TVDB for movies
    */
   private async resolveAllIds(ids: ResolvedMediaIds): Promise<void> {
-    this.logger.debug(
-      `resolveAllIds called with: ${JSON.stringify(ids)}`,
-    );
+    this.logger.debug(`resolveAllIds called with: ${JSON.stringify(ids)}`);
 
     if (this.providers.some((p) => p.extractId(ids) !== undefined)) {
       this.logger.debug(`Strategy 1: getDetails lookup`);
