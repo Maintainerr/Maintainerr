@@ -354,6 +354,8 @@ export class MetadataService {
 
       this.logger.debug(`Searching ${key}=${value} via findByExternalId`);
       for (const provider of this.getOrderedProviders()) {
+        if (provider.extractId(ids) !== undefined) continue;
+
         const results = await provider.findByExternalId(value, key);
         if (!results?.length) continue;
 

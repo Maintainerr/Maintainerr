@@ -301,6 +301,24 @@ describe('MetadataService', () => {
     expect(result?.['tvdb']).toBe(60);
   });
 
+  it('skips external search for providers that already have an ID', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      providerIds: { imdb: ['tt0000099'], tmdb: ['50'] },
+    });
+    const { service, tmdb, tvdb } = createService();
+    tmdb.getDetails.mockResolvedValue(undefined);
+    tvdb.getDetails.mockResolvedValue(undefined);
+    tvdb.findByExternalId.mockResolvedValue([{ movieId: 60 }]);
+
+    const result = await service.resolveIdsFromMediaItem(item);
+
+    expect(result?.['tmdb']).toBe(50);
+    expect(result?.['tvdb']).toBe(60);
+    expect(tmdb.findByExternalId).not.toHaveBeenCalled();
+    expect(tvdb.findByExternalId).toHaveBeenCalled();
+  });
+
   it('skips resolveAllIds when both IDs already present', async () => {
     const item = createMediaItem({
       type: 'movie',
