@@ -51,11 +51,6 @@ export class MetadataService {
 
   // ───── Provider ordering & fallback ─────
 
-  /**
-   * Build an ordered list of available providers based on user preference.
-   * The preferred provider comes first; remaining providers keep their
-   * registration order. Unavailable providers are omitted.
-   */
   private getOrderedProviders(): IMetadataProvider[] {
     const primaryName = this.preference.replace('_primary', '').toUpperCase();
     const preferred = this.providers.find((p) => p.name === primaryName);
@@ -66,10 +61,6 @@ export class MetadataService {
     ].filter((p) => p.isAvailable());
   }
 
-  /**
-   * Try each provider in preference order until one returns a result.
-   * Each provider is only attempted if it has a matching ID.
-   */
   private async withProviderFallback<T>(
     ids: ProviderIds,
     fn: (provider: IMetadataProvider, id: number) => Promise<T | undefined>,
@@ -93,10 +84,6 @@ export class MetadataService {
 
   // ───── ID Resolution ─────
 
-  /**
-   * Resolve a media-server ID to external metadata IDs.
-   * Walks up the hierarchy (episode->season->show) for child items.
-   */
   async resolveIds(
     mediaServerId: string,
   ): Promise<ResolvedMediaIds | undefined> {
@@ -111,7 +98,6 @@ export class MetadataService {
         return undefined;
       }
 
-      // Walk up to the show level for seasons/episodes
       mediaItem = mediaItem.grandparentId
         ? await mediaServer.getMetadata(mediaItem.grandparentId)
         : mediaItem.parentId
@@ -129,11 +115,10 @@ export class MetadataService {
   }
 
   /**
-   * Resolve external IDs from a MediaItem (provider IDs already available).
-   * Extracts what's directly available, then fills gaps via provider fallback.
+   * Resolve external IDs from a MediaItem.
    *
-   * @param targetProviderKey When set, resolution stops as soon as that
-   *   provider's ID is found instead of trying to fill all providers.
+   * @param targetProviderKey Skip resolution entirely when this provider's
+   *   ID is already present (e.g. 'tmdb' for Radarr, 'tvdb' for Sonarr).
    */
   async resolveIdsFromMediaItem(
     item: MediaItem,
@@ -141,7 +126,8 @@ export class MetadataService {
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const ids = this.extractDirectIds(item);
-      await this.resolveAllIds(ids, targetProviderKey);
+      if (this.hasRequiredIds(ids, targetProviderKey)) return ids;
+      await this.resolveAllIds(ids);
       return ids;
     } catch (e) {
       this.logger.warn(`Failed to resolve IDs from media item: ${e.message}`);
@@ -150,10 +136,6 @@ export class MetadataService {
     }
   }
 
-  /**
-   * Resolve all IDs for a specific provider from a media item.
-   * Can return multiple when upstream providers list multiple entries.
-   */
   async resolveAllIdsForProvider(
     item: MediaItem,
     providerKey: string,
@@ -171,27 +153,16 @@ export class MetadataService {
     return ids;
   }
 
-  /** Used by SonarrGetterService. */
   async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
     return this.resolveAllIdsForProvider(item, 'tvdb');
   }
 
-  /** Used by RadarrGetterService. */
   async resolveAllMovieIds(item: MediaItem): Promise<number[]> {
     return this.resolveAllIdsForProvider(item, 'tmdb');
   }
 
   // ───── Media Details ─────
 
-  /**
-   * Get normalised details for a movie or TV show,
-   * using the preferred provider with fallback.
-   *
-   * When the successful result includes externalIds that differ from the
-   * IDs we called with, correct them in-place. This fixes bad IDs from
-   * the media server (e.g. wrong TVDB ID) using cross-references from
-   * whichever provider actually returned data.
-   */
   async getDetails(
     ids: ProviderIds,
     type: 'movie' | 'tv',
@@ -205,7 +176,6 @@ export class MetadataService {
     const ext = providerResult.result.externalIds;
     if (!ext) return providerResult.result;
 
-    // Cross-fix any wrong IDs using the authoritative response
     for (const provider of this.providers) {
       const currentId = provider.extractId(ids);
       const correctId = provider.extractId(ext);
@@ -229,10 +199,6 @@ export class MetadataService {
 
   // ───── Person Details ─────
 
-  /**
-   * Get normalised person details, using the preferred provider with fallback.
-   * Person IDs are provider-specific (e.g. a TMDB person ID).
-   */
   async getPersonDetails(ids: ProviderIds): Promise<PersonDetails | undefined> {
     return this.withProviderFallback(ids, (provider, id) =>
       provider.getPersonDetails(id),
@@ -241,10 +207,6 @@ export class MetadataService {
 
   // ───── Image URLs ─────
 
-  /**
-   * Get a full poster image URL and which provider served it.
-   * @param size Provider-specific size hint (e.g. 'w500' for TMDB; ignored by TVDB)
-   */
   async getPosterUrl(
     ids: ProviderIds,
     type: 'movie' | 'tv',
@@ -255,7 +217,6 @@ export class MetadataService {
     );
   }
 
-  /** Get a full backdrop/fanart image URL and which provider served it. */
   async getBackdropUrl(
     ids: ProviderIds,
     type: 'movie' | 'tv',
@@ -268,11 +229,8 @@ export class MetadataService {
 
   // ───── Private helpers ─────
 
-  /** True when the required provider IDs are present in the bag. */
-  private allIdsPresent(
-    ids: ProviderIds,
-    targetProviderKey?: string,
-  ): boolean {
+  /** Check if the required ID(s) are present. */
+  private hasRequiredIds(ids: ProviderIds, targetProviderKey?: string): boolean {
     if (targetProviderKey) {
       const provider = this.providers.find(
         (p) => p.idKey === targetProviderKey,
@@ -282,7 +240,6 @@ export class MetadataService {
     return this.providers.every((p) => p.extractId(ids) !== undefined);
   }
 
-  /** Copy any values present in `source` but missing in `ids`. */
   private fillMissingIds(ids: ProviderIds, source: ProviderIds): void {
     for (const [key, value] of Object.entries(source)) {
       if (value === undefined || ids[key] !== undefined) continue;
@@ -290,7 +247,10 @@ export class MetadataService {
     }
   }
 
-  /** Resolve IDs then run a provider image lookup, returning { url, provider, id }. */
+  /**
+   * Resolve + image lookup. Always runs resolveAllIds (no short-circuit)
+   * because images need all provider IDs and cross-fixing of wrong IDs.
+   */
   private async resolveImageUrl(
     ids: ProviderIds,
     type: 'movie' | 'tv',
@@ -299,44 +259,23 @@ export class MetadataService {
       id: number,
     ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
-    await this.resolveImageIds(ids, type);
+    const bag: ResolvedMediaIds = { ...ids, type };
+    await this.resolveAllIds(bag);
+
+    // Copy resolved/corrected IDs back to caller's object
+    for (const [key, value] of Object.entries(bag)) {
+      if (value !== undefined && key !== 'type') ids[key] = value;
+    }
+
     const result = await this.withProviderFallbackDetailed(ids, fn);
     if (!result) return undefined;
     return { url: result.result, provider: result.provider, id: result.id };
   }
 
-  /**
-   * Ensure all provider IDs are resolved before image lookup.
-   * Calls getDetails which cross-fixes wrong IDs and provides
-   * externalIds to fill gaps. Relies on the underlying API cache
-   * for performance on repeat requests.
-   */
-  private async resolveImageIds(
-    ids: ProviderIds,
-    type: 'movie' | 'tv',
-  ): Promise<void> {
-    const details = await this.getDetails(ids, type);
-    if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
-
-    if (this.allIdsPresent(ids)) return;
-
-    // Strategy 2: search by non-provider external IDs (e.g. IMDB → TVDB for movies)
-    const bag: ResolvedMediaIds = { ...ids, type };
-    const providerKeys = new Set(this.providers.map((p) => p.idKey));
-    for (const [key, value] of Object.entries(bag)) {
-      if (!value || key === 'type' || providerKeys.has(key)) continue;
-      await this.fillIdsFromExternalSearch(bag, value, key);
-      if (this.allIdsPresent(bag)) break;
-    }
-    this.fillMissingIds(ids, bag);
-  }
-
-  /** Determine normalised media type from a MediaItem. */
   private mediaTypeFromItem(item: MediaItem): 'movie' | 'tv' {
     return ['show', 'season', 'episode'].includes(item.type) ? 'tv' : 'movie';
   }
 
-  /** Extract provider IDs directly available on a MediaItem. */
   private extractDirectIds(item: MediaItem): ResolvedMediaIds {
     const ids: ResolvedMediaIds = { type: this.mediaTypeFromItem(item) };
     if (!item.providerIds) return ids;
@@ -346,7 +285,6 @@ export class MetadataService {
     for (const [key, values] of Object.entries(item.providerIds)) {
       if (!values?.length) continue;
 
-      // Registered providers get numeric IDs via assignId
       if (providerKeys.has(key)) {
         const num = +values[0];
         const provider = this.providers.find((p) => p.idKey === key);
@@ -354,17 +292,12 @@ export class MetadataService {
         continue;
       }
 
-      // Non-provider IDs (e.g. imdb) stored as-is
       if (values[0]) ids[key] = values[0];
     }
 
     return ids;
   }
 
-  /**
-   * Collect direct provider IDs from a MediaItem, falling back to fresh
-   * metadata from the media server. Returns unique numeric IDs.
-   */
   private async collectDirectIds(
     item: MediaItem,
     providerKey: string,
@@ -391,53 +324,34 @@ export class MetadataService {
     return ids;
   }
 
-  // ───── Provider-agnostic ID Resolution ─────
+  // ───── Single resolution engine ─────
 
   /**
-   * Fill in any missing IDs using available providers in preference order.
-   * Uses details lookup (which returns externalIds) as the primary strategy,
-   * then falls back to external ID search (e.g. IMDB -> provider lookup).
+   * Fill missing IDs. Two strategies:
+   * 1. getDetails — cross-fixes wrong IDs + provides externalIds
+   * 2. External ID search — e.g. IMDB → TVDB for movies
    */
-  private async resolveAllIds(
-    ids: ResolvedMediaIds,
-    targetProviderKey?: string,
-  ): Promise<void> {
-    if (this.allIdsPresent(ids, targetProviderKey)) return;
-
-    // Strategy 1: cross-provider IDs from a details lookup
+  private async resolveAllIds(ids: ResolvedMediaIds): Promise<void> {
     if (this.providers.some((p) => p.extractId(ids) !== undefined)) {
       const details = await this.getDetails(ids, ids.type);
       if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
-      if (this.allIdsPresent(ids, targetProviderKey)) return;
+      if (this.hasRequiredIds(ids)) return;
     }
 
-    // Strategy 2: search by any non-provider external IDs across providers
     const providerKeys = new Set(this.providers.map((p) => p.idKey));
     for (const [key, value] of Object.entries(ids)) {
       if (!value || key === 'type' || providerKeys.has(key)) continue;
-      await this.fillIdsFromExternalSearch(ids, value, key);
-      if (this.allIdsPresent(ids, targetProviderKey)) return;
-    }
-  }
 
-  /**
-   * Search providers by an external ID and tag each result to the provider
-   * that produced it (via assignId), so IDs never get mixed up.
-   */
-  private async fillIdsFromExternalSearch(
-    ids: ResolvedMediaIds,
-    externalId: string | number,
-    idType: string,
-  ): Promise<void> {
-    for (const provider of this.getOrderedProviders()) {
-      const results = await provider.findByExternalId(externalId, idType);
-      if (!results?.length) continue;
+      for (const provider of this.getOrderedProviders()) {
+        const results = await provider.findByExternalId(value, key);
+        if (!results?.length) continue;
 
-      for (const r of results) {
-        const id = ids.type === 'movie' ? r.movieId : r.tvShowId;
-        if (id !== undefined) provider.assignId(ids, id);
+        for (const r of results) {
+          const id = ids.type === 'movie' ? r.movieId : r.tvShowId;
+          if (id !== undefined) provider.assignId(ids, id);
+        }
       }
-      if (this.allIdsPresent(ids)) return;
+      if (this.hasRequiredIds(ids)) return;
     }
   }
 }
