@@ -13863,7 +13863,7 @@ __metadata:
     "@types/node": "npm:^22.19.11"
     knip: "npm:^5.85.0"
     semantic-release: "npm:^25.0.3"
-    turbo: "npm:^2.8.10"
+    turbo: "npm:^2.8.11"
     typescript: "npm:^5.9.3"
   languageName: unknown
   linkType: soft
@@ -19373,58 +19373,58 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo-darwin-64@npm:2.8.10":
-  version: 2.8.10
-  resolution: "turbo-darwin-64@npm:2.8.10"
+"turbo-darwin-64@npm:2.8.11":
+  version: 2.8.11
+  resolution: "turbo-darwin-64@npm:2.8.11"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"turbo-darwin-arm64@npm:2.8.10":
-  version: 2.8.10
-  resolution: "turbo-darwin-arm64@npm:2.8.10"
+"turbo-darwin-arm64@npm:2.8.11":
+  version: 2.8.11
+  resolution: "turbo-darwin-arm64@npm:2.8.11"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"turbo-linux-64@npm:2.8.10":
-  version: 2.8.10
-  resolution: "turbo-linux-64@npm:2.8.10"
+"turbo-linux-64@npm:2.8.11":
+  version: 2.8.11
+  resolution: "turbo-linux-64@npm:2.8.11"
   conditions: os=linux & cpu=x64
   languageName: node
   linkType: hard
 
-"turbo-linux-arm64@npm:2.8.10":
-  version: 2.8.10
-  resolution: "turbo-linux-arm64@npm:2.8.10"
+"turbo-linux-arm64@npm:2.8.11":
+  version: 2.8.11
+  resolution: "turbo-linux-arm64@npm:2.8.11"
   conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
-"turbo-windows-64@npm:2.8.10":
-  version: 2.8.10
-  resolution: "turbo-windows-64@npm:2.8.10"
+"turbo-windows-64@npm:2.8.11":
+  version: 2.8.11
+  resolution: "turbo-windows-64@npm:2.8.11"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
-"turbo-windows-arm64@npm:2.8.10":
-  version: 2.8.10
-  resolution: "turbo-windows-arm64@npm:2.8.10"
+"turbo-windows-arm64@npm:2.8.11":
+  version: 2.8.11
+  resolution: "turbo-windows-arm64@npm:2.8.11"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.8.10":
-  version: 2.8.10
-  resolution: "turbo@npm:2.8.10"
+"turbo@npm:^2.8.11":
+  version: 2.8.11
+  resolution: "turbo@npm:2.8.11"
   dependencies:
-    turbo-darwin-64: "npm:2.8.10"
-    turbo-darwin-arm64: "npm:2.8.10"
-    turbo-linux-64: "npm:2.8.10"
-    turbo-linux-arm64: "npm:2.8.10"
-    turbo-windows-64: "npm:2.8.10"
-    turbo-windows-arm64: "npm:2.8.10"
+    turbo-darwin-64: "npm:2.8.11"
+    turbo-darwin-arm64: "npm:2.8.11"
+    turbo-linux-64: "npm:2.8.11"
+    turbo-linux-arm64: "npm:2.8.11"
+    turbo-windows-64: "npm:2.8.11"
+    turbo-windows-arm64: "npm:2.8.11"
   dependenciesMeta:
     turbo-darwin-64:
       optional: true
@@ -19440,7 +19440,7 @@ __metadata:
       optional: true
   bin:
     turbo: bin/turbo
-  checksum: 10c0/f751213327d2d61bcadf33ee510467005310b868ffc92d7ecaca29cd66158358fbb74fec0079621c731c406b662bc4221a173aadd600487b4f59c0119fa3b9d6
+  checksum: 10c0/9c74e4c1494494ee3118c232d2136dfbfd15faf203d433ee73392c57acde43395f8095c8d05fd1d56b5ba58295fe7562ad6c6b9a767f2c86091833bcc53f726e
   languageName: node
   linkType: hard
 
