@@ -37,6 +37,13 @@ export interface PlexMetadata {
   contentRating?: string;
 }
 
+export interface PlexMediaPart {
+  id: number;
+  size: number;
+  container: string;
+  file?: string;
+}
+
 export interface Media {
   id: number;
   duration: number;
@@ -51,6 +58,7 @@ export interface Media {
   container: string;
   videoFrameRate: string;
   videoProfile: string;
+  Part?: PlexMediaPart[];
 }
 export interface PlexMetadataResponse {
   MediaContainer: {

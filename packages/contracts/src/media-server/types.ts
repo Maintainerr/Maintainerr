@@ -24,6 +24,7 @@ export interface MediaSource {
   videoCodec?: string
   videoResolution?: string
   container?: string
+  sizeBytes?: number
 }
 
 /**

@@ -14,6 +14,7 @@ on:
 
 env:
   DOCKERHUB_SLUG: maintainerr/maintainerr
+  DOCKERHUB_LEGACY_SLUG: jorenn92/maintainerr
   GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
@@ -187,6 +188,7 @@ jobs:
         with:
           images: |
             ${{ env.DOCKERHUB_SLUG }}
+            ${{ env.DOCKERHUB_LEGACY_SLUG }}
             ${{ env.GHCR_SLUG }}
           tags: |
             type=raw,value=latest
@@ -204,6 +206,19 @@ jobs:
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
+
+      # Legacy mirror -- Keep here until Synology and Unraid Community Apps migrate to maintainerr repo
+      - name: Login to legacy Docker Hub namespace
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_LEGACY_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_LEGACY_TOKEN }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_LEGACY_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
 
   after-effects:
     name: Actions taken after a release.
