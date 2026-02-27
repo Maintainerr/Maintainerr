@@ -36,6 +36,7 @@ import { AgentConfiguration } from '../../../Settings/Notifications/CreateNotifi
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
 import ConfigureNotificationModal from './ConfigureNotificationModal'
+import QualityProfileSelector from './QualityProfileSelector'
 
 interface AddModal {
   editData?: IRuleGroup
@@ -114,6 +115,8 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    radarrQualityProfileId: z.number().int().nullable().optional(),
+    sonarrQualityProfileId: z.number().int().nullable().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -154,12 +157,35 @@ const ruleGroupFormSchema = z
     (data) =>
       data.arrAction === undefined ||
       data.arrAction === 4 ||
+      data.arrAction === 5 ||
       data.deleteAfterDays !== undefined,
     {
       path: ['deleteAfterDays'],
       message: 'Take action after days is required for this action',
     },
   )
+  .superRefine((data, ctx) => {
+    if (data.arrAction === 5) {
+      const isMovie = data.dataType && +data.dataType === EPlexDataType.MOVIES
+      const isShow = data.dataType && +data.dataType === EPlexDataType.SHOWS
+
+      if (isMovie && data.radarrQualityProfileId === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['radarrQualityProfileId'],
+          message: 'Quality profile is required for this action',
+        })
+      }
+
+      if (isShow && data.sonarrQualityProfileId === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sonarrQualityProfileId'],
+          message: 'Quality profile is required for this action',
+        })
+      }
+    }
+  })
 
 type RuleGroupFormValues = z.infer<typeof ruleGroupFormSchema>
 type RuleGroupFormInput = z.input<typeof ruleGroupFormSchema>
@@ -191,6 +217,12 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     : undefined,
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
+    : undefined,
+  radarrQualityProfileId: editData
+    ? (editData.collection?.radarrQualityProfileId ?? null)
+    : undefined,
+  sonarrQualityProfileId: editData
+    ? (editData.collection?.sonarrQualityProfileId ?? null)
     : undefined,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
@@ -281,6 +313,12 @@ const AddModal = (props: AddModal) => {
     ruleCreatorVersion.current += 1
   }, [props.editData, reset])
 
+  // Clear quality profile IDs when media type changes
+  useEffect(() => {
+    setValue('radarrQualityProfileId', undefined)
+    setValue('sonarrQualityProfileId', undefined)
+  }, [selectedType, setValue])
+
   // Filter out Radarr/Sonarr rules when servers are deselected
   useEffect(() => {
     // Helper function to check if an app should be filtered
@@ -354,16 +392,24 @@ const AddModal = (props: AddModal) => {
 
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
+    setValue('radarrQualityProfileId', undefined)
+    setValue('sonarrQualityProfileId', undefined)
     updateArrOption(0)
   }
 
   function updateArrOption(value: number | undefined) {
     setValue('arrAction', value)
 
-    if (value === undefined || value === 4) {
+    if (value === undefined || value === 4 || value === 5) {
       setValue('deleteAfterDays', undefined)
     } else if (getValues('deleteAfterDays') === undefined) {
       setValue('deleteAfterDays', 30)
+    }
+
+    // Clear quality profile IDs when switching away from action 5
+    if (value !== 5) {
+      setValue('radarrQualityProfileId', undefined)
+      setValue('sonarrQualityProfileId', undefined)
     }
   }
 
@@ -489,11 +535,15 @@ const AddModal = (props: AddModal) => {
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
+      radarrQualityProfileId: data.radarrQualityProfileId ?? undefined,
+      sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
         deleteAfterDays:
-          data.arrAction === undefined || data.arrAction === 4
+          data.arrAction === undefined ||
+          data.arrAction === 4 ||
+          data.arrAction === 5
             ? undefined
             : data.deleteAfterDays,
         manualCollection: data.manualCollection,
@@ -692,9 +742,27 @@ const AddModal = (props: AddModal) => {
                           id: 4,
                           name: 'Do nothing',
                         },
+                        {
+                          id: 5,
+                          name: 'Change quality profile and search',
+                        },
                       ]}
                     />
                   )}
+
+                  {selectedLibraryType &&
+                    selectedLibraryType === 'movie' &&
+                    arrActionValue === 5 && (
+                      <QualityProfileSelector
+                        type="Radarr"
+                        settingId={radarrSettingsId}
+                        qualityProfileId={watch('radarrQualityProfileId')}
+                        onUpdate={(qualityProfileId) => {
+                          setValue('radarrQualityProfileId', qualityProfileId)
+                        }}
+                        error={errors.radarrQualityProfileId?.message}
+                      />
+                    )}
 
                   {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
@@ -782,6 +850,10 @@ const AddModal = (props: AddModal) => {
                                   id: 4,
                                   name: 'Do nothing',
                                 },
+                                {
+                                  id: 5,
+                                  name: 'Change quality profile and search',
+                                },
                               ]
                             : +selectedType === EPlexDataType.SEASONS
                               ? [
@@ -824,37 +896,51 @@ const AddModal = (props: AddModal) => {
                           {errors.sonarrSettingsId.message}
                         </p>
                       )}
+
+                      {arrActionValue === 5 && (
+                        <QualityProfileSelector
+                          type="Sonarr"
+                          settingId={sonarrSettingsId}
+                          qualityProfileId={watch('sonarrQualityProfileId')}
+                          onUpdate={(qualityProfileId) => {
+                            setValue('sonarrQualityProfileId', qualityProfileId)
+                          }}
+                          error={errors.sonarrQualityProfileId?.message}
+                        />
+                      )}
                     </>
                   )}
 
-                  {arrActionValue !== undefined && arrActionValue !== 4 && (
-                    <div className="form-row items-center">
-                      <label
-                        htmlFor="collection_deleteDays"
-                        className="text-label"
-                      >
-                        Take action after days*
-                        <p className="text-xs font-normal">
-                          Duration of days media remains in the collection
-                          before deletion/unmonitor
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="number"
-                            id="collection_deleteDays"
-                            {...register('deleteAfterDays')}
-                          />
-                        </div>
-                        {errors.deleteAfterDays && (
-                          <p className="mt-1 text-xs text-red-400">
-                            {errors.deleteAfterDays.message}
+                  {arrActionValue !== undefined &&
+                    arrActionValue !== 4 &&
+                    arrActionValue !== 5 && (
+                      <div className="form-row items-center">
+                        <label
+                          htmlFor="collection_deleteDays"
+                          className="text-label"
+                        >
+                          Take action after days*
+                          <p className="text-xs font-normal">
+                            Duration of days media remains in the collection
+                            before deletion/unmonitor
                           </p>
-                        )}
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="number"
+                              id="collection_deleteDays"
+                              {...register('deleteAfterDays')}
+                            />
+                          </div>
+                          {errors.deleteAfterDays && (
+                            <p className="mt-1 text-xs text-red-400">
+                              {errors.deleteAfterDays.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             </div>
