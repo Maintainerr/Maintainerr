@@ -50,6 +50,7 @@ export class RuleExecutorService {
   statisticsData: IComparisonStatistics[];
   Data: MediaItem[];
   startTime: Date;
+  touchedMediaServerIds: Set<string>;
 
   constructor(
     private readonly rulesService: RulesService,
@@ -64,6 +65,7 @@ export class RuleExecutorService {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
     this.mediaData = { page: 1, finished: false, data: [] };
+    this.touchedMediaServerIds = new Set<string>();
   }
 
   private async getMediaServer(): Promise<IMediaServerService> {
@@ -130,6 +132,7 @@ export class RuleExecutorService {
           name: ruleGroup.name,
           totalEvaluations: totalEvaluations,
         });
+        this.touchedMediaServerIds.clear();
 
         if (ruleGroup.useRules) {
           this.logger.log(`Executing rules for '${ruleGroup.name}'`);
@@ -295,25 +298,26 @@ export class RuleExecutorService {
           shouldCheckRemovals
         ) {
           for (const mediaItem of collectionMedia) {
-            if (mediaItem && mediaItem.mediaServerId) {
-              if (
-                !children ||
-                !children.find(
-                  (e) => mediaItem.mediaServerId === e.id.toString(),
-                )
-              ) {
-                await this.collectionService.removeFromCollection(
-                  collection.id,
-                  [
-                    {
-                      mediaServerId: mediaItem.mediaServerId,
-                      reason: {
-                        type: 'media_removed_manually',
-                      },
-                    },
-                  ] satisfies AddRemoveCollectionMedia[],
-                );
-              }
+            if (!mediaItem?.mediaServerId) {
+              continue;
+            }
+
+            if (this.touchedMediaServerIds.has(mediaItem.mediaServerId)) {
+              continue;
+            }
+
+            if (
+              !children ||
+              !children.find((e) => mediaItem.mediaServerId === e.id.toString())
+            ) {
+              await this.collectionService.removeFromCollection(collection.id, [
+                {
+                  mediaServerId: mediaItem.mediaServerId,
+                  reason: {
+                    type: 'media_removed_manually',
+                  },
+                },
+              ] satisfies AddRemoveCollectionMedia[]);
             }
           }
         }
@@ -464,19 +468,6 @@ export class RuleExecutorService {
                 : collection.title
             }'.`,
           );
-
-          this.eventEmitter.emit(
-            MaintainerrEvent.CollectionMedia_Removed,
-            new CollectionMediaRemovedDto(
-              dataToRemove,
-              collection.title,
-              {
-                type: 'rulegroup',
-                value: rulegroup.id,
-              },
-              collection.deleteAfterDays,
-            ),
-          );
         }
 
         if (dataToAdd.length > 0) {
@@ -486,16 +477,6 @@ export class RuleExecutorService {
                 ? collection.manualCollectionName
                 : collection.title
             }'.`,
-          );
-
-          this.eventEmitter.emit(
-            MaintainerrEvent.CollectionMedia_Added,
-            new CollectionMediaAddedDto(
-              dataToAdd,
-              collection.title,
-              { type: 'rulegroup', value: rulegroup.id },
-              collection.deleteAfterDays,
-            ),
           );
         }
 
@@ -512,8 +493,59 @@ export class RuleExecutorService {
           dataToRemove,
         );
 
+        // Determine which items were actually added/removed by comparing DB state
+        const updatedMediaServerIds = new Set(
+          (
+            (await this.collectionService.getCollectionMedia(collection.id)) ??
+            []
+          ).map((e) => e.mediaServerId),
+        );
+
+        const addedToCollection = dataToAdd.filter(
+          (m) =>
+            updatedMediaServerIds.has(m.mediaServerId) &&
+            !currentMediaServerIds.has(m.mediaServerId),
+        );
+        const removedFromCollection = dataToRemove.filter(
+          (m) =>
+            !updatedMediaServerIds.has(m.mediaServerId) &&
+            currentMediaServerIds.has(m.mediaServerId),
+        );
+
+        if (removedFromCollection.length > 0) {
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Removed,
+            new CollectionMediaRemovedDto(
+              removedFromCollection,
+              collection.title,
+              {
+                type: 'rulegroup',
+                value: rulegroup.id,
+              },
+              collection.deleteAfterDays,
+            ),
+          );
+        }
+
+        if (addedToCollection.length > 0) {
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Added,
+            new CollectionMediaAddedDto(
+              addedToCollection,
+              collection.title,
+              { type: 'rulegroup', value: rulegroup.id },
+              collection.deleteAfterDays,
+            ),
+          );
+        }
+
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);
+
+        this.touchedMediaServerIds = new Set<string>([
+          ...addedToCollection.map((item) => item.mediaServerId),
+          ...removedFromCollection.map((item) => item.mediaServerId),
+        ]);
 
         return collection;
       } else {
@@ -528,6 +560,8 @@ export class RuleExecutorService {
             value: rulegroup.id,
           }),
         );
+
+        this.touchedMediaServerIds.clear();
       }
     } catch (err) {
       this.logger.warn(
@@ -541,6 +575,8 @@ export class RuleExecutorService {
           value: rulegroup.id,
         }),
       );
+
+      this.touchedMediaServerIds.clear();
     }
   }
 
