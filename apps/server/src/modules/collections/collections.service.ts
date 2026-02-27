@@ -1499,10 +1499,7 @@ export class CollectionsService {
           if (itemSize > 0) {
             totalBytes += itemSize;
             hasAnySize = true;
-          } else if (
-            metadata.type === 'show' ||
-            metadata.type === 'season'
-          ) {
+          } else if (metadata.type === 'show' || metadata.type === 'season') {
             // Show/season items may not have file sizes at the top level.
             // Traverse children to sum episode-level sizes.
             const childSize = await this.getChildrenTotalSize(
