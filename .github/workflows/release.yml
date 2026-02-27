@@ -14,6 +14,7 @@ on:
 
 env:
   DOCKERHUB_SLUG: maintainerr/maintainerr
+  DOCKERHUB_LEGACY_SLUG: jorenn92/maintainerr
   GHCR_SLUG: ghcr.io/maintainerr/maintainerr
 
 jobs:
@@ -28,12 +29,16 @@ jobs:
     name: Tag and release latest version
     needs: guard_manual_run
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -47,7 +52,7 @@ jobs:
         run: yarn --immutable
       - name: Release
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.event.inputs.dry-run-semantic-release }}" == "true" ]; then
           echo "Dry run enabled."
@@ -183,6 +188,7 @@ jobs:
         with:
           images: |
             ${{ env.DOCKERHUB_SLUG }}
+            ${{ env.DOCKERHUB_LEGACY_SLUG }}
             ${{ env.GHCR_SLUG }}
           tags: |
             type=raw,value=latest
@@ -200,6 +206,19 @@ jobs:
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
+
+      # Legacy mirror -- Keep here until Synology and Unraid Community Apps migrate to maintainerr repo
+      - name: Login to legacy Docker Hub namespace
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_LEGACY_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_LEGACY_TOKEN }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_LEGACY_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
 
   after-effects:
     name: Actions taken after a release.
@@ -227,7 +246,7 @@ jobs:
         if: ${{ steps.package-version.outputs.current-version != '' }}
         uses: peter-evans/repository-dispatch@v4
         with:
-          token: ${{ secrets.DOCS_DEPLOY }}
+          token: ${{ secrets.ACTIONS_TOKEN }}
           repository: Maintainerr/Maintainerr_docs
           event-type: maintainerr-release
           client-payload: |

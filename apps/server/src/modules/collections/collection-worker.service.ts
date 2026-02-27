@@ -18,6 +18,7 @@ import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
+import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
@@ -38,6 +39,7 @@ export class CollectionWorkerService extends TaskBase {
     private readonly settings: SettingsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionHandler: CollectionHandler,
+    private readonly collectionsService: CollectionsService,
     protected readonly logger: MaintainerrLogger,
     private readonly executionLock: ExecutionLockService,
   ) {
@@ -225,6 +227,22 @@ export class CollectionWorkerService extends TaskBase {
       } else {
         this.infoLogger(`All collections handled. No data was altered`);
       }
+
+      // Update cached total size for all collections
+      this.infoLogger('Updating collection size cache...');
+      const allCollections = await this.collectionRepo.find();
+      for (const collection of allCollections) {
+        try {
+          await this.collectionsService.updateCollectionTotalSize(
+            collection.id,
+          );
+        } catch (e) {
+          this.logger.debug(
+            `Failed to update size for collection '${collection.title}': ${e.message}`,
+          );
+        }
+      }
+      this.infoLogger('Collection size cache updated');
     } finally {
       release();
 
