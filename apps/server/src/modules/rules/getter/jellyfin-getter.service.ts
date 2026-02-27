@@ -107,6 +107,14 @@ export class JellyfinGetterService {
           return seenByUserIds.map((id) => userMap.get(id) || id);
         }
 
+        case 'favoritedBy': {
+          const favoritedByUserIds =
+            await this.jellyfinAdapter.getItemFavoritedBy(metadata.id);
+          const users = await this.jellyfinAdapter.getUsers();
+          const userMap = new Map(users.map((u) => [u.id, u.name]));
+          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+        }
+
         case 'releaseDate': {
           return metadata.originallyAvailableAt
             ? new Date(metadata.originallyAvailableAt)
@@ -232,6 +240,14 @@ export class JellyfinGetterService {
         case 'sw_playCount': {
           // For episodes, get total play attempts (includes unfinished views)
           return await this.jellyfinAdapter.getTotalPlayCount(metadata.id);
+        }
+
+        case 'sw_favoritedBy': {
+          const favoritedByUserIds =
+            await this.jellyfinAdapter.getItemFavoritedBy(metadata.id);
+          const users = await this.jellyfinAdapter.getUsers();
+          const userMap = new Map(users.map((u) => [u.id, u.name]));
+          return favoritedByUserIds.map((id) => userMap.get(id) || id);
         }
 
         case 'sw_watchers': {
