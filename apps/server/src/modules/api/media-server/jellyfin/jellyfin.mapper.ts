@@ -372,6 +372,7 @@ export class JellyfinMapper {
           ? `${videoStream.Width}x${videoStream.Height}`
           : undefined,
         container: source.Container || undefined,
+        sizeBytes: source.Size || undefined,
       };
     });
   }
