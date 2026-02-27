@@ -692,7 +692,7 @@ export class CollectionsService {
 
       if (!serverColl) {
         this.logger.debug(
-          `[checkAutomaticMediaServerLink] Setting mediaServerId to null`,
+          `[checkAutomaticMediaServerLink] Setting mediaServerId to null — collection was empty or not found on media server`,
         );
         collection.mediaServerId = null;
         collection = await this.saveCollection(collection);
