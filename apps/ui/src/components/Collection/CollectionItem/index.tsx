@@ -1,5 +1,6 @@
 import { ICollection } from '..'
 import { useMediaServerLibraries } from '../../../api/media-server'
+import { type MediaItemType } from '@maintainerr/contracts'
 
 interface ICollectionItem {
   collection: ICollection
@@ -17,6 +18,20 @@ function formatSize(bytes: number | null | undefined): string {
 
 const CollectionItem = (props: ICollectionItem) => {
   const { data: libraries } = useMediaServerLibraries()
+  const getMediaTypeLabel = (type: MediaItemType) => {
+    switch (type) {
+      case 'movie':
+        return 'Movies'
+      case 'show':
+        return 'Shows'
+      case 'season':
+        return 'Seasons'
+      case 'episode':
+        return 'Episodes'
+      default:
+        return 'Unknown'
+    }
+  }
 
   return (
     <>
@@ -53,55 +68,87 @@ const CollectionItem = (props: ICollectionItem) => {
                 : props.collection.title}
             </div>
           </div>
-          <div className="h-12 max-h-12 overflow-y-hidden whitespace-normal text-base text-zinc-400 hover:overflow-y-scroll">
+          <div className="tiny-scrollbar mb-2 mt-1 h-12 max-h-12 overflow-y-hidden whitespace-normal pr-2 text-base text-zinc-400 hover:overflow-y-auto">
             {props.collection.manualCollection
               ? `Handled by rule: '${props.collection.title}'`
               : props.collection.description}
           </div>
         </div>
 
-        <div className="inset-0 z-0 h-fit p-3 pt-1 text-base">
-          <div className="mb-3">
-            <p className="font-bold">Library</p>
-            <p className="text-amber-500">
-              {libraries?.find(
-                (lib) => String(lib.id) === String(props.collection.libraryId),
-              )?.title ?? <>&nbsp;</>}
-            </p>
-          </div>
+        <div className="inset-0 z-0 mt-2 px-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 sm:gap-y-2 [&>div:nth-child(2n)]:text-right sm:[&>div:nth-child(2n)]:text-left sm:[&>div:nth-child(3n)]:text-right sm:[&>div:nth-child(3n-1)]:text-center">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Library
+              </p>
+              <p className="truncate text-amber-500">
+                {libraries?.find(
+                  (lib) =>
+                    String(lib.id) === String(props.collection.libraryId),
+                )?.title ?? '-'}
+              </p>
+            </div>
 
-          <div className="grid grid-cols-2 gap-y-3">
-            <div>
-              <p className="font-bold">Items</p>
+            {props.collection.type !== 'movie' ? (
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  Media Type
+                </p>
+                <p className="text-amber-500">
+                  {getMediaTypeLabel(props.collection.type)}
+                </p>
+              </div>
+            ) : (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none min-w-0 select-none opacity-0"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide">
+                  Media Type
+                </p>
+                <p>-</p>
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Items
+              </p>
               <p className="text-amber-500">
                 {`${props.collection.media ? props.collection.media.length : 0}`}
               </p>
             </div>
 
-            <div className="text-right">
-              <p className="font-bold">Status</p>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Size
+              </p>
+              <p className="text-amber-500">
+                {formatSize(props.collection.totalSizeBytes)}
+              </p>
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Delete
+              </p>
+              <p className="text-amber-500">
+                {props.collection.deleteAfterDays == null
+                  ? 'Never'
+                  : `After ${props.collection.deleteAfterDays}d`}
+              </p>
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Status
+              </p>
               <p>
                 {props.collection.isActive ? (
                   <span className="text-green-500">Active</span>
                 ) : (
                   <span className="text-red-500">Inactive</span>
                 )}
-              </p>
-            </div>
-
-            <div>
-              <p className="font-bold">Size</p>
-              <p className="text-amber-500">
-                {formatSize(props.collection.totalSizeBytes)}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="font-bold">Delete</p>
-              <p className="text-amber-500">
-                {props.collection.deleteAfterDays == null
-                  ? 'Never'
-                  : `After ${props.collection.deleteAfterDays} days`}
               </p>
             </div>
           </div>

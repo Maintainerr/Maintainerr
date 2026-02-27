@@ -134,54 +134,52 @@ const RuleGroup = (props: {
             </button>
           )}
         </div>
-        <div className="h-12 max-h-12 overflow-y-hidden text-zinc-400 hover:overflow-y-scroll">
+        <div className="tiny-scrollbar mb-2 mt-2 h-12 max-h-12 overflow-y-hidden whitespace-normal pr-2 text-base text-zinc-400 hover:overflow-y-auto">
           {props.group.description}
         </div>
       </div>
-      <div className="inset-0 z-0 h-fit p-3">
-        <div className="mb-5 mt-5 grid grid-cols-3 gap-3">
-          <div>
-            <div className="flex justify-center font-bold">Status</div>
-            <div>
-              {props.group.isActive ? (
-                <span className="flex justify-center text-green-500">
-                  Active
-                </span>
-              ) : (
-                <span className="flex justify-center text-red-500">
-                  Inactive
-                </span>
-              )}
+      <div className="inset-0 z-0 p-3 pt-0">
+        <div className="mt-2">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 sm:gap-y-2 [&>div:nth-child(2n)]:text-right sm:[&>div:nth-child(2n)]:text-left sm:[&>div:nth-child(3n)]:text-right sm:[&>div:nth-child(3n-1)]:text-center">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Status
+              </p>
+              <p>
+                {props.group.isActive ? (
+                  <span className="text-green-500">Active</span>
+                ) : (
+                  <span className="text-red-500">Inactive</span>
+                )}
+              </p>
             </div>
-          </div>
-          <div>
-            <div className="m-auto mr-2 flex justify-center font-bold">
-              Library
-            </div>
-            <div className="flex justify-center text-amber-500">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Library
+              </p>
               {hasNoLibrary ? (
-                <span
-                  className="flex justify-center text-red-500"
+                <p
+                  className="truncate text-red-500"
                   title="Please edit this rule and select a library"
                 >
                   Not set
-                </span>
+                </p>
               ) : (
-                (libraries?.find((lib) => lib.id === props.group.libraryId)
-                  ?.title ?? '')
+                <p className="truncate text-amber-500">
+                  {libraries?.find((lib) => lib.id === props.group.libraryId)
+                    ?.title ?? '-'}
+                </p>
               )}
             </div>
-          </div>
-          <div>
-            <div className="m-auto mr-2 flex justify-center font-bold">
-              Rules
-            </div>
-            <div className="flex justify-center text-amber-500">
-              {props.group.rules.length}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Rules
+              </p>
+              <p className="text-amber-500">{props.group.rules.length}</p>
             </div>
           </div>
         </div>
-        <div className="grid w-full grid-cols-1 xl:grid-cols-2">
+        <div className="mt-3 grid w-full grid-cols-1 xl:grid-cols-2">
           <div>
             <EditButton
               onClick={onEdit}
