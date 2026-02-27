@@ -689,10 +689,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return favoritedBy;
     } catch (error) {
-      this.logger.error(
-        `Failed to get favorited-by list for ${itemId}`,
-        error,
-      );
+      this.logger.error(`Failed to get favorited-by list for ${itemId}`, error);
       return [];
     }
   }
