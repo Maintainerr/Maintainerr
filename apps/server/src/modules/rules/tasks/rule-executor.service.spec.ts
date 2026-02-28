@@ -201,6 +201,35 @@ describe('RuleExecutorService', () => {
     );
   });
 
+  it('does not re-add a rule-removed item as manual when media server returns stale children', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.PLEX,
+    );
+
+    // Media server still returns the item as a child (stale / sync delay)
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-stale' }]);
+    // DB no longer has the item (rule already removed it)
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(['m-stale']), // item was touched by rule execution
+    );
+
+    // Should NOT be re-added as manual
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+  });
+
   it('emits failed and skips execution when rule group has no library assigned', async () => {
     const { service, rulesService, eventEmitter, progressManager } =
       createService(MediaServerType.JELLYFIN);
