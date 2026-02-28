@@ -1,31 +1,32 @@
 import { Controller, Delete, Get, Param } from '@nestjs/common';
-import { OverseerrApiService } from './overseerr-api.service';
+import { SeerrApiService } from './seerr-api.service';
 
-@Controller('api/overseerr')
-export class OverseerrApiController {
-  constructor(private readonly overseerApi: OverseerrApiService) {}
+@Controller(['api/seerr', 'api/overseerr', 'api/jellyseerr'])
+export class SeerrApiController {
+  constructor(private readonly seerrApi: SeerrApiService) {}
 
   @Get('movie/:id')
   getMovie(@Param('id') id: string) {
-    return this.overseerApi.getMovie(id);
+    return this.seerrApi.getMovie(id);
   }
 
   @Get('show/:id')
   getShow(@Param('id') id: string) {
-    return this.overseerApi.getShow(id);
+    return this.seerrApi.getShow(id);
   }
 
   @Delete('request/:requestId')
   deleteRequest(@Param('requestId') requestId: string) {
-    return this.overseerApi.deleteRequest(requestId);
+    return this.seerrApi.deleteRequest(requestId);
   }
 
   @Delete('media/:mediaId')
   deleteMedia(@Param('mediaId') mediaId: string) {
-    return this.overseerApi.deleteMediaItem(mediaId);
+    return this.seerrApi.deleteMediaItem(mediaId);
   }
+
   @Delete('media/tmdb/:mediaId')
   removeMediaByTmdbId(@Param('mediaId') mediaId: string) {
-    return this.overseerApi.removeMediaByTmdbId(mediaId, 'movie');
+    return this.seerrApi.removeMediaByTmdbId(mediaId, 'movie');
   }
 }

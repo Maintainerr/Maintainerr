@@ -27,7 +27,7 @@ interface ISettings {
   applicationTitle: string
   applicationUrl: string
   apikey: string
-  overseerr_url: string
+  seerr_url: string
   locale: string
   // Media server type - null when not yet selected
   media_server_type?: MediaServerType | null
@@ -42,12 +42,10 @@ interface ISettings {
   jellyfin_api_key?: string
   jellyfin_user_id?: string
   jellyfin_server_name?: string
-  // Third-party integrations
-  overseerr_api_key: string
+  // Seerr integration
+  seerr_api_key: string
   tautulli_url: string
   tautulli_api_key: string
-  jellyseerr_url: string
-  jellyseerr_api_key: string
   collection_handler_job_cron: string
   rules_handler_job_cron: string
 }

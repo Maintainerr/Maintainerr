@@ -82,8 +82,7 @@ export interface MediaServerSwitchPreview {
     generalSettings: boolean
     radarrSettings: number
     sonarrSettings: number
-    overseerrSettings: boolean
-    jellyseerrSettings: boolean
+    seerrSettings: boolean
     tautulliSettings: boolean
     notificationSettings: boolean
   }

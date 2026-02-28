@@ -21,8 +21,9 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   apikey: string;
 
+  // Seerr integration
   @Column({ nullable: true })
-  overseerr_url: string;
+  seerr_url: string;
 
   @Column({ nullable: false, default: 'en' })
   locale: string;
@@ -60,21 +61,15 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   jellyfin_server_name?: string;
 
-  // Third-party integrations
+  // Seerr integration
   @Column({ nullable: true })
-  overseerr_api_key: string;
+  seerr_api_key: string;
 
   @Column({ nullable: true })
   tautulli_url: string;
 
   @Column({ nullable: true })
   tautulli_api_key: string;
-
-  @Column({ nullable: true })
-  jellyseerr_url: string;
-
-  @Column({ nullable: true })
-  jellyseerr_api_key: string;
 
   @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
   collection_handler_job_cron: string;
