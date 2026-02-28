@@ -131,6 +131,8 @@ export class RuleExecutorService {
           totalEvaluations: totalEvaluations,
         });
 
+        let touchedMediaServerIds = new Set<string>();
+
         if (ruleGroup.useRules) {
           this.logger.log(`Executing rules for '${ruleGroup.name}'`);
           this.startTime = new Date();
@@ -170,7 +172,7 @@ export class RuleExecutorService {
             }
           }
 
-          await this.handleCollection(
+          touchedMediaServerIds = await this.handleCollection(
             await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
           );
 
@@ -179,6 +181,7 @@ export class RuleExecutorService {
 
         await this.syncManualMediaServerToCollectionDB(
           await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+          touchedMediaServerIds,
         );
       } else {
         this.logger.warn(
@@ -208,7 +211,10 @@ export class RuleExecutorService {
     );
   }
 
-  private async syncManualMediaServerToCollectionDB(rulegroup: RuleGroup) {
+  private async syncManualMediaServerToCollectionDB(
+    rulegroup: RuleGroup,
+    touchedMediaServerIds: Set<string>,
+  ) {
     if (rulegroup && rulegroup.collectionId) {
       let collection = await this.collectionService.getCollection(
         rulegroup.collectionId,
@@ -295,25 +301,26 @@ export class RuleExecutorService {
           shouldCheckRemovals
         ) {
           for (const mediaItem of collectionMedia) {
-            if (mediaItem && mediaItem.mediaServerId) {
-              if (
-                !children ||
-                !children.find(
-                  (e) => mediaItem.mediaServerId === e.id.toString(),
-                )
-              ) {
-                await this.collectionService.removeFromCollection(
-                  collection.id,
-                  [
-                    {
-                      mediaServerId: mediaItem.mediaServerId,
-                      reason: {
-                        type: 'media_removed_manually',
-                      },
-                    },
-                  ] satisfies AddRemoveCollectionMedia[],
-                );
-              }
+            if (!mediaItem?.mediaServerId) {
+              continue;
+            }
+
+            if (touchedMediaServerIds.has(mediaItem.mediaServerId)) {
+              continue;
+            }
+
+            if (
+              !children ||
+              !children.find((e) => mediaItem.mediaServerId === e.id.toString())
+            ) {
+              await this.collectionService.removeFromCollection(collection.id, [
+                {
+                  mediaServerId: mediaItem.mediaServerId,
+                  reason: {
+                    type: 'media_removed_manually',
+                  },
+                },
+              ] satisfies AddRemoveCollectionMedia[]);
             }
           }
         }
@@ -329,7 +336,7 @@ export class RuleExecutorService {
     }
   }
 
-  private async handleCollection(rulegroup: RuleGroup) {
+  private async handleCollection(rulegroup: RuleGroup): Promise<Set<string>> {
     try {
       let collection = await this.collectionService.getCollection(
         rulegroup?.collectionId,
@@ -464,19 +471,6 @@ export class RuleExecutorService {
                 : collection.title
             }'.`,
           );
-
-          this.eventEmitter.emit(
-            MaintainerrEvent.CollectionMedia_Removed,
-            new CollectionMediaRemovedDto(
-              dataToRemove,
-              collection.title,
-              {
-                type: 'rulegroup',
-                value: rulegroup.id,
-              },
-              collection.deleteAfterDays,
-            ),
-          );
         }
 
         if (dataToAdd.length > 0) {
@@ -486,16 +480,6 @@ export class RuleExecutorService {
                 ? collection.manualCollectionName
                 : collection.title
             }'.`,
-          );
-
-          this.eventEmitter.emit(
-            MaintainerrEvent.CollectionMedia_Added,
-            new CollectionMediaAddedDto(
-              dataToAdd,
-              collection.title,
-              { type: 'rulegroup', value: rulegroup.id },
-              collection.deleteAfterDays,
-            ),
           );
         }
 
@@ -512,10 +496,59 @@ export class RuleExecutorService {
           dataToRemove,
         );
 
+        // Determine which items were actually added/removed by comparing DB state
+        const updatedMediaServerIds = new Set(
+          (
+            (await this.collectionService.getCollectionMedia(collection.id)) ??
+            []
+          ).map((e) => e.mediaServerId),
+        );
+
+        const addedToCollection = dataToAdd.filter(
+          (m) =>
+            updatedMediaServerIds.has(m.mediaServerId) &&
+            !currentMediaServerIds.has(m.mediaServerId),
+        );
+        const removedFromCollection = dataToRemove.filter(
+          (m) =>
+            !updatedMediaServerIds.has(m.mediaServerId) &&
+            currentMediaServerIds.has(m.mediaServerId),
+        );
+
+        if (removedFromCollection.length > 0) {
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Removed,
+            new CollectionMediaRemovedDto(
+              removedFromCollection,
+              collection.title,
+              {
+                type: 'rulegroup',
+                value: rulegroup.id,
+              },
+              collection.deleteAfterDays,
+            ),
+          );
+        }
+
+        if (addedToCollection.length > 0) {
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Added,
+            new CollectionMediaAddedDto(
+              addedToCollection,
+              collection.title,
+              { type: 'rulegroup', value: rulegroup.id },
+              collection.deleteAfterDays,
+            ),
+          );
+        }
+
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);
 
-        return collection;
+        return new Set<string>([
+          ...addedToCollection.map((item) => item.mediaServerId),
+          ...removedFromCollection.map((item) => item.mediaServerId),
+        ]);
       } else {
         this.logger.log(
           `collection not found with id ${rulegroup.collectionId}`,
@@ -528,6 +561,8 @@ export class RuleExecutorService {
             value: rulegroup.id,
           }),
         );
+
+        return new Set<string>();
       }
     } catch (err) {
       this.logger.warn(
@@ -541,6 +576,8 @@ export class RuleExecutorService {
           value: rulegroup.id,
         }),
       );
+
+      return new Set<string>();
     }
   }
 

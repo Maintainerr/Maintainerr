@@ -1,13 +1,11 @@
 import {
   MediaItem,
   MediaItemType,
-  MediaUser,
   RequestMediaStatus,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
-import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import {
   SeerrApiService,
   SeerrMovieResponse,
@@ -43,10 +41,6 @@ export class SeerrGetterService {
     ).props;
   }
 
-  private async getMediaServer(): Promise<IMediaServerService> {
-    return this.mediaServerFactory.getService();
-  }
-
   async get(id: number, libItem: MediaItem, dataType?: MediaItemType) {
     try {
       let origLibItem: MediaItem = undefined;
@@ -57,7 +51,7 @@ export class SeerrGetterService {
       // get original show in case of season / episode
       if (dataType === 'season' || dataType === 'episode') {
         origLibItem = _.cloneDeep(libItem);
-        const mediaServer = await this.getMediaServer();
+        const mediaServer = await this.mediaServerFactory.getService();
         libItem = await mediaServer.getMetadata(
           dataType === 'season' ? libItem.parentId : libItem.grandparentId,
         );
@@ -102,50 +96,27 @@ export class SeerrGetterService {
             try {
               const userNames: string[] = [];
               if (mediaResponse.mediaInfo.requests) {
-                let mediaServerUsers: MediaUser[] | null = null;
-
                 for (const request of mediaResponse.mediaInfo.requests) {
+                  const isSeasonOrEpisode =
+                    dataType === 'season' || dataType === 'episode';
+
+                  // For seasons/episodes, only include if the request covers the correct season
                   if (
-                    (dataType === 'season' || dataType === 'episode') &&
-                    request.type === 'tv'
-                  ) {
-                    const includesSeason = this.includesSeason(
+                    isSeasonOrEpisode &&
+                    request.type === 'tv' &&
+                    !this.includesSeason(
                       request.seasons,
                       dataType === 'season'
                         ? origLibItem.index
                         : origLibItem.parentIndex,
-                    );
-                    if (includesSeason) {
-                      const username = await this.resolveRequestUsername(
-                        request,
-                        mediaServerUsers,
-                        async () => {
-                          if (!mediaServerUsers) {
-                            const mediaServer = await this.getMediaServer();
-                            mediaServerUsers = await mediaServer.getUsers();
-                          }
-                          return mediaServerUsers;
-                        },
-                      );
-                      if (username) {
-                        userNames.push(username);
-                      }
-                    }
-                  } else {
-                    const username = await this.resolveRequestUsername(
-                      request,
-                      mediaServerUsers,
-                      async () => {
-                        if (!mediaServerUsers) {
-                          const mediaServer = await this.getMediaServer();
-                          mediaServerUsers = await mediaServer.getUsers();
-                        }
-                        return mediaServerUsers;
-                      },
-                    );
-                    if (username) {
-                      userNames.push(username);
-                    }
+                    )
+                  ) {
+                    continue;
+                  }
+
+                  const username = this.resolveRequestUsername(request);
+                  if (username) {
+                    userNames.push(username);
                   }
                 }
                 return [...new Set(userNames)];
@@ -154,6 +125,7 @@ export class SeerrGetterService {
             } catch (e) {
               this.logger.warn("Couldn't get addUser from Seerr");
               this.logger.debug(e);
+              return null;
             }
           }
           case 'amountRequested': {
@@ -298,43 +270,28 @@ export class SeerrGetterService {
 
   /**
    * Resolves the username from a Seerr request.
-   * Handles all user types (Plex, local, Jellyfin, Emby):
-   * - userType 2: Local user - uses username directly
-   * - userType 3/4: Jellyfin/Emby user - uses jellyfinUsername directly
-   * - userType 1 (or other): Plex user - looks up in media server users by ID
+   *
+   * Uses the username fields directly from the Seerr API response
+   * rather than looking up users by ID on the media server, because
+   * media server user IDs don't match Seerr's plexId (Plex.tv ID).
+   *
+   * Seerr user types store their name in different fields:
+   * - Plex (1): plexUsername
+   * - Local (2): username
+   * - Jellyfin (3) / Emby (4): jellyfinUsername
    */
-  private async resolveRequestUsername(
-    request: {
-      requestedBy?: {
-        userType?: number;
-        username?: string;
-        jellyfinUsername?: string;
-        plexId?: number;
-      };
-    },
-    cachedUsers: MediaUser[] | null,
-    fetchUsers: () => Promise<MediaUser[]>,
-  ): Promise<string | undefined> {
-    const requestedBy = request.requestedBy;
-    if (!requestedBy) return undefined;
+  private resolveRequestUsername(request: {
+    requestedBy?: {
+      plexUsername?: string;
+      jellyfinUsername?: string;
+      username?: string;
+    };
+  }): string | undefined {
+    const user = request.requestedBy;
+    if (!user) return undefined;
 
-    // Local user - use username directly
-    if (requestedBy.userType === 2) {
-      return requestedBy.username;
-    }
-
-    // Jellyfin/Emby user - use jellyfinUsername directly
-    if (requestedBy.userType === 3 || requestedBy.userType === 4) {
-      return requestedBy.jellyfinUsername;
-    }
-
-    // Plex user (or unknown) - look up in media server users
-    if (requestedBy.plexId) {
-      const users = cachedUsers ?? (await fetchUsers());
-      const user = users.find((u) => u.id === String(requestedBy.plexId));
-      return user?.name;
-    }
-
-    return undefined;
+    return (
+      user.plexUsername || user.jellyfinUsername || user.username || undefined
+    );
   }
 }
