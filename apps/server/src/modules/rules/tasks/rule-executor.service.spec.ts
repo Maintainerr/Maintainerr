@@ -115,12 +115,18 @@ describe('RuleExecutorService', () => {
 
     await (
       service as unknown as {
-        syncManualMediaServerToCollectionDB: (ruleGroup: {
-          id: number;
-          collectionId: number;
-        }) => Promise<void>;
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
       }
-    ).syncManualMediaServerToCollectionDB({ id: 10, collectionId: 1 });
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
 
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
   });
@@ -130,12 +136,18 @@ describe('RuleExecutorService', () => {
 
     await (
       service as unknown as {
-        syncManualMediaServerToCollectionDB: (ruleGroup: {
-          id: number;
-          collectionId: number;
-        }) => Promise<void>;
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
       }
-    ).syncManualMediaServerToCollectionDB({ id: 10, collectionId: 1 });
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
 
     expect(collectionService.removeFromCollection).toHaveBeenCalledWith(
       1,
@@ -163,12 +175,18 @@ describe('RuleExecutorService', () => {
 
     await (
       service as unknown as {
-        syncManualMediaServerToCollectionDB: (ruleGroup: {
-          id: number;
-          collectionId: number;
-        }) => Promise<void>;
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
       }
-    ).syncManualMediaServerToCollectionDB({ id: 10, collectionId: 1 });
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
 
     expect(collectionService.addToCollection).toHaveBeenCalledTimes(1);
     expect(collectionService.addToCollection).toHaveBeenCalledWith(

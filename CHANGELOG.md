@@ -1,3 +1,11 @@
+## [3.0.1](https://github.com/maintainerr/Maintainerr/compare/v3.0.0...v3.0.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* emit collection notification events only after successful operations ([#2429](https://github.com/maintainerr/Maintainerr/issues/2429)) ([d0a11e9](https://github.com/maintainerr/Maintainerr/commit/d0a11e90bdea562b4677c152516a31f8b934925d))
+* **server:** resolve Seerr addUser returning NULL ([#2436](https://github.com/maintainerr/Maintainerr/issues/2436)) ([c4eb986](https://github.com/maintainerr/Maintainerr/commit/c4eb98606029ac56d2cba7c079ca589a03d213a6)), closes [#2434](https://github.com/maintainerr/Maintainerr/issues/2434)
+
 # [3.0.0](https://github.com/maintainerr/Maintainerr/compare/v2.27.0...v3.0.0) (2026-02-28)
 
 
