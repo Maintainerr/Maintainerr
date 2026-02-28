@@ -1,6 +1,6 @@
 import { ICollection } from '..'
 import { useMediaServerLibraries } from '../../../api/media-server'
-import { type MediaItemType } from '@maintainerr/contracts'
+import { MediaItemTypeLabels } from '@maintainerr/contracts'
 
 interface ICollectionItem {
   collection: ICollection
@@ -18,21 +18,6 @@ function formatSize(bytes: number | null | undefined): string {
 
 const CollectionItem = (props: ICollectionItem) => {
   const { data: libraries } = useMediaServerLibraries()
-  const getMediaTypeLabel = (type: MediaItemType) => {
-    switch (type) {
-      case 'movie':
-        return 'Movies'
-      case 'show':
-        return 'Shows'
-      case 'season':
-        return 'Seasons'
-      case 'episode':
-        return 'Episodes'
-      default:
-        return 'Unknown'
-    }
-  }
-
   return (
     <>
       <a
@@ -95,7 +80,7 @@ const CollectionItem = (props: ICollectionItem) => {
                   Media Type
                 </p>
                 <p className="text-amber-500">
-                  {getMediaTypeLabel(props.collection.type)}
+                  {MediaItemTypeLabels[props.collection.type]}
                 </p>
               </div>
             ) : (
