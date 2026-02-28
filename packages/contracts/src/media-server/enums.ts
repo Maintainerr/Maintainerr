@@ -16,12 +16,15 @@ export const MediaItemTypes: MediaItemType[] = [
 /** Display labels keyed by MediaItemType (derived). */
 export const MediaItemTypeLabels: Record<MediaItemType, string> =
   Object.fromEntries(
-    MediaItemTypes.map((t) => [t, t.charAt(0).toUpperCase() + t.slice(1) + 's']),
+    MediaItemTypes.map((t) => [
+      t,
+      t.charAt(0).toUpperCase() + t.slice(1) + 's',
+    ]),
   ) as Record<MediaItemType, string>
 
 /** Uppercase type strings for serialization, e.g. YAML export (derived). */
-export const MediaDataTypeStrings: string[] = MediaItemTypes.map(
-  (t) => MediaItemTypeLabels[t].toUpperCase(),
+export const MediaDataTypeStrings: string[] = MediaItemTypes.map((t) =>
+  MediaItemTypeLabels[t].toUpperCase(),
 )
 
 export function isMediaType(
