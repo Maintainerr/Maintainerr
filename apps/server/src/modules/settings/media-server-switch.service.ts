@@ -202,7 +202,9 @@ export class MediaServerSwitchService {
       this.uninitializeOldServer(currentServerType);
 
       this.logger.log(
-        `Successfully switched media server to ${targetServerType}`,
+        currentServerType
+          ? `Successfully switched media server to ${targetServerType}`
+          : `Successfully set media server to ${targetServerType}`,
       );
 
       const response: SwitchMediaServerResponse = {
