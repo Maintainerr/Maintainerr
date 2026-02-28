@@ -492,6 +492,7 @@ export class JellyfinAdapterService implements IMediaServerService {
             ItemFields.ProviderIds,
             ItemFields.Path,
             ItemFields.DateCreated,
+            ItemFields.MediaSources,
           ],
           enableUserData: true,
         });
@@ -507,6 +508,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.ProviderIds,
           ItemFields.Path,
           ItemFields.DateCreated,
+          ItemFields.MediaSources,
         ],
         enableUserData: true,
         // Filter by item type - defaults to all media types if not specified
