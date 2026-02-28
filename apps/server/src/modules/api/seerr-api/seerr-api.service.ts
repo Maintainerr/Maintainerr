@@ -10,9 +10,9 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
-import { OverseerrApi } from './helpers/overseerr-api.helper';
+import { SeerrApi } from './helpers/seerr-api.helper';
 
-interface OverseerrMediaInfo {
+interface SeerrMediaInfo {
   id: number;
   tmdbId: number;
   tvdbId: number;
@@ -23,38 +23,38 @@ interface OverseerrMediaInfo {
   externalServiceId4k: number;
 }
 
-export interface OverSeerrMovieResponse {
+export interface SeerrMovieResponse {
   id: number;
-  mediaInfo?: OverseerrMovieInfo;
+  mediaInfo?: SeerrMovieInfo;
   releaseDate?: Date;
 }
 
-interface OverseerrMovieInfo extends OverseerrMediaInfo {
+interface SeerrMovieInfo extends SeerrMediaInfo {
   mediaType: 'movie';
-  requests?: OverseerrMovieRequest[];
+  requests?: SeerrMovieRequest[];
 }
 
-export interface OverSeerrTVResponse {
+export interface SeerrTVResponse {
   id: number;
-  mediaInfo?: OverseerrTVInfo;
+  mediaInfo?: SeerrTVInfo;
   firstAirDate?: Date;
 }
 
-interface OverseerrTVInfo extends OverseerrMediaInfo {
+interface SeerrTVInfo extends SeerrMediaInfo {
   mediaType: 'tv';
-  requests?: OverseerrTVRequest[];
-  seasons?: OverSeerrSeasonResponse[];
+  requests?: SeerrTVRequest[];
+  seasons?: SeerrSeasonResponse[];
 }
 
-export interface OverSeerrSeasonResponse {
+export interface SeerrSeasonResponse {
   id: number;
   name: string;
   airDate?: string;
   seasonNumber: number;
-  episodes: OverseerrEpisode[];
+  episodes: SeerrEpisode[];
 }
 
-interface OverseerrEpisode {
+interface SeerrEpisode {
   id: number;
   name: string;
   airDate?: string;
@@ -62,39 +62,40 @@ interface OverseerrEpisode {
   episodeNumber: number;
 }
 
-export type OverseerrBaseRequest = {
+export type SeerrBaseRequest = {
   id: number;
   status: number;
   createdAt: string;
   updatedAt: string;
-  requestedBy: OverseerrUser;
-  modifiedBy: OverseerrUser;
+  requestedBy: SeerrUser;
+  modifiedBy: SeerrUser;
   is4k: false;
   serverId: number;
   profileId: number;
   rootFolder: string;
 };
 
-export type OverseerrTVRequest = OverseerrBaseRequest & {
+export type SeerrTVRequest = SeerrBaseRequest & {
   type: 'tv';
-  media: OverseerrTVInfo;
-  seasons: OverseerrSeasonRequest[];
+  media: SeerrTVInfo;
+  seasons: SeerrSeasonRequest[];
 };
 
-export type OverseerrMovieRequest = OverseerrBaseRequest & {
+export type SeerrMovieRequest = SeerrBaseRequest & {
   type: 'movie';
-  media: OverseerrMovieInfo;
+  media: SeerrMovieInfo;
 };
 
-export type OverseerrRequest = OverseerrMovieRequest | OverseerrTVRequest;
+export type SeerrRequest = SeerrMovieRequest | SeerrTVRequest;
 
-interface OverseerrUser {
+interface SeerrUser {
   id: number;
   email: string;
   username: string;
   plexToken: string;
   plexId?: number;
   plexUsername: string;
+  jellyfinUsername?: string;
   userType: number;
   permissions: number;
   avatar: string;
@@ -103,39 +104,39 @@ interface OverseerrUser {
   requestCount: number;
 }
 
-export interface OverseerrSeasonRequest {
+export interface SeerrSeasonRequest {
   id: number;
   name: string;
   seasonNumber: number;
 }
 
-interface OverseerrStatus {
+interface SeerrStatus {
   version: string;
   commitTag: string;
   updateAvailable: boolean;
   commitsBehind: number;
 }
 
-interface OverseerrAbout {
+interface SeerrAbout {
   version: string;
 }
 
-export interface OverseerBasicApiResponse {
+export interface SeerrBasicApiResponse {
   code: string;
   description: string;
 }
 
-interface OverseerrUserResponse {
+interface SeerrUserResponse {
   pageInfo: {
     pages: number;
     pageSize: number;
     results: number;
     page: number;
   };
-  results: OverseerrUserResponseResult[];
+  results: SeerrUserResponseResult[];
 }
 
-interface OverseerrUserResponseResult {
+interface SeerrUserResponseResult {
   permissions: number;
   id: number;
   email: string;
@@ -151,8 +152,8 @@ interface OverseerrUserResponseResult {
 }
 
 @Injectable()
-export class OverseerrApiService {
-  api: OverseerrApi;
+export class SeerrApiService {
+  api: SeerrApi;
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
@@ -160,50 +161,46 @@ export class OverseerrApiService {
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
-    this.logger.setContext(OverseerrApiService.name);
+    this.logger.setContext(SeerrApiService.name);
   }
 
   public init() {
-    if (!this.settings.overseerr_url) {
+    if (!this.settings.seerr_url) {
       return;
     }
 
-    this.api = new OverseerrApi(
+    this.api = new SeerrApi(
       {
-        url: `${this.settings.overseerr_url.replace(/\/$/, '')}/api/v1`,
-        apiKey: `${this.settings.overseerr_api_key}`,
+        url: `${this.settings.seerr_url.replace(/\/$/, '')}/api/v1`,
+        apiKey: `${this.settings.seerr_api_key}`,
       },
       this.loggerFactory.createLogger(),
     );
   }
 
-  public async getMovie(id: string | number): Promise<OverSeerrMovieResponse> {
+  public async getMovie(id: string | number): Promise<SeerrMovieResponse> {
     try {
-      const response: OverSeerrMovieResponse = await this.api.get(
-        `/movie/${id}`,
-      );
+      const response: SeerrMovieResponse = await this.api.get(`/movie/${id}`);
       return response;
     } catch (err) {
       this.logger.warn(
-        'Overseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
     }
   }
 
-  public async getShow(showId: string | number): Promise<OverSeerrTVResponse> {
+  public async getShow(showId: string | number): Promise<SeerrTVResponse> {
     try {
       if (showId) {
-        const response: OverSeerrTVResponse = await this.api.get(
-          `/tv/${showId}`,
-        );
+        const response: SeerrTVResponse = await this.api.get(`/tv/${showId}`);
         return response;
       }
       return undefined;
     } catch (err) {
       this.logger.warn(
-        'Overseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
@@ -213,10 +210,10 @@ export class OverseerrApiService {
   public async getSeason(
     showId: string | number,
     season: string,
-  ): Promise<OverSeerrSeasonResponse> {
+  ): Promise<SeerrSeasonResponse> {
     try {
       if (showId) {
-        const response: OverSeerrSeasonResponse = await this.api.get(
+        const response: SeerrSeasonResponse = await this.api.get(
           `/tv/${showId}/season/${season}`,
         );
         return response;
@@ -224,23 +221,23 @@ export class OverseerrApiService {
       return undefined;
     } catch (err) {
       this.logger.warn(
-        'Overseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
     }
   }
 
-  public async getUsers(): Promise<any> {
+  public async getUsers(): Promise<SeerrUserResponseResult[]> {
     try {
       const size = 50;
       let hasNext = true;
       let skip = 0;
 
-      const users: OverseerrUserResponseResult[] = [];
+      const users: SeerrUserResponseResult[] = [];
 
       while (hasNext) {
-        const resp: OverseerrUserResponse = await this.api.get(
+        const resp: SeerrUserResponse = await this.api.get(
           `/user?take=${size}&skip=${skip}`,
         );
 
@@ -255,7 +252,7 @@ export class OverseerrApiService {
       return users;
     } catch (err) {
       this.logger.warn(
-        `Couldn't fetch Overseerr users. Is the application running?`,
+        `Couldn't fetch Seerr users. Is the application running?`,
       );
       this.logger.debug(err);
       return [];
@@ -264,13 +261,13 @@ export class OverseerrApiService {
 
   public async deleteRequest(requestId: string) {
     try {
-      const response: OverseerBasicApiResponse = await this.api.delete(
+      const response: SeerrBasicApiResponse = await this.api.delete(
         `/request/${requestId}`,
       );
       return response;
     } catch (err) {
       this.logger.warn(
-        'Overseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
@@ -290,13 +287,13 @@ export class OverseerrApiService {
             await this.deleteRequest(el.id.toString());
           }
         } else {
-          // no requests ? clear data and let Overseerr refetch.
+          // no requests? clear data and let Seerr refetch.
           await this.api.delete(`/media/${media.id}`);
         }
       }
     } catch (err) {
       this.logger.warn(
-        'Overseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
@@ -305,13 +302,13 @@ export class OverseerrApiService {
 
   public async deleteMediaItem(mediaId: string | number) {
     try {
-      const response: OverseerBasicApiResponse = await this.api.delete(
+      const response: SeerrBasicApiResponse = await this.api.delete(
         `/media/${mediaId}`,
       );
       return response;
     } catch (e) {
       this.logger.log(
-        `Couldn't delete media ${mediaId}. Does it exist in Overseerr? ${e.message}`,
+        `Couldn't delete media ${mediaId}. Does it exist in Seerr? ${e.message}`,
       );
       this.logger.debug(e);
       return null;
@@ -320,7 +317,7 @@ export class OverseerrApiService {
 
   public async removeMediaByTmdbId(id: string | number, type: 'movie' | 'tv') {
     try {
-      let media: OverSeerrMovieResponse | OverSeerrTVResponse;
+      let media: SeerrMovieResponse | SeerrTVResponse;
       if (type === 'movie') {
         media = await this.getMovie(id);
       } else {
@@ -335,39 +332,36 @@ export class OverseerrApiService {
         await this.deleteMediaItem(media.mediaInfo.id.toString());
       } catch (e) {
         this.logger.log(
-          `Couldn't delete media by TMDB ID ${id}. Does it exist in Overseerr? ${e.message}`,
+          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr? ${e.message}`,
         );
       }
     } catch (err) {
       this.logger.warn(
-        'Overseerr communication failed. Is the application running?',
+        'Seerr communication failed. Is the application running?',
       );
       this.logger.debug(err);
       return undefined;
     }
   }
 
-  public async status(): Promise<OverseerrStatus> {
+  public async status(): Promise<SeerrStatus> {
     try {
-      const response: OverseerrStatus = await this.api.getWithoutCache(
-        `/status`,
-        {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
-        },
-      );
+      const response: SeerrStatus = await this.api.getWithoutCache(`/status`, {
+        signal: AbortSignal.timeout(10000),
+      });
       return response;
     } catch (e) {
-      this.logger.log(`Couldn't fetch Overseerr status: ${e.message}`);
+      this.logger.log(`Couldn't fetch Seerr status: ${e.message}`);
       this.logger.debug(e);
       return null;
     }
   }
 
   public async testConnection(
-    params?: ConstructorParameters<typeof OverseerrApi>[0],
+    params?: ConstructorParameters<typeof SeerrApi>[0],
   ): Promise<BasicResponseDto> {
     const api = params
-      ? new OverseerrApi(
+      ? new SeerrApi(
           {
             apiKey: params.apiKey,
             url: `${params.url?.replace(/\/$/, '')}/api/v1`,
@@ -377,7 +371,7 @@ export class OverseerrApiService {
       : this.api;
 
     try {
-      const response = await api.getRawWithoutCache<OverseerrAbout>(
+      const response = await api.getRawWithoutCache<SeerrAbout>(
         `/settings/about`,
         {
           signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
@@ -399,14 +393,14 @@ export class OverseerrApiService {
         message: response.data.version,
       };
     } catch (e) {
-      logConnectionTestError(this.logger, 'Overseerr', e);
+      logConnectionTestError(this.logger, 'Seerr', e);
 
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
           e,
-          'Failed to connect to Overseerr. Verify URL and API key.',
+          'Failed to connect to Seerr. Verify URL and API key.',
         ),
       };
     }

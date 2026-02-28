@@ -1,10 +1,9 @@
 import {
   BasicResponseDto,
   JellyfinSetting,
-  JellyseerrSetting,
   MaintainerrEvent,
   MediaServerType,
-  OverseerrSetting,
+  SeerrSetting,
   TautulliSetting,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
@@ -18,10 +17,9 @@ import {
   logConnectionTestError,
 } from '../../utils/connection-error';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
-import { JellyseerrApiService } from '../api/jellyseerr-api/jellyseerr-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import { OverseerrApiService } from '../api/overseerr-api/overseerr-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -74,17 +72,14 @@ export class SettingsService implements SettingDto {
 
   jellyfin_server_name?: string;
 
-  overseerr_url: string;
+  // Seerr settings
+  seerr_url: string;
 
-  overseerr_api_key: string;
+  seerr_api_key: string;
 
   tautulli_url: string;
 
   tautulli_api_key: string;
-
-  jellyseerr_url: string;
-
-  jellyseerr_api_key: string;
 
   collection_handler_job_cron: string;
 
@@ -97,12 +92,10 @@ export class SettingsService implements SettingDto {
     private readonly mediaServerFactory: MediaServerFactory,
     @Inject(forwardRef(() => ServarrService))
     private readonly servarr: ServarrService,
-    @Inject(forwardRef(() => OverseerrApiService))
-    private readonly overseerr: OverseerrApiService,
+    @Inject(forwardRef(() => SeerrApiService))
+    private readonly seerr: SeerrApiService,
     @Inject(forwardRef(() => TautulliApiService))
     private readonly tautulli: TautulliApiService,
-    @Inject(forwardRef(() => JellyseerrApiService))
-    private readonly jellyseerr: JellyseerrApiService,
     @Inject(forwardRef(() => InternalApiService))
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
@@ -138,12 +131,10 @@ export class SettingsService implements SettingDto {
       this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
       this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
       this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
-      this.overseerr_url = settingsDb?.overseerr_url;
-      this.overseerr_api_key = settingsDb?.overseerr_api_key;
+      this.seerr_url = settingsDb?.seerr_url;
+      this.seerr_api_key = settingsDb?.seerr_api_key;
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
-      this.jellyseerr_url = settingsDb?.jellyseerr_url;
-      this.jellyseerr_api_key = settingsDb?.jellyseerr_api_key;
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
@@ -219,9 +210,8 @@ export class SettingsService implements SettingDto {
       ...settings,
       plex_auth_token: this.maskSecret(settings.plex_auth_token),
       jellyfin_api_key: this.maskSecret(settings.jellyfin_api_key),
-      overseerr_api_key: this.maskSecret(settings.overseerr_api_key),
+      seerr_api_key: this.maskSecret(settings.seerr_api_key),
       tautulli_api_key: this.maskSecret(settings.tautulli_api_key),
-      jellyseerr_api_key: this.maskSecret(settings.jellyseerr_api_key),
     };
   }
 
@@ -394,46 +384,46 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  public async removeOverseerrSetting() {
+  public async removeSeerrSetting() {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
       await this.saveSettings({
         ...settingsDb,
-        overseerr_url: null,
-        overseerr_api_key: null,
+        seerr_url: null,
+        seerr_api_key: null,
       });
 
-      this.overseerr_url = null;
-      this.overseerr_api_key = null;
-      this.overseerr.init();
+      this.seerr_url = null;
+      this.seerr_api_key = null;
+      this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
-      this.logger.error('Error removing Overseerr settings: ', e);
+      this.logger.error('Error removing Seerr settings: ', e);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
 
-  public async updateOverseerrSetting(
-    settings: OverseerrSetting,
+  public async updateSeerrSetting(
+    settings: SeerrSetting,
   ): Promise<BasicResponseDto> {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
       await this.saveSettings({
         ...settingsDb,
-        overseerr_url: settings.url,
-        overseerr_api_key: settings.api_key,
+        seerr_url: settings.url,
+        seerr_api_key: settings.api_key,
       });
 
-      this.overseerr_url = settings.url;
-      this.overseerr_api_key = settings.api_key;
-      this.overseerr.init();
+      this.seerr_url = settings.url;
+      this.seerr_api_key = settings.api_key;
+      this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
-      this.logger.error('Error while updating Overseerr settings: ', e);
+      this.logger.error('Error while updating Seerr settings: ', e);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -817,7 +807,7 @@ export class SettingsService implements SettingDto {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
       settings.plex_hostname = settings.plex_hostname?.toLowerCase();
-      settings.overseerr_url = settings.overseerr_url?.toLowerCase();
+      settings.seerr_url = settings.seerr_url?.toLowerCase();
       settings.tautulli_url = settings.tautulli_url?.toLowerCase();
       settings.plex_ssl =
         settings.plex_hostname?.includes('https://') ||
@@ -836,10 +826,9 @@ export class SettingsService implements SettingDto {
       await this.init();
       this.logger.log('Settings updated');
       await this.plexApi.initialize();
-      this.overseerr.init();
+      this.seerr.init();
       this.tautulli.init();
       this.internalApi.init();
-      this.jellyseerr.init();
 
       // reload Collection handler job if changed
       if (
@@ -870,10 +859,8 @@ export class SettingsService implements SettingDto {
     );
   }
 
-  public async testOverseerr(
-    setting?: OverseerrSetting,
-  ): Promise<BasicResponseDto> {
-    return await this.overseerr.testConnection(
+  public async testSeerr(setting?: SeerrSetting): Promise<BasicResponseDto> {
+    return await this.seerr.testConnection(
       setting
         ? {
             apiKey: setting.api_key,
@@ -881,63 +868,6 @@ export class SettingsService implements SettingDto {
           }
         : undefined,
     );
-  }
-
-  public async testJellyseerr(
-    setting?: JellyseerrSetting,
-  ): Promise<BasicResponseDto> {
-    return await this.jellyseerr.testConnection(
-      setting
-        ? {
-            apiKey: setting.api_key,
-            url: setting.url,
-          }
-        : undefined,
-    );
-  }
-
-  public async removeJellyseerrSetting() {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        jellyseerr_url: null,
-        jellyseerr_api_key: null,
-      });
-
-      this.jellyseerr_url = null;
-      this.jellyseerr_api_key = null;
-      this.jellyseerr.init();
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error removing Jellyseerr settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
-  }
-
-  public async updateJellyseerrSetting(
-    settings: JellyseerrSetting,
-  ): Promise<BasicResponseDto> {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        jellyseerr_url: settings.url,
-        jellyseerr_api_key: settings.api_key,
-      });
-
-      this.jellyseerr_url = settings.url;
-      this.jellyseerr_api_key = settings.api_key;
-      this.jellyseerr.init();
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating Jellyseerr settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
   }
 
   public async testTautulli(
@@ -1098,9 +1028,8 @@ export class SettingsService implements SettingDto {
         mediaServerState,
         radarrResults,
         sonarrResults,
-        overseerrState,
+        seerrState,
         tautulliState,
-        jellyseerrState,
       ] = await Promise.all([
         this.testMediaServerConnection(),
         Promise.all(
@@ -1113,14 +1042,11 @@ export class SettingsService implements SettingDto {
             this.testSonarr(s.id).then((r) => r.status === 'OK'),
           ),
         ),
-        this.overseerrConfigured()
-          ? this.testOverseerr().then((r) => r.status === 'OK')
+        this.seerrConfigured()
+          ? this.testSeerr().then((r) => r.status === 'OK')
           : true,
         this.tautulliConfigured()
           ? this.testTautulli().then((r) => r.status === 'OK')
-          : true,
-        this.jellyseerrConfigured()
-          ? this.testJellyseerr().then((r) => r.status === 'OK')
           : true,
       ]);
 
@@ -1128,9 +1054,8 @@ export class SettingsService implements SettingDto {
         mediaServerState &&
         radarrResults.every(Boolean) &&
         sonarrResults.every(Boolean) &&
-        overseerrState &&
-        tautulliState &&
-        jellyseerrState
+        seerrState &&
+        tautulliState
       );
     } catch (e) {
       this.logger.debug(e);
@@ -1138,16 +1063,12 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  public overseerrConfigured(): boolean {
-    return this.overseerr_url !== null && this.overseerr_api_key !== null;
+  public seerrConfigured(): boolean {
+    return this.seerr_url !== null && this.seerr_api_key !== null;
   }
 
   public tautulliConfigured(): boolean {
     return this.tautulli_url !== null && this.tautulli_api_key !== null;
-  }
-
-  public jellyseerrConfigured(): boolean {
-    return this.jellyseerr_url !== null && this.jellyseerr_api_key !== null;
   }
 
   /**
