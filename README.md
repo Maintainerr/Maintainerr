@@ -42,12 +42,12 @@ It's a one-stop-shop for handling those outlying shows and movies that take up p
 <br />
 Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 
-- Plex
-- Jellyfin
-- Seerr
-- Radarr
-- Sonarr
-- Tautulli
+- [Plex](https://www.plex.tv/)
+- [Jellyfin](https://jellyfin.org/)
+- [Seerr](https://seerr.dev/)
+- [Radarr](https://radarr.video/)
+- [Sonarr](https://sonarr.tv/)
+- [Tautulli](https://tautulli.com/)
 
 # Preview
 

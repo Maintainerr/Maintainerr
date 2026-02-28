@@ -1,3 +1,26 @@
+# [3.0.0](https://github.com/maintainerr/Maintainerr/compare/v2.27.0...v3.0.0) (2026-02-28)
+
+
+* Add Jellyfin support ([#2330](https://github.com/maintainerr/Maintainerr/issues/2330)) ([174a5cb](https://github.com/maintainerr/Maintainerr/commit/174a5cb2c4e999470ea6af174787e49c19246e03))
+
+
+### Features
+
+* add Jellyfin favorites support as rule property ([#2393](https://github.com/maintainerr/Maintainerr/issues/2393)) ([c4e4238](https://github.com/maintainerr/Maintainerr/commit/c4e42381e119baac7e49cf4896d8489b5903b59c))
+* display total collection size in GB on dashboard cards ([#2394](https://github.com/maintainerr/Maintainerr/issues/2394)) ([77d85d5](https://github.com/maintainerr/Maintainerr/commit/77d85d5adb4f722c5433c851ecc37331d0700747))
+
+
+### refactore
+
+* unify Overseerr and Jellyseerr into single Seerr abstraction ([#2397](https://github.com/maintainerr/Maintainerr/issues/2397)) ([e52cfeb](https://github.com/maintainerr/Maintainerr/commit/e52cfeb5e3c7bf765239d5a87258b6e5acb74b79))
+
+
+### BREAKING CHANGES
+
+* The DB migrations completed here are not backwards compatible with pre-3.0 versions of Maintainerr.
+* Database schema updated to support multiple media servers. 
+This release is not backward compatible with pre-3.0 versions.
+
 # [2.27.0](https://github.com/maintainerr/Maintainerr/compare/v2.26.1...v2.27.0) (2026-02-21)
 
 

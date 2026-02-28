@@ -587,6 +587,24 @@
     scrollbar-width: none; /* Firefox */
   }
 
+  .tiny-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .tiny-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .tiny-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(82 82 91 / 0.7);
+    border-radius: 9999px;
+  }
+
+  .tiny-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(113 113 122 / 0.85);
+  }
+
   @media all and (display-mode: browser) {
     .pwa-only {
       @apply hidden;

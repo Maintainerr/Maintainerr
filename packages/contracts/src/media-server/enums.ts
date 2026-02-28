@@ -5,6 +5,7 @@ export enum MediaServerType {
 
 export type MediaItemType = 'movie' | 'show' | 'season' | 'episode'
 
+/** All MediaItemType values. Must match the MediaItemType union. */
 export const MediaItemTypes: MediaItemType[] = [
   'movie',
   'show',
@@ -12,12 +13,19 @@ export const MediaItemTypes: MediaItemType[] = [
   'episode',
 ]
 
-export const MediaDataTypeStrings: string[] = [
-  'MOVIES',
-  'SHOWS',
-  'SEASONS',
-  'EPISODES',
-]
+/** Display labels keyed by MediaItemType (derived). */
+export const MediaItemTypeLabels: Record<MediaItemType, string> =
+  Object.fromEntries(
+    MediaItemTypes.map((t) => [
+      t,
+      t.charAt(0).toUpperCase() + t.slice(1) + 's',
+    ]),
+  ) as Record<MediaItemType, string>
+
+/** Uppercase type strings for serialization, e.g. YAML export (derived). */
+export const MediaDataTypeStrings: string[] = MediaItemTypes.map((t) =>
+  MediaItemTypeLabels[t].toUpperCase(),
+)
 
 export function isMediaType(
   itemType: MediaItemType | null | undefined,
