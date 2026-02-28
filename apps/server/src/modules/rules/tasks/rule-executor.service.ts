@@ -50,7 +50,6 @@ export class RuleExecutorService {
   statisticsData: IComparisonStatistics[];
   Data: MediaItem[];
   startTime: Date;
-  touchedMediaServerIds: Set<string>;
 
   constructor(
     private readonly rulesService: RulesService,
@@ -65,7 +64,6 @@ export class RuleExecutorService {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
     this.mediaData = { page: 1, finished: false, data: [] };
-    this.touchedMediaServerIds = new Set<string>();
   }
 
   private async getMediaServer(): Promise<IMediaServerService> {
@@ -132,7 +130,8 @@ export class RuleExecutorService {
           name: ruleGroup.name,
           totalEvaluations: totalEvaluations,
         });
-        this.touchedMediaServerIds.clear();
+
+        let touchedMediaServerIds = new Set<string>();
 
         if (ruleGroup.useRules) {
           this.logger.log(`Executing rules for '${ruleGroup.name}'`);
@@ -173,7 +172,7 @@ export class RuleExecutorService {
             }
           }
 
-          await this.handleCollection(
+          touchedMediaServerIds = await this.handleCollection(
             await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
           );
 
@@ -182,6 +181,7 @@ export class RuleExecutorService {
 
         await this.syncManualMediaServerToCollectionDB(
           await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+          touchedMediaServerIds,
         );
       } else {
         this.logger.warn(
@@ -211,7 +211,10 @@ export class RuleExecutorService {
     );
   }
 
-  private async syncManualMediaServerToCollectionDB(rulegroup: RuleGroup) {
+  private async syncManualMediaServerToCollectionDB(
+    rulegroup: RuleGroup,
+    touchedMediaServerIds: Set<string>,
+  ) {
     if (rulegroup && rulegroup.collectionId) {
       let collection = await this.collectionService.getCollection(
         rulegroup.collectionId,
@@ -302,7 +305,7 @@ export class RuleExecutorService {
               continue;
             }
 
-            if (this.touchedMediaServerIds.has(mediaItem.mediaServerId)) {
+            if (touchedMediaServerIds.has(mediaItem.mediaServerId)) {
               continue;
             }
 
@@ -333,7 +336,7 @@ export class RuleExecutorService {
     }
   }
 
-  private async handleCollection(rulegroup: RuleGroup) {
+  private async handleCollection(rulegroup: RuleGroup): Promise<Set<string>> {
     try {
       let collection = await this.collectionService.getCollection(
         rulegroup?.collectionId,
@@ -542,12 +545,10 @@ export class RuleExecutorService {
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);
 
-        this.touchedMediaServerIds = new Set<string>([
+        return new Set<string>([
           ...addedToCollection.map((item) => item.mediaServerId),
           ...removedFromCollection.map((item) => item.mediaServerId),
         ]);
-
-        return collection;
       } else {
         this.logger.log(
           `collection not found with id ${rulegroup.collectionId}`,
@@ -561,7 +562,7 @@ export class RuleExecutorService {
           }),
         );
 
-        this.touchedMediaServerIds.clear();
+        return new Set<string>();
       }
     } catch (err) {
       this.logger.warn(
@@ -576,7 +577,7 @@ export class RuleExecutorService {
         }),
       );
 
-      this.touchedMediaServerIds.clear();
+      return new Set<string>();
     }
   }
 
