@@ -100,6 +100,9 @@ export class Collection {
   @Column({ nullable: true })
   sortTitle: string;
 
+  @Column({ type: 'bigint', nullable: true, default: null })
+  totalSizeBytes: number | null;
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,
