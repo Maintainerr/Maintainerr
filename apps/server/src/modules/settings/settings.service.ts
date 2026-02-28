@@ -1089,52 +1089,49 @@ export class SettingsService implements SettingDto {
         return false;
       }
 
-      const mediaServerState = await this.testMediaServerConnection();
+      const [radarrSettings, sonarrSettings] = await Promise.all([
+        this.radarrSettingsRepo.find(),
+        this.sonarrSettingsRepo.find(),
+      ]);
 
-      let radarrState = true;
-      let sonarrState = true;
-      let overseerrState = true;
-      let tautulliState = true;
-      let jellyseerrState = true;
+      const [
+        mediaServerState,
+        radarrResults,
+        sonarrResults,
+        overseerrState,
+        tautulliState,
+        jellyseerrState,
+      ] = await Promise.all([
+        this.testMediaServerConnection(),
+        Promise.all(
+          radarrSettings.map((s) =>
+            this.testRadarr(s.id).then((r) => r.status === 'OK'),
+          ),
+        ),
+        Promise.all(
+          sonarrSettings.map((s) =>
+            this.testSonarr(s.id).then((r) => r.status === 'OK'),
+          ),
+        ),
+        this.overseerrConfigured()
+          ? this.testOverseerr().then((r) => r.status === 'OK')
+          : true,
+        this.tautulliConfigured()
+          ? this.testTautulli().then((r) => r.status === 'OK')
+          : true,
+        this.jellyseerrConfigured()
+          ? this.testJellyseerr().then((r) => r.status === 'OK')
+          : true,
+      ]);
 
-      const radarrSettings = await this.radarrSettingsRepo.find();
-      for (const radarrSetting of radarrSettings) {
-        radarrState =
-          (await this.testRadarr(radarrSetting.id)).status === 'OK' &&
-          radarrState;
-      }
-
-      const sonarrSettings = await this.sonarrSettingsRepo.find();
-      for (const sonarrSetting of sonarrSettings) {
-        sonarrState =
-          (await this.testSonarr(sonarrSetting.id)).status === 'OK' &&
-          sonarrState;
-      }
-
-      if (this.overseerrConfigured()) {
-        overseerrState = (await this.testOverseerr()).status === 'OK';
-      }
-
-      if (this.tautulliConfigured()) {
-        tautulliState = (await this.testTautulli()).status === 'OK';
-      }
-
-      if (this.jellyseerrConfigured()) {
-        jellyseerrState = (await this.testJellyseerr()).status === 'OK';
-      }
-
-      if (
+      return (
         mediaServerState &&
-        radarrState &&
-        sonarrState &&
+        radarrResults.every(Boolean) &&
+        sonarrResults.every(Boolean) &&
         overseerrState &&
         tautulliState &&
         jellyseerrState
-      ) {
-        return true;
-      } else {
-        return false;
-      }
+      );
     } catch (e) {
       this.logger.debug(e);
       return false;

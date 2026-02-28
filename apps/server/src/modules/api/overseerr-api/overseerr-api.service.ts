@@ -2,6 +2,7 @@ import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SettingsService } from '../../../modules/settings/settings.service';
 import {
+  CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
@@ -379,7 +380,7 @@ export class OverseerrApiService {
       const response = await api.getRawWithoutCache<OverseerrAbout>(
         `/settings/about`,
         {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         },
       );
 

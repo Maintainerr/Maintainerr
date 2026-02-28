@@ -56,7 +56,7 @@ export const normalizeConnectionErrorMessage = (
   }
 
   if (looksLikeTimeout(message)) {
-    return 'Connection timed out after 10 seconds. Verify URL and network reachability.'
+    return 'Connection timed out after 3 seconds. Verify URL and network reachability.'
   }
 
   return message

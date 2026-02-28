@@ -1,6 +1,8 @@
 import { AxiosError } from 'axios';
 import type { MaintainerrLogger } from '../modules/logging/logs.service';
 
+export const CONNECTION_TEST_TIMEOUT_MS = 3000;
+
 const normalizeMessageText = (message?: string): string | undefined => {
   if (!message) {
     return undefined;
@@ -35,7 +37,7 @@ const normalizeMessageText = (message?: string): string | undefined => {
     lower.includes('aborted') ||
     lower.includes('econnaborted')
   ) {
-    return 'Connection timed out after 10 seconds. Verify URL and network reachability.';
+    return `Connection timed out after ${CONNECTION_TEST_TIMEOUT_MS / 1000} seconds. Verify URL and network reachability.`;
   }
 
   return undefined;

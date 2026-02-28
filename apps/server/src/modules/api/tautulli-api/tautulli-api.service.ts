@@ -4,6 +4,7 @@ import { AxiosError, CanceledError } from 'axios';
 import _ from 'lodash';
 import { SettingsService } from '../../..//modules/settings/settings.service';
 import {
+  CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
@@ -132,7 +133,7 @@ export class TautulliApiService {
       const response: Response<TautulliInfo> = await this.api.getWithoutCache(
         '',
         {
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
           params: {
             cmd: 'get_tautulli_info',
           },
@@ -316,7 +317,7 @@ export class TautulliApiService {
       const response = await api.getRawWithoutCache<
         Response<TautulliInfo> | string | undefined
       >('', {
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         params: {
           cmd: 'get_tautulli_info',
         },
@@ -353,7 +354,7 @@ export class TautulliApiService {
         return {
           status: 'NOK',
           code: 0,
-          message: 'Connection timed out after 10 seconds with no response.',
+          message: `Connection timed out after ${CONNECTION_TEST_TIMEOUT_MS / 1000} seconds with no response.`,
         };
       } else if (e instanceof AxiosError) {
         if (e.response?.status === 400) {

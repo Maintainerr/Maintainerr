@@ -1,6 +1,7 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import {
+  CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
@@ -376,7 +377,7 @@ export class JellyseerrApiService {
       const response = await api.getRawWithoutCache<JellyseerrAbout>(
         `/settings/about`,
         {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         },
       );
 
