@@ -209,10 +209,7 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      if (
-        (firstVal !== undefined || null) &&
-        (secondVal !== undefined || null)
-      ) {
+      if (firstVal != null && secondVal != null) {
         // do action
         const comparisonResult = this.doRuleAction(
           firstVal,
@@ -423,10 +420,16 @@ export class RuleComparatorService {
     }
 
     if (action === RulePossibility.BIGGER) {
+      if (typeof val1 !== 'number' || typeof val2 !== 'number') {
+        return false;
+      }
       return val1 > val2;
     }
 
     if (action === RulePossibility.SMALLER) {
+      if (typeof val1 !== 'number' || typeof val2 !== 'number') {
+        return false;
+      }
       return val1 < val2;
     }
 

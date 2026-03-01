@@ -207,28 +207,35 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it('should return true when comparing two numbers with action BIGGER', () => {
-      const val1 = 5;
-      const val2 = 3;
-      const action = RulePossibility.BIGGER;
-      const result = ruleComparatorService['doRuleAction'](val1, val2, action);
-      expect(result).toBe(true);
-    });
-
-    it('should return false when comparing two numbers with action SMALLER', () => {
-      const val1 = 5;
-      const val2 = 3;
-      const action = RulePossibility.SMALLER;
-      const result = ruleComparatorService['doRuleAction'](val1, val2, action);
-      expect(result).toBe(false);
-    });
-
-    it('should return false when comparing two numbers with action SMALLER and value is undefined', () => {
-      const val1 = 5;
-      const val2 = undefined;
-      const action = RulePossibility.SMALLER;
-      const result = ruleComparatorService['doRuleAction'](val1, val2, action);
-      expect(result).toBe(false);
+    const numericComparisonData = [
+      [true, 5, 3, RulePossibility.BIGGER],
+      [true, 10, 0, RulePossibility.BIGGER],
+      [false, 3, 5, RulePossibility.BIGGER],
+      [false, 5, 5, RulePossibility.BIGGER],
+      [true, 3, 5, RulePossibility.SMALLER],
+      [true, 0, 10, RulePossibility.SMALLER],
+      [false, 5, 3, RulePossibility.SMALLER],
+      [false, 5, 5, RulePossibility.SMALLER],
+      // null/undefined must not match numeric comparisons
+      [false, null, 6, RulePossibility.SMALLER],
+      [false, null, 6, RulePossibility.BIGGER],
+      [false, 6, null, RulePossibility.SMALLER],
+      [false, 6, null, RulePossibility.BIGGER],
+      [false, undefined, 6, RulePossibility.SMALLER],
+      [false, undefined, 6, RulePossibility.BIGGER],
+      [false, null, null, RulePossibility.SMALLER],
+      [false, null, null, RulePossibility.BIGGER],
+    ] as [boolean, any, any, RulePossibility][];
+    const numericActionName = {
+      [RulePossibility.BIGGER]: 'BIGGER',
+      [RulePossibility.SMALLER]: 'SMALLER',
+    };
+    numericComparisonData.forEach(([expected, val1, val2, action]) => {
+      it(`should return ${expected} when val1 is ${val1} and val2 is ${val2} with action ${numericActionName[action]}`, () => {
+        expect(
+          ruleComparatorService['doRuleAction'](val1, val2, action),
+        ).toBe(expected);
+      });
     });
 
     it('should return true when comparing two dates with action BEFORE', () => {
