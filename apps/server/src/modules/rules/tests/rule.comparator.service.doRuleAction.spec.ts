@@ -232,9 +232,9 @@ describe('RuleComparatorService', () => {
     };
     numericComparisonData.forEach(([expected, val1, val2, action]) => {
       it(`should return ${expected} when val1 is ${val1} and val2 is ${val2} with action ${numericActionName[action]}`, () => {
-        expect(
-          ruleComparatorService['doRuleAction'](val1, val2, action),
-        ).toBe(expected);
+        expect(ruleComparatorService['doRuleAction'](val1, val2, action)).toBe(
+          expected,
+        );
       });
     });
 
