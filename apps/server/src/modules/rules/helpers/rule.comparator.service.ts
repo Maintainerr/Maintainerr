@@ -425,7 +425,7 @@ export class RuleComparatorService {
 
     if (action === RulePossibility.BIGGER) {
       if (typeof val1 !== 'number' || typeof val2 !== 'number') {
-        this.logger.debug(
+        this.logger.warn(
           `Numeric comparison with non-number value: ` +
             `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=BIGGER`,
         );
@@ -435,7 +435,7 @@ export class RuleComparatorService {
 
     if (action === RulePossibility.SMALLER) {
       if (typeof val1 !== 'number' || typeof val2 !== 'number') {
-        this.logger.debug(
+        this.logger.warn(
           `Numeric comparison with non-number value: ` +
             `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=SMALLER`,
         );
