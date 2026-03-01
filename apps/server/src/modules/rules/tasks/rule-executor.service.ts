@@ -250,6 +250,12 @@ export class RuleExecutorService {
             if (child && child.id) {
               const childId = child.id.toString();
 
+              // Skip items that were just added/removed by rule execution.
+              // The media server API may still return stale children after removal.
+              if (touchedMediaServerIds.has(childId)) {
+                continue;
+              }
+
               // Skip items that are excluded
               if (
                 excludedMediaServerIds.has(childId) ||
