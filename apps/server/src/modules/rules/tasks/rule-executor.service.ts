@@ -250,6 +250,12 @@ export class RuleExecutorService {
             if (child && child.id) {
               const childId = child.id.toString();
 
+              // Skip items that were just added/removed by rule execution.
+              // The media server API may still return stale children after removal.
+              if (touchedMediaServerIds.has(childId)) {
+                continue;
+              }
+
               // Skip items that are excluded
               if (
                 excludedMediaServerIds.has(childId) ||
@@ -551,14 +557,14 @@ export class RuleExecutorService {
         ]);
       } else {
         this.logger.log(
-          `collection not found with id ${rulegroup.collectionId}`,
+          `collection not found with id ${rulegroup?.collectionId}`,
         );
 
         this.eventEmitter.emit(
           MaintainerrEvent.RuleHandler_Failed,
-          new RuleHandlerFailedDto(collection.title, {
+          new RuleHandlerFailedDto(undefined, {
             type: 'rulegroup',
-            value: rulegroup.id,
+            value: rulegroup?.id,
           }),
         );
 
@@ -571,9 +577,9 @@ export class RuleExecutorService {
 
       this.eventEmitter.emit(
         MaintainerrEvent.RuleHandler_Failed,
-        new RuleHandlerFailedDto(rulegroup.collection?.title, {
+        new RuleHandlerFailedDto(rulegroup?.collection?.title, {
           type: 'rulegroup',
-          value: rulegroup.id,
+          value: rulegroup?.id,
         }),
       );
 

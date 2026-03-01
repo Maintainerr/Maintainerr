@@ -1306,6 +1306,14 @@ export class RuleConstants {
           type: RuleType.TEXT_LIST,
           showType: ['show', 'season', 'episode'],
         },
+        {
+          id: 41,
+          name: 'sw_favoritedBy_including_parent',
+          humanName: '[list] Favorited by (username) (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['season', 'episode'],
+        },
       ],
     },
   ];
