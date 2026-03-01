@@ -209,7 +209,11 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      if (firstVal != null && secondVal != null) {
+      const isNumericAction =
+        rule.action === RulePossibility.BIGGER ||
+        rule.action === RulePossibility.SMALLER;
+
+      if (isNumericAction || (firstVal != null && secondVal != null)) {
         // do action
         const comparisonResult = this.doRuleAction(
           firstVal,
@@ -421,16 +425,22 @@ export class RuleComparatorService {
 
     if (action === RulePossibility.BIGGER) {
       if (typeof val1 !== 'number' || typeof val2 !== 'number') {
-        return false;
+        this.logger.debug(
+          `Numeric comparison with non-number value: ` +
+            `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=BIGGER`,
+        );
       }
-      return val1 > val2;
+      return Number(val1) > Number(val2);
     }
 
     if (action === RulePossibility.SMALLER) {
       if (typeof val1 !== 'number' || typeof val2 !== 'number') {
-        return false;
+        this.logger.debug(
+          `Numeric comparison with non-number value: ` +
+            `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=SMALLER`,
+        );
       }
-      return val1 < val2;
+      return Number(val1) < Number(val2);
     }
 
     if (action === RulePossibility.EQUALS) {
