@@ -127,12 +127,11 @@ const Overview = () => {
     }
     const askedLib = clone(selectedLibraryRef.current)
 
-    const resp: { totalSize: number; items: MediaItem[] } =
-      await GetApiHandler(
-        `/media-server/library/${selectedLibraryRef.current}/content?page=${
-          pageData.current + 1
-        }&limit=${fetchAmount}`,
-      )
+    const resp: { totalSize: number; items: MediaItem[] } = await GetApiHandler(
+      `/media-server/library/${selectedLibraryRef.current}/content?page=${
+        pageData.current + 1
+      }&limit=${fetchAmount}`,
+    )
 
     if (askedLib === selectedLibraryRef.current) {
       setTotalSize(resp.totalSize)
