@@ -863,7 +863,7 @@ export class RuleConstants {
         {
           id: 30,
           name: 'missing_episodes',
-          humanName: 'Number of missing Episodes in Media Type (if Episode then 1 or 0)',
+          humanName: 'Number of missing episodes',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['show', 'season', 'episode'],
@@ -871,7 +871,7 @@ export class RuleConstants {
         {
           id: 31,
           name: 'missing_episodes_season',
-          humanName: 'Number of missing Episodes in Season',
+          humanName: 'Number of missing episodes in season',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['season', 'episode'],
@@ -879,10 +879,10 @@ export class RuleConstants {
         {
           id: 32,
           name: 'missing_episodes_show',
-          humanName: 'Number of missing Episodes in Show',
+          humanName: 'Number of missing episodes in show',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
-          showType: ['episode'],
+          showType: ['show', 'season', 'episode'],
         },
       ],
     },

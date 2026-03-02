@@ -410,28 +410,28 @@ export class SonarrGetterService {
           return showResponse.seriesType ?? null;
         }
         case 'missing_episodes': {
-          if ('episode' == dataType) {
+          if (dataType === 'episode') {
             const episode = await getEpisode();
-            return episode?.hasFile != null ? (episode.hasFile ? 1 : 0) : null;
-          } else if ('season' == dataType) {
-            return season?.statistics
-              ? season.statistics.episodeCount - season.statistics.episodeFileCount
-              : null;
+            return episode?.hasFile != null ? (episode.hasFile ? 0 : 1) : null;
           }
 
-          return showResponse.statistics
-            ? showResponse.statistics.episodeCount - showResponse.statistics.episodeFileCount
-            : null;
+          const stats =
+            dataType === 'season'
+              ? season?.statistics
+              : showResponse.statistics;
+
+          return stats ? stats.episodeCount - stats.episodeFileCount : null;
         }
         case 'missing_episodes_season': {
-          // Season and Episode
           return season?.statistics
-            ? season.statistics.episodeCount - season.statistics.episodeFileCount
+            ? season.statistics.episodeCount -
+                season.statistics.episodeFileCount
             : null;
         }
         case 'missing_episodes_show': {
           return showResponse.statistics
-            ? showResponse.statistics.episodeCount - showResponse.statistics.episodeFileCount
+            ? showResponse.statistics.episodeCount -
+                showResponse.statistics.episodeFileCount
             : null;
         }
       }
