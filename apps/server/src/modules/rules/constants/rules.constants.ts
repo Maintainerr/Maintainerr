@@ -450,6 +450,13 @@ export class RuleConstants {
           cacheReset: true,
           migrateTo: 'collection_names',
         },
+        {
+          id: 43,
+          name: 'isWatched',
+          humanName: 'Is Watched',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.BOOL,
+        },
       ],
     },
     {

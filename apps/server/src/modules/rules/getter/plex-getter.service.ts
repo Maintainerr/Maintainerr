@@ -104,8 +104,32 @@ export class PlexGetterService {
           return metadata.Role ? metadata.Role.map((el) => el.tag) : null;
         }
         case 'viewCount': {
-          const count = await this.plexApi.getWatchHistory(metadata.ratingKey);
-          return count ? count.length : 0;
+          const history = await this.plexApi
+            .getWatchHistory(metadata.ratingKey)
+            .catch(() => undefined);
+
+          const historyCount = history ? history.length : 0;
+          const itemCount = libItem.viewCount ?? 0;
+
+          if (historyCount === 0 && itemCount > 0) {
+            this.logger.debug(
+              `viewCount fallback: watch history returned 0 for ratingKey ${metadata.ratingKey}, using libItem.viewCount (${itemCount}). Note: this value reflects the admin user's view count only.`,
+            );
+            return itemCount;
+          }
+
+          return historyCount;
+        }
+        case 'isWatched': {
+          const watchHistory = await this.plexApi
+            .getWatchHistory(metadata.ratingKey)
+            .catch(() => undefined);
+
+          if (watchHistory && watchHistory.length > 0) {
+            return true;
+          }
+
+          return (libItem.viewCount ?? 0) > 0;
         }
         case 'labels': {
           const item =
