@@ -32,4 +32,6 @@ export enum ServarrAction {
   UNMONITOR_DELETE_EXISTING,
   UNMONITOR,
   DO_NOTHING,
+  DELETE_SHOW_IF_EMPTY, // season: delete season, then delete show from Sonarr if empty + ended
+  UNMONITOR_SHOW_IF_EMPTY, // season: unmonitor season, then unmonitor show if empty + ended
 }

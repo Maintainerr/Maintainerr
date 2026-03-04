@@ -67,7 +67,10 @@ export class CollectionHandler {
     } else if (library?.type == 'show' && collection.sonarrSettingsId) {
       await this.sonarrActionHandler.handleAction(collection, media);
     } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
-      if (collection.arrAction !== ServarrAction.UNMONITOR) {
+      if (
+        collection.arrAction !== ServarrAction.UNMONITOR &&
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+      ) {
         this.logger.log(
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
         );
@@ -80,7 +83,10 @@ export class CollectionHandler {
     }
 
     // Only remove requests & file if needed
-    if (collection.arrAction !== ServarrAction.UNMONITOR) {
+    if (
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+    ) {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
         switch (collection.type) {

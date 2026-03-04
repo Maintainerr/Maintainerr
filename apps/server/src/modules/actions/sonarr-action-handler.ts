@@ -1,6 +1,7 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { SonarrSeries } from '../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
@@ -88,7 +89,10 @@ export class SonarrActionHandler {
     let sonarrMedia = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
 
     if (!sonarrMedia?.id) {
-      if (collection.arrAction !== ServarrAction.UNMONITOR) {
+      if (
+        collection.arrAction !== ServarrAction.UNMONITOR &&
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+      ) {
         this.logger.log(
           `Couldn't find correct tvdb id. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Attempting to remove from the filesystem via media server.`,
         );
@@ -103,6 +107,7 @@ export class SonarrActionHandler {
 
     switch (collection.arrAction) {
       case ServarrAction.DELETE:
+      case ServarrAction.DELETE_SHOW_IF_EMPTY:
         switch (collection.type) {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -113,8 +118,22 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
+
+            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
+              await this.deleteShowIfEmptyAndEnded(
+                sonarrApiClient,
+                tvdbId,
+                collection.listExclusions,
+              );
+            }
             break;
           case 'episode':
+            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
+              this.logger.warn(
+                `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               mediaData?.parentIndex,
@@ -126,6 +145,12 @@ export class SonarrActionHandler {
             );
             break;
           default:
+            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
+              this.logger.warn(
+                `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             await sonarrApiClient.deleteShow(
               sonarrMedia.id,
               true,
@@ -136,6 +161,7 @@ export class SonarrActionHandler {
         }
         break;
       case ServarrAction.UNMONITOR:
+      case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
         switch (collection.type) {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -146,8 +172,22 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
+
+            if (
+              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+            ) {
+              await this.unmonitorShowIfEmptyAndEnded(sonarrApiClient, tvdbId);
+            }
             break;
           case 'episode':
+            if (
+              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+            ) {
+              this.logger.warn(
+                `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               mediaData?.parentIndex,
@@ -159,6 +199,14 @@ export class SonarrActionHandler {
             );
             break;
           default:
+            if (
+              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+            ) {
+              this.logger.warn(
+                `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'all',
@@ -241,5 +289,57 @@ export class SonarrActionHandler {
         }
         break;
     }
+  }
+
+  /**
+   * After a season deletion, re-fetches the series and deletes the show
+   * from Sonarr if it has ended and has no remaining episode files.
+   */
+  private async deleteShowIfEmptyAndEnded(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    tvdbId: number,
+    listExclusions: boolean | undefined,
+  ): Promise<void> {
+    const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+
+    if (!series || !this.isShowEmptyAndEnded(series, 'files')) return;
+
+    await sonarrApiClient.deleteShow(series.id, true, listExclusions);
+    this.logger.log(
+      `[Sonarr] Show '${series.title}' is ended with no files remaining — deleted from Sonarr`,
+    );
+  }
+
+  /**
+   * After a season unmonitor, re-fetches the series and unmonitors the show
+   * if it has ended and has no remaining monitored seasons.
+   */
+  private async unmonitorShowIfEmptyAndEnded(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    tvdbId: number,
+  ): Promise<void> {
+    const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+
+    if (!series || !this.isShowEmptyAndEnded(series, 'monitored')) return;
+
+    series.monitored = false;
+    await sonarrApiClient.updateSeries(series);
+    this.logger.log(
+      `[Sonarr] Show '${series.title}' is ended with no monitored seasons — unmonitored show`,
+    );
+  }
+
+  private isShowEmptyAndEnded(
+    series: SonarrSeries,
+    mode: 'files' | 'monitored',
+  ): boolean {
+    if (series.status !== 'ended') return false;
+
+    if (mode === 'files') {
+      return (series.statistics?.episodeFileCount ?? 0) === 0;
+    }
+
+    // mode === 'monitored'
+    return series.seasons.every((s) => !s.monitored);
   }
 }
