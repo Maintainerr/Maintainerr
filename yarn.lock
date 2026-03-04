@@ -6446,6 +6446,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@zone-eu/mailsplit@npm:5.4.8":
+  version: 5.4.8
+  resolution: "@zone-eu/mailsplit@npm:5.4.8"
+  dependencies:
+    libbase64: "npm:1.3.0"
+    libmime: "npm:5.3.7"
+    libqp: "npm:2.1.1"
+  checksum: 10c0/a054bdf50e2378c773f9c54861d27095b6f3ef4c7828576aaaa9e2173de8edb59d603e052282eebfe8c5d442efc6896a22c374daa855e9e3d55af9771b97484a
+  languageName: node
+  linkType: hard
+
 "abbrev@npm:^2.0.0":
   version: 2.0.0
   resolution: "abbrev@npm:2.0.0"
@@ -11554,6 +11565,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"iconv-lite@npm:0.7.2":
+  version: 0.7.2
+  resolution: "iconv-lite@npm:0.7.2"
+  dependencies:
+    safer-buffer: "npm:>= 2.1.2 < 3.0.0"
+  checksum: 10c0/3c228920f3bd307f56bf8363706a776f4a060eb042f131cd23855ceca962951b264d0997ab38a1ad340e1c5df8499ed26e1f4f0db6b2a2ad9befaff22f14b722
+  languageName: node
+  linkType: hard
+
 "iconv-lite@npm:^0.4.24":
   version: 0.4.24
   resolution: "iconv-lite@npm:0.4.24"
@@ -13382,15 +13402,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libmime@npm:5.3.6":
-  version: 5.3.6
-  resolution: "libmime@npm:5.3.6"
+"libmime@npm:5.3.7":
+  version: 5.3.7
+  resolution: "libmime@npm:5.3.7"
   dependencies:
     encoding-japanese: "npm:2.2.0"
     iconv-lite: "npm:0.6.3"
     libbase64: "npm:1.3.0"
     libqp: "npm:2.1.1"
-  checksum: 10c0/54afa19f3500fe14b7562fd055518f1d82bf0f1076690a9b097d1a126322de7425d6d29aa9db9b51bc41b2ed16eacff65d7f30cd3622f7010f60993dfc79041e
+  checksum: 10c0/2c8afbe287df533b983b8eb6db0e98d4eb79c833aca7aac531994168d30dd6194a90d78cefb320427183853422be1c86511ab975b1a3fc9f1fc69ce1b83bb7c0
   languageName: node
   linkType: hard
 
@@ -13855,31 +13875,20 @@ __metadata:
   linkType: hard
 
 "mailparser@npm:^3.7.1":
-  version: 3.7.2
-  resolution: "mailparser@npm:3.7.2"
+  version: 3.9.3
+  resolution: "mailparser@npm:3.9.3"
   dependencies:
+    "@zone-eu/mailsplit": "npm:5.4.8"
     encoding-japanese: "npm:2.2.0"
     he: "npm:1.2.0"
     html-to-text: "npm:9.0.5"
-    iconv-lite: "npm:0.6.3"
-    libmime: "npm:5.3.6"
+    iconv-lite: "npm:0.7.2"
+    libmime: "npm:5.3.7"
     linkify-it: "npm:5.0.0"
-    mailsplit: "npm:5.4.2"
-    nodemailer: "npm:6.9.16"
+    nodemailer: "npm:7.0.13"
     punycode.js: "npm:2.3.1"
-    tlds: "npm:1.255.0"
-  checksum: 10c0/dc37e0e2d6885f777cc4cf40d1fc60ca247632428a55986a6f665705a8fca762de5bf8b3b14fd4eac97d6d8a866827f4c99400d25c7eb9879d7906871a3381c0
-  languageName: node
-  linkType: hard
-
-"mailsplit@npm:5.4.2":
-  version: 5.4.2
-  resolution: "mailsplit@npm:5.4.2"
-  dependencies:
-    libbase64: "npm:1.3.0"
-    libmime: "npm:5.3.6"
-    libqp: "npm:2.1.1"
-  checksum: 10c0/14fb8722b7416193bc7af918d8529ad2c2edb471b78c7f26116c95a8a325c33355504ba83c95dbac4ce69a3a2557bb9e0a9b2a0c8585ab5df892b51159a99e52
+    tlds: "npm:1.261.0"
+  checksum: 10c0/da62c7cd977867da8be0dd1e6cf3b137821258e0d1e0976a00d3ec17bbd8a92bbefbccc7b0ec1dd33bc5ccd28dc5d51bbae723fac8ca05be843e88b7d579c751
   languageName: node
   linkType: hard
 
@@ -15119,10 +15128,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:6.9.16":
-  version: 6.9.16
-  resolution: "nodemailer@npm:6.9.16"
-  checksum: 10c0/9fd73ab4ab5b81544c3c9820afbe386369aba442f997b2f58d171222a898a7aed580fc100bfe6eebc194f18ba6e169d67ee40ca64d32d69022d89e575cef97a4
+"nodemailer@npm:7.0.13":
+  version: 7.0.13
+  resolution: "nodemailer@npm:7.0.13"
+  checksum: 10c0/b26aa5b9fa4a033bbc1e1c16ef75ee2a9c8641fd290c00a8361d6a251b3c1b8bad545a23efa627f59cb266340a448891ea8aa49d8a9307c767b8505219d95079
   languageName: node
   linkType: hard
 
@@ -19101,16 +19110,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tlds@npm:1.255.0":
-  version: 1.255.0
-  resolution: "tlds@npm:1.255.0"
-  bin:
-    tlds: bin.js
-  checksum: 10c0/e7e0434142a2ee80e48c383db53cc94757a9fefd545230fad908a31c235f9f9b9cd1d8232d9bc2bd018050f0e8a912c141d0c79289dda852169199892ba847d0
-  languageName: node
-  linkType: hard
-
-"tlds@npm:^1.261.0":
+"tlds@npm:1.261.0, tlds@npm:^1.261.0":
   version: 1.261.0
   resolution: "tlds@npm:1.261.0"
   bin:
