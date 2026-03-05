@@ -154,7 +154,12 @@ export interface ArrDiskspaceResource {
   totalSpace: number
 }
 
-type UseArrDiskspaceQueryKey = ['servarr', 'diskspace', 'radarr' | 'sonarr', string]
+type UseArrDiskspaceQueryKey = [
+  'servarr',
+  'diskspace',
+  'radarr' | 'sonarr',
+  string,
+]
 
 type UseArrDiskspaceOptions = Omit<
   UseQueryOptions<

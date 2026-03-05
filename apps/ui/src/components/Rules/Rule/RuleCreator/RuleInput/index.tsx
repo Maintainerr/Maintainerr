@@ -173,7 +173,9 @@ const RuleInput = (props: IRuleInput) => {
   }, [firstval])
 
   const selectedFirstValueAppId = firstValueTuple?.[0]
-  const selectedFirstValueProp = firstval ? getPropFromTuple(firstval) : undefined
+  const selectedFirstValueProp = firstval
+    ? getPropFromTuple(firstval)
+    : undefined
   const isSelectedArrDiskspaceRule =
     (selectedFirstValueAppId === Application.RADARR ||
       selectedFirstValueAppId === Application.SONARR) &&
@@ -342,9 +344,7 @@ const RuleInput = (props: IRuleInput) => {
         firstVal: JSON.parse(firstval),
         action,
         section: props.section ? props.section - 1 : 0,
-        ...(isSelectedArrDiskspaceRule && arrDiskPath
-          ? { arrDiskPath }
-          : {}),
+        ...(isSelectedArrDiskspaceRule && arrDiskPath ? { arrDiskPath } : {}),
       }
       if (customVal) {
         props.onCommit(props.id ? props.id : 0, {
