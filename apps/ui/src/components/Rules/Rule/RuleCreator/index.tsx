@@ -16,6 +16,7 @@ export interface IRule {
   lastVal?: [string, string]
   section?: number
   customVal?: { ruleTypeId: number; value: string | number }
+  arrDiskPath?: string
   action: number
 }
 

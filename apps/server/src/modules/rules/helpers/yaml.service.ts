@@ -29,6 +29,7 @@ interface IRuleYaml {
   firstValue: string;
   lastValue?: string;
   customValue?: ICustomIdentifier;
+  arrDiskPath?: string;
 }
 
 @Injectable()
@@ -73,6 +74,11 @@ export class RuleYamlService {
                 customValue: this.ruleConstanstService.getCustomValueIdentifier(
                   rule.customVal,
                 ),
+              }
+            : {}),
+          ...(rule.arrDiskPath
+            ? {
+                arrDiskPath: rule.arrDiskPath,
               }
             : {}),
         });
@@ -159,6 +165,11 @@ export class RuleYamlService {
                     this.ruleConstanstService.getCustomValueFromIdentifier(
                       rule.customValue,
                     ),
+                }
+              : {}),
+            ...(rule.arrDiskPath
+              ? {
+                  arrDiskPath: rule.arrDiskPath,
                 }
               : {}),
           });

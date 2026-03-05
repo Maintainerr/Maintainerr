@@ -146,6 +146,66 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
 
 export type UseRuleConstants = ReturnType<typeof useRuleConstants>
 
+export interface ArrDiskspaceResource {
+  id: number
+  path: string | null
+  label: string | null
+  freeSpace: number
+  totalSpace: number
+}
+
+type UseArrDiskspaceQueryKey = ['servarr', 'diskspace', 'radarr' | 'sonarr', string]
+
+type UseArrDiskspaceOptions = Omit<
+  UseQueryOptions<
+    ArrDiskspaceResource[],
+    Error,
+    ArrDiskspaceResource[],
+    UseArrDiskspaceQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+const useArrDiskspace = (
+  app: 'radarr' | 'sonarr',
+  settingsId?: number | null,
+  options?: UseArrDiskspaceOptions,
+) => {
+  const normalizedId = settingsId != null ? String(settingsId) : ''
+  const queryEnabled = normalizedId.length > 0 && (options?.enabled ?? true)
+
+  return useQuery<
+    ArrDiskspaceResource[],
+    Error,
+    ArrDiskspaceResource[],
+    UseArrDiskspaceQueryKey
+  >({
+    queryKey: ['servarr', 'diskspace', app, normalizedId],
+    queryFn: async () => {
+      if (!normalizedId) {
+        throw new Error('Server ID is required to fetch diskspace data.')
+      }
+
+      return await GetApiHandler<ArrDiskspaceResource[]>(
+        `/servarr/${app}/${normalizedId}/diskspace`,
+      )
+    },
+    staleTime: 60 * 1000,
+    ...options,
+    enabled: queryEnabled,
+  })
+}
+
+export const useRadarrDiskspace = (
+  settingsId?: number | null,
+  options?: UseArrDiskspaceOptions,
+) => useArrDiskspace('radarr', settingsId, options)
+
+export const useSonarrDiskspace = (
+  settingsId?: number | null,
+  options?: UseArrDiskspaceOptions,
+) => useArrDiskspace('sonarr', settingsId, options)
+
 type UseCreateRuleGroupOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, RuleGroupCreatePayload>,
   'mutationFn' | 'mutationKey'
