@@ -104,8 +104,7 @@ export class PlexGetterService {
           return metadata.Role ? metadata.Role.map((el) => el.tag) : null;
         }
         case 'viewCount': {
-          const count = await this.plexApi.getWatchHistory(metadata.ratingKey);
-          return count ? count.length : 0;
+          return libItem.viewCount ?? 0;
         }
         case 'labels': {
           const item =
