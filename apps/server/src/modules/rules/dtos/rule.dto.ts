@@ -13,5 +13,10 @@ export class RuleDto {
   })
   lastVal?: [number, number];
   customVal?: { ruleTypeId: number; value: string };
+  /**
+   * Optional ARR disk target path for diskspace rules.
+   * Undefined means aggregate all reported paths.
+   */
+  arrDiskPath?: string;
   section: number;
 }

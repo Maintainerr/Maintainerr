@@ -19,6 +19,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
@@ -48,6 +49,7 @@ export class SonarrGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
+    rule?: RuleDto,
   ) {
     if (!ruleGroup.collection?.sonarrSettingsId) {
       this.logger.error(
@@ -67,8 +69,29 @@ export class SonarrGetterService {
         const sonarrApiClient = await this.servarrService.getSonarrApiClient(
           ruleGroup.collection.sonarrSettingsId,
         );
-        const diskspace = await sonarrApiClient.getDiskspace();
-        if (!diskspace || diskspace.length === 0) return null;
+        const allDiskspace = await sonarrApiClient.getDiskspace();
+        if (!allDiskspace || allDiskspace.length === 0) return null;
+
+        const targetPath = rule?.arrDiskPath?.trim();
+        const normalizedTargetPath = targetPath
+          ? this.normalizeDiskPath(targetPath)
+          : undefined;
+        const diskspace = normalizedTargetPath
+          ? allDiskspace.filter((entry) => {
+              if (!entry.path) return false;
+              return (
+                this.normalizeDiskPath(entry.path) === normalizedTargetPath
+              );
+            })
+          : allDiskspace;
+
+        if (diskspace.length === 0) {
+          this.logger.warn(
+            `[Diskspace] No diskspace entry matched configured path '${normalizedTargetPath}' in Sonarr.`,
+          );
+          return null;
+        }
+
         const totalFree = diskspace.reduce(
           (acc, d) => acc + (d.freeSpace ?? 0),
           0,
@@ -417,6 +440,14 @@ export class SonarrGetterService {
       this.logger.debug(e);
       return undefined;
     }
+  }
+
+  private normalizeDiskPath(path: string): string {
+    if (path.length <= 1) {
+      return path;
+    }
+
+    return path.replace(/[\\/]+$/, '');
   }
 
   /**

@@ -8,6 +8,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
@@ -25,7 +26,12 @@ export class RadarrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: MediaItem, ruleGroup?: RulesDto) {
+  async get(
+    id: number,
+    libItem: MediaItem,
+    ruleGroup?: RulesDto,
+    rule?: RuleDto,
+  ) {
     if (!ruleGroup.collection?.radarrSettingsId) {
       this.logger.error(
         `No Radarr server configured for ${ruleGroup.collection?.title}`,
@@ -44,8 +50,29 @@ export class RadarrGetterService {
         const radarrApiClient = await this.servarrService.getRadarrApiClient(
           ruleGroup.collection.radarrSettingsId,
         );
-        const diskspace = await radarrApiClient.getDiskspace();
-        if (!diskspace || diskspace.length === 0) return null;
+        const allDiskspace = await radarrApiClient.getDiskspace();
+        if (!allDiskspace || allDiskspace.length === 0) return null;
+
+        const targetPath = rule?.arrDiskPath?.trim();
+        const normalizedTargetPath = targetPath
+          ? this.normalizeDiskPath(targetPath)
+          : undefined;
+        const diskspace = normalizedTargetPath
+          ? allDiskspace.filter((entry) => {
+              if (!entry.path) return false;
+              return (
+                this.normalizeDiskPath(entry.path) === normalizedTargetPath
+              );
+            })
+          : allDiskspace;
+
+        if (diskspace.length === 0) {
+          this.logger.warn(
+            `[Diskspace] No diskspace entry matched configured path '${normalizedTargetPath}' in Radarr.`,
+          );
+          return null;
+        }
+
         const totalFree = diskspace.reduce(
           (acc, d) => acc + (d.freeSpace ?? 0),
           0,
@@ -210,5 +237,13 @@ export class RadarrGetterService {
       this.logger.debug(e);
       return undefined;
     }
+  }
+
+  private normalizeDiskPath(path: string): string {
+    if (path.length <= 1) {
+      return path;
+    }
+
+    return path.replace(/[\\/]+$/, '');
   }
 }
