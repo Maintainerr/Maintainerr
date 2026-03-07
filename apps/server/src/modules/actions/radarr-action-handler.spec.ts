@@ -12,16 +12,16 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 describe('RadarrActionHandler', () => {
   let radarrActionHandler: RadarrActionHandler;
   let mediaServerFactory: Mocked<MediaServerFactory>;
   let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
-  let tmdbIdService: Mocked<TmdbIdService>;
+  let metadataService: Mocked<MetadataService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -31,7 +31,7 @@ describe('RadarrActionHandler', () => {
     radarrActionHandler = unit;
     mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
-    tmdbIdService = unitRef.get(TmdbIdService);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
 
     // Setup mock for MediaServerFactory
@@ -43,7 +43,7 @@ describe('RadarrActionHandler', () => {
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
 
-  it('should do nothing when tmdbid failed lookup', async () => {
+  it('should do nothing when tmdbId failed lookup', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       radarrSettingsId: 1,
@@ -53,13 +53,13 @@ describe('RadarrActionHandler', () => {
       tmdbId: undefined,
     });
 
-    tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue(undefined);
+    metadataService.resolveIds.mockResolvedValue(undefined);
 
     const mockedRadarrApi = mockRadarrApi(servarrService, logger);
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(tmdbIdService.getTmdbIdFromMediaServerId).toHaveBeenCalled();
+    expect(metadataService.resolveIds).toHaveBeenCalled();
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 

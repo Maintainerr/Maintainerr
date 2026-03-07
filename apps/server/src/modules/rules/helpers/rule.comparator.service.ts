@@ -7,7 +7,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { RuleConstanstService } from '../constants/constants.service';
+import { RuleConstantsService } from '../constants/constants.service';
 import {
   RuleOperators,
   RulePossibility,
@@ -27,14 +27,14 @@ interface IComparatorReturnValue {
 export class RuleComparatorServiceFactory {
   constructor(
     private readonly valueGetter: ValueGetterService,
-    private readonly ruleConstanstService: RuleConstanstService,
+    private readonly ruleConstantsService: RuleConstantsService,
     private readonly logger: MaintainerrLogger,
   ) {}
 
   create(): RuleComparatorService {
     return new RuleComparatorService(
       this.valueGetter,
-      this.ruleConstanstService,
+      this.ruleConstantsService,
       this.logger,
     );
   }
@@ -56,7 +56,7 @@ export class RuleComparatorService {
 
   constructor(
     private readonly valueGetter: ValueGetterService,
-    private readonly ruleConstanstService: RuleConstanstService,
+    private readonly ruleConstantsService: RuleConstantsService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RuleComparatorService.name);
@@ -348,13 +348,13 @@ export class RuleComparatorService {
         ? { operator: RuleOperators[rule.operator] }
         : undefined),
       action: RulePossibility[rule.action].toLowerCase(),
-      firstValueName: this.ruleConstanstService.getValueHumanName(
+      firstValueName: this.ruleConstantsService.getValueHumanName(
         rule.firstVal,
       ),
       firstValue: firstVal,
       secondValueName: rule.lastVal
-        ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-        : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
+        ? this.ruleConstantsService.getValueHumanName(rule.lastVal)
+        : this.ruleConstantsService.getCustomValueIdentifier(rule.customVal)
             .type,
       secondValue: secondVal,
       result: result,

@@ -5,7 +5,7 @@ export interface ICollectionMedia {
   collectionId: number;
   mediaServerId: string;
   tmdbId: number;
-  tvdbid: number;
+  tvdbId: number;
   addDate: Date;
 }
 
@@ -17,6 +17,6 @@ export interface AddRemoveCollectionMedia {
 export interface IAlterableMediaDto {
   id: number;
   index?: number;
-  parenIndex?: number;
+  parentIndex?: number;
   type: MediaItemType;
 }

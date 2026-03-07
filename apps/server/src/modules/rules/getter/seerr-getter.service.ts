@@ -14,9 +14,8 @@ import {
   SeerrTVRequest,
   SeerrTVResponse,
 } from '../../api/seerr-api/seerr-api.service';
-import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import {
   Application,
   Property,
@@ -29,9 +28,8 @@ export class SeerrGetterService {
 
   constructor(
     private readonly seerrApi: SeerrApiService,
-    private readonly tmdbApi: TmdbApiService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly tmdbIdHelper: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SeerrGetterService.name);
@@ -58,20 +56,24 @@ export class SeerrGetterService {
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
-      const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaItem(libItem);
+      const resolvedIds = await this.metadataService.resolveIdsFromMediaItem(
+        libItem,
+        'tmdb',
+      );
 
-      if (tmdb && tmdb.id) {
+      const tmdbId = resolvedIds?.['tmdb'] as number | undefined;
+      if (tmdbId) {
         if (libItem.type === 'movie') {
-          movieMediaResponse = await this.seerrApi.getMovie(tmdb.id.toString());
+          movieMediaResponse = await this.seerrApi.getMovie(tmdbId.toString());
         } else {
-          tvMediaResponse = await this.seerrApi.getShow(tmdb.id.toString());
+          tvMediaResponse = await this.seerrApi.getShow(tmdbId.toString());
           if (dataType === 'season' || dataType === 'episode') {
             const seasonNumber =
               dataType === 'season'
                 ? origLibItem.index
                 : origLibItem.parentIndex;
             seasonMediaResponse = await this.seerrApi.getSeason(
-              tmdb.id.toString(),
+              tmdbId.toString(),
               seasonNumber?.toString(),
             );
             if (!seasonMediaResponse) {

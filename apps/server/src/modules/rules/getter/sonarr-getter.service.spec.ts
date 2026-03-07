@@ -15,6 +15,7 @@ import { SonarrSeries } from '../../api/servarr-api/interfaces/sonarr.interface'
 import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import { SonarrGetterService } from './sonarr-getter.service';
 
 describe('SonarrGetterService', () => {
@@ -24,6 +25,7 @@ describe('SonarrGetterService', () => {
   let mockMediaServer: {
     getMetadata: jest.Mock<Promise<MediaItem>, [string]>;
   };
+  let metadataService: Mocked<MetadataService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -34,6 +36,7 @@ describe('SonarrGetterService', () => {
 
     servarrService = unitRef.get(ServarrService);
     mediaServerFactory = unitRef.get(MediaServerFactory);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
 
     // Create mock media server
@@ -511,10 +514,12 @@ describe('SonarrGetterService', () => {
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockResolvedValue(series);
+      metadataService.resolveAllSeriesIds.mockResolvedValue([series.tvdbId]);
     } else {
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockImplementation(jest.fn());
+      metadataService.resolveAllSeriesIds.mockResolvedValue([]);
     }
 
     servarrService.getSonarrApiClient.mockResolvedValue(mockedSonarrApi);

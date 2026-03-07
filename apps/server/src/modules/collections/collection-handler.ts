@@ -5,6 +5,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
@@ -18,6 +19,7 @@ export class CollectionHandler {
     private readonly collectionService: CollectionsService,
     private readonly seerrApi: SeerrApiService,
     private readonly settings: SettingsService,
+    private readonly metadataService: MetadataService,
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
     private readonly logger: MaintainerrLogger,
@@ -83,48 +85,60 @@ export class CollectionHandler {
     if (collection.arrAction !== ServarrAction.UNMONITOR) {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
-        switch (collection.type) {
-          case 'season':
-            const mediaDataSeason = await mediaServer.getMetadata(
-              media.mediaServerId,
-            );
+        // Resolve TMDB ID through metadata layer — fall back to cached value
+        const ids = await this.metadataService.resolveIds(media.mediaServerId);
+        const tmdbId = (ids?.['tmdb'] as number | undefined) ?? media.tmdbId;
 
-            if (mediaDataSeason?.index !== undefined) {
-              await this.seerrApi.removeSeasonRequest(
-                media.tmdbId,
-                mediaDataSeason.index,
+        if (!tmdbId) {
+          this.logger.warn(
+            `[Seerr] Could not resolve TMDB ID for media server ID ${media.mediaServerId}. Skipping Seerr request removal.`,
+          );
+        } else {
+          switch (collection.type) {
+            case 'season': {
+              const mediaDataSeason = await mediaServer.getMetadata(
+                media.mediaServerId,
               );
 
-              this.logger.log(
-                `[Seerr] Removed request of season ${mediaDataSeason.index} from show with tmdbid '${media.tmdbId}'`,
-              );
+              if (mediaDataSeason?.index !== undefined) {
+                await this.seerrApi.removeSeasonRequest(
+                  tmdbId,
+                  mediaDataSeason.index,
+                );
+
+                this.logger.log(
+                  `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
+                );
+              }
+              break;
             }
-            break;
-          case 'episode':
-            const mediaDataEpisode = await mediaServer.getMetadata(
-              media.mediaServerId,
-            );
-
-            if (mediaDataEpisode?.parentIndex !== undefined) {
-              await this.seerrApi.removeSeasonRequest(
-                media.tmdbId,
-                mediaDataEpisode.parentIndex,
+            case 'episode': {
+              const mediaDataEpisode = await mediaServer.getMetadata(
+                media.mediaServerId,
               );
 
-              this.logger.log(
-                `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with tmdbid '${media.tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.'`,
-              );
+              if (mediaDataEpisode?.parentIndex !== undefined) {
+                await this.seerrApi.removeSeasonRequest(
+                  tmdbId,
+                  mediaDataEpisode.parentIndex,
+                );
+
+                this.logger.log(
+                  `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with TMDB ID '${tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.`,
+                );
+              }
+              break;
             }
-            break;
-          default:
-            await this.seerrApi.removeMediaByTmdbId(
-              media.tmdbId,
-              library?.type === 'show' ? 'tv' : 'movie',
-            );
-            this.logger.log(
-              `[Seerr] Removed requests of media with tmdbid '${media.tmdbId}'`,
-            );
-            break;
+            default:
+              await this.seerrApi.removeMediaByTmdbId(
+                tmdbId,
+                library?.type === 'show' ? 'tv' : 'movie',
+              );
+              this.logger.log(
+                `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
+              );
+              break;
+          }
         }
       }
     }

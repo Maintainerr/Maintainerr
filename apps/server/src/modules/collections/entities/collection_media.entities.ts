@@ -23,6 +23,9 @@ export class CollectionMedia {
   @Column({ nullable: true })
   tmdbId: number;
 
+  @Column({ nullable: true })
+  tvdbId: number;
+
   @Column()
   addDate: Date;
 
