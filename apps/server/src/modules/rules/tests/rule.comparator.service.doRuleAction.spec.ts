@@ -216,27 +216,31 @@ describe('RuleComparatorService', () => {
       [true, 0, 10, RulePossibility.SMALLER],
       [false, 5, 3, RulePossibility.SMALLER],
       [false, 5, 5, RulePossibility.SMALLER],
-      // null/undefined coerce to 0 (matches v2.27.0 behaviour)
-      [true, null, 6, RulePossibility.SMALLER], // Number(null)=0 < 6
-      [false, null, 6, RulePossibility.BIGGER], // Number(null)=0 > 6
-      [false, 6, null, RulePossibility.SMALLER], // 6 < Number(null)=0
-      [true, 6, null, RulePossibility.BIGGER], // 6 > Number(null)=0
-      [false, undefined, 6, RulePossibility.SMALLER], // Number(undefined)=NaN, NaN comparisons are always false
+      // invalid numeric operands must fail closed
+      [false, null, 6, RulePossibility.SMALLER],
+      [false, null, 6, RulePossibility.BIGGER],
+      [false, 6, null, RulePossibility.SMALLER],
+      [false, 6, null, RulePossibility.BIGGER],
+      [false, undefined, 6, RulePossibility.SMALLER],
       [false, undefined, 6, RulePossibility.BIGGER],
-      [false, null, null, RulePossibility.SMALLER], // 0 < 0
-      [false, null, null, RulePossibility.BIGGER], // 0 > 0
+      [false, '6', 5, RulePossibility.BIGGER],
+      [false, null, null, RulePossibility.SMALLER],
+      [false, null, null, RulePossibility.BIGGER],
     ] as [boolean, any, any, RulePossibility][];
     const numericActionName = {
       [RulePossibility.BIGGER]: 'BIGGER',
       [RulePossibility.SMALLER]: 'SMALLER',
     };
-    numericComparisonData.forEach(([expected, val1, val2, action]) => {
-      it(`should return ${expected} when val1 is ${val1} and val2 is ${val2} with action ${numericActionName[action]}`, () => {
+
+    it.each(numericComparisonData)(
+      'should return %s when val1 is %s and val2 is %s with action %s',
+      (expected, val1, val2, action) => {
         expect(ruleComparatorService['doRuleAction'](val1, val2, action)).toBe(
           expected,
         );
-      });
-    });
+        expect(numericActionName[action]).toBeDefined();
+      },
+    );
 
     it('should return true when comparing two dates with action BEFORE', () => {
       const val1 = new Date('2022-01-01');

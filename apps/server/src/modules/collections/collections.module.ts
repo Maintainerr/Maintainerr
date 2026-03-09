@@ -6,9 +6,9 @@ import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
-import { TmdbApiModule } from '../api/tmdb-api/tmdb.module';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionLogCleanerService } from '../collections/tasks/collection-log-cleaner.service';
+import { MetadataModule } from '../metadata/metadata.module';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { RulesModule } from '../rules/rules.module';
@@ -35,7 +35,7 @@ import { CollectionMedia } from './entities/collection_media.entities';
     ]),
     SeerrApiModule,
     TautulliApiModule,
-    TmdbApiModule,
+    MetadataModule,
     ServarrApiModule,
     TasksModule,
     ActionsModule,

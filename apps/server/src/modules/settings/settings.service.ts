@@ -3,8 +3,11 @@ import {
   JellyfinSetting,
   MaintainerrEvent,
   MediaServerType,
+  MetadataProviderPreference,
   SeerrSetting,
   TautulliSetting,
+  TmdbSetting,
+  TvdbSetting,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -22,6 +25,8 @@ import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
+import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
+import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
   DeleteRadarrSettingResponseDto,
@@ -81,6 +86,12 @@ export class SettingsService implements SettingDto {
 
   tautulli_api_key: string;
 
+  tmdb_api_key?: string;
+
+  tvdb_api_key?: string;
+
+  metadata_provider_preference?: MetadataProviderPreference;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;
@@ -96,6 +107,10 @@ export class SettingsService implements SettingDto {
     private readonly seerr: SeerrApiService,
     @Inject(forwardRef(() => TautulliApiService))
     private readonly tautulli: TautulliApiService,
+    @Inject(forwardRef(() => TmdbApiService))
+    private readonly tmdbApi: TmdbApiService,
+    @Inject(forwardRef(() => TvdbApiService))
+    private readonly tvdbApi: TvdbApiService,
     @Inject(forwardRef(() => InternalApiService))
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
@@ -135,6 +150,11 @@ export class SettingsService implements SettingDto {
       this.seerr_api_key = settingsDb?.seerr_api_key;
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
+      this.tmdb_api_key = settingsDb?.tmdb_api_key;
+      this.tvdb_api_key = settingsDb?.tvdb_api_key;
+      this.metadata_provider_preference =
+        settingsDb?.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY;
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
@@ -212,6 +232,8 @@ export class SettingsService implements SettingDto {
       jellyfin_api_key: this.maskSecret(settings.jellyfin_api_key),
       seerr_api_key: this.maskSecret(settings.seerr_api_key),
       tautulli_api_key: this.maskSecret(settings.tautulli_api_key),
+      tmdb_api_key: this.maskSecret(settings.tmdb_api_key),
+      tvdb_api_key: this.maskSecret(settings.tvdb_api_key),
     };
   }
 
@@ -380,6 +402,96 @@ export class SettingsService implements SettingDto {
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
       this.logger.error('Error while updating Tautulli settings: ', e);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  // ── Metadata provider API key helpers ──
+
+  private async updateMetadataApiKey(
+    provider: string,
+    apiKey: string,
+  ): Promise<BasicResponseDto> {
+    const column = `${provider}_api_key`;
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+      await this.saveSettings({ ...settingsDb, [column]: apiKey });
+      this[column] = apiKey;
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error(
+        `Error while updating ${provider.toUpperCase()} settings: `,
+        e,
+      );
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  private async removeMetadataApiKey(
+    provider: string,
+  ): Promise<BasicResponseDto> {
+    const column = `${provider}_api_key`;
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+      await this.saveSettings({ ...settingsDb, [column]: null });
+      this[column] = undefined;
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error(
+        `Error removing ${provider.toUpperCase()} settings: `,
+        e,
+      );
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateTmdbSetting(
+    settings: TmdbSetting,
+  ): Promise<BasicResponseDto> {
+    return this.updateMetadataApiKey('tmdb', settings.api_key);
+  }
+
+  public async removeTmdbSetting(): Promise<BasicResponseDto> {
+    return this.removeMetadataApiKey('tmdb');
+  }
+
+  public async testTmdb(setting?: TmdbSetting): Promise<BasicResponseDto> {
+    return this.tmdbApi.testConnection(setting?.api_key);
+  }
+
+  public async updateTvdbSetting(
+    settings: TvdbSetting,
+  ): Promise<BasicResponseDto> {
+    return this.updateMetadataApiKey('tvdb', settings.api_key);
+  }
+
+  public async removeTvdbSetting(): Promise<BasicResponseDto> {
+    return this.removeMetadataApiKey('tvdb');
+  }
+
+  public async testTvdb(setting?: TvdbSetting): Promise<BasicResponseDto> {
+    return this.tvdbApi.testConnection(setting?.api_key);
+  }
+
+  public async updateMetadataProviderPreference(
+    preference: MetadataProviderPreference,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        metadata_provider_preference: preference,
+      });
+
+      this.metadata_provider_preference = preference;
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (e) {
+      this.logger.error(
+        'Error while updating metadata provider preference: ',
+        e,
+      );
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }

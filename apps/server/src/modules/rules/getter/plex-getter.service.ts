@@ -9,6 +9,11 @@ import {
   SimplePlexUser,
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
+import {
+  getExternalMediaRatingValue,
+  MediaRatingProvider,
+} from '../../api/media-server/media-rating.helper';
+import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -28,8 +33,8 @@ export class PlexGetterService {
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(PlexGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.plexProperties = ruleConstanst.applications.find(
+    const ruleConstants = new RuleConstants();
+    this.plexProperties = ruleConstants.applications.find(
       (el) => el.id === Application.PLEX,
     ).props;
   }
@@ -104,8 +109,32 @@ export class PlexGetterService {
           return metadata.Role ? metadata.Role.map((el) => el.tag) : null;
         }
         case 'viewCount': {
-          const count = await this.plexApi.getWatchHistory(metadata.ratingKey);
-          return count ? count.length : 0;
+          const history = await this.plexApi
+            .getWatchHistory(metadata.ratingKey)
+            .catch(() => undefined);
+
+          const historyCount = history ? history.length : 0;
+          const itemCount = libItem.viewCount ?? 0;
+
+          if (historyCount === 0 && itemCount > 0) {
+            this.logger.debug(
+              `viewCount fallback: watch history returned 0 for ratingKey ${metadata.ratingKey}, using libItem.viewCount (${itemCount}). Note: this value reflects the admin user's view count only.`,
+            );
+            return itemCount;
+          }
+
+          return historyCount;
+        }
+        case 'isWatched': {
+          const watchHistory = await this.plexApi
+            .getWatchHistory(metadata.ratingKey)
+            .catch(() => undefined);
+
+          if (watchHistory && watchHistory.length > 0) {
+            return true;
+          }
+
+          return (libItem.viewCount ?? 0) > 0;
         }
         case 'labels': {
           const item =
@@ -536,33 +565,16 @@ export class PlexGetterService {
           return lastEpDate ? new Date(lastEpDate) : null;
         }
         case 'rating_imdb': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('imdb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'imdb', 'audience');
         }
         case 'rating_rottenTomatoesCritic': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'rottentomatoes', 'critic');
         }
         case 'rating_rottenTomatoesAudience': {
-          return (
-            metadata.Rating?.find(
-              (x) =>
-                x.image.startsWith('rottentomatoes') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'rottentomatoes', 'audience');
         }
         case 'rating_tmdb': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'tmdb', 'audience');
         }
         case 'rating_imdbShow': {
           const showMetadata =
@@ -570,11 +582,7 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('imdb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(showMetadata, 'imdb', 'audience');
         }
         case 'rating_rottenTomatoesCriticShow': {
           const showMetadata =
@@ -582,10 +590,10 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
-            )?.value ?? null
+          return this.getProviderRating(
+            showMetadata,
+            'rottentomatoes',
+            'critic',
           );
         }
         case 'rating_rottenTomatoesAudienceShow': {
@@ -594,11 +602,10 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) =>
-                x.image.startsWith('rottentomatoes') && x.type == 'audience',
-            )?.value ?? null
+          return this.getProviderRating(
+            showMetadata,
+            'rottentomatoes',
+            'audience',
           );
         }
         case 'rating_tmdbShow': {
@@ -607,11 +614,7 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(showMetadata, 'tmdb', 'audience');
         }
         case 'collectionsIncludingSmart': {
           if (
@@ -772,5 +775,19 @@ export class PlexGetterService {
       this.logger.debug(e);
       return undefined;
     }
+  }
+
+  private getProviderRating(
+    metadata: PlexMetadata | undefined,
+    provider: MediaRatingProvider,
+    type: 'audience' | 'critic',
+  ): number | null {
+    return getExternalMediaRatingValue(
+      metadata ? PlexMapper.metadataToMediaRatings(metadata) : undefined,
+      {
+        provider,
+        type,
+      },
+    );
   }
 }

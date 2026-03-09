@@ -29,8 +29,8 @@ export class TautulliGetterService {
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TautulliGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.appProperties = ruleConstanst.applications.find(
+    const ruleConstants = new RuleConstants();
+    this.appProperties = ruleConstants.applications.find(
       (el) => el.id === Application.TAUTULLI,
     ).props;
   }

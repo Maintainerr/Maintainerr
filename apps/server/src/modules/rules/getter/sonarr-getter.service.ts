@@ -8,33 +8,32 @@ import {
   SonarrSeries,
 } from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
-import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import {
   Application,
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 
 @Injectable()
 export class SonarrGetterService {
-  plexProperties: Property[];
+  appProperties: Property[];
 
   constructor(
     private readonly servarrService: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly tmdbApi: TmdbApiService,
-    private readonly tmdbIdHelper: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SonarrGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.plexProperties = ruleConstanst.applications.find(
+    const ruleConstants = new RuleConstants();
+    this.appProperties = ruleConstants.applications.find(
       (el) => el.id === Application.SONARR,
     ).props;
   }
@@ -48,6 +47,7 @@ export class SonarrGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
+    rule?: RuleDto,
   ) {
     if (!ruleGroup.collection?.sonarrSettingsId) {
       this.logger.error(
@@ -57,7 +57,7 @@ export class SonarrGetterService {
     }
 
     try {
-      const prop = this.plexProperties.find((el) => el.id === id);
+      const prop = this.appProperties.find((el) => el.id === id);
 
       // ARR diskspace check doesn't require a show lookup - handle early
       if (
@@ -67,8 +67,29 @@ export class SonarrGetterService {
         const sonarrApiClient = await this.servarrService.getSonarrApiClient(
           ruleGroup.collection.sonarrSettingsId,
         );
-        const diskspace = await sonarrApiClient.getDiskspace();
-        if (!diskspace || diskspace.length === 0) return null;
+        const allDiskspace = await sonarrApiClient.getDiskspace();
+        if (!allDiskspace || allDiskspace.length === 0) return null;
+
+        const targetPath = rule?.arrDiskPath?.trim();
+        const normalizedTargetPath = targetPath
+          ? this.normalizeDiskPath(targetPath)
+          : undefined;
+        const diskspace = normalizedTargetPath
+          ? allDiskspace.filter((entry) => {
+              if (!entry.path) return false;
+              return (
+                this.normalizeDiskPath(entry.path) === normalizedTargetPath
+              );
+            })
+          : allDiskspace;
+
+        if (diskspace.length === 0) {
+          this.logger.warn(
+            `[Diskspace] No diskspace entry matched configured path '${normalizedTargetPath}' in Sonarr.`,
+          );
+          return null;
+        }
+
         const totalFree = diskspace.reduce(
           (acc, d) => acc + (d.freeSpace ?? 0),
           0,
@@ -103,7 +124,7 @@ export class SonarrGetterService {
 
       if (!tvdbIds || tvdbIds.length === 0) {
         this.logger.warn(
-          `[TVDB] Failed to fetch tvdb id for '${libItem.title}' with id '${libItem.id}. As a result, no Sonarr query could be made.`,
+          `Failed to resolve series ID for '${libItem.title}' with id '${libItem.id}'. As a result, no Sonarr query could be made.`,
         );
         return null;
       }
@@ -120,7 +141,7 @@ export class SonarrGetterService {
         if (showResponse?.id) {
           if (attemptCount > 1) {
             this.logger.debug(
-              `[TVDB] Found '${libItem.title}' in Sonarr using TVDB ID ${tvdbId} (attempt ${attemptCount}/${tvdbIds.length}). Consider checking upstream provider data quality.`,
+              `Found '${libItem.title}' in Sonarr using TVDB ID ${tvdbId} (attempt ${attemptCount}/${tvdbIds.length}). Consider checking upstream provider data quality.`,
             );
           }
           break;
@@ -129,7 +150,7 @@ export class SonarrGetterService {
 
       if (!showResponse?.id) {
         this.logger.warn(
-          `[TVDB] None of the TVDB IDs [${tvdbIds.join(', ')}] for '${libItem.title}' matched a series in Sonarr.`,
+          `None of the resolved TVDB IDs [${tvdbIds.join(', ')}] for '${libItem.title}' matched a series in Sonarr.`,
         );
         return null;
       }
@@ -409,6 +430,18 @@ export class SonarrGetterService {
         case 'seriesType': {
           return showResponse.seriesType ?? null;
         }
+        case 'missing_episodes_season': {
+          return season?.statistics
+            ? season.statistics.episodeCount -
+                season.statistics.episodeFileCount
+            : null;
+        }
+        case 'missing_episodes_show': {
+          return showResponse.statistics
+            ? showResponse.statistics.episodeCount -
+                showResponse.statistics.episodeFileCount
+            : null;
+        }
       }
     } catch (e) {
       this.logger.warn(
@@ -417,6 +450,14 @@ export class SonarrGetterService {
       this.logger.debug(e);
       return undefined;
     }
+  }
+
+  private normalizeDiskPath(path: string): string {
+    if (path.length <= 1) {
+      return path;
+    }
+
+    return path.replace(/[\\/]+$/, '');
   }
 
   /**
@@ -454,42 +495,6 @@ export class SonarrGetterService {
   public async findAllTvdbIdsFromMediaItem(
     libItem: MediaItem,
   ): Promise<number[]> {
-    const tvdbIds: number[] = [];
-
-    if (libItem.providerIds?.tvdb) {
-      for (const tvdbId of libItem.providerIds.tvdb) {
-        const numId = Number(tvdbId);
-        if (numId && !tvdbIds.includes(numId)) {
-          tvdbIds.push(numId);
-        }
-      }
-    }
-
-    if (tvdbIds.length === 0) {
-      const mediaServer = await this.getMediaServer();
-      const metadata = await mediaServer.getMetadata(libItem.id);
-      if (metadata?.providerIds?.tvdb) {
-        for (const tvdbId of metadata.providerIds.tvdb) {
-          const numId = Number(tvdbId);
-          if (numId && !tvdbIds.includes(numId)) {
-            tvdbIds.push(numId);
-          }
-        }
-      }
-    }
-
-    // Last resort: try to get TVDB via TMDB
-    if (tvdbIds.length === 0) {
-      const tmdbResp = await this.tmdbIdHelper.getTmdbIdFromMediaItem(libItem);
-      const tmdbId = tmdbResp?.id;
-      if (tmdbId) {
-        const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdbId });
-        if (tmdbShow?.external_ids?.tvdb_id) {
-          tvdbIds.push(tmdbShow.external_ids.tvdb_id);
-        }
-      }
-    }
-
-    return tvdbIds;
+    return this.metadataService.resolveAllSeriesIds(libItem);
   }
 }

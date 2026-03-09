@@ -7,9 +7,14 @@ import {
   RulePossibilityTranslations,
 } from '@maintainerr/contracts'
 import { cloneDeep } from 'lodash-es'
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { IRule } from '../'
-import { useRuleConstants } from '../../../../../api/rules'
+import {
+  ArrDiskspaceResource,
+  useRadarrDiskspace,
+  useRuleConstants,
+  useSonarrDiskspace,
+} from '../../../../../api/rules'
 import { IProperty } from '../../../../../contexts/constants-context'
 import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
@@ -90,6 +95,43 @@ const shouldFilterApplication = (
   return false
 }
 
+const isArrDiskspaceProperty = (prop?: IProperty): boolean => {
+  return (
+    prop?.name === 'diskspace_remaining_gb' ||
+    prop?.name === 'diskspace_total_gb'
+  )
+}
+
+const normalizeDiskPath = (path: string): string => {
+  if (path.length <= 1) {
+    return path
+  }
+
+  return path.replace(/[\\/]+$/, '')
+}
+
+const buildDiskspaceOptions = (
+  resources: ArrDiskspaceResource[] | undefined,
+): Array<{ value: string; label: string }> => {
+  const options = new Map<string, string>()
+
+  for (const resource of resources ?? []) {
+    if (!resource.path) continue
+
+    const normalizedPath = normalizeDiskPath(resource.path)
+    const label = resource.label
+      ? `${normalizedPath} (${resource.label})`
+      : normalizedPath
+    if (!options.has(normalizedPath)) {
+      options.set(normalizedPath, label)
+    }
+  }
+
+  return [...options.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.value.localeCompare(b.value))
+}
+
 const RuleInput = (props: IRuleInput) => {
   const [operator, setOperator] = useState<string>()
   const [firstval, setFirstVal] = useState<string>()
@@ -99,6 +141,7 @@ const RuleInput = (props: IRuleInput) => {
   const [customValType, setCustomValType] = useState<RuleType>()
   const [customVal, setCustomVal] = useState<string>()
   const [customValActive, setCustomValActive] = useState<boolean>(true)
+  const [arrDiskPath, setArrDiskPath] = useState<string>('')
 
   const [possibilities, setPossibilities] = useState<RulePossibility[]>([])
   const [ruleType, setRuleType] = useState<RuleType>(RuleType.NUMBER)
@@ -106,11 +149,79 @@ const RuleInput = (props: IRuleInput) => {
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
   const { isPlex, isJellyfin } = useMediaServerType()
 
+  function getPropFromTuple(
+    value: [number, number] | string,
+  ): IProperty | undefined {
+    if (!constants) return undefined
+
+    if (typeof value === 'string') {
+      value = JSON.parse(value)
+    }
+    const application = constants.applications?.find(
+      (el) => el.id === +value[0],
+    )
+
+    const prop = application?.props.find((el) => {
+      return el.id === +value[1]
+    })
+    return prop
+  }
+
+  const firstValueTuple = useMemo<[number, number] | undefined>(() => {
+    if (!firstval) return undefined
+    return JSON.parse(firstval) as [number, number]
+  }, [firstval])
+
+  const selectedFirstValueAppId = firstValueTuple?.[0]
+  const selectedFirstValueProp = firstval
+    ? getPropFromTuple(firstval)
+    : undefined
+  const isSelectedArrDiskspaceRule =
+    (selectedFirstValueAppId === Application.RADARR ||
+      selectedFirstValueAppId === Application.SONARR) &&
+    isArrDiskspaceProperty(selectedFirstValueProp)
+
+  const { data: radarrDiskspace = [], isLoading: radarrDiskspaceLoading } =
+    useRadarrDiskspace(props.radarrSettingsId, {
+      enabled:
+        isSelectedArrDiskspaceRule &&
+        selectedFirstValueAppId === Application.RADARR,
+    })
+
+  const { data: sonarrDiskspace = [], isLoading: sonarrDiskspaceLoading } =
+    useSonarrDiskspace(props.sonarrSettingsId, {
+      enabled:
+        isSelectedArrDiskspaceRule &&
+        selectedFirstValueAppId === Application.SONARR,
+    })
+
+  const arrDiskspaceOptions = useMemo(() => {
+    if (selectedFirstValueAppId === Application.RADARR) {
+      return buildDiskspaceOptions(radarrDiskspace)
+    }
+    if (selectedFirstValueAppId === Application.SONARR) {
+      return buildDiskspaceOptions(sonarrDiskspace)
+    }
+    return []
+  }, [selectedFirstValueAppId, radarrDiskspace, sonarrDiskspace])
+
+  const isDiskspaceLoading =
+    selectedFirstValueAppId === Application.RADARR
+      ? radarrDiskspaceLoading
+      : selectedFirstValueAppId === Application.SONARR
+        ? sonarrDiskspaceLoading
+        : false
+
   useEffect(() => {
     if (props.editData?.rule) {
       setOperator(props.editData.rule.operator?.toString())
       setFirstVal(JSON.stringify(props.editData.rule.firstVal))
       setAction(props.editData.rule.action)
+      setArrDiskPath(
+        props.editData.rule.arrDiskPath
+          ? normalizeDiskPath(props.editData.rule.arrDiskPath)
+          : '',
+      )
 
       if (props.editData.rule.customVal) {
         switch (props.editData.rule.customVal.ruleTypeId) {
@@ -158,6 +269,7 @@ const RuleInput = (props: IRuleInput) => {
         setAction(undefined)
         setSecondVal(undefined)
         setCustomVal(undefined)
+        setArrDiskPath('')
       }
     }
   }, [])
@@ -184,6 +296,11 @@ const RuleInput = (props: IRuleInput) => {
     } else {
       setCustomVal(event.target.value)
     }
+  }
+
+  const updateArrDiskPath = (event: { target: { value: string } }) => {
+    const value = event.target.value
+    setArrDiskPath(value ? normalizeDiskPath(value) : '')
   }
 
   const updateAction = (event: { target: { value: string } }) => {
@@ -227,6 +344,7 @@ const RuleInput = (props: IRuleInput) => {
         firstVal: JSON.parse(firstval),
         action,
         section: props.section ? props.section - 1 : 0,
+        ...(isSelectedArrDiskspaceRule && arrDiskPath ? { arrDiskPath } : {}),
       }
       if (customVal) {
         props.onCommit(props.id ? props.id : 0, {
@@ -264,7 +382,16 @@ const RuleInput = (props: IRuleInput) => {
 
   useEffect(() => {
     submit(null)
-  }, [secondVal, customVal, operator, action, firstval, customValType])
+  }, [
+    secondVal,
+    customVal,
+    operator,
+    action,
+    firstval,
+    customValType,
+    arrDiskPath,
+    isSelectedArrDiskspaceRule,
+  ])
 
   useEffect(() => {
     if (!constants) return
@@ -312,6 +439,32 @@ const RuleInput = (props: IRuleInput) => {
   }, [firstval])
 
   useEffect(() => {
+    if (!isSelectedArrDiskspaceRule && arrDiskPath) {
+      setArrDiskPath('')
+    }
+  }, [isSelectedArrDiskspaceRule, arrDiskPath])
+
+  useEffect(() => {
+    if (!isSelectedArrDiskspaceRule || !arrDiskPath) {
+      return
+    }
+
+    const normalizedCurrent = normalizeDiskPath(arrDiskPath)
+    const hasMatchingOption = arrDiskspaceOptions.some(
+      (option) => option.value === normalizedCurrent,
+    )
+
+    if (!isDiskspaceLoading && !hasMatchingOption) {
+      setArrDiskPath('')
+    }
+  }, [
+    isSelectedArrDiskspaceRule,
+    arrDiskPath,
+    arrDiskspaceOptions,
+    isDiskspaceLoading,
+  ])
+
+  useEffect(() => {
     if (secondVal) {
       if (secondVal === CustomParams.CUSTOM_NUMBER) {
         setCustomValActive(true)
@@ -340,24 +493,6 @@ const RuleInput = (props: IRuleInput) => {
       }
     }
   }, [secondVal])
-
-  const getPropFromTuple = (
-    value: [number, number] | string,
-  ): IProperty | undefined => {
-    if (!constants) return undefined
-
-    if (typeof value === 'string') {
-      value = JSON.parse(value)
-    }
-    const application = constants.applications?.find(
-      (el) => el.id === +value[0],
-    )
-
-    const prop = application?.props.find((el) => {
-      return el.id === +value[1]
-    })
-    return prop
-  }
 
   if (!constants || constantsLoading) {
     return <LoadingSpinner />
@@ -586,6 +721,36 @@ const RuleInput = (props: IRuleInput) => {
               })}
           </select>
         </div>
+
+        {isSelectedArrDiskspaceRule ? (
+          <div>
+            <label
+              htmlFor="arr_disk_path"
+              className="mb-1 block text-sm font-medium"
+            >
+              Disk Target
+            </label>
+            <select
+              name="arr_disk_path"
+              id="arr_disk_path"
+              onChange={updateArrDiskPath}
+              value={arrDiskPath}
+              className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
+            >
+              <option value="">Aggregate (all paths)</option>
+              {arrDiskspaceOptions.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+              {!isDiskspaceLoading && arrDiskspaceOptions.length === 0 ? (
+                <option disabled value="__no_paths">
+                  No disk paths reported by ARR
+                </option>
+              ) : null}
+            </select>
+          </div>
+        ) : null}
 
         {/* Custom Value Input */}
         {customValActive ? (

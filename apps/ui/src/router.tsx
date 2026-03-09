@@ -8,6 +8,7 @@ import SettingsSeerr from './components/Settings/Seerr'
 import SettingsJobs from './components/Settings/Jobs'
 import SettingsLogs from './components/Settings/Logs'
 import SettingsMain from './components/Settings/Main'
+import MetadataSettings from './components/Settings/Metadata/MetadataSettings'
 import SettingsNotifications from './components/Settings/Notifications'
 import SettingsPlex from './components/Settings/Plex'
 import SettingsRadarr from './components/Settings/Radarr'
@@ -126,6 +127,10 @@ export const router = createBrowserRouter(
             {
               path: 'tautulli',
               element: <SettingsTautulli />,
+            },
+            {
+              path: 'metadata',
+              element: <MetadataSettings />,
             },
             {
               path: 'notifications',

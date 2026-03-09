@@ -7,6 +7,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import cacheManager, { Cache } from '../../api/lib/cache';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
+import { getExternalMediaRatingValue } from '../../api/media-server/media-rating.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   Application,
@@ -54,7 +55,6 @@ export class JellyfinGetterService {
   ): Promise<RuleValueType> {
     try {
       if (!this.jellyfinAdapter.isSetup()) {
-        this.logger.warn('Jellyfin service is not configured');
         return null;
       }
 
@@ -90,6 +90,18 @@ export class JellyfinGetterService {
           metadata.grandparentId,
         );
         return grandparentPromise;
+      };
+
+      const getShowMetadata = async () => {
+        if (metadata.type === 'season') {
+          return await getParent();
+        }
+
+        if (metadata.type === 'episode') {
+          return await getGrandparent();
+        }
+
+        return null;
       };
 
       switch (prop.name) {
@@ -320,73 +332,74 @@ export class JellyfinGetterService {
         // Rating properties - Jellyfin provides CommunityRating and CriticRating
         // CommunityRating is typically from TMDB (0-10 scale)
         // CriticRating is typically from Rotten Tomatoes (0-100 scale, stored as 0-10 after mapping)
-        case 'rating_imdb':
+        case 'rating_imdb': {
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'imdb',
+            type: 'audience',
+          });
+        }
+
         case 'rating_tmdb': {
-          // Both IMDb and TMDB typically use similar community ratings
-          // Jellyfin's CommunityRating is usually sourced from TMDB
-          const communityRating = metadata.ratings?.find(
-            (r) => r.source === 'community',
-          );
-          return communityRating?.value ?? null;
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'tmdb',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
         case 'rating_rottenTomatoesCritic': {
-          const criticRating = metadata.ratings?.find(
-            (r) => r.source === 'critic' && r.type === 'critic',
-          );
-          return criticRating?.value ?? null;
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'critic',
+            fallbackSources: ['critic'],
+          });
         }
 
         case 'rating_rottenTomatoesAudience': {
-          // Jellyfin doesn't provide RT audience ratings separately
-          // Could fall back to community rating as an approximation
-          const communityRating = metadata.ratings?.find(
-            (r) => r.source === 'community',
-          );
-          return communityRating?.value ?? null;
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
-        case 'rating_imdbShow':
-        case 'rating_tmdbShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : metadata.type === 'episode'
-                ? await getGrandparent()
-                : null;
+        case 'rating_imdbShow': {
+          const showMetadata = await getShowMetadata();
           if (!showMetadata) return null;
-          const communityRating = showMetadata.ratings?.find(
-            (r) => r.source === 'community',
-          );
-          return communityRating?.value ?? null;
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'imdb',
+            type: 'audience',
+          });
+        }
+
+        case 'rating_tmdbShow': {
+          const showMetadata = await getShowMetadata();
+          if (!showMetadata) return null;
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'tmdb',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
         case 'rating_rottenTomatoesCriticShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : metadata.type === 'episode'
-                ? await getGrandparent()
-                : null;
+          const showMetadata = await getShowMetadata();
           if (!showMetadata) return null;
-          const criticRating = showMetadata.ratings?.find(
-            (r) => r.source === 'critic' && r.type === 'critic',
-          );
-          return criticRating?.value ?? null;
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'critic',
+            fallbackSources: ['critic'],
+          });
         }
 
         case 'rating_rottenTomatoesAudienceShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : metadata.type === 'episode'
-                ? await getGrandparent()
-                : null;
+          const showMetadata = await getShowMetadata();
           if (!showMetadata) return null;
-          const communityRating = showMetadata.ratings?.find(
-            (r) => r.source === 'community',
-          );
-          return communityRating?.value ?? null;
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
         // Smart collection properties - Jellyfin doesn't have smart collections

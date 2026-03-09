@@ -8,7 +8,7 @@ import {
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   ICustomIdentifier,
-  RuleConstanstService,
+  RuleConstantsService,
 } from '../constants/constants.service';
 import { RuleOperators, RulePossibility } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
@@ -29,12 +29,13 @@ interface IRuleYaml {
   firstValue: string;
   lastValue?: string;
   customValue?: ICustomIdentifier;
+  arrDiskPath?: string;
 }
 
 @Injectable()
 export class RuleYamlService {
   constructor(
-    private readonly ruleConstanstService: RuleConstanstService,
+    private readonly ruleConstantsService: RuleConstantsService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RuleYamlService.name);
@@ -57,22 +58,27 @@ export class RuleYamlService {
         // transform rule and add to workingSection
         workingSection.rules.push({
           ...(rule.operator ? { operator: RuleOperators[+rule.operator] } : {}),
-          firstValue: this.ruleConstanstService.getValueIdentifier(
+          firstValue: this.ruleConstantsService.getValueIdentifier(
             rule.firstVal,
           ),
           action: RulePossibility[+rule.action],
           ...(rule.lastVal
             ? {
-                lastValue: this.ruleConstanstService.getValueIdentifier(
+                lastValue: this.ruleConstantsService.getValueIdentifier(
                   rule.lastVal,
                 ),
               }
             : {}),
           ...(rule.customVal
             ? {
-                customValue: this.ruleConstanstService.getCustomValueIdentifier(
+                customValue: this.ruleConstantsService.getCustomValueIdentifier(
                   rule.customVal,
                 ),
+              }
+            : {}),
+          ...(rule.arrDiskPath
+            ? {
+                arrDiskPath: rule.arrDiskPath,
               }
             : {}),
         });
@@ -143,12 +149,12 @@ export class RuleYamlService {
               : null,
             action: +RulePossibility[rule.action.toUpperCase()],
             section: idRef,
-            firstVal: this.ruleConstanstService.getValueFromIdentifier(
+            firstVal: this.ruleConstantsService.getValueFromIdentifier(
               rule.firstValue.toLowerCase(),
             ),
             ...(rule.lastValue
               ? {
-                  lastVal: this.ruleConstanstService.getValueFromIdentifier(
+                  lastVal: this.ruleConstantsService.getValueFromIdentifier(
                     rule.lastValue.toLowerCase(),
                   ),
                 }
@@ -156,9 +162,14 @@ export class RuleYamlService {
             ...(rule.customValue
               ? {
                   customVal:
-                    this.ruleConstanstService.getCustomValueFromIdentifier(
+                    this.ruleConstantsService.getCustomValueFromIdentifier(
                       rule.customValue,
                     ),
+                }
+              : {}),
+            ...(rule.arrDiskPath
+              ? {
+                  arrDiskPath: rule.arrDiskPath,
                 }
               : {}),
           });
