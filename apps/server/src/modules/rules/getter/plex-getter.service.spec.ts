@@ -99,6 +99,9 @@ describe('PlexGetterService', () => {
         );
 
         expect(result).toBe(expected);
+        expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1', {
+          includeExternalMedia: true,
+        });
       },
     );
 
@@ -127,6 +130,9 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toBe(8.8);
+      expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1', {
+        includeExternalMedia: true,
+      });
     });
 
     it('resolves show ratings from grandparent metadata for episodes', async () => {
@@ -161,8 +167,12 @@ describe('PlexGetterService', () => {
 
       expect(result).toBe(8.6);
       expect(plexApi.getMetadata).toHaveBeenCalledTimes(2);
-      expect(plexApi.getMetadata).toHaveBeenNthCalledWith(1, 'episode-1');
-      expect(plexApi.getMetadata).toHaveBeenNthCalledWith(2, 'show-1');
+      expect(plexApi.getMetadata).toHaveBeenNthCalledWith(1, 'episode-1', {
+        includeExternalMedia: true,
+      });
+      expect(plexApi.getMetadata).toHaveBeenNthCalledWith(2, 'show-1', {
+        includeExternalMedia: true,
+      });
     });
   });
 });

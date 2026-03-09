@@ -46,18 +46,25 @@ export class PlexGetterService {
     ruleGroup?: RulesDto,
   ): Promise<RuleValueType> {
     try {
+      const metadataOptions = { includeExternalMedia: true } as const;
       const prop = this.plexProperties.find((el) => el.id === id);
 
       // fetch metadata, parent & grandparent from cache, this data is more complete
       // libItem.id maps to Plex's ratingKey
-      const metadata: PlexMetadata = await this.plexApi.getMetadata(libItem.id);
+      const metadata: PlexMetadata = await this.plexApi.getMetadata(
+        libItem.id,
+        metadataOptions,
+      );
 
       // Parent/grandparent metadata is only needed for some properties.
       // Lazy-load and memoize so we don't fetch unless a case uses it.
       let parentPromise: Promise<PlexMetadata> | undefined;
       const getParent = async (): Promise<PlexMetadata | undefined> => {
         if (!metadata?.parentRatingKey) return undefined;
-        parentPromise ??= this.plexApi.getMetadata(metadata.parentRatingKey);
+        parentPromise ??= this.plexApi.getMetadata(
+          metadata.parentRatingKey,
+          metadataOptions,
+        );
         return parentPromise;
       };
 
@@ -66,6 +73,7 @@ export class PlexGetterService {
         if (!metadata?.grandparentRatingKey) return undefined;
         grandparentPromise ??= this.plexApi.getMetadata(
           metadata.grandparentRatingKey,
+          metadataOptions,
         );
         return grandparentPromise;
       };
