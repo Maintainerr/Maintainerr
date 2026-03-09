@@ -231,13 +231,16 @@ describe('RuleComparatorService', () => {
       [RulePossibility.BIGGER]: 'BIGGER',
       [RulePossibility.SMALLER]: 'SMALLER',
     };
-    numericComparisonData.forEach(([expected, val1, val2, action]) => {
-      it(`should return ${expected} when val1 is ${val1} and val2 is ${val2} with action ${numericActionName[action]}`, () => {
+
+    it.each(numericComparisonData)(
+      'should return %s when val1 is %s and val2 is %s with action %s',
+      (expected, val1, val2, action) => {
         expect(ruleComparatorService['doRuleAction'](val1, val2, action)).toBe(
           expected,
         );
-      });
-    });
+        expect(numericActionName[action]).toBeDefined();
+      },
+    );
 
     it('should return true when comparing two dates with action BEFORE', () => {
       const val1 = new Date('2022-01-01');

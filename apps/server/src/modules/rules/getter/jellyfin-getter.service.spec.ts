@@ -382,7 +382,7 @@ describe('JellyfinGetterService', () => {
   });
 
   describe('provider ratings', () => {
-    it('uses provider-specific ratings when available and falls back to shared audience ratings', async () => {
+    it('uses provider-specific ratings when available', async () => {
       const mediaItem = createMediaItem({
         id: 'movie-1',
         type: 'movie' as MediaItemType,
@@ -426,7 +426,7 @@ describe('JellyfinGetterService', () => {
       ).resolves.toBe(9.2);
     });
 
-    it('falls back to show audience ratings when provider-specific show ratings are unavailable', async () => {
+    it('falls back to show audience ratings for tmdb show rules when provider-specific show ratings are unavailable', async () => {
       const episodeItem = createMediaItem({
         id: 'ep-1',
         type: 'episode' as MediaItemType,
@@ -451,13 +451,47 @@ describe('JellyfinGetterService', () => {
       });
 
       const response = await jellyfinGetterService.get(
-        35,
+        38,
         episodeItem,
         'episode',
         createRulesDto({ dataType: 'episode' }),
       );
 
       expect(response).toBe(8.6);
+    });
+
+    it('does not substitute show tmdb or community ratings for imdb show rules', async () => {
+      const episodeItem = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        grandparentId: 'show-1',
+      });
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+        ratings: [
+          {
+            source: 'community',
+            value: 8.6,
+            type: 'audience',
+          },
+        ],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'ep-1') return episodeItem;
+        if (itemId === 'show-1') return showItem;
+        return undefined;
+      });
+
+      await expect(
+        jellyfinGetterService.get(
+          35,
+          episodeItem,
+          'episode',
+          createRulesDto({ dataType: 'episode' }),
+        ),
+      ).resolves.toBeNull();
     });
   });
 

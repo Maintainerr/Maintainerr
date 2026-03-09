@@ -7,10 +7,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import cacheManager, { Cache } from '../../api/lib/cache';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
-import {
-  getExternalMediaRatingValue,
-  MediaRatingProvider,
-} from '../../api/media-server/media-rating.helper';
+import { getExternalMediaRatingValue } from '../../api/media-server/media-rating.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   Application,
@@ -93,6 +90,18 @@ export class JellyfinGetterService {
           metadata.grandparentId,
         );
         return grandparentPromise;
+      };
+
+      const getShowMetadata = async () => {
+        if (metadata.type === 'season') {
+          return await getParent();
+        }
+
+        if (metadata.type === 'episode') {
+          return await getGrandparent();
+        }
+
+        return null;
       };
 
       switch (prop.name) {
@@ -323,85 +332,74 @@ export class JellyfinGetterService {
         // Rating properties - Jellyfin provides CommunityRating and CriticRating
         // CommunityRating is typically from TMDB (0-10 scale)
         // CriticRating is typically from Rotten Tomatoes (0-100 scale, stored as 0-10 after mapping)
-        case 'rating_imdb':
+        case 'rating_imdb': {
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'imdb',
+            type: 'audience',
+          });
+        }
+
         case 'rating_tmdb': {
-          return this.getProviderRating(
-            metadata.ratings,
-            prop.name === 'rating_imdb' ? 'imdb' : 'tmdb',
-            'audience',
-            prop.name === 'rating_imdb'
-              ? ['themoviedb', 'tmdb', 'community']
-              : ['community'],
-          );
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'tmdb',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
         case 'rating_rottenTomatoesCritic': {
-          return this.getProviderRating(
-            metadata.ratings,
-            'rottentomatoes',
-            'critic',
-            ['critic'],
-          );
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'critic',
+            fallbackSources: ['critic'],
+          });
         }
 
         case 'rating_rottenTomatoesAudience': {
-          return this.getProviderRating(
-            metadata.ratings,
-            'rottentomatoes',
-            'audience',
-            ['community'],
-          );
+          return getExternalMediaRatingValue(metadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
-        case 'rating_imdbShow':
-        case 'rating_tmdbShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : metadata.type === 'episode'
-                ? await getGrandparent()
-                : null;
+        case 'rating_imdbShow': {
+          const showMetadata = await getShowMetadata();
           if (!showMetadata) return null;
-          return this.getProviderRating(
-            showMetadata.ratings,
-            prop.name === 'rating_imdbShow' ? 'imdb' : 'tmdb',
-            'audience',
-            prop.name === 'rating_imdbShow'
-              ? ['themoviedb', 'tmdb', 'community']
-              : ['community'],
-          );
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'imdb',
+            type: 'audience',
+          });
+        }
+
+        case 'rating_tmdbShow': {
+          const showMetadata = await getShowMetadata();
+          if (!showMetadata) return null;
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'tmdb',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
         case 'rating_rottenTomatoesCriticShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : metadata.type === 'episode'
-                ? await getGrandparent()
-                : null;
+          const showMetadata = await getShowMetadata();
           if (!showMetadata) return null;
-          return this.getProviderRating(
-            showMetadata.ratings,
-            'rottentomatoes',
-            'critic',
-            ['critic'],
-          );
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'critic',
+            fallbackSources: ['critic'],
+          });
         }
 
         case 'rating_rottenTomatoesAudienceShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : metadata.type === 'episode'
-                ? await getGrandparent()
-                : null;
+          const showMetadata = await getShowMetadata();
           if (!showMetadata) return null;
-          return this.getProviderRating(
-            showMetadata.ratings,
-            'rottentomatoes',
-            'audience',
-            ['community'],
-          );
+          return getExternalMediaRatingValue(showMetadata.ratings, {
+            provider: 'rottentomatoes',
+            type: 'audience',
+            fallbackSources: ['community'],
+          });
         }
 
         // Smart collection properties - Jellyfin doesn't have smart collections
@@ -446,19 +444,6 @@ export class JellyfinGetterService {
       );
       return undefined;
     }
-  }
-
-  private getProviderRating(
-    ratings: MediaItem['ratings'],
-    provider: MediaRatingProvider,
-    type: 'audience' | 'critic',
-    fallbackSources?: string[],
-  ): number | null {
-    return getExternalMediaRatingValue(ratings, {
-      provider,
-      type,
-      fallbackSources,
-    });
   }
 
   private async getLastViewedAt(itemId: string): Promise<Date | null> {

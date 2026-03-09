@@ -372,7 +372,7 @@ export class RuleComparatorService {
     mediaId: string,
     firstVal: RuleValueType,
     secondVal: RuleValueType,
-  ) {
+  ): void {
     const firstValueName = this.ruleConstanstService.getValueHumanName(
       rule.firstVal,
     );
@@ -454,8 +454,8 @@ export class RuleComparatorService {
 
     if (action === RulePossibility.BIGGER) {
       if (typeof val1 !== 'number' || typeof val2 !== 'number') {
-        this.logger.warn(
-          `Numeric comparison with non-number value: ` +
+        this.logger.debug(
+          `Invalid numeric comparison operand: ` +
             `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=BIGGER`,
         );
         return false;
@@ -465,8 +465,8 @@ export class RuleComparatorService {
 
     if (action === RulePossibility.SMALLER) {
       if (typeof val1 !== 'number' || typeof val2 !== 'number') {
-        this.logger.warn(
-          `Numeric comparison with non-number value: ` +
+        this.logger.debug(
+          `Invalid numeric comparison operand: ` +
             `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=SMALLER`,
         );
         return false;

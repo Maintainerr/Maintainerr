@@ -373,7 +373,7 @@ export class PlexMapper {
     }));
   }
 
-  static toMediaRatings(plex: PlexLibraryItem): MediaRating[] {
+  private static toMediaRatings(plex: PlexLibraryItem): MediaRating[] {
     const ratings: MediaRating[] = [];
 
     PlexMapper.addMediaRating(ratings, 'critic', plex.rating, 'critic');
