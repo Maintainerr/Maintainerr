@@ -210,17 +210,11 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      const missingOperandContext =
-        firstVal == null || secondVal == null
-          ? this.getWatchStateContext(rule, mediaItem, firstVal)
-          : '';
-
       const comparisonResult = this.getComparisonResult(
         rule,
         mediaId,
         firstVal,
         secondVal,
-        missingOperandContext,
       );
 
       // add stats if enabled
@@ -366,16 +360,9 @@ export class RuleComparatorService {
     mediaId: string,
     firstVal: RuleValueType,
     secondVal: RuleValueType,
-    missingOperandContext: string,
   ): boolean {
     if (firstVal == null || secondVal == null) {
-      this.logMissingOperand(
-        rule,
-        mediaId,
-        firstVal,
-        secondVal,
-        missingOperandContext,
-      );
+      this.logMissingOperand(rule, mediaId, firstVal, secondVal);
       return false;
     }
 
@@ -387,59 +374,17 @@ export class RuleComparatorService {
     mediaId: string,
     firstVal: RuleValueType,
     secondVal: RuleValueType,
-    missingOperandContext: string,
   ): void {
     const firstValueName = this.ruleConstantsService.getValueHumanName(
       rule.firstVal,
     );
 
-    this.logger.log(
+    this.logger.warn(
       `Skipping rule comparison due to missing operand: ` +
         `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
         `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +
-        `secondValueName=${this.getSecondValueName(rule)}, secondValue=${JSON.stringify(secondVal)}` +
-        missingOperandContext,
+        `secondValueName=${this.getSecondValueName(rule)}, secondValue=${JSON.stringify(secondVal)}`,
     );
-  }
-
-  private getWatchStateContext(
-    rule: RuleDto,
-    mediaItem: MediaItem,
-    firstVal: RuleValueType,
-  ): string {
-    if (
-      firstVal != null ||
-      !this.ruleConstantsService.isWatchDateRule(rule.firstVal)
-    ) {
-      return '';
-    }
-
-    return (
-      `, watchState=${this.inferWatchState(mediaItem)}` +
-      `, mediaViewCount=${JSON.stringify(mediaItem.viewCount)}` +
-      `, mediaLastViewedAt=${JSON.stringify(mediaItem.lastViewedAt)}` +
-      `, mediaWatchedChildCount=${JSON.stringify(mediaItem.watchedChildCount)}`
-    );
-  }
-
-  private inferWatchState(
-    mediaItem: MediaItem,
-  ): 'watched' | 'unwatched' | 'unknown' {
-    if (mediaItem.lastViewedAt != null) {
-      return 'watched';
-    }
-
-    if (mediaItem.type === 'show' || mediaItem.type === 'season') {
-      if (mediaItem.watchedChildCount != null) {
-        return mediaItem.watchedChildCount > 0 ? 'watched' : 'unwatched';
-      }
-    }
-
-    if (mediaItem.viewCount != null) {
-      return mediaItem.viewCount > 0 ? 'watched' : 'unwatched';
-    }
-
-    return 'unknown';
   }
 
   private getSecondValueName(rule: RuleDto): string {
