@@ -44,6 +44,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     ruleConstanstService.getValueHumanName.mockReturnValue(
       'Plex - IMDb rating (scale 1-10)',
     );
+    ruleConstanstService.isWatchDateRule.mockReturnValue(false);
     ruleConstanstService.getCustomValueIdentifier.mockReturnValue({
       type: 'number',
       value: 6,
@@ -85,7 +86,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 6,
       result: false,
     });
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand: mediaId=media-1',
       ),
@@ -93,7 +94,11 @@ describe('RuleComparatorService.executeRulesWithData', () => {
   });
 
   it('fails closed for BEFORE when lastViewedAt is null', async () => {
-    const mediaItem = createMediaItem({ id: 'media-1', type: 'movie' });
+    const mediaItem = createMediaItem({
+      id: 'media-1',
+      type: 'movie',
+      viewCount: 0,
+    });
     const rules = [
       createStoredRule(1, {
         operator: null,
@@ -107,6 +112,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     ruleConstanstService.getValueHumanName.mockReturnValue(
       'Jellyfin - Last view date',
     );
+    ruleConstanstService.isWatchDateRule.mockReturnValue(true);
     ruleConstanstService.getCustomValueIdentifier.mockReturnValue({
       type: 'custom_days',
       value: '60',
@@ -125,10 +131,8 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 5184000,
       result: false,
     });
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Skipping rule comparison due to missing operand',
-      ),
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining('watchState=unwatched'),
     );
   });
 });

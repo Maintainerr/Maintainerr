@@ -40,6 +40,14 @@ export class RuleConstantsService {
     }`;
   }
 
+  public isWatchDateRule(location: [number, number]): boolean {
+    const ruleName = this.ruleConstants.applications
+      .find((el) => el.id === location[0])
+      ?.props.find((el) => el.id === location[1])?.name;
+
+    return ruleName === 'lastViewedAt' || ruleName === 'sw_lastWatched';
+  }
+
   public getValueFromIdentifier(identifier: string): [number, number] {
     const application = identifier.split('.')[0];
     const rule = identifier.split('.')[1];
