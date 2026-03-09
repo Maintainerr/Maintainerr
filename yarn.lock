@@ -1631,9 +1631,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/eslintrc@npm:^3.3.4":
-  version: 3.3.4
-  resolution: "@eslint/eslintrc@npm:3.3.4"
+"@eslint/eslintrc@npm:^3.3.5":
+  version: 3.3.5
+  resolution: "@eslint/eslintrc@npm:3.3.5"
   dependencies:
     ajv: "npm:^6.14.0"
     debug: "npm:^4.3.2"
@@ -1642,9 +1642,9 @@ __metadata:
     ignore: "npm:^5.2.0"
     import-fresh: "npm:^3.2.1"
     js-yaml: "npm:^4.1.1"
-    minimatch: "npm:^3.1.3"
+    minimatch: "npm:^3.1.5"
     strip-json-comments: "npm:^3.1.1"
-  checksum: 10c0/1fe481a6af03c09be8d92d67e2bbf693b7522b0591934bfb44bd13e297649b13e4ec5e3fc70b02e4497a17c1afbfa22f5bf5efa4fc06a24abace8e5d097fec8c
+  checksum: 10c0/9fb9f1ca65e46d6173966e3aaa5bd353e3a65d7f1f582bebf77f578fab7d7960a399fac1ecfb1e7d52bd61f5cefd6531087ca52a3a3c388f2e1b4f1ebd3da8b7
   languageName: node
   linkType: hard
 
@@ -3056,7 +3056,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@maintainerr/server@workspace:apps/server"
   dependencies:
-    "@eslint/eslintrc": "npm:^3.3.4"
+    "@eslint/eslintrc": "npm:^3.3.5"
     "@eslint/js": "npm:^9.39.2"
     "@faker-js/faker": "npm:^9.9.0"
     "@jellyfin/sdk": "npm:^0.13.0"
@@ -3126,7 +3126,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@maintainerr/ui@workspace:apps/ui"
   dependencies:
-    "@eslint/eslintrc": "npm:^3.3.4"
+    "@eslint/eslintrc": "npm:^3.3.5"
     "@eslint/js": "npm:^9.39.2"
     "@headlessui/react": "npm:^2.2.9"
     "@heroicons/react": "npm:^1.0.6"
@@ -14628,12 +14628,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^3.1.3":
-  version: 3.1.3
-  resolution: "minimatch@npm:3.1.3"
+"minimatch@npm:^3.1.5":
+  version: 3.1.5
+  resolution: "minimatch@npm:3.1.5"
   dependencies:
     brace-expansion: "npm:^1.1.7"
-  checksum: 10c0/c1ffce4be47e88df013f66f55176c25a93fdd8ad15735309cf1782f0433a02f363cee298f8763ceaaaf85e70ff7f30dc84a1a8d00a6fb6ca72032e5b51f9b89c
+  checksum: 10c0/2ecbdc0d33f07bddb0315a8b5afbcb761307a8778b48f0b312418ccbced99f104a2d17d8aca7573433c70e8ccd1c56823a441897a45e384ea76ef401a26ace70
   languageName: node
   linkType: hard
 
