@@ -7,6 +7,7 @@ import {
 } from '@jellyfin/sdk/lib/generated-client/models';
 import {
   getCollectionApi,
+  getConfigurationApi,
   getItemsApi,
   getItemUpdateApi,
   getLibraryApi,
@@ -280,6 +281,60 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.logger.error('Failed to get Jellyfin users', error);
       return [];
     }
+  }
+
+  private async getPlayedCompletionThreshold(): Promise<number | undefined> {
+    if (!this.api) return undefined;
+
+    if (this.cache.data.has(JELLYFIN_CACHE_KEYS.PLAYED_THRESHOLD)) {
+      return this.cache.data.get<number>(JELLYFIN_CACHE_KEYS.PLAYED_THRESHOLD);
+    }
+
+    try {
+      const response = await getConfigurationApi(this.api).getConfiguration();
+      const threshold = response.data.MaxResumePct;
+
+      if (typeof threshold !== 'number' || Number.isNaN(threshold)) {
+        return undefined;
+      }
+
+      const normalizedThreshold = Math.min(100, Math.max(0, threshold));
+
+      this.cache.data.set(
+        JELLYFIN_CACHE_KEYS.PLAYED_THRESHOLD,
+        normalizedThreshold,
+        JELLYFIN_CACHE_TTL.PLAYED_THRESHOLD,
+      );
+
+      return normalizedThreshold;
+    } catch (error) {
+      this.logger.warn('Failed to get Jellyfin MaxResumePct', error);
+      return undefined;
+    }
+  }
+
+  private isCompletedWatch(
+    userData:
+      | {
+          Played?: boolean | null;
+          PlayedPercentage?: number | null;
+        }
+      | undefined,
+    playedCompletionThreshold?: number,
+  ): boolean {
+    if (!userData) return false;
+
+    if (
+      playedCompletionThreshold !== undefined &&
+      typeof userData.PlayedPercentage === 'number'
+    ) {
+      return (
+        userData.Played === true ||
+        userData.PlayedPercentage >= playedCompletionThreshold
+      );
+    }
+
+    return userData.Played === true;
   }
 
   async getUser(id: string): Promise<MediaUser | undefined> {
@@ -605,7 +660,9 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
-      const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${itemId}`;
+      const playedCompletionThreshold =
+        await this.getPlayedCompletionThreshold();
+      const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:${itemId}`;
       if (this.cache.data.has(cacheKey)) {
         return this.cache.data.get<WatchRecord[]>(cacheKey) || [];
       }
@@ -629,7 +686,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         );
 
         results.forEach((result, idx) => {
-          if (result.status === 'fulfilled' && result.value?.Played) {
+          if (
+            result.status === 'fulfilled' &&
+            this.isCompletedWatch(result.value, playedCompletionThreshold)
+          ) {
             records.push(
               JellyfinMapper.toWatchRecord(
                 batch[idx].id,
@@ -1237,7 +1297,14 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   resetMetadataCache(itemId?: string): void {
     if (itemId) {
-      this.cache.data.del(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${itemId}`);
+      this.cache.data
+        .keys()
+        .filter(
+          (key) =>
+            key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) &&
+            key.endsWith(`:${itemId}`),
+        )
+        .forEach((key) => this.cache.data.del(key));
     } else {
       // Clear all Jellyfin cache
       this.cache.data.flushAll();
