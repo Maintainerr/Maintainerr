@@ -68,6 +68,17 @@ describe('PlexGetterService', () => {
         expected: 8.2,
       },
       {
+        id: 31,
+        name: 'IMDb rating from top-level rating slot',
+        metadata: createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          rating: 8.4,
+          ratingImage: 'imdb://image.rating',
+        }),
+        expected: 8.4,
+      },
+      {
         id: 32,
         name: 'Rotten Tomatoes critic rating',
         metadata: createPlexMetadata({
@@ -88,6 +99,17 @@ describe('PlexGetterService', () => {
           audienceRatingImage: 'themoviedb://image.rating',
         }),
         expected: 7.7,
+      },
+      {
+        id: 34,
+        name: 'TMDB rating from top-level rating slot',
+        metadata: createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          rating: 7.4,
+          ratingImage: 'themoviedb://image.rating',
+        }),
+        expected: 7.4,
       },
     ])(
       'returns $expected from top-level metadata for $name',

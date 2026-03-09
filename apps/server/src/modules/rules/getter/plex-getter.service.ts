@@ -782,12 +782,56 @@ export class PlexGetterService {
     provider: MediaRatingProvider,
     type: 'audience' | 'critic',
   ): number | null {
-    return getExternalMediaRatingValue(
-      metadata ? PlexMapper.metadataToMediaRatings(metadata) : undefined,
-      {
-        provider,
-        type,
-      },
+    const ratings = metadata
+      ? PlexMapper.metadataToMediaRatings(metadata)
+      : undefined;
+    const rating = getExternalMediaRatingValue(ratings, {
+      provider,
+      type,
+    });
+
+    this.logMissingProviderRating(metadata, provider, type, rating);
+
+    return rating;
+  }
+
+  private logMissingProviderRating(
+    metadata: PlexMetadata | undefined,
+    provider: MediaRatingProvider,
+    type: 'audience' | 'critic',
+    rating: number | null,
+  ): void {
+    if (rating != null || !metadata) {
+      return;
+    }
+
+    const rawSources = [
+      metadata.ratingImage,
+      metadata.audienceRatingImage,
+      ...(metadata.Rating?.map((entry) => entry.image) ?? []),
+    ].filter((value): value is string => Boolean(value));
+
+    const hasAnyRatingData =
+      metadata.rating != null ||
+      metadata.audienceRating != null ||
+      (metadata.Rating?.length ?? 0) > 0;
+
+    if (!hasAnyRatingData) {
+      return;
+    }
+
+    this.logger.warn(
+      `Plex provider rating missing after normalization: ` +
+        `ratingKey=${metadata.ratingKey}, type=${metadata.type}, provider=${provider}, requestedType=${type}, ` +
+        `rating=${JSON.stringify(metadata.rating)}, ratingImage=${JSON.stringify(metadata.ratingImage)}, ` +
+        `audienceRating=${JSON.stringify(metadata.audienceRating)}, audienceRatingImage=${JSON.stringify(metadata.audienceRatingImage)}, ` +
+        `ratingEntries=${JSON.stringify(
+          metadata.Rating?.map((entry) => ({
+            image: entry.image,
+            type: entry.type,
+            value: entry.value,
+          })) ?? [],
+        )}, normalizedSources=${JSON.stringify(rawSources)}`,
     );
   }
 }

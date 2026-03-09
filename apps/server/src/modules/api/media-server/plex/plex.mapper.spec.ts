@@ -291,6 +291,43 @@ describe('PlexMapper', () => {
         },
       ]);
     });
+
+    it('normalizes imdb and tmdb top-level rating slots as audience ratings', () => {
+      const metadata: PlexMetadata = {
+        ratingKey: '12345',
+        guid: 'plex://movie/abc',
+        type: 'movie',
+        title: 'Test Movie',
+        Guid: [{ id: 'imdb://tt1234567' }],
+        index: 1,
+        leafCount: 0,
+        viewedLeafCount: 0,
+        addedAt: 1609459200,
+        updatedAt: 1609545600,
+        media: [],
+        originallyAvailableAt: '2021-01-01',
+        Media: [],
+        rating: 8.4,
+        ratingImage: 'imdb://image.rating',
+        audienceRating: 7.4,
+        audienceRatingImage: 'themoviedb://image.rating',
+      };
+
+      const result = PlexMapper.metadataToMediaItem(metadata);
+
+      expect(result.ratings).toEqual([
+        {
+          source: 'imdb://image.rating',
+          value: 8.4,
+          type: 'audience',
+        },
+        {
+          source: 'themoviedb://image.rating',
+          value: 7.4,
+          type: 'audience',
+        },
+      ]);
+    });
   });
 
   describe('toMediaLibrary', () => {

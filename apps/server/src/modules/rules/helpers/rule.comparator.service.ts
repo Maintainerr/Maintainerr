@@ -362,11 +362,42 @@ export class RuleComparatorService {
     secondVal: RuleValueType,
   ): boolean {
     if (firstVal == null || secondVal == null) {
+      if (this.shouldMatchMissingLastViewedDate(rule, firstVal, secondVal)) {
+        return true;
+      }
+
       this.logMissingOperand(rule, mediaId, firstVal, secondVal);
       return false;
     }
 
     return this.doRuleAction(firstVal, secondVal, rule.action);
+  }
+
+  private shouldMatchMissingLastViewedDate(
+    rule: RuleDto,
+    firstVal: RuleValueType,
+    secondVal: RuleValueType,
+  ): boolean {
+    if (
+      firstVal != null ||
+      secondVal == null ||
+      rule.action !== RulePossibility.BEFORE
+    ) {
+      return false;
+    }
+
+    const firstValueIdentifier = this.ruleConstantsService.getValueIdentifier(
+      rule.firstVal,
+    );
+
+    return [
+      'Plex.lastViewedAt',
+      'Plex.sw_lastWatched',
+      'Jellyfin.lastViewedAt',
+      'Jellyfin.sw_lastWatched',
+      'Tautulli.lastViewedAt',
+      'Tautulli.sw_lastWatched',
+    ].includes(firstValueIdentifier);
   }
 
   private logMissingOperand(
@@ -379,7 +410,7 @@ export class RuleComparatorService {
       rule.firstVal,
     );
 
-    this.logger.debug(
+    this.logger.warn(
       `Skipping rule comparison due to missing operand: ` +
         `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
         `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +
