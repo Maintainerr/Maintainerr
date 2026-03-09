@@ -259,6 +259,105 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('favoritedBy rules', () => {
+    it('sw_favoritedBy (id: 40) should only check favorites on the current item', async () => {
+      const episodeItem = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+      });
+      const users: MediaUser[] = [
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ];
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(episodeItem);
+      jellyfinAdapter.getItemFavoritedBy.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') return ['user-2'];
+          if (itemId === 'season-1') return ['user-1'];
+          if (itemId === 'show-1') return ['user-1'];
+          return [];
+        },
+      );
+      jellyfinAdapter.getUsers.mockResolvedValue(users);
+
+      const response = await jellyfinGetterService.get(
+        40, // sw_favoritedBy
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'episode' }),
+      );
+
+      expect(response).toEqual(['Bob']);
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenCalledTimes(1);
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenCalledWith('ep-1');
+    });
+
+    it('sw_favoritedBy_including_parent (id: 41) should include favorites from item, parent and grandparent', async () => {
+      const episodeItem = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+      });
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        parentId: 'show-1',
+      });
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+      });
+      const users: MediaUser[] = [
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+        createMediaUser({ id: 'user-3', name: 'Carol' }),
+        createMediaUser({ id: 'user-4', name: 'Dave' }),
+      ];
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'ep-1') return episodeItem;
+        if (itemId === 'season-1') return seasonItem;
+        if (itemId === 'show-1') return showItem;
+        return undefined;
+      });
+      jellyfinAdapter.getItemFavoritedBy.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') return ['user-1', 'user-2'];
+          if (itemId === 'season-1') return ['user-2', 'user-3'];
+          if (itemId === 'show-1') return ['user-4'];
+          return [];
+        },
+      );
+      jellyfinAdapter.getUsers.mockResolvedValue(users);
+
+      const response = await jellyfinGetterService.get(
+        41, // sw_favoritedBy_including_parent
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'episode' }),
+      );
+
+      expect(response).toEqual(['Alice', 'Bob', 'Carol', 'Dave']);
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenCalledTimes(3);
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenNthCalledWith(
+        1,
+        'ep-1',
+      );
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenNthCalledWith(
+        2,
+        'season-1',
+      );
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenNthCalledWith(
+        3,
+        'show-1',
+      );
+    });
+  });
+
   describe('viewCount (id: 5)', () => {
     it('should return total view count from watch history', async () => {
       const mediaItem = createMediaItem();
