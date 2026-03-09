@@ -3,9 +3,11 @@ import { PlexCollection } from '../../plex-api/interfaces/collection.interface';
 import {
   PlexLibrary,
   PlexLibraryItem,
+  PlexRating,
   PlexSeenBy,
   PlexUserAccount,
 } from '../../plex-api/interfaces/library.interfaces';
+import { PlexMetadata } from '../../plex-api/interfaces/media.interface';
 import { PlexMapper } from './plex.mapper';
 
 describe('PlexMapper', () => {
@@ -239,6 +241,55 @@ describe('PlexMapper', () => {
         type: 'audience',
       });
       expect(result.userRating).toBe(10);
+    });
+
+    it('preserves provider-specific ratings when mapping metadata', () => {
+      const metadata: PlexMetadata = {
+        ratingKey: '12345',
+        guid: 'plex://movie/abc',
+        type: 'movie',
+        title: 'Test Movie',
+        Guid: [{ id: 'imdb://tt1234567' }],
+        index: 1,
+        leafCount: 0,
+        viewedLeafCount: 0,
+        addedAt: 1609459200,
+        updatedAt: 1609545600,
+        media: [],
+        originallyAvailableAt: '2021-01-01',
+        Media: [],
+        rating: 9.1,
+        ratingImage: 'rottentomatoes://image.rating.ripe',
+        audienceRating: 8.2,
+        audienceRatingImage: 'imdb://image.rating',
+        Rating: [
+          {
+            image: 'themoviedb://image.rating',
+            type: 'audience',
+            value: 7.7,
+          } as PlexRating,
+        ],
+      };
+
+      const result = PlexMapper.metadataToMediaItem(metadata);
+
+      expect(result.ratings).toEqual([
+        {
+          source: 'themoviedb://image.rating',
+          value: 7.7,
+          type: 'audience',
+        },
+        {
+          source: 'rottentomatoes://image.rating.ripe',
+          value: 9.1,
+          type: 'critic',
+        },
+        {
+          source: 'imdb://image.rating',
+          value: 8.2,
+          type: 'audience',
+        },
+      ]);
     });
   });
 

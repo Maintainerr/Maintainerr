@@ -25,7 +25,9 @@ export interface PlexMetadata {
   parentData?: PlexMetadata;
   Label?: { tag: string }[];
   rating?: number;
+  ratingImage?: string;
   audienceRating?: number;
+  audienceRatingImage?: string;
   userRating?: number;
   Role?: PlexActor[];
   originallyAvailableAt: string;

@@ -1,0 +1,146 @@
+import { MediaItem } from '@maintainerr/contracts';
+import { Mocked, TestBed } from '@suites/unit';
+import {
+  createMediaItem,
+  createPlexMetadata,
+  createRulesDto,
+} from '../../../../test/utils/data';
+import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
+import { PlexGetterService } from './plex-getter.service';
+
+describe('PlexGetterService', () => {
+  let plexGetterService: PlexGetterService;
+  let plexApi: Mocked<PlexApiService>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } =
+      await TestBed.solitary(PlexGetterService).compile();
+
+    plexGetterService = unit;
+    plexApi = unitRef.get(PlexApiService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('provider ratings', () => {
+    const mediaItem: MediaItem = createMediaItem({
+      id: 'movie-1',
+      type: 'movie',
+    });
+
+    it.each([
+      {
+        id: 31,
+        name: 'IMDb audience rating',
+        metadata: createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          audienceRating: 8.2,
+          audienceRatingImage: 'imdb://image.rating',
+        }),
+        expected: 8.2,
+      },
+      {
+        id: 32,
+        name: 'Rotten Tomatoes critic rating',
+        metadata: createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          rating: 9.1,
+          ratingImage: 'rottentomatoes://image.rating.ripe',
+        }),
+        expected: 9.1,
+      },
+      {
+        id: 34,
+        name: 'TMDB audience rating',
+        metadata: createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          audienceRating: 7.7,
+          audienceRatingImage: 'themoviedb://image.rating',
+        }),
+        expected: 7.7,
+      },
+    ])(
+      'returns $expected from top-level metadata for $name',
+      async ({ id, metadata, expected }) => {
+        plexApi.getMetadata.mockResolvedValue(metadata);
+
+        const result = await plexGetterService.get(
+          id,
+          mediaItem,
+          'movie',
+          createRulesDto({ dataType: 'movie' }),
+        );
+
+        expect(result).toBe(expected);
+      },
+    );
+
+    it('prefers provider-specific Rating values when available', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          audienceRating: 8.2,
+          audienceRatingImage: 'imdb://image.rating',
+          Rating: [
+            {
+              image: 'imdb://image.rating',
+              type: 'audience',
+              value: 8.8,
+            },
+          ],
+        }),
+      );
+
+      const result = await plexGetterService.get(
+        31,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toBe(8.8);
+    });
+
+    it('resolves show ratings from grandparent metadata for episodes', async () => {
+      const episode = createMediaItem({
+        id: 'episode-1',
+        type: 'episode',
+      });
+
+      plexApi.getMetadata
+        .mockResolvedValueOnce(
+          createPlexMetadata({
+            ratingKey: 'episode-1',
+            type: 'episode',
+            grandparentRatingKey: 'show-1',
+          }),
+        )
+        .mockResolvedValueOnce(
+          createPlexMetadata({
+            ratingKey: 'show-1',
+            type: 'show',
+            audienceRating: 8.6,
+            audienceRatingImage: 'imdb://image.rating',
+          }),
+        );
+
+      const result = await plexGetterService.get(
+        35,
+        episode,
+        'episode',
+        createRulesDto({ dataType: 'episode' }),
+      );
+
+      expect(result).toBe(8.6);
+      expect(plexApi.getMetadata).toHaveBeenCalledTimes(2);
+      expect(plexApi.getMetadata).toHaveBeenNthCalledWith(1, 'episode-1');
+      expect(plexApi.getMetadata).toHaveBeenNthCalledWith(2, 'show-1');
+    });
+  });
+});

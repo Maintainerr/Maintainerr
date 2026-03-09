@@ -381,6 +381,86 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('provider ratings', () => {
+    it('uses provider-specific ratings when available and falls back to shared audience ratings', async () => {
+      const mediaItem = createMediaItem({
+        id: 'movie-1',
+        type: 'movie' as MediaItemType,
+        ratings: [
+          {
+            source: 'themoviedb',
+            value: 7.4,
+            type: 'audience',
+          },
+          {
+            source: 'community',
+            value: 8.1,
+            type: 'audience',
+          },
+          {
+            source: 'critic',
+            value: 9.2,
+            type: 'critic',
+          },
+        ],
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+
+      await expect(
+        jellyfinGetterService.get(
+          34,
+          mediaItem,
+          'movie',
+          createRulesDto({ dataType: 'movie' }),
+        ),
+      ).resolves.toBe(7.4);
+
+      await expect(
+        jellyfinGetterService.get(
+          32,
+          mediaItem,
+          'movie',
+          createRulesDto({ dataType: 'movie' }),
+        ),
+      ).resolves.toBe(9.2);
+    });
+
+    it('falls back to show audience ratings when provider-specific show ratings are unavailable', async () => {
+      const episodeItem = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        grandparentId: 'show-1',
+      });
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+        ratings: [
+          {
+            source: 'community',
+            value: 8.6,
+            type: 'audience',
+          },
+        ],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'ep-1') return episodeItem;
+        if (itemId === 'show-1') return showItem;
+        return undefined;
+      });
+
+      const response = await jellyfinGetterService.get(
+        35,
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'episode' }),
+      );
+
+      expect(response).toBe(8.6);
+    });
+  });
+
   describe('lastViewedAt (id: 7)', () => {
     it('should return the most recent watch date', async () => {
       const mediaItem = createMediaItem();

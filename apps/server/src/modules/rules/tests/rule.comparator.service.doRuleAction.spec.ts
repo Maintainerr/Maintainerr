@@ -216,15 +216,16 @@ describe('RuleComparatorService', () => {
       [true, 0, 10, RulePossibility.SMALLER],
       [false, 5, 3, RulePossibility.SMALLER],
       [false, 5, 5, RulePossibility.SMALLER],
-      // null/undefined coerce to 0 (matches v2.27.0 behaviour)
-      [true, null, 6, RulePossibility.SMALLER], // Number(null)=0 < 6
-      [false, null, 6, RulePossibility.BIGGER], // Number(null)=0 > 6
-      [false, 6, null, RulePossibility.SMALLER], // 6 < Number(null)=0
-      [true, 6, null, RulePossibility.BIGGER], // 6 > Number(null)=0
-      [false, undefined, 6, RulePossibility.SMALLER], // Number(undefined)=NaN, NaN comparisons are always false
+      // invalid numeric operands must fail closed
+      [false, null, 6, RulePossibility.SMALLER],
+      [false, null, 6, RulePossibility.BIGGER],
+      [false, 6, null, RulePossibility.SMALLER],
+      [false, 6, null, RulePossibility.BIGGER],
+      [false, undefined, 6, RulePossibility.SMALLER],
       [false, undefined, 6, RulePossibility.BIGGER],
-      [false, null, null, RulePossibility.SMALLER], // 0 < 0
-      [false, null, null, RulePossibility.BIGGER], // 0 > 0
+      [false, '6', 5, RulePossibility.BIGGER],
+      [false, null, null, RulePossibility.SMALLER],
+      [false, null, null, RulePossibility.BIGGER],
     ] as [boolean, any, any, RulePossibility][];
     const numericActionName = {
       [RulePossibility.BIGGER]: 'BIGGER',

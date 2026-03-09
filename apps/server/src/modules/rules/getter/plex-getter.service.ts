@@ -9,6 +9,11 @@ import {
   SimplePlexUser,
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
+import {
+  getExternalMediaRatingValue,
+  MediaRatingProvider,
+} from '../../api/media-server/media-rating.helper';
+import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -512,33 +517,16 @@ export class PlexGetterService {
           return lastEpDate ? new Date(lastEpDate) : null;
         }
         case 'rating_imdb': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('imdb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'imdb', 'audience');
         }
         case 'rating_rottenTomatoesCritic': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'rottentomatoes', 'critic');
         }
         case 'rating_rottenTomatoesAudience': {
-          return (
-            metadata.Rating?.find(
-              (x) =>
-                x.image.startsWith('rottentomatoes') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'rottentomatoes', 'audience');
         }
         case 'rating_tmdb': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'tmdb', 'audience');
         }
         case 'rating_imdbShow': {
           const showMetadata =
@@ -546,11 +534,7 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('imdb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(showMetadata, 'imdb', 'audience');
         }
         case 'rating_rottenTomatoesCriticShow': {
           const showMetadata =
@@ -558,10 +542,10 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
-            )?.value ?? null
+          return this.getProviderRating(
+            showMetadata,
+            'rottentomatoes',
+            'critic',
           );
         }
         case 'rating_rottenTomatoesAudienceShow': {
@@ -570,11 +554,10 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) =>
-                x.image.startsWith('rottentomatoes') && x.type == 'audience',
-            )?.value ?? null
+          return this.getProviderRating(
+            showMetadata,
+            'rottentomatoes',
+            'audience',
           );
         }
         case 'rating_tmdbShow': {
@@ -583,11 +566,7 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(showMetadata, 'tmdb', 'audience');
         }
         case 'collectionsIncludingSmart': {
           if (
@@ -748,5 +727,19 @@ export class PlexGetterService {
       this.logger.debug(e);
       return undefined;
     }
+  }
+
+  private getProviderRating(
+    metadata: PlexMetadata | undefined,
+    provider: MediaRatingProvider,
+    type: 'audience' | 'critic',
+  ): number | null {
+    return getExternalMediaRatingValue(
+      metadata ? PlexMapper.metadataToMediaRatings(metadata) : undefined,
+      {
+        provider,
+        type,
+      },
+    );
   }
 }

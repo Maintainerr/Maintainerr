@@ -373,60 +373,69 @@ export class PlexMapper {
     }));
   }
 
-  private static toMediaRatings(plex: PlexLibraryItem): MediaRating[] {
+  static toMediaRatings(plex: PlexLibraryItem): MediaRating[] {
     const ratings: MediaRating[] = [];
 
-    if (plex.rating !== undefined) {
-      ratings.push({
-        source: 'critic',
-        value: plex.rating,
-        type: 'critic',
-      });
-    }
-
-    if (plex.audienceRating !== undefined) {
-      ratings.push({
-        source: 'audience',
-        value: plex.audienceRating,
-        type: 'audience',
-      });
-    }
+    PlexMapper.addMediaRating(ratings, 'critic', plex.rating, 'critic');
+    PlexMapper.addMediaRating(
+      ratings,
+      'audience',
+      plex.audienceRating,
+      'audience',
+    );
 
     return ratings;
   }
 
-  private static metadataToMediaRatings(plex: PlexMetadata): MediaRating[] {
+  static metadataToMediaRatings(plex: PlexMetadata): MediaRating[] {
     const ratings: MediaRating[] = [];
 
-    if (plex.rating !== undefined) {
-      ratings.push({
-        source: 'critic',
-        value: plex.rating,
-        type: 'critic',
-      });
-    }
-
-    if (plex.audienceRating !== undefined) {
-      ratings.push({
-        source: 'audience',
-        value: plex.audienceRating,
-        type: 'audience',
-      });
-    }
-
-    // PlexMetadata also has Rating[] array
+    // Prefer provider-specific Rating[] entries when Plex exposes both those
+    // and a duplicated top-level rating field for the same source/type.
     if (plex.Rating && Array.isArray(plex.Rating)) {
       for (const r of plex.Rating) {
-        if (!ratings.some((existing) => existing.type === r.type)) {
-          ratings.push({
-            source: r.image,
-            value: r.value,
-            type: r.type,
-          });
-        }
+        PlexMapper.addMediaRating(ratings, r.image, r.value, r.type);
       }
     }
 
+    PlexMapper.addMediaRating(
+      ratings,
+      plex.ratingImage ?? 'critic',
+      plex.rating,
+      'critic',
+    );
+    PlexMapper.addMediaRating(
+      ratings,
+      plex.audienceRatingImage ?? 'audience',
+      plex.audienceRating,
+      'audience',
+    );
+
     return ratings;
+  }
+
+  private static addMediaRating(
+    ratings: MediaRating[],
+    source: string,
+    value: number | undefined,
+    type: 'audience' | 'critic',
+  ): void {
+    if (value === undefined) {
+      return;
+    }
+
+    if (
+      ratings.some(
+        (existing) => existing.type === type && existing.source === source,
+      )
+    ) {
+      return;
+    }
+
+    ratings.push({
+      source,
+      value,
+      type,
+    });
   }
 }
