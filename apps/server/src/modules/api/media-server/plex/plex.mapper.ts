@@ -398,20 +398,40 @@ export class PlexMapper {
       }
     }
 
+    const ratingSource = plex.ratingImage ?? 'critic';
     PlexMapper.addMediaRating(
       ratings,
-      plex.ratingImage ?? 'critic',
+      ratingSource,
       plex.rating,
-      'critic',
+      PlexMapper.getProviderAwareRatingType(ratingSource, 'critic'),
     );
+
+    const audienceRatingSource = plex.audienceRatingImage ?? 'audience';
     PlexMapper.addMediaRating(
       ratings,
-      plex.audienceRatingImage ?? 'audience',
+      audienceRatingSource,
       plex.audienceRating,
-      'audience',
+      PlexMapper.getProviderAwareRatingType(audienceRatingSource, 'audience'),
     );
 
     return ratings;
+  }
+
+  private static getProviderAwareRatingType(
+    source: string,
+    fallbackType: 'audience' | 'critic',
+  ): 'audience' | 'critic' {
+    const normalizedSource = source.toLowerCase();
+
+    if (
+      normalizedSource.startsWith('imdb') ||
+      normalizedSource.startsWith('themoviedb') ||
+      normalizedSource.startsWith('tmdb')
+    ) {
+      return 'audience';
+    }
+
+    return fallbackType;
   }
 
   private static addMediaRating(
