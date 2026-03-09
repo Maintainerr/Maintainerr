@@ -86,7 +86,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 6,
       result: false,
     });
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand: mediaId=media-1',
       ),
@@ -129,7 +129,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 5184000,
       result: true,
     });
-    expect(logger.debug).not.toHaveBeenCalledWith(
+    expect(logger.warn).not.toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand',
       ),
@@ -172,7 +172,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 5184000,
       result: false,
     });
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand: mediaId=media-1',
       ),
@@ -213,7 +213,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 5184000,
       result: false,
     });
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand: mediaId=media-1',
       ),

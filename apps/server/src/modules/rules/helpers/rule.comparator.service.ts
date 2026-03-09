@@ -408,7 +408,7 @@ export class RuleComparatorService {
       rule.firstVal,
     );
 
-    this.logger.debug(
+    this.logger.warn(
       `Skipping rule comparison due to missing operand: ` +
         `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
         `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +
