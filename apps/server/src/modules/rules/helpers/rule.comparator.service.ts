@@ -362,42 +362,11 @@ export class RuleComparatorService {
     secondVal: RuleValueType,
   ): boolean {
     if (firstVal == null || secondVal == null) {
-      if (this.shouldMatchMissingLastViewedDate(rule, firstVal, secondVal)) {
-        return true;
-      }
-
       this.logMissingOperand(rule, mediaId, firstVal, secondVal);
       return false;
     }
 
     return this.doRuleAction(firstVal, secondVal, rule.action);
-  }
-
-  private shouldMatchMissingLastViewedDate(
-    rule: RuleDto,
-    firstVal: RuleValueType,
-    secondVal: RuleValueType,
-  ): boolean {
-    if (
-      firstVal != null ||
-      secondVal == null ||
-      rule.action !== RulePossibility.BEFORE
-    ) {
-      return false;
-    }
-
-    const firstValueIdentifier = this.ruleConstantsService.getValueIdentifier(
-      rule.firstVal,
-    );
-
-    return [
-      'Plex.lastViewedAt',
-      'Plex.sw_lastWatched',
-      'Jellyfin.lastViewedAt',
-      'Jellyfin.sw_lastWatched',
-      'Tautulli.lastViewedAt',
-      'Tautulli.sw_lastWatched',
-    ].includes(firstValueIdentifier);
   }
 
   private logMissingOperand(
