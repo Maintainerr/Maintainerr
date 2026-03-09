@@ -250,6 +250,19 @@ export class JellyfinGetterService {
           return favoritedByUserIds.map((id) => userMap.get(id) || id);
         }
 
+        case 'sw_favoritedBy_including_parent': {
+          const parent = await getParent();
+          const grandparent = await getGrandparent();
+          const favoritedByUserIds = await this.getFavoritedByIncludingParent(
+            metadata.id,
+            parent?.id,
+            grandparent?.id,
+          );
+          const users = await this.jellyfinAdapter.getUsers();
+          const userMap = new Map(users.map((u) => [u.id, u.name]));
+          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+        }
+
         case 'sw_watchers': {
           return await this.getShowWatchers(metadata.id);
         }
@@ -674,6 +687,24 @@ export class JellyfinGetterService {
           (name) => !excludeNames.includes(name.toLowerCase().trim()),
         )
       : allCollectionNames;
+  }
+
+  private async getFavoritedByIncludingParent(
+    itemId: string,
+    parentId: string | undefined,
+    grandparentId: string | undefined,
+  ): Promise<string[]> {
+    const idsToCheck = [...new Set([itemId, parentId, grandparentId])].filter(
+      (id): id is string => id !== undefined,
+    );
+
+    const favoritedByUserIds = new Set<string>();
+    for (const id of idsToCheck) {
+      const users = await this.jellyfinAdapter.getItemFavoritedBy(id);
+      users.forEach((userId) => favoritedByUserIds.add(userId));
+    }
+
+    return Array.from(favoritedByUserIds);
   }
 
   private async getPlaylistCount(
