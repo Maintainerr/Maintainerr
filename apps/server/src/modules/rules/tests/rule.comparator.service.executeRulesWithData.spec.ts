@@ -44,7 +44,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     ruleConstanstService.getValueHumanName.mockReturnValue(
       'Plex - IMDb rating (scale 1-10)',
     );
-    ruleConstanstService.getValueIdentifier.mockReturnValue('Plex.rating_imdb');
     ruleConstanstService.getCustomValueIdentifier.mockReturnValue({
       type: 'number',
       value: 6,
@@ -93,7 +92,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     );
   });
 
-  it('matches BEFORE when lastViewedAt is null', async () => {
+  it('fails closed for BEFORE when lastViewedAt is null', async () => {
     const mediaItem = createMediaItem({ id: 'media-1', type: 'movie' });
     const rules = [
       createStoredRule(1, {
@@ -108,9 +107,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     ruleConstanstService.getValueHumanName.mockReturnValue(
       'Jellyfin - Last view date',
     );
-    ruleConstanstService.getValueIdentifier.mockReturnValue(
-      'Jellyfin.lastViewedAt',
-    );
     ruleConstanstService.getCustomValueIdentifier.mockReturnValue({
       type: 'custom_days',
       value: '60',
@@ -122,100 +118,16 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       [mediaItem],
     );
 
-    expect(result.data).toEqual([mediaItem]);
+    expect(result.data).toEqual([]);
     expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
       action: 'before',
       firstValue: null,
       secondValue: 5184000,
-      result: true,
+      result: false,
     });
-    expect(logger.warn).not.toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand',
-      ),
-    );
-  });
-
-  it('still fails closed for IN_LAST when lastViewedAt is null', async () => {
-    const mediaItem = createMediaItem({ id: 'media-1', type: 'movie' });
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.IN_LAST,
-        firstVal: [Application.JELLYFIN, 4],
-        customVal: { ruleTypeId: +RuleType.NUMBER, value: '5184000' },
-        section: 0,
-      }),
-    ];
-
-    ruleConstanstService.getValueHumanName.mockReturnValue(
-      'Jellyfin - Last view date',
-    );
-    ruleConstanstService.getValueIdentifier.mockReturnValue(
-      'Jellyfin.lastViewedAt',
-    );
-    ruleConstanstService.getCustomValueIdentifier.mockReturnValue({
-      type: 'custom_days',
-      value: '60',
-    });
-    valueGetterService.get.mockResolvedValueOnce(null);
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRulesDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.data).toEqual([]);
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      action: 'in_last',
-      firstValue: null,
-      secondValue: 5184000,
-      result: false,
-    });
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Skipping rule comparison due to missing operand: mediaId=media-1',
-      ),
-    );
-  });
-
-  it('still fails closed for unrelated nullable dates with BEFORE', async () => {
-    const mediaItem = createMediaItem({ id: 'media-1', type: 'movie' });
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.BEFORE,
-        firstVal: [Application.JELLYFIN, 2],
-        customVal: { ruleTypeId: +RuleType.NUMBER, value: '5184000' },
-        section: 0,
-      }),
-    ];
-
-    ruleConstanstService.getValueHumanName.mockReturnValue(
-      'Jellyfin - Date added',
-    );
-    ruleConstanstService.getValueIdentifier.mockReturnValue('Jellyfin.addDate');
-    ruleConstanstService.getCustomValueIdentifier.mockReturnValue({
-      type: 'custom_days',
-      value: '60',
-    });
-    valueGetterService.get.mockResolvedValueOnce(null);
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRulesDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.data).toEqual([]);
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      action: 'before',
-      firstValue: null,
-      secondValue: 5184000,
-      result: false,
-    });
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Skipping rule comparison due to missing operand: mediaId=media-1',
       ),
     );
   });
