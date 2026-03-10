@@ -1,3 +1,8 @@
+import {
+  createPlexCollection,
+  createPlexSeenBy,
+  createPlexUserAccount,
+} from '../../../../../test/utils/data';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexCollection } from '../../plex-api/interfaces/collection.interface';
 import {
@@ -275,16 +280,13 @@ describe('PlexMapper', () => {
 
   describe('toMediaUser', () => {
     it('should convert user correctly', () => {
-      const plexUser: PlexUserAccount = {
+      const plexUser: PlexUserAccount = createPlexUserAccount({
         id: 123,
         key: '/accounts/123',
         name: 'Test User',
-        defaultAudioLanguage: 'en',
-        autoSelectAudio: true,
-        defaultSubtitleLanguage: 'en',
         subtitleMode: 1,
         thumb: '/user/thumb',
-      };
+      });
 
       const result = PlexMapper.toMediaUser(plexUser);
 
@@ -296,7 +298,7 @@ describe('PlexMapper', () => {
 
   describe('toWatchRecord', () => {
     it('should convert watch record correctly', () => {
-      const plexSeenBy: PlexSeenBy = {
+      const plexSeenBy: PlexSeenBy = createPlexSeenBy({
         ratingKey: '12345',
         title: 'Test Movie',
         thumb: '/thumb',
@@ -306,27 +308,7 @@ describe('PlexMapper', () => {
         deviceID: 456,
         historyKey: '/history/123',
         key: '/library/metadata/12345',
-        // Inherited from PlexLibraryItem (required but not used in mapping)
-        parentRatingKey: undefined,
-        grandparentRatingKey: undefined,
-        parentTitle: undefined,
-        guid: '',
-        parentGuid: undefined,
-        grandparentGuid: undefined,
-        addedAt: 0,
-        updatedAt: 0,
-        type: 'movie',
-        Media: [],
-        librarySectionTitle: '',
-        librarySectionID: 0,
-        librarySectionKey: '',
-        summary: '',
-        viewCount: 0,
-        skipCount: 0,
-        lastViewedAt: 0,
-        year: 0,
-        duration: 0,
-      };
+      });
 
       const result = PlexMapper.toWatchRecord(plexSeenBy);
 
@@ -339,11 +321,10 @@ describe('PlexMapper', () => {
 
   describe('toMediaCollection', () => {
     it('should convert collection correctly', () => {
-      const plexCollection: PlexCollection = {
+      const plexCollection: PlexCollection = createPlexCollection({
         ratingKey: '99999',
         key: '/library/collections/99999',
         guid: 'plex://collection/abc',
-        type: 'collection',
         title: 'My Collection',
         subtype: 'movie',
         summary: 'Collection summary',
@@ -356,7 +337,7 @@ describe('PlexMapper', () => {
         maxYear: '2021',
         minYear: '2020',
         smart: false,
-      };
+      });
 
       const result = PlexMapper.toMediaCollection(plexCollection);
 
@@ -370,11 +351,10 @@ describe('PlexMapper', () => {
     });
 
     it('should handle invalid childCount', () => {
-      const plexCollection: PlexCollection = {
+      const plexCollection: PlexCollection = createPlexCollection({
         ratingKey: '99999',
         key: '/library/collections/99999',
         guid: 'plex://collection/abc',
-        type: 'collection',
         title: 'My Collection',
         subtype: 'movie',
         summary: '',
@@ -386,7 +366,7 @@ describe('PlexMapper', () => {
         childCount: 'invalid',
         maxYear: '',
         minYear: '',
-      };
+      });
 
       const result = PlexMapper.toMediaCollection(plexCollection);
 
