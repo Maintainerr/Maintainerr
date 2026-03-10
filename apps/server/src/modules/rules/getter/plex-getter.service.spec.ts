@@ -5,8 +5,8 @@ import {
   createPlexMetadata,
   createRulesDto,
 } from '../../../../test/utils/data';
-import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
-import { PlexSeenBy } from '../../api/plex-api/interfaces/library.interfaces';
+import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
+import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { PlexGetterService } from './plex-getter.service';
@@ -21,19 +21,10 @@ const makeMetadata = (overrides: Partial<PlexMetadata> = {}): PlexMetadata =>
     ...overrides,
   }) as PlexMetadata;
 
-const makeSeenBy = (count: number): PlexSeenBy[] =>
-  Array.from({ length: count }, (_, i) => ({
-    accountID: i,
-    historyKey: `/status/sessions/history/${i}`,
-    key: `/library/metadata/${i}`,
-    ratingKey: '12345',
-    title: `View ${i}`,
-    thumb: '',
-  })) as unknown as PlexSeenBy[];
-
 describe('PlexGetterService', () => {
   let plexGetterService: PlexGetterService;
   let plexApi: Mocked<PlexApiService>;
+  let plexAdapter: Mocked<PlexAdapterService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -42,6 +33,7 @@ describe('PlexGetterService', () => {
 
     plexGetterService = unit;
     plexApi = unitRef.get(PlexApiService);
+    plexAdapter = unitRef.get(PlexAdapterService);
     logger = unitRef.get(MaintainerrLogger);
   });
 
@@ -201,7 +193,7 @@ describe('PlexGetterService', () => {
     });
   });
 
-  describe('viewCount', () => {
+  describe('watch state rules', () => {
     let libItem: MediaItem;
 
     beforeEach(() => {
@@ -209,108 +201,28 @@ describe('PlexGetterService', () => {
       plexApi.getMetadata.mockResolvedValue(makeMetadata());
     });
 
-    it('should use watch history count when history returns entries', async () => {
-      plexApi.getWatchHistory.mockResolvedValue(makeSeenBy(7));
+    it('should return the adapter view count for the viewCount rule', async () => {
+      plexAdapter.getWatchState.mockResolvedValue({
+        viewCount: 7,
+        isWatched: true,
+      });
 
       const result = await plexGetterService.get(VIEWCOUNT_PROP_ID, libItem);
 
       expect(result).toBe(7);
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345');
     });
 
-    it('should fall back to libItem.viewCount when history is empty but viewCount > 0', async () => {
-      libItem.viewCount = 3;
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const result = await plexGetterService.get(VIEWCOUNT_PROP_ID, libItem);
-
-      expect(result).toBe(3);
-      expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('viewCount fallback'),
-      );
-    });
-
-    it('should return 0 when history is empty and libItem.viewCount is 0', async () => {
-      libItem.viewCount = 0;
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const result = await plexGetterService.get(VIEWCOUNT_PROP_ID, libItem);
-
-      expect(result).toBe(0);
-    });
-
-    it('should fall back to libItem.viewCount when watch history API fails', async () => {
-      libItem.viewCount = 5;
-      plexApi.getWatchHistory.mockRejectedValue(new Error('API error'));
-
-      const result = await plexGetterService.get(VIEWCOUNT_PROP_ID, libItem);
-
-      expect(result).toBe(5);
-      expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('viewCount fallback'),
-      );
-    });
-
-    it('should return 0 when watch history API fails and libItem.viewCount is 0', async () => {
-      libItem.viewCount = 0;
-      plexApi.getWatchHistory.mockRejectedValue(new Error('API error'));
-
-      const result = await plexGetterService.get(VIEWCOUNT_PROP_ID, libItem);
-
-      expect(result).toBe(0);
-    });
-  });
-
-  describe('isWatched', () => {
-    let libItem: MediaItem;
-
-    beforeEach(() => {
-      libItem = createMediaItem({ type: 'movie', viewCount: 0 });
-      plexApi.getMetadata.mockResolvedValue(makeMetadata());
-    });
-
-    it('should return true when watch history has entries', async () => {
-      plexApi.getWatchHistory.mockResolvedValue(makeSeenBy(3));
-
-      const result = await plexGetterService.get(ISWATCHED_PROP_ID, libItem);
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when history is empty but libItem.viewCount > 0', async () => {
-      libItem.viewCount = 2;
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const result = await plexGetterService.get(ISWATCHED_PROP_ID, libItem);
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when history is empty and libItem.viewCount is 0', async () => {
-      libItem.viewCount = 0;
-      plexApi.getWatchHistory.mockResolvedValue([]);
+    it('should return the adapter watched state for the isWatched rule', async () => {
+      plexAdapter.getWatchState.mockResolvedValue({
+        viewCount: 0,
+        isWatched: false,
+      });
 
       const result = await plexGetterService.get(ISWATCHED_PROP_ID, libItem);
 
       expect(result).toBe(false);
-    });
-
-    it('should return true when history API fails but libItem.viewCount > 0', async () => {
-      libItem.viewCount = 1;
-      plexApi.getWatchHistory.mockRejectedValue(new Error('API error'));
-
-      const result = await plexGetterService.get(ISWATCHED_PROP_ID, libItem);
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when history API fails and libItem.viewCount is 0', async () => {
-      libItem.viewCount = 0;
-      plexApi.getWatchHistory.mockRejectedValue(new Error('API error'));
-
-      const result = await plexGetterService.get(ISWATCHED_PROP_ID, libItem);
-
-      expect(result).toBe(false);
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345');
     });
   });
 });

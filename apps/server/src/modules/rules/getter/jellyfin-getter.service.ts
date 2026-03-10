@@ -158,11 +158,17 @@ export class JellyfinGetterService {
         }
 
         case 'viewCount': {
-          // Get total view count from watch history
-          const watchHistory = await this.jellyfinAdapter.getWatchHistory(
+          const watchState = await this.jellyfinAdapter.getWatchState(
             metadata.id,
           );
-          return watchHistory.length;
+          return watchState.viewCount;
+        }
+
+        case 'isWatched': {
+          const watchState = await this.jellyfinAdapter.getWatchState(
+            metadata.id,
+          );
+          return watchState.isWatched;
         }
 
         case 'playCount': {

@@ -42,6 +42,10 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
     MediaServerSetupGuard,
   ],
   exports: [
+    // PlexAdapterService is exported for PlexGetterService, which now uses the
+    // shared watch-state abstraction instead of duplicating Plex-specific
+    // fallback logic in the getter.
+    PlexAdapterService,
     // JellyfinAdapterService is exported for JellyfinGetterService, which needs
     // Jellyfin-specific methods not on IMediaServerService (analogous to
     // PlexApiModule exporting PlexApiService for PlexGetterService).
