@@ -144,14 +144,8 @@ export interface IMediaServerService {
 
   /**
    * Get aggregate watch state for a specific item.
-   *
-   * Implementations may use server-specific fallback counters when central
-   * watch history is unavailable or has been purged.
    */
-  getWatchState(
-    itemId: string,
-    fallbackViewCount?: number,
-  ): Promise<MediaWatchState>;
+  getWatchState(itemId: string): Promise<MediaWatchState>;
 
   /**
    * Get list of user IDs who have watched/seen a specific item.

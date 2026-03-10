@@ -180,41 +180,32 @@ describe('PlexAdapterService', () => {
 
   describe('getWatchState', () => {
     it('should derive watched state from watch history when entries exist', async () => {
-      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([
+      plexApi.getWatchHistory.mockResolvedValue([
         {
-          userId: '1',
+          accountID: 1,
           itemId: 'item123',
         },
-      ]);
+      ] as any);
 
-      const watchState = await service.getWatchState('item123', 2);
+      const watchState = await service.getWatchState('item123');
 
       expect(watchState).toEqual({
         viewCount: 1,
         isWatched: true,
       });
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
     });
 
-    it('should fall back to mapped view count when history is empty', async () => {
-      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([]);
+    it('should return unwatched state when history is empty', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([] as any);
 
-      const watchState = await service.getWatchState('item123', 3);
-
-      expect(watchState).toEqual({
-        viewCount: 3,
-        isWatched: true,
-      });
-    });
-
-    it('should return unwatched state when history and fallback are empty', async () => {
-      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([]);
-
-      const watchState = await service.getWatchState('item123', 0);
+      const watchState = await service.getWatchState('item123');
 
       expect(watchState).toEqual({
         viewCount: 0,
         isWatched: false,
       });
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
     });
   });
 

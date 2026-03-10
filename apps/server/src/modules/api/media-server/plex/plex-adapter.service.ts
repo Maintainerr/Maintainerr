@@ -193,27 +193,12 @@ export class PlexAdapterService implements IMediaServerService {
     return history.map(PlexMapper.toWatchRecord);
   }
 
-  async getWatchState(
-    itemId: string,
-    fallbackViewCount?: number,
-  ): Promise<MediaWatchState> {
-    const history = await this.getWatchHistory(itemId);
+  async getWatchState(itemId: string): Promise<MediaWatchState> {
+    const history = await this.plexApi.getWatchHistory(itemId, false);
 
-    if (history.length > 0) {
+    if (history && history.length > 0) {
       return {
         viewCount: history.length,
-        isWatched: true,
-      };
-    }
-
-    const itemCount = fallbackViewCount ?? 0;
-
-    if (itemCount > 0) {
-      this.logger.debug(
-        `viewCount fallback: watch history returned 0 for ratingKey ${itemId}, using mapped viewCount (${itemCount}). Note: this value reflects the admin user's view count only.`,
-      );
-      return {
-        viewCount: itemCount,
         isWatched: true,
       };
     }

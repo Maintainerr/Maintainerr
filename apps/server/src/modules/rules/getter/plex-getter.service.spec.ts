@@ -39,7 +39,6 @@ describe('PlexGetterService', () => {
     });
 
     it('should return the adapter view count for the viewCount rule', async () => {
-      libItem.viewCount = 2;
       plexAdapter.getWatchState.mockResolvedValue({
         viewCount: 7,
         isWatched: true,
@@ -48,7 +47,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(VIEWCOUNT_PROP_ID, libItem);
 
       expect(result).toBe(7);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 2);
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345');
     });
 
     it('should return the adapter watched state for the isWatched rule', async () => {
@@ -60,7 +59,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(ISWATCHED_PROP_ID, libItem);
 
       expect(result).toBe(false);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345');
     });
   });
 });

@@ -108,14 +108,12 @@ export class PlexGetterService {
         case 'viewCount': {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
-            libItem.viewCount,
           );
           return watchState.viewCount;
         }
         case 'isWatched': {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
-            libItem.viewCount,
           );
           return watchState.isWatched;
         }
