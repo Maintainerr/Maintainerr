@@ -409,6 +409,18 @@ export class SonarrGetterService {
         case 'seriesType': {
           return showResponse.seriesType ?? null;
         }
+        case 'missing_episodes_season': {
+          return season?.statistics
+            ? season.statistics.episodeCount -
+                season.statistics.episodeFileCount
+            : null;
+        }
+        case 'missing_episodes_show': {
+          return showResponse.statistics
+            ? showResponse.statistics.episodeCount -
+                showResponse.statistics.episodeFileCount
+            : null;
+        }
       }
     } catch (e) {
       this.logger.warn(
