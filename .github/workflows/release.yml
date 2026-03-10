@@ -104,14 +104,14 @@ jobs:
             ${{ env.GHCR_SLUG }}
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME  }}
           password: ${{ secrets.DOCKERHUB_TOKEN  }}
@@ -167,14 +167,14 @@ jobs:
           merge-multiple: true
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME  }}
           password: ${{ secrets.DOCKERHUB_TOKEN  }}
@@ -209,7 +209,7 @@ jobs:
 
       # Legacy mirror -- Keep here until Synology and Unraid Community Apps migrate to maintainerr repo
       - name: Login to legacy Docker Hub namespace
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_LEGACY_USERNAME }}
           password: ${{ secrets.DOCKERHUB_LEGACY_TOKEN }}
