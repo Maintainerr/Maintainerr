@@ -20,7 +20,10 @@ import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { supportsFeature } from '../media-server.constants';
-import { IMediaServerService } from '../media-server.interface';
+import {
+  IMediaServerService,
+  type MediaWatchState,
+} from '../media-server.interface';
 import { PlexMapper } from './plex.mapper';
 
 /**
@@ -188,6 +191,37 @@ export class PlexAdapterService implements IMediaServerService {
     const history = await this.plexApi.getWatchHistory(itemId);
     if (!history) return [];
     return history.map(PlexMapper.toWatchRecord);
+  }
+
+  async getWatchState(
+    itemId: string,
+    fallbackViewCount?: number,
+  ): Promise<MediaWatchState> {
+    const history = await this.getWatchHistory(itemId);
+
+    if (history.length > 0) {
+      return {
+        viewCount: history.length,
+        isWatched: true,
+      };
+    }
+
+    const itemCount = fallbackViewCount ?? 0;
+
+    if (itemCount > 0) {
+      this.logger.debug(
+        `viewCount fallback: watch history returned 0 for ratingKey ${itemId}, using mapped viewCount (${itemCount}). Note: this value reflects the admin user's view count only.`,
+      );
+      return {
+        viewCount: itemCount,
+        isWatched: true,
+      };
+    }
+
+    return {
+      viewCount: 0,
+      isWatched: false,
+    };
   }
 
   async getItemSeenBy(itemId: string): Promise<string[]> {

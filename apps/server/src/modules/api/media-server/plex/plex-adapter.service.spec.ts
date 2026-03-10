@@ -178,6 +178,46 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('getWatchState', () => {
+    it('should derive watched state from watch history when entries exist', async () => {
+      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([
+        {
+          userId: '1',
+          itemId: 'item123',
+        },
+      ]);
+
+      const watchState = await service.getWatchState('item123', 2);
+
+      expect(watchState).toEqual({
+        viewCount: 1,
+        isWatched: true,
+      });
+    });
+
+    it('should fall back to mapped view count when history is empty', async () => {
+      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123', 3);
+
+      expect(watchState).toEqual({
+        viewCount: 3,
+        isWatched: true,
+      });
+    });
+
+    it('should return unwatched state when history and fallback are empty', async () => {
+      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123', 0);
+
+      expect(watchState).toEqual({
+        viewCount: 0,
+        isWatched: false,
+      });
+    });
+  });
+
   describe('getCollections', () => {
     it('should return empty array when PlexApiService returns undefined', async () => {
       plexApi.getCollections.mockResolvedValue(undefined);

@@ -9,6 +9,7 @@ import {
   SimplePlexUser,
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
+import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -25,6 +26,7 @@ export class PlexGetterService {
 
   constructor(
     private readonly plexApi: PlexApiService,
+    private readonly plexAdapter: PlexAdapterService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(PlexGetterService.name);
@@ -104,32 +106,18 @@ export class PlexGetterService {
           return metadata.Role ? metadata.Role.map((el) => el.tag) : null;
         }
         case 'viewCount': {
-          const history = await this.plexApi
-            .getWatchHistory(metadata.ratingKey)
-            .catch(() => undefined);
-
-          const historyCount = history ? history.length : 0;
-          const itemCount = libItem.viewCount ?? 0;
-
-          if (historyCount === 0 && itemCount > 0) {
-            this.logger.debug(
-              `viewCount fallback: watch history returned 0 for ratingKey ${metadata.ratingKey}, using libItem.viewCount (${itemCount}). Note: this value reflects the admin user's view count only.`,
-            );
-            return itemCount;
-          }
-
-          return historyCount;
+          const watchState = await this.plexAdapter.getWatchState(
+            metadata.ratingKey,
+            libItem.viewCount,
+          );
+          return watchState.viewCount;
         }
         case 'isWatched': {
-          const watchHistory = await this.plexApi
-            .getWatchHistory(metadata.ratingKey)
-            .catch(() => undefined);
-
-          if (watchHistory && watchHistory.length > 0) {
-            return true;
-          }
-
-          return (libItem.viewCount ?? 0) > 0;
+          const watchState = await this.plexAdapter.getWatchState(
+            metadata.ratingKey,
+            libItem.viewCount,
+          );
+          return watchState.isWatched;
         }
         case 'labels': {
           const item =
