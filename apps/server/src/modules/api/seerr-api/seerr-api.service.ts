@@ -296,6 +296,33 @@ export class SeerrApiService {
     }
   }
 
+  public async hasRemainingSeasonRequests(
+    tmdbid: string | number,
+    removedSeasonNumber: number,
+  ): Promise<boolean | undefined> {
+    try {
+      const media = await this.getShow(tmdbid);
+
+      if (!media?.mediaInfo) {
+        return undefined;
+      }
+
+      const requests = media.mediaInfo.requests ?? [];
+
+      return requests.some((request) =>
+        request.seasons.some(
+          (season) => season.seasonNumber !== removedSeasonNumber,
+        ),
+      );
+    } catch (err) {
+      this.logger.warn(
+        'Seerr communication failed. Is the application running?',
+      );
+      this.logger.debug(err);
+      return undefined;
+    }
+  }
+
   public async deleteMediaItem(mediaId: string | number) {
     try {
       const response: SeerrBasicApiResponse = await this.api.delete(
