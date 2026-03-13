@@ -721,11 +721,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         .filter(({ userData }) => userData?.IsFavorite)
         .map(({ user }) => user.id);
 
-      this.cache.data.set(
-        cacheKey,
-        favoritedBy,
-        JELLYFIN_CACHE_TTL.WATCH_HISTORY,
-      );
+      this.cache.data.set(cacheKey, favoritedBy, JELLYFIN_CACHE_TTL.USER_DATA);
 
       return favoritedBy;
     } catch (error) {
@@ -756,7 +752,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.cache.data.set(
         cacheKey,
         totalPlayCount,
-        JELLYFIN_CACHE_TTL.WATCH_HISTORY,
+        JELLYFIN_CACHE_TTL.USER_DATA,
       );
 
       return totalPlayCount;
@@ -816,7 +812,11 @@ export class JellyfinAdapterService implements IMediaServerService {
         userId,
       });
       return response.data;
-    } catch {
+    } catch (error) {
+      this.logger.debug(
+        `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
+        error,
+      );
       return undefined;
     }
   }
