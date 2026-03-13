@@ -283,7 +283,7 @@ describe('JellyfinAdapterService', () => {
         ({ userId }: { userId: string }) =>
           Promise.resolve({
             data: {
-              Played: userId === 'user-1' ? false : false,
+              Played: false,
               PlayedPercentage: userId === 'user-1' ? 94 : 95,
               LastPlayedDate:
                 userId === 'user-1'
@@ -317,6 +317,27 @@ describe('JellyfinAdapterService', () => {
         userId: 'user-2',
       });
       expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('should log debug details when a per-user lookup fails', async () => {
+      const debugSpy = jest
+        .spyOn(service['logger'], 'debug')
+        .mockImplementation(() => undefined);
+
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItemUserData.mockRejectedValue(
+        new Error('User data unavailable'),
+      );
+
+      const history = await service.getWatchHistory('item123');
+
+      expect(history).toEqual([]);
+      expect(debugSpy).toHaveBeenCalledWith(
+        'Failed to get Jellyfin user data for item item123 and user user-1',
+        expect.any(Error),
+      );
     });
 
     it('should fall back to Jellyfin played state when threshold cannot be loaded', async () => {
