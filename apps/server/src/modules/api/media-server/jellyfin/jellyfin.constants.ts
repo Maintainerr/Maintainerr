@@ -14,6 +14,8 @@ export const JELLYFIN_BATCH_SIZE = {
 
 export const JELLYFIN_CACHE_KEYS = {
   WATCH_HISTORY: 'jellyfin:watch',
+  FAVORITED_BY: 'jellyfin:favorited-by',
+  TOTAL_PLAY_COUNT: 'jellyfin:total-play-count',
   PLAYED_THRESHOLD: 'jellyfin:played-threshold',
   USERS: 'jellyfin:users',
   LIBRARIES: 'jellyfin:libraries',
