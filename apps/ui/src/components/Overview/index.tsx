@@ -24,6 +24,7 @@ const Overview = () => {
   const [searchUsed, setSearchUsed] = useState<boolean>(false)
 
   const pageData = useRef<number>(0)
+  const fetchingRef = useRef<boolean>(false)
   const SearchCtx = useContext(SearchContext)
 
   const { data: libraries } = useMediaServerLibraries()
@@ -32,6 +33,10 @@ const Overview = () => {
 
   const setIsLoading = (val: boolean) => {
     loadingRef.current = val
+  }
+
+  const setFetching = (val: boolean) => {
+    fetchingRef.current = val
   }
 
   useEffect(() => {
@@ -97,6 +102,7 @@ const Overview = () => {
 
   const switchLib = (libraryId: string) => {
     setIsLoading(true)
+    setFetching(false)
     pageData.current = 0
     setTotalSize(999)
     setData([])
@@ -107,28 +113,35 @@ const Overview = () => {
 
   const fetchData = async () => {
     if (
-      selectedLibraryRef.current &&
-      SearchCtx.search.text === '' &&
-      totalSizeRef.current >= pageData.current * fetchAmount
+      fetchingRef.current ||
+      !selectedLibraryRef.current ||
+      SearchCtx.search.text !== '' ||
+      !(totalSizeRef.current >= pageData.current * fetchAmount)
     ) {
-      const askedLib = clone(selectedLibraryRef.current)
+      return
+    }
 
-      const resp: { totalSize: number; items: MediaItem[] } =
-        await GetApiHandler(
-          `/media-server/library/${selectedLibraryRef.current}/content?page=${
-            pageData.current + 1
-          }&limit=${fetchAmount}`,
-        )
+    setFetching(true)
+    if (!loadingRef.current) {
+      setLoadingExtra(true)
+    }
+    const askedLib = clone(selectedLibraryRef.current)
 
-      if (askedLib === selectedLibraryRef.current) {
-        setTotalSize(resp.totalSize)
-        pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
-        setIsLoading(false)
-      }
-      setLoadingExtra(false)
+    const resp: { totalSize: number; items: MediaItem[] } = await GetApiHandler(
+      `/media-server/library/${selectedLibraryRef.current}/content?page=${
+        pageData.current + 1
+      }&limit=${fetchAmount}`,
+    )
+
+    if (askedLib === selectedLibraryRef.current) {
+      setTotalSize(resp.totalSize)
+      pageData.current = pageData.current + 1
+      setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
       setIsLoading(false)
     }
+    setLoadingExtra(false)
+    setIsLoading(false)
+    setFetching(false)
   }
 
   return (
@@ -146,10 +159,7 @@ const Overview = () => {
             dataFinished={
               !(totalSizeRef.current >= pageData.current * fetchAmount)
             }
-            fetchData={() => {
-              setLoadingExtra(true)
-              fetchData()
-            }}
+            fetchData={() => fetchData()}
             loading={loadingRef.current}
             extrasLoading={
               loadingExtra &&
