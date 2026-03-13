@@ -572,6 +572,69 @@ describe('JellyfinGetterService', () => {
 
       expect(response).toBeNull();
     });
+
+    it('should aggregate the latest watched episode date for a show', async () => {
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+      });
+      const season1 = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+      });
+      const season2 = createMediaItem({
+        id: 'season-2',
+        type: 'season' as MediaItemType,
+      });
+      const episode1 = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+      });
+      const episode2 = createMediaItem({
+        id: 'ep-2',
+        type: 'episode' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-1' && childType === 'season') {
+            return [season1, season2];
+          }
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [episode1];
+          }
+          if (parentId === 'season-2' && childType === 'episode') {
+            return [episode2];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
+            ];
+          }
+          if (itemId === 'ep-2') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-06') }),
+            ];
+          }
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        7,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-06'));
+    });
   });
 
   describe('sw_viewedEpisodes (id: 15) - Amount of watched episodes', () => {
