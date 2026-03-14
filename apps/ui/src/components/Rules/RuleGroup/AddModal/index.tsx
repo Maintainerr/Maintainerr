@@ -1001,10 +1001,10 @@ const AddModal = (props: AddModal) => {
                           <p className="text-xs font-normal">
                             For movies and standard delete actions, deletes the
                             related Seerr request immediately instead of relying
-                            on media availability sync. For "Unmonitor and
-                            delete season + delete show if empty", Maintainerr
-                            only checks whether other Seerr season requests
-                            still exist before deleting the empty show.
+                            on media availability sync. For the season action
+                            that deletes the show if it becomes empty,
+                            Maintainerr only checks whether other Seerr season
+                            requests still exist before deleting the empty show.
                           </p>
                         </label>
                         <div className="form-input">
