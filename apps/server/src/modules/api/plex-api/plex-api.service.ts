@@ -1,3 +1,4 @@
+import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import cacheManager from '../../api/lib/cache';
@@ -10,7 +11,6 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
-import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsService } from '../../settings/settings.service';
 import PlexApi from '../lib/plexApi';
@@ -433,12 +433,18 @@ export class PlexApiService {
     }
   }
 
-  public async getWatchHistory(itemId: string): Promise<PlexSeenBy[]> {
+  public async getWatchHistory(
+    itemId: string,
+    useCache: boolean = true,
+  ): Promise<PlexSeenBy[]> {
     try {
       const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>({
-          uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
-        });
+        await this.plexClient.queryAll<PlexLibraryResponse>(
+          {
+            uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
+          },
+          useCache,
+        );
       return response.MediaContainer.Metadata as PlexSeenBy[];
     } catch (err) {
       this.logger.error(

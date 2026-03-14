@@ -1,21 +1,26 @@
 import {
   CollectionVisibilitySettings,
   CreateCollectionParams,
-  MediaServerFeature,
-  MediaServerType,
   LibraryQueryOptions,
   MediaCollection,
   MediaItem,
   MediaItemType,
   MediaLibrary,
   MediaPlaylist,
+  MediaServerFeature,
   MediaServerStatus,
+  MediaServerType,
   MediaUser,
   PagedResult,
   RecentlyAddedOptions,
   UpdateCollectionParams,
   WatchRecord,
 } from '@maintainerr/contracts';
+
+export interface MediaWatchState {
+  viewCount: number;
+  isWatched: boolean;
+}
 
 /**
  * Core interface for media server implementations.
@@ -136,6 +141,11 @@ export interface IMediaServerService {
    * - Jellyfin: Requires iterating over users
    */
   getWatchHistory(itemId: string): Promise<WatchRecord[]>;
+
+  /**
+   * Get aggregate watch state for a specific item.
+   */
+  getWatchState(itemId: string): Promise<MediaWatchState>;
 
   /**
    * Get list of user IDs who have watched/seen a specific item.

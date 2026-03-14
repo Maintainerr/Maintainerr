@@ -1,5 +1,12 @@
 import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
+import {
+  createPlexCollection,
+  createPlexLibrary,
+  createPlexSeenBy,
+  createPlexUserAccount,
+} from '../../../../../test/utils/data';
+import type { PlexStatusResponse } from '../../plex-api/interfaces/server.interface';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { PlexAdapterService } from './plex-adapter.service';
 
@@ -72,10 +79,12 @@ describe('PlexAdapterService', () => {
     });
 
     it('should map Plex status to MediaServerStatus', async () => {
-      plexApi.getStatus.mockResolvedValue({
+      const plexStatus: PlexStatusResponse['MediaContainer'] = {
         machineIdentifier: 'machine123',
         version: '1.25.0',
-      } as any);
+      };
+
+      plexApi.getStatus.mockResolvedValue(plexStatus);
 
       const status = await service.getStatus();
       expect(status).toBeDefined();
@@ -95,9 +104,19 @@ describe('PlexAdapterService', () => {
 
     it('should map Plex users to MediaUser array', async () => {
       plexApi.getUsers.mockResolvedValue([
-        { id: 1, name: 'user1', thumb: '/thumb1' },
-        { id: 2, name: 'user2', thumb: '/thumb2' },
-      ] as any);
+        createPlexUserAccount({
+          id: 1,
+          key: '1',
+          name: 'user1',
+          thumb: '/thumb1',
+        }),
+        createPlexUserAccount({
+          id: 2,
+          key: '2',
+          name: 'user2',
+          thumb: '/thumb2',
+        }),
+      ]);
 
       const users = await service.getUsers();
       expect(users).toHaveLength(2);
@@ -115,9 +134,19 @@ describe('PlexAdapterService', () => {
 
     it('should map Plex libraries to MediaLibrary array', async () => {
       plexApi.getLibraries.mockResolvedValue([
-        { key: '1', title: 'Movies', type: 'movie' },
-        { key: '2', title: 'TV Shows', type: 'show' },
-      ] as any);
+        createPlexLibrary({
+          key: '1',
+          title: 'Movies',
+          type: 'movie',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+        createPlexLibrary({
+          key: '2',
+          title: 'TV Shows',
+          type: 'show',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+      ]);
 
       const libraries = await service.getLibraries();
       expect(libraries).toHaveLength(2);
@@ -144,11 +173,9 @@ describe('PlexAdapterService', () => {
 
     it('should call PlexApiService with correct parameters', async () => {
       plexApi.getLibraryContents.mockResolvedValue({
-        MediaContainer: {
-          Metadata: [],
-          totalSize: 0,
-        },
-      } as any);
+        items: [],
+        totalSize: 0,
+      });
 
       await service.getLibraryContents('1', { offset: 0, limit: 50 });
       expect(plexApi.getLibraryContents).toHaveBeenCalled();
@@ -164,17 +191,43 @@ describe('PlexAdapterService', () => {
 
     it('should map Plex watch history to WatchRecord array', async () => {
       plexApi.getWatchHistory.mockResolvedValue([
-        {
+        createPlexSeenBy({
           accountID: 1,
           ratingKey: 'item123',
           viewedAt: 1609459200,
-        },
-      ] as any);
+        }),
+      ]);
 
       const history = await service.getWatchHistory('item123');
       expect(history).toHaveLength(1);
       expect(history[0].userId).toBe('1');
       expect(history[0].itemId).toBe('item123');
+    });
+  });
+
+  describe('getWatchState', () => {
+    it('should derive watched state from watch history when entries exist', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([createPlexSeenBy()]);
+
+      const watchState = await service.getWatchState('item123');
+
+      expect(watchState).toEqual({
+        viewCount: 1,
+        isWatched: true,
+      });
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
+    });
+
+    it('should return unwatched state when history is empty', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123');
+
+      expect(watchState).toEqual({
+        viewCount: 0,
+        isWatched: false,
+      });
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
     });
   });
 
@@ -196,10 +249,24 @@ describe('PlexAdapterService', () => {
 
   describe('collection operations', () => {
     it('should delegate createCollection to PlexApiService', async () => {
-      plexApi.createCollection.mockResolvedValue({
-        ratingKey: 'col123',
-        title: 'Test Collection',
-      } as any);
+      plexApi.createCollection.mockResolvedValue(
+        createPlexCollection({
+          ratingKey: 'col123',
+          key: '/library/collections/col123',
+          guid: 'plex://collection/col123',
+          title: 'Test Collection',
+          subtype: 'movie',
+          summary: '',
+          index: 0,
+          ratingCount: 0,
+          thumb: '/thumb/col123',
+          addedAt: 1609459200,
+          updatedAt: 1609459200,
+          childCount: '0',
+          maxYear: '2021',
+          minYear: '2021',
+        }),
+      );
 
       const result = await service.createCollection({
         libraryId: 'lib1',
