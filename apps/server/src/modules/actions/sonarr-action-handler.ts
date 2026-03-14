@@ -1,12 +1,12 @@
-import { MediaItem } from '@maintainerr/contracts';
+import { MediaItem, ServarrAction } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { SonarrSeries } from '../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MediaIdFinder } from './media-id-finder';
 
@@ -18,6 +18,7 @@ export class SonarrActionHandler {
     private readonly mediaIdFinder: MediaIdFinder,
     private readonly logger: MaintainerrLogger,
     private readonly mediaServerFactory: MediaServerFactory,
+    private readonly seerrApi: SeerrApiService,
   ) {
     logger.setContext(SonarrActionHandler.name);
   }
@@ -120,9 +121,11 @@ export class SonarrActionHandler {
             );
 
             if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
-              await this.deleteShowIfEmptyAndEnded(
+              await this.deleteShowIfEmpty(
                 sonarrApiClient,
+                media.tmdbId,
                 tvdbId,
+                mediaData?.index,
                 collection.listExclusions,
               );
             }
@@ -293,20 +296,50 @@ export class SonarrActionHandler {
 
   /**
    * After a season deletion, re-fetches the series and deletes the show
-   * from Sonarr if it has ended and has no remaining episode files.
+   * from Sonarr if it is either ended with no remaining files, or a
+   * continuing show with no remaining Seerr season requests.
    */
-  private async deleteShowIfEmptyAndEnded(
+  private async deleteShowIfEmpty(
     sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    tmdbId: number,
     tvdbId: number,
+    removedSeasonNumber: number | undefined,
     listExclusions: boolean | undefined,
   ): Promise<void> {
     const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
 
-    if (!series || !this.isShowEmptyAndEnded(series, 'files')) return;
+    if (!series || !this.isShowEmpty(series, 'files')) return;
+
+    if (series.status === 'ended') {
+      await sonarrApiClient.deleteShow(series.id, true, listExclusions);
+      this.logger.log(
+        `[Sonarr] Show '${series.title}' is ended with no files remaining — deleted from Sonarr`,
+      );
+      return;
+    }
+
+    if (series.status !== 'continuing') {
+      return;
+    }
+
+    // For continuing shows, check Seerr for remaining season requests
+    if (tmdbId == null || removedSeasonNumber == null) {
+      return;
+    }
+
+    const hasRemaining = await this.seerrApi.hasRemainingSeasonRequests(
+      tmdbId,
+      removedSeasonNumber,
+    );
+
+    // Only delete when we positively know there are no remaining requests
+    if (hasRemaining !== false) {
+      return;
+    }
 
     await sonarrApiClient.deleteShow(series.id, true, listExclusions);
     this.logger.log(
-      `[Sonarr] Show '${series.title}' is ended with no files remaining — deleted from Sonarr`,
+      `[Sonarr] Show '${series.title}' has no files and no remaining Seerr season requests — deleted from Sonarr`,
     );
   }
 
@@ -333,8 +366,13 @@ export class SonarrActionHandler {
     series: SonarrSeries,
     mode: 'files' | 'monitored',
   ): boolean {
-    if (series.status !== 'ended') return false;
+    return series.status === 'ended' && this.isShowEmpty(series, mode);
+  }
 
+  private isShowEmpty(
+    series: SonarrSeries,
+    mode: 'files' | 'monitored',
+  ): boolean {
     if (mode === 'files') {
       return (series.statistics?.episodeFileCount ?? 0) === 0;
     }

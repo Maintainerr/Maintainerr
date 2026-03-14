@@ -1,3 +1,4 @@
+import { ServarrAction } from '@maintainerr/contracts';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { Repository } from 'typeorm';
@@ -13,7 +14,6 @@ import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
-import { ServarrAction } from './interfaces/collection.interface';
 
 jest.mock('../../utils/delay');
 

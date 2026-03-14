@@ -14,6 +14,7 @@ import {
   Application,
   MediaItemType,
   MediaLibrary,
+  ServarrAction,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
 import { useState, useSyncExternalStore } from 'react'
@@ -778,65 +779,65 @@ const AddModal = (props: AddModal) => {
                           selectedType === 'show'
                             ? [
                                 {
-                                  id: 0,
+                                  id: ServarrAction.DELETE,
                                   name: 'Delete entire show',
                                 },
                                 {
-                                  id: 1,
+                                  id: ServarrAction.UNMONITOR_DELETE_ALL,
                                   name: 'Unmonitor and delete all seasons / episodes',
                                 },
                                 {
-                                  id: 2,
+                                  id: ServarrAction.UNMONITOR_DELETE_EXISTING,
                                   name: 'Unmonitor and delete existing seasons / episodes',
                                 },
                                 {
-                                  id: 3,
+                                  id: ServarrAction.UNMONITOR,
                                   name: 'Unmonitor show and keep files',
                                 },
                                 {
-                                  id: 4,
+                                  id: ServarrAction.DO_NOTHING,
                                   name: 'Do nothing',
                                 },
                               ]
                             : selectedType === 'season'
                               ? [
                                   {
-                                    id: 0,
+                                    id: ServarrAction.DELETE,
                                     name: 'Unmonitor and delete season',
                                   },
                                   {
-                                    id: 5,
+                                    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
                                     name: 'Unmonitor and delete season + delete show if empty',
                                   },
                                   {
-                                    id: 2,
+                                    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
                                     name: 'Unmonitor and delete existing episodes',
                                   },
                                   {
-                                    id: 3,
+                                    id: ServarrAction.UNMONITOR,
                                     name: 'Unmonitor season and keep files',
                                   },
                                   {
-                                    id: 6,
+                                    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
                                     name: 'Unmonitor season + unmonitor show if empty',
                                   },
                                   {
-                                    id: 4,
+                                    id: ServarrAction.DO_NOTHING,
                                     name: 'Do nothing',
                                   },
                                 ]
                               : // episodes
                                 [
                                   {
-                                    id: 0,
+                                    id: ServarrAction.DELETE,
                                     name: 'Unmonitor and delete episode',
                                   },
                                   {
-                                    id: 3,
+                                    id: ServarrAction.UNMONITOR,
                                     name: 'Unmonitor and keep file',
                                   },
                                   {
-                                    id: 4,
+                                    id: ServarrAction.DO_NOTHING,
                                     name: 'Do nothing',
                                   },
                                 ]
