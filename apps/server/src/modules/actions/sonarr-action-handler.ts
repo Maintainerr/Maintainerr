@@ -1,7 +1,6 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { SonarrSeries } from '../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
@@ -19,7 +18,6 @@ export class SonarrActionHandler {
     private readonly mediaIdFinder: MediaIdFinder,
     private readonly logger: MaintainerrLogger,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly seerrApi: SeerrApiService,
   ) {
     logger.setContext(SonarrActionHandler.name);
   }
@@ -122,12 +120,9 @@ export class SonarrActionHandler {
             );
 
             if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
-              await this.deleteShowIfEmpty(
+              await this.deleteShowIfEmptyAndEnded(
                 sonarrApiClient,
-                collection.forceSeerr,
-                media.tmdbId,
                 tvdbId,
-                mediaData?.index,
                 collection.listExclusions,
               );
             }
@@ -298,46 +293,20 @@ export class SonarrActionHandler {
 
   /**
    * After a season deletion, re-fetches the series and deletes the show
-   * from Sonarr if it is either ended with no remaining files, or if a
-   * Seerr-managed continuing show has no remaining season requests.
+   * from Sonarr if it has ended and has no remaining episode files.
    */
-  private async deleteShowIfEmpty(
+  private async deleteShowIfEmptyAndEnded(
     sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
-    forceSeerr: boolean,
-    tmdbId: number,
     tvdbId: number,
-    removedSeasonNumber: number | undefined,
     listExclusions: boolean | undefined,
   ): Promise<void> {
     const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
 
-    if (!series || (series.statistics?.episodeFileCount ?? 0) !== 0) return;
-
-    if (series.status === 'ended') {
-      await sonarrApiClient.deleteShow(series.id, true, listExclusions);
-      this.logger.log(
-        `[Sonarr] Show '${series.title}' is ended with no files remaining — deleted from Sonarr`,
-      );
-      return;
-    }
-
-    if (!forceSeerr || tmdbId == null || removedSeasonNumber == null) {
-      return;
-    }
-
-    const hasRemainingSeerrRequests =
-      await this.seerrApi.hasRemainingSeasonRequests(
-        tmdbId,
-        removedSeasonNumber,
-      );
-
-    if (hasRemainingSeerrRequests !== false) {
-      return;
-    }
+    if (!series || !this.isShowEmptyAndEnded(series, 'files')) return;
 
     await sonarrApiClient.deleteShow(series.id, true, listExclusions);
     this.logger.log(
-      `[Sonarr] Show '${series.title}' has no files and no remaining Seerr season requests — deleted from Sonarr`,
+      `[Sonarr] Show '${series.title}' is ended with no files remaining — deleted from Sonarr`,
     );
   }
 
