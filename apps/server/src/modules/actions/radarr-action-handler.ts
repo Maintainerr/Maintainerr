@@ -1,10 +1,10 @@
+import { ServarrAction } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 
 @Injectable()

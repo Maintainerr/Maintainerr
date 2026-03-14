@@ -5,6 +5,7 @@ import {
   MediaItemWithParent,
   MediaLibrary,
   MediaServerType,
+  ServarrAction,
 } from '@maintainerr/contracts';
 import {
   PlexLibrary,
@@ -28,7 +29,6 @@ import {
   CollectionMedia,
   CollectionMediaWithMetadata,
 } from '../../src/modules/collections/entities/collection_media.entities';
-import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../../src/modules/logging/logs.service';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
 

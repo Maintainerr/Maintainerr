@@ -3,6 +3,7 @@ import {
   CollectionHandlerProgressedEventDto,
   CollectionHandlerStartedEventDto,
   MaintainerrEvent,
+  ServarrAction,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -20,7 +21,6 @@ import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
-import { ServarrAction } from './interfaces/collection.interface';
 
 @Injectable()
 export class CollectionWorkerService extends TaskBase {

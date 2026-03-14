@@ -1,11 +1,12 @@
-import { MediaItem } from '@maintainerr/contracts';
+import { MediaItem, ServarrAction } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { SonarrSeries } from '../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MediaIdFinder } from './media-id-finder';
 
@@ -17,6 +18,7 @@ export class SonarrActionHandler {
     private readonly mediaIdFinder: MediaIdFinder,
     private readonly logger: MaintainerrLogger,
     private readonly mediaServerFactory: MediaServerFactory,
+    private readonly seerrApi: SeerrApiService,
   ) {
     logger.setContext(SonarrActionHandler.name);
   }
@@ -88,7 +90,10 @@ export class SonarrActionHandler {
     let sonarrMedia = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
 
     if (!sonarrMedia?.id) {
-      if (collection.arrAction !== ServarrAction.UNMONITOR) {
+      if (
+        collection.arrAction !== ServarrAction.UNMONITOR &&
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+      ) {
         this.logger.log(
           `Couldn't find correct tvdb id. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Attempting to remove from the filesystem via media server.`,
         );
@@ -103,6 +108,7 @@ export class SonarrActionHandler {
 
     switch (collection.arrAction) {
       case ServarrAction.DELETE:
+      case ServarrAction.DELETE_SHOW_IF_EMPTY:
         switch (collection.type) {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -113,8 +119,24 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
+
+            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
+              await this.deleteShowIfEmpty(
+                sonarrApiClient,
+                media.tmdbId,
+                tvdbId,
+                mediaData?.index,
+                collection.listExclusions,
+              );
+            }
             break;
           case 'episode':
+            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
+              this.logger.warn(
+                `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               mediaData?.parentIndex,
@@ -126,6 +148,12 @@ export class SonarrActionHandler {
             );
             break;
           default:
+            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
+              this.logger.warn(
+                `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             await sonarrApiClient.deleteShow(
               sonarrMedia.id,
               true,
@@ -136,6 +164,7 @@ export class SonarrActionHandler {
         }
         break;
       case ServarrAction.UNMONITOR:
+      case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
         switch (collection.type) {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -146,8 +175,22 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
+
+            if (
+              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+            ) {
+              await this.unmonitorShowIfEmptyAndEnded(sonarrApiClient, tvdbId);
+            }
             break;
           case 'episode':
+            if (
+              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+            ) {
+              this.logger.warn(
+                `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               mediaData?.parentIndex,
@@ -159,6 +202,14 @@ export class SonarrActionHandler {
             );
             break;
           default:
+            if (
+              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+            ) {
+              this.logger.warn(
+                `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+              );
+              break;
+            }
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'all',
@@ -241,5 +292,92 @@ export class SonarrActionHandler {
         }
         break;
     }
+  }
+
+  /**
+   * After a season deletion, re-fetches the series and deletes the show
+   * from Sonarr if it is either ended with no remaining files, or a
+   * continuing show with no remaining Seerr season requests.
+   */
+  private async deleteShowIfEmpty(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    tmdbId: number,
+    tvdbId: number,
+    removedSeasonNumber: number | undefined,
+    listExclusions: boolean | undefined,
+  ): Promise<void> {
+    const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+
+    if (!series || !this.isShowEmpty(series, 'files')) return;
+
+    if (series.status === 'ended') {
+      await sonarrApiClient.deleteShow(series.id, true, listExclusions);
+      this.logger.log(
+        `[Sonarr] Show '${series.title}' is ended with no files remaining — deleted from Sonarr`,
+      );
+      return;
+    }
+
+    if (series.status !== 'continuing') {
+      return;
+    }
+
+    // For continuing shows, check Seerr for remaining season requests
+    if (tmdbId == null || removedSeasonNumber == null) {
+      return;
+    }
+
+    const hasRemaining = await this.seerrApi.hasRemainingSeasonRequests(
+      tmdbId,
+      removedSeasonNumber,
+    );
+
+    // Only delete when we positively know there are no remaining requests
+    if (hasRemaining !== false) {
+      return;
+    }
+
+    await sonarrApiClient.deleteShow(series.id, true, listExclusions);
+    this.logger.log(
+      `[Sonarr] Show '${series.title}' has no files and no remaining Seerr season requests — deleted from Sonarr`,
+    );
+  }
+
+  /**
+   * After a season unmonitor, re-fetches the series and unmonitors the show
+   * if it has ended and has no remaining monitored seasons.
+   */
+  private async unmonitorShowIfEmptyAndEnded(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    tvdbId: number,
+  ): Promise<void> {
+    const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+
+    if (!series || !this.isShowEmptyAndEnded(series, 'monitored')) return;
+
+    series.monitored = false;
+    await sonarrApiClient.updateSeries(series);
+    this.logger.log(
+      `[Sonarr] Show '${series.title}' is ended with no monitored seasons — unmonitored show`,
+    );
+  }
+
+  private isShowEmptyAndEnded(
+    series: SonarrSeries,
+    mode: 'files' | 'monitored',
+  ): boolean {
+    return series.status === 'ended' && this.isShowEmpty(series, mode);
+  }
+
+  private isShowEmpty(
+    series: SonarrSeries,
+    mode: 'files' | 'monitored',
+  ): boolean {
+    if (mode === 'files') {
+      return (series.statistics?.episodeFileCount ?? 0) === 0;
+    }
+
+    // mode === 'monitored'
+    return series.seasons.every((s) => !s.monitored);
   }
 }

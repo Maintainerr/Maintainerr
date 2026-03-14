@@ -1,3 +1,4 @@
+import { ServarrAction } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
@@ -9,7 +10,6 @@ import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
-import { ServarrAction } from './interfaces/collection.interface';
 
 @Injectable()
 export class CollectionHandler {
@@ -67,7 +67,10 @@ export class CollectionHandler {
     } else if (library?.type == 'show' && collection.sonarrSettingsId) {
       await this.sonarrActionHandler.handleAction(collection, media);
     } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
-      if (collection.arrAction !== ServarrAction.UNMONITOR) {
+      if (
+        collection.arrAction !== ServarrAction.UNMONITOR &&
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+      ) {
         this.logger.log(
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
         );
@@ -79,8 +82,12 @@ export class CollectionHandler {
       }
     }
 
-    // Only remove requests & file if needed
-    if (collection.arrAction !== ServarrAction.UNMONITOR) {
+    // DELETE_SHOW_IF_EMPTY now inspects Seerr state without mutating Seerr requests.
+    if (
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.DELETE_SHOW_IF_EMPTY
+    ) {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
         switch (collection.type) {
