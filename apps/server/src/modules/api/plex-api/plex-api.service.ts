@@ -1,3 +1,4 @@
+import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import cacheManager from '../../api/lib/cache';
@@ -10,7 +11,6 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
-import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsService } from '../../settings/settings.service';
 import PlexApi from '../lib/plexApi';
@@ -310,15 +310,31 @@ export class PlexApiService {
 
   public async getMetadata(
     key: string,
-    options: { includeChildren?: boolean } = {},
+    options: { includeChildren?: boolean; includeExternalMedia?: boolean } = {},
     useCache: boolean = true,
   ): Promise<PlexMetadata> {
     try {
+      const queryParams: string[] = [];
+
+      if (options.includeChildren) {
+        queryParams.push('includeChildren=1');
+      }
+
+      if (options.includeExternalMedia || options.includeChildren) {
+        queryParams.push('includeExternalMedia=1');
+      }
+
+      if (options.includeChildren) {
+        queryParams.push(
+          'asyncAugmentMetadata=1',
+          'asyncCheckFiles=1',
+          'asyncRefreshAnalysis=1',
+        );
+      }
+
       const response = await this.plexClient.query<PlexMetadataResponse>(
         `/library/metadata/${key}${
-          options.includeChildren
-            ? '?includeChildren=1&includeExternalMedia=1&asyncAugmentMetadata=1&asyncCheckFiles=1&asyncRefreshAnalysis=1'
-            : ''
+          queryParams.length ? `?${queryParams.join('&')}` : ''
         }`,
         useCache,
       );

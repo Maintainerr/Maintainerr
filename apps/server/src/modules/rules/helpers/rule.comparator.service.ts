@@ -209,41 +209,36 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      if (
-        (firstVal !== undefined || null) &&
-        (secondVal !== undefined || null)
-      ) {
-        // do action
-        const comparisonResult = this.doRuleAction(
-          firstVal,
-          secondVal,
-          rule.action,
-        );
+      const comparisonResult = this.getComparisonResult(
+        rule,
+        mediaId,
+        firstVal,
+        secondVal,
+      );
 
-        // add stats if enabled
-        this.addStatistictoParent(
-          rule,
-          firstVal,
-          secondVal,
-          mediaId,
-          comparisonResult,
-        );
+      // add stats if enabled
+      this.addStatistictoParent(
+        rule,
+        firstVal,
+        secondVal,
+        mediaId,
+        comparisonResult,
+      );
 
-        // alter workerData
-        if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
-          if (comparisonResult) {
-            // add to workerdata if not yet available
-            if (!this.workerIds.has(mediaId)) {
-              this.workerIds.add(mediaId);
-              this.workerData.push(mediaItem);
-            }
+      // alter workerData
+      if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
+        if (comparisonResult) {
+          // add to workerdata if not yet available
+          if (!this.workerIds.has(mediaId)) {
+            this.workerIds.add(mediaId);
+            this.workerData.push(mediaItem);
           }
-        } else {
-          if (!comparisonResult) {
-            // remove from workerdata
-            this.workerData.splice(i, 1);
-            this.workerIds.delete(mediaId);
-          }
+        }
+      } else {
+        if (!comparisonResult) {
+          // remove from workerdata
+          this.workerData.splice(i, 1);
+          this.workerIds.delete(mediaId);
         }
       }
     }
@@ -352,13 +347,48 @@ export class RuleComparatorService {
         rule.firstVal,
       ),
       firstValue: firstVal,
-      secondValueName: rule.lastVal
-        ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-        : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
-            .type,
+      secondValueName: this.getSecondValueName(rule),
       secondValue: secondVal,
       result: result,
     });
+  }
+
+  private getComparisonResult(
+    rule: RuleDto,
+    mediaId: string,
+    firstVal: RuleValueType,
+    secondVal: RuleValueType,
+  ): boolean {
+    if (firstVal == null || secondVal == null) {
+      this.logMissingOperand(rule, mediaId, firstVal, secondVal);
+      return false;
+    }
+
+    return this.doRuleAction(firstVal, secondVal, rule.action);
+  }
+
+  private logMissingOperand(
+    rule: RuleDto,
+    mediaId: string,
+    firstVal: RuleValueType,
+    secondVal: RuleValueType,
+  ): void {
+    const firstValueName = this.ruleConstanstService.getValueHumanName(
+      rule.firstVal,
+    );
+
+    this.logger.warn(
+      `Skipping rule comparison due to missing operand: ` +
+        `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
+        `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +
+        `secondValueName=${this.getSecondValueName(rule)}, secondValue=${JSON.stringify(secondVal)}`,
+    );
+  }
+
+  private getSecondValueName(rule: RuleDto): string {
+    return rule.lastVal
+      ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
+      : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {
@@ -423,10 +453,24 @@ export class RuleComparatorService {
     }
 
     if (action === RulePossibility.BIGGER) {
+      if (typeof val1 !== 'number' || typeof val2 !== 'number') {
+        this.logger.debug(
+          `Invalid numeric comparison operand: ` +
+            `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=BIGGER`,
+        );
+        return false;
+      }
       return val1 > val2;
     }
 
     if (action === RulePossibility.SMALLER) {
+      if (typeof val1 !== 'number' || typeof val2 !== 'number') {
+        this.logger.debug(
+          `Invalid numeric comparison operand: ` +
+            `val1=${JSON.stringify(val1)}, val2=${JSON.stringify(val2)}, action=SMALLER`,
+        );
+        return false;
+      }
       return val1 < val2;
     }
 

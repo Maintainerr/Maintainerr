@@ -9,6 +9,11 @@ import {
   SimplePlexUser,
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
+import {
+  getExternalMediaRatingValue,
+  MediaRatingProvider,
+} from '../../api/media-server/media-rating.helper';
+import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -41,18 +46,25 @@ export class PlexGetterService {
     ruleGroup?: RulesDto,
   ): Promise<RuleValueType> {
     try {
+      const metadataOptions = { includeExternalMedia: true } as const;
       const prop = this.plexProperties.find((el) => el.id === id);
 
       // fetch metadata, parent & grandparent from cache, this data is more complete
       // libItem.id maps to Plex's ratingKey
-      const metadata: PlexMetadata = await this.plexApi.getMetadata(libItem.id);
+      const metadata: PlexMetadata = await this.plexApi.getMetadata(
+        libItem.id,
+        metadataOptions,
+      );
 
       // Parent/grandparent metadata is only needed for some properties.
       // Lazy-load and memoize so we don't fetch unless a case uses it.
       let parentPromise: Promise<PlexMetadata> | undefined;
       const getParent = async (): Promise<PlexMetadata | undefined> => {
         if (!metadata?.parentRatingKey) return undefined;
-        parentPromise ??= this.plexApi.getMetadata(metadata.parentRatingKey);
+        parentPromise ??= this.plexApi.getMetadata(
+          metadata.parentRatingKey,
+          metadataOptions,
+        );
         return parentPromise;
       };
 
@@ -61,6 +73,7 @@ export class PlexGetterService {
         if (!metadata?.grandparentRatingKey) return undefined;
         grandparentPromise ??= this.plexApi.getMetadata(
           metadata.grandparentRatingKey,
+          metadataOptions,
         );
         return grandparentPromise;
       };
@@ -512,33 +525,16 @@ export class PlexGetterService {
           return lastEpDate ? new Date(lastEpDate) : null;
         }
         case 'rating_imdb': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('imdb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'imdb', 'audience');
         }
         case 'rating_rottenTomatoesCritic': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'rottentomatoes', 'critic');
         }
         case 'rating_rottenTomatoesAudience': {
-          return (
-            metadata.Rating?.find(
-              (x) =>
-                x.image.startsWith('rottentomatoes') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'rottentomatoes', 'audience');
         }
         case 'rating_tmdb': {
-          return (
-            metadata.Rating?.find(
-              (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(metadata, 'tmdb', 'audience');
         }
         case 'rating_imdbShow': {
           const showMetadata =
@@ -546,11 +542,7 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('imdb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(showMetadata, 'imdb', 'audience');
         }
         case 'rating_rottenTomatoesCriticShow': {
           const showMetadata =
@@ -558,10 +550,10 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('rottentomatoes') && x.type == 'critic',
-            )?.value ?? null
+          return this.getProviderRating(
+            showMetadata,
+            'rottentomatoes',
+            'critic',
           );
         }
         case 'rating_rottenTomatoesAudienceShow': {
@@ -570,11 +562,10 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) =>
-                x.image.startsWith('rottentomatoes') && x.type == 'audience',
-            )?.value ?? null
+          return this.getProviderRating(
+            showMetadata,
+            'rottentomatoes',
+            'audience',
           );
         }
         case 'rating_tmdbShow': {
@@ -583,11 +574,7 @@ export class PlexGetterService {
               ? await getParent()
               : await getGrandparent();
 
-          return (
-            showMetadata.Rating?.find(
-              (x) => x.image.startsWith('themoviedb') && x.type == 'audience',
-            )?.value ?? null
-          );
+          return this.getProviderRating(showMetadata, 'tmdb', 'audience');
         }
         case 'collectionsIncludingSmart': {
           if (
@@ -748,5 +735,63 @@ export class PlexGetterService {
       this.logger.debug(e);
       return undefined;
     }
+  }
+
+  private getProviderRating(
+    metadata: PlexMetadata | undefined,
+    provider: MediaRatingProvider,
+    type: 'audience' | 'critic',
+  ): number | null {
+    const ratings = metadata
+      ? PlexMapper.metadataToMediaRatings(metadata)
+      : undefined;
+    const rating = getExternalMediaRatingValue(ratings, {
+      provider,
+      type,
+    });
+
+    this.logMissingProviderRating(metadata, provider, type, rating);
+
+    return rating;
+  }
+
+  private logMissingProviderRating(
+    metadata: PlexMetadata | undefined,
+    provider: MediaRatingProvider,
+    type: 'audience' | 'critic',
+    rating: number | null,
+  ): void {
+    if (rating != null || !metadata) {
+      return;
+    }
+
+    const rawSources = [
+      metadata.ratingImage,
+      metadata.audienceRatingImage,
+      ...(metadata.Rating?.map((entry) => entry.image) ?? []),
+    ].filter((value): value is string => Boolean(value));
+
+    const hasAnyRatingData =
+      metadata.rating != null ||
+      metadata.audienceRating != null ||
+      (metadata.Rating?.length ?? 0) > 0;
+
+    if (!hasAnyRatingData) {
+      return;
+    }
+
+    this.logger.warn(
+      `Plex provider rating missing after normalization: ` +
+        `ratingKey=${metadata.ratingKey}, type=${metadata.type}, provider=${provider}, requestedType=${type}, ` +
+        `rating=${JSON.stringify(metadata.rating)}, ratingImage=${JSON.stringify(metadata.ratingImage)}, ` +
+        `audienceRating=${JSON.stringify(metadata.audienceRating)}, audienceRatingImage=${JSON.stringify(metadata.audienceRatingImage)}, ` +
+        `ratingEntries=${JSON.stringify(
+          metadata.Rating?.map((entry) => ({
+            image: entry.image,
+            type: entry.type,
+            value: entry.value,
+          })) ?? [],
+        )}, normalizedSources=${JSON.stringify(rawSources)}`,
+    );
   }
 }
