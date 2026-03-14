@@ -4,6 +4,7 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import {
   SeerrApiService,
   SeerrMovieResponse,
+  SeerrRequestStatus,
   SeerrTVResponse,
 } from '../../api/seerr-api/seerr-api.service';
 import { MetadataService } from '../../metadata/metadata.service';
@@ -458,7 +459,14 @@ describe('SeerrGetterService', () => {
                 userType: 1,
                 plexUsername: 'UserWhoRequestedSeason1',
               },
-              seasons: [{ id: 1, name: 'Season 1', seasonNumber: 1 }],
+              seasons: [
+                {
+                  id: 1,
+                  name: 'Season 1',
+                  seasonNumber: 1,
+                  status: SeerrRequestStatus.APPROVED,
+                },
+              ],
               is4k: false,
               serverId: 1,
               profileId: 1,
@@ -475,7 +483,14 @@ describe('SeerrGetterService', () => {
                 userType: 1,
                 plexUsername: 'UserWhoRequestedSeason2',
               },
-              seasons: [{ id: 2, name: 'Season 2', seasonNumber: 2 }],
+              seasons: [
+                {
+                  id: 2,
+                  name: 'Season 2',
+                  seasonNumber: 2,
+                  status: SeerrRequestStatus.APPROVED,
+                },
+              ],
               is4k: false,
               serverId: 1,
               profileId: 1,

@@ -1,4 +1,8 @@
-import { MediaItem, MediaItemType } from '@maintainerr/contracts';
+import {
+  MediaItem,
+  MediaItemType,
+  ServarrAction,
+} from '@maintainerr/contracts';
 import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
 import {
@@ -12,8 +16,8 @@ import {
 } from '../../../test/utils/servarr-mock';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
@@ -25,6 +29,7 @@ describe('SonarrActionHandler', () => {
   let servarrService: Mocked<ServarrService>;
   let metadataService: Mocked<MetadataService>;
   let logger: Mocked<MaintainerrLogger>;
+  let seerrApi: Mocked<SeerrApiService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -35,6 +40,7 @@ describe('SonarrActionHandler', () => {
     servarrService = unitRef.get(ServarrService);
     metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+    seerrApi = unitRef.get(SeerrApiService);
 
     // Setup media server mock
     mediaServer = {
@@ -42,6 +48,7 @@ describe('SonarrActionHandler', () => {
       deleteFromDisk: jest.fn(),
     } as unknown as Mocked<IMediaServerService>;
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
+    seerrApi.hasRemainingSeasonRequests.mockResolvedValue(undefined);
   });
 
   // Helper to setup media server mock for each test
@@ -237,6 +244,215 @@ describe('SonarrActionHandler', () => {
       collectionMedia.mediaData.index,
       true,
     );
+  });
+
+  it('should delete continuing empty show when Seerr has no remaining requests after season removal', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      forceSeerr: true,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 100,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    seerrApi.hasRemainingSeasonRequests.mockResolvedValue(false);
+
+    const series = createSonarrSeries({
+      id: 42,
+      status: 'continuing',
+      statistics: {
+        seasonCount: 1,
+        episodeFileCount: 0,
+        episodeCount: 10,
+        totalEpisodeCount: 10,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(seerrApi.hasRemainingSeasonRequests).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      collectionMedia.mediaData.index,
+    );
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      series.id,
+      true,
+      collection.listExclusions,
+    );
+  });
+
+  it('should delete ended empty show without consulting Seerr requests', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 100,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries({
+      id: 42,
+      status: 'ended',
+      statistics: {
+        seasonCount: 1,
+        episodeFileCount: 0,
+        episodeCount: 10,
+        totalEpisodeCount: 10,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(seerrApi.hasRemainingSeasonRequests).not.toHaveBeenCalled();
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      series.id,
+      true,
+      collection.listExclusions,
+    );
+  });
+
+  it('should not delete continuing empty show when Seerr still has requests for other seasons', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      forceSeerr: true,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 100,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    seerrApi.hasRemainingSeasonRequests.mockResolvedValue(true);
+
+    const series = createSonarrSeries({
+      id: 42,
+      status: 'continuing',
+      statistics: {
+        seasonCount: 2,
+        episodeFileCount: 0,
+        episodeCount: 20,
+        totalEpisodeCount: 20,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(seerrApi.hasRemainingSeasonRequests).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      collectionMedia.mediaData.index,
+    );
+    expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
+  });
+
+  it('should not delete continuing empty show when Seerr state is unknown', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      forceSeerr: true,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 100,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    seerrApi.hasRemainingSeasonRequests.mockResolvedValue(undefined);
+
+    const series = createSonarrSeries({
+      id: 42,
+      status: 'continuing',
+      statistics: {
+        seasonCount: 1,
+        episodeFileCount: 0,
+        episodeCount: 10,
+        totalEpisodeCount: 10,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(seerrApi.hasRemainingSeasonRequests).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      collectionMedia.mediaData.index,
+    );
+    expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
+  });
+
+  it('should not delete upcoming empty show even when Seerr has no remaining requests', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 100,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    seerrApi.hasRemainingSeasonRequests.mockResolvedValue(false);
+
+    const series = createSonarrSeries({
+      id: 42,
+      status: 'upcoming',
+      statistics: {
+        seasonCount: 1,
+        episodeFileCount: 0,
+        episodeCount: 10,
+        totalEpisodeCount: 10,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(seerrApi.hasRemainingSeasonRequests).not.toHaveBeenCalled();
+    expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
   });
 
   it('should unmonitor and delete episode when type EPISODES and action DELETE', async () => {

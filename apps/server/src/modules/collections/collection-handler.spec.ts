@@ -1,3 +1,4 @@
+import { MediaItem, ServarrAction } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
   createCollection,
@@ -8,13 +9,11 @@ import {
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { MediaItem } from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
-import { ServarrAction } from './interfaces/collection.interface';
 
 describe('CollectionHandler', () => {
   let collectionHandler: CollectionHandler;
@@ -183,6 +182,35 @@ describe('CollectionHandler', () => {
       collectionMedia.mediaData.parentIndex,
     );
     expect(seerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not remove Seerr requests for DELETE_SHOW_IF_EMPTY season actions', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      forceSeerr: true,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(sonarrActionHandler.handleAction).toHaveBeenCalledWith(
+      collection,
+      collectionMedia,
+    );
+    expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
+    expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
   });
 
   it('should call removeMediaByTmdbId for movies', async () => {

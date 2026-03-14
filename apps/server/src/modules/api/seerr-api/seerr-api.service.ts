@@ -62,9 +62,17 @@ interface SeerrEpisode {
   episodeNumber: number;
 }
 
+export enum SeerrRequestStatus {
+  PENDING = 1,
+  APPROVED,
+  DECLINED,
+  FAILED,
+  COMPLETED,
+}
+
 export type SeerrBaseRequest = {
   id: number;
-  status: number;
+  status: SeerrRequestStatus;
   createdAt: string;
   updatedAt: string;
   requestedBy: SeerrUser;
@@ -108,6 +116,7 @@ export interface SeerrSeasonRequest {
   id: number;
   name: string;
   seasonNumber: number;
+  status: SeerrRequestStatus;
 }
 
 interface SeerrStatus {
@@ -279,7 +288,7 @@ export class SeerrApiService {
       const media = await this.getShow(tmdbid);
 
       if (media?.mediaInfo) {
-        const requests = media.mediaInfo.requests.filter((el) =>
+        const requests = (media.mediaInfo.requests ?? []).filter((el) =>
           el.seasons.find((s) => s.seasonNumber === season),
         );
         if (requests.length > 0) {
@@ -291,6 +300,48 @@ export class SeerrApiService {
           await this.api.delete(`/media/${media.id}`);
         }
       }
+    } catch (err) {
+      this.logger.warn(
+        'Seerr communication failed. Is the application running?',
+      );
+      this.logger.debug(err);
+      return undefined;
+    }
+  }
+
+  /**
+   * Checks whether the show identified by `tmdbid` still has any season
+   * requests remaining after excluding `removedSeasonNumber`.
+   *
+   * Returns `true` if other seasons are still requested, `false` if none
+   * remain, or `undefined` when the Seerr state cannot be determined.
+   */
+  public async hasRemainingSeasonRequests(
+    tmdbid: string | number,
+    removedSeasonNumber: number,
+  ): Promise<boolean | undefined> {
+    try {
+      const media = await this.getShow(tmdbid);
+
+      if (!media?.mediaInfo) {
+        return undefined;
+      }
+
+      const requests = media.mediaInfo.requests ?? [];
+
+      return requests
+        .filter(
+          (request) =>
+            request.status !== SeerrRequestStatus.DECLINED &&
+            request.status !== SeerrRequestStatus.COMPLETED,
+        )
+        .some((request) =>
+          request.seasons.some(
+            (season) =>
+              season.seasonNumber !== removedSeasonNumber &&
+              season.status !== SeerrRequestStatus.COMPLETED,
+          ),
+        );
     } catch (err) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',

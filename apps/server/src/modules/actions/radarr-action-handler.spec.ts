@@ -1,3 +1,4 @@
+import { ServarrAction } from '@maintainerr/contracts';
 import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
 import {
@@ -12,7 +13,6 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { RadarrActionHandler } from './radarr-action-handler';
