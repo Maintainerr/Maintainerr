@@ -7,6 +7,18 @@ interface ICollectionItem {
   onClick?: (collection: ICollection) => void
 }
 
+/**
+ * Resolve a stored image_path to a full URL.
+ * Legacy records store a TMDB relative path (e.g. "/abc.jpg"),
+ * new records store a full URL.
+ */
+function resolveImageUrl(path: string | null | undefined): string {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  // Legacy TMDB path — prepend the base URL
+  return `https://image.tmdb.org/t/p/w500${path.startsWith('/') ? '' : '/'}${path}`
+}
+
 function formatSize(bytes: number | null | undefined): string {
   if (bytes == null) return 'N/A'
   const gb = bytes / 1073741824
@@ -32,14 +44,14 @@ const CollectionItem = (props: ICollectionItem) => {
               className="backdrop-image"
               width="600"
               height="800"
-              src={`https://image.tmdb.org/t/p/w500${props.collection.media[0].image_path}`}
+              src={resolveImageUrl(props.collection.media[0].image_path)}
               alt="img"
             />
             <img
               className="backdrop-image"
               width="600"
               height="800"
-              src={`https://image.tmdb.org/t/p/w500/${props.collection.media[1].image_path}`}
+              src={resolveImageUrl(props.collection.media[1].image_path)}
               alt="img"
             />
             <div className="collection-backdrop"></div>

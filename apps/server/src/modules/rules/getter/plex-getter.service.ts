@@ -28,8 +28,8 @@ export class PlexGetterService {
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(PlexGetterService.name);
-    const ruleConstanst = new RuleConstants();
-    this.plexProperties = ruleConstanst.applications.find(
+    const ruleConstants = new RuleConstants();
+    this.plexProperties = ruleConstants.applications.find(
       (el) => el.id === Application.PLEX,
     ).props;
   }

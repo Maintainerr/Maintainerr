@@ -78,7 +78,7 @@ const PlexSettings = () => {
   const [testBanner, setTestbanner] = useState<{
     status: boolean
     version: string
-  }>({ status: false, version: '0' })
+  }>({ status: false, version: '' })
   const [availableServers, setAvailableServers] = useState<PlexDevice[]>()
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
 
@@ -298,17 +298,14 @@ const PlexSettings = () => {
           />
         )}
 
-        {testBanner.version !== '0' ? (
+        {testBanner.version ? (
           testBanner.status ? (
             <Alert
               type="info"
               title={`Successfully connected to Plex (${testBanner.version})`}
             />
           ) : (
-            <Alert
-              type="error"
-              title="Connection failed! Double check your entries and make sure to Save Changes before you Test."
-            />
+            <Alert type="error" title={testBanner.version} />
           )
         ) : undefined}
 

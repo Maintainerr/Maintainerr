@@ -28,6 +28,6 @@ export interface ICollectionMedia {
 export interface IAlterableMediaDto {
   id: number | string
   index?: number
-  parenIndex?: number
+  parentIndex?: number
   type: MediaItemType
 }
