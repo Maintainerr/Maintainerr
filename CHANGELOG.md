@@ -1,3 +1,17 @@
+# [3.1.0](https://github.com/maintainerr/Maintainerr/compare/v3.0.1...v3.1.0) (2026-03-10)
+
+
+### Bug Fixes
+
+* prevent rule-removed items from being re-added as manual additions ([#2440](https://github.com/maintainerr/Maintainerr/issues/2440)) ([0582a72](https://github.com/maintainerr/Maintainerr/commit/0582a7282dab29e49e7170bf6a0befe12cf6d8aa))
+* **server:** honor Jellyfin played threshold ([#2466](https://github.com/maintainerr/Maintainerr/issues/2466)) ([5f24c7d](https://github.com/maintainerr/Maintainerr/commit/5f24c7d6c9820038ed5abee5e3cfc8952c150599))
+
+
+### Features
+
+* missing_episode rules ([#2386](https://github.com/maintainerr/Maintainerr/issues/2386)) ([e4dae87](https://github.com/maintainerr/Maintainerr/commit/e4dae8757419c70aa55debc20f08bdd250ffc01b))
+* **rules:** add rule Jellyfin favorited by including parents ([#2438](https://github.com/maintainerr/Maintainerr/issues/2438)) ([f9b66a4](https://github.com/maintainerr/Maintainerr/commit/f9b66a4a32852086a3ae454ee3076647ac7337fe))
+
 ## [3.0.1](https://github.com/maintainerr/Maintainerr/compare/v3.0.0...v3.0.1) (2026-02-28)
 
 
