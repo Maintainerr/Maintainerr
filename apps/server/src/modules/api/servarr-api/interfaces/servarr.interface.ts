@@ -1,3 +1,5 @@
+import { ArrDiskspaceResource } from '@maintainerr/contracts';
+
 export interface SystemStatus {
   version: string;
   buildTime: Date;
@@ -31,20 +33,16 @@ export interface RootFolder {
   id: number;
   path: string;
   freeSpace: number;
-  totalSpace: number;
+  // totalSpace is not exposed by Sonarr/Radarr's /rootfolder API
+  // (the internal model computes it but the resource mapper omits it)
+  totalSpace?: number;
   unmappedFolders: {
     name: string;
     path: string;
   }[];
 }
 
-export interface DiskSpaceResource {
-  id: number;
-  path: string | null;
-  label: string | null;
-  freeSpace: number;
-  totalSpace: number;
-}
+export type DiskSpaceResource = ArrDiskspaceResource;
 
 export interface QualityProfile {
   id: number;

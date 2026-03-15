@@ -88,3 +88,6 @@ export enum RequestMediaStatus {
   PARTIALLY_AVAILABLE = 4,
   AVAILABLE = 5,
 }
+
+export const DISKSPACE_REMAINING_PROPERTY = 'diskspace_remaining_gb'
+export const DISKSPACE_TOTAL_PROPERTY = 'diskspace_total_gb'
