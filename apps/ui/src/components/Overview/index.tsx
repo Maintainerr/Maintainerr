@@ -10,6 +10,7 @@ import OverviewContent from './Content'
 const Overview = () => {
   // const [isLoading, setIsLoading] = useState<Boolean>(false)
   const loadingRef = useRef<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(false)
 
   const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
 
@@ -24,6 +25,7 @@ const Overview = () => {
   const [searchUsed, setSearchUsed] = useState<boolean>(false)
 
   const pageData = useRef<number>(0)
+  const [pageDataState, setPageDataState] = useState<number>(0)
   const SearchCtx = useContext(SearchContext)
 
   const { data: libraries } = useMediaServerLibraries()
@@ -32,6 +34,7 @@ const Overview = () => {
 
   const setIsLoading = (val: boolean) => {
     loadingRef.current = val
+    setLoading(val)
   }
 
   useEffect(() => {
@@ -55,6 +58,7 @@ const Overview = () => {
       dataRef.current = []
       totalSizeRef.current = 999
       pageData.current = 0
+      setPageDataState(0)
     }
   }, [libraries])
 
@@ -67,6 +71,7 @@ const Overview = () => {
           setSearchUsed(true)
           setTotalSize(resp.length)
           pageData.current = resp.length * 50
+          setPageDataState(resp.length * 50)
           setData(resp ? resp : [])
           setIsLoading(false)
         },
@@ -77,10 +82,11 @@ const Overview = () => {
       setData([])
       setTotalSize(999)
       pageData.current = 0
+      setPageDataState(0)
       setIsLoading(true)
       fetchData()
     }
-  }, [SearchCtx.search.text])
+  }, [SearchCtx.search.text, libraries])
 
   useEffect(() => {
     selectedLibraryRef.current = selectedLibrary
@@ -144,17 +150,17 @@ const Overview = () => {
         {selectedLibrary ? (
           <OverviewContent
             dataFinished={
-              !(totalSizeRef.current >= pageData.current * fetchAmount)
+              !(totalSize >= pageDataState * fetchAmount)
             }
             fetchData={() => {
               setLoadingExtra(true)
               fetchData()
             }}
-            loading={loadingRef.current}
+            loading={loading}
             extrasLoading={
               loadingExtra &&
-              !loadingRef.current &&
-              totalSizeRef.current >= pageData.current * fetchAmount
+              !loading &&
+              totalSize >= pageDataState * fetchAmount
             }
             data={data}
             libraryId={selectedLibrary!}

@@ -1,6 +1,8 @@
 import { MediaItemType, MediaServerType } from '@maintainerr/contracts';
 import { CollectionMedia } from '../entities/collection_media.entities';
 
+export { ServarrAction };
+
 export interface ICollection {
   id?: number;
   type: MediaItemType;
@@ -23,13 +25,7 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number;
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
+  radarrQualityProfileId?: number;
+  sonarrQualityProfileId?: number;
   sortTitle?: string;
-}
-
-export enum ServarrAction {
-  DELETE,
-  UNMONITOR_DELETE_ALL,
-  UNMONITOR_DELETE_EXISTING,
-  UNMONITOR,
-  DO_NOTHING,
 }
