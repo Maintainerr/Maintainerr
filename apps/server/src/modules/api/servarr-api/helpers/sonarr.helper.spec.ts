@@ -83,4 +83,50 @@ describe('SonarrApi', () => {
 
     await expect(sonarrApi.getEpisodes(1, 1, [1])).rejects.toThrow('boom');
   });
+
+  describe('runPut / runDelete failure contract', () => {
+    it('should return false when PUT returns undefined (API failure)', async () => {
+      jest.spyOn(sonarrApi as any, 'put').mockResolvedValue(undefined);
+
+      const result = await (sonarrApi as any).runPut(
+        'episode/1',
+        JSON.stringify({ monitored: false }),
+      );
+
+      expect(result).toBe(false);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to run PUT: /episode/1',
+      );
+    });
+
+    it('should return true when PUT returns data (API success)', async () => {
+      jest.spyOn(sonarrApi as any, 'put').mockResolvedValue({ id: 1 });
+
+      const result = await (sonarrApi as any).runPut(
+        'episode/1',
+        JSON.stringify({ monitored: false }),
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when DELETE returns undefined (API failure)', async () => {
+      jest.spyOn(sonarrApi as any, 'delete').mockResolvedValue(undefined);
+
+      const result = await (sonarrApi as any).runDelete('episodefile/1');
+
+      expect(result).toBe(false);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to run DELETE: /episodefile/1',
+      );
+    });
+
+    it('should return true when DELETE returns data (API success)', async () => {
+      jest.spyOn(sonarrApi as any, 'delete').mockResolvedValue({});
+
+      const result = await (sonarrApi as any).runDelete('episodefile/1');
+
+      expect(result).toBe(true);
+    });
+  });
 });

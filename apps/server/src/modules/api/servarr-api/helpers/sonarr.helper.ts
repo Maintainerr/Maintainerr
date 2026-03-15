@@ -123,16 +123,7 @@ export class SonarrApi extends ServarrApi<{
   }
 
   public async updateSeries(series: SonarrSeries): Promise<boolean> {
-    try {
-      await this.axios.put<SonarrSeries>('/series', series);
-      return true;
-    } catch (e) {
-      this.logger.warn(
-        `Failed to update Sonarr series ${series.id}: ${e.message}`,
-      );
-      this.logger.debug(e);
-      return false;
-    }
+    return this.runPut('series', JSON.stringify(series));
   }
 
   public async searchSeries(seriesId: number): Promise<void> {
