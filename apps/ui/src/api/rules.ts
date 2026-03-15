@@ -1,3 +1,4 @@
+import type { ArrDiskspaceResource } from '@maintainerr/contracts'
 import {
   BasicResponseDto,
   MediaItemType,
@@ -146,13 +147,7 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
 
 export type UseRuleConstants = ReturnType<typeof useRuleConstants>
 
-export interface ArrDiskspaceResource {
-  id: number
-  path: string | null
-  label: string | null
-  freeSpace: number
-  totalSpace: number
-}
+export type { ArrDiskspaceResource } from '@maintainerr/contracts'
 
 type UseArrDiskspaceQueryKey = [
   'servarr',

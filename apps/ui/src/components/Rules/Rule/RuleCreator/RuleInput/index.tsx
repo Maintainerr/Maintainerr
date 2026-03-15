@@ -1,8 +1,12 @@
 import { TrashIcon } from '@heroicons/react/solid'
 import {
   Application,
+  type ArrDiskspaceResource,
+  DISKSPACE_REMAINING_PROPERTY,
+  DISKSPACE_TOTAL_PROPERTY,
   type MediaItemType,
   MediaType,
+  normalizeDiskPath,
   RulePossibility,
   RulePossibilityTranslations,
 } from '@maintainerr/contracts'
@@ -10,12 +14,14 @@ import { cloneDeep } from 'lodash-es'
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { IRule } from '../'
 import {
-  ArrDiskspaceResource,
   useRadarrDiskspace,
   useRuleConstants,
   useSonarrDiskspace,
 } from '../../../../../api/rules'
-import { IProperty } from '../../../../../contexts/constants-context'
+import {
+  IConstants,
+  IProperty,
+} from '../../../../../contexts/constants-context'
 import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
 
@@ -97,26 +103,25 @@ const shouldFilterApplication = (
 
 const isArrDiskspaceProperty = (prop?: IProperty): boolean => {
   return (
-    prop?.name === 'diskspace_remaining_gb' ||
-    prop?.name === 'diskspace_total_gb'
+    prop?.name === DISKSPACE_REMAINING_PROPERTY ||
+    prop?.name === DISKSPACE_TOTAL_PROPERTY
   )
-}
-
-const normalizeDiskPath = (path: string): string => {
-  if (path.length <= 1) {
-    return path
-  }
-
-  return path.replace(/[\\/]+$/, '')
 }
 
 const buildDiskspaceOptions = (
   resources: ArrDiskspaceResource[] | undefined,
+  includePathsWithoutAccurateTotals: boolean,
 ): Array<{ value: string; label: string }> => {
   const options = new Map<string, string>()
 
   for (const resource of resources ?? []) {
     if (!resource.path) continue
+    if (
+      !includePathsWithoutAccurateTotals &&
+      resource.hasAccurateTotalSpace === false
+    ) {
+      continue
+    }
 
     const normalizedPath = normalizeDiskPath(resource.path)
     const label = resource.label
@@ -130,6 +135,18 @@ const buildDiskspaceOptions = (
   return [...options.entries()]
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.value.localeCompare(b.value))
+}
+
+const getPropFromTuple = (
+  value: [number, number] | string,
+  constants: IConstants | undefined,
+): IProperty | undefined => {
+  if (!constants) return undefined
+
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value
+  const application = constants.applications?.find((el) => el.id === +parsed[0])
+
+  return application?.props.find((el) => el.id === +parsed[1])
 }
 
 const RuleInput = (props: IRuleInput) => {
@@ -149,24 +166,6 @@ const RuleInput = (props: IRuleInput) => {
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
   const { isPlex, isJellyfin } = useMediaServerType()
 
-  function getPropFromTuple(
-    value: [number, number] | string,
-  ): IProperty | undefined {
-    if (!constants) return undefined
-
-    if (typeof value === 'string') {
-      value = JSON.parse(value)
-    }
-    const application = constants.applications?.find(
-      (el) => el.id === +value[0],
-    )
-
-    const prop = application?.props.find((el) => {
-      return el.id === +value[1]
-    })
-    return prop
-  }
-
   const firstValueTuple = useMemo<[number, number] | undefined>(() => {
     if (!firstval) return undefined
     return JSON.parse(firstval) as [number, number]
@@ -174,7 +173,7 @@ const RuleInput = (props: IRuleInput) => {
 
   const selectedFirstValueAppId = firstValueTuple?.[0]
   const selectedFirstValueProp = firstval
-    ? getPropFromTuple(firstval)
+    ? getPropFromTuple(firstval, constants)
     : undefined
   const isSelectedArrDiskspaceRule =
     (selectedFirstValueAppId === Application.RADARR ||
@@ -195,15 +194,29 @@ const RuleInput = (props: IRuleInput) => {
         selectedFirstValueAppId === Application.SONARR,
     })
 
+  const isSelectedArrTotalDiskspaceRule =
+    selectedFirstValueProp?.name === DISKSPACE_TOTAL_PROPERTY
+
   const arrDiskspaceOptions = useMemo(() => {
     if (selectedFirstValueAppId === Application.RADARR) {
-      return buildDiskspaceOptions(radarrDiskspace)
+      return buildDiskspaceOptions(
+        radarrDiskspace,
+        !isSelectedArrTotalDiskspaceRule,
+      )
     }
     if (selectedFirstValueAppId === Application.SONARR) {
-      return buildDiskspaceOptions(sonarrDiskspace)
+      return buildDiskspaceOptions(
+        sonarrDiskspace,
+        !isSelectedArrTotalDiskspaceRule,
+      )
     }
     return []
-  }, [selectedFirstValueAppId, radarrDiskspace, sonarrDiskspace])
+  }, [
+    isSelectedArrTotalDiskspaceRule,
+    selectedFirstValueAppId,
+    radarrDiskspace,
+    sonarrDiskspace,
+  ])
 
   const isDiskspaceLoading =
     selectedFirstValueAppId === Application.RADARR
@@ -211,6 +224,28 @@ const RuleInput = (props: IRuleInput) => {
       : selectedFirstValueAppId === Application.SONARR
         ? sonarrDiskspaceLoading
         : false
+
+  const preservedArrDiskPathOption = useMemo(() => {
+    if (!arrDiskPath) {
+      return undefined
+    }
+
+    const normalizedPath = normalizeDiskPath(arrDiskPath)
+    const hasMatchingOption = arrDiskspaceOptions.some(
+      (option) => option.value === normalizedPath,
+    )
+
+    if (hasMatchingOption) {
+      return undefined
+    }
+
+    return {
+      value: normalizedPath,
+      label: isSelectedArrTotalDiskspaceRule
+        ? `${normalizedPath} (saved selection; total space unavailable)`
+        : `${normalizedPath} (saved selection)`,
+    }
+  }, [arrDiskPath, arrDiskspaceOptions, isSelectedArrTotalDiskspaceRule])
 
   useEffect(() => {
     if (props.editData?.rule) {
@@ -422,7 +457,7 @@ const RuleInput = (props: IRuleInput) => {
 
   useEffect(() => {
     if (firstval) {
-      const prop = getPropFromTuple(firstval)
+      const prop = getPropFromTuple(firstval, constants)
 
       if (prop?.type.key) {
         if (possibilities.length <= 0) {
@@ -443,26 +478,6 @@ const RuleInput = (props: IRuleInput) => {
       setArrDiskPath('')
     }
   }, [isSelectedArrDiskspaceRule, arrDiskPath])
-
-  useEffect(() => {
-    if (!isSelectedArrDiskspaceRule || !arrDiskPath) {
-      return
-    }
-
-    const normalizedCurrent = normalizeDiskPath(arrDiskPath)
-    const hasMatchingOption = arrDiskspaceOptions.some(
-      (option) => option.value === normalizedCurrent,
-    )
-
-    if (!isDiskspaceLoading && !hasMatchingOption) {
-      setArrDiskPath('')
-    }
-  }, [
-    isSelectedArrDiskspaceRule,
-    arrDiskPath,
-    arrDiskspaceOptions,
-    isDiskspaceLoading,
-  ])
 
   useEffect(() => {
     if (secondVal) {
@@ -738,17 +753,36 @@ const RuleInput = (props: IRuleInput) => {
               className="w-full rounded-lg p-2 text-zinc-100 focus:border-amber-500 focus:ring-amber-500"
             >
               <option value="">Aggregate (all paths)</option>
+              {preservedArrDiskPathOption ? (
+                <option
+                  key={preservedArrDiskPathOption.value}
+                  value={preservedArrDiskPathOption.value}
+                >
+                  {preservedArrDiskPathOption.label}
+                </option>
+              ) : null}
               {arrDiskspaceOptions.map((entry) => (
                 <option key={entry.value} value={entry.value}>
                   {entry.label}
                 </option>
               ))}
-              {!isDiskspaceLoading && arrDiskspaceOptions.length === 0 ? (
+              {!isDiskspaceLoading &&
+              !preservedArrDiskPathOption &&
+              arrDiskspaceOptions.length === 0 ? (
                 <option disabled value="__no_paths">
-                  No disk paths reported by ARR
+                  {isSelectedArrTotalDiskspaceRule
+                    ? 'No disk paths with total space reported by ARR'
+                    : 'No disk paths reported by ARR'}
                 </option>
               ) : null}
             </select>
+            {isSelectedArrTotalDiskspaceRule ? (
+              <p className="mt-1 text-xs text-zinc-400">
+                Total disk space only works for paths reported by ARR disk
+                space. Root-folder fallback paths can still be used for
+                remaining space, but they do not expose a reliable total size.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
