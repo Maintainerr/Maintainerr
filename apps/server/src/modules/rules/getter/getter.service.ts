@@ -7,6 +7,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Application } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 import { JellyfinGetterService } from './jellyfin-getter.service';
 import { PlexGetterService } from './plex-getter.service';
@@ -32,6 +33,7 @@ export class ValueGetterService {
     libItem: MediaItem,
     ruleGroup?: RulesDto,
     dataType?: MediaItemType,
+    currentRule?: RuleDto,
   ): Promise<RuleValueType> {
     switch (val1) {
       // Route both PLEX and JELLYFIN to the configured media server's getter
@@ -51,10 +53,21 @@ export class ValueGetterService {
         return getter?.get(val2, libItem, dataType, ruleGroup) ?? null;
       }
       case Application.RADARR: {
-        return await this.radarrGetter.get(val2, libItem, ruleGroup);
+        return await this.radarrGetter.get(
+          val2,
+          libItem,
+          ruleGroup,
+          currentRule,
+        );
       }
       case Application.SONARR: {
-        return await this.sonarrGetter.get(val2, libItem, dataType, ruleGroup);
+        return await this.sonarrGetter.get(
+          val2,
+          libItem,
+          dataType,
+          ruleGroup,
+          currentRule,
+        );
       }
       case Application.SEERR: {
         return await this.seerrGetter.get(val2, libItem, dataType);

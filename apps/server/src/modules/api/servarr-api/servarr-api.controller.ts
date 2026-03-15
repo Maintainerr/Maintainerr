@@ -1,3 +1,4 @@
+import { ArrDiskspaceResource } from '@maintainerr/contracts';
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { ServarrService } from './servarr.service';
 
@@ -6,14 +7,18 @@ export class ServarrApiController {
   constructor(private readonly servarrService: ServarrService) {}
 
   @Get('sonarr/:id/diskspace')
-  async getSonarrDiskspace(@Param('id', ParseIntPipe) id: number) {
+  async getSonarrDiskspace(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ArrDiskspaceResource[]> {
     const client = await this.servarrService.getSonarrApiClient(id);
-    return await client.getDiskspace();
+    return await client.getDiskspaceWithRootFolders();
   }
 
   @Get('radarr/:id/diskspace')
-  async getRadarrDiskspace(@Param('id', ParseIntPipe) id: number) {
+  async getRadarrDiskspace(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ArrDiskspaceResource[]> {
     const client = await this.servarrService.getRadarrApiClient(id);
-    return await client.getDiskspace();
+    return await client.getDiskspaceWithRootFolders();
   }
 }

@@ -1,11 +1,13 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
+  createArrDiskspaceResource,
   createCollectionMedia,
   createMediaItem,
   createRadarrMovie,
   createRadarrMovieFile,
   createRadarrQuality,
+  createRuleDto,
   createRulesDto,
 } from '../../../../test/utils/data';
 import { RadarrApi } from '../../api/servarr-api/helpers/radarr.helper';
@@ -206,6 +208,78 @@ describe('RadarrGetterService', () => {
       );
 
       expect(response).toBe(null);
+    });
+  });
+
+  describe('diskspace properties', () => {
+    let collectionMedia: CollectionMedia;
+    let mediaItem: MediaItem;
+    let mockedRadarrApi: RadarrApi;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia('movie');
+      collectionMedia.collection.radarrSettingsId = 1;
+      mediaItem = createMediaItem({ type: 'movie' });
+      mockedRadarrApi = mockRadarrApi();
+    });
+
+    it('should use merged diskspace data for targeted remaining space rules', async () => {
+      const getDiskspaceWithRootFoldersSpy = jest
+        .spyOn(mockedRadarrApi, 'getDiskspaceWithRootFolders')
+        .mockResolvedValue([
+          createArrDiskspaceResource({
+            path: '/movies',
+            freeSpace: 10 * 1073741824,
+          }),
+          createArrDiskspaceResource({
+            path: '/downloads',
+            freeSpace: 5 * 1073741824,
+          }),
+        ]);
+      const getDiskspaceSpy = jest.spyOn(mockedRadarrApi, 'getDiskspace');
+
+      const response = await radarrGetterService.get(
+        23,
+        mediaItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'movie',
+        }),
+        createRuleDto({ arrDiskPath: '/movies/' }),
+      );
+
+      expect(response).toBe(10);
+      expect(getDiskspaceWithRootFoldersSpy).toHaveBeenCalled();
+      expect(getDiskspaceSpy).not.toHaveBeenCalled();
+    });
+
+    it('should use raw diskspace data for total space rules', async () => {
+      const getDiskspaceSpy = jest
+        .spyOn(mockedRadarrApi, 'getDiskspace')
+        .mockResolvedValue([
+          createArrDiskspaceResource({
+            path: '/movies',
+            totalSpace: 30 * 1073741824,
+          }),
+        ]);
+      const getDiskspaceWithRootFoldersSpy = jest.spyOn(
+        mockedRadarrApi,
+        'getDiskspaceWithRootFolders',
+      );
+
+      const response = await radarrGetterService.get(
+        24,
+        mediaItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'movie',
+        }),
+        createRuleDto({ arrDiskPath: '/movies' }),
+      );
+
+      expect(response).toBe(30);
+      expect(getDiskspaceSpy).toHaveBeenCalled();
+      expect(getDiskspaceWithRootFoldersSpy).not.toHaveBeenCalled();
     });
   });
 
