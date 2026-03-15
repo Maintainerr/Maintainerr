@@ -417,7 +417,6 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
-
   describe('getItemFavoritedBy', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(

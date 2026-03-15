@@ -34,9 +34,75 @@ export class CollectionHandler {
     return this.mediaServerFactory.getService();
   }
 
-  public async handleMedia(collection: Collection, media: CollectionMedia) {
-    if (collection.arrAction === ServarrAction.DO_NOTHING) {
+  private async handleSeerrCleanup(
+    collection: Collection,
+    media: CollectionMedia,
+    mediaServer: IMediaServerService,
+    libraryType?: 'movie' | 'show',
+  ): Promise<void> {
+    if (
+      collection.arrAction === ServarrAction.UNMONITOR ||
+      collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY ||
+      collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY ||
+      !this.settings.seerrConfigured() ||
+      !collection.forceSeerr
+    ) {
       return;
+    }
+
+    switch (collection.type) {
+      case 'season': {
+        const mediaDataSeason = await mediaServer.getMetadata(
+          media.mediaServerId,
+        );
+
+        if (mediaDataSeason?.index !== undefined) {
+          await this.seerrApi.removeSeasonRequest(
+            media.tmdbId,
+            mediaDataSeason.index,
+          );
+
+          this.logger.log(
+            `[Seerr] Removed request of season ${mediaDataSeason.index} from show with tmdbid '${media.tmdbId}'`,
+          );
+        }
+        break;
+      }
+      case 'episode': {
+        const mediaDataEpisode = await mediaServer.getMetadata(
+          media.mediaServerId,
+        );
+
+        if (mediaDataEpisode?.parentIndex !== undefined) {
+          await this.seerrApi.removeSeasonRequest(
+            media.tmdbId,
+            mediaDataEpisode.parentIndex,
+          );
+
+          this.logger.log(
+            `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with tmdbid '${media.tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.'`,
+          );
+        }
+        break;
+      }
+      default:
+        await this.seerrApi.removeMediaByTmdbId(
+          media.tmdbId,
+          libraryType === 'show' ? 'tv' : 'movie',
+        );
+        this.logger.log(
+          `[Seerr] Removed requests of media with tmdbid '${media.tmdbId}'`,
+        );
+        break;
+    }
+  }
+
+  public async handleMedia(
+    collection: Collection,
+    media: CollectionMedia,
+  ): Promise<boolean> {
+    if (collection.arrAction === ServarrAction.DO_NOTHING) {
+      return false;
     }
 
     const mediaServer = await this.getMediaServer();
@@ -45,29 +111,18 @@ export class CollectionHandler {
       (e) => e.id === collection.libraryId.toString(),
     );
 
-    // TODO Media should only be removed from the collection if the handle action is performed successfully
-    await this.collectionService.removeFromCollection(collection.id, [
-      {
-        mediaServerId: media.mediaServerId,
-      },
-    ]);
-
-    // update handled media amount
-    collection.handledMediaAmount++;
-
-    // save a log record for the handled media item
-    await this.collectionService.CollectionLogRecordForChild(
-      media.mediaServerId,
-      collection.id,
-      'handle',
-    );
-
-    await this.collectionService.saveCollection(collection);
+    let actionHandled = false;
 
     if (library?.type === 'movie' && collection.radarrSettingsId) {
-      await this.radarrActionHandler.handleAction(collection, media);
+      actionHandled = await this.radarrActionHandler.handleAction(
+        collection,
+        media,
+      );
     } else if (library?.type == 'show' && collection.sonarrSettingsId) {
-      await this.sonarrActionHandler.handleAction(collection, media);
+      actionHandled = await this.sonarrActionHandler.handleAction(
+        collection,
+        media,
+      );
     } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&
@@ -77,6 +132,7 @@ export class CollectionHandler {
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
+        actionHandled = true;
       } else {
         this.logger.log(
           `*arr unmonitor action isn't possible, since *arr is not available. Didn't unmonitor media with id ${media.mediaServerId}.}`,
@@ -84,70 +140,33 @@ export class CollectionHandler {
       }
     }
 
-    // DELETE_SHOW_IF_EMPTY now inspects Seerr state without mutating Seerr requests.
-    if (
-      collection.arrAction !== ServarrAction.UNMONITOR &&
-      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
-      collection.arrAction !== ServarrAction.DELETE_SHOW_IF_EMPTY
-    ) {
-      // Seerr, if forced. Otherwise rely on media sync
-      if (this.settings.seerrConfigured() && collection.forceSeerr) {
-        // Resolve TMDB ID through metadata layer — fall back to cached value
-        const ids = await this.metadataService.resolveIds(media.mediaServerId);
-        const tmdbId = (ids?.['tmdb'] as number | undefined) ?? media.tmdbId;
-
-        if (!tmdbId) {
-          this.logger.warn(
-            `[Seerr] Could not resolve TMDB ID for media server ID ${media.mediaServerId}. Skipping Seerr request removal.`,
-          );
-        } else {
-          switch (collection.type) {
-            case 'season': {
-              const mediaDataSeason = await mediaServer.getMetadata(
-                media.mediaServerId,
-              );
-
-              if (mediaDataSeason?.index !== undefined) {
-                await this.seerrApi.removeSeasonRequest(
-                  tmdbId,
-                  mediaDataSeason.index,
-                );
-
-                this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
-                );
-              }
-              break;
-            }
-            case 'episode': {
-              const mediaDataEpisode = await mediaServer.getMetadata(
-                media.mediaServerId,
-              );
-
-              if (mediaDataEpisode?.parentIndex !== undefined) {
-                await this.seerrApi.removeSeasonRequest(
-                  tmdbId,
-                  mediaDataEpisode.parentIndex,
-                );
-
-                this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with TMDB ID '${tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.`,
-                );
-              }
-              break;
-            }
-            default:
-              await this.seerrApi.removeMediaByTmdbId(
-                tmdbId,
-                library?.type === 'show' ? 'tv' : 'movie',
-              );
-              this.logger.log(
-                `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
-              );
-              break;
-          }
-        }
-      }
+    if (!actionHandled) {
+      return false;
     }
+
+    await this.handleSeerrCleanup(
+      collection,
+      media,
+      mediaServer,
+      library?.type,
+    );
+
+    await this.collectionService.removeFromCollection(collection.id, [
+      {
+        mediaServerId: media.mediaServerId,
+      },
+    ]);
+
+    collection.handledMediaAmount++;
+
+    await this.collectionService.CollectionLogRecordForChild(
+      media.mediaServerId,
+      collection.id,
+      'handle',
+    );
+
+    await this.collectionService.saveCollection(collection);
+
+    return true;
   }
 }

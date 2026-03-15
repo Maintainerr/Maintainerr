@@ -11,6 +11,7 @@ import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
@@ -64,7 +65,9 @@ describe('CollectionHandler', () => {
       }),
     );
 
-    await collectionHandler.handleMedia(collection, collectionMedia);
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(false);
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
   });
@@ -82,7 +85,9 @@ describe('CollectionHandler', () => {
       }),
     );
 
-    await collectionHandler.handleMedia(collection, collectionMedia);
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(true);
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
@@ -102,11 +107,19 @@ describe('CollectionHandler', () => {
         type: 'movie',
       }),
     );
+    radarrActionHandler.handleAction.mockResolvedValue(true);
 
-    await collectionHandler.handleMedia(collection, collectionMedia);
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(true);
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(radarrActionHandler.handleAction).toHaveBeenCalled();
+    expect(
+      radarrActionHandler.handleAction.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      collectionsService.removeFromCollection.mock.invocationCallOrder[0],
+    );
   });
 
   it('should call Sonarr action handler', async () => {
@@ -123,11 +136,103 @@ describe('CollectionHandler', () => {
         type: 'show',
       }),
     );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
 
-    await collectionHandler.handleMedia(collection, collectionMedia);
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(true);
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(sonarrActionHandler.handleAction).toHaveBeenCalled();
+    expect(
+      sonarrActionHandler.handleAction.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      collectionsService.removeFromCollection.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('should not remove media from collection when Radarr action fails', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+    radarrActionHandler.handleAction.mockResolvedValue(false);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(false);
+
+    expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
+    expect(collectionsService.saveCollection).not.toHaveBeenCalled();
+  });
+
+  it('should not remove media from collection when Sonarr action fails', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(false);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(false);
+
+    expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
+    expect(collectionsService.saveCollection).not.toHaveBeenCalled();
+  });
+
+  it('should not remove media from collection when Seerr cleanup fails', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      forceSeerr: true,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+    radarrActionHandler.handleAction.mockResolvedValue(true);
+    seerrApi.removeMediaByTmdbId.mockRejectedValue(new Error('seerr failed'));
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).rejects.toThrow('seerr failed');
+
+    expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
+    expect(collectionsService.saveCollection).not.toHaveBeenCalled();
   });
 
   it('should call removeSeasonRequest for seasons', async () => {

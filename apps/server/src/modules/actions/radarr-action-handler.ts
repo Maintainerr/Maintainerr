@@ -21,7 +21,7 @@ export class RadarrActionHandler {
   public async handleAction(
     collection: Collection,
     media: CollectionMedia,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const radarrApiClient = await this.servarrApi.getRadarrApiClient(
       collection.radarrSettingsId,
     );
@@ -35,35 +35,46 @@ export class RadarrActionHandler {
       if (radarrMedia?.id) {
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
-          case ServarrAction.UNMONITOR_DELETE_EXISTING:
-            await radarrApiClient.deleteMovie(
+          case ServarrAction.UNMONITOR_DELETE_EXISTING: {
+            const deleted = await radarrApiClient.deleteMovie(
               radarrMedia.id,
               true,
               collection.listExclusions,
             );
+            if (!deleted) return false;
+
             this.logger.log(
               `Removed movie with TMDB ID ${tmdbId} from filesystem & Radarr`,
             );
-            break;
-          case ServarrAction.UNMONITOR:
-            await radarrApiClient.updateMovie(radarrMedia.id, {
+            return true;
+          }
+          case ServarrAction.UNMONITOR: {
+            const updated = await radarrApiClient.updateMovie(radarrMedia.id, {
               monitored: false,
               addImportExclusion: collection.listExclusions,
             });
+            if (!updated) return false;
+
             this.logger.log(
               `Unmonitored movie with TMDB ID ${tmdbId}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
             );
-            break;
-          case ServarrAction.UNMONITOR_DELETE_ALL:
-            await radarrApiClient.updateMovie(radarrMedia.id, {
+            return true;
+          }
+          case ServarrAction.UNMONITOR_DELETE_ALL: {
+            const updated = await radarrApiClient.updateMovie(radarrMedia.id, {
               monitored: false,
               deleteFiles: true,
               addImportExclusion: collection.listExclusions,
             });
+            if (!updated) return false;
+
             this.logger.log(
               `Unmonitored movie with TMDB ID ${tmdbId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
-            break;
+            return true;
+          }
+          default:
+            return false;
         }
       } else {
         if (collection.arrAction !== ServarrAction.UNMONITOR) {
@@ -72,16 +83,19 @@ export class RadarrActionHandler {
           );
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);
+          return true;
         } else {
           this.logger.log(
             `Radarr unmonitor action was not possible, couldn't find movie with TMDB ID ${tmdbId} in Radarr. No action was taken for movie with media server ID ${media.mediaServerId}`,
           );
+          return false;
         }
       }
     } else {
       this.logger.log(
         `Couldn't find correct TMDB ID. No action taken for movie with media server ID: ${media.mediaServerId}. Please check this movie manually`,
       );
+      return false;
     }
   }
 }

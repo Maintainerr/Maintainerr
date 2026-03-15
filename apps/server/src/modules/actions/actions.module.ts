@@ -7,7 +7,12 @@ import { RadarrActionHandler } from './radarr-action-handler';
 import { SonarrActionHandler } from './sonarr-action-handler';
 
 @Module({
-  imports: [MediaServerModule, MetadataModule, SeerrApiModule, ServarrApiModule],
+  imports: [
+    MediaServerModule,
+    MetadataModule,
+    SeerrApiModule,
+    ServarrApiModule,
+  ],
   providers: [RadarrActionHandler, SonarrActionHandler],
   exports: [RadarrActionHandler, SonarrActionHandler],
   controllers: [],
