@@ -514,7 +514,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
 
-    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
 
     await sonarrActionHandler.handleAction(collection, collectionMedia);
 
@@ -549,7 +549,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
 
-    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+    metadataService.resolveIds.mockResolvedValue({ tvdb: 1, type: 'tv' });
 
     await sonarrActionHandler.handleAction(collection, collectionMedia);
 
