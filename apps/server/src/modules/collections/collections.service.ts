@@ -767,10 +767,6 @@ export class CollectionsService {
           !collection.mediaServerId &&
           (newMedia.length > 0 || collectionMedia.length > 0);
 
-        // Check if we need to sync existing items to a newly created collection
-        const needsResync =
-          !collection.mediaServerId && collectionMedia.length > 0;
-
         // Create media server collection if needed
         if (needsMediaServerCollection) {
           let newColl: MediaCollection | undefined = undefined;
@@ -786,6 +782,9 @@ export class CollectionsService {
               summary: collection.description,
               sortTitle: collection.sortTitle,
               type: collection.type,
+              itemIds: collectionMedia.map(
+                (existingMedia) => existingMedia.mediaServerId,
+              ),
             });
           }
           if (newColl?.id) {
@@ -808,22 +807,29 @@ export class CollectionsService {
               });
             }
 
+            // Check if we need to sync existing items to a newly created collection
+            const needsResync =
+              collectionMedia.length > 0 &&
+              !mediaServer.supportsFeature(
+                MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+              );
+
             // If we had existing collection_media items, sync them to the new media server collection
             if (needsResync) {
               this.logger.log(
                 `Syncing ${collectionMedia.length} existing items to newly created media server collection`,
               );
-              for (const existingMedia of collectionMedia) {
-                try {
-                  await mediaServer.addToCollection(
-                    collection.mediaServerId,
-                    existingMedia.mediaServerId,
-                  );
-                } catch (err) {
-                  this.logger.warn(
-                    `Failed to sync item ${existingMedia.mediaServerId} to collection: ${err.message}`,
-                  );
-                }
+              try {
+                await mediaServer.addBatchToCollection(
+                  collection.mediaServerId,
+                  collectionMedia.map(
+                    (existingMedia) => existingMedia.mediaServerId,
+                  ),
+                );
+              } catch (err) {
+                this.logger.warn(
+                  `Failed to sync existing items to collection: ${err.message}`,
+                );
               }
             }
           } else {

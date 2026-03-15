@@ -890,6 +890,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         parentId: params.libraryId,
         // isLocked enables composite image generation from collection items
         isLocked: true,
+        ids: params.itemIds,
       });
 
       const collectionId = response.data.Id;
@@ -997,6 +998,26 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  async addBatchToCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<void> {
+    if (!this.api) return;
+
+    try {
+      await getCollectionApi(this.api).addToCollection({
+        collectionId,
+        ids: itemIds,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to add ${itemIds.length} items to collection ${collectionId}`,
+        error,
+      );
+      throw error;
+    }
+  }
+
   async removeFromCollection(
     collectionId: string,
     itemId: string,
@@ -1011,6 +1032,26 @@ export class JellyfinAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to remove ${itemId} from collection ${collectionId}`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async removeBatchFromCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<void> {
+    if (!this.api) return;
+
+    try {
+      await getCollectionApi(this.api).removeFromCollection({
+        collectionId,
+        ids: itemIds,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to remove ${itemIds.length} items from collection ${collectionId}`,
         error,
       );
       throw error;
