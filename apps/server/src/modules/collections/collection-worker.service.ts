@@ -68,17 +68,13 @@ export class CollectionWorkerService extends TaskBase {
         this.infoLogger(
           'Not all applications are reachable.. Skipping collection handling',
         );
-        this.eventEmitter.emit(
-          MaintainerrEvent.CollectionHandler_Finished,
-          new CollectionHandlerFinishedEventDto('Finished collection handling'),
-        );
-
         this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
         return;
       }
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
+      let collectionHandlingFailed = false;
 
       // loop over all active collections
       const collections = await this.collectionRepo.find({
@@ -149,13 +145,36 @@ export class CollectionWorkerService extends TaskBase {
         const handledMediaForNotification = [];
 
         for (const media of collectionMedia) {
-          await this.collectionHandler.handleMedia(collection, media);
-          handledCollectionMedia++;
+          let mediaHandled = false;
+
+          try {
+            mediaHandled = await this.collectionHandler.handleMedia(
+              collection,
+              media,
+            );
+          } catch (err) {
+            collectionHandlingFailed = true;
+
+            const errorMessage =
+              err instanceof Error ? err.message : 'Unknown error';
+
+            this.logger.warn(
+              `Failed to handle media with id ${media.mediaServerId} in collection '${collection.title}': ${errorMessage}`,
+            );
+            this.logger.debug(err);
+          }
+
+          if (!mediaHandled) {
+            collectionHandlingFailed = true;
+          } else {
+            handledCollectionMedia++;
+            handledMediaForNotification.push({
+              mediaServerId: media.mediaServerId,
+            });
+          }
+
           progressedEvent.processingCollection.processedMedias++;
           progressedEvent.processedMedias++;
-          handledMediaForNotification.push({
-            mediaServerId: media.mediaServerId,
-          });
           emitProgressedEvent();
         }
 
@@ -175,6 +194,10 @@ export class CollectionWorkerService extends TaskBase {
         emitProgressedEvent();
 
         this.infoLogger(`Handling collection '${collection.title}' finished`);
+      }
+
+      if (collectionHandlingFailed) {
+        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
       }
 
       if (handledCollectionMedia > 0) {

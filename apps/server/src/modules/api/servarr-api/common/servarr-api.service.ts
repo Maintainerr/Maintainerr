@@ -148,19 +148,23 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     }
   }
 
-  protected async runDelete(command: string): Promise<void> {
+  protected async runDelete(command: string): Promise<boolean> {
     try {
       await this.delete(`/${command}`);
+      return true;
     } catch (e) {
       this.logger.warn(`Failed to run DELETE: ${e.message}`);
+      return false;
     }
   }
 
-  protected async runPut(command: string, body: string): Promise<void> {
+  protected async runPut(command: string, body: string): Promise<boolean> {
     try {
       await this.put(`/${command}`, body);
+      return true;
     } catch (e) {
       this.logger.warn(`Failed to run PUT: ${e.message}`);
+      return false;
     }
   }
 }
