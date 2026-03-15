@@ -94,9 +94,7 @@ describe('SonarrApi', () => {
       );
 
       expect(result).toBe(false);
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Failed to run PUT: /episode/1',
-      );
+      expect(logger.warn).toHaveBeenCalledWith('Failed to run PUT: /episode/1');
     });
 
     it('should return true when PUT returns data (API success)', async () => {

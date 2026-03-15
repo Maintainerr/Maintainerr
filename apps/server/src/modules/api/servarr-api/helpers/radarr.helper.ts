@@ -107,9 +107,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       if (options?.monitored !== undefined) {
         movieData.monitored = options.monitored;
       }
-      if (
-        !(await this.runPut(`movie/${movieId}`, JSON.stringify(movieData)))
-      ) {
+      if (!(await this.runPut(`movie/${movieId}`, JSON.stringify(movieData)))) {
         return false;
       }
 
