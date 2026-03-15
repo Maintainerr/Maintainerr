@@ -270,6 +270,75 @@ describe('SonarrActionHandler', () => {
       collectionMedia.mediaData.parentIndex,
       [collectionMedia.mediaData.index],
       true,
+      undefined,
+    );
+  });
+
+  it('should fall back to episode air date when episode index is undefined', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'episode',
+    });
+    const airDate = new Date('2026-01-05T00:00:00.000Z');
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      mediaData: {
+        index: undefined,
+        parentIndex: 2026,
+        originallyAvailableAt: airDate,
+      },
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries();
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
+      series.id,
+      collectionMedia.mediaData.parentIndex,
+      [],
+      true,
+      airDate,
+    );
+  });
+
+  it('should skip episode action when no season, episode number, or air date is available', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      mediaData: {
+        index: undefined,
+        parentIndex: undefined,
+        originallyAvailableAt: undefined,
+      },
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries();
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      `[Sonarr] Couldn't identify episode '${collectionMedia.mediaData.title}' for show '${series.title}'. No delete action was taken.`,
     );
   });
 
@@ -374,6 +443,7 @@ describe('SonarrActionHandler', () => {
       collectionMedia.mediaData.parentIndex,
       [collectionMedia.mediaData.index],
       false,
+      undefined,
     );
   });
 
@@ -394,7 +464,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -488,7 +558,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -591,7 +661,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 

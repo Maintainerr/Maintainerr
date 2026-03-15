@@ -45,22 +45,29 @@ export class SonarrApi extends ServarrApi<{
     episodeNumbers?: number[],
   ): Promise<SonarrEpisode[]> {
     try {
-      const response = await this.get<SonarrEpisode[]>(
-        `/episode?seriesId=${seriesID}${
-          seasonNumber ? `&seasonNumber=${seasonNumber}` : ''
-        }`,
-      );
+      const response = await this.fetchEpisodes(seriesID, seasonNumber);
 
-      return episodeNumbers
-        ? response.filter((el) => episodeNumbers.includes(el.episodeNumber))
-        : response;
+      if (episodeNumbers !== undefined) {
+        const validEpisodeNumbers =
+          this.filterDefinedEpisodeNumbers(episodeNumbers);
+
+        return validEpisodeNumbers.length
+          ? response.filter((el) =>
+              validEpisodeNumbers.includes(el.episodeNumber),
+            )
+          : [];
+      }
+
+      return response;
     } catch (e) {
       this.logger.warn(
-        `Failed to retrieve show ${seriesID}'s episodes ${episodeNumbers.join(', ')}: ${e.message}`,
+        `Failed to retrieve show ${seriesID}'s episodes ${this.formatEpisodeLookup(episodeNumbers)}: ${e.message}`,
       );
       this.logger.debug(e);
+      throw e;
     }
   }
+
   public async getEpisodeFile(
     episodeFileId: number,
   ): Promise<SonarrEpisodeFile> {
@@ -115,8 +122,8 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
-  public async updateSeries(series: SonarrSeries) {
-    await this.axios.put<SonarrSeries>('/series', series);
+  public async updateSeries(series: SonarrSeries): Promise<boolean> {
+    return this.runPut('series', JSON.stringify(series));
   }
 
   public async searchSeries(seriesId: number): Promise<void> {
@@ -138,10 +145,10 @@ export class SonarrApi extends ServarrApi<{
     seriesId: number | string,
     deleteFiles = true,
     importListExclusion = false,
-  ) {
+  ): Promise<boolean> {
     this.logger.log(`Deleting show with ID ${seriesId} from Sonarr.`);
     try {
-      await this.runDelete(
+      return await this.runDelete(
         `series/${seriesId}?deleteFiles=${deleteFiles}&addImportListExclusion=${importListExclusion}`,
       );
     } catch (e) {
@@ -149,6 +156,7 @@ export class SonarrApi extends ServarrApi<{
         `Couldn't delete show by ID ${seriesId}. Does it exist in Sonarr? ${e.message}`,
       );
       this.logger.debug(e);
+      return false;
     }
   }
 
@@ -157,35 +165,62 @@ export class SonarrApi extends ServarrApi<{
     seasonNumber: number,
     episodeIds: number[],
     deleteFiles = true,
-  ) {
+    airDate?: string | Date,
+  ): Promise<boolean> {
+    const validEpisodeIds = this.filterDefinedEpisodeNumbers(episodeIds);
+
+    if (!validEpisodeIds.length && !airDate) {
+      this.logger.warn(
+        `Couldn't remove/unmonitor episodes for series ID ${seriesId}: no episode identifier was provided.`,
+      );
+      return false;
+    }
+
     this.logger.log(
       `${!deleteFiles ? 'Unmonitoring' : 'Deleting'} ${
-        episodeIds.length
+        validEpisodeIds.length || (airDate ? 1 : 0)
       } episode(s) from show with ID ${seriesId} from Sonarr.`,
     );
     try {
-      const episodes = await this.getEpisodes(
-        seriesId,
-        seasonNumber,
-        episodeIds,
+      const episodes = await this.getEpisodes(seriesId, seasonNumber);
+
+      const matchedEpisodes = this.findEpisodesForAction(
+        episodes,
+        validEpisodeIds,
+        airDate,
       );
 
-      for (const e of episodes) {
-        // unmonitor
-        await this.runPut(
-          `episode/${e.id}`,
-          JSON.stringify({ ...e, monitored: false }),
+      if (!matchedEpisodes.length) {
+        this.logger.warn(
+          `Couldn't remove/unmonitor episodes for series ID ${seriesId}: no matching episodes found for ${this.formatEpisodeLookup(validEpisodeIds, airDate)}.`,
         );
-        // also delete if required
-        if (deleteFiles) {
-          await this.runDelete(`episodefile/${e.episodeFileId}`);
+        return false;
+      }
+
+      for (const e of matchedEpisodes) {
+        if (
+          !(await this.runPut(
+            `episode/${e.id}`,
+            JSON.stringify({ ...e, monitored: false }),
+          ))
+        ) {
+          return false;
+        }
+
+        if (deleteFiles && e.episodeFileId) {
+          if (!(await this.runDelete(`episodefile/${e.episodeFileId}`))) {
+            return false;
+          }
         }
       }
+
+      return true;
     } catch (e) {
       this.logger.warn(
-        `Couldn't remove/unmonitor episodes: ${episodeIds.join(', ')} for series ID: ${seriesId}`,
+        `Couldn't remove/unmonitor episodes: ${this.formatEpisodeLookup(validEpisodeIds, airDate)} for series ID: ${seriesId}`,
       );
       this.logger.debug(e);
+      return false;
     }
   }
 
@@ -194,16 +229,14 @@ export class SonarrApi extends ServarrApi<{
     type: 'all' | number | 'existing' = 'all',
     deleteFiles = true,
     forceExisting = false,
-  ): Promise<SonarrSeries> {
+  ): Promise<SonarrSeries | undefined> {
     try {
       const data: SonarrSeries = (await this.axios.get(`series/${seriesId}`))
         .data;
 
-      const episodes: SonarrEpisode[] = await this.get(
-        `episodefile?seriesId=${seriesId}`,
-      );
+      const episodes = await this.getEpisodes(+seriesId);
+      let success = true;
 
-      // loop seasons
       data.seasons = await Promise.all(
         data.seasons.map(async (s) => {
           if (type === 'all') {
@@ -212,39 +245,46 @@ export class SonarrApi extends ServarrApi<{
             type === 'existing' ||
             (forceExisting && type === s.seasonNumber)
           ) {
-            // existing episodes only, so don't unmonitor season
             for (const e of episodes) {
-              if (e.seasonNumber === s.seasonNumber) {
-                await this.UnmonitorDeleteEpisodes(
-                  +seriesId,
-                  e.seasonNumber,
-                  [e.id],
-                  false,
-                );
+              if (e.seasonNumber === s.seasonNumber && e.episodeFileId) {
+                success =
+                  (await this.UnmonitorDeleteEpisodes(
+                    +seriesId,
+                    e.seasonNumber,
+                    [e.episodeNumber],
+                    false,
+                  )) && success;
               }
             }
           } else if (typeof type === 'number') {
-            // specific season
             if (s.seasonNumber === type) {
               s.monitored = false;
             }
           }
+
           return s;
         }),
       );
-      await this.runPut(`series/`, JSON.stringify(data));
+      success = (await this.runPut(`series/`, JSON.stringify(data))) && success;
 
-      // delete files
       if (deleteFiles) {
         for (const e of episodes) {
           if (typeof type === 'number') {
-            if (e.seasonNumber === type) {
-              await this.runDelete(`episodefile/${e.id}`);
+            if (e.seasonNumber === type && e.episodeFileId) {
+              success =
+                (await this.runDelete(`episodefile/${e.episodeFileId}`)) &&
+                success;
             }
-          } else {
-            await this.runDelete(`episodefile/${e.id}`);
+          } else if (e.episodeFileId) {
+            success =
+              (await this.runDelete(`episodefile/${e.episodeFileId}`)) &&
+              success;
           }
         }
+      }
+
+      if (!success) {
+        return undefined;
       }
 
       this.logger.log(
@@ -291,7 +331,7 @@ export class SonarrApi extends ServarrApi<{
     try {
       const info: SonarrInfo = (
         await this.axios.get(`system/status`, {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+          signal: AbortSignal.timeout(10000),
         })
       ).data;
       return info ? info : null;
@@ -300,5 +340,69 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(e);
       return null;
     }
+  }
+
+  private normalizeAirDate(airDate?: string | Date): string | undefined {
+    if (!airDate) {
+      return undefined;
+    }
+
+    if (airDate instanceof Date) {
+      return Number.isNaN(airDate.getTime())
+        ? undefined
+        : airDate.toISOString().split('T')[0];
+    }
+
+    return airDate.split('T')[0];
+  }
+
+  private formatEpisodeLookup(
+    episodeIds?: number[],
+    airDate?: string | Date,
+  ): string {
+    const validEpisodeIds = this.filterDefinedEpisodeNumbers(episodeIds);
+
+    if (validEpisodeIds?.length) {
+      return validEpisodeIds.join(', ');
+    }
+
+    return this.normalizeAirDate(airDate) ?? '';
+  }
+
+  private async fetchEpisodes(
+    seriesID: number,
+    seasonNumber?: number,
+  ): Promise<SonarrEpisode[]> {
+    return this.get<SonarrEpisode[]>(
+      `/episode?seriesId=${seriesID}${
+        seasonNumber ? `&seasonNumber=${seasonNumber}` : ''
+      }`,
+    );
+  }
+
+  private findEpisodesForAction(
+    episodes: SonarrEpisode[],
+    episodeIds: number[],
+    airDate?: string | Date,
+  ): SonarrEpisode[] {
+    if (episodeIds.length) {
+      return episodes.filter((episode) =>
+        episodeIds.includes(episode.episodeNumber),
+      );
+    }
+
+    const normalizedAirDate = this.normalizeAirDate(airDate);
+
+    return normalizedAirDate
+      ? episodes.filter((episode) => episode.airDate === normalizedAirDate)
+      : [];
+  }
+
+  private filterDefinedEpisodeNumbers(episodeIds?: number[]): number[] {
+    return (
+      episodeIds?.filter(
+        (episodeId): episodeId is number => episodeId !== undefined,
+      ) ?? []
+    );
   }
 }

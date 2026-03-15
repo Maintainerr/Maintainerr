@@ -1,3 +1,5 @@
+import { MaintainerrEvent } from '@maintainerr/contracts';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { Repository } from 'typeorm';
@@ -26,6 +28,7 @@ describe('CollectionWorkerService', () => {
   let seerrApi: Mocked<SeerrApiService>;
   let collectionHandler: Mocked<CollectionHandler>;
   let executionLock: Mocked<ExecutionLockService>;
+  let eventEmitter: Mocked<EventEmitter2>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
@@ -44,6 +47,7 @@ describe('CollectionWorkerService', () => {
     seerrApi = unitRef.get(SeerrApiService);
     collectionHandler = unitRef.get(CollectionHandler);
     executionLock = unitRef.get(ExecutionLockService);
+    eventEmitter = unitRef.get(EventEmitter2);
 
     executionLock.acquire.mockResolvedValue(jest.fn());
   });
@@ -94,11 +98,71 @@ describe('CollectionWorkerService', () => {
 
     collectionRepository.find.mockResolvedValue([collection]);
     collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue(true);
 
     await collectionWorkerService.execute();
 
     expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
+  });
+
+  it('should not report failed media as handled', async () => {
+    settings.testConnections.mockResolvedValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
+
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue(false);
+
+    await collectionWorkerService.execute();
+
+    expect(seerrApi.api.post).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Failed,
+    );
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Handled,
+      expect.anything(),
+    );
+  });
+
+  it('should emit failure and continue when media handling throws', async () => {
+    settings.testConnections.mockResolvedValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
+
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const firstCollectionMedia = createCollectionMedia(collection, {
+      mediaServerId: '1',
+    });
+    const secondCollectionMedia = createCollectionMedia(collection, {
+      mediaServerId: '2',
+    });
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([
+      firstCollectionMedia,
+      secondCollectionMedia,
+    ]);
+    collectionHandler.handleMedia
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(true);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).toHaveBeenCalledTimes(2);
+    expect(seerrApi.api.post).toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Failed,
+    );
   });
 });
