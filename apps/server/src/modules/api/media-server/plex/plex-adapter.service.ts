@@ -262,6 +262,15 @@ export class PlexAdapterService implements IMediaServerService {
     }
   }
 
+  async addBatchToCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<void> {
+    for (const itemId of itemIds) {
+      await this.addToCollection(collectionId, itemId);
+    }
+  }
+
   async removeFromCollection(
     collectionId: string,
     itemId: string,
@@ -274,6 +283,15 @@ export class PlexAdapterService implements IMediaServerService {
         error,
       );
       throw error;
+    }
+  }
+
+  async removeBatchFromCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<void> {
+    for (const itemId of itemIds) {
+      await this.removeFromCollection(collectionId, itemId);
     }
   }
 
