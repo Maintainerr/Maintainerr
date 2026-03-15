@@ -1,15 +1,15 @@
 import {
   CollectionVisibilitySettings,
   CreateCollectionParams,
-  MediaServerFeature,
-  MediaServerType,
   LibraryQueryOptions,
   MediaCollection,
   MediaItem,
   MediaItemType,
   MediaLibrary,
   MediaPlaylist,
+  MediaServerFeature,
   MediaServerStatus,
+  MediaServerType,
   MediaUser,
   PagedResult,
   RecentlyAddedOptions,
@@ -178,10 +178,25 @@ export interface IMediaServerService {
   addToCollection(collectionId: string, itemId: string): Promise<void>;
 
   /**
+   * Add multiple items to a collection.
+   * @throws Error if operation fails
+   */
+  addBatchToCollection(collectionId: string, itemIds: string[]): Promise<void>;
+
+  /**
    * Remove an item from a collection.
    * @throws Error if operation fails
    */
   removeFromCollection(collectionId: string, itemId: string): Promise<void>;
+
+  /**
+   * Remove multiple items from a collection.
+   * @throws Error if operation fails
+   */
+  removeBatchFromCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<void>;
 
   /**
    * Update a collection's metadata (title, summary, etc.)
