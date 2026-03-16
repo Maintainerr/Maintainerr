@@ -439,17 +439,18 @@ export class CollectionsService {
     try {
       const createdCollection = await this.createCollection(collection, false);
 
-      for (const childMedia of media) {
-        await this.addChildToCollection(
+      if (media && media.length > 0) {
+        await this.addChildrenToCollection(
           {
             mediaServerId:
               createdCollection.dbCollection?.mediaServerId ||
               createdCollection.dbCollection?.id?.toString(),
             dbId: createdCollection.dbCollection.id,
           },
-          childMedia.mediaServerId,
+          media,
         );
       }
+
       return createdCollection;
     } catch (err) {
       this.logger.warn(
@@ -843,14 +844,11 @@ export class CollectionsService {
 
         // add new children to collection
         if (newMedia.length > 0 && collection.mediaServerId) {
-          for (const childMedia of newMedia) {
-            await this.addChildToCollection(
-              { mediaServerId: collection.mediaServerId, dbId: collection.id },
-              childMedia.mediaServerId,
-              manual,
-              childMedia.reason,
-            );
-          }
+          await this.addChildrenToCollection(
+            { mediaServerId: collection.mediaServerId, dbId: collection.id },
+            newMedia,
+            manual,
+          );
         }
 
         // Update cached total size (non-blocking)
@@ -892,23 +890,26 @@ export class CollectionsService {
         },
       });
       if (collectionMedia.length > 0) {
-        for (const childMedia of media) {
+        const childrenMedia: AddRemoveCollectionMedia[] = [];
+
+        for (const mediaItem of media) {
           if (
-            collectionMedia.find(
-              (el) => el.mediaServerId === childMedia.mediaServerId,
-            ) !== undefined
+            collectionMedia.some(
+              (el) => el.mediaServerId === mediaItem.mediaServerId,
+            )
           ) {
-            await this.removeChildFromCollection(
-              { mediaServerId: collection.mediaServerId, dbId: collection.id },
-              childMedia.mediaServerId,
-              childMedia.reason,
-            );
+            childrenMedia.push(mediaItem);
 
             collectionMedia = collectionMedia.filter(
-              (el) => el.mediaServerId !== childMedia.mediaServerId,
+              (el) => el.mediaServerId !== mediaItem.mediaServerId,
             );
           }
         }
+
+        await this.removeChildrenFromCollection(
+          { mediaServerId: collection.mediaServerId, dbId: collection.id },
+          childrenMedia,
+        );
 
         if (
           collectionMedia.length <= 0 &&
@@ -1076,30 +1077,41 @@ export class CollectionsService {
     }
   }
 
-  private async addChildToCollection(
+  private async addChildrenToCollection(
     collectionIds: { mediaServerId: string; dbId: number },
-    childId: string,
+    childrenMedia: AddRemoveCollectionMedia[],
     manual = false,
-    logMeta?: CollectionLogMeta,
   ) {
     try {
       const mediaServer = await this.getMediaServer();
-      this.infoLogger(`Adding media with id ${childId} to collection..`);
+      this.infoLogger(
+        `Adding ${childrenMedia.length} media items to collection..`,
+      );
 
-      const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(childId);
+      await mediaServer.addBatchToCollection(
+        collectionIds.mediaServerId,
+        childrenMedia.map((m) => m.mediaServerId),
+      );
+    } catch (err) {
+      this.logger.warn(`Couldn't add media to collection: ${err.message}`);
+      return undefined;
+    }
 
-      let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
-      switch (tmdb.type) {
-        case 'movie':
-          tmdbMedia = await this.tmdbApi.getMovie({ movieId: tmdb.id });
-          break;
-        case 'tv':
-          tmdbMedia = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
-          break;
-      }
-
+    for (const childMedia of childrenMedia) {
       try {
-        await mediaServer.addToCollection(collectionIds.mediaServerId, childId);
+        const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(
+          childMedia.mediaServerId,
+        );
+
+        let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
+        switch (tmdb.type) {
+          case 'movie':
+            tmdbMedia = await this.tmdbApi.getMovie({ movieId: tmdb.id });
+            break;
+          case 'tv':
+            tmdbMedia = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
+            break;
+        }
 
         await this.connection
           .createQueryBuilder()
@@ -1108,7 +1120,7 @@ export class CollectionsService {
           .values([
             {
               collectionId: collectionIds.dbId,
-              mediaServerId: childId,
+              mediaServerId: childMedia.mediaServerId,
               addDate: new Date().toDateString(),
               tmdbId: tmdbMedia?.id,
               image_path: tmdbMedia?.poster_path,
@@ -1119,19 +1131,16 @@ export class CollectionsService {
 
         // log record
         await this.CollectionLogRecordForChild(
-          childId,
+          childMedia.mediaServerId,
           collectionIds.dbId,
           'add',
-          logMeta,
+          childMedia.reason,
         );
       } catch (err) {
-        this.logger.warn(`Couldn't add media to collection: ${err.message}`);
+        this.logger.warn(
+          `An error occurred while performing collection actions: ${err}`,
+        );
       }
-    } catch (err) {
-      this.logger.warn(
-        `An error occurred while performing collection actions: ${err}`,
-      );
-      return undefined;
     }
   }
 
@@ -1161,21 +1170,27 @@ export class CollectionsService {
     }
   }
 
-  private async removeChildFromCollection(
+  private async removeChildrenFromCollection(
     collectionIds: { mediaServerId: string; dbId: number },
-    childId: string,
-    logMeta?: CollectionLogMeta,
+    childrenMedia: AddRemoveCollectionMedia[],
   ) {
     try {
       const mediaServer = await this.getMediaServer();
-      this.infoLogger(`Removing media with id ${childId} from collection..`);
+      this.infoLogger(
+        `Removing ${childrenMedia.length} media items from collection..`,
+      );
 
+      await mediaServer.removeBatchFromCollection(
+        collectionIds.mediaServerId,
+        childrenMedia.map((m) => m.mediaServerId),
+      );
+    } catch (err) {
+      this.logger.warn(`Couldn't remove media from collection: ${err.message}`);
+      return undefined;
+    }
+
+    for (const childMedia of childrenMedia) {
       try {
-        await mediaServer.removeFromCollection(
-          collectionIds.mediaServerId,
-          childId,
-        );
-
         await this.connection
           .createQueryBuilder()
           .delete()
@@ -1183,31 +1198,23 @@ export class CollectionsService {
           .where([
             {
               collectionId: collectionIds.dbId,
-              mediaServerId: childId,
+              mediaServerId: childMedia.mediaServerId,
             },
           ])
           .execute();
 
         await this.CollectionLogRecordForChild(
-          childId,
+          childMedia.mediaServerId,
           collectionIds.dbId,
           'remove',
-          logMeta,
+          childMedia.reason,
         );
       } catch (err) {
-        // 404 means media is not in collection, which is fine
-        if (!err.message?.includes('404')) {
-          this.infoLogger(
-            `Couldn't remove media from collection: ${err.message}`,
-          );
-        }
+        this.logger.warn(
+          'An error occurred while performing collection actions.',
+        );
+        this.logger.debug(err);
       }
-    } catch (err) {
-      this.logger.warn(
-        'An error occurred while performing collection actions.',
-      );
-      this.logger.debug(err);
-      return undefined;
     }
   }
 
