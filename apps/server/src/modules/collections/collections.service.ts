@@ -1149,46 +1149,48 @@ export class CollectionsService {
   }
 
   private async removeChildFromCollection(
-    collectionIds: { mediaServerId: string; dbId: number },
+    collectionIds: { mediaServerId: string | null; dbId: number },
     childId: string,
     logMeta?: CollectionLogMeta,
   ) {
     try {
-      const mediaServer = await this.getMediaServer();
       this.infoLogger(`Removing media with id ${childId} from collection..`);
 
-      try {
-        await mediaServer.removeFromCollection(
-          collectionIds.mediaServerId,
-          childId,
-        );
-
-        await this.connection
-          .createQueryBuilder()
-          .delete()
-          .from(CollectionMedia)
-          .where([
-            {
-              collectionId: collectionIds.dbId,
-              mediaServerId: childId,
-            },
-          ])
-          .execute();
-
-        await this.CollectionLogRecordForChild(
-          childId,
-          collectionIds.dbId,
-          'remove',
-          logMeta,
-        );
-      } catch (err) {
-        // 404 means media is not in collection, which is fine
-        if (!err.message?.includes('404')) {
-          this.infoLogger(
-            `Couldn't remove media from collection: ${err.message}`,
+      if (collectionIds.mediaServerId) {
+        try {
+          const mediaServer = await this.getMediaServer();
+          await mediaServer.removeFromCollection(
+            collectionIds.mediaServerId,
+            childId,
           );
+        } catch (err) {
+          // 404 means media is not in collection, which is fine
+          if (!err.message?.includes('404')) {
+            this.infoLogger(
+              `Couldn't remove media from collection: ${err.message}`,
+            );
+          }
         }
       }
+
+      await this.connection
+        .createQueryBuilder()
+        .delete()
+        .from(CollectionMedia)
+        .where([
+          {
+            collectionId: collectionIds.dbId,
+            mediaServerId: childId,
+          },
+        ])
+        .execute();
+
+      await this.CollectionLogRecordForChild(
+        childId,
+        collectionIds.dbId,
+        'remove',
+        logMeta,
+      );
     } catch (err) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
