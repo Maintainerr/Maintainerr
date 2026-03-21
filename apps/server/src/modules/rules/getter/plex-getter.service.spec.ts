@@ -47,7 +47,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(VIEWCOUNT_PROP_ID, libItem);
 
       expect(result).toBe(7);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345');
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
 
     it('should return the adapter watched state for the isWatched rule', async () => {
@@ -59,7 +59,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(ISWATCHED_PROP_ID, libItem);
 
       expect(result).toBe(false);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345');
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
   });
 });
