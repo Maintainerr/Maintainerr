@@ -279,16 +279,22 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getConfiguration.mockResolvedValue({
         data: { MaxResumePct: 95 },
       });
-      jellyfinApiMocks.getItemUserData.mockImplementation(
+      jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) =>
           Promise.resolve({
             data: {
-              Played: false,
-              PlayedPercentage: userId === 'user-1' ? 94 : 95,
-              LastPlayedDate:
-                userId === 'user-1'
-                  ? '2024-06-01T00:00:00.000Z'
-                  : '2024-06-02T00:00:00.000Z',
+              Items: [
+                {
+                  UserData: {
+                    Played: false,
+                    PlayedPercentage: userId === 'user-1' ? 94 : 95,
+                    LastPlayedDate:
+                      userId === 'user-1'
+                        ? '2024-06-01T00:00:00.000Z'
+                        : '2024-06-02T00:00:00.000Z',
+                  },
+                },
+              ],
             },
           }),
       );
@@ -308,15 +314,16 @@ describe('JellyfinAdapterService', () => {
         history,
         300000,
       );
-      expect(jellyfinApiMocks.getItemUserData).toHaveBeenCalledWith({
-        itemId: 'item123',
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-1',
+        ids: ['item123'],
+        enableUserData: true,
       });
-      expect(jellyfinApiMocks.getItemUserData).toHaveBeenCalledWith({
-        itemId: 'item123',
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-2',
+        ids: ['item123'],
+        enableUserData: true,
       });
-      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
 
     it('should log debug details when a per-user lookup fails', async () => {
@@ -327,7 +334,7 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [{ Id: 'user-1', Name: 'Alice' }],
       });
-      jellyfinApiMocks.getItemUserData.mockRejectedValue(
+      jellyfinApiMocks.getItems.mockRejectedValue(
         new Error('User data unavailable'),
       );
 
@@ -347,11 +354,17 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getConfiguration.mockRejectedValue(
         new Error('Configuration unavailable'),
       );
-      jellyfinApiMocks.getItemUserData.mockResolvedValue({
+      jellyfinApiMocks.getItems.mockResolvedValue({
         data: {
-          Played: false,
-          PlayedPercentage: 95,
-          LastPlayedDate: '2024-06-03T00:00:00.000Z',
+          Items: [
+            {
+              UserData: {
+                Played: false,
+                PlayedPercentage: 95,
+                LastPlayedDate: '2024-06-03T00:00:00.000Z',
+              },
+            },
+          ],
         },
       });
 
@@ -367,10 +380,16 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getConfiguration.mockResolvedValue({
         data: { MaxResumePct: 95 },
       });
-      jellyfinApiMocks.getItemUserData.mockResolvedValue({
+      jellyfinApiMocks.getItems.mockResolvedValue({
         data: {
-          Played: true,
-          LastPlayedDate: '2024-06-03T00:00:00.000Z',
+          Items: [
+            {
+              UserData: {
+                Played: true,
+                LastPlayedDate: '2024-06-03T00:00:00.000Z',
+              },
+            },
+          ],
         },
       });
 
@@ -404,11 +423,17 @@ describe('JellyfinAdapterService', () => {
           { Id: 'user-2', Name: 'Bob' },
         ],
       });
-      jellyfinApiMocks.getItemUserData.mockImplementation(
+      jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) =>
           Promise.resolve({
             data: {
-              IsFavorite: userId === 'user-2',
+              Items: [
+                {
+                  UserData: {
+                    IsFavorite: userId === 'user-2',
+                  },
+                },
+              ],
             },
           }),
       );
@@ -421,13 +446,15 @@ describe('JellyfinAdapterService', () => {
         ['user-2'],
         300000,
       );
-      expect(jellyfinApiMocks.getItemUserData).toHaveBeenCalledWith({
-        itemId: 'item123',
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-1',
+        ids: ['item123'],
+        enableUserData: true,
       });
-      expect(jellyfinApiMocks.getItemUserData).toHaveBeenCalledWith({
-        itemId: 'item123',
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-2',
+        ids: ['item123'],
+        enableUserData: true,
       });
     });
 
@@ -442,7 +469,7 @@ describe('JellyfinAdapterService', () => {
       const favoritedBy = await service.getItemFavoritedBy('item123');
 
       expect(favoritedBy).toEqual(['user-9']);
-      expect(jellyfinApiMocks.getItemUserData).not.toHaveBeenCalled();
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
   });
 
@@ -464,11 +491,18 @@ describe('JellyfinAdapterService', () => {
           { Id: 'user-3', Name: 'Carol' },
         ],
       });
-      jellyfinApiMocks.getItemUserData.mockImplementation(
+      jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) =>
           Promise.resolve({
             data: {
-              PlayCount: userId === 'user-1' ? 1 : userId === 'user-2' ? 3 : 0,
+              Items: [
+                {
+                  UserData: {
+                    PlayCount:
+                      userId === 'user-1' ? 1 : userId === 'user-2' ? 3 : 0,
+                  },
+                },
+              ],
             },
           }),
       );
@@ -494,7 +528,7 @@ describe('JellyfinAdapterService', () => {
       const totalPlayCount = await service.getTotalPlayCount('item123');
 
       expect(totalPlayCount).toBe(7);
-      expect(jellyfinApiMocks.getItemUserData).not.toHaveBeenCalled();
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
   });
 
