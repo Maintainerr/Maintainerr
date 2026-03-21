@@ -197,10 +197,28 @@ export interface IMediaServerService {
   addToCollection(collectionId: string, itemId: string): Promise<void>;
 
   /**
+   * Add multiple items to a collection in a single operation.
+   * Returns the itemIds that failed to be added.
+   */
+  addBatchToCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<string[]>;
+
+  /**
    * Remove an item from a collection.
    * @throws Error if operation fails
    */
   removeFromCollection(collectionId: string, itemId: string): Promise<void>;
+
+  /**
+   * Remove multiple items from a collection in a single operation.
+   * Returns the itemIds that failed to be removed.
+   */
+  removeBatchFromCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<string[]>;
 
   /**
    * Update a collection's metadata (title, summary, etc.)

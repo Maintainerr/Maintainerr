@@ -291,6 +291,23 @@ export class PlexAdapterService implements IMediaServerService {
     }
   }
 
+  async addBatchToCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<string[]> {
+    const failedItemIds: string[] = [];
+
+    for (const itemId of itemIds) {
+      try {
+        await this.addToCollection(collectionId, itemId);
+      } catch {
+        failedItemIds.push(itemId);
+      }
+    }
+
+    return failedItemIds;
+  }
+
   async removeFromCollection(
     collectionId: string,
     itemId: string,
@@ -304,6 +321,27 @@ export class PlexAdapterService implements IMediaServerService {
       );
       throw error;
     }
+  }
+
+  async removeBatchFromCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<string[]> {
+    const failedItemIds: string[] = [];
+
+    for (const itemId of itemIds) {
+      try {
+        await this.removeFromCollection(collectionId, itemId);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('404')) {
+          continue;
+        }
+
+        failedItemIds.push(itemId);
+      }
+    }
+
+    return failedItemIds;
   }
 
   // PLEX-SPECIFIC: COLLECTION UPDATE & VISIBILITY
