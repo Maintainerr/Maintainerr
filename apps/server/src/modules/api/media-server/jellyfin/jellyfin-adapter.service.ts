@@ -1002,7 +1002,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     collectionId: string,
     itemIds: string[],
   ): Promise<void> {
-    if (!this.api) return;
+    if (!this.api || itemIds.length === 0) return;
 
     try {
       await getCollectionApi(this.api).addToCollection({
@@ -1042,7 +1042,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     collectionId: string,
     itemIds: string[],
   ): Promise<void> {
-    if (!this.api) return;
+    if (!this.api || itemIds.length === 0) return;
 
     try {
       await getCollectionApi(this.api).removeFromCollection({

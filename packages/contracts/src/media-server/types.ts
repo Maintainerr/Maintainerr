@@ -215,7 +215,8 @@ export interface CreateCollectionParams {
   summary?: string
   type: MediaItemType
   sortTitle?: string
-  itemIds?: string[] // Optional initial items to add to the collection. Jellyfin only.
+  /** Optional initial items to add on creation. Requires COLLECTION_CREATION_WITH_ITEMS feature. */
+  itemIds?: string[]
 }
 
 /** Plex-only visibility settings */

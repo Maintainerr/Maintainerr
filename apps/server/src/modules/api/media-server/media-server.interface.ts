@@ -179,6 +179,7 @@ export interface IMediaServerService {
 
   /**
    * Add multiple items to a collection.
+   * No-op if itemIds is empty.
    * @throws Error if operation fails
    */
   addBatchToCollection(collectionId: string, itemIds: string[]): Promise<void>;
@@ -191,6 +192,7 @@ export interface IMediaServerService {
 
   /**
    * Remove multiple items from a collection.
+   * No-op if itemIds is empty.
    * @throws Error if operation fails
    */
   removeBatchFromCollection(
