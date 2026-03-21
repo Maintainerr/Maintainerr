@@ -178,11 +178,13 @@ export interface IMediaServerService {
   addToCollection(collectionId: string, itemId: string): Promise<void>;
 
   /**
-   * Add multiple items to a collection.
-   * No-op if itemIds is empty.
-   * @throws Error if operation fails
+   * Add multiple items to a collection in a single operation.
+   * Returns the itemIds that failed to be added.
    */
-  addBatchToCollection(collectionId: string, itemIds: string[]): Promise<void>;
+  addBatchToCollection(
+    collectionId: string,
+    itemIds: string[],
+  ): Promise<string[]>;
 
   /**
    * Remove an item from a collection.
@@ -191,14 +193,13 @@ export interface IMediaServerService {
   removeFromCollection(collectionId: string, itemId: string): Promise<void>;
 
   /**
-   * Remove multiple items from a collection.
-   * No-op if itemIds is empty.
-   * @throws Error if operation fails
+   * Remove multiple items from a collection in a single operation.
+   * Returns the itemIds that failed to be removed.
    */
   removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<void>;
+  ): Promise<string[]>;
 
   /**
    * Update a collection's metadata (title, summary, etc.)

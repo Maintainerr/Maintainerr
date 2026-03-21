@@ -265,27 +265,18 @@ export class PlexAdapterService implements IMediaServerService {
   async addBatchToCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<void> {
-    if (itemIds.length === 0) return;
+  ): Promise<string[]> {
+    const failedItemIds: string[] = [];
 
-    const errors: string[] = [];
     for (const itemId of itemIds) {
       try {
         await this.addToCollection(collectionId, itemId);
-      } catch (err) {
-        errors.push(itemId);
+      } catch {
+        failedItemIds.push(itemId);
       }
     }
-    if (errors.length === itemIds.length) {
-      throw new Error(
-        `Failed to add all ${errors.length} items to collection ${collectionId}`,
-      );
-    }
-    if (errors.length > 0) {
-      this.logger.warn(
-        `Failed to add ${errors.length}/${itemIds.length} items to collection ${collectionId}`,
-      );
-    }
+
+    return failedItemIds;
   }
 
   async removeFromCollection(
@@ -306,30 +297,22 @@ export class PlexAdapterService implements IMediaServerService {
   async removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<void> {
-    if (itemIds.length === 0) return;
+  ): Promise<string[]> {
+    const failedItemIds: string[] = [];
 
-    const errors: string[] = [];
     for (const itemId of itemIds) {
       try {
         await this.removeFromCollection(collectionId, itemId);
-      } catch (err) {
-        // 404 means item is not in collection, which is acceptable
-        if (!err.message?.includes('404')) {
-          errors.push(itemId);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('404')) {
+          continue;
         }
+
+        failedItemIds.push(itemId);
       }
     }
-    if (errors.length === itemIds.length) {
-      throw new Error(
-        `Failed to remove all ${errors.length} items from collection ${collectionId}`,
-      );
-    }
-    if (errors.length > 0) {
-      this.logger.warn(
-        `Failed to remove ${errors.length}/${itemIds.length} items from collection ${collectionId}`,
-      );
-    }
+
+    return failedItemIds;
   }
 
   // PLEX-SPECIFIC: COLLECTION UPDATE & VISIBILITY

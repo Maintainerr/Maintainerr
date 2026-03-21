@@ -1001,20 +1001,21 @@ export class JellyfinAdapterService implements IMediaServerService {
   async addBatchToCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<void> {
-    if (!this.api || itemIds.length === 0) return;
+  ): Promise<string[]> {
+    if (!this.api || itemIds.length === 0) return [];
 
     try {
       await getCollectionApi(this.api).addToCollection({
         collectionId,
         ids: itemIds,
       });
+      return [];
     } catch (error) {
       this.logger.error(
         `Failed to add ${itemIds.length} items to collection ${collectionId}`,
         error,
       );
-      throw error;
+      return itemIds;
     }
   }
 
@@ -1041,20 +1042,21 @@ export class JellyfinAdapterService implements IMediaServerService {
   async removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<void> {
-    if (!this.api || itemIds.length === 0) return;
+  ): Promise<string[]> {
+    if (!this.api || itemIds.length === 0) return [];
 
     try {
       await getCollectionApi(this.api).removeFromCollection({
         collectionId,
         ids: itemIds,
       });
+      return [];
     } catch (error) {
       this.logger.error(
         `Failed to remove ${itemIds.length} items from collection ${collectionId}`,
         error,
       );
-      throw error;
+      return itemIds;
     }
   }
 

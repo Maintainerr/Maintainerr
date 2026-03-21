@@ -228,5 +228,41 @@ describe('PlexAdapterService', () => {
       await service.deleteCollection('col123');
       expect(plexApi.deleteCollection).toHaveBeenCalledWith('col123');
     });
+
+    it('should return failed ids from batch add', async () => {
+      plexApi.addChildToCollection.mockImplementation(
+        async (_collectionId, itemId) => {
+          if (itemId === 'bad') {
+            throw new Error('boom');
+          }
+
+          return { status: 'OK' } as any;
+        },
+      );
+
+      await expect(
+        service.addBatchToCollection('col123', ['good', 'bad', 'good-2']),
+      ).resolves.toEqual(['bad']);
+    });
+
+    it('should treat 404 removes as successful in batch remove', async () => {
+      plexApi.deleteChildFromCollection.mockImplementation(
+        async (_collectionId, itemId) => {
+          if (itemId === 'missing') {
+            throw new Error('404 Not Found');
+          }
+
+          if (itemId === 'bad') {
+            throw new Error('boom');
+          }
+
+          return { status: 'OK' } as any;
+        },
+      );
+
+      await expect(
+        service.removeBatchFromCollection('col123', ['good', 'missing', 'bad']),
+      ).resolves.toEqual(['bad']);
+    });
   });
 });

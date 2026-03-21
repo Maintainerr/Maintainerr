@@ -347,6 +347,7 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
+    media?: AddRemoveCollectionMedia[],
   ): Promise<{
     dbCollection: addCollectionDbResponse;
   }> {
@@ -359,6 +360,10 @@ export class CollectionsService {
         (collection.manualCollection == undefined ||
           !collection.manualCollection)
       ) {
+        const supportsCreationWithItems = mediaServer.supportsFeature(
+          MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+        );
+
         // Create collection via media server abstraction
         mediaCollection = await mediaServer.createCollection({
           libraryId: collection.libraryId,
@@ -366,6 +371,11 @@ export class CollectionsService {
           summary: collection?.description,
           sortTitle: collection?.sortTitle,
           type: collection.type,
+          ...(supportsCreationWithItems && media && media.length > 0
+            ? {
+                itemIds: media.map((childMedia) => childMedia.mediaServerId),
+              }
+            : {}),
         });
 
         // Store the media server ID from the created collection
@@ -437,7 +447,17 @@ export class CollectionsService {
     dbCollection: addCollectionDbResponse;
   }> {
     try {
-      const createdCollection = await this.createCollection(collection, false);
+      const mediaServer = await this.getMediaServer();
+      const supportsCreationWithItems = mediaServer.supportsFeature(
+        MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+      );
+      const skipMediaServerAdd =
+        supportsCreationWithItems && !collection.manualCollection;
+      const createdCollection = await this.createCollection(
+        collection,
+        false,
+        media,
+      );
 
       if (media && media.length > 0) {
         await this.addChildrenToCollection(
@@ -448,6 +468,8 @@ export class CollectionsService {
             dbId: createdCollection.dbCollection.id,
           },
           media,
+          false,
+          skipMediaServerAdd,
         );
       }
 
@@ -827,17 +849,21 @@ export class CollectionsService {
               this.logger.log(
                 `Syncing ${collectionMedia.length} existing items to newly created media server collection`,
               );
-              try {
+              const failedItemIds = new Set(
                 await mediaServer.addBatchToCollection(
                   collection.mediaServerId,
                   collectionMedia.map(
                     (existingMedia) => existingMedia.mediaServerId,
                   ),
-                );
-              } catch (err) {
-                this.logger.warn(
-                  `Failed to sync existing items to collection: ${err.message}`,
-                );
+                ),
+              );
+
+              for (const existingMedia of collectionMedia) {
+                if (failedItemIds.has(existingMedia.mediaServerId)) {
+                  this.logger.warn(
+                    `Failed to sync item ${existingMedia.mediaServerId} to collection`,
+                  );
+                }
               }
             }
           } else {
@@ -1088,26 +1114,34 @@ export class CollectionsService {
     collectionIds: { mediaServerId: string; dbId: number },
     childrenMedia: AddRemoveCollectionMedia[],
     manual = false,
+    skipMediaServerAdd = false,
   ) {
     if (childrenMedia.length === 0) return;
 
-    const mediaServer = await this.getMediaServer();
     this.infoLogger(
       `Adding ${childrenMedia.length} media items to collection..`,
     );
 
-    try {
-      await mediaServer.addBatchToCollection(
-        collectionIds.mediaServerId,
-        childrenMedia.map((m) => m.mediaServerId),
+    let failedItemIds = new Set<string>();
+
+    if (!skipMediaServerAdd) {
+      const mediaServer = await this.getMediaServer();
+      failedItemIds = new Set(
+        await mediaServer.addBatchToCollection(
+          collectionIds.mediaServerId,
+          childrenMedia.map((childMedia) => childMedia.mediaServerId),
+        ),
       );
-    } catch (err) {
-      this.logger.warn(`Couldn't add media to collection: ${err.message}`);
-      return;
     }
 
-    // Media server add succeeded — persist DB records and log for each item
     for (const childMedia of childrenMedia) {
+      if (failedItemIds.has(childMedia.mediaServerId)) {
+        this.logger.warn(
+          `Couldn't add media ${childMedia.mediaServerId} to collection`,
+        );
+        continue;
+      }
+
       try {
         const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(
           childMedia.mediaServerId,
@@ -1147,7 +1181,7 @@ export class CollectionsService {
         );
       } catch (err) {
         this.logger.warn(
-          `Failed to persist collection_media record for ${childMedia.mediaServerId}: ${err}`,
+          `Couldn't add media ${childMedia.mediaServerId} to collection: ${err.message}`,
         );
       }
     }
@@ -1159,10 +1193,8 @@ export class CollectionsService {
     type: 'add' | 'remove' | 'handle' | 'exclude' | 'include',
     logMeta?: CollectionLogMeta,
   ) {
-    // log record
     const mediaServer = await this.getMediaServer();
-    const mediaData = await mediaServer.getMetadata(mediaServerId); // fetch data from cache
-    // if there's no data.. skip logging
+    const mediaData = await mediaServer.getMetadata(mediaServerId);
 
     if (mediaData) {
       const subject = isMediaType(mediaData.type, 'episode')
@@ -1190,18 +1222,21 @@ export class CollectionsService {
       `Removing ${childrenMedia.length} media items from collection..`,
     );
 
-    try {
+    const failedItemIds = new Set(
       await mediaServer.removeBatchFromCollection(
         collectionIds.mediaServerId,
-        childrenMedia.map((m) => m.mediaServerId),
-      );
-    } catch (err) {
-      this.logger.warn(`Couldn't remove media from collection: ${err.message}`);
-      return;
-    }
+        childrenMedia.map((childMedia) => childMedia.mediaServerId),
+      ),
+    );
 
-    // Media server remove succeeded — clean up DB records and log for each item
     for (const childMedia of childrenMedia) {
+      if (failedItemIds.has(childMedia.mediaServerId)) {
+        this.logger.warn(
+          `Couldn't remove media ${childMedia.mediaServerId} from collection`,
+        );
+        continue;
+      }
+
       try {
         await this.connection
           .createQueryBuilder()
@@ -1223,9 +1258,8 @@ export class CollectionsService {
         );
       } catch (err) {
         this.logger.warn(
-          `Failed to persist collection_media removal for ${childMedia.mediaServerId}`,
+          `Couldn't remove media ${childMedia.mediaServerId} from collection: ${err.message}`,
         );
-        this.logger.debug(err);
       }
     }
   }
