@@ -144,8 +144,17 @@ export interface IMediaServerService {
 
   /**
    * Get aggregate watch state for a specific item.
+   *
+   * @param nativeViewCount - Optional native view count from the media item
+   *   metadata. Used as a fallback signal for `isWatched` when watch history
+   *   has been purged or the item was marked watched without a play event.
+   *   Note: on Plex this value is per-user (admin token), so it is only used
+   *   for the boolean `isWatched`, not for the numeric `viewCount`.
    */
-  getWatchState(itemId: string): Promise<MediaWatchState>;
+  getWatchState(
+    itemId: string,
+    nativeViewCount?: number,
+  ): Promise<MediaWatchState>;
 
   /**
    * Get list of user IDs who have watched/seen a specific item.

@@ -193,7 +193,10 @@ export class PlexAdapterService implements IMediaServerService {
     return history.map(PlexMapper.toWatchRecord);
   }
 
-  async getWatchState(itemId: string): Promise<MediaWatchState> {
+  async getWatchState(
+    itemId: string,
+    nativeViewCount?: number,
+  ): Promise<MediaWatchState> {
     const history = await this.plexApi.getWatchHistory(itemId, false);
 
     if (history && history.length > 0) {
@@ -203,9 +206,16 @@ export class PlexAdapterService implements IMediaServerService {
       };
     }
 
+    // When watch history is empty (purged or item was marked watched without
+    // a play event), fall back to the native Plex viewCount for the boolean
+    // only.  This value is per-user (admin token) so we do not use it for
+    // the numeric viewCount to avoid misrepresenting server-wide counts.
+    const watchedByNative =
+      nativeViewCount !== undefined && nativeViewCount > 0;
+
     return {
       viewCount: 0,
-      isWatched: false,
+      isWatched: watchedByNative,
     };
   }
 

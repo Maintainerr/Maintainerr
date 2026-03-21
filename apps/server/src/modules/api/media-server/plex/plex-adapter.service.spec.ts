@@ -229,6 +229,28 @@ describe('PlexAdapterService', () => {
       });
       expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
     });
+
+    it('should fall back to nativeViewCount for isWatched when history is empty', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123', 2);
+
+      expect(watchState).toEqual({
+        viewCount: 0,
+        isWatched: true,
+      });
+    });
+
+    it('should not mark as watched when nativeViewCount is 0 and history is empty', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123', 0);
+
+      expect(watchState).toEqual({
+        viewCount: 0,
+        isWatched: false,
+      });
+    });
   });
 
   describe('getCollections', () => {
