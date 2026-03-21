@@ -820,11 +820,16 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return undefined;
 
     try {
-      const response = await getItemsApi(this.api).getItemUserData({
-        itemId,
+      // Use getItems with enableUserData instead of the dedicated
+      // getItemUserData endpoint — the latter does not reliably return
+      // per-user data when authenticating with an API key on all
+      // Jellyfin versions.
+      const response = await getItemsApi(this.api).getItems({
         userId,
+        ids: [itemId],
+        enableUserData: true,
       });
-      return response.data;
+      return response.data.Items?.[0]?.UserData;
     } catch (error) {
       this.logger.debug(
         `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
