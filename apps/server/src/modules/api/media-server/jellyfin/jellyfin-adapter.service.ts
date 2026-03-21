@@ -883,7 +883,9 @@ export class JellyfinAdapterService implements IMediaServerService {
         userId,
       });
 
-      return response.data ? JellyfinMapper.toMediaCollection(response.data) : undefined;
+      return response.data
+        ? JellyfinMapper.toMediaCollection(response.data)
+        : undefined;
     } catch (error) {
       this.logger.warn(`Failed to get collection ${collectionId}`, error);
       return undefined;
