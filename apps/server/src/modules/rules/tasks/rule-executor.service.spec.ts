@@ -48,7 +48,20 @@ describe('RuleExecutorService', () => {
           addedCount: items?.length ?? 0,
         };
       }),
+      addToCollectionWithResolvedLink: jest
+        .fn()
+        .mockImplementation(async (_collection, items) => {
+          return {
+            id: 1,
+            mediaServerId: 'coll-1',
+            title: 'Test Collection',
+            addedCount: items?.length ?? 0,
+          };
+        }),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
+      removeFromCollectionWithResolvedLink: jest
+        .fn()
+        .mockResolvedValue(undefined),
       saveCollection: jest.fn().mockResolvedValue(undefined),
       checkAutomaticMediaServerLink: jest
         .fn()
@@ -228,6 +241,136 @@ describe('RuleExecutorService', () => {
 
     // Should NOT be re-added as manual
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
+  });
+
+  it('does not re-run addToCollection with no additions after resyncing a stale link', async () => {
+    const { service, collectionService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    const staleCollection = {
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'stale-coll',
+      manualCollection: false,
+      deleteAfterDays: 0,
+    };
+
+    collectionService.getCollection.mockResolvedValue(staleCollection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm1' },
+    ] as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValueOnce({
+      ...staleCollection,
+      mediaServerId: null,
+    } as any);
+    collectionService.addToCollection.mockResolvedValueOnce({
+      ...staleCollection,
+      mediaServerId: 'new-coll',
+    } as any);
+    collectionService.saveCollection.mockImplementation(async (collection) => {
+      return collection as any;
+    });
+    collectionService.removeFromCollection.mockResolvedValue({
+      ...staleCollection,
+      mediaServerId: 'new-coll',
+    } as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).toHaveBeenCalledTimes(1);
+    expect(
+      collectionService.addToCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(
+      1,
+      [{ mediaServerId: 'm1' }],
+      false,
+    );
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        mediaServerId: 'new-coll',
+      }),
+      [
+        {
+          mediaServerId: 'm1',
+          reason: {
+            type: 'media_removed_by_rule',
+            data: undefined,
+          },
+        },
+      ],
+    );
+  });
+
+  it('reuses the reconciled collection link for additions later in the same run', async () => {
+    const { service, collectionService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    const staleCollection = {
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'stale-coll',
+      manualCollection: false,
+      deleteAfterDays: 0,
+    };
+
+    collectionService.getCollection.mockResolvedValue(staleCollection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm1' },
+    ] as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValueOnce({
+      ...staleCollection,
+      mediaServerId: null,
+    } as any);
+    collectionService.addToCollection
+      .mockResolvedValueOnce({
+        ...staleCollection,
+        mediaServerId: 'new-coll',
+      } as any)
+      .mockResolvedValueOnce({
+        ...staleCollection,
+        mediaServerId: 'new-coll',
+      } as any);
+    collectionService.saveCollection.mockImplementation(async (collection) => {
+      return collection as any;
+    });
+    collectionService.removeFromCollection.mockResolvedValue({
+      ...staleCollection,
+      mediaServerId: 'new-coll',
+    } as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm2' }];
+    (service as any).statisticsData = [];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(
+      collectionService.addToCollectionWithResolvedLink,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        mediaServerId: 'new-coll',
+      }),
+      [
+        {
+          mediaServerId: 'm2',
+          reason: {
+            type: 'media_added_by_rule',
+            data: undefined,
+          },
+        },
+      ],
+    );
   });
 
   it('emits failed and skips execution when rule group has no library assigned', async () => {

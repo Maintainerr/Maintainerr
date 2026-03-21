@@ -492,15 +492,31 @@ export class RuleExecutorService {
         collection =
           await this.collectionService.relinkManualCollection(collection);
 
-        collection = await this.collectionService.addToCollection(
-          collection.id,
-          dataToAdd,
-        );
+        if (dataToAdd.length > 0) {
+          collection =
+            collMediaData.length > 0
+              ? await this.collectionService.addToCollectionWithResolvedLink(
+                  collection,
+                  dataToAdd,
+                )
+              : await this.collectionService.addToCollection(
+                  collection.id,
+                  dataToAdd,
+                );
+        }
 
-        collection = await this.collectionService.removeFromCollection(
-          collection.id,
-          dataToRemove,
-        );
+        if (dataToRemove.length > 0) {
+          collection =
+            collMediaData.length > 0
+              ? await this.collectionService.removeFromCollectionWithResolvedLink(
+                  collection,
+                  dataToRemove,
+                )
+              : await this.collectionService.removeFromCollection(
+                  collection.id,
+                  dataToRemove,
+                );
+        }
 
         // Determine which items were actually added/removed by comparing DB state
         const updatedMediaServerIds = new Set(

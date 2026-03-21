@@ -761,6 +761,23 @@ export class CollectionsService {
     media: AddRemoveCollectionMedia[],
     manual = false,
   ): Promise<Collection> {
+    return this.addToCollectionInternal(collectionDbId, media, manual, false);
+  }
+
+  async addToCollectionWithResolvedLink(
+    collection: Collection,
+    media: AddRemoveCollectionMedia[],
+    manual = false,
+  ): Promise<Collection> {
+    return this.addToCollectionInternal(collection.id, media, manual, true);
+  }
+
+  private async addToCollectionInternal(
+    collectionDbId: number,
+    media: AddRemoveCollectionMedia[],
+    manual = false,
+    skipAutomaticLinkCheck = false,
+  ): Promise<Collection> {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -777,7 +794,9 @@ export class CollectionsService {
       );
 
       if (collection) {
-        collection = await this.checkAutomaticMediaServerLink(collection);
+        if (!skipAutomaticLinkCheck) {
+          collection = await this.checkAutomaticMediaServerLink(collection);
+        }
 
         // Check if we need to create a new media server collection
         // This happens when: 1) we have new items to add, OR 2) we have existing items but no media server collection
@@ -898,6 +917,21 @@ export class CollectionsService {
     collectionDbId: number,
     media: AddRemoveCollectionMedia[],
   ) {
+    return this.removeFromCollectionInternal(collectionDbId, media, false);
+  }
+
+  async removeFromCollectionWithResolvedLink(
+    collection: Collection,
+    media: AddRemoveCollectionMedia[],
+  ) {
+    return this.removeFromCollectionInternal(collection.id, media, true);
+  }
+
+  private async removeFromCollectionInternal(
+    collectionDbId: number,
+    media: AddRemoveCollectionMedia[],
+    skipAutomaticLinkCheck = false,
+  ) {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -911,7 +945,10 @@ export class CollectionsService {
         return undefined;
       }
 
-      collection = await this.checkAutomaticMediaServerLink(collection);
+      if (!skipAutomaticLinkCheck) {
+        collection = await this.checkAutomaticMediaServerLink(collection);
+      }
+
       let collectionMedia = await this.CollectionMediaRepo.find({
         where: {
           collectionId: collectionDbId,
@@ -1226,10 +1263,18 @@ export class CollectionsService {
           ),
         );
       } catch (err) {
-        this.logger.warn(
-          `Couldn't remove media from collection: ${err.message}`,
-        );
-        return;
+        // 404 means the media server collection is already gone, which is fine.
+        // Still clean up the DB rows so Maintainerr can self-heal on the next run.
+        if (err.message?.includes('404')) {
+          this.infoLogger(
+            `Couldn't remove media from collection: ${err.message}`,
+          );
+        } else {
+          this.logger.warn(
+            `Couldn't remove media from collection: ${err.message}`,
+          );
+          return;
+        }
       }
     }
 
