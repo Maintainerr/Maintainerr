@@ -12,13 +12,31 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { ZodValidationPipe } from 'nestjs-zod';
+import { z } from 'zod';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { CollectionWorkerService } from './collection-worker.service';
+import {
+  addToCollectionRequestSchema,
+  createCollectionRequestSchema,
+  removeCollectionRequestSchema,
+  removeFromCollectionRequestSchema,
+  updateCollectionRequestSchema,
+} from './collections.schemas';
 import { CollectionsService } from './collections.service';
 import {
   AddRemoveCollectionMedia,
   IAlterableMediaDto,
 } from './interfaces/collection-media.interface';
-import { MaintainerrLogger } from '../logging/logs.service';
+import { ICollection } from './interfaces/collection.interface';
+
+type CreateCollectionRequest = z.infer<typeof createCollectionRequestSchema>;
+type AddToCollectionRequest = z.infer<typeof addToCollectionRequestSchema>;
+type RemoveFromCollectionRequest = z.infer<
+  typeof removeFromCollectionRequestSchema
+>;
+type RemoveCollectionRequest = z.infer<typeof removeCollectionRequestSchema>;
+type UpdateCollectionRequest = z.infer<typeof updateCollectionRequestSchema>;
 
 @Controller('api/collections')
 export class CollectionsController {
@@ -30,42 +48,50 @@ export class CollectionsController {
     this.logger.setContext(CollectionsController.name);
   }
   @Post()
-  async createCollection(@Body() request: any) {
+  async createCollection(
+    @Body(new ZodValidationPipe(createCollectionRequestSchema))
+    request: CreateCollectionRequest,
+  ) {
     await this.collectionService.createCollectionWithChildren(
-      request.collection,
-      request.media,
+      request.collection as ICollection,
+      request.media as AddRemoveCollectionMedia[] | undefined,
     );
   }
   @Post('/add')
   async addToCollection(
-    @Body()
-    request: {
-      collectionId: number;
-      media: AddRemoveCollectionMedia[];
-      manual?: boolean;
-    },
+    @Body(new ZodValidationPipe(addToCollectionRequestSchema))
+    request: AddToCollectionRequest,
   ) {
     await this.collectionService.addToCollection(
       request.collectionId,
-      request.media,
+      request.media as AddRemoveCollectionMedia[],
       request.manual ? request.manual : false,
     );
   }
   @Post('/remove')
-  async removeFromCollection(@Body() request: any) {
+  async removeFromCollection(
+    @Body(new ZodValidationPipe(removeFromCollectionRequestSchema))
+    request: RemoveFromCollectionRequest,
+  ) {
     await this.collectionService.removeFromCollection(
       request.collectionId,
-      request.media,
+      request.media as AddRemoveCollectionMedia[],
     );
   }
   @Post('/removeCollection')
-  removeCollection(@Body() request: any) {
+  removeCollection(
+    @Body(new ZodValidationPipe(removeCollectionRequestSchema))
+    request: RemoveCollectionRequest,
+  ) {
     return this.collectionService.deleteCollection(request.collectionId);
   }
 
   @Put()
-  updateCollection(@Body() request: any) {
-    return this.collectionService.updateCollection(request);
+  updateCollection(
+    @Body(new ZodValidationPipe(updateCollectionRequestSchema))
+    request: UpdateCollectionRequest,
+  ) {
+    return this.collectionService.updateCollection(request as ICollection);
   }
 
   @Post('/handle')

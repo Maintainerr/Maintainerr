@@ -163,7 +163,21 @@ export class SettingsService implements SettingDto {
       // This handles upgrades from pre-Jellyfin versions (Plex) and any future
       // scenario where media_server_type is missing but a server is configured.
       if (!this.media_server_type) {
-        if (this.jellyfin_api_key) {
+        const jellyfinConfigured = Boolean(
+          this.jellyfin_url && this.jellyfin_api_key,
+        );
+        const plexConfigured = Boolean(
+          this.plex_hostname &&
+          this.plex_name &&
+          this.plex_port &&
+          this.plex_auth_token,
+        );
+
+        if (jellyfinConfigured && plexConfigured) {
+          this.logger.warn(
+            'Detected both Plex and Jellyfin configuration without media_server_type set. Leaving media server type unset until the user makes an explicit selection.',
+          );
+        } else if (jellyfinConfigured) {
           this.logger.log(
             'Detected existing Jellyfin configuration without media_server_type set. Setting to jellyfin.',
           );
@@ -172,7 +186,7 @@ export class SettingsService implements SettingDto {
             { id: this.id },
             { media_server_type: MediaServerType.JELLYFIN },
           );
-        } else if (this.plex_auth_token) {
+        } else if (plexConfigured) {
           this.logger.log(
             'Detected existing Plex configuration without media_server_type set. Setting to plex.',
           );
