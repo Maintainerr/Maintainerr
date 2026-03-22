@@ -11,6 +11,7 @@ const jellyfinApiMocks = {
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
   getItemUserData: jest.fn(),
+  getSearchHints: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -103,7 +104,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     removeFromCollection: (...args: unknown[]) =>
       collectionApiMocks.removeFromCollection(...args),
   })),
-  getSearchApi: jest.fn(),
+  getSearchApi: jest.fn().mockImplementation(() => ({
+    getSearchHints: (...args: unknown[]) => jellyfinApiMocks.getSearchHints(...args),
+  })),
   getPlaylistsApi: jest.fn(),
   getUserViewsApi: jest.fn(),
 }));
@@ -155,6 +158,7 @@ describe('JellyfinAdapterService', () => {
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
     jellyfinApiMocks.getItemUserData.mockResolvedValue({ data: undefined });
+    jellyfinApiMocks.getSearchHints.mockResolvedValue({ data: { SearchHints: [] } });
     collectionApiMocks.createCollection.mockResolvedValue({
       data: { Id: 'collection-1' },
     });
@@ -354,6 +358,76 @@ describe('JellyfinAdapterService', () => {
 
       expect(collections).toHaveLength(1);
       expect(collections[0].id).toBe('collection-in-lib');
+    });
+  });
+
+  describe('searchContent', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+    });
+
+    it('returns fully populated metadata items for search results', async () => {
+      jellyfinApiMocks.getSearchHints.mockResolvedValue({
+        data: {
+          SearchHints: [
+            { Id: 'movie-1', Name: 'Movie 1', Type: 'Movie' },
+            { Id: 'show-1', Name: 'Show 1', Type: 'Series' },
+          ],
+        },
+      });
+
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ ids }: { ids?: string[]; parentId?: string }) => {
+          if (ids?.[0] === 'movie-1') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  {
+                    Id: 'movie-1',
+                    Name: 'Movie 1',
+                    Type: 'Movie',
+                    DateCreated: '2024-01-01T00:00:00.000Z',
+                    ProviderIds: { Tmdb: '10' },
+                    Path: '/media/movie-1.mkv',
+                  },
+                ],
+              },
+            });
+          }
+
+          if (ids?.[0] === 'show-1') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  {
+                    Id: 'show-1',
+                    Name: 'Show 1',
+                    Type: 'Series',
+                    DateCreated: '2024-02-01T00:00:00.000Z',
+                    ProviderIds: { Tvdb: '20' },
+                    Path: '/media/show-1',
+                  },
+                ],
+              },
+            });
+          }
+
+          return Promise.resolve({ data: { Items: [] } });
+        },
+      );
+
+      const results = await service.searchContent('test');
+
+      expect(results).toHaveLength(2);
+      expect(results[0].providerIds.tmdb).toEqual(['10']);
+      expect(results[1].providerIds.tvdb).toEqual(['20']);
+      expect(results[0].addedAt).toEqual(new Date('2024-01-01T00:00:00.000Z'));
+      expect(results[1].addedAt).toEqual(new Date('2024-02-01T00:00:00.000Z'));
+      expect(results[0].addedAt).toBeInstanceOf(Date);
     });
   });
 

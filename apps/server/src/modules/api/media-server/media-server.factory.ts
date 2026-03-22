@@ -93,16 +93,13 @@ export class MediaServerFactory {
   ): Promise<IMediaServerService> {
     switch (serverType) {
       case MediaServerType.JELLYFIN:
-        if (!this.jellyfinAdapter.isSetup()) {
-          await this.jellyfinAdapter.initialize();
-        }
-        return this.jellyfinAdapter;
+        return await this.ensureAdapterReady(
+          serverType,
+          this.jellyfinAdapter,
+        );
 
       case MediaServerType.PLEX:
-        if (!this.plexAdapter.isSetup()) {
-          await this.plexAdapter.initialize();
-        }
-        return this.plexAdapter;
+        return await this.ensureAdapterReady(serverType, this.plexAdapter);
 
       default:
         throw new Error(`Unsupported media server type: ${serverType}`);
@@ -197,5 +194,22 @@ export class MediaServerFactory {
 
     // Both configured or neither configured - can't infer
     return null;
+  }
+
+  private async ensureAdapterReady(
+    serverType: MediaServerType,
+    adapter: IMediaServerService,
+  ): Promise<IMediaServerService> {
+    if (!adapter.isSetup()) {
+      await adapter.initialize();
+    }
+
+    if (!adapter.isSetup()) {
+      throw new ServiceUnavailableException(
+        `${serverType} adapter failed to initialize`,
+      );
+    }
+
+    return adapter;
   }
 }

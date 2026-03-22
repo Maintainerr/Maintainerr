@@ -643,18 +643,15 @@ export class JellyfinAdapterService implements IMediaServerService {
         includeArtists: false,
       });
 
-      return (response.data.SearchHints || [])
-        .filter((hint) => hint.Id)
-        .map((hint) => ({
-          id: hint.Id || '',
-          title: hint.Name || '',
-          type: JellyfinMapper.toMediaItemType(hint.Type),
-          guid: hint.Id || '',
-          addedAt: new Date(),
-          providerIds: {},
-          mediaSources: [],
-          library: { id: '', title: '' },
-        })) as MediaItem[];
+      const hints = (response.data.SearchHints || []).filter(
+        (hint): hint is typeof hint & { Id: string } => Boolean(hint.Id),
+      );
+
+      const items = await Promise.all(
+        hints.map((hint) => this.getMetadata(hint.Id)),
+      );
+
+      return items.filter((item): item is MediaItem => item !== undefined);
     } catch (error) {
       this.logger.error('Failed to search Jellyfin content', error);
       return [];
