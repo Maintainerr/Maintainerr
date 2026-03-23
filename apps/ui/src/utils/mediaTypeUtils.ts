@@ -1,3 +1,5 @@
+import { type MediaProviderIds } from '@maintainerr/contracts'
+
 /**
  * Shared media-type utilities used across MediaCard, MediaModal,
  * and other components that deal with media types.
@@ -50,7 +52,7 @@ export function toApiMediaType(
  * Each provider key gets a `${key}Id` param with the first value.
  */
 export function buildProviderIdParams(
-  providerIds: Record<string, string[]> | undefined,
+  providerIds: MediaProviderIds | undefined,
 ): URLSearchParams {
   const params = new URLSearchParams()
   if (providerIds) {

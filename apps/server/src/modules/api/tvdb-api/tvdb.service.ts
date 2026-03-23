@@ -1,7 +1,7 @@
 import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { ExternalApiService } from '../external-api/external-api.service';
@@ -21,6 +21,7 @@ const TVDB_BASE_URL = 'https://api4.thetvdb.com/v4';
 @Injectable()
 export class TvdbApiService extends ExternalApiService {
   private bearerToken: string | undefined;
+  private refreshPromise: Promise<boolean> | undefined;
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
@@ -55,12 +56,14 @@ export class TvdbApiService extends ExternalApiService {
 
     if (newKey !== oldKey) {
       if (newKey) {
-        const authenticated = await this.authenticate(newKey);
+        const authenticated = await this.authenticate(newKey, {
+          preserveAuthOnFailure: true,
+        });
         if (authenticated) {
           this.logger.log('TVDB API key updated and authenticated');
         } else {
           this.logger.warn(
-            'TVDB API key updated, but authentication failed and TVDB integration is unavailable until a valid key is saved.',
+            'TVDB API key update failed authentication. Keeping the existing TVDB token until a valid key is saved or the current token expires.',
           );
         }
       } else {
@@ -74,28 +77,94 @@ export class TvdbApiService extends ExternalApiService {
    * Authenticate with the TVDB v4 API.
    * POST /login with { apikey } → returns a bearer token valid for 1 month.
    */
-  private async authenticate(apiKey: string): Promise<boolean> {
+  private async requestToken(apiKey: string): Promise<string | undefined> {
     try {
       const resp = await axios.post<{
         status: string;
         data: { token: string };
       }>(`${TVDB_BASE_URL}/login`, { apikey: apiKey });
 
-      this.bearerToken = resp.data?.data?.token;
-      if (this.bearerToken) {
-        this.updateBearerToken(this.bearerToken);
-        return true;
-      }
-      this.clearAuth();
-      return false;
+      return resp.data?.data?.token;
     } catch (e) {
       this.logger.warn(`TVDB authentication failed: ${e.message}`);
+      return undefined;
+    }
+  }
+
+  private async authenticate(
+    apiKey: string,
+    options?: { preserveAuthOnFailure?: boolean },
+  ): Promise<boolean> {
+    const token = await this.requestToken(apiKey);
+
+    if (token) {
+      this.updateBearerToken(token);
+      return true;
+    }
+
+    if (!options?.preserveAuthOnFailure) {
+      this.clearAuth();
+    }
+
+    return false;
+  }
+
+  private async refreshAuthentication(): Promise<boolean> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    const apiKey = this.settings.tvdb_api_key;
+    if (!apiKey) {
       this.clearAuth();
       return false;
+    }
+
+    this.refreshPromise = this.authenticate(apiKey).finally(() => {
+      this.refreshPromise = undefined;
+    });
+
+    return this.refreshPromise;
+  }
+
+  private isUnauthorizedError(error: unknown): error is AxiosError {
+    return error instanceof AxiosError && error.response?.status === 401;
+  }
+
+  private async getWithAuthRetry<T>(
+    endpoint: string,
+    ttl = 3600,
+  ): Promise<T | undefined> {
+    const cache = cacheManager.getCache('tvdb').data;
+    const cachedItem = cache.get<T>(endpoint);
+    if (cachedItem) {
+      return cachedItem;
+    }
+
+    const request = async () => (await this.axios.get<T>(endpoint)).data;
+
+    try {
+      const data = await request();
+      cache.set(endpoint, data, ttl);
+      return data;
+    } catch (error) {
+      if (!this.isUnauthorizedError(error)) {
+        throw error;
+      }
+
+      const refreshed = await this.refreshAuthentication();
+      if (!refreshed) {
+        throw error;
+      }
+
+      const data = await request();
+      cache.set(endpoint, data, ttl);
+      return data;
     }
   }
 
   private updateBearerToken(token: string) {
+    this.bearerToken = token;
     this.axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }
 
@@ -155,10 +224,9 @@ export class TvdbApiService extends ExternalApiService {
    */
   public async getMovie(tvdbId: number): Promise<TvdbMovieBase | undefined> {
     try {
-      const resp = await this.get<TvdbApiResponse<TvdbMovieBase>>(
+      const resp = await this.getWithAuthRetry<TvdbApiResponse<TvdbMovieBase>>(
         `/movies/${tvdbId}/extended`,
-        {},
-        3600, // 1h cache
+        3600,
       );
       return resp?.data;
     } catch (e) {
@@ -173,10 +241,9 @@ export class TvdbApiService extends ExternalApiService {
    */
   public async getSeries(tvdbId: number): Promise<TvdbSeriesBase | undefined> {
     try {
-      const resp = await this.get<TvdbApiResponse<TvdbSeriesBase>>(
+      const resp = await this.getWithAuthRetry<TvdbApiResponse<TvdbSeriesBase>>(
         `/series/${tvdbId}/extended`,
-        {},
-        3600, // 1h cache
+        3600,
       );
       return resp?.data;
     } catch (e) {
@@ -193,11 +260,9 @@ export class TvdbApiService extends ExternalApiService {
     tvdbId: number,
   ): Promise<TvdbPersonExtended | undefined> {
     try {
-      const resp = await this.get<TvdbApiResponse<TvdbPersonExtended>>(
-        `/people/${tvdbId}/extended`,
-        {},
-        3600, // 1h cache
-      );
+      const resp = await this.getWithAuthRetry<
+        TvdbApiResponse<TvdbPersonExtended>
+      >(`/people/${tvdbId}/extended`, 3600);
       return resp?.data;
     } catch (e) {
       this.logger.warn(`Failed to fetch TVDB person ${tvdbId}: ${e.message}`);
@@ -214,9 +279,9 @@ export class TvdbApiService extends ExternalApiService {
     remoteId: string,
   ): Promise<TvdbRemoteIdResult[] | undefined> {
     try {
-      const resp = await this.get<TvdbApiResponse<TvdbRemoteIdResult[]>>(
-        `/search/remoteid/${remoteId}`,
-      );
+      const resp = await this.getWithAuthRetry<
+        TvdbApiResponse<TvdbRemoteIdResult[]>
+      >(`/search/remoteid/${remoteId}`);
       return resp?.data;
     } catch (e) {
       this.logger.warn(

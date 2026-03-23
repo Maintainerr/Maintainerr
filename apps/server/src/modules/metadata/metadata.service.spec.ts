@@ -37,15 +37,16 @@ const createService = (
   const providers = providerOverrides ?? [tmdb, tvdb];
 
   const mediaServerService = { getMetadata: jest.fn() };
+  const logger = createMockLogger();
   const service = new MetadataService(
     providers,
     { getService: jest.fn().mockResolvedValue(mediaServerService) } as any,
     { metadata_provider_preference: preference } as any,
-    createMockLogger(),
+    logger,
   );
   service.onApplicationBootstrap();
 
-  return { service, tmdb, tvdb, providers, mediaServerService };
+  return { service, tmdb, tvdb, providers, mediaServerService, logger };
 };
 
 describe('MetadataService', () => {
@@ -207,6 +208,25 @@ describe('MetadataService', () => {
 
     expect(mediaServerService.getMetadata).toHaveBeenCalledWith('show-2');
     expect(result).toEqual(expect.objectContaining({ tmdb: 40, tvdb: 300 }));
+  });
+
+  it('returns undefined when hierarchy metadata cannot be fetched', async () => {
+    const episode = createMediaItem({
+      type: 'episode',
+      grandparentId: 'show-missing',
+      providerIds: {},
+    });
+
+    const { service, mediaServerService, logger } = createService();
+    mediaServerService.getMetadata
+      .mockResolvedValueOnce(episode)
+      .mockResolvedValueOnce(undefined);
+
+    await expect(service.resolveIds('ep-missing')).resolves.toBeUndefined();
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Failed to fetch hierarchy metadata for media server item ep-missing via parent item show-missing',
+    );
   });
 
   it('resolveIds returns undefined when media server returns null', async () => {

@@ -1,10 +1,12 @@
+import axios, { AxiosError } from 'axios';
+import { createMockLogger } from '../../../../test/utils/data';
+import cacheManager from '../lib/cache';
 import {
   TvdbArtworkType,
   TvdbMovieBase,
   TvdbSeriesBase,
 } from './interfaces/tvdb.interface';
 import { TvdbApiService } from './tvdb.service';
-import { createMockLogger } from '../../../../test/utils/data';
 
 /**
  * Tests for pure utility methods on TvdbApiService.
@@ -41,14 +43,74 @@ const makeMovieRecord = (
 
 describe('TvdbApiService', () => {
   let service: TvdbApiService;
+  let postSpy: jest.SpiedFunction<typeof axios.post>;
 
   beforeEach(() => {
+    cacheManager.getCache('tvdb').data.flushAll();
+    postSpy = jest.spyOn(axios, 'post');
+    postSpy.mockReset();
     service = createService();
+  });
+
+  afterEach(() => {
+    postSpy.mockRestore();
   });
 
   describe('isAvailable', () => {
     it('returns false when no bearer token exists', () => {
       expect(service.isAvailable()).toBe(false);
+    });
+  });
+
+  describe('handleSettingsUpdate', () => {
+    it('keeps the current token until a replacement token is obtained', async () => {
+      (service as any).updateBearerToken('old-token');
+      postSpy.mockRejectedValue(new Error('invalid key'));
+
+      await service.handleSettingsUpdate({
+        oldSettings: { tvdb_api_key: 'old-key' },
+        settings: { tvdb_api_key: 'new-key' },
+      });
+
+      expect(service.isAvailable()).toBe(true);
+      expect(
+        (service as any).axios.defaults.headers.common['Authorization'],
+      ).toBe('Bearer old-token');
+    });
+  });
+
+  describe('401 refresh', () => {
+    it('refreshes the token once and retries the request after a 401', async () => {
+      const getSpy = jest.spyOn((service as any).axios, 'get');
+      const unauthorized = new AxiosError('expired token');
+      Object.assign(unauthorized, { response: { status: 401 } });
+
+      getSpy.mockRejectedValueOnce(unauthorized).mockResolvedValueOnce({
+        data: {
+          status: 'success',
+          data: { id: 42, name: 'Movie' },
+        },
+      } as any);
+      postSpy.mockResolvedValue({
+        data: { data: { token: 'refreshed-token' } },
+      } as any);
+      service['settings'].tvdb_api_key = 'configured-key';
+
+      const result = await service.getMovie(42);
+
+      expect(postSpy).toHaveBeenCalledWith(
+        'https://api4.thetvdb.com/v4/login',
+        { apikey: 'configured-key' },
+      );
+      expect(getSpy).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(
+        expect.objectContaining({ id: 42, name: 'Movie' }),
+      );
+      expect(
+        (service as any).axios.defaults.headers.common['Authorization'],
+      ).toBe('Bearer refreshed-token');
+
+      getSpy.mockRestore();
     });
   });
 

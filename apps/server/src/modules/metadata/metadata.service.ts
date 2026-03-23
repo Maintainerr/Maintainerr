@@ -134,11 +134,19 @@ export class MetadataService {
         return undefined;
       }
 
-      mediaItem = mediaItem.grandparentId
-        ? await mediaServer.getMetadata(mediaItem.grandparentId)
-        : mediaItem.parentId
-          ? await mediaServer.getMetadata(mediaItem.parentId)
-          : mediaItem;
+      const hierarchyTargetId = mediaItem.grandparentId ?? mediaItem.parentId;
+      if (hierarchyTargetId) {
+        const hierarchyItem = await mediaServer.getMetadata(hierarchyTargetId);
+
+        if (!hierarchyItem) {
+          this.logger.warn(
+            `Failed to fetch hierarchy metadata for media server item ${mediaServerId} via parent item ${hierarchyTargetId}`,
+          );
+          return undefined;
+        }
+
+        mediaItem = hierarchyItem;
+      }
 
       return this.resolveIdsFromMediaItem(mediaItem, requiredProviderKeys);
     } catch (e) {
