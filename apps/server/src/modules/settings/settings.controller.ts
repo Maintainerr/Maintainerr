@@ -5,6 +5,8 @@ import {
   MediaServerSwitchPreview,
   MediaServerType,
   MetadataProviderPreference,
+  MetadataProviderSetting,
+  metadataProviderSettingSchema,
   SeerrSetting,
   seerrSettingSchema,
   SwitchMediaServerRequest,
@@ -13,8 +15,10 @@ import {
   TautulliSetting,
   tautulliSettingSchema,
   TmdbSetting,
+  TmdbSettingForm,
   tmdbSettingSchema,
   TvdbSetting,
+  TvdbSettingForm,
   tvdbSettingSchema,
 } from '@maintainerr/contracts';
 import {
@@ -193,7 +197,7 @@ export class SettingsController {
   }
 
   @Get('/tmdb')
-  async getTmdbSetting(): Promise<TmdbSetting | BasicResponseDto> {
+  async getTmdbSetting(): Promise<TmdbSettingForm | BasicResponseDto> {
     const settings = await this.settingsService.getSettings();
 
     if (!(settings instanceof Settings)) {
@@ -227,7 +231,7 @@ export class SettingsController {
   }
 
   @Get('/tvdb')
-  async getTvdbSetting(): Promise<TvdbSetting | BasicResponseDto> {
+  async getTvdbSetting(): Promise<TvdbSettingForm | BasicResponseDto> {
     const settings = await this.settingsService.getSettings();
 
     if (!(settings instanceof Settings)) {
@@ -279,7 +283,8 @@ export class SettingsController {
 
   @Post('/metadata-provider')
   async updateMetadataProviderPreference(
-    @Body() payload: { preference: MetadataProviderPreference },
+    @Body(new ZodValidationPipe(metadataProviderSettingSchema))
+    payload: MetadataProviderSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.updateMetadataProviderPreference(
       payload.preference,

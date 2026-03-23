@@ -398,7 +398,7 @@ export class SonarrGetterService {
 
           return (await sonarrApiClient.getProfiles())?.find(
             (el) => el.id === showProfile,
-          ).name;
+          )?.name;
         }
         case 'fileAudioLanguages': {
           const episodeFile = await getEpisodeFile();

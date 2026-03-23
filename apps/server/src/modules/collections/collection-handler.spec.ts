@@ -12,6 +12,7 @@ import { MediaItem } from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SettingsService } from '../settings/settings.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { ServarrAction } from './interfaces/collection.interface';
@@ -25,6 +26,7 @@ describe('CollectionHandler', () => {
   let sonarrActionHandler: Mocked<SonarrActionHandler>;
   let seerrApi: Mocked<SeerrApiService>;
   let settings: Mocked<SettingsService>;
+  let metadataService: Mocked<MetadataService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -37,6 +39,7 @@ describe('CollectionHandler', () => {
     sonarrActionHandler = unitRef.get(SonarrActionHandler);
     seerrApi = unitRef.get(SeerrApiService);
     settings = unitRef.get(SettingsService);
+    metadataService = unitRef.get(MetadataService);
 
     // Setup media server mock
     mediaServer = {
@@ -235,6 +238,34 @@ describe('CollectionHandler', () => {
       'tv',
     );
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses metadata resolution for Seerr removal when cached TMDB ID is missing', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      forceSeerr: true,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: undefined,
+    });
+
+    settings.seerrConfigured.mockReturnValue(true);
+    metadataService.resolveIds.mockResolvedValue({ tmdb: 9876, type: 'movie' });
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(metadataService.resolveIds).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+    );
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(9876, 'movie');
   });
 
   it('should not call SeerrApiService if forceSeerr is false', async () => {

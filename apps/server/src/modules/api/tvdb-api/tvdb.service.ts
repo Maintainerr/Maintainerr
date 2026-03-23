@@ -55,8 +55,14 @@ export class TvdbApiService extends ExternalApiService {
 
     if (newKey !== oldKey) {
       if (newKey) {
-        await this.authenticate(newKey);
-        this.logger.log('TVDB API key updated — re-authenticated');
+        const authenticated = await this.authenticate(newKey);
+        if (authenticated) {
+          this.logger.log('TVDB API key updated and authenticated');
+        } else {
+          this.logger.warn(
+            'TVDB API key updated, but authentication failed and TVDB integration is unavailable until a valid key is saved.',
+          );
+        }
       } else {
         this.clearAuth();
         this.logger.log('TVDB API key removed — cleared authentication');
@@ -80,10 +86,11 @@ export class TvdbApiService extends ExternalApiService {
         this.updateBearerToken(this.bearerToken);
         return true;
       }
+      this.clearAuth();
       return false;
     } catch (e) {
       this.logger.warn(`TVDB authentication failed: ${e.message}`);
-      this.bearerToken = undefined;
+      this.clearAuth();
       return false;
     }
   }

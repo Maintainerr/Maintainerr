@@ -240,7 +240,9 @@ export class MetadataService {
       );
       return provider ? provider.extractId(ids) !== undefined : true;
     }
-    return this.providers.every((p) => p.extractId(ids) !== undefined);
+    return this.getOrderedProviders().every(
+      (provider) => provider.extractId(ids) !== undefined,
+    );
   }
 
   private fillMissingIds(ids: ProviderIds, source: ProviderIds): void {

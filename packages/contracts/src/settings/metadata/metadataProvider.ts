@@ -1,3 +1,5 @@
+import z from 'zod'
+
 /**
  * Determines which metadata provider is tried first.
  * The other provider acts as a fallback when available.
@@ -9,3 +11,15 @@ export enum MetadataProviderPreference {
   TMDB_PRIMARY = 'tmdb_primary',
   TVDB_PRIMARY = 'tvdb_primary',
 }
+
+export const metadataProviderPreferenceSchema = z.enum(
+  MetadataProviderPreference,
+)
+
+export const metadataProviderSettingSchema = z.object({
+  preference: metadataProviderPreferenceSchema,
+})
+
+export type MetadataProviderSetting = z.infer<
+  typeof metadataProviderSettingSchema
+>

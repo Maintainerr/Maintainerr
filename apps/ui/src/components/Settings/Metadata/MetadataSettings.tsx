@@ -3,10 +3,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
   MetadataProviderPreference,
+  tmdbSettingFormSchema,
+  type TmdbSettingForm,
 } from '@maintainerr/contracts'
 import { ReactNode, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { z } from 'zod'
 import {
   useMetadataProviderPreference,
   useUpdateMetadataProviderPreference,
@@ -72,12 +73,9 @@ const providers: ProviderConfig[] = [
 
 // ───── Reusable provider form hook ─────
 
-const apiKeyFormSchema = z.union([
-  z.object({ api_key: z.string().trim().min(1, 'API key is required') }),
-  z.object({ api_key: z.literal('') }),
-])
+const apiKeyFormSchema = tmdbSettingFormSchema
 
-type ApiKeyFormResult = z.infer<typeof apiKeyFormSchema>
+type ApiKeyFormResult = TmdbSettingForm
 
 interface TestStatus {
   status: boolean
@@ -235,6 +233,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
               <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
                 <Button
                   buttonType="success"
+                  type="button"
                   onClick={performTest}
                   className="ml-3"
                   disabled={testing || isGoingToRemove}

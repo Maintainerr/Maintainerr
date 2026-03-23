@@ -141,7 +141,7 @@ export class RadarrGetterService {
 
           return (await radarrApiClient.getProfiles())?.find(
             (el) => el.id === movieProfile,
-          ).name;
+          )?.name;
         }
         case 'fileSize': {
           return movieResponse.sizeOnDisk

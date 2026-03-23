@@ -411,9 +411,15 @@ export class SettingsService implements SettingDto {
   private async updateMetadataApiKey(
     provider: string,
     apiKey: string,
+    validateApiKey: (apiKey: string) => Promise<BasicResponseDto>,
   ): Promise<BasicResponseDto> {
     const column = `${provider}_api_key`;
     try {
+      const validation = await validateApiKey(apiKey);
+      if (validation.code !== 1) {
+        return validation;
+      }
+
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
       await this.saveSettings({ ...settingsDb, [column]: apiKey });
       this[column] = apiKey;
@@ -448,7 +454,9 @@ export class SettingsService implements SettingDto {
   public async updateTmdbSetting(
     settings: TmdbSetting,
   ): Promise<BasicResponseDto> {
-    return this.updateMetadataApiKey('tmdb', settings.api_key);
+    return this.updateMetadataApiKey('tmdb', settings.api_key, (apiKey) =>
+      this.tmdbApi.testConnection(apiKey),
+    );
   }
 
   public async removeTmdbSetting(): Promise<BasicResponseDto> {
@@ -462,7 +470,9 @@ export class SettingsService implements SettingDto {
   public async updateTvdbSetting(
     settings: TvdbSetting,
   ): Promise<BasicResponseDto> {
-    return this.updateMetadataApiKey('tvdb', settings.api_key);
+    return this.updateMetadataApiKey('tvdb', settings.api_key, (apiKey) =>
+      this.tvdbApi.testConnection(apiKey),
+    );
   }
 
   public async removeTvdbSetting(): Promise<BasicResponseDto> {
