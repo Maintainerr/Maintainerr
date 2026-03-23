@@ -6,6 +6,7 @@ import {
   createCollectionMediaWithMetadata,
   createSonarrSeries,
 } from '../../../test/utils/data';
+import { mockBuildServarrLookupCandidates } from '../../../test/utils/metadata-mock';
 import {
   mockSonarrApi,
   validateNoSonarrActionsTaken,
@@ -35,6 +36,7 @@ describe('SonarrActionHandler', () => {
     servarrService = unitRef.get(ServarrService);
     metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+    mockBuildServarrLookupCandidates(metadataService);
 
     // Setup media server mock
     mediaServer = {
@@ -60,7 +62,7 @@ describe('SonarrActionHandler', () => {
       title: 'EPISODES',
     },
   ])(
-    'should do nothing for $title when Show tvdbId failed lookup',
+    'should do nothing for $title when no external IDs are available',
     async ({ type }: { type: string }) => {
       const collection = createCollection({
         arrAction: ServarrAction.DELETE,
@@ -68,21 +70,25 @@ describe('SonarrActionHandler', () => {
         type: type as MediaItemType,
       });
       const collectionMedia = createCollectionMediaWithMetadata(collection, {
-        tmdbId: 1,
+        tmdbId: undefined,
         tvdbId: undefined,
       });
 
       mockMediaServerMetadata(collectionMedia.mediaData);
 
       const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+      jest.spyOn(mockedSonarrApi, 'getSeriesByTmdbId');
       jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId');
 
       metadataService.resolveIds.mockResolvedValue(undefined);
 
       await sonarrActionHandler.handleAction(collection, collectionMedia);
 
+      expect(mockedSonarrApi.getSeriesByTmdbId).not.toHaveBeenCalled();
       expect(mockedSonarrApi.getSeriesByTvdbId).not.toHaveBeenCalled();
-      expect(metadataService.resolveIds).toHaveBeenCalled();
+      expect(metadataService.resolveIds).toHaveBeenCalledWith(
+        collectionMedia.mediaServerId,
+      );
       expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
       validateNoSonarrActionsTaken(mockedSonarrApi);
     },
@@ -127,6 +133,36 @@ describe('SonarrActionHandler', () => {
       validateNoSonarrActionsTaken(mockedSonarrApi);
     },
   );
+
+  it('uses tmdb lookup when tvdb is unavailable but tmdb exists', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      tvdbId: undefined,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTmdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    metadataService.resolveIds.mockResolvedValue(undefined);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.getSeriesByTmdbId).toHaveBeenCalledWith(1);
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      5,
+      true,
+      collection.listExclusions,
+    );
+  });
 
   it.each([
     {

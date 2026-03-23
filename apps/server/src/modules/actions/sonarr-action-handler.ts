@@ -7,6 +7,10 @@ import { CollectionMedia } from '../collections/entities/collection_media.entiti
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
+import {
+  findServarrLookupMatch,
+  formatServarrLookupCandidates,
+} from '../metadata/servarr-lookup.util';
 
 @Injectable()
 export class SonarrActionHandler {
@@ -34,32 +38,40 @@ export class SonarrActionHandler {
       mediaData = await mediaServer.getMetadata(media.mediaServerId);
     }
 
-    // resolveIds() handles the hierarchy walk (episode→season→show) internally
-    const ids = await this.metadataService.resolveIds(
-      media.mediaServerId,
-      'tvdb',
-    );
-    const tvdbId = (ids?.['tvdb'] as number | undefined) ?? media.tvdbId;
-    const tmdbId = (ids?.['tmdb'] as number | undefined) ?? media.tmdbId;
+    // resolveIds() handles the hierarchy walk (episode→season→show) internally.
+    // The caller then applies ordered Servarr fallback over the resolved IDs.
+    const ids = await this.metadataService.resolveIds(media.mediaServerId);
+    const resolvedIds = {
+      tmdb: (ids?.['tmdb'] as number | undefined) ?? media.tmdbId,
+      tvdb: (ids?.['tvdb'] as number | undefined) ?? media.tvdbId,
+    };
+    const lookupCandidates =
+      this.metadataService.buildServarrLookupCandidates(resolvedIds);
 
-    if (!tvdbId) {
+    if (lookupCandidates.length === 0) {
       this.logger.log(
-        `Couldn't find correct TVDB ID for media server item ${media.mediaServerId}${tmdbId ? ` (TMDB: ${tmdbId})` : ''}. No action was taken. Please check this show manually`,
+        `Couldn't resolve any supported external IDs for media server item ${media.mediaServerId}. No action was taken. Please check this show manually.`,
       );
       return;
     }
 
-    let sonarrMedia = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+    const matchedResult = await findServarrLookupMatch(lookupCandidates, {
+      tmdb: (id) => sonarrApiClient.getSeriesByTmdbId(id),
+      tvdb: (id) => sonarrApiClient.getSeriesByTvdbId(id),
+    });
+    let sonarrMedia = matchedResult?.result;
 
     if (!sonarrMedia?.id) {
+      const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+
       if (collection.arrAction !== ServarrAction.UNMONITOR) {
         this.logger.log(
-          `Couldn't find show with TVDB ID ${tvdbId} in Sonarr for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
+          `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
       } else {
         this.logger.log(
-          `Couldn't find show with TVDB ID ${tvdbId} in Sonarr for media server item ${media.mediaServerId}. No unmonitor action was taken.`,
+          `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. No unmonitor action was taken.`,
         );
       }
       return;

@@ -4,6 +4,11 @@ import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MetadataService } from '../../metadata/metadata.service';
 import {
+  findServarrLookupMatch,
+  formatServarrLookupCandidates,
+  ServarrLookupCandidate,
+} from '../../metadata/servarr-lookup.util';
+import {
   Application,
   Property,
   RuleConstants,
@@ -60,11 +65,12 @@ export class RadarrGetterService {
           : parseFloat((totalSpace / 1073741824).toFixed(1));
       }
 
-      const tmdbIds = await this.findAllTmdbIdsFromMediaItem(libItem);
+      const lookupCandidates =
+        await this.findLookupCandidatesFromMediaItem(libItem);
 
-      if (!tmdbIds || tmdbIds.length === 0) {
+      if (lookupCandidates.length === 0) {
         this.logger.warn(
-          `Failed to resolve movie ID for '${libItem.title}' with id '${libItem.id}'. As a result, no Radarr query could be made.`,
+          `Failed to resolve external IDs for '${libItem.title}' with id '${libItem.id}'. As a result, no Radarr query could be made.`,
         );
         return null;
       }
@@ -73,24 +79,17 @@ export class RadarrGetterService {
         ruleGroup.collection.radarrSettingsId,
       );
 
-      let movieResponse;
-      let attemptCount = 0;
-      for (const tmdbId of tmdbIds) {
-        attemptCount++;
-        movieResponse = await radarrApiClient.getMovieByTmdbId(tmdbId);
-        if (movieResponse) {
-          if (attemptCount > 1) {
-            this.logger.debug(
-              `Found '${libItem.title}' in Radarr using TMDB ID ${tmdbId} (attempt ${attemptCount}/${tmdbIds.length}). Consider checking upstream provider data quality.`,
-            );
-          }
-          break;
-        }
-      }
+      const matchedResult = await findServarrLookupMatch(lookupCandidates, {
+        tmdb: (lookupId) => radarrApiClient.getMovieByTmdbId(lookupId),
+        tvdb: (lookupId) => radarrApiClient.getMovieByTvdbId(lookupId),
+      });
+      const movieResponse = matchedResult?.result;
 
       if (!movieResponse) {
+        const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+
         this.logger.warn(
-          `None of the resolved TMDB IDs [${tmdbIds.join(', ')}] for '${libItem.title}' matched a movie in Radarr.`,
+          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a movie in Radarr.`,
         );
         return null;
       }
@@ -211,9 +210,14 @@ export class RadarrGetterService {
     }
   }
 
-  public async findAllTmdbIdsFromMediaItem(
+  public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
-  ): Promise<number[]> {
-    return this.metadataService.resolveAllMovieIds(libItem);
+  ): Promise<ServarrLookupCandidate[]> {
+    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
+
+    return this.metadataService.buildServarrLookupCandidates({
+      tmdb: typeof ids?.tmdb === 'number' ? ids.tmdb : undefined,
+      tvdb: typeof ids?.tvdb === 'number' ? ids.tvdb : undefined,
+    });
   }
 }

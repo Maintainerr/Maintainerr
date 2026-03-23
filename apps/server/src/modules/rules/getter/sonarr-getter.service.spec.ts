@@ -8,6 +8,7 @@ import {
   createSonarrEpisodeFile,
   createSonarrSeries,
 } from '../../../../test/utils/data';
+import { mockBuildServarrLookupCandidates } from '../../../../test/utils/metadata-mock';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
@@ -38,6 +39,7 @@ describe('SonarrGetterService', () => {
     mediaServerFactory = unitRef.get(MediaServerFactory);
     metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+    mockBuildServarrLookupCandidates(metadataService);
 
     // Create mock media server
     mockMediaServer = {
@@ -498,6 +500,51 @@ describe('SonarrGetterService', () => {
         expect(response).toBe('WEBDL-720p');
       },
     );
+
+    it('does not query the fallback provider when the preferred lookup matches', async () => {
+      const collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+      const mediaItem = createMediaItem({ type: 'show' });
+      const series = createSonarrSeries({
+        qualityProfileId: 2,
+      });
+      const mockedSonarrApi = mockSonarrApi();
+
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        tmdb: 1,
+        tvdb: 2,
+        type: 'tv',
+      });
+
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTmdbId')
+        .mockResolvedValue(series);
+      jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId');
+      jest.spyOn(mockedSonarrApi, 'getProfiles').mockResolvedValue([
+        {
+          id: 1,
+          name: 'WEBDL-1080p',
+        },
+        {
+          id: 2,
+          name: 'WEBDL-720p',
+        },
+      ]);
+
+      const response = await sonarrGetterService.get(
+        25,
+        mediaItem,
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+      expect(response).toBe('WEBDL-720p');
+      expect(mockedSonarrApi.getSeriesByTmdbId).toHaveBeenCalledWith(1);
+      expect(mockedSonarrApi.getSeriesByTvdbId).not.toHaveBeenCalled();
+    });
   });
 
   const mockSonarrApi = (series?: SonarrSeries) => {
@@ -514,12 +561,15 @@ describe('SonarrGetterService', () => {
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockResolvedValue(series);
-      metadataService.resolveAllSeriesIds.mockResolvedValue([series.tvdbId]);
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        tvdb: series.tvdbId,
+        type: 'tv',
+      });
     } else {
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockImplementation(jest.fn());
-      metadataService.resolveAllSeriesIds.mockResolvedValue([]);
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue(undefined);
     }
 
     servarrService.getSonarrApiClient.mockResolvedValue(mockedSonarrApi);

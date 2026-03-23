@@ -127,6 +127,7 @@ describe('MetadataService', () => {
   it('resolves cross-provider IDs via details lookup', async () => {
     const item = createMediaItem({
       type: 'movie',
+      title: 'Test Movie',
       providerIds: { tmdb: ['10'] },
     });
     const { service, tmdb } = createService();
@@ -257,33 +258,6 @@ describe('MetadataService', () => {
     expect(result).toEqual(expect.objectContaining({ name: 'Actor' }));
   });
 
-  it('resolveAllMovieIds falls back to full resolution when no direct IDs', async () => {
-    const item = createMediaItem({
-      type: 'movie',
-      providerIds: { imdb: ['tt0000099'] },
-    });
-    const { service, mediaServerService, tmdb, tvdb } = createService();
-    mediaServerService.getMetadata.mockResolvedValue(
-      createMediaItem({ providerIds: { imdb: ['tt0000099'] } }),
-    );
-    tmdb.findByExternalId.mockResolvedValue([{ movieId: 10 }]);
-    tvdb.findByExternalId.mockResolvedValue([{ movieId: 20 }]);
-
-    const ids = await service.resolveAllMovieIds(item);
-
-    expect(ids).toContain(10);
-  });
-
-  it('resolveAllSeriesIds returns tvdb IDs directly', async () => {
-    const item = createMediaItem({
-      type: 'show',
-      providerIds: { tvdb: ['300'] },
-    });
-    const { service } = createService();
-
-    expect(await service.resolveAllSeriesIds(item)).toEqual([300]);
-  });
-
   it('fillIdsFromExternalSearch assigns IDs from IMDB search', async () => {
     const item = createMediaItem({
       type: 'movie',
@@ -301,7 +275,7 @@ describe('MetadataService', () => {
     expect(result?.['tvdb']).toBe(60);
   });
 
-  it('skips external search for providers that already have an ID', async () => {
+  it('skips external search when a usable ID is already present and no explicit keys are required', async () => {
     const item = createMediaItem({
       type: 'movie',
       providerIds: { imdb: ['tt0000099'], tmdb: ['50'] },
@@ -314,21 +288,145 @@ describe('MetadataService', () => {
     const result = await service.resolveIdsFromMediaItem(item);
 
     expect(result?.['tmdb']).toBe(50);
+    expect(result?.['tvdb']).toBeUndefined();
+    expect(tmdb.findByExternalId).not.toHaveBeenCalled();
+    expect(tvdb.findByExternalId).not.toHaveBeenCalled();
+  });
+
+  it('resolves missing explicit provider keys even when another usable ID already exists', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      providerIds: { imdb: ['tt0000099'], tmdb: ['50'] },
+    });
+    const { service, tmdb, tvdb } = createService();
+    tvdb.findByExternalId.mockResolvedValue([{ movieId: 60 }]);
+
+    const result = await service.resolveIdsFromMediaItem(item, 'tvdb');
+
+    expect(result?.['tmdb']).toBe(50);
     expect(result?.['tvdb']).toBe(60);
     expect(tmdb.findByExternalId).not.toHaveBeenCalled();
     expect(tvdb.findByExternalId).toHaveBeenCalled();
   });
 
-  it('skips resolveAllIds when both IDs already present', async () => {
+  it('validates direct IDs when both IDs are already present', async () => {
     const item = createMediaItem({
       type: 'movie',
       providerIds: { tmdb: ['1'], tvdb: ['2'] },
     });
     const { service, tmdb } = createService();
+    tmdb.getDetails.mockResolvedValue({
+      id: 1,
+      title: item.title,
+      type: 'movie',
+      externalIds: { tmdb: 1, tvdb: 2, type: 'movie' },
+    });
 
     await service.resolveIdsFromMediaItem(item);
 
-    expect(tmdb.getDetails).not.toHaveBeenCalled();
+    expect(tmdb.getDetails).toHaveBeenCalledWith(1, 'movie');
+  });
+
+  it('does not treat IDs from unavailable providers as resolved by default', async () => {
+    const item = createMediaItem({
+      type: 'show',
+      providerIds: { tvdb: ['2'] },
+    });
+    const tmdb = createMockProvider('TMDB', true);
+    const tvdb = createMockProvider('TVDB', false);
+    const { service } = createService(MetadataProviderPreference.TVDB_PRIMARY, [
+      tmdb,
+      tvdb,
+    ]);
+
+    await expect(
+      service.resolveIdsFromMediaItem(item),
+    ).resolves.toBeUndefined();
+  });
+
+  it('returns partial IDs when no explicit provider keys are required', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      providerIds: { imdb: ['tt0000099'] },
+    });
+    const { service, tmdb, tvdb } = createService();
+    tmdb.findByExternalId.mockResolvedValue([{ movieId: 50 }]);
+    tvdb.findByExternalId.mockResolvedValue([]);
+
+    const result = await service.resolveIdsFromMediaItem(item);
+
+    expect(result).toEqual(expect.objectContaining({ tmdb: 50 }));
+  });
+
+  it('returns undefined when explicit provider keys cannot be satisfied', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      providerIds: { imdb: ['tt0000099'] },
+    });
+    const { service, tmdb, tvdb } = createService();
+    tmdb.findByExternalId.mockResolvedValue([{ movieId: 50 }]);
+    tvdb.findByExternalId.mockResolvedValue([]);
+
+    await expect(
+      service.resolveIdsFromMediaItem(item, 'tvdb'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('skips resolved IDs when provider title does not match media server title', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      title: 'Inception',
+      providerIds: { tmdb: ['99999'] },
+    });
+    const { service, tmdb } = createService();
+    tmdb.getDetails.mockResolvedValue({
+      id: 99999,
+      title: 'The Room',
+      type: 'movie',
+      externalIds: { tmdb: 99999, tvdb: 555, type: 'movie' },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(item);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('rejects mismatched direct provider IDs even when the required key is already present', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      title: 'Inception',
+      providerIds: { tmdb: ['99999'] },
+    });
+    const { service, tmdb } = createService();
+    tmdb.getDetails.mockResolvedValue({
+      id: 99999,
+      title: 'The Room',
+      type: 'movie',
+      externalIds: { tmdb: 99999, type: 'movie' },
+    });
+
+    await expect(
+      service.resolveIdsFromMediaItem(item, 'tmdb'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('proceeds normally when provider title matches media server title', async () => {
+    const item = createMediaItem({
+      type: 'movie',
+      title: 'Inception',
+      providerIds: { tmdb: ['27205'] },
+    });
+    const { service, tmdb } = createService();
+    tmdb.getDetails.mockResolvedValue({
+      id: 27205,
+      title: 'Inception',
+      type: 'movie',
+      externalIds: { tmdb: 27205, tvdb: 12345, type: 'movie' },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(item, 'tvdb');
+
+    expect(result?.['tvdb']).toBe(12345);
   });
 
   it('getDetails cross-fixes bad IDs when fallback succeeds', async () => {
@@ -411,21 +509,5 @@ describe('MetadataService', () => {
     await service.getPosterUrl(ids, 'movie');
 
     expect(ids['tvdb']).toBe(20);
-  });
-
-  it('resolveAllSeriesIds returns direct tvdb IDs without cross-resolving', async () => {
-    const item = createMediaItem({
-      type: 'show',
-      providerIds: { tvdb: ['500'], tmdb: ['10'] },
-    });
-    const { service, tvdb, tmdb } = createService(
-      MetadataProviderPreference.TVDB_PRIMARY,
-    );
-
-    const ids = await service.resolveAllSeriesIds(item);
-
-    expect(ids).toEqual([500]);
-    expect(tvdb.getDetails).not.toHaveBeenCalled();
-    expect(tmdb.getDetails).not.toHaveBeenCalled();
   });
 });

@@ -18,6 +18,11 @@ import {
   ProviderIds,
   ResolvedMediaIds,
 } from './interfaces/metadata.types';
+import {
+  isServarrLookupProviderKey,
+  ServarrLookupCandidate,
+  ServarrLookupProviderKey,
+} from './servarr-lookup.util';
 
 @Injectable()
 export class MetadataService {
@@ -59,6 +64,27 @@ export class MetadataService {
       ...(preferred ? [preferred] : []),
       ...this.providers.filter((p) => p !== preferred),
     ].filter((p) => p.isAvailable());
+  }
+
+  public getOrderedProviderKeys(): string[] {
+    return this.getOrderedProviders().map((provider) => provider.idKey);
+  }
+
+  public buildServarrLookupCandidates(
+    ids: Partial<Record<ServarrLookupProviderKey, number | undefined>>,
+  ): ServarrLookupCandidate[] {
+    return this.getOrderedProviderKeys()
+      .filter((providerKey): providerKey is ServarrLookupProviderKey =>
+        isServarrLookupProviderKey(providerKey),
+      )
+      .map((providerKey) => ({
+        providerKey,
+        id: ids[providerKey],
+      }))
+      .filter(
+        (candidate): candidate is ServarrLookupCandidate =>
+          candidate.id !== undefined,
+      );
   }
 
   private async withProviderFallback<T>(
@@ -127,8 +153,8 @@ export class MetadataService {
   /**
    * Resolve external IDs from a MediaItem.
    *
-   * @param targetProviderKey Skip resolution entirely when this provider's
-   *   ID is already present (e.g. 'tmdb' for Radarr, 'tvdb' for Sonarr).
+   * @param requiredProviderKeys Restrict resolution to one or more provider
+   *   keys that must be present in the returned ID bag.
    */
   async resolveIdsFromMediaItem(
     item: MediaItem,
@@ -138,14 +164,32 @@ export class MetadataService {
       const requiredKeys =
         this.normalizeRequiredProviderKeys(requiredProviderKeys);
       const ids = this.extractDirectIds(item);
-      const allAvailableProviderKeys = this.getOrderedProviders().map(
-        (provider) => provider.idKey,
+      const hasAvailableDirectIds = this.getOrderedProviders().some(
+        (provider) => provider.extractId(ids) !== undefined,
       );
+      let metadataDetails: MetadataDetails | undefined;
 
-      if (
-        requiredKeys.length === 0 &&
-        this.hasRequiredIds(ids, allAvailableProviderKeys)
-      ) {
+      if (hasAvailableDirectIds) {
+        metadataDetails = await this.getDetails(ids, ids.type);
+
+        if (
+          item.title &&
+          metadataDetails?.title &&
+          !this.titlesMatch(item.title, metadataDetails.title)
+        ) {
+          this.logger.warn(
+            `Rejected direct provider IDs for media server item "${item.title}" because they resolved to "${metadataDetails.title}" instead. ` +
+              `The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
+          );
+          return undefined;
+        }
+
+        if (metadataDetails?.externalIds) {
+          this.fillMissingIds(ids, metadataDetails.externalIds);
+        }
+      }
+
+      if (requiredKeys.length === 0 && hasAvailableDirectIds) {
         return ids;
       }
 
@@ -153,7 +197,7 @@ export class MetadataService {
         return ids;
       }
 
-      await this.resolveAllIds(ids, requiredKeys);
+      await this.resolveAllIds(ids, requiredKeys, metadataDetails);
 
       return this.hasRequiredIds(ids, requiredKeys) ? ids : undefined;
     } catch (e) {
@@ -161,31 +205,6 @@ export class MetadataService {
       this.logger.debug(e);
       return undefined;
     }
-  }
-
-  async resolveAllIdsForProvider(
-    item: MediaItem,
-    providerKey: string,
-  ): Promise<number[]> {
-    const ids = await this.collectDirectIds(item, providerKey);
-    if (ids.length > 0) return ids;
-
-    const resolved = await this.resolveIdsFromMediaItem(item, providerKey);
-    const provider = this.providers.find((p) => p.idKey === providerKey);
-    if (!resolved || !provider) return ids;
-
-    const resolvedId = provider.extractId(resolved);
-    if (resolvedId !== undefined) ids.push(resolvedId);
-
-    return ids;
-  }
-
-  async resolveAllSeriesIds(item: MediaItem): Promise<number[]> {
-    return this.resolveAllIdsForProvider(item, 'tvdb');
-  }
-
-  async resolveAllMovieIds(item: MediaItem): Promise<number[]> {
-    return this.resolveAllIdsForProvider(item, 'tmdb');
   }
 
   // ───── Media Details ─────
@@ -268,7 +287,7 @@ export class MetadataService {
       });
     }
 
-    return this.providers.some(
+    return this.getOrderedProviders().some(
       (provider) => provider.extractId(ids) !== undefined,
     );
   }
@@ -331,32 +350,6 @@ export class MetadataService {
     return ids;
   }
 
-  private async collectDirectIds(
-    item: MediaItem,
-    providerKey: string,
-  ): Promise<number[]> {
-    const ids: number[] = [];
-
-    const pushUniqueIds = (rawIds: string[]) => {
-      for (const rawId of rawIds) {
-        const numId = Number(rawId);
-        if (numId && !ids.includes(numId)) ids.push(numId);
-      }
-    };
-
-    const directIds = item.providerIds?.[providerKey];
-    if (directIds) pushUniqueIds(directIds);
-
-    if (ids.length > 0) return ids;
-
-    const mediaServer = await this.mediaServerFactory.getService();
-    const metadata = await mediaServer.getMetadata(item.id);
-    const freshIds = metadata?.providerIds?.[providerKey];
-    if (freshIds) pushUniqueIds(freshIds);
-
-    return ids;
-  }
-
   // ───── Single resolution engine ─────
 
   /**
@@ -364,17 +357,24 @@ export class MetadataService {
    * 1. getDetails — cross-fixes wrong IDs + provides externalIds
    * 2. External ID search — e.g. IMDB → TVDB for movies
    */
+  private titlesMatch(a: string, b: string): boolean {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return normalize(a) === normalize(b);
+  }
+
   private async resolveAllIds(
     ids: ResolvedMediaIds,
     requiredProviderKeys: string[] = [],
+    metadataDetails?: MetadataDetails,
   ): Promise<void> {
     if (this.providers.some((p) => p.extractId(ids) !== undefined)) {
-      const details = await this.getDetails(ids, ids.type);
-      if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
-      if (
-        requiredProviderKeys.length > 0 &&
-        this.hasRequiredIds(ids, requiredProviderKeys)
-      ) {
+      const resolvedDetails =
+        metadataDetails ?? (await this.getDetails(ids, ids.type));
+
+      if (resolvedDetails?.externalIds) {
+        this.fillMissingIds(ids, resolvedDetails.externalIds);
+      }
+      if (this.hasRequiredIds(ids, requiredProviderKeys)) {
         return;
       }
     }
@@ -394,10 +394,7 @@ export class MetadataService {
           if (id !== undefined) provider.assignId(ids, id);
         }
       }
-      if (
-        requiredProviderKeys.length > 0 &&
-        this.hasRequiredIds(ids, requiredProviderKeys)
-      ) {
+      if (this.hasRequiredIds(ids, requiredProviderKeys)) {
         return;
       }
     }

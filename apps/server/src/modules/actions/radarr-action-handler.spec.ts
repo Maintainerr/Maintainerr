@@ -5,6 +5,7 @@ import {
   createCollectionMedia,
   createRadarrMovie,
 } from '../../../test/utils/data';
+import { mockBuildServarrLookupCandidates } from '../../../test/utils/metadata-mock';
 import {
   mockRadarrApi,
   validateNoRadarrActionsTaken,
@@ -33,6 +34,7 @@ describe('RadarrActionHandler', () => {
     servarrService = unitRef.get(ServarrService);
     metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+    mockBuildServarrLookupCandidates(metadataService);
 
     // Setup mock for MediaServerFactory
     mediaServer = {
@@ -59,8 +61,38 @@ describe('RadarrActionHandler', () => {
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(metadataService.resolveIds).toHaveBeenCalled();
+    expect(metadataService.resolveIds).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+    );
     validateNoRadarrActionsTaken(mockedRadarrApi);
+  });
+
+  it('uses tvdb lookup when tmdb is unavailable but tvdb exists', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: undefined,
+      tvdbId: 2,
+    });
+
+    metadataService.resolveIds.mockResolvedValue(undefined);
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTvdbId')
+      .mockResolvedValue(createRadarrMovie({ id: 5 }));
+
+    await radarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedRadarrApi.getMovieByTvdbId).toHaveBeenCalledWith(2);
+    expect(mockedRadarrApi.deleteMovie).toHaveBeenCalledWith(
+      5,
+      true,
+      collection.listExclusions,
+    );
   });
 
   it('should do nothing when movie cannot be found and action is UNMONITOR', async () => {
