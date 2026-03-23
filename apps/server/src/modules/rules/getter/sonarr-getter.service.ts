@@ -120,7 +120,7 @@ export class SonarrGetterService {
         tmdb: (lookupId) => sonarrApiClient.getSeriesByTmdbId(lookupId),
         tvdb: (lookupId) => sonarrApiClient.getSeriesByTvdbId(lookupId),
       });
-      let showResponse: SonarrSeries | undefined = matchedResult?.result;
+      const showResponse: SonarrSeries | undefined = matchedResult?.result;
 
       if (!showResponse?.id) {
         const attemptedIds = formatServarrLookupCandidates(lookupCandidates);

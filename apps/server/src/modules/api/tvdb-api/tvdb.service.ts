@@ -110,7 +110,7 @@ export class TvdbApiService extends ExternalApiService {
   }
 
   private async refreshAuthentication(): Promise<boolean> {
-    if (this.refreshPromise) {
+    if (this.refreshPromise !== undefined) {
       return this.refreshPromise;
     }
 
