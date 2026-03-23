@@ -1,3 +1,4 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
   createCollection,
@@ -7,12 +8,11 @@ import {
 } from '../../../test/utils/data';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
-import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { MediaItem } from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
-import { SettingsService } from '../settings/settings.service';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { SettingsService } from '../settings/settings.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { ServarrAction } from './interfaces/collection.interface';
@@ -264,6 +264,7 @@ describe('CollectionHandler', () => {
 
     expect(metadataService.resolveIds).toHaveBeenCalledWith(
       collectionMedia.mediaServerId,
+      'tmdb',
     );
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(9876, 'movie');
   });

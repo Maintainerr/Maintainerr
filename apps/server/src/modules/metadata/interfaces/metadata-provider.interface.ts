@@ -13,7 +13,7 @@ export const MetadataProviders = Symbol('MetadataProviders');
  * Implemented by each concrete provider (TMDB, TVDB, etc.).
  * MetadataService iterates providers in preference order with automatic fallback.
  *
- * Adding a new provider (zero changes to MetadataService):
+ * Adding a new provider without provider-specific branching in MetadataService:
  * 1. Create the API service in modules/api/xxx-api/
  * 2. Create a provider class implementing IMetadataProvider
  *    (copy an existing provider as a template, e.g. tmdb-metadata.provider.ts)

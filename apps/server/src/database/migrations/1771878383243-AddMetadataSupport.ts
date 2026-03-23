@@ -137,6 +137,8 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // This rollback restores the pre-metadata schema, which necessarily drops
+    // metadata-specific settings columns and collection_media.tvdbId data.
     await queryRunner.query(`
             ALTER TABLE "settings"
                 RENAME TO "temporary_settings"

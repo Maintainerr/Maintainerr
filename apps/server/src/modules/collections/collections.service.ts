@@ -1074,7 +1074,10 @@ export class CollectionsService {
       const mediaServer = await this.getMediaServer();
       this.infoLogger(`Adding media with id ${childId} to collection..`);
 
-      const ids = await this.metadataService.resolveIds(childId);
+      const ids = await this.metadataService.resolveIds(childId, [
+        'tmdb',
+        'tvdb',
+      ]);
       const details = ids
         ? await this.metadataService.getDetails(ids, ids.type)
         : undefined;

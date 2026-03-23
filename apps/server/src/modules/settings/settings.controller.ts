@@ -46,12 +46,14 @@ import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsService } from './settings.service';
 
 @Controller('/api/settings')
 export class SettingsController {
   constructor(
     private readonly settingsService: SettingsService,
+    private readonly metadataSettingsService: MetadataSettingsService,
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly databaseDownloadService: DatabaseDownloadService,
   ) {}
@@ -214,12 +216,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(tmdbSettingSchema))
     payload: TmdbSetting,
   ) {
-    return await this.settingsService.updateTmdbSetting(payload);
+    return await this.metadataSettingsService.updateTmdbSetting(payload);
   }
 
   @Delete('/tmdb')
   async removeTmdbSetting() {
-    return await this.settingsService.removeTmdbSetting();
+    return await this.metadataSettingsService.removeTmdbSetting();
   }
 
   @Post('/test/tmdb')
@@ -227,7 +229,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(tmdbSettingSchema))
     payload: TmdbSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testTmdb(payload);
+    return this.metadataSettingsService.testTmdb(payload);
   }
 
   @Get('/tvdb')
@@ -248,12 +250,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(tvdbSettingSchema))
     payload: TvdbSetting,
   ) {
-    return await this.settingsService.updateTvdbSetting(payload);
+    return await this.metadataSettingsService.updateTvdbSetting(payload);
   }
 
   @Delete('/tvdb')
   async removeTvdbSetting() {
-    return await this.settingsService.removeTvdbSetting();
+    return await this.metadataSettingsService.removeTvdbSetting();
   }
 
   @Post('/test/tvdb')
@@ -261,7 +263,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(tvdbSettingSchema))
     payload: TvdbSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testTvdb(payload);
+    return this.metadataSettingsService.testTvdb(payload);
   }
 
   @Get('/metadata-provider')
@@ -286,7 +288,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(metadataProviderSettingSchema))
     payload: MetadataProviderSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.updateMetadataProviderPreference(
+    return this.metadataSettingsService.updateMetadataProviderPreference(
       payload.preference,
     );
   }

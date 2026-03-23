@@ -1,14 +1,15 @@
-import { StreamableFile } from '@nestjs/common';
 import {
   MetadataProviderPreference,
   type TmdbSetting,
   type TvdbSetting,
 } from '@maintainerr/contracts';
+import { StreamableFile } from '@nestjs/common';
 import { Response } from 'express';
 import { createReadStream } from 'fs';
 import { DatabaseDownloadService } from './database-download.service';
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 
@@ -21,6 +22,12 @@ describe('SettingsController', () => {
     cronIsValid: jest.fn(),
     updateRadarrSetting: jest.fn(),
     updateSonarrSetting: jest.fn(),
+    saveJellyfinSettings: jest.fn(),
+    testJellyfin: jest.fn(),
+    removeJellyfinSettings: jest.fn(),
+  } as unknown as jest.Mocked<SettingsService>;
+
+  const metadataSettingsService = {
     updateTmdbSetting: jest.fn(),
     removeTmdbSetting: jest.fn(),
     testTmdb: jest.fn(),
@@ -28,10 +35,7 @@ describe('SettingsController', () => {
     removeTvdbSetting: jest.fn(),
     testTvdb: jest.fn(),
     updateMetadataProviderPreference: jest.fn(),
-    saveJellyfinSettings: jest.fn(),
-    testJellyfin: jest.fn(),
-    removeJellyfinSettings: jest.fn(),
-  } as unknown as jest.Mocked<SettingsService>;
+  } as unknown as jest.Mocked<MetadataSettingsService>;
 
   const mediaServerSwitchService = {
     previewSwitch: jest.fn(),
@@ -58,6 +62,7 @@ describe('SettingsController', () => {
     jest.clearAllMocks();
     controller = new SettingsController(
       settingsService,
+      metadataSettingsService,
       mediaServerSwitchService,
       databaseDownloadService,
     );
@@ -261,7 +266,9 @@ describe('SettingsController', () => {
     async ({ method, serviceMethod, payload }) => {
       await controller[method](payload);
 
-      expect(settingsService[serviceMethod]).toHaveBeenCalledWith(payload);
+      expect(metadataSettingsService[serviceMethod]).toHaveBeenCalledWith(
+        payload,
+      );
     },
   );
 
@@ -283,7 +290,9 @@ describe('SettingsController', () => {
     async ({ method, serviceMethod, payload }) => {
       await controller[method](payload);
 
-      expect(settingsService[serviceMethod]).toHaveBeenCalledWith(payload);
+      expect(metadataSettingsService[serviceMethod]).toHaveBeenCalledWith(
+        payload,
+      );
     },
   );
 
@@ -295,7 +304,7 @@ describe('SettingsController', () => {
     await controller.updateMetadataProviderPreference(payload);
 
     expect(
-      settingsService.updateMetadataProviderPreference,
+      metadataSettingsService.updateMetadataProviderPreference,
     ).toHaveBeenCalledWith(MetadataProviderPreference.TVDB_PRIMARY);
   });
 });

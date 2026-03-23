@@ -87,6 +87,7 @@ function useProviderForm(config: ProviderConfig) {
     { api_key: string } | undefined
   >()
   const [testing, setTesting] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
   const [submitError, setSubmitError] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
@@ -100,10 +101,16 @@ function useProviderForm(config: ProviderConfig) {
   } = useForm<ApiKeyFormResult, any, ApiKeyFormResult>({
     resolver: zodResolver(apiKeyFormSchema),
     defaultValues: async () => {
-      const resp = await GetApiHandler<{ api_key: string }>(
-        `/settings/${config.key}`,
-      )
-      return { api_key: resp.api_key ?? '' }
+      try {
+        setLoadError(false)
+        const resp = await GetApiHandler<{ api_key: string }>(
+          `/settings/${config.key}`,
+        )
+        return { api_key: resp.api_key ?? '' }
+      } catch {
+        setLoadError(true)
+        return { api_key: '' }
+      }
     },
   })
 
@@ -115,7 +122,8 @@ function useProviderForm(config: ProviderConfig) {
   const canSave =
     (sameAsSaved || hasBeenTested || isGoingToRemove) &&
     !isSubmitting &&
-    !isLoading
+    !isLoading &&
+    !loadError
 
   const onSubmit = async (data: ApiKeyFormResult) => {
     setSubmitError(false)
@@ -170,6 +178,7 @@ function useProviderForm(config: ProviderConfig) {
     testResult,
     submitError,
     submitSuccess,
+    loadError,
     isGoingToRemove,
     canSave,
     onSubmit,
@@ -188,6 +197,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
     testResult,
     submitError,
     submitSuccess,
+    loadError,
     isGoingToRemove,
     canSave,
     onSubmit,
@@ -202,6 +212,13 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
         <Alert
           type="info"
           title={`${config.title} settings successfully updated`}
+        />
+      ) : undefined}
+
+      {loadError ? (
+        <Alert
+          type="warning"
+          title={`Failed to load ${config.title} settings`}
         />
       ) : undefined}
 
@@ -236,7 +253,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
                   type="button"
                   onClick={performTest}
                   className="ml-3"
-                  disabled={testing || isGoingToRemove}
+                  disabled={testing || isGoingToRemove || loadError}
                 >
                   {testing ? 'Testing...' : 'Test'}
                 </Button>

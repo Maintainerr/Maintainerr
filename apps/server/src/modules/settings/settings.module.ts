@@ -19,6 +19,7 @@ import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
@@ -48,11 +49,17 @@ import { SettingsService } from './settings.service';
   ],
   providers: [
     SettingsService,
+    MetadataSettingsService,
     RuleMigrationService,
     MediaServerSwitchService,
     DatabaseDownloadService,
   ],
-  exports: [SettingsService, RuleMigrationService, MediaServerSwitchService],
+  exports: [
+    SettingsService,
+    MetadataSettingsService,
+    RuleMigrationService,
+    MediaServerSwitchService,
+  ],
   controllers: [SettingsController],
 })
 export class SettingsModule {}

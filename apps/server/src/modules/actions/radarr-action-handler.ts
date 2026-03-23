@@ -27,7 +27,10 @@ export class RadarrActionHandler {
     );
 
     // Always resolve IDs through the metadata layer
-    const ids = await this.metadataService.resolveIds(media.mediaServerId);
+    const ids = await this.metadataService.resolveIds(
+      media.mediaServerId,
+      'tmdb',
+    );
     const tmdbId = (ids?.['tmdb'] as number | undefined) ?? media.tmdbId;
 
     if (tmdbId) {

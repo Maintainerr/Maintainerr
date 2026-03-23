@@ -82,10 +82,20 @@ export class MetadataService {
     return undefined;
   }
 
+  private normalizeRequiredProviderKeys(
+    requiredProviderKeys?: string | string[],
+  ): string[] {
+    if (!requiredProviderKeys) return [];
+    return Array.isArray(requiredProviderKeys)
+      ? requiredProviderKeys
+      : [requiredProviderKeys];
+  }
+
   // ───── ID Resolution ─────
 
   async resolveIds(
     mediaServerId: string,
+    requiredProviderKeys?: string | string[],
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const mediaServer = await this.mediaServerFactory.getService();
@@ -104,7 +114,7 @@ export class MetadataService {
           ? await mediaServer.getMetadata(mediaItem.parentId)
           : mediaItem;
 
-      return this.resolveIdsFromMediaItem(mediaItem);
+      return this.resolveIdsFromMediaItem(mediaItem, requiredProviderKeys);
     } catch (e) {
       this.logger.warn(
         `Failed to resolve IDs for ${mediaServerId}: ${e.message}`,
@@ -122,13 +132,30 @@ export class MetadataService {
    */
   async resolveIdsFromMediaItem(
     item: MediaItem,
-    targetProviderKey?: string,
+    requiredProviderKeys?: string | string[],
   ): Promise<ResolvedMediaIds | undefined> {
     try {
+      const requiredKeys =
+        this.normalizeRequiredProviderKeys(requiredProviderKeys);
       const ids = this.extractDirectIds(item);
-      if (this.hasRequiredIds(ids, targetProviderKey)) return ids;
-      await this.resolveAllIds(ids);
-      return ids;
+      const allAvailableProviderKeys = this.getOrderedProviders().map(
+        (provider) => provider.idKey,
+      );
+
+      if (
+        requiredKeys.length === 0 &&
+        this.hasRequiredIds(ids, allAvailableProviderKeys)
+      ) {
+        return ids;
+      }
+
+      if (requiredKeys.length > 0 && this.hasRequiredIds(ids, requiredKeys)) {
+        return ids;
+      }
+
+      await this.resolveAllIds(ids, requiredKeys);
+
+      return this.hasRequiredIds(ids, requiredKeys) ? ids : undefined;
     } catch (e) {
       this.logger.warn(`Failed to resolve IDs from media item: ${e.message}`);
       this.logger.debug(e);
@@ -232,15 +259,16 @@ export class MetadataService {
   /** Check if the required ID(s) are present. */
   private hasRequiredIds(
     ids: ProviderIds,
-    targetProviderKey?: string,
+    requiredProviderKeys: string[] = [],
   ): boolean {
-    if (targetProviderKey) {
-      const provider = this.providers.find(
-        (p) => p.idKey === targetProviderKey,
-      );
-      return provider ? provider.extractId(ids) !== undefined : true;
+    if (requiredProviderKeys.length > 0) {
+      return requiredProviderKeys.every((providerKey) => {
+        const provider = this.providers.find((p) => p.idKey === providerKey);
+        return provider ? provider.extractId(ids) !== undefined : true;
+      });
     }
-    return this.getOrderedProviders().every(
+
+    return this.providers.some(
       (provider) => provider.extractId(ids) !== undefined,
     );
   }
@@ -336,11 +364,17 @@ export class MetadataService {
    * 1. getDetails — cross-fixes wrong IDs + provides externalIds
    * 2. External ID search — e.g. IMDB → TVDB for movies
    */
-  private async resolveAllIds(ids: ResolvedMediaIds): Promise<void> {
+  private async resolveAllIds(
+    ids: ResolvedMediaIds,
+    requiredProviderKeys: string[] = [],
+  ): Promise<void> {
     if (this.providers.some((p) => p.extractId(ids) !== undefined)) {
       const details = await this.getDetails(ids, ids.type);
       if (details?.externalIds) this.fillMissingIds(ids, details.externalIds);
-      if (this.hasRequiredIds(ids)) {
+      if (
+        requiredProviderKeys.length > 0 &&
+        this.hasRequiredIds(ids, requiredProviderKeys)
+      ) {
         return;
       }
     }
@@ -360,7 +394,10 @@ export class MetadataService {
           if (id !== undefined) provider.assignId(ids, id);
         }
       }
-      if (this.hasRequiredIds(ids)) {
+      if (
+        requiredProviderKeys.length > 0 &&
+        this.hasRequiredIds(ids, requiredProviderKeys)
+      ) {
         return;
       }
     }

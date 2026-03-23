@@ -6,11 +6,9 @@ import {
   MetadataProviderPreference,
   SeerrSetting,
   TautulliSetting,
-  TmdbSetting,
-  TvdbSetting,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
 import { randomUUID } from 'crypto';
@@ -25,8 +23,6 @@ import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
-import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
-import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
   DeleteRadarrSettingResponseDto,
@@ -107,10 +103,6 @@ export class SettingsService implements SettingDto {
     private readonly seerr: SeerrApiService,
     @Inject(forwardRef(() => TautulliApiService))
     private readonly tautulli: TautulliApiService,
-    @Inject(forwardRef(() => TmdbApiService))
-    private readonly tmdbApi: TmdbApiService,
-    @Inject(forwardRef(() => TvdbApiService))
-    private readonly tvdbApi: TvdbApiService,
     @Inject(forwardRef(() => InternalApiService))
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
@@ -190,6 +182,27 @@ export class SettingsService implements SettingDto {
         clientId: randomUUID(),
       });
       await this.init();
+    }
+  }
+
+  @OnEvent(MaintainerrEvent.Settings_Updated)
+  handleMetadataSettingsUpdate(payload: {
+    settings: {
+      tmdb_api_key?: string | null;
+      tvdb_api_key?: string | null;
+      metadata_provider_preference?: MetadataProviderPreference;
+    };
+  }) {
+    if ('tmdb_api_key' in payload.settings) {
+      this.tmdb_api_key = payload.settings.tmdb_api_key ?? undefined;
+    }
+    if ('tvdb_api_key' in payload.settings) {
+      this.tvdb_api_key = payload.settings.tvdb_api_key ?? undefined;
+    }
+    if ('metadata_provider_preference' in payload.settings) {
+      this.metadata_provider_preference =
+        payload.settings.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY;
     }
   }
 
@@ -402,106 +415,6 @@ export class SettingsService implements SettingDto {
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (e) {
       this.logger.error('Error while updating Tautulli settings: ', e);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
-  }
-
-  // ── Metadata provider API key helpers ──
-
-  private async updateMetadataApiKey(
-    provider: string,
-    apiKey: string,
-    validateApiKey: (apiKey: string) => Promise<BasicResponseDto>,
-  ): Promise<BasicResponseDto> {
-    const column = `${provider}_api_key`;
-    try {
-      const validation = await validateApiKey(apiKey);
-      if (validation.code !== 1) {
-        return validation;
-      }
-
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-      await this.saveSettings({ ...settingsDb, [column]: apiKey });
-      this[column] = apiKey;
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error(
-        `Error while updating ${provider.toUpperCase()} settings: `,
-        e,
-      );
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
-  }
-
-  private async removeMetadataApiKey(
-    provider: string,
-  ): Promise<BasicResponseDto> {
-    const column = `${provider}_api_key`;
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-      await this.saveSettings({ ...settingsDb, [column]: null });
-      this[column] = undefined;
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error(
-        `Error removing ${provider.toUpperCase()} settings: `,
-        e,
-      );
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
-  }
-
-  public async updateTmdbSetting(
-    settings: TmdbSetting,
-  ): Promise<BasicResponseDto> {
-    return this.updateMetadataApiKey('tmdb', settings.api_key, (apiKey) =>
-      this.tmdbApi.testConnection(apiKey),
-    );
-  }
-
-  public async removeTmdbSetting(): Promise<BasicResponseDto> {
-    return this.removeMetadataApiKey('tmdb');
-  }
-
-  public async testTmdb(setting?: TmdbSetting): Promise<BasicResponseDto> {
-    return this.tmdbApi.testConnection(setting?.api_key);
-  }
-
-  public async updateTvdbSetting(
-    settings: TvdbSetting,
-  ): Promise<BasicResponseDto> {
-    return this.updateMetadataApiKey('tvdb', settings.api_key, (apiKey) =>
-      this.tvdbApi.testConnection(apiKey),
-    );
-  }
-
-  public async removeTvdbSetting(): Promise<BasicResponseDto> {
-    return this.removeMetadataApiKey('tvdb');
-  }
-
-  public async testTvdb(setting?: TvdbSetting): Promise<BasicResponseDto> {
-    return this.tvdbApi.testConnection(setting?.api_key);
-  }
-
-  public async updateMetadataProviderPreference(
-    preference: MetadataProviderPreference,
-  ): Promise<BasicResponseDto> {
-    try {
-      const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-      await this.saveSettings({
-        ...settingsDb,
-        metadata_provider_preference: preference,
-      });
-
-      this.metadata_provider_preference = preference;
-
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error(
-        'Error while updating metadata provider preference: ',
-        e,
-      );
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }

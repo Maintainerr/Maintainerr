@@ -86,7 +86,10 @@ export class CollectionHandler {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
         // Resolve TMDB ID through metadata layer — fall back to cached value
-        const ids = await this.metadataService.resolveIds(media.mediaServerId);
+        const ids = await this.metadataService.resolveIds(
+          media.mediaServerId,
+          'tmdb',
+        );
         const tmdbId = (ids?.['tmdb'] as number | undefined) ?? media.tmdbId;
 
         if (!tmdbId) {
