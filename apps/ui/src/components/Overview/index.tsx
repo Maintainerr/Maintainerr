@@ -8,8 +8,9 @@ import OverviewContent from './Content'
 
 const Overview = () => {
   const loadingRef = useRef<boolean>(false)
-
-  const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
+  const loadingExtraRef = useRef<boolean>(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
 
   const [data, setData] = useState<MediaItem[]>([])
   const dataRef = useRef<MediaItem[]>([])
@@ -30,8 +31,14 @@ const Overview = () => {
 
   const fetchAmount = 30
 
-  const setIsLoading = (val: boolean) => {
+  const setLoading = (val: boolean) => {
     loadingRef.current = val
+    setIsLoading(val)
+  }
+
+  const setLoadingExtra = (val: boolean) => {
+    loadingExtraRef.current = val
+    setIsLoadingExtra(val)
   }
 
   const setFetching = (val: boolean) => {
@@ -74,7 +81,7 @@ const Overview = () => {
           setTotalSize(resp.length)
           pageData.current = resp.length * 50
           setData(resp ? resp : [])
-          setIsLoading(false)
+          setLoading(false)
         },
       )
       setSelectedLibrary(libraries[0]?.id)
@@ -83,7 +90,7 @@ const Overview = () => {
       setData([])
       setTotalSize(999)
       pageData.current = 0
-      setIsLoading(true)
+      setLoading(true)
       setLoadingExtra(false)
       fetchData()
     }
@@ -104,7 +111,7 @@ const Overview = () => {
 
   const switchLib = (libraryId: string) => {
     fetchGenerationRef.current = fetchGenerationRef.current + 1
-    setIsLoading(true)
+    setLoading(true)
     setLoadingExtra(false)
     setFetching(false)
     pageData.current = 0
@@ -146,7 +153,7 @@ const Overview = () => {
     } finally {
       if (fetchGeneration === fetchGenerationRef.current) {
         setLoadingExtra(false)
-        setIsLoading(false)
+        setLoading(false)
         setFetching(false)
       }
     }
@@ -168,10 +175,10 @@ const Overview = () => {
               !(totalSizeRef.current >= pageData.current * fetchAmount)
             }
             fetchData={() => fetchData()}
-            loading={loadingRef.current}
+            loading={isLoading}
             extrasLoading={
-              loadingExtra &&
-              !loadingRef.current &&
+              isLoadingExtra &&
+              !isLoading &&
               totalSizeRef.current >= pageData.current * fetchAmount
             }
             data={data}
