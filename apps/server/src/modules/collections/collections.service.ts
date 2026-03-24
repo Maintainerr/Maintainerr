@@ -459,6 +459,10 @@ export class CollectionsService {
         media,
       );
 
+      if (!createdCollection?.dbCollection) {
+        return undefined;
+      }
+
       if (media && media.length > 0) {
         await this.addChildrenToCollection(
           {
@@ -923,25 +927,21 @@ export class CollectionsService {
         },
       });
       if (collectionMedia.length > 0) {
-        const childrenMedia: AddRemoveCollectionMedia[] = [];
+        const childrenMedia = media.filter((mediaItem) =>
+          collectionMedia.some(
+            (el) => el.mediaServerId === mediaItem.mediaServerId,
+          ),
+        );
 
-        for (const mediaItem of media) {
-          if (
-            collectionMedia.some(
-              (el) => el.mediaServerId === mediaItem.mediaServerId,
-            )
-          ) {
-            childrenMedia.push(mediaItem);
+        const removedItemIds = new Set(
+          await this.removeChildrenFromCollection(
+            { mediaServerId: collection.mediaServerId, dbId: collection.id },
+            childrenMedia,
+          ),
+        );
 
-            collectionMedia = collectionMedia.filter(
-              (el) => el.mediaServerId !== mediaItem.mediaServerId,
-            );
-          }
-        }
-
-        await this.removeChildrenFromCollection(
-          { mediaServerId: collection.mediaServerId, dbId: collection.id },
-          childrenMedia,
+        collectionMedia = collectionMedia.filter(
+          (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
         );
 
         if (
@@ -963,7 +963,6 @@ export class CollectionsService {
         }
       }
 
-      // Update cached total size (non-blocking)
       this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
       return collection;
@@ -1118,6 +1117,8 @@ export class CollectionsService {
   ) {
     if (childrenMedia.length === 0) return;
 
+    const mediaServer = await this.getMediaServer();
+
     this.infoLogger(
       `Adding ${childrenMedia.length} media items to collection..`,
     );
@@ -1125,7 +1126,6 @@ export class CollectionsService {
     let failedItemIds = new Set<string>();
 
     if (!skipMediaServerAdd) {
-      const mediaServer = await this.getMediaServer();
       failedItemIds = new Set(
         await mediaServer.addBatchToCollection(
           collectionIds.mediaServerId,
@@ -1183,6 +1183,17 @@ export class CollectionsService {
         this.logger.warn(
           `Couldn't add media ${childMedia.mediaServerId} to collection: ${err.message}`,
         );
+
+        try {
+          await mediaServer.removeFromCollection(
+            collectionIds.mediaServerId,
+            childMedia.mediaServerId,
+          );
+        } catch (rollbackError) {
+          this.logger.warn(
+            `Failed to roll back media ${childMedia.mediaServerId} after local add failure: ${rollbackError.message}`,
+          );
+        }
       }
     }
   }
@@ -1214,8 +1225,8 @@ export class CollectionsService {
   private async removeChildrenFromCollection(
     collectionIds: { mediaServerId: string; dbId: number },
     childrenMedia: AddRemoveCollectionMedia[],
-  ) {
-    if (childrenMedia.length === 0) return;
+  ): Promise<string[]> {
+    if (childrenMedia.length === 0) return [];
 
     const mediaServer = await this.getMediaServer();
     this.infoLogger(
@@ -1228,6 +1239,7 @@ export class CollectionsService {
         childrenMedia.map((childMedia) => childMedia.mediaServerId),
       ),
     );
+    const removedItemIds: string[] = [];
 
     for (const childMedia of childrenMedia) {
       if (failedItemIds.has(childMedia.mediaServerId)) {
@@ -1256,12 +1268,15 @@ export class CollectionsService {
           'remove',
           childMedia.reason,
         );
+        removedItemIds.push(childMedia.mediaServerId);
       } catch (err) {
         this.logger.warn(
           `Couldn't remove media ${childMedia.mediaServerId} from collection: ${err.message}`,
         );
       }
     }
+
+    return removedItemIds;
   }
 
   private async addCollectionToDB(
