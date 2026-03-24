@@ -8,6 +8,10 @@ import {
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import {
+  getApiErrorMessage,
+  normalizeConnectionErrorMessage,
+} from '../../../utils/ApiError'
 import GetApiHandler, {
   DeleteApiHandler,
   PostApiHandler,
@@ -113,7 +117,10 @@ const TautulliSettings = () => {
       .then((resp) => {
         setTestResult({
           status: resp.code == 1 ? true : false,
-          message: resp.message ?? 'Unknown error',
+          message: normalizeConnectionErrorMessage(
+            resp.message,
+            'Failed to connect to Tautulli. Verify URL and API key.',
+          ),
         })
 
         if (resp.code == 1) {
@@ -123,10 +130,13 @@ const TautulliSettings = () => {
           })
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         setTestResult({
           status: false,
-          message: 'Unknown error',
+          message: getApiErrorMessage(
+            err,
+            'Failed to connect to Tautulli. Verify URL and API key.',
+          ),
         })
       })
       .finally(() => {
