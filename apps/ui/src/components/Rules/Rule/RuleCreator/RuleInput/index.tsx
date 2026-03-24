@@ -474,10 +474,10 @@ const RuleInput = (props: IRuleInput) => {
   }, [firstval])
 
   useEffect(() => {
-    if (!isSelectedArrDiskspaceRule && arrDiskPath) {
+    if (!isSelectedArrDiskspaceRule) {
       setArrDiskPath('')
     }
-  }, [isSelectedArrDiskspaceRule, arrDiskPath])
+  }, [isSelectedArrDiskspaceRule])
 
   useEffect(() => {
     if (secondVal) {
