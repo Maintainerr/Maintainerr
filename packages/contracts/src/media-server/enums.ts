@@ -45,6 +45,8 @@ export function isValidMediaItemType(type: string): type is MediaItemType {
 export enum MediaServerFeature {
   /** Ability to set collection visibility (home/recommended) */
   COLLECTION_VISIBILITY = 'collection_visibility',
+  /** Ability to create collections with initial items */
+  COLLECTION_CREATION_WITH_ITEMS = 'collection_creation_with_items',
   /** Watchlist functionality via external API (Plex.tv) */
   WATCHLIST = 'watchlist',
   /** Central watch history endpoint (vs per-user iteration) */
