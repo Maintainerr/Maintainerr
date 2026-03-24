@@ -18,6 +18,7 @@ export const MEDIA_SERVER_FEATURES: Record<
   [MediaServerType.JELLYFIN]: new Set([
     MediaServerFeature.LABELS, // Tags in Jellyfin
     MediaServerFeature.PLAYLISTS,
+    MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
     // Note: CENTRAL_WATCH_HISTORY not supported (requires user iteration)

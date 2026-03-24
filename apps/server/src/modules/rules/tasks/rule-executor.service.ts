@@ -172,13 +172,16 @@ export class RuleExecutorService {
             }
           }
 
+          abortSignal.throwIfAborted();
           touchedMediaServerIds = await this.handleCollection(
             await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+            abortSignal,
           );
 
           this.logger.log(`Execution of rules for '${ruleGroup.name}' done.`);
         }
 
+        abortSignal.throwIfAborted();
         await this.syncManualMediaServerToCollectionDB(
           await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
           touchedMediaServerIds,
@@ -342,13 +345,16 @@ export class RuleExecutorService {
     }
   }
 
-  private async handleCollection(rulegroup: RuleGroup): Promise<Set<string>> {
+  private async handleCollection(
+    rulegroup: RuleGroup,
+    abortSignal?: AbortSignal,
+  ): Promise<Set<string>> {
     try {
       let collection = await this.collectionService.getCollection(
         rulegroup?.collectionId,
       );
 
-      const exclusions = await this.rulesService.getExclusions(rulegroup.id);
+      const exclusions = await this.rulesService.getExclusions(rulegroup?.id);
 
       // Build sets of excluded IDs - both direct mediaServerId and parent IDs
       const excludedMediaServerIds = new Set<string>(
@@ -492,11 +498,13 @@ export class RuleExecutorService {
         collection =
           await this.collectionService.relinkManualCollection(collection);
 
+        abortSignal?.throwIfAborted();
         collection = await this.collectionService.addToCollection(
           collection.id,
           dataToAdd,
         );
 
+        abortSignal?.throwIfAborted();
         collection = await this.collectionService.removeFromCollection(
           collection.id,
           dataToRemove,
@@ -557,29 +565,36 @@ export class RuleExecutorService {
         ]);
       } else {
         this.logger.log(
-          `collection not found with id ${rulegroup.collectionId}`,
+          `collection not found with id ${rulegroup?.collectionId}`,
         );
 
         this.eventEmitter.emit(
           MaintainerrEvent.RuleHandler_Failed,
-          new RuleHandlerFailedDto(collection.title, {
-            type: 'rulegroup',
-            value: rulegroup.id,
-          }),
+          new RuleHandlerFailedDto(
+            `Unknown (collectionId: ${rulegroup?.collectionId})`,
+            {
+              type: 'rulegroup',
+              value: rulegroup?.id,
+            },
+          ),
         );
 
         return new Set<string>();
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw err;
+      }
+
       this.logger.warn(
         `Exception occurred while handling rule: ${err.message}`,
       );
 
       this.eventEmitter.emit(
         MaintainerrEvent.RuleHandler_Failed,
-        new RuleHandlerFailedDto(rulegroup.collection?.title, {
+        new RuleHandlerFailedDto(rulegroup?.collection?.title, {
           type: 'rulegroup',
-          value: rulegroup.id,
+          value: rulegroup?.id,
         }),
       );
 
