@@ -19,7 +19,9 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
+import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
 
 @Injectable()
 export class SonarrGetterService {
@@ -48,6 +50,7 @@ export class SonarrGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
+    rule?: RuleDto,
   ) {
     if (!ruleGroup.collection?.sonarrSettingsId) {
       this.logger.error(
@@ -67,20 +70,13 @@ export class SonarrGetterService {
         const sonarrApiClient = await this.servarrService.getSonarrApiClient(
           ruleGroup.collection.sonarrSettingsId,
         );
-        const diskspace = await sonarrApiClient.getDiskspace();
-        if (!diskspace || diskspace.length === 0) return null;
-        const totalFree = diskspace.reduce(
-          (acc, d) => acc + (d.freeSpace ?? 0),
-          0,
+        return await evaluateArrDiskspaceGiB(
+          sonarrApiClient,
+          prop.name,
+          rule,
+          'Sonarr',
+          this.logger.warn.bind(this.logger),
         );
-        const totalSpace = diskspace.reduce(
-          (acc, d) => acc + (d.totalSpace ?? 0),
-          0,
-        );
-        // 1 GiB = 1073741824 bytes (1024^3)
-        return prop.name === 'diskspace_remaining_gb'
-          ? parseFloat((totalFree / 1073741824).toFixed(1))
-          : parseFloat((totalSpace / 1073741824).toFixed(1));
       }
 
       let origLibItem: MediaItem = undefined;

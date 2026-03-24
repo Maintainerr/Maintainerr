@@ -8,7 +8,9 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
+import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
 
 @Injectable()
 export class RadarrGetterService {
@@ -25,7 +27,12 @@ export class RadarrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: MediaItem, ruleGroup?: RulesDto) {
+  async get(
+    id: number,
+    libItem: MediaItem,
+    ruleGroup?: RulesDto,
+    rule?: RuleDto,
+  ) {
     if (!ruleGroup.collection?.radarrSettingsId) {
       this.logger.error(
         `No Radarr server configured for ${ruleGroup.collection?.title}`,
@@ -44,20 +51,13 @@ export class RadarrGetterService {
         const radarrApiClient = await this.servarrService.getRadarrApiClient(
           ruleGroup.collection.radarrSettingsId,
         );
-        const diskspace = await radarrApiClient.getDiskspace();
-        if (!diskspace || diskspace.length === 0) return null;
-        const totalFree = diskspace.reduce(
-          (acc, d) => acc + (d.freeSpace ?? 0),
-          0,
+        return await evaluateArrDiskspaceGiB(
+          radarrApiClient,
+          prop.name,
+          rule,
+          'Radarr',
+          this.logger.warn.bind(this.logger),
         );
-        const totalSpace = diskspace.reduce(
-          (acc, d) => acc + (d.totalSpace ?? 0),
-          0,
-        );
-        // 1 GiB = 1073741824 bytes (1024^3)
-        return prop.name === 'diskspace_remaining_gb'
-          ? parseFloat((totalFree / 1073741824).toFixed(1))
-          : parseFloat((totalSpace / 1073741824).toFixed(1));
       }
 
       const tmdbIds = libItem.providerIds?.tmdb || [];

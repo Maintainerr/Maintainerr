@@ -1,4 +1,5 @@
 import { MaintainerrLogger } from '../../../logging/logs.service';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   SonarrEpisode,
@@ -291,7 +292,7 @@ export class SonarrApi extends ServarrApi<{
     try {
       const info: SonarrInfo = (
         await this.axios.get(`system/status`, {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         })
       ).data;
       return info ? info : null;

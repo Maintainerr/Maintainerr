@@ -1,8 +1,13 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { AxiosError, CanceledError } from 'axios';
+import { AxiosError } from 'axios';
 import _ from 'lodash';
 import { SettingsService } from '../../..//modules/settings/settings.service';
+import {
+  CONNECTION_TEST_TIMEOUT_MS,
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../utils/connection-error';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -128,7 +133,7 @@ export class TautulliApiService {
       const response: Response<TautulliInfo> = await this.api.getWithoutCache(
         '',
         {
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
           params: {
             cmd: 'get_tautulli_info',
           },
@@ -312,7 +317,7 @@ export class TautulliApiService {
       const response = await api.getRawWithoutCache<
         Response<TautulliInfo> | string | undefined
       >('', {
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         params: {
           cmd: 'get_tautulli_info',
         },
@@ -343,18 +348,9 @@ export class TautulliApiService {
         };
       }
     } catch (e) {
-      this.logger.warn(
-        `A failure occurred testing Tautulli connectivity: ${e}`,
-      );
+      logConnectionTestError(this.logger, 'Tautulli', e);
 
-      if (e instanceof CanceledError) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Failured, connection timed out after 10 seconds with no response.',
-        };
-      } else if (e instanceof AxiosError) {
+      if (e instanceof AxiosError) {
         if (e.response?.status === 400) {
           const data = e.response.data as Response<unknown>;
 
@@ -366,19 +362,16 @@ export class TautulliApiService {
               message: data.response.message,
             };
           }
-        } else if (e.response?.status) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: `Failure, received response: ${e.response?.status} ${e.response?.statusText}.`,
-          };
         }
       }
 
       return {
         status: 'NOK',
         code: 0,
-        message: `Failure: ${e.message}`,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Tautulli. Verify URL and API key.',
+        ),
       };
     }
   }

@@ -198,6 +198,7 @@ export class RuleComparatorService {
         mediaItem,
         ruleGroup,
         this.plexDataType,
+        rule,
       );
       this.abortSignal?.throwIfAborted();
 
@@ -209,10 +210,7 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      if (
-        (firstVal !== undefined || null) &&
-        (secondVal !== undefined || null)
-      ) {
+      if (firstVal != null && secondVal != null) {
         // do action
         const comparisonResult = this.doRuleAction(
           firstVal,
@@ -262,6 +260,7 @@ export class RuleComparatorService {
         data,
         rulegroup,
         this.plexDataType,
+        rule,
       );
     } else {
       secondVal =

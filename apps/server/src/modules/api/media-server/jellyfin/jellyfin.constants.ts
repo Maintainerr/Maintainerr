@@ -1,5 +1,6 @@
 export const JELLYFIN_CACHE_TTL = {
   WATCH_HISTORY: 300000,
+  USER_DATA: 300000,
   PLAYED_THRESHOLD: 300000,
   USERS: 1800000,
   LIBRARIES: 1800000,
@@ -14,6 +15,8 @@ export const JELLYFIN_BATCH_SIZE = {
 
 export const JELLYFIN_CACHE_KEYS = {
   WATCH_HISTORY: 'jellyfin:watch',
+  FAVORITED_BY: 'jellyfin:favorited-by',
+  TOTAL_PLAY_COUNT: 'jellyfin:total-play-count',
   PLAYED_THRESHOLD: 'jellyfin:played-threshold',
   USERS: 'jellyfin:users',
   LIBRARIES: 'jellyfin:libraries',
