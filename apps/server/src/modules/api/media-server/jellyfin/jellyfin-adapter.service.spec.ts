@@ -1,3 +1,4 @@
+import { getCollectionApi } from '@jellyfin/sdk/lib/utils/api/index.js';
 import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsService } from '../../../settings/settings.service';
@@ -10,6 +11,12 @@ const jellyfinApiMocks = {
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
   getItemUserData: jest.fn(),
+};
+
+const collectionApiMocks = {
+  createCollection: jest.fn(),
+  addToCollection: jest.fn(),
+  removeFromCollection: jest.fn(),
 };
 
 const jellyfinCacheMocks = {
@@ -88,7 +95,14 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
     getUserById: (...args: unknown[]) => jellyfinApiMocks.getUserById(...args),
   })),
-  getCollectionApi: jest.fn(),
+  getCollectionApi: jest.fn().mockImplementation(() => ({
+    createCollection: (...args: unknown[]) =>
+      collectionApiMocks.createCollection(...args),
+    addToCollection: (...args: unknown[]) =>
+      collectionApiMocks.addToCollection(...args),
+    removeFromCollection: (...args: unknown[]) =>
+      collectionApiMocks.removeFromCollection(...args),
+  })),
   getSearchApi: jest.fn(),
   getPlaylistsApi: jest.fn(),
   getUserViewsApi: jest.fn(),
@@ -140,6 +154,11 @@ describe('JellyfinAdapterService', () => {
       data: { MaxResumePct: 90 },
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+    collectionApiMocks.createCollection.mockResolvedValue({
+      data: { Id: 'collection-1' },
+    });
+    collectionApiMocks.addToCollection.mockResolvedValue(undefined);
+    collectionApiMocks.removeFromCollection.mockResolvedValue(undefined);
     jellyfinApiMocks.getItemUserData.mockResolvedValue({ data: undefined });
     jellyfinCacheMocks.data.has.mockReturnValue(false);
     jellyfinCacheMocks.data.get.mockReturnValue(undefined);
@@ -219,6 +238,7 @@ describe('JellyfinAdapterService', () => {
     it.each([
       [MediaServerFeature.LABELS, true],
       [MediaServerFeature.PLAYLISTS, true],
+      [MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS, true],
       [MediaServerFeature.COLLECTION_VISIBILITY, false],
       [MediaServerFeature.WATCHLIST, false],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, false],
@@ -559,6 +579,74 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
         'jellyfin:watch:90:item999',
       );
+    });
+  });
+
+  describe('collection operations', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('should pass initial item ids when creating a collection', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            {
+              Id: 'collection-1',
+              Name: 'Test Collection',
+              Overview: 'Summary',
+              ChildCount: 2,
+            },
+          ],
+        },
+      });
+
+      const result = await service.createCollection({
+        libraryId: 'library-1',
+        title: 'Test Collection',
+        type: 'movie',
+        itemIds: ['item-1', 'item-2'],
+      });
+
+      expect(jest.mocked(getCollectionApi)).toHaveBeenCalled();
+      expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ids: ['item-1', 'item-2'],
+          name: 'Test Collection',
+          parentId: 'library-1',
+        }),
+      );
+      expect(result.id).toBe('collection-1');
+    });
+
+    it('should add a batch of items in one Jellyfin request', async () => {
+      await expect(
+        service.addBatchToCollection('collection-1', ['item-1', 'item-2']),
+      ).resolves.toEqual([]);
+
+      expect(collectionApiMocks.addToCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-1', 'item-2'],
+      });
+    });
+
+    it('should remove a batch of items in one Jellyfin request', async () => {
+      await expect(
+        service.removeBatchFromCollection('collection-1', ['item-1', 'item-2']),
+      ).resolves.toEqual([]);
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-1', 'item-2'],
+      });
     });
   });
 });

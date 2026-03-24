@@ -348,6 +348,7 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
+    media?: AddRemoveCollectionMedia[],
   ): Promise<{
     dbCollection: addCollectionDbResponse;
   }> {
@@ -360,6 +361,10 @@ export class CollectionsService {
         (collection.manualCollection == undefined ||
           !collection.manualCollection)
       ) {
+        const supportsCreationWithItems = mediaServer.supportsFeature(
+          MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+        );
+
         // Create collection via media server abstraction
         mediaCollection = await mediaServer.createCollection({
           libraryId: collection.libraryId,
@@ -367,6 +372,11 @@ export class CollectionsService {
           summary: collection?.description,
           sortTitle: collection?.sortTitle,
           type: collection.type,
+          ...(supportsCreationWithItems && media && media.length > 0
+            ? {
+                itemIds: media.map((childMedia) => childMedia.mediaServerId),
+              }
+            : {}),
         });
 
         // Store the media server ID from the created collection
@@ -438,19 +448,36 @@ export class CollectionsService {
     dbCollection: addCollectionDbResponse;
   }> {
     try {
-      const createdCollection = await this.createCollection(collection, false);
+      const mediaServer = await this.getMediaServer();
+      const supportsCreationWithItems = mediaServer.supportsFeature(
+        MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+      );
+      const skipMediaServerAdd =
+        supportsCreationWithItems && !collection.manualCollection;
+      const createdCollection = await this.createCollection(
+        collection,
+        false,
+        media,
+      );
 
-      for (const childMedia of media) {
-        await this.addChildToCollection(
+      if (!createdCollection?.dbCollection) {
+        return undefined;
+      }
+
+      if (media && media.length > 0) {
+        await this.addChildrenToCollection(
           {
             mediaServerId:
               createdCollection.dbCollection?.mediaServerId ||
               createdCollection.dbCollection?.id?.toString(),
             dbId: createdCollection.dbCollection.id,
           },
-          childMedia.mediaServerId,
+          media,
+          false,
+          skipMediaServerAdd,
         );
       }
+
       return createdCollection;
     } catch (err) {
       this.logger.warn(
@@ -744,6 +771,23 @@ export class CollectionsService {
     media: AddRemoveCollectionMedia[],
     manual = false,
   ): Promise<Collection> {
+    return this.addToCollectionInternal(collectionDbId, media, manual, false);
+  }
+
+  async addToCollectionWithResolvedLink(
+    collection: Collection,
+    media: AddRemoveCollectionMedia[],
+    manual = false,
+  ): Promise<Collection> {
+    return this.addToCollectionInternal(collection.id, media, manual, true);
+  }
+
+  private async addToCollectionInternal(
+    collectionDbId: number,
+    media: AddRemoveCollectionMedia[],
+    manual = false,
+    skipAutomaticLinkCheck = false,
+  ): Promise<Collection> {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -760,17 +804,15 @@ export class CollectionsService {
       );
 
       if (collection) {
-        collection = await this.checkAutomaticMediaServerLink(collection);
+        if (!skipAutomaticLinkCheck) {
+          collection = await this.checkAutomaticMediaServerLink(collection);
+        }
 
         // Check if we need to create a new media server collection
         // This happens when: 1) we have new items to add, OR 2) we have existing items but no media server collection
         const needsMediaServerCollection =
           !collection.mediaServerId &&
           (newMedia.length > 0 || collectionMedia.length > 0);
-
-        // Check if we need to sync existing items to a newly created collection
-        const needsResync =
-          !collection.mediaServerId && collectionMedia.length > 0;
 
         // Create media server collection if needed
         if (needsMediaServerCollection) {
@@ -781,12 +823,22 @@ export class CollectionsService {
               collection.libraryId,
             );
           } else {
+            const supportsCreationWithItems = mediaServer.supportsFeature(
+              MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+            );
             newColl = await mediaServer.createCollection({
               libraryId: collection.libraryId,
               title: collection.title,
               summary: collection.description,
               sortTitle: collection.sortTitle,
               type: collection.type,
+              ...(supportsCreationWithItems && collectionMedia.length > 0
+                ? {
+                    itemIds: collectionMedia.map(
+                      (existingMedia) => existingMedia.mediaServerId,
+                    ),
+                  }
+                : {}),
             });
           }
           if (newColl?.id) {
@@ -809,20 +861,31 @@ export class CollectionsService {
               });
             }
 
+            // Check if we need to sync existing items to a newly created collection
+            const needsResync =
+              collectionMedia.length > 0 &&
+              !mediaServer.supportsFeature(
+                MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
+              );
+
             // If we had existing collection_media items, sync them to the new media server collection
             if (needsResync) {
               this.logger.log(
                 `Syncing ${collectionMedia.length} existing items to newly created media server collection`,
               );
+              const failedItemIds = new Set(
+                await mediaServer.addBatchToCollection(
+                  collection.mediaServerId,
+                  collectionMedia.map(
+                    (existingMedia) => existingMedia.mediaServerId,
+                  ),
+                ),
+              );
+
               for (const existingMedia of collectionMedia) {
-                try {
-                  await mediaServer.addToCollection(
-                    collection.mediaServerId,
-                    existingMedia.mediaServerId,
-                  );
-                } catch (err) {
+                if (failedItemIds.has(existingMedia.mediaServerId)) {
                   this.logger.warn(
-                    `Failed to sync item ${existingMedia.mediaServerId} to collection: ${err.message}`,
+                    `Failed to sync item ${existingMedia.mediaServerId} to collection`,
                   );
                 }
               }
@@ -838,14 +901,11 @@ export class CollectionsService {
 
         // add new children to collection
         if (newMedia.length > 0 && collection.mediaServerId) {
-          for (const childMedia of newMedia) {
-            await this.addChildToCollection(
-              { mediaServerId: collection.mediaServerId, dbId: collection.id },
-              childMedia.mediaServerId,
-              manual,
-              childMedia.reason,
-            );
-          }
+          await this.addChildrenToCollection(
+            { mediaServerId: collection.mediaServerId, dbId: collection.id },
+            newMedia,
+            manual,
+          );
         }
 
         // Update cached total size (non-blocking)
@@ -867,6 +927,21 @@ export class CollectionsService {
     collectionDbId: number,
     media: AddRemoveCollectionMedia[],
   ) {
+    return this.removeFromCollectionInternal(collectionDbId, media, false);
+  }
+
+  async removeFromCollectionWithResolvedLink(
+    collection: Collection,
+    media: AddRemoveCollectionMedia[],
+  ) {
+    return this.removeFromCollectionInternal(collection.id, media, true);
+  }
+
+  private async removeFromCollectionInternal(
+    collectionDbId: number,
+    media: AddRemoveCollectionMedia[],
+    skipAutomaticLinkCheck = false,
+  ) {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -880,30 +955,32 @@ export class CollectionsService {
         return undefined;
       }
 
-      collection = await this.checkAutomaticMediaServerLink(collection);
+      if (!skipAutomaticLinkCheck) {
+        collection = await this.checkAutomaticMediaServerLink(collection);
+      }
+
       let collectionMedia = await this.CollectionMediaRepo.find({
         where: {
           collectionId: collectionDbId,
         },
       });
       if (collectionMedia.length > 0) {
-        for (const childMedia of media) {
-          if (
-            collectionMedia.find(
-              (el) => el.mediaServerId === childMedia.mediaServerId,
-            ) !== undefined
-          ) {
-            await this.removeChildFromCollection(
-              { mediaServerId: collection.mediaServerId, dbId: collection.id },
-              childMedia.mediaServerId,
-              childMedia.reason,
-            );
+        const childrenMedia = media.filter((mediaItem) =>
+          collectionMedia.some(
+            (el) => el.mediaServerId === mediaItem.mediaServerId,
+          ),
+        );
 
-            collectionMedia = collectionMedia.filter(
-              (el) => el.mediaServerId !== childMedia.mediaServerId,
-            );
-          }
-        }
+        const removedItemIds = new Set(
+          await this.removeChildrenFromCollection(
+            { mediaServerId: collection.mediaServerId, dbId: collection.id },
+            childrenMedia,
+          ),
+        );
+
+        collectionMedia = collectionMedia.filter(
+          (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
+        );
 
         if (
           collectionMedia.length <= 0 &&
@@ -924,7 +1001,6 @@ export class CollectionsService {
         }
       }
 
-      // Update cached total size (non-blocking)
       this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
       return collection;
@@ -1071,30 +1147,53 @@ export class CollectionsService {
     }
   }
 
-  private async addChildToCollection(
+  private async addChildrenToCollection(
     collectionIds: { mediaServerId: string; dbId: number },
-    childId: string,
+    childrenMedia: AddRemoveCollectionMedia[],
     manual = false,
-    logMeta?: CollectionLogMeta,
+    skipMediaServerAdd = false,
   ) {
-    try {
-      const mediaServer = await this.getMediaServer();
-      this.infoLogger(`Adding media with id ${childId} to collection..`);
+    if (childrenMedia.length === 0) return;
 
-      const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(childId);
+    const mediaServer = await this.getMediaServer();
 
-      let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
-      switch (tmdb.type) {
-        case 'movie':
-          tmdbMedia = await this.tmdbApi.getMovie({ movieId: tmdb.id });
-          break;
-        case 'tv':
-          tmdbMedia = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
-          break;
+    this.infoLogger(
+      `Adding ${childrenMedia.length} media items to collection..`,
+    );
+
+    let failedItemIds = new Set<string>();
+
+    if (!skipMediaServerAdd) {
+      failedItemIds = new Set(
+        await mediaServer.addBatchToCollection(
+          collectionIds.mediaServerId,
+          childrenMedia.map((childMedia) => childMedia.mediaServerId),
+        ),
+      );
+    }
+
+    for (const childMedia of childrenMedia) {
+      if (failedItemIds.has(childMedia.mediaServerId)) {
+        this.logger.warn(
+          `Couldn't add media ${childMedia.mediaServerId} to collection`,
+        );
+        continue;
       }
 
       try {
-        await mediaServer.addToCollection(collectionIds.mediaServerId, childId);
+        const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(
+          childMedia.mediaServerId,
+        );
+
+        let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
+        switch (tmdb.type) {
+          case 'movie':
+            tmdbMedia = await this.tmdbApi.getMovie({ movieId: tmdb.id });
+            break;
+          case 'tv':
+            tmdbMedia = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
+            break;
+        }
 
         await this.connection
           .createQueryBuilder()
@@ -1103,7 +1202,7 @@ export class CollectionsService {
           .values([
             {
               collectionId: collectionIds.dbId,
-              mediaServerId: childId,
+              mediaServerId: childMedia.mediaServerId,
               addDate: new Date().toDateString(),
               tmdbId: tmdbMedia?.id,
               image_path: tmdbMedia?.poster_path,
@@ -1112,21 +1211,28 @@ export class CollectionsService {
           ])
           .execute();
 
-        // log record
         await this.CollectionLogRecordForChild(
-          childId,
+          childMedia.mediaServerId,
           collectionIds.dbId,
           'add',
-          logMeta,
+          childMedia.reason,
         );
       } catch (err) {
-        this.logger.warn(`Couldn't add media to collection: ${err.message}`);
+        this.logger.warn(
+          `Couldn't add media ${childMedia.mediaServerId} to collection: ${err.message}`,
+        );
+
+        try {
+          await mediaServer.removeFromCollection(
+            collectionIds.mediaServerId,
+            childMedia.mediaServerId,
+          );
+        } catch (rollbackError) {
+          this.logger.warn(
+            `Failed to roll back media ${childMedia.mediaServerId} after local add failure: ${rollbackError.message}`,
+          );
+        }
       }
-    } catch (err) {
-      this.logger.warn(
-        `An error occurred while performing collection actions: ${err}`,
-      );
-      return undefined;
     }
   }
 
@@ -1136,10 +1242,8 @@ export class CollectionsService {
     type: 'add' | 'remove' | 'handle' | 'exclude' | 'include',
     logMeta?: CollectionLogMeta,
   ) {
-    // log record
     const mediaServer = await this.getMediaServer();
-    const mediaData = await mediaServer.getMetadata(mediaServerId); // fetch data from cache
-    // if there's no data.. skip logging
+    const mediaData = await mediaServer.getMetadata(mediaServerId);
 
     if (mediaData) {
       const subject = isMediaType(mediaData.type, 'episode')
@@ -1156,21 +1260,37 @@ export class CollectionsService {
     }
   }
 
-  private async removeChildFromCollection(
-    collectionIds: { mediaServerId: string; dbId: number },
-    childId: string,
-    logMeta?: CollectionLogMeta,
-  ) {
-    try {
+  private async removeChildrenFromCollection(
+    collectionIds: { mediaServerId: string | null; dbId: number },
+    childrenMedia: AddRemoveCollectionMedia[],
+  ): Promise<string[]> {
+    if (childrenMedia.length === 0) return [];
+
+    this.infoLogger(
+      `Removing ${childrenMedia.length} media items from collection..`,
+    );
+
+    let failedItemIds = new Set<string>();
+    if (collectionIds.mediaServerId) {
       const mediaServer = await this.getMediaServer();
-      this.infoLogger(`Removing media with id ${childId} from collection..`);
+      failedItemIds = new Set(
+        await mediaServer.removeBatchFromCollection(
+          collectionIds.mediaServerId,
+          childrenMedia.map((childMedia) => childMedia.mediaServerId),
+        ),
+      );
+    }
+    const removedItemIds: string[] = [];
+
+    for (const childMedia of childrenMedia) {
+      if (failedItemIds.has(childMedia.mediaServerId)) {
+        this.logger.warn(
+          `Couldn't remove media ${childMedia.mediaServerId} from collection`,
+        );
+        continue;
+      }
 
       try {
-        await mediaServer.removeFromCollection(
-          collectionIds.mediaServerId,
-          childId,
-        );
-
         await this.connection
           .createQueryBuilder()
           .delete()
@@ -1178,32 +1298,26 @@ export class CollectionsService {
           .where([
             {
               collectionId: collectionIds.dbId,
-              mediaServerId: childId,
+              mediaServerId: childMedia.mediaServerId,
             },
           ])
           .execute();
 
         await this.CollectionLogRecordForChild(
-          childId,
+          childMedia.mediaServerId,
           collectionIds.dbId,
           'remove',
-          logMeta,
+          childMedia.reason,
         );
+        removedItemIds.push(childMedia.mediaServerId);
       } catch (err) {
-        // 404 means media is not in collection, which is fine
-        if (!err.message?.includes('404')) {
-          this.infoLogger(
-            `Couldn't remove media from collection: ${err.message}`,
-          );
-        }
+        this.logger.warn(
+          `Couldn't remove media ${childMedia.mediaServerId} from collection: ${err.message}`,
+        );
       }
-    } catch (err) {
-      this.logger.warn(
-        'An error occurred while performing collection actions.',
-      );
-      this.logger.debug(err);
-      return undefined;
     }
+
+    return removedItemIds;
   }
 
   private async addCollectionToDB(

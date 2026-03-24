@@ -198,6 +198,7 @@ export class RuleComparatorService {
         mediaItem,
         ruleGroup,
         this.plexDataType,
+        rule,
       );
       this.abortSignal?.throwIfAborted();
 
@@ -259,6 +260,7 @@ export class RuleComparatorService {
         data,
         rulegroup,
         this.plexDataType,
+        rule,
       );
     } else {
       secondVal =

@@ -297,6 +297,7 @@ export class RulesService {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
       params.rules.forEach((rule) => {
+        this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
@@ -306,6 +307,9 @@ export class RulesService {
             params.radarrSettingsId,
             params.sonarrSettingsId,
           );
+        }
+        if (state.code === 1) {
+          state = this.validateRuleDiskPath(rule);
         }
       }, this);
 
@@ -390,6 +394,7 @@ export class RulesService {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
       params.rules.forEach((rule) => {
+        this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
@@ -399,6 +404,9 @@ export class RulesService {
             params.radarrSettingsId,
             params.sonarrSettingsId,
           );
+        }
+        if (state.code === 1) {
+          state = this.validateRuleDiskPath(rule);
         }
       }, this);
 
@@ -960,6 +968,43 @@ export class RulesService {
       if (lastValResult) {
         return lastValResult;
       }
+    }
+
+    return this.createReturnStatus(true, 'Success');
+  }
+
+  private normalizeRuleDiskPath(rule: RuleDto) {
+    if (rule.arrDiskPath == null) {
+      return;
+    }
+
+    const path = rule.arrDiskPath.trim();
+    rule.arrDiskPath = path.length > 0 ? path : undefined;
+  }
+
+  private validateRuleDiskPath(rule: RuleDto): ReturnStatus {
+    if (!rule.arrDiskPath) {
+      return this.createReturnStatus(true, 'Success');
+    }
+
+    const firstValApp = this.ruleConstants.applications.find(
+      (el) => el.id === rule.firstVal[0],
+    );
+    const firstValProperty = firstValApp?.props.find(
+      (el) => el.id === rule.firstVal[1],
+    );
+
+    const isArrDiskspaceRule =
+      (firstValApp?.id === Application.RADARR ||
+        firstValApp?.id === Application.SONARR) &&
+      (firstValProperty?.name === 'diskspace_remaining_gb' ||
+        firstValProperty?.name === 'diskspace_total_gb');
+
+    if (!isArrDiskspaceRule) {
+      return this.createReturnStatus(
+        false,
+        'Disk target path is only supported for Radarr/Sonarr disk space rules',
+      );
     }
 
     return this.createReturnStatus(true, 'Success');

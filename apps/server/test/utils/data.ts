@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import {
+  ArrDiskspaceResource,
   MediaItem,
   MediaItemType,
   MediaItemWithParent,
@@ -30,6 +31,7 @@ import {
   CollectionMediaWithMetadata,
 } from '../../src/modules/collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../src/modules/logging/logs.service';
+import { RuleDto } from '../../src/modules/rules/dtos/rule.dto';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
 
 export const createCollection = (
@@ -539,6 +541,25 @@ export const createRulesDto = (
   name: faker.string.sample(10),
   rules: [],
   description: faker.string.sample(10),
+  ...properties,
+});
+
+export const createArrDiskspaceResource = (
+  properties: Partial<ArrDiskspaceResource> = {},
+): ArrDiskspaceResource => ({
+  id: faker.number.int(),
+  path: '/media',
+  label: null,
+  freeSpace: 0,
+  totalSpace: 0,
+  ...properties,
+});
+
+export const createRuleDto = (properties: Partial<RuleDto> = {}): RuleDto => ({
+  operator: null,
+  action: 0,
+  firstVal: [0, 0],
+  section: 0,
   ...properties,
 });
 

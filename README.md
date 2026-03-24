@@ -105,6 +105,13 @@ services:
 
 [For more information, please consult the documentation](https://docs.maintainerr.info/)
 
+# API Compatibility
+
+- Since v3, `/api/media-server` is the canonical API for media-server operations.
+- Deprecated `/api/plex` routes remain as a transition layer and are translated to the current abstraction-based implementation.
+- `/api/collections` and other app-specific endpoints are internal application APIs and are not a backwards-compatible Plex contract.
+- Deprecated `/api/plex` routes will be removed in a future major version.
+
 # Features
 
 [To get an indication of which features are most desired, you can vote for them](https://features.maintainerr.info/?view=most-wanted)
