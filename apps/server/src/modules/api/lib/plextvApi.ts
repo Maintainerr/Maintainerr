@@ -256,6 +256,11 @@ export class PlexTvApi extends ExternalApiService {
         transformResponse: [],
         responseType: 'text',
       });
+
+      if (!devicesResp) {
+        throw new Error('Failed to fetch devices from plex.tv');
+      }
+
       const parsedXml = await xml2js.parseStringPromise(
         devicesResp as DeviceResponse,
       );
