@@ -150,7 +150,7 @@ export class RuleExecutorSchedulerService
     if (this.schedulerRegistry.doesExist('cron', jobName)) {
       this.schedulerRegistry.deleteCronJob(jobName);
     }
-    this.queueManager.removeFromQueue(data.ruleGroup.id);
+    this.queueManager.stopProcessingRuleGroup(data.ruleGroup.id);
   }
 
   @OnEvent(MaintainerrEvent.Settings_Updated)
