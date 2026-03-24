@@ -1,7 +1,11 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
 import { SettingsService } from '../../../modules/settings/settings.service';
+import {
+  CONNECTION_TEST_TIMEOUT_MS,
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../utils/connection-error';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -394,7 +398,7 @@ export class SeerrApiService {
   public async status(): Promise<SeerrStatus> {
     try {
       const response: SeerrStatus = await this.api.getWithoutCache(`/status`, {
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
       });
       return response;
     } catch (e) {
@@ -421,7 +425,7 @@ export class SeerrApiService {
       const response = await api.getRawWithoutCache<SeerrAbout>(
         `/settings/about`,
         {
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         },
       );
 
@@ -440,28 +444,15 @@ export class SeerrApiService {
         message: response.data.version,
       };
     } catch (e) {
-      this.logger.warn(`A failure occurred testing Seerr connectivity: ${e}`);
-
-      if (e instanceof AxiosError) {
-        if (e.response?.status === 403) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: 'Invalid API key',
-          };
-        } else if (e.response?.status) {
-          return {
-            status: 'NOK',
-            code: 0,
-            message: `Failure, received response: ${e.response?.status} ${e.response?.statusText}.`,
-          };
-        }
-      }
+      logConnectionTestError(this.logger, 'Seerr', e);
 
       return {
         status: 'NOK',
         code: 0,
-        message: `Failure: ${e.message}`,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Seerr. Verify URL and API key.',
+        ),
       };
     }
   }

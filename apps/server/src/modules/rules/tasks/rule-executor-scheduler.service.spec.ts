@@ -43,6 +43,7 @@ describe('RuleExecutorSchedulerService', () => {
     const queueManager = {
       enqueue: jest.fn().mockReturnValue(true),
       removeFromQueue: jest.fn(),
+      stopProcessingRuleGroup: jest.fn(),
       stopProcessing: jest.fn().mockResolvedValue(undefined),
       getQueuedRuleGroupIds: jest.fn().mockReturnValue([] as number[]),
     };
@@ -180,5 +181,20 @@ describe('RuleExecutorSchedulerService', () => {
       'execute-global-schedule-rules',
       expect.objectContaining({ cronTime: '*/2 * * * * *' }),
     );
+  });
+
+  it('stops processing (including in-flight execution) when a rule group is deleted', async () => {
+    const { service, schedulerRegistry, queueManager } = createScheduler();
+
+    schedulerRegistry.doesExist.mockReturnValue(true);
+
+    await service['onRuleGroupDeleted']({
+      ruleGroup: { id: 10 } as any,
+    });
+
+    expect(schedulerRegistry.deleteCronJob).toHaveBeenCalledWith(
+      'rule-group-executor-10',
+    );
+    expect(queueManager.stopProcessingRuleGroup).toHaveBeenCalledWith(10);
   });
 });

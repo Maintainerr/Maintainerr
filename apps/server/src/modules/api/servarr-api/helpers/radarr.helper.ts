@@ -1,4 +1,5 @@
 import { MaintainerrLogger } from '../../../logging/logs.service';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   RadarrImportListExclusion,
@@ -129,7 +130,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     try {
       const info: RadarrInfo = (
         await this.axios.get<RadarrInfo>(`system/status`, {
-          signal: AbortSignal.timeout(10000), // aborts request after 10 seconds
+          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
         })
       ).data;
       return info ? info : null;
