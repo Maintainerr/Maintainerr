@@ -209,10 +209,7 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      if (
-        (firstVal !== undefined || null) &&
-        (secondVal !== undefined || null)
-      ) {
+      if (firstVal != null && secondVal != null) {
         // do action
         const comparisonResult = this.doRuleAction(
           firstVal,
