@@ -8,7 +8,7 @@ const looksLikeTlsMismatch = (text: string) => {
     lower.includes('ssl routines') ||
     lower.includes('wrong version number') ||
     lower.includes('packet length too long') ||
-    lower.includes('tls')
+    lower.includes('tlsv1 alert')
   )
 }
 
@@ -39,12 +39,12 @@ export const normalizeConnectionErrorMessage = (
     return fallback
   }
 
-  if (message === 'Failure' || message === 'Unknown error' || message === '0') {
+  if (message === 'Failure' || message === 'Unknown error') {
     return fallback
   }
 
   if (looksLikeTlsMismatch(message)) {
-    return 'SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL setup.'
+    return 'SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration.'
   }
 
   if (looksLikeConnectionRefused(message)) {
@@ -52,11 +52,11 @@ export const normalizeConnectionErrorMessage = (
   }
 
   if (looksLikeHostResolutionError(message)) {
-    return 'Unable to resolve host. Verify the hostname or IP address.'
+    return 'Unable to resolve host. Verify hostname or IP address.'
   }
 
   if (looksLikeTimeout(message)) {
-    return 'Connection timed out after 3 seconds. Verify URL and network reachability.'
+    return 'Connection timed out after 5 seconds. Verify URL and network reachability.'
   }
 
   return message

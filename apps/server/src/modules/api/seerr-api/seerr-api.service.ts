@@ -347,7 +347,7 @@ export class SeerrApiService {
   public async status(): Promise<SeerrStatus> {
     try {
       const response: SeerrStatus = await this.api.getWithoutCache(`/status`, {
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
       });
       return response;
     } catch (e) {

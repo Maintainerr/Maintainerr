@@ -1,7 +1,7 @@
 import { AxiosError } from 'axios';
 import type { MaintainerrLogger } from '../modules/logging/logs.service';
 
-export const CONNECTION_TEST_TIMEOUT_MS = 3000;
+export const CONNECTION_TEST_TIMEOUT_MS = 5000;
 
 const normalizeMessageText = (message?: string): string | undefined => {
   if (!message) {
@@ -74,6 +74,10 @@ export const formatConnectionFailureMessage = (
   const normalizedGenericMessage = normalizeMessageText(genericMessage);
   if (normalizedGenericMessage) {
     return normalizedGenericMessage;
+  }
+
+  if (genericMessage) {
+    return genericMessage;
   }
 
   return fallbackMessage;
