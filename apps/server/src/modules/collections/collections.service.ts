@@ -1224,22 +1224,25 @@ export class CollectionsService {
   }
 
   private async removeChildrenFromCollection(
-    collectionIds: { mediaServerId: string; dbId: number },
+    collectionIds: { mediaServerId: string | null; dbId: number },
     childrenMedia: AddRemoveCollectionMedia[],
   ): Promise<string[]> {
     if (childrenMedia.length === 0) return [];
 
-    const mediaServer = await this.getMediaServer();
     this.infoLogger(
       `Removing ${childrenMedia.length} media items from collection..`,
     );
 
-    const failedItemIds = new Set(
-      await mediaServer.removeBatchFromCollection(
-        collectionIds.mediaServerId,
-        childrenMedia.map((childMedia) => childMedia.mediaServerId),
-      ),
-    );
+    let failedItemIds = new Set<string>();
+    if (collectionIds.mediaServerId) {
+      const mediaServer = await this.getMediaServer();
+      failedItemIds = new Set(
+        await mediaServer.removeBatchFromCollection(
+          collectionIds.mediaServerId,
+          childrenMedia.map((childMedia) => childMedia.mediaServerId),
+        ),
+      );
+    }
     const removedItemIds: string[] = [];
 
     for (const childMedia of childrenMedia) {
