@@ -44,18 +44,20 @@ const Overview = () => {
       return
     }
 
-    setTimeout(() => {
+    const fallbackTimer = setTimeout(() => {
       if (
         loadingRef.current &&
-        data.length === 0 &&
+        dataRef.current.length === 0 &&
+        !selectedLibraryRef.current &&
         SearchCtx.search.text === ''
       ) {
-        switchLib(selectedLibrary ? selectedLibrary : libraries[0].id)
+        switchLib(libraries[0].id)
       }
     }, 300)
 
     // Cleanup on unmount
     return () => {
+      clearTimeout(fallbackTimer)
       setData([])
       dataRef.current = []
       totalSizeRef.current = 999
