@@ -7,7 +7,6 @@ import LibrarySwitcher from '../Common/LibrarySwitcher'
 import OverviewContent from './Content'
 
 const Overview = () => {
-  // const [isLoading, setIsLoading] = useState<Boolean>(false)
   const loadingRef = useRef<boolean>(false)
 
   const [loadingExtra, setLoadingExtra] = useState<boolean>(false)
@@ -85,6 +84,7 @@ const Overview = () => {
       setTotalSize(999)
       pageData.current = 0
       setIsLoading(true)
+      setLoadingExtra(false)
       fetchData()
     }
   }, [SearchCtx.search.text])
@@ -105,6 +105,7 @@ const Overview = () => {
   const switchLib = (libraryId: string) => {
     fetchGenerationRef.current = fetchGenerationRef.current + 1
     setIsLoading(true)
+    setLoadingExtra(false)
     setFetching(false)
     pageData.current = 0
     setTotalSize(999)
