@@ -354,7 +354,7 @@ const JellyfinSettings = () => {
                 </div>
 
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
-                  <DocsButton page="using-maintainerr/settings/jellyfin" />
+                  <DocsButton page="Configuration/#jellyfin" />
                 </span>
               </div>
             </div>
