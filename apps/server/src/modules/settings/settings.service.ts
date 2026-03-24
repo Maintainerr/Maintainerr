@@ -12,6 +12,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../utils/connection-error';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
@@ -434,25 +438,40 @@ export class SettingsService implements SettingDto {
       users?: Array<{ id: string; name: string }>;
     }
   > {
-    const result = await this.mediaServerFactory.testJellyfinConnection(
-      settings.jellyfin_url,
-      settings.jellyfin_api_key,
-    );
+    try {
+      const result = await this.mediaServerFactory.testJellyfinConnection(
+        settings.jellyfin_url,
+        settings.jellyfin_api_key,
+      );
 
-    if (result.success) {
-      return {
-        status: 'OK',
-        code: 1,
-        message: `Connected to ${result.serverName}`,
-        serverName: result.serverName,
-        version: result.version,
-        users: result.users,
-      };
-    } else {
+      if (result.success) {
+        return {
+          status: 'OK',
+          code: 1,
+          message: `Connected to ${result.serverName}`,
+          serverName: result.serverName,
+          version: result.version,
+          users: result.users,
+        };
+      }
+
       return {
         status: 'NOK',
         code: 0,
-        message: result.error || 'Connection failed',
+        message: formatConnectionFailureMessage(
+          result.error,
+          'Failed to connect to Jellyfin. Verify URL and API key.',
+        ),
+      };
+    } catch (e) {
+      logConnectionTestError(this.logger, 'Jellyfin', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Jellyfin. Verify URL and API key.',
+        ),
       };
     }
   }
@@ -871,8 +890,15 @@ export class SettingsService implements SettingDto {
           }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Tautulli', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Tautulli. Verify URL and API key.',
+        ),
+      };
     }
   }
 
@@ -895,8 +921,15 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Radarr', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Radarr. Verify URL and API key.',
+        ),
+      };
     }
   }
 
@@ -919,8 +952,15 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Sonarr', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Sonarr. Verify URL and API key.',
+        ),
+      };
     }
   }
 
@@ -931,8 +971,15 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (e) {
-      this.logger.debug(e);
-      return { status: 'NOK', code: 0, message: 'Failure' };
+      logConnectionTestError(this.logger, 'Plex', e);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Plex. Verify host and credentials.',
+        ),
+      };
     }
   }
 
@@ -972,46 +1019,44 @@ export class SettingsService implements SettingDto {
         return false;
       }
 
-      const mediaServerState = await this.testMediaServerConnection();
+      const [radarrSettings, sonarrSettings] = await Promise.all([
+        this.radarrSettingsRepo.find(),
+        this.sonarrSettingsRepo.find(),
+      ]);
 
-      let radarrState = true;
-      let sonarrState = true;
-      let seerrState = true;
-      let tautulliState = true;
+      const [
+        mediaServerState,
+        radarrResults,
+        sonarrResults,
+        seerrState,
+        tautulliState,
+      ] = await Promise.all([
+        this.testMediaServerConnection(),
+        Promise.all(
+          radarrSettings.map((s) =>
+            this.testRadarr(s.id).then((r) => r.status === 'OK'),
+          ),
+        ),
+        Promise.all(
+          sonarrSettings.map((s) =>
+            this.testSonarr(s.id).then((r) => r.status === 'OK'),
+          ),
+        ),
+        this.seerrConfigured()
+          ? this.testSeerr().then((r) => r.status === 'OK')
+          : true,
+        this.tautulliConfigured()
+          ? this.testTautulli().then((r) => r.status === 'OK')
+          : true,
+      ]);
 
-      const radarrSettings = await this.radarrSettingsRepo.find();
-      for (const radarrSetting of radarrSettings) {
-        radarrState =
-          (await this.testRadarr(radarrSetting.id)).status === 'OK' &&
-          radarrState;
-      }
-
-      const sonarrSettings = await this.sonarrSettingsRepo.find();
-      for (const sonarrSetting of sonarrSettings) {
-        sonarrState =
-          (await this.testSonarr(sonarrSetting.id)).status === 'OK' &&
-          sonarrState;
-      }
-
-      if (this.seerrConfigured()) {
-        seerrState = (await this.testSeerr()).status === 'OK';
-      }
-
-      if (this.tautulliConfigured()) {
-        tautulliState = (await this.testTautulli()).status === 'OK';
-      }
-
-      if (
+      return (
         mediaServerState &&
-        radarrState &&
-        sonarrState &&
+        radarrResults.every(Boolean) &&
+        sonarrResults.every(Boolean) &&
         seerrState &&
         tautulliState
-      ) {
-        return true;
-      } else {
-        return false;
-      }
+      );
     } catch (e) {
       this.logger.debug(e);
       return false;

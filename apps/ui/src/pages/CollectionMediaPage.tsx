@@ -19,11 +19,17 @@ const CollectionMediaPage = () => {
   const pageData = useRef<number>(0)
   const fetchAmount = 25
   const [totalSize, setTotalSize] = useState<number>(999)
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [isLoadingExtra, setIsLoadingExtra] = useState<boolean>(false)
-
+  const totalSizeRef = useRef<number>(999)
+  const dataRef = useRef<MediaItem[]>([])
+  const mediaRef = useRef<ICollectionMedia[]>([])
+  const loadingRef = useRef<boolean>(true)
+  const loadingExtraRef = useRef<boolean>(false)
   const [page, setPage] = useState(0)
-  const [pageDataCount, setPageDataCount] = useState(0)
+
+  useEffect(() => {
+    // Initial first fetch
+    setPage(1)
+  }, [])
 
   const handleScroll = () => {
     if (
@@ -31,20 +37,45 @@ const CollectionMediaPage = () => {
       document.documentElement.scrollHeight * 0.9
     ) {
       if (
-        !isLoading &&
-        !isLoadingExtra &&
-        !(fetchAmount * (pageData.current - 1) >= totalSize)
+        !loadingRef.current &&
+        !loadingExtraRef.current &&
+        !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
       ) {
         setPage(pageData.current + 1)
       }
     }
   }
 
+  const fetchData = async () => {
+    if (!loadingRef.current) {
+      loadingExtraRef.current = true
+    }
+    const resp: { totalSize: number; items: ICollectionMedia[] } =
+      await GetApiHandler(
+        `/collections/media/${id}/content/${pageData.current}?size=${fetchAmount}`,
+      )
+
+    setTotalSize(resp.totalSize)
+
+    setMedia([...mediaRef.current, ...resp.items])
+
+    setData([
+      ...dataRef.current,
+      ...resp.items.map((el) => {
+        if (el.mediaData) {
+          el.mediaData.maintainerrIsManual = el.isManual ? el.isManual : false
+        }
+        return el.mediaData ? el.mediaData : ({} as MediaItem)
+      }),
+    ])
+    loadingRef.current = false
+    loadingExtraRef.current = false
+  }
+
   useEffect(() => {
     if (page !== 0) {
       // Ignore initial page render
       pageData.current = pageData.current + 1
-      setPageDataCount(pageData.current)
       fetchData()
     }
   }, [page])
@@ -56,68 +87,48 @@ const CollectionMediaPage = () => {
       window.removeEventListener('scroll', debouncedScroll)
       debouncedScroll.cancel() // Cancel pending debounced calls
     }
-  }, [isLoading, isLoadingExtra, totalSize])
-
-  useEffect(() => {
-    // Initial first fetch
-    setPage(1)
   }, [])
 
-  const fetchData = async () => {
-    if (!isLoading) {
-      setIsLoadingExtra(true)
-    }
-    const resp: { totalSize: number; items: ICollectionMedia[] } =
-      await GetApiHandler(
-        `/collections/media/${id}/content/${pageData.current}?size=${fetchAmount}`,
-      )
-
-    setTotalSize(resp.totalSize)
-    setMedia((prevMedia) => [...prevMedia, ...resp.items])
-
-    setData((prevData) => [
-      ...prevData,
-      ...resp.items.map((el) => {
-        if (el.mediaData) {
-          el.mediaData.maintainerrIsManual = el.isManual ? el.isManual : false
-        }
-        return el.mediaData ? el.mediaData : ({} as MediaItem)
-      }),
-    ])
-    setIsLoading(false)
-    setIsLoadingExtra(false)
-  }
-
   useEffect(() => {
+    dataRef.current = data
+
     // If page is not filled yet, fetch more
     if (
-      !isLoading &&
-      !isLoadingExtra &&
+      !loadingRef.current &&
+      !loadingExtraRef.current &&
       window.innerHeight + document.documentElement.scrollTop >=
         document.documentElement.scrollHeight * 0.9 &&
-      !(fetchAmount * (pageData.current - 1) >= totalSize)
+      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
     ) {
       setPage(page + 1)
     }
-  }, [data, isLoading, isLoadingExtra, totalSize])
+  }, [data])
+
+  useEffect(() => {
+    mediaRef.current = media
+  }, [media])
+
+  useEffect(() => {
+    totalSizeRef.current = totalSize
+  }, [totalSize])
 
   return (
     <OverviewContent
       dataFinished={true}
       fetchData={() => {}}
-      loading={isLoading}
+      loading={loadingRef.current}
       data={data}
       libraryId={collection.libraryId}
       collectionPage={true}
       extrasLoading={
-        isLoadingExtra && !isLoading && totalSize >= pageDataCount * fetchAmount
+        loadingExtraRef.current &&
+        !loadingRef.current &&
+        totalSize >= pageData.current * fetchAmount
       }
       onRemove={(id: string) =>
         setTimeout(() => {
-          setData((prevData) => prevData.filter((el) => el.id !== id))
-          setMedia((prevMedia) =>
-            prevMedia.filter((el) => el.mediaServerId !== id),
-          )
+          setData(dataRef.current.filter((el) => el.id !== id))
+          setMedia(mediaRef.current.filter((el) => el.mediaServerId !== id))
         }, 500)
       }
       collectionInfo={media.map((el) => {

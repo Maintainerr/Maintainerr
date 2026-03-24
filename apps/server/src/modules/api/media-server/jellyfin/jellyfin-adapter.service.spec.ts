@@ -9,6 +9,7 @@ const jellyfinApiMocks = {
   getUserById: jest.fn(),
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
+  getItemUserData: jest.fn(),
 };
 
 const jellyfinCacheMocks = {
@@ -79,6 +80,8 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   })),
   getItemsApi: jest.fn().mockImplementation(() => ({
     getItems: (...args: unknown[]) => jellyfinApiMocks.getItems(...args),
+    getItemUserData: (...args: unknown[]) =>
+      jellyfinApiMocks.getItemUserData(...args),
   })),
   getLibraryApi: jest.fn(),
   getUserApi: jest.fn().mockImplementation(() => ({
@@ -137,6 +140,7 @@ describe('JellyfinAdapterService', () => {
       data: { MaxResumePct: 90 },
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+    jellyfinApiMocks.getItemUserData.mockResolvedValue({ data: undefined });
     jellyfinCacheMocks.data.has.mockReturnValue(false);
     jellyfinCacheMocks.data.get.mockReturnValue(undefined);
     jellyfinCacheMocks.data.keys.mockReturnValue([]);
@@ -281,18 +285,14 @@ describe('JellyfinAdapterService', () => {
             data: {
               Items: [
                 {
-                  UserData:
-                    userId === 'user-1'
-                      ? {
-                          Played: false,
-                          PlayedPercentage: 94,
-                          LastPlayedDate: '2024-06-01T00:00:00.000Z',
-                        }
-                      : {
-                          Played: false,
-                          PlayedPercentage: 95,
-                          LastPlayedDate: '2024-06-02T00:00:00.000Z',
-                        },
+                  UserData: {
+                    Played: false,
+                    PlayedPercentage: userId === 'user-1' ? 94 : 95,
+                    LastPlayedDate:
+                      userId === 'user-1'
+                        ? '2024-06-01T00:00:00.000Z'
+                        : '2024-06-02T00:00:00.000Z',
+                  },
                 },
               ],
             },
@@ -313,6 +313,37 @@ describe('JellyfinAdapterService', () => {
         'jellyfin:watch:95:item123',
         history,
         300000,
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
+        userId: 'user-1',
+        ids: ['item123'],
+        enableUserData: true,
+      });
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
+        userId: 'user-2',
+        ids: ['item123'],
+        enableUserData: true,
+      });
+    });
+
+    it('should log debug details when a per-user lookup fails', async () => {
+      const debugSpy = jest
+        .spyOn(service['logger'], 'debug')
+        .mockImplementation(() => undefined);
+
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockRejectedValue(
+        new Error('User data unavailable'),
+      );
+
+      const history = await service.getWatchHistory('item123');
+
+      expect(history).toEqual([]);
+      expect(debugSpy).toHaveBeenCalledWith(
+        'Failed to get Jellyfin user data for item item123 and user user-1',
+        expect.any(Error),
       );
     });
 
@@ -375,11 +406,139 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getItemFavoritedBy', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('should return user ids for users who favorited the item', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) =>
+          Promise.resolve({
+            data: {
+              Items: [
+                {
+                  UserData: {
+                    IsFavorite: userId === 'user-2',
+                  },
+                },
+              ],
+            },
+          }),
+      );
+
+      const favoritedBy = await service.getItemFavoritedBy('item123');
+
+      expect(favoritedBy).toEqual(['user-2']);
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:favorited-by:item123',
+        ['user-2'],
+        300000,
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
+        userId: 'user-1',
+        ids: ['item123'],
+        enableUserData: true,
+      });
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
+        userId: 'user-2',
+        ids: ['item123'],
+        enableUserData: true,
+      });
+    });
+
+    it('should return cached favorited-by results when available', async () => {
+      jellyfinCacheMocks.data.has.mockImplementation(
+        (key: string) => key === 'jellyfin:favorited-by:item123',
+      );
+      jellyfinCacheMocks.data.get.mockImplementation((key: string) =>
+        key === 'jellyfin:favorited-by:item123' ? ['user-9'] : undefined,
+      );
+
+      const favoritedBy = await service.getItemFavoritedBy('item123');
+
+      expect(favoritedBy).toEqual(['user-9']);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getTotalPlayCount', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('should sum play counts across all users', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+          { Id: 'user-3', Name: 'Carol' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) =>
+          Promise.resolve({
+            data: {
+              Items: [
+                {
+                  UserData: {
+                    PlayCount:
+                      userId === 'user-1' ? 1 : userId === 'user-2' ? 3 : 0,
+                  },
+                },
+              ],
+            },
+          }),
+      );
+
+      const totalPlayCount = await service.getTotalPlayCount('item123');
+
+      expect(totalPlayCount).toBe(4);
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:total-play-count:item123',
+        4,
+        300000,
+      );
+    });
+
+    it('should return cached play count when available', async () => {
+      jellyfinCacheMocks.data.has.mockImplementation(
+        (key: string) => key === 'jellyfin:total-play-count:item123',
+      );
+      jellyfinCacheMocks.data.get.mockImplementation((key: string) =>
+        key === 'jellyfin:total-play-count:item123' ? 7 : undefined,
+      );
+
+      const totalPlayCount = await service.getTotalPlayCount('item123');
+
+      expect(totalPlayCount).toBe(7);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+  });
+
   describe('resetMetadataCache', () => {
     it('should remove threshold-specific watch history entries for one item', () => {
       jellyfinCacheMocks.data.keys.mockReturnValue([
         'jellyfin:watch:90:item123',
         'jellyfin:watch:95:item123',
+        'jellyfin:favorited-by:item123',
+        'jellyfin:total-play-count:item123',
         'jellyfin:watch:90:item999',
       ]);
 
@@ -390,6 +549,12 @@ describe('JellyfinAdapterService', () => {
       );
       expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
         'jellyfin:watch:95:item123',
+      );
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:favorited-by:item123',
+      );
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:total-play-count:item123',
       );
       expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
         'jellyfin:watch:90:item999',
