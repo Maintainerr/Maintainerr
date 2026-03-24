@@ -1,8 +1,10 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
+  createArrDiskspaceResource,
   createCollectionMedia,
   createMediaItem,
+  createRuleDto,
   createRulesDto,
   createSonarrEpisode,
   createSonarrEpisodeFile,
@@ -495,6 +497,77 @@ describe('SonarrGetterService', () => {
         expect(response).toBe('WEBDL-720p');
       },
     );
+  });
+
+  describe('diskspace properties', () => {
+    let collectionMedia: CollectionMedia;
+    let mediaItem: MediaItem;
+    let mockedSonarrApi: SonarrApi;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+      mediaItem = createMediaItem({ type: 'show' });
+      mockedSonarrApi = mockSonarrApi();
+    });
+
+    it('should use merged diskspace data for targeted remaining space rules', async () => {
+      const getDiskspaceWithRootFoldersSpy = jest
+        .spyOn(mockedSonarrApi, 'getDiskspaceWithRootFolders')
+        .mockResolvedValue([
+          createArrDiskspaceResource({
+            path: '/tv',
+            freeSpace: 12 * 1073741824,
+            hasAccurateTotalSpace: false,
+          }),
+        ]);
+      const getDiskspaceSpy = jest.spyOn(mockedSonarrApi, 'getDiskspace');
+
+      const response = await sonarrGetterService.get(
+        28,
+        mediaItem,
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+        createRuleDto({ arrDiskPath: '/tv/' }),
+      );
+
+      expect(response).toBe(12);
+      expect(getDiskspaceWithRootFoldersSpy).toHaveBeenCalled();
+      expect(getDiskspaceSpy).not.toHaveBeenCalled();
+    });
+
+    it('should return null for total space when the target only exists as a fallback path', async () => {
+      const getDiskspaceSpy = jest
+        .spyOn(mockedSonarrApi, 'getDiskspace')
+        .mockResolvedValue([
+          createArrDiskspaceResource({
+            path: '/config',
+            totalSpace: 200 * 1073741824,
+          }),
+        ]);
+      const getDiskspaceWithRootFoldersSpy = jest.spyOn(
+        mockedSonarrApi,
+        'getDiskspaceWithRootFolders',
+      );
+
+      const response = await sonarrGetterService.get(
+        29,
+        mediaItem,
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+        createRuleDto({ arrDiskPath: '/tv' }),
+      );
+
+      expect(response).toBeNull();
+      expect(getDiskspaceSpy).toHaveBeenCalled();
+      expect(getDiskspaceWithRootFoldersSpy).not.toHaveBeenCalled();
+    });
   });
 
   const mockSonarrApi = (series?: SonarrSeries) => {
