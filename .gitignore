@@ -12,3 +12,6 @@ node_modules
 
 # Development documentation (not committed)
 jellyfin-dev-documents/
+
+# External dependencies (local only)
+.external/

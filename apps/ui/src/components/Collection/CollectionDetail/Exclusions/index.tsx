@@ -30,7 +30,19 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
   const dataRef = useRef<MediaItem[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
   const [page, setPage] = useState(0)
+
+  const setLoading = (value: boolean) => {
+    loadingRef.current = value
+    setIsLoading(value)
+  }
+
+  const setLoadingExtra = (value: boolean) => {
+    loadingExtraRef.current = value
+    setIsLoadingExtra(value)
+  }
 
   useEffect(() => {
     // Initial first fetch
@@ -71,31 +83,32 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
 
   const fetchData = async () => {
     if (!loadingRef.current) {
-      loadingExtraRef.current = true
+      setLoadingExtra(true)
     }
-    // setLoading(true)
-    const resp: { totalSize: number; items: IExclusionMedia[] } =
-      await GetApiHandler(
-        `/collections/exclusions/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}`,
-      )
+    try {
+      const resp: { totalSize: number; items: IExclusionMedia[] } =
+        await GetApiHandler(
+          `/collections/exclusions/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}`,
+        )
 
-    setTotalSize(resp.totalSize)
-    // pageData.current = pageData.current + 1
+      setTotalSize(resp.totalSize)
 
-    setData([
-      ...dataRef.current,
-      ...resp.items.map((el) => {
-        if (el.mediaData) {
-          el.mediaData.maintainerrExclusionId = el.id
-          el.mediaData.maintainerrExclusionType = el.ruleGroupId
-            ? 'specific'
-            : 'global'
-        }
-        return el.mediaData ? el.mediaData : ({} as MediaItem)
-      }),
-    ])
-    loadingRef.current = false
-    loadingExtraRef.current = false
+      setData([
+        ...dataRef.current,
+        ...resp.items.map((el) => {
+          if (el.mediaData) {
+            el.mediaData.maintainerrExclusionId = el.id
+            el.mediaData.maintainerrExclusionType = el.ruleGroupId
+              ? 'specific'
+              : 'global'
+          }
+          return el.mediaData ? el.mediaData : ({} as MediaItem)
+        }),
+      ])
+    } finally {
+      setLoading(false)
+      setLoadingExtra(false)
+    }
   }
 
   useEffect(() => {
@@ -121,14 +134,14 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     <OverviewContent
       dataFinished={true}
       fetchData={() => {}}
-      loading={loadingRef.current}
+      loading={isLoading}
       data={data}
       libraryId={props.libraryId}
       collectionPage={true}
       collectionId={props.collection.id}
       extrasLoading={
-        loadingExtraRef &&
-        !loadingRef.current &&
+        isLoadingExtra &&
+        !isLoading &&
         totalSize >= pageData.current * fetchAmount
       }
       onRemove={(id: string) =>
