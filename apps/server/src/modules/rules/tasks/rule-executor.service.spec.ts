@@ -250,4 +250,35 @@ describe('RuleExecutorService', () => {
     );
     expect(progressManager.reset).not.toHaveBeenCalled();
   });
+
+  it('aborts between collection add and remove phases', async () => {
+    const { service, collectionService } = createService(MediaServerType.PLEX);
+    const abortController = new AbortController();
+
+    (service as any).resultData = [{ id: 'm2' }];
+    (service as any).statisticsData = [];
+
+    collectionService.addToCollection.mockImplementation(async () => {
+      abortController.abort();
+      return {
+        id: 1,
+        mediaServerId: 'coll-1',
+        title: 'Test Collection',
+        deleteAfterDays: 0,
+      } as any;
+    });
+
+    await expect(
+      (
+        service as unknown as {
+          handleCollection: (
+            ruleGroup: { id: number; collectionId: number },
+            abortSignal: AbortSignal,
+          ) => Promise<Set<string>>;
+        }
+      ).handleCollection({ id: 10, collectionId: 1 }, abortController.signal),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+  });
 });

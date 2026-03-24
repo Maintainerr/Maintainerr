@@ -151,6 +151,10 @@ export class PlexTvApi extends ExternalApiService {
         '/users/account.json',
       );
 
+      if (!account) {
+        throw new Error('Failed to fetch account from plex.tv');
+      }
+
       return account.user;
     } catch (e) {
       this.logger.error(
@@ -165,6 +169,10 @@ export class PlexTvApi extends ExternalApiService {
       transformResponse: [],
       responseType: 'text',
     });
+
+    if (!response) {
+      throw new Error('Failed to fetch users from plex.tv');
+    }
 
     const parsedXml = (await parseStringPromise(response)) as UsersResponse;
     return parsedXml;
@@ -248,6 +256,11 @@ export class PlexTvApi extends ExternalApiService {
         transformResponse: [],
         responseType: 'text',
       });
+
+      if (!devicesResp) {
+        throw new Error('Failed to fetch devices from plex.tv');
+      }
+
       const parsedXml = await xml2js.parseStringPromise(
         devicesResp as DeviceResponse,
       );

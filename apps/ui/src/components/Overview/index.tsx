@@ -1,5 +1,4 @@
 import { type MediaItem } from '@maintainerr/contracts'
-import { clone } from 'lodash'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { useMediaServerLibraries } from '../../api/media-server'
 import SearchContext from '../../contexts/search-context'
@@ -24,6 +23,8 @@ const Overview = () => {
   const [searchUsed, setSearchUsed] = useState<boolean>(false)
 
   const pageData = useRef<number>(0)
+  const fetchingRef = useRef<boolean>(false)
+  const fetchGenerationRef = useRef<number>(0)
   const SearchCtx = useContext(SearchContext)
 
   const { data: libraries } = useMediaServerLibraries()
@@ -34,23 +35,29 @@ const Overview = () => {
     loadingRef.current = val
   }
 
+  const setFetching = (val: boolean) => {
+    fetchingRef.current = val
+  }
+
   useEffect(() => {
     if (!libraries || libraries.length === 0) {
       return
     }
 
-    setTimeout(() => {
+    const fallbackTimer = setTimeout(() => {
       if (
         loadingRef.current &&
-        data.length === 0 &&
+        dataRef.current.length === 0 &&
+        !selectedLibraryRef.current &&
         SearchCtx.search.text === ''
       ) {
-        switchLib(selectedLibrary ? selectedLibrary : libraries[0].id)
+        switchLib(libraries[0].id)
       }
     }, 300)
 
     // Cleanup on unmount
     return () => {
+      clearTimeout(fallbackTimer)
       setData([])
       dataRef.current = []
       totalSizeRef.current = 999
@@ -96,7 +103,9 @@ const Overview = () => {
   }, [totalSize])
 
   const switchLib = (libraryId: string) => {
+    fetchGenerationRef.current = fetchGenerationRef.current + 1
     setIsLoading(true)
+    setFetching(false)
     pageData.current = 0
     setTotalSize(999)
     setData([])
@@ -107,12 +116,20 @@ const Overview = () => {
 
   const fetchData = async () => {
     if (
-      selectedLibraryRef.current &&
-      SearchCtx.search.text === '' &&
-      totalSizeRef.current >= pageData.current * fetchAmount
+      fetchingRef.current ||
+      !selectedLibraryRef.current ||
+      SearchCtx.search.text !== '' ||
+      !(totalSizeRef.current >= pageData.current * fetchAmount)
     ) {
-      const askedLib = clone(selectedLibraryRef.current)
+      return
+    }
 
+    setFetching(true)
+    const fetchGeneration = fetchGenerationRef.current
+    if (!loadingRef.current) {
+      setLoadingExtra(true)
+    }
+    try {
       const resp: { totalSize: number; items: MediaItem[] } =
         await GetApiHandler(
           `/media-server/library/${selectedLibraryRef.current}/content?page=${
@@ -120,14 +137,17 @@ const Overview = () => {
           }&limit=${fetchAmount}`,
         )
 
-      if (askedLib === selectedLibraryRef.current) {
+      if (fetchGeneration === fetchGenerationRef.current) {
         setTotalSize(resp.totalSize)
         pageData.current = pageData.current + 1
         setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
-        setIsLoading(false)
       }
-      setLoadingExtra(false)
-      setIsLoading(false)
+    } finally {
+      if (fetchGeneration === fetchGenerationRef.current) {
+        setLoadingExtra(false)
+        setIsLoading(false)
+        setFetching(false)
+      }
     }
   }
 
@@ -146,10 +166,7 @@ const Overview = () => {
             dataFinished={
               !(totalSizeRef.current >= pageData.current * fetchAmount)
             }
-            fetchData={() => {
-              setLoadingExtra(true)
-              fetchData()
-            }}
+            fetchData={() => fetchData()}
             loading={loadingRef.current}
             extrasLoading={
               loadingExtra &&

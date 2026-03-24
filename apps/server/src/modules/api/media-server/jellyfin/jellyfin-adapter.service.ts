@@ -37,6 +37,7 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -106,6 +107,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     serverName?: string;
     version?: string;
     error?: string;
+    cause?: unknown;
     users?: Array<{ id: string; name: string }>;
   }> {
     try {
@@ -125,7 +127,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       } catch (authError) {
         return {
           success: false,
-          error: 'Invalid API key - authentication failed',
+          error: 'Invalid API key',
+          cause: authError,
         };
       }
 
@@ -136,8 +139,14 @@ export class JellyfinAdapterService implements IMediaServerService {
         users,
       };
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Connection failed';
-      return { success: false, error };
+      return {
+        success: false,
+        error: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Jellyfin. Verify URL and API key.',
+        ),
+        cause: e,
+      };
     }
   }
 
@@ -206,7 +215,14 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {
-      this.logger.error(`Jellyfin connection test failed: ${result.error}`);
+      if (result.cause instanceof Error) {
+        this.logger.error(
+          `Jellyfin connection test failed: ${result.cause.message}`,
+          result.cause.stack,
+        );
+      } else {
+        this.logger.error(`Jellyfin connection test failed: ${result.error}`);
+      }
     }
 
     return result;
