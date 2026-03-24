@@ -1,3 +1,4 @@
+import { normalizeDiskPath } from '@maintainerr/contracts';
 import { ExternalApiService } from '../../../../modules/api/external-api/external-api.service';
 import { DVRSettings } from '../../../../modules/settings/interfaces/dvr-settings.interface';
 import { MaintainerrLogger } from '../../../logging/logs.service';
@@ -93,6 +94,54 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     } catch (e) {
       this.logger.warn(`Failed to retrieve disk space: ${e.message}`);
     }
+  };
+
+  /**
+   * Returns disk space entries merged with root folder data.
+   *
+   * Sonarr's /diskspace only includes DriveType.Fixed mounts, which excludes
+   * NFS/CIFS network mounts commonly used in Docker setups. Radarr includes
+   * DriveType.Network too, so it usually works already. We supplement both
+   * with /rootfolder entries to cover missing media mount paths.
+   *
+   * Note: The /rootfolder API only returns freeSpace, not a trustworthy
+   * totalSpace value. Fallback entries sourced from root folders therefore
+   * set totalSpace = 0 and hasAccurateTotalSpace = false.
+   *
+   * These merged entries are safe for remaining-space calculations and for the
+   * UI path picker. Total-space rule evaluation must use raw /diskspace data.
+   */
+  public getDiskspaceWithRootFolders = async (): Promise<
+    DiskSpaceResource[]
+  > => {
+    const [diskspace, rootFolders] = await Promise.all([
+      this.getDiskspace(),
+      this.getRootFolders(),
+    ]);
+
+    const results: DiskSpaceResource[] = [...(diskspace ?? [])];
+    const existingPaths = new Set(
+      results.filter((d) => d.path).map((d) => normalizeDiskPath(d.path!)),
+    );
+
+    for (const folder of rootFolders ?? []) {
+      if (!folder.path) continue;
+
+      const normalized = normalizeDiskPath(folder.path);
+      if (!existingPaths.has(normalized)) {
+        existingPaths.add(normalized);
+        results.push({
+          id: folder.id,
+          path: folder.path,
+          label: null,
+          freeSpace: folder.freeSpace ?? 0,
+          totalSpace: folder.totalSpace ?? 0,
+          hasAccurateTotalSpace: folder.totalSpace != null,
+        });
+      }
+    }
+
+    return results;
   };
 
   public getQueue = async (): Promise<(QueueItem & QueueItemAppendT)[]> => {

@@ -4,6 +4,7 @@ import {
   ItemFields,
   ItemSortBy,
   SortOrder,
+  type UserItemDataDto,
 } from '@jellyfin/sdk/lib/generated-client/models';
 import {
   getCollectionApi,
@@ -36,6 +37,7 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -105,6 +107,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     serverName?: string;
     version?: string;
     error?: string;
+    cause?: unknown;
     users?: Array<{ id: string; name: string }>;
   }> {
     try {
@@ -124,7 +127,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       } catch (authError) {
         return {
           success: false,
-          error: 'Invalid API key - authentication failed',
+          error: 'Invalid API key',
+          cause: authError,
         };
       }
 
@@ -135,8 +139,14 @@ export class JellyfinAdapterService implements IMediaServerService {
         users,
       };
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Connection failed';
-      return { success: false, error };
+      return {
+        success: false,
+        error: formatConnectionFailureMessage(
+          e,
+          'Failed to connect to Jellyfin. Verify URL and API key.',
+        ),
+        cause: e,
+      };
     }
   }
 
@@ -205,7 +215,14 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {
-      this.logger.error(`Jellyfin connection test failed: ${result.error}`);
+      if (result.cause instanceof Error) {
+        this.logger.error(
+          `Jellyfin connection test failed: ${result.cause.message}`,
+          result.cause.stack,
+        );
+      } else {
+        this.logger.error(`Jellyfin connection test failed: ${result.error}`);
+      }
     }
 
     return result;
@@ -667,42 +684,27 @@ export class JellyfinAdapterService implements IMediaServerService {
         return this.cache.data.get<WatchRecord[]>(cacheKey) || [];
       }
 
-      const users = await this.getUsers();
       const records: WatchRecord[] = [];
 
-      // Batch users to avoid overwhelming the API
-      for (
-        let i = 0;
-        i < users.length;
-        i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
-      ) {
-        const batch = users.slice(
-          i,
-          i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY,
-        );
+      // Jellyfin watch state is user-scoped, so we aggregate item user data
+      // across all users and build a normalized watch history from that.
+      const userDataEntries = await this.getAllUserItemData(itemId);
+      userDataEntries.forEach(({ user, userData }) => {
+        if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+          return;
+        }
 
-        const results = await Promise.allSettled(
-          batch.map((user) => this.getItemUserData(itemId, user.id)),
+        records.push(
+          JellyfinMapper.toWatchRecord(
+            user.id,
+            itemId,
+            userData?.LastPlayedDate
+              ? new Date(userData.LastPlayedDate)
+              : undefined,
+            userData?.PlayedPercentage ?? undefined,
+          ),
         );
-
-        results.forEach((result, idx) => {
-          if (
-            result.status === 'fulfilled' &&
-            this.isCompletedWatch(result.value, playedCompletionThreshold)
-          ) {
-            records.push(
-              JellyfinMapper.toWatchRecord(
-                batch[idx].id,
-                itemId,
-                result.value.LastPlayedDate
-                  ? new Date(result.value.LastPlayedDate)
-                  : undefined,
-                result.value.PlayedPercentage,
-              ),
-            );
-          }
-        });
-      }
+      });
 
       this.cache.data.set(cacheKey, records, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
       return records;
@@ -725,29 +727,17 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
-      const users = await this.getUsers();
-      const favoritedBy: string[] = [];
-
-      for (
-        let i = 0;
-        i < users.length;
-        i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
-      ) {
-        const batch = users.slice(
-          i,
-          i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY,
-        );
-
-        const results = await Promise.allSettled(
-          batch.map((user) => this.getItemUserData(itemId, user.id)),
-        );
-
-        results.forEach((result, idx) => {
-          if (result.status === 'fulfilled' && result.value?.IsFavorite) {
-            favoritedBy.push(batch[idx].id);
-          }
-        });
+      const cacheKey = `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}`;
+      if (this.cache.data.has(cacheKey)) {
+        return this.cache.data.get<string[]>(cacheKey) || [];
       }
+
+      const userDataEntries = await this.getAllUserItemData(itemId);
+      const favoritedBy = userDataEntries
+        .filter(({ userData }) => userData?.IsFavorite)
+        .map(({ user }) => user.id);
+
+      this.cache.data.set(cacheKey, favoritedBy, JELLYFIN_CACHE_TTL.USER_DATA);
 
       return favoritedBy;
     } catch (error) {
@@ -765,30 +755,21 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return 0;
 
     try {
-      const users = await this.getUsers();
-      let totalPlayCount = 0;
-
-      // Batch users to avoid overwhelming the API
-      for (
-        let i = 0;
-        i < users.length;
-        i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
-      ) {
-        const batch = users.slice(
-          i,
-          i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY,
-        );
-
-        const results = await Promise.allSettled(
-          batch.map((user) => this.getItemUserData(itemId, user.id)),
-        );
-
-        results.forEach((result) => {
-          if (result.status === 'fulfilled' && result.value?.PlayCount) {
-            totalPlayCount += result.value.PlayCount;
-          }
-        });
+      const cacheKey = `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}`;
+      if (this.cache.data.has(cacheKey)) {
+        return this.cache.data.get<number>(cacheKey) || 0;
       }
+
+      const userDataEntries = await this.getAllUserItemData(itemId);
+      const totalPlayCount = userDataEntries.reduce((count, { userData }) => {
+        return count + (userData?.PlayCount ?? 0);
+      }, 0);
+
+      this.cache.data.set(
+        cacheKey,
+        totalPlayCount,
+        JELLYFIN_CACHE_TTL.USER_DATA,
+      );
 
       return totalPlayCount;
     } catch (error) {
@@ -798,19 +779,65 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
+   * Get item user data for all Jellyfin users in rate-limited batches.
+   * Centralizing this keeps the per-user Jellyfin access pattern consistent
+   * across watch history, favorited-by, and play-count aggregation.
+   */
+  private async getAllUserItemData(
+    itemId: string,
+  ): Promise<Array<{ user: MediaUser; userData?: UserItemDataDto }>> {
+    const users = await this.getUsers();
+    const userDataEntries: Array<{
+      user: MediaUser;
+      userData?: UserItemDataDto;
+    }> = [];
+
+    for (
+      let i = 0;
+      i < users.length;
+      i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
+    ) {
+      const batch = users.slice(i, i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY);
+      const results = await Promise.allSettled(
+        batch.map((user) => this.getItemUserData(itemId, user.id)),
+      );
+
+      results.forEach((result, idx) => {
+        userDataEntries.push({
+          user: batch[idx],
+          userData: result.status === 'fulfilled' ? result.value : undefined,
+        });
+      });
+    }
+
+    return userDataEntries;
+  }
+
+  /**
    * Get user data for a specific item.
    */
-  private async getItemUserData(itemId: string, userId: string) {
+  private async getItemUserData(
+    itemId: string,
+    userId: string,
+  ): Promise<UserItemDataDto | undefined> {
     if (!this.api) return undefined;
 
     try {
+      // Use getItems with enableUserData instead of the dedicated
+      // getItemUserData endpoint — the latter does not reliably return
+      // per-user data when authenticating with an API key on all
+      // Jellyfin versions.
       const response = await getItemsApi(this.api).getItems({
         userId,
         ids: [itemId],
         enableUserData: true,
       });
       return response.data.Items?.[0]?.UserData;
-    } catch {
+    } catch (error) {
+      this.logger.debug(
+        `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
+        error,
+      );
       return undefined;
     }
   }
@@ -1344,8 +1371,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         .keys()
         .filter(
           (key) =>
-            key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) &&
-            key.endsWith(`:${itemId}`),
+            (key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) &&
+              key.endsWith(`:${itemId}`)) ||
+            key === `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}` ||
+            key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}`,
         )
         .forEach((key) => this.cache.data.del(key));
     } else {

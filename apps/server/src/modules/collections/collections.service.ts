@@ -137,6 +137,7 @@ export class CollectionsService {
       queryBuilder
         .where('collection_media.collectionId = :id', { id })
         .orderBy('collection_media.addDate', 'DESC')
+        .addOrderBy('collection_media.id', 'DESC')
         .skip(offset)
         .take(size);
 
