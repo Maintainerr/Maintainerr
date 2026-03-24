@@ -17,6 +17,7 @@ import {
   getSystemApi,
   getTvShowsApi,
   getUserApi,
+  getUserLibraryApi,
 } from '@jellyfin/sdk/lib/utils/api/index.js';
 import {
   MediaServerFeature,
@@ -886,18 +887,14 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getUserLibraryApi(this.api).getItem({
+        itemId: collectionId,
         userId,
-        ids: [collectionId],
-        fields: [
-          ItemFields.Overview,
-          ItemFields.DateCreated,
-          ItemFields.ChildCount,
-        ],
       });
 
-      const item = response.data.Items?.[0];
-      return item ? JellyfinMapper.toMediaCollection(item) : undefined;
+      return response.data
+        ? JellyfinMapper.toMediaCollection(response.data)
+        : undefined;
     } catch (error) {
       this.logger.warn(`Failed to get collection ${collectionId}`, error);
       return undefined;
@@ -928,12 +925,16 @@ export class JellyfinAdapterService implements IMediaServerService {
       // Note: No refresh needed - Jellyfin auto-generates composite images
       // when items are added (as long as isLocked: true, which we set above).
 
-      const collection = await this.getCollection(collectionId);
-      if (!collection) {
-        throw new Error('Failed to fetch created collection');
-      }
-
-      return collection;
+      // Construct from known data - the collection may not be immediately
+      // queryable via getItems as Jellyfin needs time to index it
+      return {
+        id: collectionId,
+        title: params.title,
+        summary: params.summary,
+        childCount: 0,
+        smart: false,
+        libraryId: params.libraryId,
+      };
     } catch (error) {
       this.logger.error('Failed to create Jellyfin collection', error);
       throw error;
