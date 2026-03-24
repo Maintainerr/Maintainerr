@@ -1,6 +1,7 @@
 import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../../../utils/connection-error';
 import cacheManager from '../../api/lib/cache';
 import PlexCommunityApi, {
   PlexCommunityErrorResponse,
@@ -771,7 +772,7 @@ export class PlexApiService {
                   hostname: connection.address,
                   port: connection.port,
                   https: connection.protocol === 'https',
-                  timeout: 5000,
+                  timeout: CONNECTION_TEST_TIMEOUT_MS,
                   token: settings.plex_auth_token,
                 });
 

@@ -466,6 +466,18 @@ export class PlexGetterService {
           const plexUsers: SimplePlexUser[] =
             await this.plexApi.getCorrectedUsers();
 
+          // When plex.tv is unreachable, no users will have UUIDs.
+          // Return null to skip the rule rather than falsely report an empty watchlist.
+          if (
+            plexUsers.length > 0 &&
+            !plexUsers.some((u) => u.uuid !== undefined)
+          ) {
+            this.logger.warn(
+              'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
+            );
+            return null;
+          }
+
           const usernames: string[] = [];
           for (const u of plexUsers.filter(
             (u) => u.uuid !== undefined && media_uuid !== undefined,
@@ -493,6 +505,18 @@ export class PlexGetterService {
 
           const plexUsers: SimplePlexUser[] =
             await this.plexApi.getCorrectedUsers();
+
+          // When plex.tv is unreachable, no users will have UUIDs.
+          // Return null to skip the rule rather than falsely report an empty watchlist.
+          if (
+            plexUsers.length > 0 &&
+            !plexUsers.some((u) => u.uuid !== undefined)
+          ) {
+            this.logger.warn(
+              'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
+            );
+            return null;
+          }
 
           for (const u of plexUsers.filter(
             (u) => u.uuid !== undefined && media_uuid !== undefined,
