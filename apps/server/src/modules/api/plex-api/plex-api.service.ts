@@ -315,18 +315,21 @@ export class PlexApiService {
     useCache: boolean = true,
   ): Promise<PlexMetadata> {
     try {
-      const queryParams: string[] = [];
+      const queryParams = new URLSearchParams();
 
       if (options.includeChildren) {
-        queryParams.push('includeChildren=1');
+        queryParams.set('includeChildren', '1');
       }
 
       if (options.includeChildren || options.includeExternalMedia) {
-        queryParams.push('includeExternalMedia=1', 'asyncAugmentMetadata=1');
+        queryParams.set('includeExternalMedia', '1');
+        queryParams.set('asyncAugmentMetadata', '1');
       }
 
+      const queryString = queryParams.toString();
+
       const response = await this.plexClient.query<PlexMetadataResponse>(
-        `/library/metadata/${key}${queryParams.length > 0 ? `?${queryParams.join('&')}` : ''}`,
+        `/library/metadata/${key}${queryString.length > 0 ? `?${queryString}` : ''}`,
         useCache,
       );
       if (response) {
