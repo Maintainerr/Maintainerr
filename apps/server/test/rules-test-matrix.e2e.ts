@@ -215,6 +215,17 @@ function buildScenarioMatrix(): Scenario[] {
       values: [3],
     },
     {
+      name: 'number-bigger-equality-boundary-fails',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 3],
+          customVal: { ruleTypeId: 0, value: '5' },
+        }),
+      ],
+      values: [5],
+    },
+    {
       name: 'number-missing-first',
       rules: [
         createStoredRule(1, 0, {
@@ -281,6 +292,17 @@ function buildScenarioMatrix(): Scenario[] {
       values: [new Date('2024-01-01T00:00:00.000Z')],
     },
     {
+      name: 'date-before-equality-boundary-matches',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.BEFORE,
+          firstVal: [Application.PLEX, 0],
+          customVal: { ruleTypeId: 1, value: '2025-01-01T00:00:00.000Z' },
+        }),
+      ],
+      values: [new Date('2025-01-01T00:00:00.000Z')],
+    },
+    {
       name: 'date-before-missing-first',
       rules: [
         createStoredRule(1, 0, {
@@ -325,6 +347,17 @@ function buildScenarioMatrix(): Scenario[] {
       values: ['HEVC 1080p', null],
     },
     {
+      name: 'text-number-coercion-does-not-match',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.PLEX, 8],
+          lastVal: [Application.PLEX, 3],
+        }),
+      ],
+      values: ['5', 5],
+    },
+    {
       name: 'text-lastval-missing-second-not-contains',
       rules: [
         createStoredRule(1, 0, {
@@ -345,6 +378,17 @@ function buildScenarioMatrix(): Scenario[] {
         }),
       ],
       values: [true],
+    },
+    {
+      name: 'bool-number-coercion-matches',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.PLEX, 30],
+          lastVal: [Application.PLEX, 3],
+        }),
+      ],
+      values: [true, 1],
     },
     {
       name: 'bool-lastval-missing-second-not-equals',
@@ -401,6 +445,53 @@ function buildScenarioMatrix(): Scenario[] {
         }),
       ],
       values: [3, ['PlexUser', 'JellyfinUser', 'LocalUser']],
+    },
+    {
+      name: 'same-section-or-recovers-after-exact-array-miss',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.CONTAINS,
+          firstVal: [Application.SEERR, 0],
+          customVal: { ruleTypeId: 2, value: 'imdb' },
+        }),
+        createStoredRule(2, 0, {
+          operator: RuleOperators.OR,
+          action: RulePossibility.CONTAINS_PARTIAL,
+          firstVal: [Application.SEERR, 0],
+          customVal: { ruleTypeId: 2, value: 'imdb' },
+        }),
+      ],
+      values: [
+        ['ImDb top 250', 'My birthday', 'jef'],
+        ['ImDb top 250', 'My birthday', 'jef'],
+      ],
+    },
+    {
+      name: 'negated-array-rules-fail-before-later-or-recovery',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.NOT_CONTAINS,
+          firstVal: [Application.SEERR, 0],
+          customVal: { ruleTypeId: 2, value: 'keep' },
+        }),
+        createStoredRule(2, 0, {
+          operator: RuleOperators.OR,
+          action: RulePossibility.NOT_CONTAINS_ALL,
+          firstVal: [Application.SEERR, 0],
+          customVal: { ruleTypeId: 4, value: '["keep","anime"]' },
+        }),
+        createStoredRule(3, 1, {
+          operator: RuleOperators.OR,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.RADARR, 20],
+          customVal: { ruleTypeId: 3, value: '1' },
+        }),
+      ],
+      values: [
+        ['9-simon', 'anime', 'huntarr-upgrade', 'keep'],
+        ['9-simon', 'anime', 'huntarr-upgrade', 'keep'],
+        true,
+      ],
     },
     {
       name: 'same-section-or-fallback-after-missing',
@@ -469,6 +560,52 @@ function buildScenarioMatrix(): Scenario[] {
         }),
       ],
       values: [10, null],
+    },
+    {
+      name: 'three-section-and-or-chain-keeps-earlier-match',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.TAUTULLI, 3],
+          customVal: { ruleTypeId: 0, value: '2' },
+        }),
+        createStoredRule(2, 1, {
+          operator: RuleOperators.AND,
+          action: RulePossibility.CONTAINS_PARTIAL,
+          firstVal: [Application.SEERR, 0],
+          customVal: { ruleTypeId: 2, value: 'Jelly' },
+        }),
+        createStoredRule(3, 2, {
+          operator: RuleOperators.OR,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.RADARR, 20],
+          customVal: { ruleTypeId: 3, value: '1' },
+        }),
+      ],
+      values: [3, ['PlexUser', 'JellyfinUser'], false],
+    },
+    {
+      name: 'three-section-and-or-chain-recovers-after-and-failure',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.TAUTULLI, 3],
+          customVal: { ruleTypeId: 0, value: '2' },
+        }),
+        createStoredRule(2, 1, {
+          operator: RuleOperators.AND,
+          action: RulePossibility.CONTAINS_PARTIAL,
+          firstVal: [Application.SEERR, 0],
+          customVal: { ruleTypeId: 2, value: 'Jelly' },
+        }),
+        createStoredRule(3, 2, {
+          operator: RuleOperators.OR,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.RADARR, 20],
+          customVal: { ruleTypeId: 3, value: '1' },
+        }),
+      ],
+      values: [3, ['PlexUser', 'LocalUser'], true],
     },
   ];
 }
