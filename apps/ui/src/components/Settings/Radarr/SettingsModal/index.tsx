@@ -98,13 +98,11 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
     !testResult?.status
 
   const constructUrl = (port: string) => {
-    const hostnameVal = hostname.includes('http://')
+    const hostnameVal = hostname.includes('://')
       ? hostname
-      : hostname.includes('https://')
-        ? hostname
-        : port == '443'
-          ? 'https://' + hostname
-          : 'http://' + hostname
+      : port == '443'
+        ? 'https://' + hostname
+        : 'http://' + hostname
 
     let radarrUrl = `${addPortToUrl(hostnameVal, +port)}`
     radarrUrl = radarrUrl.endsWith('/') ? radarrUrl.slice(0, -1) : radarrUrl

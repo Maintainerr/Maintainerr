@@ -98,13 +98,11 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
     !testResult?.status
 
   const constructUrl = (port: string) => {
-    const hostnameVal = hostname.includes('http://')
+    const hostnameVal = hostname.includes('://')
       ? hostname
-      : hostname.includes('https://')
-        ? hostname
-        : port == '443'
-          ? 'https://' + hostname
-          : 'http://' + hostname
+      : port == '443'
+        ? 'https://' + hostname
+        : 'http://' + hostname
 
     let sonarrUrl = `${addPortToUrl(hostnameVal, +port)}`
     sonarrUrl = sonarrUrl.endsWith('/') ? sonarrUrl.slice(0, -1) : sonarrUrl
