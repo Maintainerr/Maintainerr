@@ -783,15 +783,15 @@ const AddModal = (props: AddModal) => {
                                 },
                                 {
                                   id: 1,
-                                  name: 'Unmonitor and delete all seasons / episodes',
+                                  name: 'Unmonitor show + seasons, delete all episodes',
                                 },
                                 {
                                   id: 2,
-                                  name: 'Unmonitor and delete existing seasons / episodes',
+                                  name: 'Unmonitor show, delete existing episodes',
                                 },
                                 {
                                   id: 3,
-                                  name: 'Unmonitor show and keep files',
+                                  name: 'Unmonitor show + seasons, keep files',
                                 },
                                 {
                                   id: 4,
