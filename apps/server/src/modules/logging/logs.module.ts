@@ -2,12 +2,13 @@ import { Global, Module } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import chalk from 'chalk';
+import type { TransformableInfo } from 'logform';
 import path from 'path';
 import { Repository } from 'typeorm';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { LogSettings } from './entities/logSettings.entities';
-import { formatLogMessage } from './logFormatting';
+import { formatLogMessage, sanitizeLogInfo } from './logFormatting';
 import { LogsController } from './logs.controller';
 import {
   LogSettingsService,
@@ -20,6 +21,10 @@ const dataDir =
   process.env.NODE_ENV === 'production'
     ? '/opt/data'
     : path.join(__dirname, '../../../../../data');
+
+const sanitizeLogFormat = winston.format(
+  (info): TransformableInfo => sanitizeLogInfo(info),
+);
 
 @Global()
 @Module({
@@ -46,6 +51,7 @@ const dataDir =
           maxSize: maxSize,
           maxFiles: maxFiles,
           format: winston.format.combine(
+            sanitizeLogFormat(),
             winston.format.timestamp({ format: 'DD/MM/YYYY HH:mm:ss' }),
             winston.format.printf(
               ({ level, message, timestamp, context, stack }) => {
@@ -66,6 +72,7 @@ const dataDir =
             debug: 5,
           },
           format: winston.format.combine(
+            sanitizeLogFormat(),
             winston.format.timestamp({ format: 'DD/MM/YYYY HH:mm:ss' }),
             winston.format.printf(
               ({ level, message, timestamp, context, stack }) => {
