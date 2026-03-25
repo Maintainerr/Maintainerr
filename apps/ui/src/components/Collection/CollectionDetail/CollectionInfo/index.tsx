@@ -45,6 +45,8 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const dataRef = useRef<CollectionLogDto[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
   const [searchFilter, debouncedSearchFilter, setSearchFilter] =
     useDebouncedState('')
   const [currentSort, setCurrentSort] = useState<'ASC' | 'DESC'>('DESC')
@@ -55,6 +57,16 @@ const CollectionInfo = (props: ICollectionInfo) => {
     useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
 
   const fetchAmount = 25
+
+  const setLoading = (value: boolean) => {
+    loadingRef.current = value
+    setIsLoading(value)
+  }
+
+  const setLoadingExtra = (value: boolean) => {
+    loadingExtraRef.current = value
+    setIsLoadingExtra(value)
+  }
 
   useEffect(() => {
     // Initial first fetch
@@ -114,20 +126,22 @@ const CollectionInfo = (props: ICollectionInfo) => {
 
   const fetchData = async () => {
     if (!loadingRef.current) {
-      loadingExtraRef.current = true
+      setLoadingExtra(true)
     }
+    try {
+      const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
+        `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
+          debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
+        }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
+      )
 
-    const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
-      `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
-        debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
-      }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
-    )
+      setTotalSize(resp.totalSize)
 
-    setTotalSize(resp.totalSize)
-
-    setData([...dataRef.current, ...resp.items])
-    loadingRef.current = false
-    loadingExtraRef.current = false
+      setData([...dataRef.current, ...resp.items])
+    } finally {
+      setLoading(false)
+      setLoadingExtra(false)
+    }
   }
 
   useEffect(() => {
@@ -150,11 +164,9 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }, [totalSize])
 
   const resetAll = () => {
-    // set loading
-    loadingRef.current = true
-    loadingExtraRef.current = false
+    setLoading(true)
+    setLoadingExtra(false)
 
-    // reset all
     pageData.current = 0
     setPage(0)
     totalSizeRef.current = 999
@@ -279,7 +291,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
               </tr>
             </thead>
             <Table.TBody>
-              {loadingRef.current ? (
+              {isLoading ? (
                 <tr>
                   <Table.TD colSpan={4} noPadding>
                     <LoadingSpinner />
@@ -352,7 +364,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                     )
                   })}
 
-                  {loadingExtraRef.current ? (
+                  {isLoadingExtra ? (
                     <tr>
                       <Table.TD colSpan={2} noPadding>
                         <SmallLoadingSpinner className="m-auto mb-2 mt-2 w-8" />

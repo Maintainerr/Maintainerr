@@ -24,7 +24,19 @@ const CollectionMediaPage = () => {
   const mediaRef = useRef<ICollectionMedia[]>([])
   const loadingRef = useRef<boolean>(true)
   const loadingExtraRef = useRef<boolean>(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
   const [page, setPage] = useState(0)
+
+  const setLoading = (value: boolean) => {
+    loadingRef.current = value
+    setIsLoading(value)
+  }
+
+  const setLoadingExtra = (value: boolean) => {
+    loadingExtraRef.current = value
+    setIsLoadingExtra(value)
+  }
 
   useEffect(() => {
     // Initial first fetch
@@ -48,28 +60,31 @@ const CollectionMediaPage = () => {
 
   const fetchData = async () => {
     if (!loadingRef.current) {
-      loadingExtraRef.current = true
+      setLoadingExtra(true)
     }
-    const resp: { totalSize: number; items: ICollectionMedia[] } =
-      await GetApiHandler(
-        `/collections/media/${id}/content/${pageData.current}?size=${fetchAmount}`,
-      )
+    try {
+      const resp: { totalSize: number; items: ICollectionMedia[] } =
+        await GetApiHandler(
+          `/collections/media/${id}/content/${pageData.current}?size=${fetchAmount}`,
+        )
 
-    setTotalSize(resp.totalSize)
+      setTotalSize(resp.totalSize)
 
-    setMedia([...mediaRef.current, ...resp.items])
+      setMedia([...mediaRef.current, ...resp.items])
 
-    setData([
-      ...dataRef.current,
-      ...resp.items.map((el) => {
-        if (el.mediaData) {
-          el.mediaData.maintainerrIsManual = el.isManual ? el.isManual : false
-        }
-        return el.mediaData ? el.mediaData : ({} as MediaItem)
-      }),
-    ])
-    loadingRef.current = false
-    loadingExtraRef.current = false
+      setData([
+        ...dataRef.current,
+        ...resp.items.map((el) => {
+          if (el.mediaData) {
+            el.mediaData.maintainerrIsManual = el.isManual ? el.isManual : false
+          }
+          return el.mediaData ? el.mediaData : ({} as MediaItem)
+        }),
+      ])
+    } finally {
+      setLoading(false)
+      setLoadingExtra(false)
+    }
   }
 
   useEffect(() => {
@@ -116,13 +131,13 @@ const CollectionMediaPage = () => {
     <OverviewContent
       dataFinished={true}
       fetchData={() => {}}
-      loading={loadingRef.current}
+      loading={isLoading}
       data={data}
       libraryId={collection.libraryId}
       collectionPage={true}
       extrasLoading={
-        loadingExtraRef.current &&
-        !loadingRef.current &&
+        isLoadingExtra &&
+        !isLoading &&
         totalSize >= pageData.current * fetchAmount
       }
       onRemove={(id: string) =>
