@@ -250,7 +250,7 @@ export class RuleComparatorService {
         this.logMissingOperand(rule, mediaId, firstVal, secondVal);
         this.addStatistictoParent(rule, firstVal, secondVal, mediaId, false);
 
-        if (+rule.operator === +RuleOperators.AND) {
+        if (rule.operator != null && +rule.operator === +RuleOperators.AND) {
           this.workerData.splice(i, 1);
           this.workerIds.delete(mediaId);
         }
@@ -362,10 +362,7 @@ export class RuleComparatorService {
         rule.firstVal,
       ),
       firstValue: firstVal,
-      secondValueName: rule.lastVal
-        ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-        : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
-            .type,
+      secondValueName: this.getSecondValueName(rule),
       secondValue: secondVal,
       result: result,
     });
