@@ -4,8 +4,12 @@ import {
   jellyfinSettingSchema,
   MediaServerSwitchPreview,
   MediaServerType,
+  RadarrSetting,
+  radarrSettingSchema,
   SeerrSetting,
   seerrSettingSchema,
+  SonarrSetting,
+  sonarrSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   switchMediaServerSchema,
@@ -31,9 +35,7 @@ import { Response } from 'express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
-import { RadarrSettingRawDto } from "./dto's/radarr-setting.dto";
 import { SettingDto } from "./dto's/setting.dto";
-import { SonarrSettingRawDto } from "./dto's/sonarr-setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
@@ -106,19 +108,26 @@ export class SettingsController {
     return this.settingsService.testSetup();
   }
   @Post('/test/radarr')
-  testRadarr(@Body() payload: RadarrSettingRawDto) {
+  testRadarr(
+    @Body(new ZodValidationPipe(radarrSettingSchema))
+    payload: RadarrSetting,
+  ) {
     return this.settingsService.testRadarr(payload);
   }
 
   @Post('/radarr')
-  async addRadarrSetting(@Body() payload: RadarrSettingRawDto) {
+  async addRadarrSetting(
+    @Body(new ZodValidationPipe(radarrSettingSchema))
+    payload: RadarrSetting,
+  ) {
     return await this.settingsService.addRadarrSetting(payload);
   }
 
   @Put('/radarr/:id')
   async updateRadarrSetting(
     @Param('id', new ParseIntPipe()) id: number,
-    @Body() payload: RadarrSettingRawDto,
+    @Body(new ZodValidationPipe(radarrSettingSchema))
+    payload: RadarrSetting,
   ) {
     return await this.settingsService.updateRadarrSetting({
       id,
@@ -132,19 +141,26 @@ export class SettingsController {
   }
 
   @Post('/test/sonarr')
-  testSonarr(@Body() payload: SonarrSettingRawDto) {
+  testSonarr(
+    @Body(new ZodValidationPipe(sonarrSettingSchema))
+    payload: SonarrSetting,
+  ) {
     return this.settingsService.testSonarr(payload);
   }
 
   @Post('/sonarr')
-  async addSonarrSetting(@Body() payload: SonarrSettingRawDto) {
+  async addSonarrSetting(
+    @Body(new ZodValidationPipe(sonarrSettingSchema))
+    payload: SonarrSetting,
+  ) {
     return await this.settingsService.addSonarrSetting(payload);
   }
 
   @Put('/sonarr/:id')
   async updateSonarrSetting(
     @Param('id', new ParseIntPipe()) id: number,
-    @Body() payload: SonarrSettingRawDto,
+    @Body(new ZodValidationPipe(sonarrSettingSchema))
+    payload: SonarrSetting,
   ) {
     return await this.settingsService.updateSonarrSetting({
       id,
