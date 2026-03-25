@@ -210,7 +210,10 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      if (firstVal != null && secondVal != null) {
+      const shouldCompare =
+        firstVal != null && (secondVal != null || rule.lastVal != null);
+
+      if (shouldCompare) {
         // do action
         const comparisonResult = this.doRuleAction(
           firstVal,
@@ -242,6 +245,14 @@ export class RuleComparatorService {
             this.workerData.splice(i, 1);
             this.workerIds.delete(mediaId);
           }
+        }
+      } else {
+        this.logMissingOperand(rule, mediaId, firstVal, secondVal);
+        this.addStatistictoParent(rule, firstVal, secondVal, mediaId, false);
+
+        if (+rule.operator === +RuleOperators.AND) {
+          this.workerData.splice(i, 1);
+          this.workerIds.delete(mediaId);
         }
       }
     }
@@ -358,6 +369,30 @@ export class RuleComparatorService {
       secondValue: secondVal,
       result: result,
     });
+  }
+
+  private logMissingOperand(
+    rule: RuleDto,
+    mediaId: string,
+    firstVal: RuleValueType,
+    secondVal: RuleValueType,
+  ): void {
+    const firstValueName = this.ruleConstanstService.getValueHumanName(
+      rule.firstVal,
+    );
+
+    this.logger.warn(
+      `Skipping rule comparison due to missing operand: ` +
+        `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
+        `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +
+        `secondValueName=${this.getSecondValueName(rule)}, secondValue=${JSON.stringify(secondVal)}`,
+    );
+  }
+
+  private getSecondValueName(rule: RuleDto): string {
+    return rule.lastVal
+      ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
+      : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {

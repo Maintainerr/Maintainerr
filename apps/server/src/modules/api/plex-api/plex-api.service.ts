@@ -311,16 +311,22 @@ export class PlexApiService {
 
   public async getMetadata(
     key: string,
-    options: { includeChildren?: boolean } = {},
+    options: { includeChildren?: boolean; includeExternalMedia?: boolean } = {},
     useCache: boolean = true,
   ): Promise<PlexMetadata> {
     try {
+      const queryParams: string[] = [];
+
+      if (options.includeChildren) {
+        queryParams.push('includeChildren=1');
+      }
+
+      if (options.includeChildren || options.includeExternalMedia) {
+        queryParams.push('includeExternalMedia=1', 'asyncAugmentMetadata=1');
+      }
+
       const response = await this.plexClient.query<PlexMetadataResponse>(
-        `/library/metadata/${key}${
-          options.includeChildren
-            ? '?includeChildren=1&includeExternalMedia=1&asyncAugmentMetadata=1&asyncCheckFiles=1&asyncRefreshAnalysis=1'
-            : ''
-        }`,
+        `/library/metadata/${key}${queryParams.length > 0 ? `?${queryParams.join('&')}` : ''}`,
         useCache,
       );
       if (response) {
