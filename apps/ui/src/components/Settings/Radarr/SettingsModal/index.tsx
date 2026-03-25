@@ -170,7 +170,7 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
     const radarrUrl = constructUrl(port)
 
     await PostApiHandler<RadarrSettingTestResponse>('/settings/test/radarr', {
-      serverName,
+      serverName: serverName,
       apiKey: apiKey,
       url: `${radarrUrl}${baseUrl ? `/${baseUrl}` : ''}`,
     })

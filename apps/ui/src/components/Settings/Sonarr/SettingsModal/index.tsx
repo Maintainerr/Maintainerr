@@ -170,7 +170,7 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
     const sonarrUrl = constructUrl(port)
 
     await PostApiHandler<SonarrSettingTestResponse>('/settings/test/sonarr', {
-      serverName,
+      serverName: serverName,
       apiKey: apiKey,
       url: `${sonarrUrl}${baseUrl ? `/${baseUrl}` : ''}`,
     })
