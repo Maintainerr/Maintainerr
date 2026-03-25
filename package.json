@@ -28,6 +28,9 @@
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
+  "resolutions": {
+    "@typescript-eslint/utils": "^8.57.1"
+  },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",

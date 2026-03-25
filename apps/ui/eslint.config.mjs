@@ -1,18 +1,10 @@
-import { FlatCompat } from '@eslint/eslintrc'
 import js from '@eslint/js'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import globals from 'globals'
-import path from 'path'
+import reactPlugin from 'eslint-plugin-react'
+import reactHooksPlugin from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
 
 /** @type {import('eslint').Linter.Config[]} */
 const configs = [
@@ -21,10 +13,8 @@ const configs = [
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  ...compat.extends(
-    'plugin:react/recommended',
-    'plugin:react-hooks/recommended',
-  ),
+  reactPlugin.configs.flat.recommended,
+  reactHooksPlugin.configs.flat.recommended,
   {
     languageOptions: {
       parserOptions: {
@@ -35,7 +25,10 @@ const configs = [
     },
     settings: {
       react: {
-        version: 'detect',
+        // eslint-plugin-react uses context.getFilename() for automatic version
+        // detection, which was removed in ESLint 10. Update this value when
+        // upgrading React.
+        version: '19',
       },
     },
     rules: {
@@ -56,3 +49,4 @@ const configs = [
 ]
 
 export default configs
+

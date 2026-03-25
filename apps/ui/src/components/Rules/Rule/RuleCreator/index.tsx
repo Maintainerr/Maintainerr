@@ -58,7 +58,7 @@ const calculateRuleAmount = (
 
 const calculateRuleAmountArr = (ruleAmount: [number, number[]]) => {
   let s = 0,
-    r = 0
+    r
   const lenS = ruleAmount[0]
 
   const worker: [number[], [number[]]] = [[], [[]]]
@@ -141,9 +141,7 @@ const RuleCreator = (props: iRuleCreator) => {
 
     added.current = added.current
       .filter((e) => e !== id)
-      .map((e) => {
-        return (e = e > id ? e - 1 : e)
-      })
+      .map((e) => (e > id ? e - 1 : e))
     setEditData({ rules: rulesCreated.current.map((el) => el.rule) })
 
     const rules = [...ruleAmount[1]]
