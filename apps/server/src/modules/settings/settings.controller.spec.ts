@@ -1,6 +1,8 @@
+import { radarrSettingSchema } from '@maintainerr/contracts';
 import { StreamableFile } from '@nestjs/common';
 import { Response } from 'express';
 import { createReadStream } from 'fs';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
@@ -184,4 +186,23 @@ describe('SettingsController', () => {
       });
     },
   );
+
+  it('rejects invalid Radarr URLs with the shared Zod schema', () => {
+    const pipe = new ZodValidationPipe(radarrSettingSchema);
+
+    expect(() =>
+      pipe.transform(
+        {
+          serverName: 'radarr',
+          url: 'radarr.local',
+          apiKey: 'key',
+        },
+        {
+          type: 'body',
+          metatype: Object,
+          data: '',
+        },
+      ),
+    ).toThrow('Validation failed');
+  });
 });

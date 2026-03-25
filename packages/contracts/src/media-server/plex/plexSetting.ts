@@ -10,13 +10,8 @@ export const plexSettingSchema = z.object({
   port: z.number().int().positive().default(32400),
   auth_token: z.string().trim().min(1, 'Authentication token is required'),
   useSsl: z.boolean().optional().default(false),
-  webAppUrl: z
-    .string()
-    .trim()
-    .refine((val) => val.startsWith('http://') || val.startsWith('https://'), {
-      message: 'Must start with http:// or https://',
-    })
-    .optional(),
+  // Plex stores hostname/port/SSL separately; this value may be a bare hostname.
+  webAppUrl: z.string().trim().optional(),
 })
 
 export type PlexSetting = z.infer<typeof plexSettingSchema>
