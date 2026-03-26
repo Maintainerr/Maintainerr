@@ -5,19 +5,26 @@ import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [collections, setCollections] = useState<ICollection[]>()
+  const { invalidate, isCurrent } = useRequestGeneration()
 
   const getCollections = async (libraryId?: string) => {
+    const fetchGeneration = invalidate()
+
     const colls: ICollection[] = libraryId
       ? await GetApiHandler(`/collections?libraryId=${libraryId}`)
       : await GetApiHandler('/collections')
-    setCollections(colls)
-    setIsLoading(false)
+
+    if (isCurrent(fetchGeneration)) {
+      setCollections(colls)
+      setIsLoading(false)
+    }
   }
 
   useEffect(() => {

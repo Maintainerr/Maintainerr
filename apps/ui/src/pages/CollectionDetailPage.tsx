@@ -7,6 +7,7 @@ import { ICollection } from '../components/Collection'
 import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
+import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
 
@@ -17,6 +18,7 @@ const CollectionDetailPage = () => {
   const [collection, setCollection] = useState<ICollection | undefined>()
   const [isLoading, setIsLoading] = useState(true)
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
+  const { invalidate, isCurrent } = useRequestGeneration()
 
   // Determine current tab from URL path
   const getCurrentTab = () => {
@@ -33,12 +35,20 @@ const CollectionDetailPage = () => {
 
   useEffect(() => {
     if (id) {
+      const fetchGeneration = invalidate()
+
       GetApiHandler(`/collections/collection/${id}`)
         .then((resp) => {
-          setCollection(resp)
-          setIsLoading(false)
+          if (isCurrent(fetchGeneration)) {
+            setCollection(resp)
+            setIsLoading(false)
+          }
         })
         .catch((err) => {
+          if (!isCurrent(fetchGeneration)) {
+            return
+          }
+
           void logClientError(
             'Failed to load collection',
             err,

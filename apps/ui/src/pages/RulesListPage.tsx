@@ -9,6 +9,7 @@ import LibrarySwitcher from '../components/Common/LibrarySwitcher'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
+import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const RulesListPage = () => {
@@ -16,6 +17,7 @@ const RulesListPage = () => {
   const [data, setData] = useState<IRuleGroup[]>()
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
+  const { invalidate, isCurrent } = useRequestGeneration()
   const { ruleHandlerRunning } = useTaskStatusContext()
   const { mutate: stopAllExecution } = useStopAllRuleExecution({
     onSuccess() {
@@ -26,15 +28,24 @@ const RulesListPage = () => {
     },
   })
 
-  const fetchData = async () => {
-    if (selectedLibrary === 'all') return await GetApiHandler('/rules')
-    else return await GetApiHandler(`/rules?libraryId=${selectedLibrary}`)
+  const fetchData = async (): Promise<IRuleGroup[] | undefined> => {
+    const fetchGeneration = invalidate()
+    const response: IRuleGroup[] =
+      selectedLibrary === 'all'
+        ? await GetApiHandler('/rules')
+        : await GetApiHandler(`/rules?libraryId=${selectedLibrary}`)
+
+    if (isCurrent(fetchGeneration)) {
+      return response
+    }
   }
 
   useEffect(() => {
     fetchData().then((resp) => {
-      setData(resp)
-      setIsLoading(false)
+      if (resp) {
+        setData(resp)
+        setIsLoading(false)
+      }
     })
   }, [])
 
@@ -47,7 +58,11 @@ const RulesListPage = () => {
   }
 
   const refreshData = (): void => {
-    fetchData().then((resp) => setData(resp))
+    fetchData().then((resp) => {
+      if (resp) {
+        setData(resp)
+      }
+    })
   }
 
   const editHandler = (group: IRuleGroup): void => {

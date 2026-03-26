@@ -1,7 +1,7 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType } from '@maintainerr/contracts'
-import React, { memo, useEffect, useState } from 'react'
+import React, { memo, useCallback, useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
@@ -10,7 +10,6 @@ import MediaModalContent from './MediaModal'
 
 interface IMediaCard {
   id: number | string
-  image?: string
   summary?: string
   year?: string
   mediaType: 'movie' | 'show' | 'season' | 'episode'
@@ -48,11 +47,18 @@ const MediaCard: React.FC<IMediaCard> = ({
   onRemove = () => {},
 }) => {
   const [showDetail, setShowDetail] = useState(false)
-  const [image, setImage] = useState<string | null>(null)
+  const [imageResult, setImageResult] = useState<{
+    requestKey?: string
+    path: string | null
+  }>({ requestKey: undefined, path: null })
   const [excludeModal, setExcludeModal] = useState(false)
   const [addModal, setAddModal] = useState(false)
   const [hasExclusion, setHasExclusion] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
+  const imageType = ['season', 'episode'].includes(mediaType)
+    ? 'show'
+    : mediaType
+  const imageRequestKey = tmdbid ? `${imageType}:${tmdbid}` : undefined
 
   const openMediaModal = () => {
     setShowMediaModal(true)
@@ -60,25 +66,38 @@ const MediaCard: React.FC<IMediaCard> = ({
 
   const closeMediaModal = () => setShowMediaModal(false)
 
-  useEffect(() => {
-    if (tmdbid) {
-      const imageType = ['season', 'episode'].includes(mediaType)
-        ? 'show'
-        : mediaType
-      GetApiHandler(`/moviedb/image/${imageType}/${tmdbid}`).then((resp) =>
-        setImage(resp),
-      )
-    }
-    getExclusions()
-  }, [])
+  const getExclusions = useCallback(
+    (isActive: boolean) => {
+      if (!collectionPage) {
+        GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then(
+          (resp: []) =>
+            isActive ? setHasExclusion(resp.length > 0) : undefined,
+        )
+      }
+    },
+    [collectionPage, id],
+  )
 
-  const getExclusions = () => {
-    if (!collectionPage) {
-      GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then((resp: []) =>
-        resp.length > 0 ? setHasExclusion(true) : setHasExclusion(false),
-      )
+  useEffect(() => {
+    let isActive = true
+
+    if (tmdbid) {
+      GetApiHandler(`/moviedb/image/${imageType}/${tmdbid}`).then((resp) => {
+        if (isActive) {
+          setImageResult({ requestKey: imageRequestKey, path: resp })
+        }
+      })
     }
-  }
+
+    getExclusions(isActive)
+
+    return () => {
+      isActive = false
+    }
+  }, [getExclusions, imageRequestKey, imageType, tmdbid])
+
+  const image =
+    imageResult.requestKey === imageRequestKey ? imageResult.path : null
 
   // Just to get the year from the date
   if (year && mediaType !== 'episode') {
@@ -344,6 +363,5 @@ const MediaCard: React.FC<IMediaCard> = ({
     </div>
   )
 }
-const propsEqual = (prev: IMediaCard, next: IMediaCard) => prev.id === next.id
 
-export default memo(MediaCard, propsEqual)
+export default memo(MediaCard)

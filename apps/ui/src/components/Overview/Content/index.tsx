@@ -3,7 +3,7 @@ import {
   type MediaItemWithParent,
 } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { ICollectionMedia } from '../../Collection'
 import LoadingSpinner, {
   SmallLoadingSpinner,
@@ -52,20 +52,22 @@ function extractTmdbId(
 }
 
 const OverviewContent = (props: IOverviewContent) => {
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.scrollHeight * 0.8
-    ) {
-      if (!props.extrasLoading && !props.dataFinished) {
-        props.fetchData()
-      }
+  const { data, dataFinished, extrasLoading, fetchData, loading } = props
+
+  const isNearBottom = () =>
+    window.innerHeight + document.documentElement.scrollTop >=
+    document.documentElement.scrollHeight * 0.8
+
+  const handleScroll = useEffectEvent(() => {
+    if (isNearBottom() && !extrasLoading && !dataFinished) {
+      fetchData()
     }
-  }
+  })
 
   useEffect(() => {
     const debouncedScroll = debounce(handleScroll, 200)
     window.addEventListener('scroll', debouncedScroll, { passive: true })
+
     return () => {
       window.removeEventListener('scroll', debouncedScroll)
       debouncedScroll.cancel() // Cancel pending debounced calls
@@ -73,16 +75,10 @@ const OverviewContent = (props: IOverviewContent) => {
   }, [])
 
   useEffect(() => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
-      !props.loading &&
-      !props.extrasLoading &&
-      !props.dataFinished
-    ) {
-      props.fetchData()
+    if (isNearBottom() && !loading && !extrasLoading && !dataFinished) {
+      fetchData()
     }
-  }, [props.data])
+  }, [data, dataFinished, extrasLoading, fetchData, loading])
 
   const getDaysLeft = (mediaId: string) => {
     if (props.collectionInfo) {
@@ -123,20 +119,19 @@ const OverviewContent = (props: IOverviewContent) => {
     return item.ratings?.find((r) => r.type === 'audience')?.value ?? 0
   }
 
-  if (props.loading) {
+  if (loading) {
     return <LoadingSpinner />
   }
 
-  if (props.data && props.data.length > 0) {
+  if (data && data.length > 0) {
     return (
       <ul className="cards-vertical">
-        {props.data.map((el) => (
+        {data.map((el) => (
           <li key={el.id}>
             <MediaCard
               id={el.id}
               libraryId={props.libraryId}
               type={el.type}
-              image={''}
               summary={
                 el.type === 'movie' || el.type === 'show'
                   ? el.summary
