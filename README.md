@@ -40,7 +40,9 @@ It's a one-stop shop for handling those outlier shows and movies that take up pr
 - Delete files from disk
 
 <br />
+
 Currently, <b>Maintainerr</b> supports rule parameters from the following apps:
+
 - [Plex](https://www.plex.tv/)
 - [Jellyfin](https://jellyfin.org/)
 - [Seerr](https://seerr.dev/)
