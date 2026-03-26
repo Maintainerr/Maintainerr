@@ -1,4 +1,4 @@
-// After each new entity, generate migration
+// Generate migration after entity changes
 yarn workspace @maintainerr/server migration:generate src/database/migrations/<migr_name>
 
 // Run migrations
@@ -6,3 +6,37 @@ yarn workspace @maintainerr/server migration:run
 
 // Revert migrations
 yarn workspace @maintainerr/server migration:revert
+
+// Show migration status
+yarn workspace @maintainerr/server migration:show
+
+// Create empty migration
+yarn workspace @maintainerr/server migration:create src/database/migrations/<migr_name>
+
+// ---
+// Checking for pending migrations (e.g. before a release)
+//
+// Important: always generate against a database with all existing migrations applied.
+// Generating against an empty database produces a false positive that recreates all tables.
+//
+// Steps:
+//
+// 1. Check out the last released version and start the app to build a migrated database:
+//
+//    git checkout v<last-release-tag>   (e.g. v3.1.0)
+//    yarn install --frozen-lockfile
+//    yarn dev
+//    Wait for the server to fully start (migrations run automatically on boot), then stop it.
+//
+// 2. Switch back to your working branch and generate:
+//
+//    git checkout <your-branch>
+//    yarn install --frozen-lockfile
+//    cd apps/server
+//    yarn migration:generate src/database/migrations/<MigrationName>
+//
+// 3. Interpret the result:
+//    - "No changes in database schema were found" — schema is in sync, no migration needed.
+//    - A migration file is generated — review it, the changes are real schema drift.
+//
+// 4. Clean up: remove or empty data/maintainerr.sqlite so it doesn't get committed.
