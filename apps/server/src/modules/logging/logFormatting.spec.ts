@@ -3,45 +3,60 @@ import {
   sanitizeLogInfo,
   sanitizeLogValue,
 } from './logFormatting';
+import { maskSecret } from '../../utils/secretMasking';
 
 describe('logFormatting', () => {
-  it('redacts sensitive query parameters from log strings', () => {
-    expect(
-      sanitizeLogValue(
-        'GET https://example.com/?apikey=secret123&foo=bar&token=abc failed',
-      ),
-    ).toBe('GET https://example.com/?apikey=****&foo=bar&token=**** failed');
+  it('masks secret values with the shared contract', () => {
+    expect(maskSecret(undefined)).toBeNull();
+    expect(maskSecret(null)).toBeNull();
+    expect(maskSecret('')).toBe('');
+    expect(maskSecret('abc123')).toBe('****');
+    expect(maskSecret('secret123')).toBe('sec...123');
   });
 
-  it('redacts authorization headers from log strings', () => {
-    expect(sanitizeLogValue('Authorization: Bearer super-secret-token')).toBe(
-      'Authorization: Bearer ****',
+  it('sanitizes supported secret formats in log values', () => {
+    expect(
+      sanitizeLogValue(
+        'myauthorization: Bearer token123 Authorization: Bearer super-secret-token, apikey=secret123 /token/abcdef123456/details token=keepmehidden',
+      ),
+    ).toBe(
+      'myauthorization: Bearer token123 Authorization: Bearer sup...ken, apikey=sec...123 /token/abc...456/details token=kee...den',
     );
   });
 
-  it('redacts sensitive values recursively in log info objects', () => {
+  it('preserves winston symbol metadata while sanitizing nested values', () => {
+    const levelSymbol = Symbol.for('level');
+    const splatSymbol = Symbol.for('splat');
+    const nestedSymbol = Symbol('nested');
+
     expect(
       sanitizeLogInfo({
         message: 'POST https://example.com?api_key=abcd1234 failed',
         stack: ['Authorization=Basic dGVzdDp0b2tlbg=='],
         meta: {
           token: 'token=keepmehidden',
+          [nestedSymbol]: 'Authorization: Bearer super-secret-token',
         },
+        [levelSymbol]: 'info',
+        [splatSymbol]: ['Authorization: Bearer super-secret-token'],
       }),
     ).toEqual({
-      message: 'POST https://example.com?api_key=**** failed',
-      stack: ['Authorization=Basic ****'],
+      message: 'POST https://example.com?api_key=abc...234 failed',
+      stack: ['Authorization=Basic dGV...g=='],
       meta: {
-        token: 'token=****',
+        token: 'token=kee...den',
+        [nestedSymbol]: 'Authorization: Bearer sup...ken',
       },
+      [levelSymbol]: 'info',
+      [splatSymbol]: ['Authorization: Bearer sup...ken'],
     });
   });
 
-  it('redacts path token segments when formatting log messages', () => {
-    expect(
-      formatLogMessage('Request failed', [
-        'Error: https://plex.tv/api/v2/user/token/abcdef123456/details',
-      ]),
-    ).toContain('/token/****/details');
+  it('formats message with stack trace', () => {
+    const result = formatLogMessage('Request failed', [
+      'Error: something went wrong',
+    ]);
+    expect(result).toContain('Request failed');
+    expect(result).toContain('Error: something went wrong');
   });
 });

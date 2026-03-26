@@ -83,7 +83,7 @@ Docker-compose:
 ```Yaml
 services:
     maintainerr:
-        image: ghcr.io/maintainerr/maintainerr:latest # or maintainerr/maintainerr:latest
+        image: ghcr.io/maintainerr/maintainerr:latest # or maintainerr/maintainerr:main (to test unreleased changes)
         container_name: maintainerr
         user: 1000:1000
         volumes:
