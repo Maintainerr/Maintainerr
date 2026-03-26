@@ -17,7 +17,7 @@ const RulesListPage = () => {
   const [data, setData] = useState<IRuleGroup[]>()
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
-  const { invalidate, isCurrent } = useRequestGeneration()
+  const { invalidate, guardedFetch } = useRequestGeneration()
   const { ruleHandlerRunning } = useTaskStatusContext()
   const { mutate: stopAllExecution } = useStopAllRuleExecution({
     onSuccess() {
@@ -28,41 +28,35 @@ const RulesListPage = () => {
     },
   })
 
-  const fetchData = async (): Promise<IRuleGroup[] | undefined> => {
-    const fetchGeneration = invalidate()
-    const response: IRuleGroup[] =
-      selectedLibrary === 'all'
-        ? await GetApiHandler('/rules')
-        : await GetApiHandler(`/rules?libraryId=${selectedLibrary}`)
+  const fetchData = async (libraryId: string) => {
+    try {
+      const result = await guardedFetch<IRuleGroup[]>(() =>
+        libraryId === 'all'
+          ? GetApiHandler('/rules')
+          : GetApiHandler(`/rules?libraryId=${libraryId}`),
+      )
 
-    if (isCurrent(fetchGeneration)) {
-      return response
+      if (result.status === 'success') {
+        setData(result.data)
+        setIsLoading(false)
+      }
+    } catch {
+      setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchData().then((resp) => {
-      if (resp) {
-        setData(resp)
-        setIsLoading(false)
-      }
-    })
-  }, [])
-
-  useEffect(() => {
-    refreshData()
+    fetchData(selectedLibrary)
   }, [selectedLibrary])
 
   const onSwitchLibrary = (libraryId: string) => {
+    invalidate()
     setSelectedLibrary(libraryId)
   }
 
   const refreshData = (): void => {
-    fetchData().then((resp) => {
-      if (resp) {
-        setData(resp)
-      }
-    })
+    invalidate()
+    fetchData(selectedLibrary)
   }
 
   const editHandler = (group: IRuleGroup): void => {

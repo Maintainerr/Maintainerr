@@ -18,7 +18,7 @@ const CollectionDetailPage = () => {
   const [collection, setCollection] = useState<ICollection | undefined>()
   const [isLoading, setIsLoading] = useState(true)
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
-  const { invalidate, isCurrent } = useRequestGeneration()
+  const { invalidate, guardedFetch } = useRequestGeneration()
 
   // Determine current tab from URL path
   const getCurrentTab = () => {
@@ -33,30 +33,31 @@ const CollectionDetailPage = () => {
   const { data: ruleGroup, isLoading: ruleGroupLoading } =
     useRuleGroupForCollection(id)
 
+  const fetchData = async (collectionId: string) => {
+    try {
+      const result = await guardedFetch(() =>
+        GetApiHandler(`/collections/collection/${collectionId}`),
+      )
+
+      if (result.status === 'success') {
+        setCollection(result.data)
+        setIsLoading(false)
+      }
+    } catch (err) {
+      void logClientError(
+        'Failed to load collection',
+        err,
+        'CollectionDetailPage.fetchData',
+      )
+      toast.error('Failed to load collection. Check logs for details.')
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (id) {
-      const fetchGeneration = invalidate()
-
-      GetApiHandler(`/collections/collection/${id}`)
-        .then((resp) => {
-          if (isCurrent(fetchGeneration)) {
-            setCollection(resp)
-            setIsLoading(false)
-          }
-        })
-        .catch((err) => {
-          if (!isCurrent(fetchGeneration)) {
-            return
-          }
-
-          void logClientError(
-            'Failed to load collection',
-            err,
-            'CollectionDetailPage.useEffect.fetchCollection',
-          )
-          toast.error('Failed to load collection. Check logs for details.')
-          setIsLoading(false)
-        })
+      invalidate()
+      fetchData(id)
     }
   }, [id])
 

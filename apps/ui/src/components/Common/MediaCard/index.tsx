@@ -1,7 +1,7 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType } from '@maintainerr/contracts'
-import React, { memo, useCallback, useEffect, useState } from 'react'
+import React, { memo, useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
@@ -66,18 +66,6 @@ const MediaCard: React.FC<IMediaCard> = ({
 
   const closeMediaModal = () => setShowMediaModal(false)
 
-  const getExclusions = useCallback(
-    (isActive: boolean) => {
-      if (!collectionPage) {
-        GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then(
-          (resp: []) =>
-            isActive ? setHasExclusion(resp.length > 0) : undefined,
-        )
-      }
-    },
-    [collectionPage, id],
-  )
-
   useEffect(() => {
     let isActive = true
 
@@ -89,12 +77,26 @@ const MediaCard: React.FC<IMediaCard> = ({
       })
     }
 
-    getExclusions(isActive)
+    return () => {
+      isActive = false
+    }
+  }, [imageRequestKey, imageType, tmdbid])
+
+  useEffect(() => {
+    let isActive = true
+
+    if (!collectionPage) {
+      GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then((resp: []) => {
+        if (isActive) {
+          setHasExclusion(resp.length > 0)
+        }
+      })
+    }
 
     return () => {
       isActive = false
     }
-  }, [getExclusions, imageRequestKey, imageType, tmdbid])
+  }, [collectionPage, id])
 
   const image =
     imageResult.requestKey === imageRequestKey ? imageResult.path : null

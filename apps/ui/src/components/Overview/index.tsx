@@ -25,7 +25,7 @@ const Overview = () => {
 
   const pageData = useRef<number>(0)
   const fetchingRef = useRef<boolean>(false)
-  const { getCurrent, invalidate, isCurrent } = useRequestGeneration()
+  const { invalidate, guardedFetch } = useRequestGeneration()
   const SearchCtx = useContext(SearchContext)
 
   const { data: libraries } = useMediaServerLibraries()
@@ -47,10 +47,8 @@ const Overview = () => {
   }
 
   const invalidateFetches = () => {
-    const fetchGeneration = invalidate()
+    invalidate()
     setFetching(false)
-
-    return fetchGeneration
   }
 
   useEffect(() => {
@@ -65,7 +63,7 @@ const Overview = () => {
         !selectedLibraryRef.current &&
         SearchCtx.search.text === ''
       ) {
-        switchLib(libraries[0].id)
+        onSwitchLibrary(libraries[0].id)
       }
     }, 300)
 
@@ -83,25 +81,31 @@ const Overview = () => {
   useEffect(() => {
     if (!libraries || libraries.length === 0) return
 
-    const fetchGeneration = invalidateFetches()
+    invalidateFetches()
 
     if (SearchCtx.search.text !== '') {
       setLoading(true)
       setLoadingExtra(false)
 
-      GetApiHandler(`/media-server/search/${SearchCtx.search.text}`).then(
-        (resp: MediaItem[]) => {
-          if (!isCurrent(fetchGeneration)) {
-            return
-          }
+      const searchData = async () => {
+        try {
+          const result = await guardedFetch<MediaItem[]>(() =>
+            GetApiHandler(`/media-server/search/${SearchCtx.search.text}`),
+          )
 
-          setSearchUsed(true)
-          setTotalSize(resp.length)
-          pageData.current = resp.length * 50
-          setData(resp ? resp : [])
+          if (result.status === 'success') {
+            setSearchUsed(true)
+            setTotalSize(result.data.length)
+            pageData.current = result.data.length * 50
+            setData(result.data)
+            setLoading(false)
+          }
+        } catch {
           setLoading(false)
-        },
-      )
+        }
+      }
+
+      searchData()
       setSelectedLibrary(libraries[0]?.id)
     } else {
       setSearchUsed(false)
@@ -127,7 +131,7 @@ const Overview = () => {
     totalSizeRef.current = totalSize
   }, [totalSize])
 
-  const switchLib = (libraryId: string) => {
+  const onSwitchLibrary = (libraryId: string) => {
     invalidateFetches()
     setLoading(true)
     setLoadingExtra(false)
@@ -150,29 +154,34 @@ const Overview = () => {
     }
 
     setFetching(true)
-    const fetchGeneration = getCurrent()
     if (!loadingRef.current) {
       setLoadingExtra(true)
     }
+
     try {
-      const resp: { totalSize: number; items: MediaItem[] } =
-        await GetApiHandler(
+      const result = await guardedFetch<{
+        totalSize: number
+        items: MediaItem[]
+      }>(() =>
+        GetApiHandler(
           `/media-server/library/${selectedLibraryRef.current}/content?page=${
             pageData.current + 1
           }&limit=${fetchAmount}`,
-        )
+        ),
+      )
 
-      if (isCurrent(fetchGeneration)) {
-        setTotalSize(resp.totalSize)
+      if (result.status === 'success') {
+        setTotalSize(result.data.totalSize)
         pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...(resp && resp.items ? resp.items : [])])
-      }
-    } finally {
-      if (isCurrent(fetchGeneration)) {
+        setData([...dataRef.current, ...(result.data.items ?? [])])
         setLoadingExtra(false)
         setLoading(false)
         setFetching(false)
       }
+    } catch {
+      setLoadingExtra(false)
+      setLoading(false)
+      setFetching(false)
     }
   }
 
@@ -183,7 +192,7 @@ const Overview = () => {
         {!searchUsed ? (
           <LibrarySwitcher
             shouldShowAllOption={false}
-            onLibraryChange={switchLib}
+            onLibraryChange={onSwitchLibrary}
           />
         ) : undefined}
         {selectedLibrary ? (

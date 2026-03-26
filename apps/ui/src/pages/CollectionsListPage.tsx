@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
@@ -12,27 +12,36 @@ const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [collections, setCollections] = useState<ICollection[]>()
-  const { invalidate, isCurrent } = useRequestGeneration()
+  const { invalidate, guardedFetch } = useRequestGeneration()
 
-  const getCollections = async (libraryId?: string) => {
-    const fetchGeneration = invalidate()
+  const fetchData = async (libraryId?: string) => {
+    try {
+      const result = await guardedFetch<ICollection[]>(() =>
+        libraryId
+          ? GetApiHandler(`/collections?libraryId=${libraryId}`)
+          : GetApiHandler('/collections'),
+      )
 
-    const colls: ICollection[] = libraryId
-      ? await GetApiHandler(`/collections?libraryId=${libraryId}`)
-      : await GetApiHandler('/collections')
-
-    if (isCurrent(fetchGeneration)) {
-      setCollections(colls)
+      if (result.status === 'success') {
+        setCollections(result.data)
+        setIsLoading(false)
+      }
+    } catch {
       setIsLoading(false)
     }
   }
 
+  const loadInitialCollections = useEffectEvent(() => {
+    void fetchData()
+  })
+
   useEffect(() => {
-    getCollections()
+    loadInitialCollections()
   }, [])
 
   const onSwitchLibrary = (id: string) => {
-    getCollections(id !== 'all' ? id : undefined)
+    invalidate()
+    fetchData(id !== 'all' ? id : undefined)
   }
 
   const doActions = async () => {

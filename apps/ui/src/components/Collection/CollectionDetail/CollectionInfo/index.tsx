@@ -57,7 +57,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   )
   const [showMeta, setShowMeta] =
     useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
-  const { getCurrent, invalidate, isCurrent } = useRequestGeneration()
+  const { invalidate, guardedFetch } = useRequestGeneration()
 
   const fetchAmount = 25
 
@@ -71,10 +71,6 @@ const CollectionInfo = (props: ICollectionInfo) => {
     setIsLoadingExtra(value)
   }
 
-  const invalidateFetches = () => {
-    return invalidate()
-  }
-
   useEffect(() => {
     // Initial first fetch
     setPage(1)
@@ -85,7 +81,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
         window.clearTimeout(refetchTimerRef.current)
       }
 
-      invalidateFetches()
+      invalidate()
 
       // Clear all data to prevent memory leaks
       setData([])
@@ -96,7 +92,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }, [])
 
   useEffect(() => {
-    invalidateFetches()
+    invalidate()
 
     // reset state
     resetAll()
@@ -150,28 +146,28 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }, [])
 
   const fetchData = async () => {
-    const fetchGeneration = getCurrent()
-
     if (!loadingRef.current) {
       setLoadingExtra(true)
     }
 
     try {
-      const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
-        `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
-          debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
-        }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
+      const result = await guardedFetch<ICollectionInfoLogApiResponse>(() =>
+        GetApiHandler(
+          `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
+            debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
+          }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
+        ),
       )
 
-      if (isCurrent(fetchGeneration)) {
-        setTotalSize(resp.totalSize)
-        setData([...dataRef.current, ...resp.items])
-      }
-    } finally {
-      if (isCurrent(fetchGeneration)) {
+      if (result.status === 'success') {
+        setTotalSize(result.data.totalSize)
+        setData([...dataRef.current, ...result.data.items])
         setLoading(false)
         setLoadingExtra(false)
       }
+    } catch {
+      setLoading(false)
+      setLoadingExtra(false)
     }
   }
 
