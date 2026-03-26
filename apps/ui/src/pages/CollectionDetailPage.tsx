@@ -7,6 +7,7 @@ import { ICollection } from '../components/Collection'
 import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
+import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
 
@@ -17,6 +18,7 @@ const CollectionDetailPage = () => {
   const [collection, setCollection] = useState<ICollection | undefined>()
   const [isLoading, setIsLoading] = useState(true)
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
+  const { invalidate, guardedFetch } = useRequestGeneration()
 
   // Determine current tab from URL path
   const getCurrentTab = () => {
@@ -31,22 +33,31 @@ const CollectionDetailPage = () => {
   const { data: ruleGroup, isLoading: ruleGroupLoading } =
     useRuleGroupForCollection(id)
 
+  const fetchData = async (collectionId: string) => {
+    try {
+      const result = await guardedFetch(() =>
+        GetApiHandler(`/collections/collection/${collectionId}`),
+      )
+
+      if (result.status === 'success') {
+        setCollection(result.data)
+        setIsLoading(false)
+      }
+    } catch (err) {
+      void logClientError(
+        'Failed to load collection',
+        err,
+        'CollectionDetailPage.fetchData',
+      )
+      toast.error('Failed to load collection. Check logs for details.')
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (id) {
-      GetApiHandler(`/collections/collection/${id}`)
-        .then((resp) => {
-          setCollection(resp)
-          setIsLoading(false)
-        })
-        .catch((err) => {
-          void logClientError(
-            'Failed to load collection',
-            err,
-            'CollectionDetailPage.useEffect.fetchCollection',
-          )
-          toast.error('Failed to load collection. Check logs for details.')
-          setIsLoading(false)
-        })
+      invalidate()
+      fetchData(id)
     }
   }, [id])
 

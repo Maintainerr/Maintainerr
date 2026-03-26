@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
+import { useRequestGeneration } from '../../../../hooks/useRequestGeneration'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
 import Badge from '../../../Common/Badge'
@@ -40,6 +41,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const [data, setData] = useState<CollectionLogDto[]>([])
   const [page, setPage] = useState(0)
   const pageData = useRef<number>(0)
+  const refetchTimerRef = useRef<number | undefined>(undefined)
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
   const dataRef = useRef<CollectionLogDto[]>([])
@@ -55,6 +57,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   )
   const [showMeta, setShowMeta] =
     useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
+  const { invalidate, guardedFetch } = useRequestGeneration()
 
   const fetchAmount = 25
 
@@ -74,6 +77,12 @@ const CollectionInfo = (props: ICollectionInfo) => {
 
     // Cleanup on unmount
     return () => {
+      if (refetchTimerRef.current !== undefined) {
+        window.clearTimeout(refetchTimerRef.current)
+      }
+
+      invalidate()
+
       // Clear all data to prevent memory leaks
       setData([])
       dataRef.current = []
@@ -83,13 +92,25 @@ const CollectionInfo = (props: ICollectionInfo) => {
   }, [])
 
   useEffect(() => {
+    invalidate()
+
     // reset state
     resetAll()
 
     // wait 500ms and then refetch
-    setTimeout(() => {
+    if (refetchTimerRef.current !== undefined) {
+      window.clearTimeout(refetchTimerRef.current)
+    }
+
+    refetchTimerRef.current = window.setTimeout(() => {
       setPage(1)
     }, 500)
+
+    return () => {
+      if (refetchTimerRef.current !== undefined) {
+        window.clearTimeout(refetchTimerRef.current)
+      }
+    }
   }, [debouncedSearchFilter, currentSort, currentFilter])
 
   useEffect(() => {
@@ -128,17 +149,23 @@ const CollectionInfo = (props: ICollectionInfo) => {
     if (!loadingRef.current) {
       setLoadingExtra(true)
     }
+
     try {
-      const resp = await GetApiHandler<ICollectionInfoLogApiResponse>(
-        `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
-          debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
-        }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
+      const result = await guardedFetch<ICollectionInfoLogApiResponse>(() =>
+        GetApiHandler(
+          `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
+            debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
+          }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
+        ),
       )
 
-      setTotalSize(resp.totalSize)
-
-      setData([...dataRef.current, ...resp.items])
-    } finally {
+      if (result.status === 'success') {
+        setTotalSize(result.data.totalSize)
+        setData([...dataRef.current, ...result.data.items])
+        setLoading(false)
+        setLoadingExtra(false)
+      }
+    } catch {
       setLoading(false)
       setLoadingExtra(false)
     }
