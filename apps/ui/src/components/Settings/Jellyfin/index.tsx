@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type JellyfinSetting,
   jellyfinSettingSchema,
+  maskSecret,
 } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -276,8 +277,7 @@ const JellyfinSettings = () => {
                     <Select {...register('jellyfin_user_id')}>
                       {jellyfinUsers.map((user) => (
                         <option key={user.id} value={user.id}>
-                          {user.name} ({user.id.slice(0, 4)}...
-                          {user.id.slice(-4)})
+                          {user.name} ({maskSecret(user.id)})
                         </option>
                       ))}
                     </Select>
@@ -285,8 +285,7 @@ const JellyfinSettings = () => {
                     <Select disabled value={savedUserId}>
                       {savedUserId ? (
                         <option value={savedUserId}>
-                          Selected: {savedUserId.slice(0, 4)}...
-                          {savedUserId.slice(-4)}
+                          Selected: {maskSecret(savedUserId)}
                         </option>
                       ) : (
                         <option value="">

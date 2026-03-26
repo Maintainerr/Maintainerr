@@ -23,16 +23,16 @@
 - Do you have a lot of media that never gets watched?
 - Do your users constantly request media, and let it sit there afterward never to be touched again?
 
-If you answered yes to any of those questions... You NEED <b>Maintainerr</b>.
-It's a one-stop-shop for handling those outlying shows and movies that take up precious space on your server.
+If you answered yes to any of those questions, you need <b>Maintainerr</b>.
+It's a one-stop shop for handling those outlier shows and movies that take up precious space on your server.
 
 # Features
 
 - Configure rules specific to your needs, based on several available options from Plex, Jellyfin, Seerr, Radarr, Sonarr and Tautulli.
 - Switch between Plex and Jellyfin as your media server, with automatic rule migration.
-- Manually add media to a collection, in case it's not included after rule execution. (one-off items that don't match a rule set)
+- Manually add media to a collection if it is not included after rule execution. (for one-off items that do not match a rule set)
 - Selectively exclude media from being added to a collection, even if it matches a rule.
-- Show a collection, containing rule matched media, on the media server home screen for a specific duration before deletion. Think "Leaving soon".
+- Show a collection containing rule-matched media on the media server home screen for a specific duration before deletion. Think "Leaving soon".
 - Optionally, use a manual collection, in case you don't want <b>Maintainerr</b> to add & remove collections at will.
 - Manage media straight from the collection within your media server. <b>Maintainerr</b> will sync and add or exclude media to/from the internal collection.
 - Remove or unmonitor media from \*arr
@@ -40,7 +40,8 @@ It's a one-stop-shop for handling those outlying shows and movies that take up p
 - Delete files from disk
 
 <br />
-Currently, <b>Maintainerr</b> supports rule parameters from these apps :
+
+Currently, <b>Maintainerr</b> supports rule parameters from the following apps:
 
 - [Plex](https://www.plex.tv/)
 - [Jellyfin](https://jellyfin.org/)
@@ -58,10 +59,12 @@ Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 
 # Installation
 
-Docker images for amd64 & arm64 are available under <b>ghcr.io/maintainerr/maintainerr</b> and [maintainerr/maintainerr](https://hub.docker.com/r/maintainerr/maintainerr). <br />
+Docker images for amd64 & arm64 are available from these sources:
+- [ghcr.io/maintainerr/maintainerr](https://ghcr.io/maintainerr/maintainerr) <--- recommended
+- [maintainerr/maintainerr](https://hub.docker.com/r/maintainerr/maintainerr)
 
-Data is saved within the container under /opt/data, it is recommended to tie a persistent volume to this location in your docker run command/compose file.
-Make sure this directory is read/writeable by the user specified in the 'user' instruction. If no 'user' instruction is configured, the volume should be accessible by UID:GID 1000:1000.
+Data is saved inside the container at /opt/data. It is recommended to mount a persistent volume to this location in your Docker run command or Compose file.
+Make sure this directory is readable and writable by the user specified in the 'user' setting. If no 'user' setting is configured, the volume should be accessible by UID:GID 1000:1000.
 
 For more information, visit the [installation guide](https://docs.maintainerr.info/latest/Installation).
 
@@ -78,12 +81,12 @@ docker run -d \
 ghcr.io/maintainerr/maintainerr:latest
 ```
 
-Docker-compose:
+Docker Compose:
 
 ```Yaml
 services:
     maintainerr:
-        image: ghcr.io/maintainerr/maintainerr:latest # or maintainerr/maintainerr:latest
+        image: ghcr.io/maintainerr/maintainerr:latest # or maintainerr/maintainerr:main (to test unreleased changes)
         container_name: maintainerr
         user: 1000:1000
         volumes:
@@ -109,7 +112,7 @@ services:
 
 - Since v3, `/api/media-server` is the canonical API for media-server operations.
 - Deprecated `/api/plex` routes remain as a transition layer and are translated to the current abstraction-based implementation.
-- `/api/collections` and other app-specific endpoints are internal application APIs and are not a backwards-compatible Plex contract.
+- `/api/collections` and other app-specific endpoints are internal application APIs and are not a backward-compatible Plex contract.
 - Deprecated `/api/plex` routes will be removed in a future major version.
 
 # Features
@@ -118,4 +121,4 @@ services:
 
 # Credits
 
-Maintainerr is heavily inspired by Seerr (Overseerr / Jellyseerr). Some parts of Maintainerr's code are plain copies. Big thanks to the Seerr team!
+Maintainerr is heavily inspired by Seerr (Overseerr / Jellyseerr). Some parts of Maintainerr's code are direct copies. Big thanks to the Seerr team!

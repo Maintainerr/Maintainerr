@@ -1,3 +1,8 @@
+export {
+  sanitizeSecretInfo as sanitizeLogInfo,
+  sanitizeSecretValue as sanitizeLogValue,
+} from '../../utils/secretMasking';
+
 export const formatLogMessage = (message: any, stack: any) => {
   if (Array.isArray(stack) && stack.length > 0 && stack[0] != null) {
     let stackMessage = '';

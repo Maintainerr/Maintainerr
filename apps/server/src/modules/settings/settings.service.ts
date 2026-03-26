@@ -16,6 +16,7 @@ import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../utils/connection-error';
+import { maskSecret } from '../../utils/secretMasking';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
@@ -173,17 +174,6 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  /**
-   * Mask a secret string by showing only the first 4 and last 4 characters.
-   * Returns null if the value is empty/undefined/null.
-   * Returns '****' if the value is shorter than 8 characters.
-   */
-  private maskSecret(value: string | null | undefined): string | null {
-    if (!value) return null;
-    if (value.length <= 8) return '****';
-    return `${value.slice(0, 4)}...${value.slice(-4)}`;
-  }
-
   public async getSettings() {
     try {
       return this.settingsRepo.findOne({ where: {} });
@@ -208,10 +198,10 @@ export class SettingsService implements SettingDto {
 
     return {
       ...settings,
-      plex_auth_token: this.maskSecret(settings.plex_auth_token),
-      jellyfin_api_key: this.maskSecret(settings.jellyfin_api_key),
-      seerr_api_key: this.maskSecret(settings.seerr_api_key),
-      tautulli_api_key: this.maskSecret(settings.tautulli_api_key),
+      plex_auth_token: maskSecret(settings.plex_auth_token),
+      jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
+      seerr_api_key: maskSecret(settings.seerr_api_key),
+      tautulli_api_key: maskSecret(settings.tautulli_api_key),
     };
   }
 

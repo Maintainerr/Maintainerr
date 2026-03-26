@@ -257,7 +257,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
             {/* sort/filter container */}
             <div className="mb-2 flex flex-1 flex-row justify-between sm:mb-0 sm:flex-none">
               {/* sort */}
-              <div className="mr-2 mt-4 flex flex-grow sm:w-1/2">
+              <div className="mr-2 mt-4 flex flex-grow sm:w-auto">
                 <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
                   {currentSort === 'DESC' ? (
                     <SortDescendingIcon className="h-6 w-6" />
@@ -280,7 +280,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
               </div>
 
               {/* filter */}
-              <div className="mt-4 flex flex-grow sm:w-1/2">
+              <div className="mt-4 flex flex-grow sm:w-auto">
                 <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
                   <FilterIcon className="h-6 w-6" />
                 </span>
