@@ -79,13 +79,11 @@ const RadarrSettings = () => {
   }
 
   useEffect(() => {
-    if (loaded) return
-
     GetApiHandler<IRadarrSetting[]>('/settings/radarr').then((resp) => {
       setSettings(resp)
       setLoaded(true)
     })
-  }, [loaded])
+  }, [])
 
   const showAddModal = () => {
     setSettingsModalActive(true)

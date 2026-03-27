@@ -58,10 +58,10 @@ const Overview = () => {
     setFetching(false)
   }, [invalidate])
 
-  const fetchData = async () => {
+  const fetchData = async (libraryId = selectedLibraryRef.current) => {
     if (
       fetchingRef.current ||
-      !selectedLibraryRef.current ||
+      !libraryId ||
       SearchCtx.search.text !== '' ||
       !(totalSizeRef.current >= pageData.current * fetchAmount)
     ) {
@@ -79,9 +79,7 @@ const Overview = () => {
         items: MediaItem[]
       }>(() =>
         GetApiHandler(
-          `/media-server/library/${selectedLibraryRef.current}/content?page=${
-            pageData.current + 1
-          }&limit=${fetchAmount}`,
+          `/media-server/library/${libraryId}/content?page=${pageData.current + 1}&limit=${fetchAmount}`,
         ),
       )
 
@@ -129,6 +127,10 @@ const Overview = () => {
     if (SearchCtx.search.text !== '') {
       setLoading(true)
       setLoadingExtra(false)
+      if (libraryId) {
+        selectedLibraryRef.current = libraryId
+        setSelectedLibrary(libraryId)
+      }
 
       const searchData = async () => {
         try {
@@ -149,17 +151,28 @@ const Overview = () => {
       }
 
       void searchData()
-      setSelectedLibrary(libraryId)
       return
     }
 
+    const nextLibraryId = selectedLibraryRef.current ?? selectedLibrary ?? libraryId
+
     setSearchUsed(false)
     setData([])
+    dataRef.current = []
     setTotalSize(999)
+    totalSizeRef.current = 999
     pageData.current = 0
     setLoading(true)
     setLoadingExtra(false)
-    void fetchData()
+
+    if (!nextLibraryId) {
+      setLoading(false)
+      return
+    }
+
+    selectedLibraryRef.current = nextLibraryId
+    setSelectedLibrary(nextLibraryId)
+    void fetchData(nextLibraryId)
   })
 
   const syncSelectedLibrary = useEffectEvent((libraryId?: string) => {
