@@ -42,7 +42,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
   const nameRef = useRef<string>(props.selected?.name ?? '')
-  const aboutScaleRef = useRef<number>(3)
+  const aboutScaleRef = useRef<number>(props.selected?.aboutScale ?? 3)
   const enabledRef = useRef<boolean>(props.selected?.enabled ?? false)
   const [formValues, setFormValues] = useState<any>(
     props.selected?.options ?? {},
