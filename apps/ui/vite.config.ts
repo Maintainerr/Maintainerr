@@ -1,7 +1,5 @@
 import react from '@vitejs/plugin-react'
-import path from 'path'
 import { defineConfig, loadEnv } from 'vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -9,22 +7,23 @@ export default defineConfig(({ mode }) => {
   const basePath = env.VITE_BASE_PATH || ''
 
   return {
-    plugins: [react(), tsconfigPaths()],
+    plugins: [react()],
     base: basePath || '/',
     build: {
       outDir: 'dist',
       emptyOutDir: true,
       sourcemap: true,
-      rollupOptions: {
+      rolldownOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            query: ['@tanstack/react-query'],
+          manualChunks: (id) => {
+            if (id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'vendor'
+            }
+            if (id.includes('@tanstack/react-query')) {
+              return 'query'
+            }
           },
         },
-      },
-      commonjsOptions: {
-        include: [/node_modules/, /contracts/],
       },
     },
     optimizeDeps: {
@@ -40,9 +39,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+      tsconfigPaths: true,
     },
     // Ensure environment variables are available and can be replaced at runtime
     define: {
