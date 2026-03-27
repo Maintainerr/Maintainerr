@@ -94,7 +94,6 @@ const RuleCreator = (props: iRuleCreator) => {
   const ruleAmountRef = useRef<[number, number[]]>(initialRuleAmount)
   const [ruleAmount, setRuleAmount] =
     useState<[number, number[]]>(initialRuleAmount)
-  const editDataRef = useRef<{ rules: IRule[] } | undefined>(props.editData)
   const [editData, setEditData] = useState<{ rules: IRule[] } | undefined>(
     props.editData,
   )
@@ -124,7 +123,6 @@ const RuleCreator = (props: iRuleCreator) => {
   }
 
   const updateEditData = (data: { rules: IRule[] } | undefined) => {
-    editDataRef.current = data
     setEditData(data)
   }
 
