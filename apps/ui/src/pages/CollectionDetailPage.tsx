@@ -1,15 +1,20 @@
 import { PlayIcon } from '@heroicons/react/solid'
-import { useEffect, useState } from 'react'
+import { lazy, useEffect, useEffectEvent, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
-import TestMediaItem from '../components/Collection/CollectionDetail/TestMediaItem'
+import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
+import { prefetchRoute } from '../router'
 import GetApiHandler from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
+
+const TestMediaItem = lazy(
+  () => import('../components/Collection/CollectionDetail/TestMediaItem'),
+)
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate()
@@ -54,10 +59,14 @@ const CollectionDetailPage = () => {
     }
   }
 
+  const loadCollection = useEffectEvent((collectionId: string) => {
+    invalidate()
+    void fetchData(collectionId)
+  })
+
   useEffect(() => {
     if (id) {
-      invalidate()
-      fetchData(id)
+      loadCollection(id)
     }
   }, [id])
 
@@ -84,6 +93,19 @@ const CollectionDetailPage = () => {
     }
   }
 
+  const handleTabPrefetch = (tab: string) => {
+    if (!id) {
+      return
+    }
+
+    if (tab === 'media') {
+      void prefetchRoute(`/collections/${id}`)
+      return
+    }
+
+    void prefetchRoute(`/collections/${id}/${tab}`)
+  }
+
   if (isLoading || !collection || ruleGroupLoading) {
     return (
       <>
@@ -108,6 +130,7 @@ const CollectionDetailPage = () => {
             <div className="mb-4 mt-0 w-fit sm:w-full">
               <TabbedLinks
                 onChange={handleTabChange}
+                onPrefetch={handleTabPrefetch}
                 routes={tabbedRoutes}
                 currentRoute={currentTab}
                 allEnabled={true}
@@ -130,13 +153,21 @@ const CollectionDetailPage = () => {
         </div>
 
         {mediaTestModalOpen && collection?.id ? (
-          <TestMediaItem
-            collectionId={+collection.id}
+          <LazyModalBoundary
+            title="Test Media"
             onCancel={() => {
               setMediaTestModalOpen(false)
             }}
-            onSubmit={() => {}}
-          />
+            size="5xl"
+          >
+            <TestMediaItem
+              collectionId={+collection.id}
+              onCancel={() => {
+                setMediaTestModalOpen(false)
+              }}
+              onSubmit={() => {}}
+            />
+          </LazyModalBoundary>
         ) : undefined}
       </div>
     </>

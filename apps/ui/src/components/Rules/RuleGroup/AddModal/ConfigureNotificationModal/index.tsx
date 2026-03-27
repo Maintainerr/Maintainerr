@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
 import Modal from '../../../../Common/Modal'
 import ToggleItem from '../../../../Common/ToggleButton'
-import { AgentConfiguration } from '../../../../Settings/Notifications/CreateNotificationModal'
+import type { AgentConfiguration } from '../../../../Settings/Notifications/CreateNotificationModal'
 
 interface ConfigureNotificationModal {
   onCancel: () => void

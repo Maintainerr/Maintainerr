@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
 import { IRadarrSetting } from '../../../../Settings/Radarr'
 import { ISonarrSetting } from '../../../../Settings/Sonarr'
@@ -57,8 +57,12 @@ const ArrAction = (props: ArrActionProps) => {
     }
   }
 
+  const syncArrSettings = useEffectEvent((type: ArrType) => {
+    void loadArrSettings(type)
+  })
+
   useEffect(() => {
-    loadArrSettings(props.type)
+    syncArrSettings(props.type)
   }, [props.type])
 
   const noneServerSelected = selectedSetting === ''

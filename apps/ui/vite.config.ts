@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
       rolldownOptions: {
         output: {
           manualChunks: (id) => {
+            if (id.includes('@heroicons/react/')) {
+              return 'icons'
+            }
             if (
               id.includes('node_modules/react/') ||
               id.includes('node_modules/react-dom/') ||

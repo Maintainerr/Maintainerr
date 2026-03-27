@@ -34,6 +34,8 @@ const CollectionItem = (props: ICollectionItem) => {
               height="800"
               src={`https://image.tmdb.org/t/p/w500${props.collection.media[0].image_path}`}
               alt="img"
+              loading="lazy"
+              decoding="async"
             />
             <img
               className="backdrop-image"
@@ -41,6 +43,8 @@ const CollectionItem = (props: ICollectionItem) => {
               height="800"
               src={`https://image.tmdb.org/t/p/w500/${props.collection.media[1].image_path}`}
               alt="img"
+              loading="lazy"
+              decoding="async"
             />
             <div className="collection-backdrop"></div>
           </div>

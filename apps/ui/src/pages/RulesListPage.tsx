@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useStopAllRuleExecution } from '../api/rules'
@@ -45,8 +45,12 @@ const RulesListPage = () => {
     }
   }
 
+  const syncRulesForLibrary = useEffectEvent((libraryId: string) => {
+    void fetchData(libraryId)
+  })
+
   useEffect(() => {
-    fetchData(selectedLibrary)
+    syncRulesForLibrary(selectedLibrary)
   }, [selectedLibrary])
 
   const onSwitchLibrary = (libraryId: string) => {
@@ -56,7 +60,7 @@ const RulesListPage = () => {
 
   const refreshData = (): void => {
     invalidate()
-    fetchData(selectedLibrary)
+    void fetchData(selectedLibrary)
   }
 
   const editHandler = (group: IRuleGroup): void => {

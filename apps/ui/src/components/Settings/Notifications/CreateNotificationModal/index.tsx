@@ -1,9 +1,9 @@
 import { BasicResponseDto } from '@maintainerr/contracts'
-import { Editor } from '@monaco-editor/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { camelCaseToPrettyText } from '../../../../utils/SettingsUtils'
+import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 import ToggleItem from '../../../Common/ToggleButton'
@@ -259,7 +259,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     <div className="form-input">
                       <div className="form-input-field">
                         {option.type === 'json' ? (
-                          <Editor
+                          <LazyMonacoEditor
                             height="200px"
                             defaultLanguage="json"
                             theme="vs-dark"

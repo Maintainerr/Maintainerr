@@ -12,7 +12,6 @@ import {
   ECollectionLogType,
   isMetaActionedByRule,
 } from '@maintainerr/contracts'
-import { Editor } from '@monaco-editor/react'
 import { debounce } from 'lodash-es'
 import { useEffect, useRef, useState } from 'react'
 import YAML from 'yaml'
@@ -22,6 +21,7 @@ import { useRequestGeneration } from '../../../../hooks/useRequestGeneration'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
 import Badge from '../../../Common/Badge'
+import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../../Common/LoadingSpinner'
@@ -472,7 +472,7 @@ const LogMetaModal = (props: LogMetaModalProps) => {
             Output
           </label>
           <div className="editor-container h-full">
-            <Editor
+            <LazyMonacoEditor
               options={{ readOnly: true, minimap: { enabled: false } }}
               defaultLanguage="yaml"
               theme="vs-dark"
