@@ -53,7 +53,7 @@ const AddModal = (props: IAddModal) => {
       : selectedEpisodes !== -1
         ? selectedEpisodes
         : selectedSeasons
-  }, [selectedSeasons, selectedEpisodes])
+  }, [selectedSeasons, selectedEpisodes, props.type])
 
   const selectedContext = useMemo((): MediaItemType => {
     return props.type === 'show'
@@ -65,12 +65,14 @@ const AddModal = (props: IAddModal) => {
       : 'movie'
   }, [selectedSeasons, selectedEpisodes, props.type])
 
+  const currentCollectionId = selectedCollection ?? collectionOptions[0]?.id
+
   const handleCancel = () => {
     props.onCancel()
   }
 
   const handleOk = () => {
-    if (selectedCollection !== undefined) {
+    if (currentCollectionId !== undefined) {
       const mediaDto: IAlterableMediaDto = {
         id: selectedMediaId,
         type: selectedContext,
@@ -80,7 +82,7 @@ const AddModal = (props: IAddModal) => {
         PostApiHandler(`/collections/media/add`, {
           mediaId: props.mediaServerId,
           context: mediaDto,
-          collectionId: selectedCollection,
+          collectionId: currentCollectionId,
           action: selectedAction,
         })
       } else {
@@ -88,7 +90,7 @@ const AddModal = (props: IAddModal) => {
           mediaId: props.mediaServerId,
           context: mediaDto,
           collectionId:
-            selectedCollection !== -1 ? selectedCollection : undefined,
+            currentCollectionId !== -1 ? currentCollectionId : undefined,
           action: selectedAction,
         })
       }
@@ -113,11 +115,7 @@ const AddModal = (props: IAddModal) => {
   }
 
   useEffect(() => {
-    setSelectedSeasons(-1)
-    setSelectedEpisodes(-1)
-
     if (props.type && props.type === 'show') {
-      // get seasons
       GetApiHandler(`/media-server/meta/${props.mediaServerId}/children`).then(
         (resp: { id: string; title: string }[]) => {
           setSeasonOptions([
@@ -136,17 +134,10 @@ const AddModal = (props: IAddModal) => {
         },
       )
     }
-  }, [])
-
-  useEffect(() => {
-    setSelectedCollection(collectionOptions[0]?.id)
-  }, [collectionOptions])
+  }, [props.mediaServerId, props.type])
 
   useEffect(() => {
     if (selectedSeasons !== -1) {
-      setLoading(true)
-
-      // get episodes
       GetApiHandler(`/media-server/meta/${selectedSeasons}/children`).then(
         (resp: { id: string; index: number }[]) => {
           setEpisodeOptions([
@@ -164,25 +155,18 @@ const AddModal = (props: IAddModal) => {
           setLoading(false)
         },
       )
-    } else {
-      setSelectedEpisodes(-1)
     }
   }, [selectedSeasons])
 
-  // fetch correct collections based on selected type
   useEffect(() => {
-    setLoading(true)
-
     if (props.type === 'show') {
       if (selectedEpisodes !== -1) {
         GetApiHandler(`/collections?typeId=episode`).then((resp) => {
-          // get collections for episodes
           setCollectionOptions([...origCollectionOptions, ...resp])
           setLoading(false)
         })
       } else if (selectedSeasons !== -1) {
         GetApiHandler(`/collections?typeId=season`).then((resp) => {
-          // get collections for episodes and seasons
           GetApiHandler(`/collections?typeId=episode`).then((resp2) => {
             setCollectionOptions([...origCollectionOptions, ...resp, ...resp2])
             setLoading(false)
@@ -190,7 +174,6 @@ const AddModal = (props: IAddModal) => {
         })
       } else {
         GetApiHandler(`/collections?typeId=show`).then((resp) => {
-          // get collections for episodes, seasons and shows
           GetApiHandler(`/collections?typeId=season`).then((resp2) => {
             GetApiHandler(`/collections?typeId=episode`).then((resp3) => {
               setCollectionOptions([
@@ -206,12 +189,11 @@ const AddModal = (props: IAddModal) => {
       }
     } else {
       GetApiHandler(`/collections?typeId=movie`).then((resp) => {
-        // get collections for movies
         setCollectionOptions([...origCollectionOptions, ...resp])
         setLoading(false)
       })
     }
-  }, [selectedSeasons, selectedEpisodes, props.type])
+  }, [origCollectionOptions, props.type, selectedEpisodes, selectedSeasons])
 
   return (
     <>
@@ -285,6 +267,14 @@ const AddModal = (props: IAddModal) => {
                 value={selectedSeasons}
                 onChange={(e: { target: { value: string } }) => {
                   const value = e.target.value
+                  setLoading(true)
+                  setSelectedEpisodes(-1)
+                  setEpisodeOptions([
+                    {
+                      id: -1,
+                      title: 'All episodes',
+                    },
+                  ])
                   setSelectedSeasons(value === '-1' ? -1 : value)
                 }}
               >
@@ -307,6 +297,7 @@ const AddModal = (props: IAddModal) => {
                 value={selectedEpisodes}
                 onChange={(e: { target: { value: string } }) => {
                   const value = e.target.value
+                  setLoading(true)
                   setSelectedEpisodes(value === '-1' ? -1 : value)
                 }}
               >
@@ -325,7 +316,7 @@ const AddModal = (props: IAddModal) => {
             <select
               name={`Collection-field`}
               id={`Collection-field`}
-              value={selectedCollection}
+              value={currentCollectionId}
               onChange={(e: { target: { value: string } }) => {
                 setSelectedCollection(+e.target.value)
               }}

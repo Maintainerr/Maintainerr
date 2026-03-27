@@ -2,7 +2,7 @@ import { RefreshIcon } from '@heroicons/react/outline'
 import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useSettingsOutletContext } from '..'
 import {
@@ -182,39 +182,45 @@ const PlexSettings = () => {
     setClearTokenClicked(false)
   }
 
-  const verifyToken = (token?: string) => {
-    if (token) {
-      // Fresh token from Plex OAuth — verify directly with plex.tv
-      axios
-        .get('https://plex.tv/api/v2/user', {
-          headers: {
-            'X-Plex-Product': 'Maintainerr',
-            'X-Plex-Version': '2.0',
-            'X-Plex-Client-Identifier': '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
-            'X-Plex-Token': token,
-          },
-        })
-        .then((response) => {
-          setTokenValid(response.status === 200 ? true : false)
-        })
-        .catch(() => setTokenValid(false))
-    } else if (settings?.plex_auth_token) {
-      // Existing token (masked in settings) — verify via server-side test endpoint
-      GetApiHandler<{ status: string; code: number; message: string }>(
-        '/settings/test/plex',
-      )
-        .then((result) => {
-          setTokenValid(result.status === 'OK')
-        })
-        .catch(() => setTokenValid(false))
-    } else {
-      setTokenValid(false)
-    }
-  }
+  const verifyToken = useCallback(
+    (token?: string) => {
+      if (token) {
+        // Fresh token from Plex OAuth — verify directly with plex.tv
+        axios
+          .get('https://plex.tv/api/v2/user', {
+            headers: {
+              'X-Plex-Product': 'Maintainerr',
+              'X-Plex-Version': '2.0',
+              'X-Plex-Client-Identifier':
+                '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
+              'X-Plex-Token': token,
+            },
+          })
+          .then((response) => {
+            setTokenValid(response.status === 200 ? true : false)
+          })
+          .catch(() => setTokenValid(false))
+      } else if (settings?.plex_auth_token) {
+        // Existing token (masked in settings) — verify via server-side test endpoint
+        GetApiHandler<{ status: string; code: number; message: string }>(
+          '/settings/test/plex',
+        )
+          .then((result) => {
+            setTokenValid(result.status === 'OK')
+          })
+          .catch(() => setTokenValid(false))
+      } else {
+        setTokenValid(false)
+      }
+    },
+    [settings?.plex_auth_token],
+  )
 
   useEffect(() => {
-    if (settings?.plex_auth_token) verifyToken()
-  }, [settings?.plex_auth_token])
+    if (settings?.plex_auth_token) {
+      verifyToken()
+    }
+  }, [settings?.plex_auth_token, verifyToken])
 
   const appTest = (result: { status: boolean; message: string }) => {
     setTestbanner({ status: result.status, version: result.message })

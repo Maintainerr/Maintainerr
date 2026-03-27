@@ -51,6 +51,28 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
   const [searchText, setSearchText] = useState<string>('')
   const itemsPerPage = 5
 
+  async function getAppVersion() {
+    return GetApiHandler('/settings/version').then((resp: string) => {
+      if (resp) {
+        setAppVersion(resp)
+      } else {
+        throw new Error(`Couldn't fetch app version.`)
+      }
+    })
+  }
+
+  async function getKarmaHistory() {
+    return GetApiHandler('/rules/community/karma/history').then(
+      (resp: ICommunityRuleKarmaHistory[]) => {
+        if (resp) {
+          setHistory(resp)
+        } else {
+          throw new Error(`Couldn't fetch community rule Karma history.`)
+        }
+      },
+    )
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
@@ -90,28 +112,6 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
 
     fetchData()
   }, [])
-
-  const getAppVersion = async () => {
-    return GetApiHandler('/settings/version').then((resp: string) => {
-      if (resp) {
-        setAppVersion(resp)
-      } else {
-        throw new Error(`Couldn't fetch app version.`)
-      }
-    })
-  }
-
-  const getKarmaHistory = async () => {
-    return GetApiHandler('/rules/community/karma/history').then(
-      (resp: ICommunityRuleKarmaHistory[]) => {
-        if (resp) {
-          setHistory(resp)
-        } else {
-          throw new Error(`Couldn't fetch community rule Karma history.`)
-        }
-      },
-    )
-  }
 
   const applicableCommunityRules = useMemo(() => {
     return communityRules

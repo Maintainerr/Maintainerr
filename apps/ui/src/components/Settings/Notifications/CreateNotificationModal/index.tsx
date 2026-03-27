@@ -41,10 +41,12 @@ interface CreateNotificationModal {
 const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
-  const nameRef = useRef<string>('')
+  const nameRef = useRef<string>(props.selected?.name ?? '')
   const aboutScaleRef = useRef<number>(3)
-  const enabledRef = useRef<boolean>(false)
-  const [formValues, setFormValues] = useState<any>()
+  const enabledRef = useRef<boolean>(props.selected?.enabled ?? false)
+  const [formValues, setFormValues] = useState<any>(
+    props.selected?.options ?? {},
+  )
 
   const [targetAgent, setTargetAgent] = useState<agentSpec>()
   const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
@@ -116,14 +118,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
         )
       }
     })
-
-    // load rest of data if editing
-    if (props.selected) {
-      nameRef.current = props.selected.name
-      enabledRef.current = props.selected.enabled
-      setFormValues(props.selected.options)
-    }
-  }, [])
+  }, [props.selected])
 
   const postNotificationConfig = (payload: AgentConfiguration) => {
     PostApiHandler('/notifications/configuration/add', payload).then(
@@ -349,10 +344,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                               <input
                                 type="number"
                                 name="about-scale"
-                                defaultValue={
-                                  props.selected?.aboutScale ||
-                                  aboutScaleRef.current
-                                }
+                                defaultValue={props.selected?.aboutScale ?? 3}
                                 onChange={(
                                   event: React.ChangeEvent<HTMLInputElement>,
                                 ) =>

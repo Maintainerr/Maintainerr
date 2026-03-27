@@ -1,6 +1,6 @@
 import { type MediaItem } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ICollection } from '../..'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import OverviewContent from '../../../Overview/Content'
@@ -44,44 +44,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     setIsLoadingExtra(value)
   }
 
-  useEffect(() => {
-    // Initial first fetch
-    setPage(1)
-  }, [])
-
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.scrollHeight * 0.9
-    ) {
-      if (
-        !loadingRef.current &&
-        !loadingExtraRef.current &&
-        !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-      ) {
-        setPage(pageData.current + 1)
-      }
-    }
-  }
-
-  useEffect(() => {
-    if (page !== 0) {
-      // Ignore initial page render
-      pageData.current = pageData.current + 1
-      fetchData()
-    }
-  }, [page])
-
-  useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
-    window.addEventListener('scroll', debouncedScroll)
-    return () => {
-      window.removeEventListener('scroll', debouncedScroll)
-      debouncedScroll.cancel() // Cancel pending debounced calls
-    }
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!loadingRef.current) {
       setLoadingExtra(true)
     }
@@ -109,12 +72,32 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
       setLoading(false)
       setLoadingExtra(false)
     }
-  }
+  }, [props.collection.id])
 
-  useEffect(() => {
-    dataRef.current = data
+  const loadInitialPage = useEffectEvent(() => {
+    setPage(1)
+  })
 
-    // If page is not filled yet, fetch more
+  const handleScroll = useEffectEvent(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.scrollHeight * 0.9 &&
+      !loadingRef.current &&
+      !loadingExtraRef.current &&
+      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
+    ) {
+      setPage(pageData.current + 1)
+    }
+  })
+
+  const loadCurrentPage = useEffectEvent((currentPage: number) => {
+    if (currentPage !== 0) {
+      pageData.current = pageData.current + 1
+      void fetchData()
+    }
+  })
+
+  const fillViewportIfNeeded = useEffectEvent(() => {
     if (
       !loadingRef.current &&
       !loadingExtraRef.current &&
@@ -122,8 +105,32 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
         document.documentElement.scrollHeight * 0.9 &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
     ) {
-      setPage(page + 1)
+      setPage((currentPage) => currentPage + 1)
     }
+  })
+
+  useEffect(() => {
+    // Initial first fetch
+    loadInitialPage()
+  }, [])
+
+  useEffect(() => {
+    loadCurrentPage(page)
+  }, [page])
+
+  useEffect(() => {
+    const debouncedScroll = debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll)
+    return () => {
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
+    }
+  }, [])
+
+  useEffect(() => {
+    dataRef.current = data
+
+    fillViewportIfNeeded()
   }, [data])
 
   useEffect(() => {

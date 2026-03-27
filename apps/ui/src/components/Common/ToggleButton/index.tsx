@@ -1,5 +1,5 @@
 // components/ToggleItem.tsx
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 interface ToggleItemProps {
   label: string
@@ -12,17 +12,15 @@ const ToggleItem: React.FC<ToggleItemProps> = ({
   toggled,
   onStateChange,
 }) => {
-  const [isToggled, setIsToggled] = useState(false)
-
-  useEffect(() => {
-    if (toggled !== undefined) {
-      setIsToggled(toggled)
-    }
-  }, [])
+  const [internalToggled, setInternalToggled] = useState(Boolean(toggled))
+  const isToggled = toggled ?? internalToggled
 
   const handleToggle = () => {
-    onStateChange(!isToggled)
-    setIsToggled(!isToggled)
+    const nextState = !isToggled
+    onStateChange(nextState)
+    if (toggled === undefined) {
+      setInternalToggled(nextState)
+    }
   }
 
   return (

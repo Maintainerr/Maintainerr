@@ -85,7 +85,7 @@ const RadarrSettings = () => {
       setSettings(resp)
       setLoaded(true)
     })
-  }, [])
+  }, [loaded])
 
   const showAddModal = () => {
     setSettingsModalActive(true)
