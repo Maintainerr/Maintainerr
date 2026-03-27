@@ -154,7 +154,8 @@ const Overview = () => {
       return
     }
 
-    const nextLibraryId = selectedLibraryRef.current ?? selectedLibrary ?? libraryId
+    const nextLibraryId =
+      selectedLibraryRef.current ?? selectedLibrary ?? libraryId
 
     setSearchUsed(false)
     setData([])
