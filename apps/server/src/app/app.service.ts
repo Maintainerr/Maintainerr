@@ -71,12 +71,14 @@ export class AppService {
       this.logger.warn(`Couldn't fetch latest release version from GitHub`);
       return false;
     } else {
-      // in case of develop, compare SHA's
+      const branch = versionTag === 'main' ? 'main' : 'development';
+
+      // For non-stable builds, compare the current image SHA to the tracked branch head.
       if (process.env.GIT_SHA) {
         const githubResp = await this.githubApi.getCommit(
           'Maintainerr',
           'Maintainerr',
-          'development',
+          branch,
         );
         if (githubResp && githubResp.sha) {
           return githubResp.sha !== process.env.GIT_SHA;
