@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-query'
 import type { IRule } from '../components/Rules/Rule/RuleCreator'
 import type { IRuleGroup } from '../components/Rules/RuleGroup'
-import { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
+import type { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
 import { IConstants } from '../contexts/constants-context'
 import GetApiHandler, {
   PostApiHandler,

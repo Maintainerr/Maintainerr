@@ -16,7 +16,7 @@ import {
   MediaLibrary,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
-import { useState, useSyncExternalStore } from 'react'
+import { lazy, useState, useSyncExternalStore } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -35,12 +35,18 @@ import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
+import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
-import YamlImporterModal from '../../../Common/YamlImporterModal'
-import { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
+import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
-import ConfigureNotificationModal from './ConfigureNotificationModal'
+
+const YamlImporterModal = lazy(
+  () => import('../../../Common/YamlImporterModal'),
+)
+const ConfigureNotificationModal = lazy(
+  () => import('./ConfigureNotificationModal'),
+)
 
 interface AddModal {
   editData?: IRuleGroup
@@ -1293,29 +1299,44 @@ const AddModal = (props: AddModal) => {
                   />
                 )}
                 {yamlImporterModal && (
-                  <YamlImporterModal
-                    yaml={yaml}
-                    onImport={(yaml: string) => {
-                      importRulesFromYaml(yaml)
-                      setYamlImporterModal(false)
-                    }}
+                  <LazyModalBoundary
+                    title={yaml ? 'Export Rules YAML' : 'Import Rules YAML'}
                     onCancel={() => {
                       setYamlImporterModal(false)
                     }}
-                  />
+                    size="5xl"
+                  >
+                    <YamlImporterModal
+                      yaml={yaml}
+                      onImport={(yaml: string) => {
+                        importRulesFromYaml(yaml)
+                        setYamlImporterModal(false)
+                      }}
+                      onCancel={() => {
+                        setYamlImporterModal(false)
+                      }}
+                    />
+                  </LazyModalBoundary>
                 )}
 
                 {configureNotificionModal && (
-                  <ConfigureNotificationModal
-                    onSuccess={(selection) => {
-                      setConfiguredNotificationConfigurations(selection)
-                      setConfigureNotificationModal(false)
-                    }}
+                  <LazyModalBoundary
+                    title="Configure Notifications"
                     onCancel={() => {
                       setConfigureNotificationModal(false)
                     }}
-                    selectedAgents={configuredNotificationConfigurations}
-                  />
+                  >
+                    <ConfigureNotificationModal
+                      onSuccess={(selection) => {
+                        setConfiguredNotificationConfigurations(selection)
+                        setConfigureNotificationModal(false)
+                      }}
+                      onCancel={() => {
+                        setConfigureNotificationModal(false)
+                      }}
+                      selectedAgents={configuredNotificationConfigurations}
+                    />
+                  </LazyModalBoundary>
                 )}
 
                 <RuleCreator

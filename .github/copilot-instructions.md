@@ -130,6 +130,7 @@ yarn workspace @maintainerr/contracts build
 
 - **Routing**: React Router with `createBrowserRouter` for declarative routing
 - **Routes**: Explicit route configuration in `/src/router.tsx` with nested route support
+- **Lazy Loading**: Prefer route-level lazy loading for non-shell pages and lazy-load heavy optional UI dependencies such as Monaco-backed editors or markdown renderers behind shared loading boundaries
 - **Components**: Reusable UI components in `/src/components`
 - **Hooks**: Custom hooks for data fetching (TanStack Query) and navigation (useNavigate, useLocation)
 - **Forms**: React Hook Form with Zod resolvers

@@ -1,5 +1,4 @@
 import { ClipboardCopyIcon } from '@heroicons/react/solid'
-import { Editor } from '@monaco-editor/react'
 import { useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import YAML from 'yaml'
@@ -7,6 +6,7 @@ import { useRuleGroupForCollection } from '../../../../api/rules'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
 import FormItem from '../../../Common/FormItem'
+import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import Modal from '../../../Common/Modal'
 import SearchMediaItem, { IMediaOptions } from '../../../Common/SearchMediaITem'
 
@@ -296,7 +296,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
             )}
           </div>
           <div className="editor-container h-full">
-            <Editor
+            <LazyMonacoEditor
               options={{ readOnly: true, minimap: { enabled: false } }}
               defaultLanguage="yaml"
               theme="vs-dark"
