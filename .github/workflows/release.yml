@@ -23,22 +23,42 @@ jobs:
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84"
+      allowed: "ydkmlt84,enoch85"
+
+  guard_release_branch:
+    name: Guard release branch
+    needs: guard_manual_run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure release was started from main
+        run: |
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            echo "Release workflow must be run from the main branch. Current ref: ${{ github.ref_name }}"
+            exit 1
+          fi
 
   semantic-release:
     name: Tag and release latest version
-    needs: guard_manual_run
+    needs: guard_release_branch
     runs-on: ubuntu-22.04
     permissions:
       contents: write
       issues: write
       pull-requests: write
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -52,7 +72,7 @@ jobs:
         run: yarn --immutable
       - name: Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ "${{ github.event.inputs.dry-run-semantic-release }}" == "true" ]; then
           echo "Dry run enabled."

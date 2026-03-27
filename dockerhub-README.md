@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="https://github.com/maintainerr/maintainerr/blob/main/apps/ui/public/logo.png?raw=true" alt="Maintainerr's logo"/>
+  <img src="https://github.com/maintainerr/maintainerr/blob/development/apps/ui/public/logo.png?raw=true" alt="Maintainerr's logo"/>
 </p>
 
 <p align="center" >
-<!-- Latest Build -->  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/maintainerr/maintainerr/.github%2Fworkflows%2Fbuild.yml?branch=main&style=flat&logo=github&label=Latest%20Build"></picture>
+<!-- Latest Build -->  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/maintainerr/maintainerr/.github%2Fworkflows%2Fbuild_dev.yml?branch=development&style=flat&logo=github&label=Latest%20Build"></picture>
 <!-- Latest Release -->  <a href="https://github.com/maintainerr/Maintainerr/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Latest%20Release"></a>
 <!-- Commits -->  <picture><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/maintainerr/maintainerr/latest?style=flat&logo=github&logoColor=white"></picture>
 <!-- Github Stars -->  <picture><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Stars"></picture>
@@ -83,7 +83,7 @@ services:
 | Tag | Description |
 |----|--------|
 | latest | Stable Release (*recommended*) |
-| main | Dev Version |
+| development | Dev Version |
 
 # Environment Variables
 
@@ -122,5 +122,5 @@ Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 # Preview
 
 <p align="center">
-  <img src="https://github.com/maintainerr/maintainerr/blob/main/apps/ui/public/screenshots/collections_screenshot.png?raw=true" alt="Maintainerr's overview"/>
+  <img src="https://github.com/maintainerr/maintainerr/blob/development/apps/ui/public/screenshots/collections_screenshot.png?raw=true" alt="Maintainerr's overview"/>
 </p>

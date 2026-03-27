@@ -1,3 +1,31 @@
+# [3.2.0](https://github.com/maintainerr/Maintainerr/compare/v3.1.0...v3.2.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* add stable sort to collection media pagination query ([#2444](https://github.com/maintainerr/Maintainerr/issues/2444)) ([7ea935a](https://github.com/maintainerr/Maintainerr/commit/7ea935ab3335143d5dd40f9fc48d0255c9e8a8b3))
+* added batch collection adding of media for Jellyfin ([#2494](https://github.com/maintainerr/Maintainerr/issues/2494)) ([5ad01d3](https://github.com/maintainerr/Maintainerr/commit/5ad01d31fe4fb826fc2f60f150cbdde5328e0b6c))
+* avoid regex backtracking in disk path normalization ([#2526](https://github.com/maintainerr/Maintainerr/issues/2526)) ([58ef57d](https://github.com/maintainerr/Maintainerr/commit/58ef57d28cca73bb6f58be6495fd3364a7f20506))
+* prevent crash when removing media from null Jellyfin collection ([#2510](https://github.com/maintainerr/Maintainerr/issues/2510)) ([b87d29e](https://github.com/maintainerr/Maintainerr/commit/b87d29e7f9feaea2464b0cdb1699c6dffb547502))
+* prevent false watchlist evaluation when plex.tv is unreachable ([#2445](https://github.com/maintainerr/Maintainerr/issues/2445)) ([c431b4c](https://github.com/maintainerr/Maintainerr/commit/c431b4cb6808e1d23b0d071ec63c65c942f1b142))
+* resolve Jellyfin collection creation failure ([#2493](https://github.com/maintainerr/Maintainerr/issues/2493)) ([#2511](https://github.com/maintainerr/Maintainerr/issues/2511)) ([7d5db09](https://github.com/maintainerr/Maintainerr/commit/7d5db0924c8a22cfe121f69cb3b9a234e3c8eed4))
+* **rules:** preserve plex imdb metadata comparisons ([#2528](https://github.com/maintainerr/Maintainerr/issues/2528)) ([946dd0e](https://github.com/maintainerr/Maintainerr/commit/946dd0efc209649542db97984afbe4cfb47fd55e))
+* **server:** improve Jellyfin watch data aggregation ([#2488](https://github.com/maintainerr/Maintainerr/issues/2488)) ([63f0abb](https://github.com/maintainerr/Maintainerr/commit/63f0abb42f3071db137ee7c4800021443f23dc5f))
+* **server:** translate legacy plex api through media-server ([#2483](https://github.com/maintainerr/Maintainerr/issues/2483)) ([683ac81](https://github.com/maintainerr/Maintainerr/commit/683ac8187bea49e708ebe116d7044befd26d16f2))
+* **server:** validate servarr settings payloads ([#2523](https://github.com/maintainerr/Maintainerr/issues/2523)) ([329770f](https://github.com/maintainerr/Maintainerr/commit/329770f197776021373ca319f08537f537d2510e))
+* stop rule execution when rule group is deleted mid-run ([#2439](https://github.com/maintainerr/Maintainerr/issues/2439)) ([0665e56](https://github.com/maintainerr/Maintainerr/commit/0665e56952017d347ff1b3e7e49531925423bf57))
+* **ui:** include server names in servarr test requests ([#2524](https://github.com/maintainerr/Maintainerr/issues/2524)) ([3be6814](https://github.com/maintainerr/Maintainerr/commit/3be68144460aa8be57ddfe71d25d6bdfa68b5fc5))
+* **ui:** preserve schemed servarr host input ([#2525](https://github.com/maintainerr/Maintainerr/issues/2525)) ([26e2fd5](https://github.com/maintainerr/Maintainerr/commit/26e2fd552af5823ddf2819a2f0f740dd5b245002))
+* **ui:** prevent duplicate switchLib call on Overview initial load ([#2519](https://github.com/maintainerr/Maintainerr/issues/2519)) ([3d1797e](https://github.com/maintainerr/Maintainerr/commit/3d1797ec340f7289a3adf2e040105077828e92f1))
+* **ui:** restore collection loading spinners ([#2520](https://github.com/maintainerr/Maintainerr/issues/2520)) ([513becd](https://github.com/maintainerr/Maintainerr/commit/513becd8bad093fd07d13ee9e0405cf8d32cd09c))
+* **ui:** restore overview poster loading on mobile ([#2533](https://github.com/maintainerr/Maintainerr/issues/2533)) ([d56a046](https://github.com/maintainerr/Maintainerr/commit/d56a0464ed46faced2cff52ed7a6ab780e599dbb))
+
+
+### Features
+
+* **rules:** add ARR disk target path selection for disk space rules ([#2461](https://github.com/maintainerr/Maintainerr/issues/2461)) ([e3431fb](https://github.com/maintainerr/Maintainerr/commit/e3431fb5a6e86d96b69bbf6a1032f0256f7427cc))
+* **settings:** unify connection-test error handling across services ([#2396](https://github.com/maintainerr/Maintainerr/issues/2396)) ([7ae0c4c](https://github.com/maintainerr/Maintainerr/commit/7ae0c4cc52eb5c3b1b7945fba19c149185529ac9))
+
 # [3.1.0](https://github.com/maintainerr/Maintainerr/compare/v3.0.1...v3.1.0) (2026-03-10)
 
 
