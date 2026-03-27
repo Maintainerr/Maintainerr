@@ -13,7 +13,7 @@ import {
   getItemUpdateApi,
   getLibraryApi,
   getPlaylistsApi,
-  getSearchApi,
+
   getSystemApi,
   getTvShowsApi,
   getUserApi,
@@ -640,34 +640,26 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getSearchApi(this.api).getSearchHints({
+      const response = await getItemsApi(this.api).getItems({
         userId,
+        recursive: true,
         searchTerm: query,
+        fields: [
+          ItemFields.ProviderIds,
+          ItemFields.Path,
+          ItemFields.DateCreated,
+          ItemFields.MediaSources,
+        ],
         includeItemTypes: [
           BaseItemKind.Movie,
           BaseItemKind.Series,
           BaseItemKind.Episode,
         ],
         limit: 50,
-        includeMedia: true,
-        includePeople: false,
-        includeGenres: false,
-        includeStudios: false,
-        includeArtists: false,
+        enableUserData: true,
       });
 
-      return (response.data.SearchHints || [])
-        .filter((hint) => hint.Id)
-        .map((hint) => ({
-          id: hint.Id || '',
-          title: hint.Name || '',
-          type: JellyfinMapper.toMediaItemType(hint.Type),
-          guid: hint.Id || '',
-          addedAt: new Date(),
-          providerIds: {},
-          mediaSources: [],
-          library: { id: '', title: '' },
-        })) as MediaItem[];
+      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
     } catch (error) {
       this.logger.error('Failed to search Jellyfin content', error);
       return [];
