@@ -1,12 +1,12 @@
-name: "Build"
+name: "Build Development"
 
 on:
   push:
     branches:
-      - "main"
+      - "development"
   pull_request:
     branches:
-      - "main"
+      - "development"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,7 @@ jobs:
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84"
+      allowed: "ydkmlt84,enoch85"
 
   build_docker_image:
     name: Build ${{ matrix.platform }}
@@ -138,7 +138,7 @@ jobs:
             ${{ env.DOCKERHUB_SLUG }}
             ${{ env.GHCR_SLUG }}
           tags: |
-            type=raw,value=main
+            type=raw,value=development
           labels: org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Create manifest list and push

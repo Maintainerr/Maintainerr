@@ -2,7 +2,7 @@ name: Code quality checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [development, main]
 
 permissions:
   contents: read

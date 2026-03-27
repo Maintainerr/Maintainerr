@@ -76,7 +76,7 @@ export class AppService {
         const githubResp = await this.githubApi.getCommit(
           'Maintainerr',
           'Maintainerr',
-          'main',
+          'development',
         );
         if (githubResp && githubResp.sha) {
           return githubResp.sha !== process.env.GIT_SHA;
