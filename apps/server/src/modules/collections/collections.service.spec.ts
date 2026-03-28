@@ -33,6 +33,10 @@ describe('CollectionsService', () => {
     tmdbIdService = unitRef.get(TmdbIdService);
 
     mediaServer = {
+      supportsFeature: jest.fn().mockReturnValue(false),
+      createCollection: jest
+        .fn()
+        .mockResolvedValue({ id: 'remote-collection' }),
       addBatchToCollection: jest.fn().mockResolvedValue([]),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
@@ -96,6 +100,75 @@ describe('CollectionsService', () => {
     expect(mediaServer.removeFromCollection).toHaveBeenCalledWith(
       'remote-collection',
       'item-1',
+    );
+  });
+
+  it('recreates collections empty and resyncs existing items separately', async () => {
+    const collection = createCollection({
+      id: 3,
+      mediaServerId: null,
+      manualCollection: false,
+      libraryId: 'library-1',
+      title: 'Recreated Collection',
+    });
+    const collectionMedia = [
+      createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue(collectionMedia);
+    collectionRepo.save.mockResolvedValue({
+      ...collection,
+      mediaServerId: 'remote-collection',
+    } as Collection);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    await service.addToCollection(collection.id, []);
+
+    expect(mediaServer.createCollection).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        itemIds: expect.anything(),
+      }),
+    );
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-collection',
+      ['item-1'],
+    );
+  });
+
+  it('creates collections with children by adding media after collection creation', async () => {
+    const collection = createCollection({
+      id: 4,
+      mediaServerId: null,
+      manualCollection: false,
+      libraryId: 'library-1',
+      title: 'Collection With Children',
+    });
+    const media = [{ mediaServerId: 'item-1' }];
+
+    jest.spyOn(service as any, 'addCollectionToDB').mockResolvedValue({
+      id: collection.id,
+      mediaServerId: 'remote-collection',
+    });
+    const addChildrenToCollectionSpy = jest
+      .spyOn(service as any, 'addChildrenToCollection')
+      .mockResolvedValue(undefined);
+
+    await service.createCollectionWithChildren(collection, media);
+
+    expect(mediaServer.createCollection).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        itemIds: expect.anything(),
+      }),
+    );
+    expect(addChildrenToCollectionSpy).toHaveBeenCalledWith(
+      {
+        mediaServerId: 'remote-collection',
+        dbId: collection.id,
+      },
+      media,
+      false,
     );
   });
 });

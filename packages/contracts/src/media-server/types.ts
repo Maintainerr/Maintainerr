@@ -215,8 +215,6 @@ export interface CreateCollectionParams {
   summary?: string
   type: MediaItemType
   sortTitle?: string
-  /** Optional initial items to add on creation. Requires COLLECTION_CREATION_WITH_ITEMS feature. */
-  itemIds?: string[]
 }
 
 /** Plex-only visibility settings */
