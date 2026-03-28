@@ -26,6 +26,12 @@ If applicable, add screenshots to help explain your problem.
 **Device (please complete the following information):**
  - OS: [e.g. Ubuntu]
  - Version [e.g. 1.2.0]
+ - Server: [e.g. Jellyfin/Plex]
+
+**Debug logs**
+```
+Add your debug logs here
+```
 
 **Additional context**
 Add any other context about the problem here.
