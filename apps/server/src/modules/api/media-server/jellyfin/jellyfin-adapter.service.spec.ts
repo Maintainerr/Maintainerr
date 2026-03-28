@@ -238,7 +238,6 @@ describe('JellyfinAdapterService', () => {
     it.each([
       [MediaServerFeature.LABELS, true],
       [MediaServerFeature.PLAYLISTS, true],
-      [MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS, true],
       [MediaServerFeature.COLLECTION_VISIBILITY, false],
       [MediaServerFeature.WATCHLIST, false],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, false],
@@ -592,7 +591,7 @@ describe('JellyfinAdapterService', () => {
       await service.initialize();
     });
 
-    it('should pass initial item ids when creating a collection', async () => {
+    it('should create a collection without initial item ids', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [{ Id: 'user-1', Name: 'Alice' }],
       });
@@ -613,15 +612,19 @@ describe('JellyfinAdapterService', () => {
         libraryId: 'library-1',
         title: 'Test Collection',
         type: 'movie',
-        itemIds: ['item-1', 'item-2'],
       });
 
       expect(jest.mocked(getCollectionApi)).toHaveBeenCalled();
       expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
         expect.objectContaining({
-          ids: ['item-1', 'item-2'],
           name: 'Test Collection',
           parentId: 'library-1',
+          isLocked: true,
+        }),
+      );
+      expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          ids: expect.anything(),
         }),
       );
       expect(result.id).toBe('collection-1');

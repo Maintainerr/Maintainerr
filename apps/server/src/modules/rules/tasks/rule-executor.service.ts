@@ -513,7 +513,7 @@ export class RuleExecutorService {
         }
 
         abortSignal?.throwIfAborted();
-        if (dataToRemove.length > 0) {
+        if (collection && dataToRemove.length > 0) {
           collection =
             collMediaData.length > 0
               ? await this.collectionService.removeFromCollectionWithResolvedLink(
@@ -526,10 +526,16 @@ export class RuleExecutorService {
                 );
         }
 
+        if (!collection) {
+          throw new Error(
+            `Collection update failed for rule group ${rulegroup?.id} (collectionId: ${rulegroup?.collectionId})`,
+          );
+        }
+
         // Determine which items were actually added/removed by comparing DB state
         const updatedMediaServerIds = new Set(
           (
-            (await this.collectionService.getCollectionMedia(collection.id)) ??
+            (await this.collectionService.getCollectionMedia(collection?.id)) ??
             []
           ).map((e) => e.mediaServerId),
         );

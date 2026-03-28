@@ -905,7 +905,6 @@ export class JellyfinAdapterService implements IMediaServerService {
         parentId: params.libraryId,
         // isLocked enables composite image generation from collection items
         isLocked: true,
-        ids: params.itemIds,
       });
 
       const collectionId = response.data.Id;

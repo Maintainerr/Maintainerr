@@ -96,8 +96,9 @@ export class CollectionsService {
       }
     } catch (err) {
       this.logger.warn(
-        'An error occurred while performing collection actions.',
+        `An error occurred while performing collection actions: ${err.message}`,
       );
+      this.logger.debug(err);
       return undefined;
     }
   }
@@ -348,7 +349,6 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
-    media?: AddRemoveCollectionMedia[],
   ): Promise<{
     dbCollection: addCollectionDbResponse;
   }> {
@@ -361,10 +361,6 @@ export class CollectionsService {
         (collection.manualCollection == undefined ||
           !collection.manualCollection)
       ) {
-        const supportsCreationWithItems = mediaServer.supportsFeature(
-          MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
-        );
-
         // Create collection via media server abstraction
         mediaCollection = await mediaServer.createCollection({
           libraryId: collection.libraryId,
@@ -372,11 +368,6 @@ export class CollectionsService {
           summary: collection?.description,
           sortTitle: collection?.sortTitle,
           type: collection.type,
-          ...(supportsCreationWithItems && media && media.length > 0
-            ? {
-                itemIds: media.map((childMedia) => childMedia.mediaServerId),
-              }
-            : {}),
         });
 
         // Store the media server ID from the created collection
@@ -448,17 +439,7 @@ export class CollectionsService {
     dbCollection: addCollectionDbResponse;
   }> {
     try {
-      const mediaServer = await this.getMediaServer();
-      const supportsCreationWithItems = mediaServer.supportsFeature(
-        MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
-      );
-      const skipMediaServerAdd =
-        supportsCreationWithItems && !collection.manualCollection;
-      const createdCollection = await this.createCollection(
-        collection,
-        false,
-        media,
-      );
+      const createdCollection = await this.createCollection(collection, false);
 
       if (!createdCollection?.dbCollection) {
         return undefined;
@@ -474,7 +455,6 @@ export class CollectionsService {
           },
           media,
           false,
-          skipMediaServerAdd,
         );
       }
 
@@ -779,6 +759,7 @@ export class CollectionsService {
     media: AddRemoveCollectionMedia[],
     manual = false,
   ): Promise<Collection> {
+    if (!collection) return undefined;
     return this.addToCollectionInternal(collection.id, media, manual, true);
   }
 
@@ -823,22 +804,12 @@ export class CollectionsService {
               collection.libraryId,
             );
           } else {
-            const supportsCreationWithItems = mediaServer.supportsFeature(
-              MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
-            );
             newColl = await mediaServer.createCollection({
               libraryId: collection.libraryId,
               title: collection.title,
               summary: collection.description,
               sortTitle: collection.sortTitle,
               type: collection.type,
-              ...(supportsCreationWithItems && collectionMedia.length > 0
-                ? {
-                    itemIds: collectionMedia.map(
-                      (existingMedia) => existingMedia.mediaServerId,
-                    ),
-                  }
-                : {}),
             });
           }
           if (newColl?.id) {
@@ -862,11 +833,7 @@ export class CollectionsService {
             }
 
             // Check if we need to sync existing items to a newly created collection
-            const needsResync =
-              collectionMedia.length > 0 &&
-              !mediaServer.supportsFeature(
-                MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS,
-              );
+            const needsResync = collectionMedia.length > 0;
 
             // If we had existing collection_media items, sync them to the new media server collection
             if (needsResync) {
@@ -934,6 +901,7 @@ export class CollectionsService {
     collection: Collection,
     media: AddRemoveCollectionMedia[],
   ) {
+    if (!collection) return undefined;
     return this.removeFromCollectionInternal(collection.id, media, true);
   }
 
