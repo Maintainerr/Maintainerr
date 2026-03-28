@@ -473,7 +473,7 @@ export class MaintainerrLogger implements LoggerService {
     );
   }
 
-  public debug?(
+  public debug(
     message: any,
     errorOrContext?: unknown,
     contextOrMeta?: string | LogMeta,

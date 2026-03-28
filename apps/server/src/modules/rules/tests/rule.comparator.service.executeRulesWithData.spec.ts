@@ -86,7 +86,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: 6,
       result: false,
     });
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.debug).toHaveBeenCalledWith(
       expect.stringContaining(
         'Skipping rule comparison due to missing operand',
       ),
