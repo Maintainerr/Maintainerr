@@ -271,7 +271,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return status;
     } catch (error) {
-      this.logger.error('Failed to get Jellyfin status', error);
+      this.logger.error('Failed to get Jellyfin status');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -297,7 +298,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return users;
     } catch (error) {
-      this.logger.error('Failed to get Jellyfin users', error);
+      this.logger.error('Failed to get Jellyfin users');
+      this.logger.debug(error);
       return [];
     }
   }
@@ -327,7 +329,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return normalizedThreshold;
     } catch (error) {
-      this.logger.warn('Failed to get Jellyfin MaxResumePct', error);
+      this.logger.warn('Failed to get Jellyfin MaxResumePct');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -365,7 +368,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaUser(response.data)
         : undefined;
     } catch (error) {
-      this.logger.warn(`Failed to get Jellyfin user ${id}`, error);
+      this.logger.warn(`Failed to get Jellyfin user ${id}`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -401,7 +405,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return libraries;
     } catch (error) {
-      this.logger.error('Failed to get Jellyfin libraries', error);
+      this.logger.error('Failed to get Jellyfin libraries');
+      this.logger.debug(error);
       return [];
     }
   }
@@ -541,7 +546,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       const item = response.data.Items?.[0];
       return item ? JellyfinMapper.toMediaItem(item) : undefined;
     } catch (error) {
-      this.logger.warn(`Failed to get metadata for ${itemId}`, error);
+      this.logger.warn(`Failed to get metadata for ${itemId}`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -598,7 +604,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
     } catch (error) {
-      this.logger.error(`Failed to get children for ${parentId}`, error);
+      this.logger.error(`Failed to get children for ${parentId}`);
+      this.logger.debug(error);
       return [];
     }
   }
@@ -662,7 +669,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
     } catch (error) {
-      this.logger.error('Failed to search Jellyfin content', error);
+      this.logger.error('Failed to search Jellyfin content');
+      this.logger.debug(error);
       return [];
     }
   }
@@ -703,7 +711,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.cache.data.set(cacheKey, records, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
       return records;
     } catch (error) {
-      this.logger.error(`Failed to get watch history for ${itemId}`, error);
+      this.logger.error(`Failed to get watch history for ${itemId}`);
+      this.logger.debug(error);
       return [];
     }
   }
@@ -735,7 +744,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return favoritedBy;
     } catch (error) {
-      this.logger.error(`Failed to get favorited-by list for ${itemId}`, error);
+      this.logger.error(`Failed to get favorited-by list for ${itemId}`);
+      this.logger.debug(error);
       return [];
     }
   }
@@ -767,7 +777,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return totalPlayCount;
     } catch (error) {
-      this.logger.error(`Failed to get play count for ${itemId}`, error);
+      this.logger.error(`Failed to get play count for ${itemId}`);
+      this.logger.debug(error);
       return 0;
     }
   }
@@ -830,8 +841,8 @@ export class JellyfinAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.debug(
         `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -868,7 +879,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return (response.data.Items || []).map(JellyfinMapper.toMediaCollection);
     } catch (error) {
-      this.logger.error(`Failed to get collections for ${libraryId}`, error);
+      this.logger.error(`Failed to get collections for ${libraryId}`);
+      this.logger.debug(error);
       return [];
     }
   }
@@ -889,7 +901,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaCollection(response.data)
         : undefined;
     } catch (error) {
-      this.logger.warn(`Failed to get collection ${collectionId}`, error);
+      this.logger.warn(`Failed to get collection ${collectionId}`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -928,7 +941,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         libraryId: params.libraryId,
       };
     } catch (error) {
-      this.logger.error('Failed to create Jellyfin collection', error);
+      this.logger.error('Failed to create Jellyfin collection');
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -939,7 +953,8 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
     } catch (error) {
-      this.logger.error(`Failed to delete collection ${collectionId}`, error);
+      this.logger.error(`Failed to delete collection ${collectionId}`);
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -1367,7 +1382,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       await getLibraryApi(this.api).deleteItem({ itemId });
       this.logger.log(`Successfully deleted Jellyfin item ${itemId} from disk`);
     } catch (error) {
-      this.logger.error(`Failed to delete item ${itemId} from disk`, error);
+      this.logger.error(`Failed to delete item ${itemId} from disk`);
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -1411,7 +1427,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Library '${libraryId || '(empty)'}' appears to be from a different media server. Please update the library setting in your rules.`,
       );
     } else {
-      this.logger.error(`Failed to ${operation} for ${libraryId}`, error);
+      this.logger.error(`Failed to ${operation} for ${libraryId}`);
+      this.logger.debug(error);
     }
   }
 }

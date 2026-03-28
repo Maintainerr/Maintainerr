@@ -50,7 +50,7 @@ export class RuleMaintenanceService extends TaskBase {
       this.logger.log('Maintenance done');
     } catch (error) {
       this.logger.error('Rule Maintenance failed');
-      this.logger.debug('Rule Maintenance failed', error);
+      this.logger.debug(error);
     }
   }
 
@@ -84,10 +84,8 @@ export class RuleMaintenanceService extends TaskBase {
         }
       }
     } catch (error) {
-      this.logger.error(
-        `Couldn't remove collection without rule: ${error.message}`,
-        error,
-      );
+      this.logger.error("Couldn't remove collection without rule");
+      this.logger.debug(error);
     }
   }
 }

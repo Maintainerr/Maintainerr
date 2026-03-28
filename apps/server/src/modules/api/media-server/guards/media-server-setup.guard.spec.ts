@@ -10,6 +10,7 @@ describe('MediaServerSetupGuard', () => {
   const logger = {
     setContext: jest.fn(),
     error: jest.fn(),
+    debug: jest.fn(),
   } as unknown as jest.Mocked<MaintainerrLogger>;
 
   let guard: MediaServerSetupGuard;
@@ -25,7 +26,7 @@ describe('MediaServerSetupGuard', () => {
     await expect(guard.canActivate()).resolves.toBe(false);
     expect(logger.error).toHaveBeenCalledWith(
       'Media server setup check failed',
-      expect.any(Error),
     );
+    expect(logger.debug).toHaveBeenCalledWith(expect.any(Error));
   });
 });

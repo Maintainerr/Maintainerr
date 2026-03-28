@@ -241,7 +241,8 @@ export class PlexAdapterService implements IMediaServerService {
     try {
       await this.plexApi.deleteCollection(collectionId);
     } catch (error) {
-      this.logger.error(`Failed to delete collection ${collectionId}`, error);
+      this.logger.error(`Failed to delete collection ${collectionId}`);
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -258,8 +259,8 @@ export class PlexAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to add item ${itemId} to collection ${collectionId}`,
-        error,
       );
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -290,8 +291,8 @@ export class PlexAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to remove item ${itemId} from collection ${collectionId}`,
-        error,
       );
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -357,8 +358,8 @@ export class PlexAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to update visibility for collection ${settings.collectionId}`,
-        error,
       );
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -390,7 +391,8 @@ export class PlexAdapterService implements IMediaServerService {
       await this.plexApi.deleteMediaFromDisk(itemId);
       this.logger.log(`Successfully deleted Plex item ${itemId} from disk`);
     } catch (error) {
-      this.logger.error(`Failed to delete item ${itemId} from disk`, error);
+      this.logger.error(`Failed to delete item ${itemId} from disk`);
+      this.logger.debug(error);
       throw error;
     }
   }

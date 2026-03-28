@@ -71,7 +71,8 @@ class PushoverAgent implements NotificationAgent {
         attachment_type: contentType,
       };
     } catch (error) {
-      this.logger.error(`Error getting image payload`, error);
+      this.logger.error(`Error getting image payload`);
+      this.logger.debug(error);
       return {};
     }
   }

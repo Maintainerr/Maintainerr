@@ -281,7 +281,8 @@ export class RuleMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed to migrate rule ${rule.id}: ${errorMessage}`);
+        this.logger.error(`Failed to migrate rule ${rule.id}`);
+        this.logger.debug(error);
         result.skippedRules++;
         groupStatus.skipped++;
         result.skippedDetails.push({

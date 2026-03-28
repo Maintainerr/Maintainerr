@@ -380,7 +380,7 @@ export class SeerrApiService {
       return response;
     } catch (error) {
       this.logger.log("Couldn't fetch Seerr status");
-      this.logger.debug("Couldn't fetch Seerr status", error);
+      this.logger.debug(error);
       return null;
     }
   }

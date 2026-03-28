@@ -225,12 +225,8 @@ export class MediaServerSwitchService {
 
       return response;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Error switching media server: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
-      );
+      this.logger.error('Error switching media server');
+      this.logger.debug(error);
       return {
         status: 'NOK',
         code: 0,

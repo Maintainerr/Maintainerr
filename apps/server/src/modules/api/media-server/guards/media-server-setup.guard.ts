@@ -23,7 +23,8 @@ export class MediaServerSetupGuard implements CanActivate {
     try {
       return await this.settingsService.testSetup();
     } catch (error) {
-      this.logger.error('Media server setup check failed', error);
+      this.logger.error('Media server setup check failed');
+      this.logger.debug(error);
       return false;
     }
   }

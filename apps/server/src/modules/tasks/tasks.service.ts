@@ -55,7 +55,8 @@ export class TasksService {
       );
     } catch (error) {
       const message = `An error occurred while creating the ${name} task.`;
-      this.logger.error(message, error);
+      this.logger.error(message);
+      this.logger.debug(error);
       return this.status.createStatus(false, message);
     }
   }
@@ -84,7 +85,8 @@ export class TasksService {
       );
     } catch (error) {
       const message = `An error occurred while updating the ${name} task.`;
-      this.logger.error(message, error);
+      this.logger.error(message);
+      this.logger.debug(error);
       return this.status.createStatus(false, message);
     }
   }

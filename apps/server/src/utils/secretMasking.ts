@@ -255,6 +255,80 @@ export const maskSecret = sharedMaskSecret;
 
 export const maskSecretString = sharedMaskSecretString;
 
+const sanitizeSecretValueInternal = (
+  value: unknown,
+  seen: WeakMap<object, unknown>,
+): unknown => {
+  if (typeof value === 'string') {
+    return sanitizeSecretString(value);
+  }
+
+  if (Array.isArray(value)) {
+    if (seen.has(value)) {
+      return seen.get(value);
+    }
+
+    const clone: unknown[] = [];
+    seen.set(value, clone);
+
+    for (const entry of value) {
+      clone.push(sanitizeSecretValueInternal(entry, seen));
+    }
+
+    return clone;
+  }
+
+  if (value instanceof Error) {
+    if (seen.has(value)) {
+      return seen.get(value);
+    }
+
+    const clone = {} as Record<PropertyKey, unknown>;
+    seen.set(value, clone);
+
+    const errorSpecialKeys = new Set<PropertyKey>([
+      'name',
+      'message',
+      'stack',
+      'cause',
+    ]);
+
+    for (const key of Reflect.ownKeys(value)) {
+      if (!errorSpecialKeys.has(key)) {
+        clone[key] = sanitizeSecretValueInternal(
+          (value as unknown as Record<PropertyKey, unknown>)[key],
+          seen,
+        );
+      }
+    }
+
+    clone.name = value.name;
+    clone.message = sanitizeSecretString(value.message);
+    clone.stack = value.stack ? sanitizeSecretString(value.stack) : value.stack;
+    clone.cause = sanitizeSecretValueInternal(value.cause, seen);
+
+    return clone;
+  }
+
+  if (value && typeof value === 'object') {
+    if (seen.has(value)) {
+      return seen.get(value);
+    }
+
+    const source = value as Record<PropertyKey, unknown>;
+    const clone = {} as Record<PropertyKey, unknown>;
+    seen.set(source, clone);
+
+    for (const key of Reflect.ownKeys(source)) {
+      clone[key] = sanitizeSecretValueInternal(source[key], seen);
+    }
+
+    return clone;
+  }
+
+  return value;
+};
+
 export const sanitizeSecretString = (value: string): string => {
   let sanitized = sanitizeAuthorizationValues(value);
 
@@ -270,38 +344,8 @@ export const sanitizeSecretString = (value: string): string => {
   return sanitized;
 };
 
-export const sanitizeSecretValue = (value: unknown): unknown => {
-  if (typeof value === 'string') {
-    return sanitizeSecretString(value);
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeSecretValue(entry));
-  }
-
-  if (value instanceof Error) {
-    return {
-      ...value,
-      name: value.name,
-      message: sanitizeSecretString(value.message),
-      stack: value.stack ? sanitizeSecretString(value.stack) : value.stack,
-      cause: sanitizeSecretValue(value.cause),
-    };
-  }
-
-  if (value && typeof value === 'object') {
-    const source = value as Record<PropertyKey, unknown>;
-    const clone = {} as Record<PropertyKey, unknown>;
-
-    for (const key of Reflect.ownKeys(source)) {
-      clone[key] = sanitizeSecretValue(source[key]);
-    }
-
-    return clone;
-  }
-
-  return value;
-};
+export const sanitizeSecretValue = (value: unknown): unknown =>
+  sanitizeSecretValueInternal(value, new WeakMap());
 
 export const sanitizeSecretInfo = <T extends Record<string, unknown>>(
   info: T,

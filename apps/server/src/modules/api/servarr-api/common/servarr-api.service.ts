@@ -50,9 +50,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data;
     } catch (error) {
-      this.logger.warn(
-        `Failed to retrieve system status: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to retrieve system status');
+      this.logger.debug(error);
     }
   };
 
@@ -66,9 +65,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return data;
     } catch (error) {
-      this.logger.warn(
-        `Failed to retrieve profiles: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to retrieve profiles');
+      this.logger.debug(error);
     }
   };
 
@@ -82,9 +80,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return data;
     } catch (error) {
-      this.logger.warn(
-        `Failed to retrieve root folders: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to retrieve root folders');
+      this.logger.debug(error);
     }
   };
 
@@ -98,9 +95,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return data;
     } catch (error) {
-      this.logger.warn(
-        `Failed to retrieve disk space: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to retrieve disk space');
+      this.logger.debug(error);
     }
   };
 
@@ -159,9 +155,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data.records;
     } catch (error) {
-      this.logger.warn(
-        `Failed to retrieve queue: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to retrieve queue');
+      this.logger.debug(error);
     }
   };
 
@@ -171,9 +166,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data;
     } catch (error) {
-      this.logger.warn(
-        `Failed to retrieve tags: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to retrieve tags');
+      this.logger.debug(error);
     }
   };
 
@@ -185,9 +179,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
       return response.data;
     } catch (error) {
-      this.logger.warn(
-        `Failed to create tag: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.warn('Failed to create tag');
+      this.logger.debug(error);
     }
   };
 
@@ -207,7 +200,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       }
       return resp ? resp.data : undefined;
     } catch (error) {
-      this.logger.warn('Failed to run command', error);
+      this.logger.warn('Failed to run command');
+      this.logger.debug(error);
     }
   }
 
@@ -215,7 +209,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     try {
       await this.delete(`/${command}`);
     } catch (error) {
-      this.logger.warn('Failed to run DELETE', error);
+      this.logger.warn('Failed to run DELETE');
+      this.logger.debug(error);
     }
   }
 
@@ -223,7 +218,8 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     try {
       await this.put(`/${command}`, body);
     } catch (error) {
-      this.logger.warn('Failed to run PUT', error);
+      this.logger.warn('Failed to run PUT');
+      this.logger.debug(error);
     }
   }
 }

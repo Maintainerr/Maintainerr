@@ -142,7 +142,7 @@ export class TautulliApiService {
       return response;
     } catch (error) {
       this.logger.log("Couldn't fetch Tautulli info");
-      this.logger.debug("Couldn't fetch Tautulli info", error);
+      this.logger.debug(error);
       return null;
     }
   }
@@ -170,7 +170,7 @@ export class TautulliApiService {
       return response.response.data;
     } catch (error) {
       this.logger.log("Couldn't fetch Tautulli paginated history");
-      this.logger.debug("Couldn't fetch Tautulli paginated history", error);
+      this.logger.debug(error);
       return null;
     }
   }
@@ -222,7 +222,7 @@ export class TautulliApiService {
       return results;
     } catch (error) {
       this.logger.log("Couldn't fetch Tautulli history");
-      this.logger.debug("Couldn't fetch Tautulli history", error);
+      this.logger.debug(error);
       return null;
     }
   }
@@ -245,7 +245,7 @@ export class TautulliApiService {
       return response.response.data;
     } catch (error) {
       this.logger.log("Couldn't fetch Tautulli metadata");
-      this.logger.debug("Couldn't fetch Tautulli metadata", error);
+      this.logger.debug(error);
       return null;
     }
   }
@@ -273,7 +273,7 @@ export class TautulliApiService {
       return response.response.data.children_list;
     } catch (error) {
       this.logger.log("Couldn't fetch Tautulli children metadata");
-      this.logger.debug("Couldn't fetch Tautulli children metadata", error);
+      this.logger.debug(error);
       return null;
     }
   }
@@ -293,7 +293,7 @@ export class TautulliApiService {
       return response.response.data;
     } catch (error) {
       this.logger.log("Couldn't fetch Tautulli users");
-      this.logger.debug("Couldn't fetch Tautulli users", error);
+      this.logger.debug(error);
       return null;
     }
   }

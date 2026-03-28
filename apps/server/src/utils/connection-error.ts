@@ -121,10 +121,6 @@ export const logConnectionTestError = (
   serviceName: string,
   error: unknown,
 ) => {
-  if (error instanceof Error) {
-    logger.error(`${serviceName} connection test failed`, error);
-    return;
-  }
-
-  logger.error(`${serviceName} connection test failed: ${String(error)}`);
+  logger.error(`${serviceName} connection test failed`);
+  logger.debug(error);
 };

@@ -140,9 +140,10 @@ export class RulesController {
 
     this.ruleExecutorSchedulerService
       .enqueueAllActiveRuleGroups()
-      .catch((error) =>
-        this.logger.error('Failed to enqueue all active rule groups', error),
-      );
+      .catch((error) => {
+        this.logger.error('Failed to enqueue all active rule groups');
+        this.logger.debug(error);
+      });
   }
 
   @Post('/:id/execute')
@@ -201,11 +202,10 @@ export class RulesController {
       return;
     }
 
-    this.ruleExecutorJobManagerService
-      .stopProcessing()
-      .catch((error) =>
-        this.logger.error('Failed to stop rule execution processing', error),
-      );
+    this.ruleExecutorJobManagerService.stopProcessing().catch((error) => {
+      this.logger.error('Failed to stop rule execution processing');
+      this.logger.debug(error);
+    });
     res.status(HttpStatus.ACCEPTED).send();
   }
 

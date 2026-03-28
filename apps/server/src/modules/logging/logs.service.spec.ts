@@ -182,8 +182,19 @@ describe('MaintainerrLogger', () => {
     const error = new Error('save failed');
 
     logger.error('Error while saving settings: ', error);
+    logger.error('Error while saving settings.', error);
 
-    expect(winstonLogger.log).toHaveBeenCalledWith(
+    expect(winstonLogger.log).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        level: 'error',
+        context: 'TestContext',
+        message: 'Error while saving settings: save failed',
+      }),
+    );
+
+    expect(winstonLogger.log).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         level: 'error',
         context: 'TestContext',

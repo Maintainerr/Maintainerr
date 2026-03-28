@@ -277,7 +277,8 @@ export class NotificationService {
 
       return await this.notificationRepo.find();
     } catch (error) {
-      this.logger.error('Fetching Notification configurations failed', error);
+      this.logger.error('Fetching Notification configurations failed');
+      this.logger.debug(error);
     }
   }
 
@@ -436,7 +437,8 @@ export class NotificationService {
 
       return { code: 1, result: 'success' };
     } catch (error) {
-      this.logger.error('Notification configuration removal failed', error);
+      this.logger.error('Notification configuration removal failed');
+      this.logger.debug(error);
       return {
         code: 0,
         result: getErrorMessage(
@@ -848,7 +850,8 @@ export class NotificationService {
 
       return message;
     } catch (error) {
-      this.logger.error("Couldn't transform notification message", error);
+      this.logger.error("Couldn't transform notification message");
+      this.logger.debug(error);
     }
   }
 

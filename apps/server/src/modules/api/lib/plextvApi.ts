@@ -158,8 +158,9 @@ export class PlexTvApi extends ExternalApiService {
       return account.user;
     } catch (error) {
       this.logger.error(
-        `Something went wrong while getting the account from plex.tv: ${error.message}`,
+        'Something went wrong while getting the account from plex.tv',
       );
+      this.logger.debug(error);
       throw new Error('Invalid auth token');
     }
   }
@@ -240,9 +241,8 @@ export class PlexTvApi extends ExternalApiService {
         items: filteredList,
       };
     } catch (error) {
-      this.logger.error(
-        `Failed to retrieve watchlist items: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      this.logger.error('Failed to retrieve watchlist items');
+      this.logger.debug(error);
       return {
         offset,
         size,

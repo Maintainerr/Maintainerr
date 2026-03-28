@@ -124,7 +124,7 @@ export class SeerrGetterService {
               return [];
             } catch (error) {
               this.logger.warn("Couldn't get addUser from Seerr");
-              this.logger.debug("Couldn't get addUser from Seerr", error);
+              this.logger.debug(error);
               return null;
             }
           }

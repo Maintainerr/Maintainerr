@@ -41,8 +41,9 @@ export class ExternalApiService {
       onRetry: (retryCount, error, requestConfig) => {
         const url = this.axios.getUri(requestConfig);
         this.logger.debug(
-          `Retry ${retryCount}/3 ${requestConfig.method.toUpperCase()} ${url}: ${error.message}`,
+          `Retry ${retryCount}/3 ${requestConfig.method.toUpperCase()} ${url}`,
         );
+        this.logger.debug(error);
       },
     });
     this.baseUrl = baseUrl;
@@ -69,7 +70,8 @@ export class ExternalApiService {
       return response.data;
     } catch (error) {
       const url = this.axios.getUri({ ...config, url: endpoint });
-      this.logger.debug(`GET ${url} failed: ${error}`);
+      this.logger.debug(`GET ${url} failed`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -82,7 +84,8 @@ export class ExternalApiService {
       return (await this.axios.get<T>(endpoint, config)).data;
     } catch (error) {
       const url = this.axios.getUri({ ...config, url: endpoint });
-      this.logger.debug(`GET ${url} failed: ${error}`);
+      this.logger.debug(`GET ${url} failed`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -103,7 +106,8 @@ export class ExternalApiService {
       return response.data;
     } catch (error) {
       const url = this.axios.getUri({ ...config, url: endpoint });
-      this.logger.debug(`DELETE ${url} failed: ${error}`);
+      this.logger.debug(`DELETE ${url} failed`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -118,7 +122,8 @@ export class ExternalApiService {
       return response.data;
     } catch (error) {
       const url = this.axios.getUri({ ...config, url: endpoint });
-      this.logger.debug(`PUT ${url} failed: ${error}`);
+      this.logger.debug(`PUT ${url} failed`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -133,7 +138,8 @@ export class ExternalApiService {
       return response.data;
     } catch (error) {
       const url = this.axios.getUri({ ...config, url: endpoint });
-      this.logger.debug(`POST ${url} failed: ${error}`);
+      this.logger.debug(`POST ${url} failed`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -171,7 +177,8 @@ export class ExternalApiService {
       return response.data;
     } catch (error) {
       const url = this.axios.getUri({ ...config, url: endpoint });
-      this.logger.debug(`GET ${url} failed: ${error}`);
+      this.logger.debug(`GET ${url} failed`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -256,7 +263,8 @@ export class ExternalApiService {
 
       return `${this.baseUrl}${endpoint}${JSON.stringify(params)}`;
     } catch (error) {
-      this.logger.debug(`Failed serializing cache key: ${error}`);
+      this.logger.debug('Failed serializing cache key');
+      this.logger.debug(error);
       return undefined;
     }
   }

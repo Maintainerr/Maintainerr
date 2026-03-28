@@ -228,7 +228,10 @@ export class MaintainerrLogger implements LoggerService {
   }
 
   private sanitizeMessagePrefix(message: string): string {
-    return message.trimEnd().replace(/:$/, '');
+    const trimmed = message.trimEnd();
+    return trimmed.endsWith('.') || trimmed.endsWith(':')
+      ? trimmed.slice(0, -1)
+      : trimmed;
   }
 
   private normalizeObjectLogPayload(
