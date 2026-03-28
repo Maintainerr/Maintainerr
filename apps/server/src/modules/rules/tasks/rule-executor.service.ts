@@ -90,14 +90,16 @@ export class RuleExecutorService {
       return;
     }
 
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandler_Started,
-      new RuleHandlerStartedEventDto(
-        `Started execution of rule '${ruleGroup.name}'`,
-      ),
-    );
-
     try {
+      abortSignal.throwIfAborted();
+
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandler_Started,
+        new RuleHandlerStartedEventDto(
+          `Started execution of rule '${ruleGroup.name}'`,
+        ),
+      );
+
       this.logger.log(`Starting execution of rule '${ruleGroup.name}'`);
 
       // Validate that libraryId is set - required after migrating between media servers
@@ -364,8 +366,8 @@ export class RuleExecutorService {
       await this.collectionService.checkAutomaticMediaServerLink(collection);
 
     if (!linkedCollection.mediaServerId) {
-      this.logger.warn(
-        `Skipping media server sync for collection '${linkedCollection.title}' because the linked media server collection is unavailable.`,
+      this.logger.debug(
+        `Skipping media server sync for '${linkedCollection.title}' — no media server collection exists because no items currently match the rule.`,
       );
       return undefined;
     }

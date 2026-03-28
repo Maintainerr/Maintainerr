@@ -696,7 +696,9 @@ export class CollectionsService {
 
       if (!serverColl) {
         this.logger.debug(
-          `[checkAutomaticMediaServerLink] Setting mediaServerId to null — collection was empty or not found on media server`,
+          originalMediaServerId
+            ? `[checkAutomaticMediaServerLink] Media server collection for "${collection.title}" no longer exists — clearing link. It will be recreated automatically when items match the rule.`
+            : `[checkAutomaticMediaServerLink] No media server collection for "${collection.title}" — collection is empty and will be created automatically when items match the rule.`,
         );
         collection.mediaServerId = null;
         collection = await this.saveCollection(collection);
@@ -800,13 +802,20 @@ export class CollectionsService {
               collection.libraryId,
             );
           } else {
-            newColl = await mediaServer.createCollection({
-              libraryId: collection.libraryId,
-              title: collection.title,
-              summary: collection.description,
-              sortTitle: collection.sortTitle,
-              type: collection.type,
-            });
+            newColl = await this.findMediaServerCollection(
+              collection.title,
+              collection.libraryId,
+            );
+
+            if (!newColl) {
+              newColl = await mediaServer.createCollection({
+                libraryId: collection.libraryId,
+                title: collection.title,
+                summary: collection.description,
+                sortTitle: collection.sortTitle,
+                type: collection.type,
+              });
+            }
           }
           if (newColl?.id) {
             collection = await this.collectionRepo.save({
@@ -993,7 +1002,7 @@ export class CollectionsService {
     }
   }
 
-  async deleteCollection(collectionDbId: number) {
+  async deleteCollection(collectionDbId: number): Promise<BasicResponseDto> {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -1004,7 +1013,7 @@ export class CollectionsService {
         this.logger.warn(
           `Collection with id ${collectionDbId} not found in database`,
         );
-        return undefined;
+        return { status: 'OK', code: 1, message: 'Success' };
       }
 
       collection = await this.checkAutomaticMediaServerLink(collection);
@@ -1015,6 +1024,11 @@ export class CollectionsService {
         } catch (error) {
           this.logger.warn('Failed to delete collection from media server');
           this.logger.debug(error);
+          return {
+            status: 'NOK',
+            code: 0,
+            message: 'Failed to delete collection from media server',
+          };
         }
       }
       return await this.RemoveCollectionFromDB(collection);
@@ -1023,7 +1037,7 @@ export class CollectionsService {
         'An error occurred while performing collection actions.',
       );
       this.logger.debug(error);
-      return undefined;
+      return { status: 'NOK', code: 0, message: 'Deleting collection failed' };
     }
   }
 

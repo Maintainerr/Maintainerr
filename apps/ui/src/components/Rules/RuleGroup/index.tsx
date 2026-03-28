@@ -91,8 +91,11 @@ const RuleGroup = (props: {
   }
 
   const isQueued = queueStatus?.queue.includes(props.group.id)
+  const isPending = queueStatus?.pendingRuleGroupIds?.includes(props.group.id)
   const ruleExecutingOrQueued =
-    queueStatus?.executingRuleGroupId === props.group.id || isQueued
+    queueStatus?.executingRuleGroupId === props.group.id ||
+    isQueued ||
+    isPending
   const hasNoLibrary = !props.group.libraryId || props.group.libraryId === ''
 
   return (

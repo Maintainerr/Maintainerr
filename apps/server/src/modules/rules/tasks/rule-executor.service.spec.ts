@@ -176,8 +176,8 @@ describe('RuleExecutorService', () => {
     expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalledWith(
-      "Skipping media server sync for collection 'Test Collection' because the linked media server collection is unavailable.",
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping media server sync for 'Test Collection' — no media server collection exists because no items currently match the rule.",
     );
   });
 
@@ -480,6 +480,45 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.RuleHandler_Failed,
     );
     expect(progressManager.reset).not.toHaveBeenCalled();
+  });
+
+  it('does not emit started and still cleans up when execution was already aborted before starting', async () => {
+    const {
+      service,
+      rulesService,
+      eventEmitter,
+      progressManager,
+      settings,
+      logger,
+    } = createService(MediaServerType.JELLYFIN);
+
+    rulesService.getRuleGroup.mockResolvedValue({
+      id: 77,
+      name: 'Aborted Group',
+      isActive: true,
+      libraryId: 'library-1',
+      rules: [],
+      useRules: false,
+    } as any);
+
+    const abortController = new AbortController();
+    abortController.abort();
+
+    await service.executeForRuleGroups(77, abortController.signal);
+
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Started,
+      expect.anything(),
+    );
+    expect(settings.testConnections).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      "Execution of rule 'Aborted Group' was aborted.",
+    );
+    expect(progressManager.reset).toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Finished,
+      expect.anything(),
+    );
   });
 
   it('aborts between collection add and remove phases', async () => {

@@ -8,9 +8,9 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
+import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
-import { CollectionsService } from './collections.service';
 
 describe('CollectionsService', () => {
   let service: CollectionsService;
@@ -133,6 +133,43 @@ describe('CollectionsService', () => {
     );
     expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
       'remote-collection',
+      ['item-1'],
+    );
+  });
+
+  it('reuses an existing automatic media server collection before creating a new one', async () => {
+    const collection = createCollection({
+      id: 5,
+      mediaServerId: null,
+      manualCollection: false,
+      libraryId: 'library-1',
+      title: 'Existing Remote Collection',
+    });
+    const collectionMedia = [
+      createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue(collectionMedia);
+    collectionRepo.save.mockResolvedValue({
+      ...collection,
+      mediaServerId: 'remote-existing',
+    } as Collection);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'findMediaServerCollection')
+      .mockResolvedValue({ id: 'remote-existing' });
+
+    await service.addToCollection(collection.id, []);
+
+    expect(mediaServer.createCollection).not.toHaveBeenCalled();
+    expect(collectionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaServerId: 'remote-existing' }),
+    );
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-existing',
       ['item-1'],
     );
   });
