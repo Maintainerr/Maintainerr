@@ -53,12 +53,12 @@ const MediaCard: React.FC<IMediaCard> = ({
   }>({ requestKey: undefined, path: null })
   const [excludeModal, setExcludeModal] = useState(false)
   const [addModal, setAddModal] = useState(false)
-  const [hasExclusion, setHasExclusion] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
   const imageType = ['season', 'episode'].includes(mediaType)
     ? 'show'
     : mediaType
   const imageRequestKey = tmdbid ? `${imageType}:${tmdbid}` : undefined
+  const hasExclusion = exclusionId !== undefined || exclusionType !== undefined
 
   const openMediaModal = () => {
     setShowMediaModal(true)
@@ -81,22 +81,6 @@ const MediaCard: React.FC<IMediaCard> = ({
       isActive = false
     }
   }, [imageRequestKey, imageType, tmdbid])
-
-  useEffect(() => {
-    let isActive = true
-
-    if (!collectionPage) {
-      GetApiHandler(`/rules/exclusion?mediaServerId=${id}`).then((resp: []) => {
-        if (isActive) {
-          setHasExclusion(resp.length > 0)
-        }
-      })
-    }
-
-    return () => {
-      isActive = false
-    }
-  }, [collectionPage, id])
 
   const image =
     imageResult.requestKey === imageRequestKey ? imageResult.path : null
@@ -153,6 +137,8 @@ const MediaCard: React.FC<IMediaCard> = ({
               className="absolute inset-0 h-full w-full object-cover"
               alt=""
               src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
+              loading="lazy"
+              decoding="async"
             />
           ) : undefined}
           <div className="absolute left-0 right-0 flex items-center justify-between p-2">

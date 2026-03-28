@@ -1,4 +1,4 @@
-import { ChangeEvent, useContext, useEffect, useState } from 'react'
+import { ChangeEvent, useContext, useState } from 'react'
 import SearchContext from '../../../contexts/search-context'
 
 interface ISearchBar {
@@ -7,21 +7,15 @@ interface ISearchBar {
 }
 
 const SearchBar = (props: ISearchBar) => {
+  const { onSearch, placeholder } = props
   const [text, setText] = useState<string>('')
   const SearchCtx = useContext(SearchContext)
-
-  useEffect(() => {
-    if (SearchCtx.search.text === '') {
-      setText('')
-    }
-  }, [SearchCtx.search.text])
-
-  useEffect(() => {
-    props.onSearch(text)
-  }, [text])
+  const displayedText = SearchCtx.search.text === '' ? '' : text
 
   const inputHandler = (e: ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value.toLowerCase())
+    const nextText = e.target.value.toLowerCase()
+    setText(nextText)
+    onSearch(nextText)
   }
 
   return (
@@ -43,8 +37,8 @@ const SearchBar = (props: ISearchBar) => {
       <input
         type="search"
         onChange={(e) => inputHandler(e)}
-        placeholder={props.placeholder ? props.placeholder : 'Search'}
-        value={text}
+        placeholder={placeholder ? placeholder : 'Search'}
+        value={displayedText}
         className="block w-full rounded-full border border-zinc-600 bg-zinc-900 bg-opacity-80 py-2 pl-10 text-white placeholder-zinc-300 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0 sm:text-base"
       />
     </div>

@@ -11,6 +11,7 @@ export interface ItabbedLinks {
   allEnabled?: boolean
   currentRoute?: string
   onChange: (target: string) => void
+  onPrefetch?: (target: string) => void
 }
 
 export interface ITabbedLink {
@@ -20,6 +21,7 @@ export interface ITabbedLink {
   disabled?: boolean
   children?: ReactNode
   onClick: (path: string) => void
+  onPrefetch?: (path: string) => void
 }
 
 const TabbedLink = (props: ITabbedLink) => {
@@ -32,6 +34,9 @@ const TabbedLink = (props: ITabbedLink) => {
 
   return (
     <a
+      onMouseEnter={() => props.onPrefetch?.(props.route)}
+      onFocus={() => props.onPrefetch?.(props.route)}
+      onTouchStart={() => props.onPrefetch?.(props.route)}
       onClick={() => props.onClick(props.route)}
       className={`${linkClasses} ${
         props.currentRoute.match(props.route)
@@ -53,6 +58,7 @@ const TabbedLinks = (props: ItabbedLinks) => {
           {props.routes.map((route, index) => (
             <TabbedLink
               onClick={(r) => props.onChange(r)}
+              onPrefetch={(r) => props.onPrefetch?.(r)}
               route={route.route}
               disabled={!props.allEnabled}
               currentRoute={

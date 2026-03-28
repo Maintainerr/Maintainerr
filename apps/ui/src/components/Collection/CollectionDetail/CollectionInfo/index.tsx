@@ -12,9 +12,8 @@ import {
   ECollectionLogType,
   isMetaActionedByRule,
 } from '@maintainerr/contracts'
-import { Editor } from '@monaco-editor/react'
 import { debounce } from 'lodash-es'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
@@ -22,6 +21,7 @@ import { useRequestGeneration } from '../../../../hooks/useRequestGeneration'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
 import Badge from '../../../Common/Badge'
+import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../../Common/LoadingSpinner'
@@ -71,81 +71,19 @@ const CollectionInfo = (props: ICollectionInfo) => {
     setIsLoadingExtra(value)
   }
 
-  useEffect(() => {
-    // Initial first fetch
-    setPage(1)
+  const resetAll = () => {
+    setLoading(true)
+    setLoadingExtra(false)
 
-    // Cleanup on unmount
-    return () => {
-      if (refetchTimerRef.current !== undefined) {
-        window.clearTimeout(refetchTimerRef.current)
-      }
-
-      invalidate()
-
-      // Clear all data to prevent memory leaks
-      setData([])
-      dataRef.current = []
-      totalSizeRef.current = 999
-      pageData.current = 0
-    }
-  }, [])
-
-  useEffect(() => {
-    invalidate()
-
-    // reset state
-    resetAll()
-
-    // wait 500ms and then refetch
-    if (refetchTimerRef.current !== undefined) {
-      window.clearTimeout(refetchTimerRef.current)
-    }
-
-    refetchTimerRef.current = window.setTimeout(() => {
-      setPage(1)
-    }, 500)
-
-    return () => {
-      if (refetchTimerRef.current !== undefined) {
-        window.clearTimeout(refetchTimerRef.current)
-      }
-    }
-  }, [debouncedSearchFilter, currentSort, currentFilter])
-
-  useEffect(() => {
-    if (page !== 0) {
-      // Ignore initial page render
-      pageData.current = pageData.current + 1
-      fetchData()
-    }
-  }, [page])
-
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.scrollHeight * 0.9
-    ) {
-      if (
-        !loadingRef.current &&
-        !loadingExtraRef.current &&
-        !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-      ) {
-        setPage(pageData.current + 1)
-      }
-    }
+    pageData.current = 0
+    setPage(0)
+    totalSizeRef.current = 999
+    setTotalSize(999)
+    dataRef.current = []
+    setData([])
   }
 
-  useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
-    window.addEventListener('scroll', debouncedScroll)
-    return () => {
-      window.removeEventListener('scroll', debouncedScroll)
-      debouncedScroll.cancel() // Cancel pending debounced calls
-    }
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!loadingRef.current) {
       setLoadingExtra(true)
     }
@@ -169,12 +107,53 @@ const CollectionInfo = (props: ICollectionInfo) => {
       setLoading(false)
       setLoadingExtra(false)
     }
-  }
+  }, [
+    currentFilter,
+    currentSort,
+    debouncedSearchFilter,
+    guardedFetch,
+    props.collection.id,
+  ])
 
-  useEffect(() => {
-    dataRef.current = data
+  const loadInitialPage = useEffectEvent(() => {
+    setPage(1)
+  })
 
-    // If page is not filled yet, fetch more
+  const syncFilteredLogs = useEffectEvent(() => {
+    invalidate()
+    resetAll()
+
+    if (refetchTimerRef.current !== undefined) {
+      window.clearTimeout(refetchTimerRef.current)
+    }
+
+    refetchTimerRef.current = window.setTimeout(() => {
+      setPage(1)
+    }, 500)
+  })
+
+  const loadCurrentPage = useEffectEvent((currentPage: number) => {
+    if (currentPage === 0) {
+      return
+    }
+
+    pageData.current = pageData.current + 1
+    void fetchData()
+  })
+
+  const handleScroll = useEffectEvent(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.scrollHeight * 0.9 &&
+      !loadingRef.current &&
+      !loadingExtraRef.current &&
+      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
+    ) {
+      setPage(pageData.current + 1)
+    }
+  })
+
+  const fillPageIfViewportHasSpace = useEffectEvent(() => {
     if (
       !loadingRef.current &&
       !loadingExtraRef.current &&
@@ -182,25 +161,62 @@ const CollectionInfo = (props: ICollectionInfo) => {
         document.documentElement.scrollHeight * 0.9 &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
     ) {
-      setPage(page + 1)
+      setPage((currentPage) => currentPage + 1)
     }
+  })
+
+  useEffect(() => {
+    // Initial first fetch
+    loadInitialPage()
+
+    // Cleanup on unmount
+    return () => {
+      if (refetchTimerRef.current !== undefined) {
+        window.clearTimeout(refetchTimerRef.current)
+      }
+
+      invalidate()
+
+      // Clear all data to prevent memory leaks
+      setData([])
+      dataRef.current = []
+      totalSizeRef.current = 999
+      pageData.current = 0
+    }
+  }, [invalidate])
+
+  useEffect(() => {
+    syncFilteredLogs()
+
+    return () => {
+      if (refetchTimerRef.current !== undefined) {
+        window.clearTimeout(refetchTimerRef.current)
+      }
+    }
+  }, [currentFilter, currentSort, debouncedSearchFilter])
+
+  useEffect(() => {
+    loadCurrentPage(page)
+  }, [page])
+
+  useEffect(() => {
+    const debouncedScroll = debounce(handleScroll, 200)
+    window.addEventListener('scroll', debouncedScroll)
+    return () => {
+      window.removeEventListener('scroll', debouncedScroll)
+      debouncedScroll.cancel() // Cancel pending debounced calls
+    }
+  }, [])
+
+  useEffect(() => {
+    dataRef.current = data
+
+    fillPageIfViewportHasSpace()
   }, [data])
 
   useEffect(() => {
     totalSizeRef.current = totalSize
   }, [totalSize])
-
-  const resetAll = () => {
-    setLoading(true)
-    setLoadingExtra(false)
-
-    pageData.current = 0
-    setPage(0)
-    totalSizeRef.current = 999
-    setTotalSize(999)
-    dataRef.current = []
-    setData([])
-  }
 
   return (
     <>
@@ -472,7 +488,7 @@ const LogMetaModal = (props: LogMetaModalProps) => {
             Output
           </label>
           <div className="editor-container h-full">
-            <Editor
+            <LazyMonacoEditor
               options={{ readOnly: true, minimap: { enabled: false } }}
               defaultLanguage="yaml"
               theme="vs-dark"

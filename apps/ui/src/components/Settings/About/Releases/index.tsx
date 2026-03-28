@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, useEffect, useState } from 'react'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
+import LazyBoundary from '../../../Common/LazyBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 
@@ -75,9 +76,9 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
             }}
           >
             <div className="prose:sm prose">
-              <Suspense fallback={<LoadingSpinner />}>
+              <LazyBoundary>
                 <ReactMarkdown>{release.body}</ReactMarkdown>
-              </Suspense>
+              </LazyBoundary>
             </div>
           </Modal>
         </div>

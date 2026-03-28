@@ -4,6 +4,7 @@ import {
   MediaCollection,
   MediaItem,
   MediaItemType,
+  MediaItemWithParent,
   MediaLibrary,
   MediaServerStatus,
   MediaUser,
@@ -27,6 +28,7 @@ import {
 } from '@nestjs/common';
 import { MediaServerSetupGuard } from './guards';
 import { MediaServerFactory } from './media-server.factory';
+import { IMediaServerService } from './media-server.interface';
 
 /**
  * Unified Media Server Controller
@@ -42,6 +44,30 @@ export class MediaServerController {
   private readonly logger = new Logger(MediaServerController.name);
 
   constructor(private readonly mediaServerFactory: MediaServerFactory) {}
+
+  private async attachParentMetadata(
+    items: MediaItem[],
+    mediaServer: IMediaServerService,
+  ): Promise<MediaItem[]> {
+    return await Promise.all(
+      items.map(async (item) => {
+        if (!['season', 'episode'].includes(item.type)) {
+          return item;
+        }
+
+        const parentItem = item.grandparentId
+          ? await mediaServer.getMetadata(item.grandparentId)
+          : item.parentId
+            ? await mediaServer.getMetadata(item.parentId)
+            : undefined;
+
+        return {
+          ...item,
+          parentItem,
+        } satisfies MediaItemWithParent;
+      }),
+    );
+  }
 
   @Get()
   async getStatus(): Promise<MediaServerStatus | undefined> {
@@ -87,7 +113,8 @@ export class MediaServerController {
     @Query('type') type?: MediaItemType,
   ): Promise<MediaItem[]> {
     const mediaServer = await this.mediaServerFactory.getService();
-    return mediaServer.searchLibraryContents(id, query, type);
+    const items = await mediaServer.searchLibraryContents(id, query, type);
+    return await this.attachParentMetadata(items, mediaServer);
   }
 
   @Get('library/:id/recent')
@@ -132,7 +159,8 @@ export class MediaServerController {
   @Get('search/:query')
   async searchContent(@Param('query') query: string): Promise<MediaItem[]> {
     const mediaServer = await this.mediaServerFactory.getService();
-    return mediaServer.searchContent(query);
+    const items = await mediaServer.searchContent(query);
+    return await this.attachParentMetadata(items, mediaServer);
   }
 
   @Get('library/:id/collections')

@@ -20,7 +20,7 @@ import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import DeleteButton from '../../Common/DeleteButton'
 import EditButton from '../../Common/EditButton'
-import { AgentConfiguration } from '../../Settings/Notifications/CreateNotificationModal'
+import type { AgentConfiguration } from '../../Settings/Notifications/CreateNotificationModal'
 import { IRuleJson } from '../Rule'
 
 export interface IRuleGroup {

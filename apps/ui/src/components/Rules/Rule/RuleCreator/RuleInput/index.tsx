@@ -11,7 +11,7 @@ import {
   RulePossibilityTranslations,
 } from '@maintainerr/contracts'
 import { cloneDeep } from 'lodash-es'
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { IRule } from '../'
 import {
   useRadarrDiskspace,
@@ -149,19 +149,103 @@ const getPropFromTuple = (
   return application?.props.find((el) => el.id === +parsed[1])
 }
 
+interface InitialRuleState {
+  operator: string | undefined
+  firstVal: string | undefined
+  action: RulePossibility | undefined
+  secondVal: string | undefined
+  customVal: string | undefined
+  arrDiskPath: string
+  ruleType: RuleType
+}
+
+const getInitialRuleState = (props: IRuleInput): InitialRuleState => {
+  const isNewlyAdded = props.id && props.newlyAdded?.includes(props.id)
+  const rule = isNewlyAdded ? undefined : props.editData?.rule
+
+  if (!rule) {
+    return {
+      operator: undefined,
+      firstVal: undefined,
+      action: undefined,
+      secondVal: undefined,
+      customVal: undefined,
+      arrDiskPath: '',
+      ruleType: RuleType.NUMBER,
+    }
+  }
+
+  const initialState: InitialRuleState = {
+    operator: rule.operator?.toString(),
+    firstVal: JSON.stringify(rule.firstVal),
+    action: rule.action,
+    secondVal: undefined,
+    customVal: undefined,
+    arrDiskPath: rule.arrDiskPath ? normalizeDiskPath(rule.arrDiskPath) : '',
+    ruleType: RuleType.NUMBER,
+  }
+
+  if (rule.customVal) {
+    switch (rule.customVal.ruleTypeId) {
+      case 0:
+        initialState.secondVal =
+          (rule.customVal.value as number) % 86400 === 0 &&
+          (rule.customVal.value as number) != 0
+            ? CustomParams.CUSTOM_DAYS
+            : CustomParams.CUSTOM_NUMBER
+        initialState.ruleType = RuleType.NUMBER
+        break
+      case 1:
+        initialState.secondVal = CustomParams.CUSTOM_DATE
+        initialState.ruleType = RuleType.DATE
+        break
+      case 2:
+        initialState.secondVal = CustomParams.CUSTOM_TEXT
+        initialState.ruleType = RuleType.TEXT
+        break
+      case 3:
+        initialState.secondVal = CustomParams.CUSTOM_BOOLEAN
+        initialState.ruleType = RuleType.BOOL
+        break
+      case 4:
+        initialState.secondVal = CustomParams.CUSTOM_TEXT_LIST
+        initialState.ruleType = RuleType.TEXT_LIST
+        break
+    }
+    initialState.customVal = rule.customVal.value.toString()
+  } else {
+    initialState.secondVal = JSON.stringify(rule.lastVal)
+  }
+
+  return initialState
+}
+
 const RuleInput = (props: IRuleInput) => {
-  const [operator, setOperator] = useState<string>()
-  const [firstval, setFirstVal] = useState<string>()
-  const [action, setAction] = useState<RulePossibility>()
-  const [secondVal, setSecondVal] = useState<string>()
+  const [initialRuleState] = useState(() => getInitialRuleState(props))
+  const [operator, setOperator] = useState<string | undefined>(
+    initialRuleState.operator,
+  )
+  const [firstval, setFirstVal] = useState<string | undefined>(
+    initialRuleState.firstVal,
+  )
+  const [action, setAction] = useState<RulePossibility | undefined>(
+    initialRuleState.action,
+  )
+  const [secondVal, setSecondVal] = useState<string | undefined>(
+    initialRuleState.secondVal,
+  )
 
   const [customValType, setCustomValType] = useState<RuleType>()
-  const [customVal, setCustomVal] = useState<string>()
+  const [customVal, setCustomVal] = useState<string | undefined>(
+    initialRuleState.customVal,
+  )
   const [customValActive, setCustomValActive] = useState<boolean>(true)
-  const [arrDiskPath, setArrDiskPath] = useState<string>('')
+  const [arrDiskPath, setArrDiskPath] = useState<string>(
+    initialRuleState.arrDiskPath,
+  )
 
   const [possibilities, setPossibilities] = useState<RulePossibility[]>([])
-  const [ruleType, setRuleType] = useState<RuleType>(RuleType.NUMBER)
+  const [ruleType, setRuleType] = useState<RuleType>(initialRuleState.ruleType)
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
   const { isPlex, isJellyfin } = useMediaServerType()
@@ -247,68 +331,6 @@ const RuleInput = (props: IRuleInput) => {
     }
   }, [arrDiskPath, arrDiskspaceOptions, isSelectedArrTotalDiskspaceRule])
 
-  useEffect(() => {
-    if (props.editData?.rule) {
-      setOperator(props.editData.rule.operator?.toString())
-      setFirstVal(JSON.stringify(props.editData.rule.firstVal))
-      setAction(props.editData.rule.action)
-      setArrDiskPath(
-        props.editData.rule.arrDiskPath
-          ? normalizeDiskPath(props.editData.rule.arrDiskPath)
-          : '',
-      )
-
-      if (props.editData.rule.customVal) {
-        switch (props.editData.rule.customVal.ruleTypeId) {
-          case 0:
-            // TODO: improve this.. Currently this is a hack to determine if param is amount of days or really a number
-            if (
-              (props.editData.rule.customVal.value as number) % 86400 === 0 &&
-              (props.editData.rule.customVal.value as number) != 0
-            ) {
-              setSecondVal(CustomParams.CUSTOM_DAYS)
-              setRuleType(RuleType.NUMBER)
-            } else {
-              setSecondVal(CustomParams.CUSTOM_NUMBER)
-              setRuleType(RuleType.NUMBER)
-            }
-            break
-          case 1:
-            setSecondVal(CustomParams.CUSTOM_DATE)
-            setRuleType(RuleType.DATE)
-            break
-          case 2:
-            setSecondVal(CustomParams.CUSTOM_TEXT)
-            setRuleType(RuleType.TEXT)
-            break
-          case 3:
-            setSecondVal(CustomParams.CUSTOM_BOOLEAN)
-            setRuleType(RuleType.BOOL)
-            break
-          case 4:
-            setSecondVal(CustomParams.CUSTOM_TEXT_LIST)
-            setRuleType(RuleType.TEXT_LIST)
-            break
-        }
-        setCustomVal(props.editData.rule.customVal.value.toString())
-      } else {
-        setSecondVal(JSON.stringify(props.editData.rule.lastVal))
-      }
-      if (
-        props.id &&
-        props.newlyAdded &&
-        props.newlyAdded?.includes(props.id)
-      ) {
-        setOperator(undefined)
-        setFirstVal(undefined)
-        setAction(undefined)
-        setSecondVal(undefined)
-        setCustomVal(undefined)
-        setArrDiskPath('')
-      }
-    }
-  }, [])
-
   const updateFirstValue = (event: { target: { value: string } }) => {
     if (event.target.value === '') {
       setFirstVal(undefined)
@@ -359,9 +381,7 @@ const RuleInput = (props: IRuleInput) => {
     props.onDelete(props.section ? props.section : 0, props.id ? props.id : 0)
   }
 
-  const submit = (e: FormEvent | null) => {
-    e?.preventDefault()
-
+  const commitCurrentRule = () => {
     if (
       firstval &&
       action != null &&
@@ -415,17 +435,28 @@ const RuleInput = (props: IRuleInput) => {
     }
   }
 
+  const submitCurrentRule = useEffectEvent(() => {
+    commitCurrentRule()
+  })
+
+  const submit = (e: FormEvent | null) => {
+    e?.preventDefault()
+    commitCurrentRule()
+  }
+
   useEffect(() => {
-    submit(null)
+    submitCurrentRule()
   }, [
-    secondVal,
-    customVal,
-    operator,
     action,
-    firstval,
-    customValType,
     arrDiskPath,
+    customVal,
+    customValActive,
+    customValType,
+    firstval,
     isSelectedArrDiskspaceRule,
+    operator,
+    ruleType,
+    secondVal,
   ])
 
   useEffect(() => {
@@ -453,25 +484,27 @@ const RuleInput = (props: IRuleInput) => {
         setFirstVal(undefined)
       }
     }
-  }, [props.dataType, props.mediaType, constants])
+  }, [props.dataType, props.mediaType, constants, firstval])
 
   useEffect(() => {
-    if (firstval) {
-      const prop = getPropFromTuple(firstval, constants)
+    if (!firstval) {
+      return
+    }
 
-      if (prop?.type.key) {
-        if (possibilities.length <= 0) {
-          setRuleType(+prop?.type.key)
-          setPossibilities(prop.type.possibilities)
-        } else if (+prop.type.key !== ruleType) {
-          setSecondVal(undefined)
-          setCustomVal('')
-          setRuleType(+prop?.type.key)
-          setPossibilities(prop.type.possibilities)
-        }
+    const prop = getPropFromTuple(firstval, constants)
+
+    if (prop?.type.key) {
+      if (possibilities.length <= 0) {
+        setRuleType(+prop.type.key)
+        setPossibilities(prop.type.possibilities)
+      } else if (+prop.type.key !== ruleType) {
+        setSecondVal(undefined)
+        setCustomVal('')
+        setRuleType(+prop.type.key)
+        setPossibilities(prop.type.possibilities)
       }
     }
-  }, [firstval])
+  }, [constants, firstval, possibilities.length, ruleType])
 
   useEffect(() => {
     if (!isSelectedArrDiskspaceRule) {
@@ -480,34 +513,36 @@ const RuleInput = (props: IRuleInput) => {
   }, [isSelectedArrDiskspaceRule])
 
   useEffect(() => {
-    if (secondVal) {
-      if (secondVal === CustomParams.CUSTOM_NUMBER) {
-        setCustomValActive(true)
-        setCustomValType(RuleType.NUMBER)
-      } else if (secondVal === CustomParams.CUSTOM_DATE) {
-        setCustomValActive(true)
-        setCustomValType(RuleType.DATE)
-      } else if (secondVal === CustomParams.CUSTOM_DAYS) {
-        setCustomValActive(true)
-        setCustomValType(RuleType.TEXT)
-      } else if (secondVal === CustomParams.CUSTOM_TEXT) {
-        setCustomValActive(true)
-        setCustomValType(RuleType.TEXT)
-      } else if (secondVal === CustomParams.CUSTOM_TEXT_LIST) {
-        setCustomValActive(true)
-        setCustomValType(RuleType.TEXT_LIST)
-      } else if (secondVal === CustomParams.CUSTOM_BOOLEAN) {
-        setCustomValActive(true)
-        setCustomValType(RuleType.BOOL)
-        if (customVal !== '0') {
-          setCustomVal('1')
-        }
-      } else {
-        setCustomValActive(false)
-        setCustomVal(undefined)
-      }
+    if (!secondVal) {
+      return
     }
-  }, [secondVal])
+
+    if (secondVal === CustomParams.CUSTOM_NUMBER) {
+      setCustomValActive(true)
+      setCustomValType(RuleType.NUMBER)
+    } else if (secondVal === CustomParams.CUSTOM_DATE) {
+      setCustomValActive(true)
+      setCustomValType(RuleType.DATE)
+    } else if (secondVal === CustomParams.CUSTOM_DAYS) {
+      setCustomValActive(true)
+      setCustomValType(RuleType.TEXT)
+    } else if (secondVal === CustomParams.CUSTOM_TEXT) {
+      setCustomValActive(true)
+      setCustomValType(RuleType.TEXT)
+    } else if (secondVal === CustomParams.CUSTOM_TEXT_LIST) {
+      setCustomValActive(true)
+      setCustomValType(RuleType.TEXT_LIST)
+    } else if (secondVal === CustomParams.CUSTOM_BOOLEAN) {
+      setCustomValActive(true)
+      setCustomValType(RuleType.BOOL)
+      if (customVal !== '0') {
+        setCustomVal('1')
+      }
+    } else {
+      setCustomValActive(false)
+      setCustomVal(undefined)
+    }
+  }, [customVal, secondVal])
 
   if (!constants || constantsLoading) {
     return <LoadingSpinner />

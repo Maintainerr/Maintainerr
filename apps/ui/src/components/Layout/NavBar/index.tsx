@@ -9,6 +9,7 @@ import {
 import { ReactNode, useContext, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
+import { prefetchRoute } from '../../../router'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
 
@@ -75,6 +76,10 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
     return location.pathname === link.href
   }
 
+  const handlePrefetch = (path: string) => {
+    void prefetchRoute(path)
+  }
+
   return (
     <div>
       <div className="lg:hidden">
@@ -115,6 +120,9 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                         <Link
                           key={link.key}
                           to={link.href}
+                          onMouseEnter={() => handlePrefetch(link.href)}
+                          onFocus={() => handlePrefetch(link.href)}
+                          onTouchStart={() => handlePrefetch(link.href)}
                           onClick={() => {
                             if (link.href === '/overview') {
                               SearchCtx.removeText()
@@ -170,6 +178,9 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                     <Link
                       key={`desktop-${navBarLink.key}`}
                       to={navBarLink.href}
+                      onMouseEnter={() => handlePrefetch(navBarLink.href)}
+                      onFocus={() => handlePrefetch(navBarLink.href)}
+                      onTouchStart={() => handlePrefetch(navBarLink.href)}
                       onClick={() => {
                         if (navBarLink.href === '/overview') {
                           SearchCtx.removeText()

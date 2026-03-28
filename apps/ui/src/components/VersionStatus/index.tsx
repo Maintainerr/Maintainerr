@@ -10,8 +10,9 @@ import { Link } from 'react-router-dom'
 import GetApiHandler from '../../utils/ApiHandler'
 
 enum messages {
-  DEVELOP = 'Maintainerr Develop',
-  STABLE = 'Maintainerr Stable',
+  LOCAL = 'Keep it up! 👍',
+  LATEST = 'Maintainerr',
+  PRE_RELEASE = 'Maintainerr Pre-Release',
   OUT_OF_DATE = 'Out of Date',
 }
 
@@ -36,12 +37,17 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
     })
   }, [])
 
+  const tag = version?.split('-')[0] ?? ''
+  const isRelease = /^\d/.test(tag)
+
   const versionStream =
     commitTag === 'local'
-      ? 'Keep it up! 👍'
-      : version?.startsWith('develop-')
-        ? messages.DEVELOP
-        : messages.STABLE
+      ? messages.LOCAL
+      : isRelease
+        ? messages.LATEST
+        : tag === 'main'
+          ? messages.PRE_RELEASE
+          : `Maintainerr ${tag.charAt(0).toUpperCase() + tag.slice(1)}`
 
   return (
     <>
@@ -64,10 +70,10 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
         >
           {commitTag === 'local' ? (
             <CodeIcon className="h-6 w-6" />
-          ) : version.startsWith('develop-') ? (
-            <BeakerIcon className="h-6 w-6" />
-          ) : (
+          ) : isRelease || tag === 'main' ? (
             <ServerIcon className="h-6 w-6" />
+          ) : (
+            <BeakerIcon className="h-6 w-6" />
           )}
           <div className="flex min-w-0 flex-1 flex-col truncate px-2 last:pr-0">
             <span className="font-bold">{versionStream}</span>
@@ -77,9 +83,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
               ) : updateAvailable ? (
                 messages.OUT_OF_DATE
               ) : (
-                <code className="bg-transparent p-0">
-                  {version ? version.replace('develop-', '') : ''}
-                </code>
+                <code className="bg-transparent p-0">{version}</code>
               )}
             </span>
           </div>

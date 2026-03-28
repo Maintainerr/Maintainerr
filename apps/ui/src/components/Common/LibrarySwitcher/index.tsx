@@ -4,10 +4,11 @@ import { useMediaServerLibraries } from '../../../api/media-server'
 interface ILibrarySwitcher {
   onLibraryChange: (libraryId: string) => void
   shouldShowAllOption?: boolean
+  selectedLibraryId?: string
 }
 
 const LibrarySwitcher = (props: ILibrarySwitcher) => {
-  const { onLibraryChange, shouldShowAllOption } = props
+  const { onLibraryChange, selectedLibraryId, shouldShowAllOption } = props
   const {
     data: libraries,
     error: librariesError,
@@ -25,6 +26,11 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
     }
 
     if (shouldShowAllOption === false) {
+      if (selectedLibraryId) {
+        lastAutoSelectedLibraryId.current = selectedLibraryId
+        return
+      }
+
       const firstId = libraries[0].id
 
       if (firstId && lastAutoSelectedLibraryId.current !== firstId) {
@@ -34,7 +40,7 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
     } else {
       lastAutoSelectedLibraryId.current = null
     }
-  }, [libraries, shouldShowAllOption, onLibraryChange])
+  }, [libraries, onLibraryChange, selectedLibraryId, shouldShowAllOption])
 
   return (
     <>

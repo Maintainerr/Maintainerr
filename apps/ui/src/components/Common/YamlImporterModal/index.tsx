@@ -1,9 +1,9 @@
 import { UploadIcon } from '@heroicons/react/outline'
 import { ClipboardCopyIcon } from '@heroicons/react/solid'
-import Editor from '@monaco-editor/react'
 import { useRef } from 'react'
 import { toast } from 'react-toastify'
 import Alert from '../Alert'
+import LazyMonacoEditor from '../LazyMonacoEditor'
 import Modal from '../Modal'
 
 export interface IYamlImporterModal {
@@ -143,7 +143,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
             </button>
           )}
         </div>
-        <Editor
+        <LazyMonacoEditor
           options={{
             minimap: { enabled: false },
             ...(props.yaml ? { readOnly: true } : undefined),

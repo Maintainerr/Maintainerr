@@ -1,3 +1,4 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { BadRequestException } from '@nestjs/common';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
@@ -26,6 +27,9 @@ describe('MediaServerController', () => {
         offset: 0,
         limit: 50,
       }),
+      searchContent: jest.fn().mockResolvedValue([]),
+      searchLibraryContents: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn().mockResolvedValue(undefined),
       updateCollectionVisibility: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<IMediaServerService>;
 
@@ -160,6 +164,61 @@ describe('MediaServerController', () => {
       expect(
         mockMediaServerService.updateCollectionVisibility,
       ).toHaveBeenCalledWith(settings);
+    });
+  });
+
+  describe('searchContent - Parent Metadata', () => {
+    it('should attach parent metadata for episode results', async () => {
+      const episode = {
+        id: 'episode-1',
+        title: 'Episode 1',
+        guid: 'guid-1',
+        type: 'episode',
+        addedAt: new Date(),
+        providerIds: { tmdb: [] },
+        mediaSources: [],
+        library: { id: 'library-1', title: 'Library' },
+        grandparentId: 'show-1',
+      } satisfies MediaItem;
+      const show = {
+        id: 'show-1',
+        title: 'Show',
+        guid: 'guid-show',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['123'] },
+        mediaSources: [],
+        library: { id: 'library-1', title: 'Library' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.searchContent.mockResolvedValue([episode]);
+      mockMediaServerService.getMetadata.mockResolvedValue(show);
+
+      const result = await controller.searchContent('test');
+
+      expect(mockMediaServerService.searchContent).toHaveBeenCalledWith('test');
+      expect(mockMediaServerService.getMetadata).toHaveBeenCalledWith('show-1');
+      expect(result).toEqual([{ ...episode, parentItem: show }]);
+    });
+
+    it('should leave movie results unchanged', async () => {
+      const movie = {
+        id: 'movie-1',
+        title: 'Movie',
+        guid: 'guid-movie',
+        type: 'movie',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['456'] },
+        mediaSources: [],
+        library: { id: 'library-1', title: 'Library' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.searchContent.mockResolvedValue([movie]);
+
+      const result = await controller.searchContent('test');
+
+      expect(mockMediaServerService.getMetadata).not.toHaveBeenCalled();
+      expect(result).toEqual([movie]);
     });
   });
 });

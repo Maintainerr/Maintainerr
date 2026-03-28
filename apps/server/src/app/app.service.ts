@@ -23,11 +23,11 @@ export class AppService {
         : 'develop';
 
       const calculatedVersion =
-        versionTag !== 'stable'
-          ? process.env.GIT_SHA
+        versionTag === 'latest'
+          ? `${packageVersion}`
+          : process.env.GIT_SHA
             ? `${versionTag}-${process.env.GIT_SHA.substring(0, 7)}`
-            : `${versionTag}-`
-          : `${packageVersion}`;
+            : `${versionTag}-`;
 
       const local = process.env.NODE_ENV !== 'production';
 
@@ -52,7 +52,7 @@ export class AppService {
   }
 
   private async isUpdateAvailable(currentVersion: string, versionTag: string) {
-    if (versionTag === 'stable') {
+    if (versionTag === 'latest') {
       const githubResp = await this.githubApi.getLatestRelease(
         'Maintainerr',
         'Maintainerr',

@@ -79,8 +79,6 @@ const SonarrSettings = () => {
   }
 
   useEffect(() => {
-    if (loaded) return
-
     GetApiHandler<ISonarrSetting[]>('/settings/sonarr').then((resp) => {
       setSettings(resp)
       setLoaded(true)

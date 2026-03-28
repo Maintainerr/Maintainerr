@@ -4,13 +4,14 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 
-import { useEffect, useState } from 'react'
+import { lazy, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
-import CreateNotificationModal, {
-  AgentConfiguration,
-} from './CreateNotificationModal'
+import LazyModalBoundary from '../../Common/LazyModalBoundary'
+import type { AgentConfiguration } from './CreateNotificationModal'
+
+const CreateNotificationModal = lazy(() => import('./CreateNotificationModal'))
 
 const NotificationSettings = () => {
   const [addModalActive, setAddModalActive] = useState(false)
@@ -119,35 +120,47 @@ const NotificationSettings = () => {
         </div>
 
         {addModalActive ? (
-          <CreateNotificationModal
+          <LazyModalBoundary
+            title={
+              editConfig
+                ? 'Edit Notification Agent'
+                : 'Create Notification Agent'
+            }
             onCancel={() => {
               updateAddModalActive(!addModalActive)
               setEditConfig(undefined)
             }}
-            onSave={(bool) => {
-              updateAddModalActive(!addModalActive)
-              setEditConfig(undefined)
-              if (bool) {
-                toast.success('Successfully saved notification agent')
-              } else {
-                toast.error("Didn't save incomplete notification agent")
-              }
-            }}
-            onTest={() => {}}
-            {...(editConfig
-              ? {
-                  selected: {
-                    id: editConfig.id!,
-                    name: editConfig.name!,
-                    enabled: editConfig.enabled!,
-                    agent: editConfig.agent!,
-                    types: editConfig.types!,
-                    options: editConfig.options!,
-                    aboutScale: editConfig.aboutScale!,
-                  },
+          >
+            <CreateNotificationModal
+              onCancel={() => {
+                updateAddModalActive(!addModalActive)
+                setEditConfig(undefined)
+              }}
+              onSave={(bool) => {
+                updateAddModalActive(!addModalActive)
+                setEditConfig(undefined)
+                if (bool) {
+                  toast.success('Successfully saved notification agent')
+                } else {
+                  toast.error("Didn't save incomplete notification agent")
                 }
-              : {})}
-          />
+              }}
+              onTest={() => {}}
+              {...(editConfig
+                ? {
+                    selected: {
+                      id: editConfig.id!,
+                      name: editConfig.name!,
+                      enabled: editConfig.enabled!,
+                      agent: editConfig.agent!,
+                      types: editConfig.types!,
+                      options: editConfig.options!,
+                      aboutScale: editConfig.aboutScale!,
+                    },
+                  }
+                : {})}
+            />
+          </LazyModalBoundary>
         ) : null}
       </div>
     </>

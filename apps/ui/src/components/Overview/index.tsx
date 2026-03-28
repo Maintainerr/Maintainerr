@@ -1,5 +1,12 @@
 import { type MediaItem } from '@maintainerr/contracts'
-import { useContext, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react'
 import { useMediaServerLibraries } from '../../api/media-server'
 import SearchContext from '../../contexts/search-context'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
@@ -46,46 +53,91 @@ const Overview = () => {
     fetchingRef.current = val
   }
 
-  const invalidateFetches = () => {
+  const invalidateFetches = useCallback(() => {
     invalidate()
     setFetching(false)
-  }
+  }, [invalidate])
 
-  useEffect(() => {
-    if (!libraries || libraries.length === 0) {
+  const fetchData = async (libraryId = selectedLibraryRef.current) => {
+    if (
+      fetchingRef.current ||
+      !libraryId ||
+      SearchCtx.search.text !== '' ||
+      !(totalSizeRef.current >= pageData.current * fetchAmount)
+    ) {
       return
     }
 
-    const fallbackTimer = setTimeout(() => {
-      if (
-        loadingRef.current &&
-        dataRef.current.length === 0 &&
-        !selectedLibraryRef.current &&
-        SearchCtx.search.text === ''
-      ) {
-        onSwitchLibrary(libraries[0].id)
-      }
-    }, 300)
-
-    // Cleanup on unmount
-    return () => {
-      clearTimeout(fallbackTimer)
-      invalidateFetches()
-      setData([])
-      dataRef.current = []
-      totalSizeRef.current = 999
-      pageData.current = 0
+    setFetching(true)
+    if (!loadingRef.current) {
+      setLoadingExtra(true)
     }
-  }, [libraries])
 
-  useEffect(() => {
-    if (!libraries || libraries.length === 0) return
+    try {
+      const result = await guardedFetch<{
+        totalSize: number
+        items: MediaItem[]
+      }>(() =>
+        GetApiHandler(
+          `/media-server/library/${libraryId}/content?page=${pageData.current + 1}&limit=${fetchAmount}`,
+        ),
+      )
 
+      if (result.status === 'success') {
+        setTotalSize(result.data.totalSize)
+        pageData.current = pageData.current + 1
+        setData([...dataRef.current, ...(result.data.items ?? [])])
+        setLoadingExtra(false)
+        setLoading(false)
+        setFetching(false)
+      }
+    } catch {
+      setLoadingExtra(false)
+      setLoading(false)
+      setFetching(false)
+    }
+  }
+
+  const onSwitchLibrary = (libraryId: string) => {
+    if (
+      SearchCtx.search.text === '' &&
+      selectedLibraryRef.current === libraryId
+    ) {
+      return
+    }
+
+    invalidateFetches()
+    setLoading(true)
+    setLoadingExtra(false)
+    pageData.current = 0
+    setTotalSize(999)
+    setData([])
+    dataRef.current = []
+    setSearchUsed(false)
+    setSelectedLibrary(libraryId)
+  }
+
+  const syncFallbackLibrary = useEffectEvent((libraryId: string) => {
+    if (
+      loadingRef.current &&
+      dataRef.current.length === 0 &&
+      !selectedLibraryRef.current &&
+      SearchCtx.search.text === ''
+    ) {
+      onSwitchLibrary(libraryId)
+    }
+  })
+
+  const syncOverviewData = useEffectEvent((libraryId?: string) => {
     invalidateFetches()
 
     if (SearchCtx.search.text !== '') {
       setLoading(true)
       setLoadingExtra(false)
+      if (libraryId) {
+        selectedLibraryRef.current = libraryId
+        setSelectedLibrary(libraryId)
+      }
 
       const searchData = async () => {
         try {
@@ -105,22 +157,64 @@ const Overview = () => {
         }
       }
 
-      searchData()
-      setSelectedLibrary(libraries[0]?.id)
-    } else {
-      setSearchUsed(false)
-      setData([])
-      setTotalSize(999)
-      pageData.current = 0
-      setLoading(true)
-      setLoadingExtra(false)
-      fetchData()
+      void searchData()
+      return
     }
-  }, [SearchCtx.search.text])
+
+    const nextLibraryId =
+      selectedLibraryRef.current ?? selectedLibrary ?? libraryId
+
+    setSearchUsed(false)
+    setData([])
+    dataRef.current = []
+    setTotalSize(999)
+    totalSizeRef.current = 999
+    pageData.current = 0
+    setLoading(true)
+    setLoadingExtra(false)
+
+    if (!nextLibraryId) {
+      setLoading(false)
+      return
+    }
+
+    selectedLibraryRef.current = nextLibraryId
+    setSelectedLibrary(nextLibraryId)
+    void fetchData(nextLibraryId)
+  })
+
+  const syncSelectedLibrary = useEffectEvent((libraryId?: string) => {
+    selectedLibraryRef.current = libraryId
+    void fetchData()
+  })
 
   useEffect(() => {
-    selectedLibraryRef.current = selectedLibrary
-    fetchData()
+    if (!libraries || libraries.length === 0) {
+      return
+    }
+
+    const fallbackTimer = setTimeout(() => {
+      syncFallbackLibrary(libraries[0].id)
+    }, 300)
+
+    return () => {
+      clearTimeout(fallbackTimer)
+      invalidateFetches()
+      setData([])
+      dataRef.current = []
+      totalSizeRef.current = 999
+      pageData.current = 0
+    }
+  }, [invalidateFetches, libraries])
+
+  useEffect(() => {
+    if (!libraries || libraries.length === 0) return
+
+    syncOverviewData(libraries[0]?.id)
+  }, [SearchCtx.search.text, libraries])
+
+  useEffect(() => {
+    syncSelectedLibrary(selectedLibrary)
   }, [selectedLibrary])
 
   useEffect(() => {
@@ -131,59 +225,7 @@ const Overview = () => {
     totalSizeRef.current = totalSize
   }, [totalSize])
 
-  const onSwitchLibrary = (libraryId: string) => {
-    invalidateFetches()
-    setLoading(true)
-    setLoadingExtra(false)
-    pageData.current = 0
-    setTotalSize(999)
-    setData([])
-    dataRef.current = []
-    setSearchUsed(false)
-    setSelectedLibrary(libraryId)
-  }
-
-  const fetchData = async () => {
-    if (
-      fetchingRef.current ||
-      !selectedLibraryRef.current ||
-      SearchCtx.search.text !== '' ||
-      !(totalSizeRef.current >= pageData.current * fetchAmount)
-    ) {
-      return
-    }
-
-    setFetching(true)
-    if (!loadingRef.current) {
-      setLoadingExtra(true)
-    }
-
-    try {
-      const result = await guardedFetch<{
-        totalSize: number
-        items: MediaItem[]
-      }>(() =>
-        GetApiHandler(
-          `/media-server/library/${selectedLibraryRef.current}/content?page=${
-            pageData.current + 1
-          }&limit=${fetchAmount}`,
-        ),
-      )
-
-      if (result.status === 'success') {
-        setTotalSize(result.data.totalSize)
-        pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...(result.data.items ?? [])])
-        setLoadingExtra(false)
-        setLoading(false)
-        setFetching(false)
-      }
-    } catch {
-      setLoadingExtra(false)
-      setLoading(false)
-      setFetching(false)
-    }
-  }
+  const hasMoreData = data.length < totalSize
 
   return (
     <>
@@ -193,20 +235,15 @@ const Overview = () => {
           <LibrarySwitcher
             shouldShowAllOption={false}
             onLibraryChange={onSwitchLibrary}
+            selectedLibraryId={selectedLibrary}
           />
         ) : undefined}
         {selectedLibrary ? (
           <OverviewContent
-            dataFinished={
-              !(totalSizeRef.current >= pageData.current * fetchAmount)
-            }
+            dataFinished={!hasMoreData}
             fetchData={fetchData}
             loading={isLoading}
-            extrasLoading={
-              isLoadingExtra &&
-              !isLoading &&
-              totalSizeRef.current >= pageData.current * fetchAmount
-            }
+            extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
             data={data}
             libraryId={selectedLibrary!}
           />

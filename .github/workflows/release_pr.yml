@@ -50,7 +50,7 @@ jobs:
 
       - name: Notify unsupported fork
         if: steps.pr.outputs.should_run == 'false' && steps.pr.outputs.head_repo != ''
-        uses: mshick/add-pr-comment@v2
+        uses: mshick/add-pr-comment@v3
         with:
           allow-repeats: false
           issue: ${{ github.event.issue.number }}
@@ -200,7 +200,7 @@ jobs:
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
 
       - name: Notify of release
-        uses: mshick/add-pr-comment@v2
+        uses: mshick/add-pr-comment@v3
         if: always()
         with:
           allow-repeats: true

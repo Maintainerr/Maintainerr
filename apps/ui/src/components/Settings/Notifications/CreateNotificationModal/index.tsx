@@ -1,9 +1,9 @@
 import { BasicResponseDto } from '@maintainerr/contracts'
-import { Editor } from '@monaco-editor/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { camelCaseToPrettyText } from '../../../../utils/SettingsUtils'
+import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 import ToggleItem from '../../../Common/ToggleButton'
@@ -41,10 +41,12 @@ interface CreateNotificationModal {
 const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
-  const nameRef = useRef<string>('')
-  const aboutScaleRef = useRef<number>(3)
-  const enabledRef = useRef<boolean>(false)
-  const [formValues, setFormValues] = useState<any>()
+  const nameRef = useRef<string>(props.selected?.name ?? '')
+  const aboutScaleRef = useRef<number>(props.selected?.aboutScale ?? 3)
+  const enabledRef = useRef<boolean>(props.selected?.enabled ?? false)
+  const [formValues, setFormValues] = useState<any>(
+    props.selected?.options ?? {},
+  )
 
   const [targetAgent, setTargetAgent] = useState<agentSpec>()
   const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
@@ -116,14 +118,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
         )
       }
     })
-
-    // load rest of data if editing
-    if (props.selected) {
-      nameRef.current = props.selected.name
-      enabledRef.current = props.selected.enabled
-      setFormValues(props.selected.options)
-    }
-  }, [])
+  }, [props.selected])
 
   const postNotificationConfig = (payload: AgentConfiguration) => {
     PostApiHandler('/notifications/configuration/add', payload).then(
@@ -259,7 +254,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     <div className="form-input">
                       <div className="form-input-field">
                         {option.type === 'json' ? (
-                          <Editor
+                          <LazyMonacoEditor
                             height="200px"
                             defaultLanguage="json"
                             theme="vs-dark"
@@ -349,10 +344,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                               <input
                                 type="number"
                                 name="about-scale"
-                                defaultValue={
-                                  props.selected?.aboutScale ||
-                                  aboutScaleRef.current
-                                }
+                                defaultValue={props.selected?.aboutScale ?? 3}
                                 onChange={(
                                   event: React.ChangeEvent<HTMLInputElement>,
                                 ) =>

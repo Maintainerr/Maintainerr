@@ -3,6 +3,7 @@ import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsService } from '../../../settings/settings.service';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
+import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 
 const jellyfinApiMocks = {
   getPublicSystemInfo: jest.fn(),
@@ -238,7 +239,6 @@ describe('JellyfinAdapterService', () => {
     it.each([
       [MediaServerFeature.LABELS, true],
       [MediaServerFeature.PLAYLISTS, true],
-      [MediaServerFeature.COLLECTION_CREATION_WITH_ITEMS, true],
       [MediaServerFeature.COLLECTION_VISIBILITY, false],
       [MediaServerFeature.WATCHLIST, false],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, false],
@@ -592,7 +592,7 @@ describe('JellyfinAdapterService', () => {
       await service.initialize();
     });
 
-    it('should pass initial item ids when creating a collection', async () => {
+    it('should create a collection without initial item ids', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [{ Id: 'user-1', Name: 'Alice' }],
       });
@@ -613,15 +613,19 @@ describe('JellyfinAdapterService', () => {
         libraryId: 'library-1',
         title: 'Test Collection',
         type: 'movie',
-        itemIds: ['item-1', 'item-2'],
       });
 
       expect(jest.mocked(getCollectionApi)).toHaveBeenCalled();
       expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
         expect.objectContaining({
-          ids: ['item-1', 'item-2'],
           name: 'Test Collection',
           parentId: 'library-1',
+          isLocked: true,
+        }),
+      );
+      expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          ids: expect.anything(),
         }),
       );
       expect(result.id).toBe('collection-1');
@@ -638,6 +642,51 @@ describe('JellyfinAdapterService', () => {
       });
     });
 
+    it('should split large add batches across multiple Jellyfin requests', async () => {
+      const items = Array.from(
+        { length: JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2 + 1 },
+        (_, index) => `item-${index + 1}`,
+      );
+
+      await expect(
+        service.addBatchToCollection('collection-1', items),
+      ).resolves.toEqual([]);
+
+      expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(3);
+      expect(collectionApiMocks.addToCollection).toHaveBeenNthCalledWith(1, {
+        collectionId: 'collection-1',
+        ids: items.slice(0, JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION),
+      });
+      expect(collectionApiMocks.addToCollection).toHaveBeenNthCalledWith(2, {
+        collectionId: 'collection-1',
+        ids: items.slice(
+          JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION,
+          JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2,
+        ),
+      });
+      expect(collectionApiMocks.addToCollection).toHaveBeenNthCalledWith(3, {
+        collectionId: 'collection-1',
+        ids: items.slice(JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2),
+      });
+    });
+
+    it('should continue add batching and return failed ids for failed chunks', async () => {
+      const items = Array.from(
+        { length: JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2 },
+        (_, index) => `item-${index + 1}`,
+      );
+
+      collectionApiMocks.addToCollection
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('Request line too long'));
+
+      await expect(
+        service.addBatchToCollection('collection-1', items),
+      ).resolves.toEqual(items.slice(JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION));
+
+      expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(2);
+    });
+
     it('should remove a batch of items in one Jellyfin request', async () => {
       await expect(
         service.removeBatchFromCollection('collection-1', ['item-1', 'item-2']),
@@ -647,6 +696,19 @@ describe('JellyfinAdapterService', () => {
         collectionId: 'collection-1',
         ids: ['item-1', 'item-2'],
       });
+    });
+
+    it('should split large remove batches across multiple Jellyfin requests', async () => {
+      const items = Array.from(
+        { length: JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2 + 1 },
+        (_, index) => `item-${index + 1}`,
+      );
+
+      await expect(
+        service.removeBatchFromCollection('collection-1', items),
+      ).resolves.toEqual([]);
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledTimes(3);
     });
   });
 });

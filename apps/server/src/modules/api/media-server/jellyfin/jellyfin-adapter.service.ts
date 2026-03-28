@@ -13,7 +13,6 @@ import {
   getItemUpdateApi,
   getLibraryApi,
   getPlaylistsApi,
-  getSearchApi,
   getSystemApi,
   getTvShowsApi,
   getUserApi,
@@ -70,6 +69,47 @@ export class JellyfinAdapterService implements IMediaServerService {
   private initialized = false;
   private readonly logger = new Logger(JellyfinAdapterService.name);
   private readonly cache: Cache;
+
+  private getErrorSummary(error: unknown): string {
+    if (error instanceof Error) {
+      const typedError = error as Error & {
+        code?: string;
+        response?: { status?: number; statusText?: string };
+      };
+
+      const parts = [typedError.message];
+
+      if (typedError.code) {
+        parts.push(`code=${typedError.code}`);
+      }
+
+      if (typedError.response?.status) {
+        parts.push(
+          `status=${typedError.response.status}${typedError.response.statusText ? ` ${typedError.response.statusText}` : ''}`,
+        );
+      }
+
+      return parts.join(' | ');
+    }
+
+    return String(error);
+  }
+
+  private logCollectionMutationFailure(
+    action: 'add' | 'remove',
+    collectionId: string,
+    itemCount: number,
+    error: unknown,
+  ): void {
+    const actionLabel = action === 'add' ? 'to' : 'from';
+    this.logger.error(
+      `Failed to ${action} ${itemCount} item${itemCount === 1 ? '' : 's'} ${actionLabel} collection ${collectionId}: ${this.getErrorSummary(error)}`,
+    );
+
+    if (error instanceof Error && error.stack) {
+      this.logger.debug(error.stack);
+    }
+  }
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
@@ -640,34 +680,26 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getSearchApi(this.api).getSearchHints({
+      const response = await getItemsApi(this.api).getItems({
         userId,
+        recursive: true,
         searchTerm: query,
+        fields: [
+          ItemFields.ProviderIds,
+          ItemFields.Path,
+          ItemFields.DateCreated,
+          ItemFields.MediaSources,
+        ],
         includeItemTypes: [
           BaseItemKind.Movie,
           BaseItemKind.Series,
           BaseItemKind.Episode,
         ],
         limit: 50,
-        includeMedia: true,
-        includePeople: false,
-        includeGenres: false,
-        includeStudios: false,
-        includeArtists: false,
+        enableUserData: true,
       });
 
-      return (response.data.SearchHints || [])
-        .filter((hint) => hint.Id)
-        .map((hint) => ({
-          id: hint.Id || '',
-          title: hint.Name || '',
-          type: JellyfinMapper.toMediaItemType(hint.Type),
-          guid: hint.Id || '',
-          addedAt: new Date(),
-          providerIds: {},
-          mediaSources: [],
-          library: { id: '', title: '' },
-        })) as MediaItem[];
+      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
     } catch (error) {
       this.logger.error('Failed to search Jellyfin content', error);
       return [];
@@ -914,7 +946,6 @@ export class JellyfinAdapterService implements IMediaServerService {
         parentId: params.libraryId,
         // isLocked enables composite image generation from collection items
         isLocked: true,
-        ids: params.itemIds,
       });
 
       const collectionId = response.data.Id;
@@ -1018,10 +1049,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to add ${itemId} to collection ${collectionId}`,
-        error,
-      );
+      this.logCollectionMutationFailure('add', collectionId, 1, error);
       throw error;
     }
   }
@@ -1032,19 +1060,28 @@ export class JellyfinAdapterService implements IMediaServerService {
   ): Promise<string[]> {
     if (!this.api || itemIds.length === 0) return [];
 
-    try {
-      await getCollectionApi(this.api).addToCollection({
-        collectionId,
-        ids: itemIds,
-      });
-      return [];
-    } catch (error) {
-      this.logger.error(
-        `Failed to add ${itemIds.length} items to collection ${collectionId}`,
-        error,
-      );
-      return itemIds;
+    const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
+    const failedIds: string[] = [];
+
+    for (let i = 0; i < itemIds.length; i += chunkSize) {
+      const chunk = itemIds.slice(i, i + chunkSize);
+      try {
+        await getCollectionApi(this.api).addToCollection({
+          collectionId,
+          ids: chunk,
+        });
+      } catch (error) {
+        this.logCollectionMutationFailure(
+          'add',
+          collectionId,
+          chunk.length,
+          error,
+        );
+        failedIds.push(...chunk);
+      }
     }
+
+    return failedIds;
   }
 
   async removeFromCollection(
@@ -1059,10 +1096,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to remove ${itemId} from collection ${collectionId}`,
-        error,
-      );
+      this.logCollectionMutationFailure('remove', collectionId, 1, error);
       throw error;
     }
   }
@@ -1073,19 +1107,28 @@ export class JellyfinAdapterService implements IMediaServerService {
   ): Promise<string[]> {
     if (!this.api || itemIds.length === 0) return [];
 
-    try {
-      await getCollectionApi(this.api).removeFromCollection({
-        collectionId,
-        ids: itemIds,
-      });
-      return [];
-    } catch (error) {
-      this.logger.error(
-        `Failed to remove ${itemIds.length} items from collection ${collectionId}`,
-        error,
-      );
-      return itemIds;
+    const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
+    const failedIds: string[] = [];
+
+    for (let i = 0; i < itemIds.length; i += chunkSize) {
+      const chunk = itemIds.slice(i, i + chunkSize);
+      try {
+        await getCollectionApi(this.api).removeFromCollection({
+          collectionId,
+          ids: chunk,
+        });
+      } catch (error) {
+        this.logCollectionMutationFailure(
+          'remove',
+          collectionId,
+          chunk.length,
+          error,
+        );
+        failedIds.push(...chunk);
+      }
     }
+
+    return failedIds;
   }
 
   // COLLECTION METADATA UPDATE

@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { prefetchRoute } from '../../../router'
 
 export interface SettingsRoute {
   text: string
@@ -44,6 +45,9 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
   return (
     <Link
       to={props.route}
+      onMouseEnter={() => void prefetchRoute(props.route)}
+      onFocus={() => void prefetchRoute(props.route)}
+      onTouchStart={() => void prefetchRoute(props.route)}
       className={`${linkClasses} ${
         props.currentPath.match(props.regex)
           ? activeLinkColor
@@ -88,7 +92,13 @@ const SettingsTabs: React.FC<{
         </label>
         <select
           value={currentRoute}
+          onFocus={() => {
+            if (currentRoute) {
+              void prefetchRoute(currentRoute)
+            }
+          }}
           onChange={(e) => {
+            void prefetchRoute(e.target.value)
             navigate(e.target.value)
           }}
           onBlur={(e) => {

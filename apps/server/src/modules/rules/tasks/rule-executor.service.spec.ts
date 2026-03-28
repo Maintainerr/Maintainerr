@@ -431,4 +431,42 @@ describe('RuleExecutorService', () => {
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
   });
+
+  it('fails cleanly when collection sync returns undefined', async () => {
+    const { service, collectionService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.addToCollectionWithResolvedLink.mockResolvedValueOnce(
+      undefined,
+    );
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm2' }];
+    (service as any).statisticsData = [];
+
+    await expect(
+      (
+        service as unknown as {
+          handleCollection: (ruleGroup: {
+            id: number;
+            collectionId: number;
+          }) => Promise<Set<string>>;
+        }
+      ).handleCollection({ id: 10, collectionId: 1 }),
+    ).resolves.toEqual(new Set());
+
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Failed,
+      expect.objectContaining({
+        identifier: {
+          type: 'rulegroup',
+          value: 10,
+        },
+      }),
+    );
+  });
 });
