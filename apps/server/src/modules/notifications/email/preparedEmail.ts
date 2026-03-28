@@ -46,6 +46,11 @@ class PreparedEmail extends Email {
       send: true,
       preview: false,
       transport: transport,
+      juiceResources: {
+        webResources: {
+          links: false,
+        },
+      },
     });
   }
 }
