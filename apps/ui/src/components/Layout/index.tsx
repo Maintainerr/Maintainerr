@@ -1,6 +1,6 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash-es'
-import { ReactNode, useContext, useEffect, useState } from 'react'
+import { ReactNode, useContext, useEffect, useRef, useState } from 'react'
 import {
   isRouteErrorResponse,
   Outlet,
@@ -24,9 +24,39 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const navigate = useNavigate()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
+  const debouncedSearchRef = useRef<ReturnType<typeof debounce> | undefined>(
+    undefined,
+  )
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)
+  }
+
+  useEffect(() => {
+    const debouncedSearch = debounce((text: string) => {
+      SearchCtx.addText(text)
+      navigate('/overview')
+    }, 250)
+
+    debouncedSearchRef.current = debouncedSearch
+
+    return () => {
+      debouncedSearch.cancel()
+
+      if (debouncedSearchRef.current === debouncedSearch) {
+        debouncedSearchRef.current = undefined
+      }
+    }
+  }, [SearchCtx, navigate])
+
+  const handleSearch = (text: string) => {
+    if (text === '') {
+      debouncedSearchRef.current?.cancel()
+      SearchCtx.removeText()
+      return
+    }
+
+    debouncedSearchRef.current?.(text)
   }
 
   useEffect(() => {
@@ -81,15 +111,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
             >
               <ArrowLeftIcon className="w-7" />
             </button>
-            <SearchBar
-              onSearch={debounce((text: string) => {
-                SearchCtx.addText(text)
-
-                if (text !== '') {
-                  navigate('/overview')
-                }
-              }, 1000)}
-            />
+            <SearchBar onSearch={handleSearch} />
           </div>
         </div>
 
