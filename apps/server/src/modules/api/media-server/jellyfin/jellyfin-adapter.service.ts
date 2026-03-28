@@ -217,14 +217,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {
-      if (result.cause instanceof Error) {
-        this.logger.error(
-          `Jellyfin connection test failed: ${result.cause.message}`,
-          result.cause.stack,
-        );
-      } else {
-        this.logger.error(`Jellyfin connection test failed: ${result.error}`);
-      }
+      this.logger.error('Jellyfin connection test failed');
+      this.logger.debug(result.cause ?? result.error);
     }
 
     return result;

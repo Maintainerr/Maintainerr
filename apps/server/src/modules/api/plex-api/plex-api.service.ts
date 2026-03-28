@@ -119,8 +119,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         `Couldn't connect to Plex.. Please check your settings`,
-        error,
       );
+      this.logger.debug(error);
     }
   }
 
@@ -138,8 +138,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -174,8 +174,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -189,8 +189,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -204,8 +204,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -224,8 +224,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -248,8 +248,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -280,8 +280,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -306,8 +306,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -343,8 +343,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -377,8 +377,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         "Outbound call to discover.provider.plex.tv failed. Couldn't fetch userState",
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -390,8 +390,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         "Outbound call to plex.tv failed. Couldn't fetch users",
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -402,8 +402,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         "Outbound call to plex.tv failed. Couldn't fetch owner",
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -418,8 +418,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -440,8 +440,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -456,8 +456,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -477,8 +477,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -518,8 +518,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -535,8 +535,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         `Something went wrong while removing media ${plexId} from Plex.`,
-        error,
       );
+      this.logger.debug(error);
     }
   }
 
@@ -558,10 +558,8 @@ export class PlexApiService {
 
       return collection;
     } catch (error) {
-      this.logger.debug(
-        `Couldn't find collection with id ${+collectionId}`,
-        error,
-      );
+      this.logger.debug(`Couldn't find collection with id ${+collectionId}`);
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -585,8 +583,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -613,8 +611,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -629,12 +627,15 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return {
         status: 'NOK',
         code: 0,
-        message: `Something went wrong while deleting the collection from Plex: ${error}`,
+        message: getErrorMessage(
+          error,
+          'Something went wrong while deleting the collection from Plex',
+        ),
       };
     }
     this.logger.log('Removed collection from Plex');
@@ -667,8 +668,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -687,8 +688,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return {
         status: 'NOK',
         code: 0,
@@ -716,8 +717,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return {
         status: 'NOK',
         code: 0,
@@ -742,8 +743,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -803,8 +804,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.warn(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return [];
     }
   }
@@ -874,8 +875,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.warn(
         `Failure while fetching watchlist of user ${userId} (${username})`,
-        error,
       );
+      this.logger.debug(error);
     }
   }
 
@@ -1076,8 +1077,8 @@ export class PlexApiService {
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        error,
       );
+      this.logger.debug(error);
       return undefined;
     }
   }
