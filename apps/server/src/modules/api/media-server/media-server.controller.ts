@@ -72,30 +72,6 @@ export class MediaServerController {
     );
   }
 
-  private async attachParentMetadata(
-    items: MediaItem[],
-    mediaServer: IMediaServerService,
-  ): Promise<MediaItem[]> {
-    return await Promise.all(
-      items.map(async (item) => {
-        if (!['season', 'episode'].includes(item.type)) {
-          return item;
-        }
-
-        const parentItem = item.grandparentId
-          ? await mediaServer.getMetadata(item.grandparentId)
-          : item.parentId
-            ? await mediaServer.getMetadata(item.parentId)
-            : undefined;
-
-        return {
-          ...item,
-          parentItem,
-        } satisfies MediaItemWithParent;
-      }),
-    );
-  }
-
   @Get()
   async getStatus(): Promise<MediaServerStatus | undefined> {
     const mediaServer = await this.mediaServerFactory.getService();
