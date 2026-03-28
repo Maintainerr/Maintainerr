@@ -99,6 +99,13 @@ const Overview = () => {
   }
 
   const onSwitchLibrary = (libraryId: string) => {
+    if (
+      SearchCtx.search.text === '' &&
+      selectedLibraryRef.current === libraryId
+    ) {
+      return
+    }
+
     invalidateFetches()
     setLoading(true)
     setLoadingExtra(false)
@@ -228,6 +235,7 @@ const Overview = () => {
           <LibrarySwitcher
             shouldShowAllOption={false}
             onLibraryChange={onSwitchLibrary}
+            selectedLibraryId={selectedLibrary}
           />
         ) : undefined}
         {selectedLibrary ? (

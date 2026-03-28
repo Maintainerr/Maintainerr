@@ -11,7 +11,7 @@ import {
   RulePossibilityTranslations,
 } from '@maintainerr/contracts'
 import { cloneDeep } from 'lodash-es'
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { IRule } from '../'
 import {
   useRadarrDiskspace,
@@ -381,7 +381,7 @@ const RuleInput = (props: IRuleInput) => {
     props.onDelete(props.section ? props.section : 0, props.id ? props.id : 0)
   }
 
-  const submitCurrentRule = useCallback(() => {
+  const commitCurrentRule = () => {
     if (
       firstval &&
       action != null &&
@@ -433,6 +433,19 @@ const RuleInput = (props: IRuleInput) => {
     } else {
       props.onIncomplete(props.id ? props.id : 0)
     }
+  }
+
+  const submitCurrentRule = useEffectEvent(() => {
+    commitCurrentRule()
+  })
+
+  const submit = (e: FormEvent | null) => {
+    e?.preventDefault()
+    commitCurrentRule()
+  }
+
+  useEffect(() => {
+    submitCurrentRule()
   }, [
     action,
     arrDiskPath,
@@ -442,19 +455,9 @@ const RuleInput = (props: IRuleInput) => {
     firstval,
     isSelectedArrDiskspaceRule,
     operator,
-    props,
     ruleType,
     secondVal,
   ])
-
-  const submit = (e: FormEvent | null) => {
-    e?.preventDefault()
-    submitCurrentRule()
-  }
-
-  useEffect(() => {
-    submitCurrentRule()
-  }, [submitCurrentRule])
 
   useEffect(() => {
     if (!constants) return
