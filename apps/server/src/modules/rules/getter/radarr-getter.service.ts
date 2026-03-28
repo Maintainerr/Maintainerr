@@ -203,11 +203,14 @@ export class RadarrGetterService {
         );
         return null;
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `Radarr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
+        `Radarr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Radarr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        error,
+      );
       return undefined;
     }
   }

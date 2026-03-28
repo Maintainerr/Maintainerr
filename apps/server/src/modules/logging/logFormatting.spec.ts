@@ -1,9 +1,9 @@
+import { maskSecret } from '../../utils/secretMasking';
 import {
   formatLogMessage,
   sanitizeLogInfo,
   sanitizeLogValue,
 } from './logFormatting';
-import { maskSecret } from '../../utils/secretMasking';
 
 describe('logFormatting', () => {
   it('masks secret values with the shared contract', () => {
@@ -58,5 +58,27 @@ describe('logFormatting', () => {
     ]);
     expect(result).toContain('Request failed');
     expect(result).toContain('Error: something went wrong');
+  });
+
+  it('sanitizes circular error objects without overflowing the stack', () => {
+    const error = new Error('Authorization: Bearer super-secret-token');
+    const response = {} as Record<string, unknown>;
+
+    response.self = response;
+    response.error = error;
+    Object.assign(error as Error & Record<string, unknown>, { response });
+    Object.defineProperty(error, 'cause', {
+      value: error,
+      enumerable: true,
+      configurable: true,
+    });
+
+    const sanitized = sanitizeLogValue(error) as Record<string, unknown>;
+    const sanitizedResponse = sanitized.response as Record<string, unknown>;
+
+    expect(sanitized.message).toBe('Authorization: Bearer sup...ken');
+    expect(sanitized.cause).toBe(sanitized);
+    expect(sanitizedResponse.self).toBe(sanitizedResponse);
+    expect(sanitizedResponse.error).toBe(sanitized);
   });
 });

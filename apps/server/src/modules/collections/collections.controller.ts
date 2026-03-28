@@ -12,13 +12,13 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
 import {
   AddRemoveCollectionMedia,
   IAlterableMediaDto,
 } from './interfaces/collection-media.interface';
-import { MaintainerrLogger } from '../logging/logs.service';
 
 @Controller('api/collections')
 export class CollectionsController {
@@ -77,15 +77,14 @@ export class CollectionsController {
       );
     }
 
-    this.collectionWorkerService.execute().catch((e) =>
-      this.logger.error(
-        {
-          message: 'Failed to start collection handler execution',
-          error: e,
-        },
-        e instanceof Error ? e.stack : undefined,
-      ),
-    );
+    this.collectionWorkerService
+      .execute()
+      .catch((error) =>
+        this.logger.error(
+          'Failed to start collection handler execution',
+          error,
+        ),
+      );
   }
 
   @Put('/schedule/update')

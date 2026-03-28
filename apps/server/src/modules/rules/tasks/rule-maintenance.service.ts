@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
-import { Collection } from '../../collections/entities/collection.entities';
 import { CollectionsService } from '../../collections/collections.service';
+import { Collection } from '../../collections/entities/collection.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { TaskBase } from '../../tasks/task.base';
@@ -48,8 +48,9 @@ export class RuleMaintenanceService extends TaskBase {
 
       await this.removeCollectionsWithoutRule();
       this.logger.log('Maintenance done');
-    } catch (e) {
-      this.logger.error(`Rule Maintenance failed : ${e.message}`);
+    } catch (error) {
+      this.logger.error('Rule Maintenance failed');
+      this.logger.debug(error);
     }
   }
 
@@ -82,11 +83,9 @@ export class RuleMaintenanceService extends TaskBase {
           await this.collectionRepo.delete({ id: collection.id });
         }
       }
-    } catch (err) {
-      this.logger.error(
-        `Couldn't remove collection without rule: ${err.message}`,
-        err,
-      );
+    } catch (error) {
+      this.logger.error("Couldn't remove collection without rule");
+      this.logger.debug(error);
     }
   }
 }

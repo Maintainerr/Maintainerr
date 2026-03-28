@@ -65,7 +65,7 @@ export class CollectionWorkerService extends TaskBase {
       const appStatus = await this.settings.testConnections();
 
       if (!appStatus) {
-        this.infoLogger(
+        this.logger.log(
           'Not all applications are reachable.. Skipping collection handling',
         );
         this.eventEmitter.emit(
@@ -87,7 +87,7 @@ export class CollectionWorkerService extends TaskBase {
 
       const collectionsToHandle = collections.filter((collection) => {
         if (collection.arrAction === ServarrAction.DO_NOTHING) {
-          this.infoLogger(
+          this.logger.log(
             `Skipping collection '${collection.title}' as its action is 'Do Nothing'`,
           );
           return false;
@@ -145,7 +145,7 @@ export class CollectionWorkerService extends TaskBase {
         };
         emitProgressedEvent();
 
-        this.infoLogger(`Handling collection '${collection.title}'`);
+        this.logger.log(`Handling collection '${collection.title}'`);
         const handledMediaForNotification = [];
 
         for (const media of collectionMedia) {
@@ -174,7 +174,7 @@ export class CollectionWorkerService extends TaskBase {
         progressedEvent.processedCollections++;
         emitProgressedEvent();
 
-        this.infoLogger(`Handling collection '${collection.title}' finished`);
+        this.logger.log(`Handling collection '${collection.title}' finished`);
       }
 
       if (handledCollectionMedia > 0) {
@@ -185,36 +185,35 @@ export class CollectionWorkerService extends TaskBase {
                 '/settings/jobs/availability-sync/run',
               );
 
-              this.infoLogger(
+              this.logger.log(
                 `All collections handled. Triggered Seerr's availability-sync because media was altered`,
               );
-            } catch (err) {
-              this.logger.error(
-                `Failed to trigger Seerr's availability-sync`,
-                err,
-              );
+            } catch (error) {
+              this.logger.error(`Failed to trigger Seerr's availability-sync`);
+              this.logger.debug(error);
             }
           });
         }
       } else {
-        this.infoLogger(`All collections handled. No data was altered`);
+        this.logger.log(`All collections handled. No data was altered`);
       }
 
       // Update cached total size for all collections
-      this.infoLogger('Updating collection size cache...');
+      this.logger.log('Updating collection size cache...');
       const allCollections = await this.collectionRepo.find();
       for (const collection of allCollections) {
         try {
           await this.collectionsService.updateCollectionTotalSize(
             collection.id,
           );
-        } catch (e) {
+        } catch (error) {
           this.logger.debug(
-            `Failed to update size for collection '${collection.title}': ${e.message}`,
+            `Failed to update size for collection '${collection.title}'`,
           );
+          this.logger.debug(error);
         }
       }
-      this.infoLogger('Collection size cache updated');
+      this.logger.log('Collection size cache updated');
     } finally {
       release();
 
@@ -223,9 +222,5 @@ export class CollectionWorkerService extends TaskBase {
         new CollectionHandlerFinishedEventDto('Finished collection handling'),
       );
     }
-  }
-
-  private infoLogger(message: string) {
-    this.logger.log(message);
   }
 }

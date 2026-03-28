@@ -172,10 +172,10 @@ class PGPEncryptor extends Transform {
 
       this.push(Buffer.from(emailHeadersRaw + emailPartDelimiter + body));
       callback();
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         `Something went wrong while encrypting email message with OpenPGP. Sending email without encryption.`,
-        e,
+        error,
       );
 
       this.push(message);

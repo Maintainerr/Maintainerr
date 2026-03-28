@@ -68,10 +68,10 @@ const SonarrSettings = () => {
           setCollectionsInUseWarning(resp.data.collectionsInUse)
         }
       })
-      .catch((err: unknown) => {
+      .catch((error: unknown) => {
         void logClientError(
           'Failed to delete Sonarr setting',
-          err,
+          error,
           'Settings.Sonarr.confirmedDelete',
         )
         toast.error('Failed to delete Sonarr setting. Check logs for details.')

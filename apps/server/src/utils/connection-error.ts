@@ -83,18 +83,44 @@ export const formatConnectionFailureMessage = (
   return fallbackMessage;
 };
 
+export const getErrorMessage = (
+  error: unknown,
+  fallbackMessage = 'Unknown error',
+): string => {
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error.trim() !== '') {
+    return error;
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message.trim() !== ''
+  ) {
+    return error.message;
+  }
+
+  if (
+    typeof error === 'number' ||
+    typeof error === 'boolean' ||
+    typeof error === 'bigint'
+  ) {
+    return String(error);
+  }
+
+  return fallbackMessage;
+};
+
 export const logConnectionTestError = (
   logger: MaintainerrLogger,
   serviceName: string,
   error: unknown,
 ) => {
-  if (error instanceof Error) {
-    logger.error(
-      `${serviceName} connection test failed: ${error.message}`,
-      error.stack,
-    );
-    return;
-  }
-
-  logger.error(`${serviceName} connection test failed: ${String(error)}`);
+  logger.error(`${serviceName} connection test failed`);
+  logger.debug(error);
 };

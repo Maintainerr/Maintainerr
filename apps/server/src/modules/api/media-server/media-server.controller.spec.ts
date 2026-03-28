@@ -1,5 +1,6 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { BadRequestException } from '@nestjs/common';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
 import { IMediaServerService } from './media-server.interface';
@@ -18,6 +19,7 @@ describe('MediaServerController', () => {
   let controller: MediaServerController;
   let mockMediaServerFactory: jest.Mocked<MediaServerFactory>;
   let mockMediaServerService: jest.Mocked<IMediaServerService>;
+  let logger: jest.Mocked<MaintainerrLogger>;
 
   beforeEach(() => {
     mockMediaServerService = {
@@ -37,7 +39,11 @@ describe('MediaServerController', () => {
       getService: jest.fn().mockResolvedValue(mockMediaServerService),
     } as unknown as jest.Mocked<MediaServerFactory>;
 
-    controller = new MediaServerController(mockMediaServerFactory);
+    logger = {
+      setContext: jest.fn(),
+    } as unknown as jest.Mocked<MaintainerrLogger>;
+
+    controller = new MediaServerController(mockMediaServerFactory, logger);
   });
 
   describe('getLibraryContent - Pagination Logic', () => {

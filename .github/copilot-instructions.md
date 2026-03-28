@@ -107,6 +107,7 @@ yarn workspace @maintainerr/contracts build
 - **Prettier**: Consistent formatting (run `yarn format`)
 - **Commits**: Follow [Conventional Commits](https://conventionalcommits.org/) specification
 - **Import Organization**: Prefer absolute imports, group by type (external, internal, relative)
+- **String Handling**: Avoid regex for simple prefix/suffix/substring checks or single-character trimming. Prefer string primitives such as `endsWith`, `startsWith`, `slice`, `substring`, or direct character inspection to reduce unnecessary regex risk; see [OWASP ReDoS guidance](https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS).
 
 ### TypeScript Guidelines
 
@@ -186,6 +187,7 @@ When modifying existing code, follow these specific refactoring priorities:
 - **Type Specifications**: When creating new code, specify explicit types including `undefined` when applicable, rather than relying on computed types.
 - **Any Type Elimination**: When encountering `any` types during code changes, attempt to use proper types or create specific type definitions. This includes external API requests and responses.
 - **Gradual Migration**: Incrementally improve type safety without breaking existing functionality.
+- **Logging**: In injectable server code, prefer `MaintainerrLogger` over raw Nest `Logger`. Set the context once in the constructor. For paired caught-error logs, keep `warn`/`log`/`error` messages plain and put the throwable on `logger.debug(error)`; only use `logger.error('message', error)` when the higher-level log should intentionally carry the throwable.
 
 ## External Integrations
 

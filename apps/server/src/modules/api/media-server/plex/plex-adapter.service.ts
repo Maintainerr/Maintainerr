@@ -16,7 +16,8 @@ import {
   UpdateCollectionParams,
   WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { supportsFeature } from '../media-server.constants';
@@ -32,12 +33,13 @@ import { PlexMapper } from './plex.mapper';
  */
 @Injectable()
 export class PlexAdapterService implements IMediaServerService {
-  private readonly logger = new Logger(PlexAdapterService.name);
-
   constructor(
     @Inject(forwardRef(() => PlexApiService))
     private readonly plexApi: PlexApiService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(PlexAdapterService.name);
+  }
 
   async initialize(): Promise<void> {
     await this.plexApi.initialize();
@@ -239,7 +241,8 @@ export class PlexAdapterService implements IMediaServerService {
     try {
       await this.plexApi.deleteCollection(collectionId);
     } catch (error) {
-      this.logger.error(`Failed to delete collection ${collectionId}`, error);
+      this.logger.error(`Failed to delete collection ${collectionId}`);
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -256,8 +259,8 @@ export class PlexAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to add item ${itemId} to collection ${collectionId}`,
-        error,
       );
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -288,8 +291,8 @@ export class PlexAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to remove item ${itemId} from collection ${collectionId}`,
-        error,
       );
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -355,8 +358,8 @@ export class PlexAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error(
         `Failed to update visibility for collection ${settings.collectionId}`,
-        error,
       );
+      this.logger.debug(error);
       throw error;
     }
   }
@@ -388,7 +391,8 @@ export class PlexAdapterService implements IMediaServerService {
       await this.plexApi.deleteMediaFromDisk(itemId);
       this.logger.log(`Successfully deleted Plex item ${itemId} from disk`);
     } catch (error) {
-      this.logger.error(`Failed to delete item ${itemId} from disk`, error);
+      this.logger.error(`Failed to delete item ${itemId} from disk`);
+      this.logger.debug(error);
       throw error;
     }
   }

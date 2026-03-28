@@ -361,10 +361,11 @@ describe('JellyfinAdapterService', () => {
       const history = await service.getWatchHistory('item123');
 
       expect(history).toEqual([]);
-      expect(debugSpy).toHaveBeenCalledWith(
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
         'Failed to get Jellyfin user data for item item123 and user user-1',
-        expect.any(Error),
       );
+      expect(debugSpy).toHaveBeenNthCalledWith(2, expect.any(Error));
     });
 
     it('should fall back to Jellyfin played state when threshold cannot be loaded', async () => {

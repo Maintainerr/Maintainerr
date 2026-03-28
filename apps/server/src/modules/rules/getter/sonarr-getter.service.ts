@@ -418,11 +418,14 @@ export class SonarrGetterService {
             : null;
         }
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `Sonarr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
+        `Sonarr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Sonarr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        error,
+      );
       return undefined;
     }
   }

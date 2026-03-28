@@ -22,9 +22,9 @@ export const useRequestGeneration = () => {
         if (generation === generationRef.current) {
           return { status: 'success', data: result }
         }
-      } catch (err) {
+      } catch (error) {
         if (generation === generationRef.current) {
-          throw err
+          throw error
         }
       }
 

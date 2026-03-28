@@ -86,6 +86,7 @@ export class RulesService {
   private async getMediaServer(): Promise<IMediaServerService> {
     return this.mediaServerFactory.getService();
   }
+
   async getRuleConstants(): Promise<RuleConstants> {
     const settings = await this.settingsRepo.findOne({ where: {} });
     const radarrSettingsExist = await this.radarrSettingsRepo.exists();
@@ -131,9 +132,9 @@ export class RulesService {
         .createQueryBuilder('rules')
         .where('ruleGroupId = :id', { id: ruleGroupId })
         .getMany();
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -171,9 +172,9 @@ export class RulesService {
         }
       }
       return rulegroups as RulesDto[];
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -201,9 +202,9 @@ export class RulesService {
         }
       }
       return rulegroups as RulesDto[];
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -225,9 +226,9 @@ export class RulesService {
         rulegroup.rules = [];
       }
       return rulegroup as RulesDto;
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -242,9 +243,9 @@ export class RulesService {
         where: { id: ruleGroupId },
         relations: ['notifications'],
       });
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -255,9 +256,9 @@ export class RulesService {
         where: { collectionId: id },
         relations: ['notifications'],
       });
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -286,9 +287,9 @@ export class RulesService {
         `Removed rulegroup with id ${ruleGroupId} from the database`,
       );
       return this.createReturnStatus(true, 'Success');
-    } catch (err) {
+    } catch (error) {
       this.logger.warn('Rulegroup deletion failed');
-      this.logger.debug(err);
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Delete Failed');
     }
   }
@@ -383,9 +384,9 @@ export class RulesService {
       }
 
       return state;
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -448,10 +449,11 @@ export class RulesService {
             const mediaServer = await this.getMediaServer();
             try {
               await mediaServer.deleteCollection(dbCollection.mediaServerId);
-            } catch (e) {
+            } catch (error) {
               // Collection may already be deleted, ignore errors
               this.logger.debug(
-                `Failed to delete media server collection: ${e.message}`,
+                'Failed to delete media server collection',
+                error,
               );
             }
           }
@@ -562,9 +564,9 @@ export class RulesService {
       } else {
         return state;
       }
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -658,11 +660,11 @@ export class RulesService {
       }
 
       return this.createReturnStatus(true, 'Success');
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         `Adding exclusion for media ID ${data.mediaId} and rulegroup id ${data.ruleGroupId} failed.`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Failed');
     }
   }
@@ -694,9 +696,9 @@ export class RulesService {
       await this.exclusionRepo.delete(id);
       this.logger.log(`Removed exclusion with id ${id}`);
       return this.createReturnStatus(true, 'Success');
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(`Removing exclusion with id ${id} failed.`);
-      this.logger.debug(e);
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Failed');
     }
   }
@@ -760,11 +762,11 @@ export class RulesService {
         );
       }
       return this.createReturnStatus(true, 'Success');
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         `Removing exclusion for media with id ${data.mediaId} failed.`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Failed');
     }
   }
@@ -795,11 +797,11 @@ export class RulesService {
         await this.exclusionRepo.delete({ mediaServerId: media.mediaServerId });
       }
       return this.createReturnStatus(true, 'Success');
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         `Removing all exclusions with mediaServerId ${mediaServerId} failed.`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Failed');
     }
   }
@@ -838,9 +840,9 @@ export class RulesService {
           : exclusions;
       }
       return [];
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -848,9 +850,9 @@ export class RulesService {
   async getAllExclusions(): Promise<Exclusion[]> {
     try {
       return await this.exclusionRepo.find();
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return [];
     }
   }
@@ -907,8 +909,11 @@ export class RulesService {
       } else {
         return this.createReturnStatus(false, 'No second value found');
       }
-    } catch (e) {
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.debug(
+        'Unexpected error occurred while validating a rule',
+        error,
+      );
       return this.createReturnStatus(false, 'Unexpected error occurred');
     }
   }
@@ -1090,9 +1095,9 @@ export class RulesService {
         .add(notifications?.map((notification) => notification.id));
 
       return id;
-    } catch (e) {
-      this.logger.warn(`Rules - Action failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Rules - Action failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -1103,9 +1108,9 @@ export class RulesService {
       .then((response) => {
         return response.data.rules as CommunityRule[];
       })
-      .catch((e) => {
-        this.logger.warn(`Loading community rules failed : ${e.message}`);
-        this.logger.debug(e);
+      .catch((error) => {
+        this.logger.warn('Loading community rules failed');
+        this.logger.debug(error);
         return this.createReturnStatus(false, 'Failed');
       });
   }
@@ -1151,8 +1156,9 @@ export class RulesService {
         this.logger.log(`Successfully saved community rule`);
         return this.createReturnStatus(true, 'Success');
       })
-      .catch((e) => {
-        this.logger.warn(`Saving community rule failed: ${e.message}`);
+      .catch((error) => {
+        this.logger.warn('Saving community rule failed');
+        this.logger.debug(error);
         return this.createReturnStatus(false, 'Saving community rule failed');
       });
   }
@@ -1218,8 +1224,9 @@ export class RulesService {
 
         return this.createReturnStatus(true, 'Success');
       })
-      .catch((e) => {
-        this.logger.warn(`Updating community rule karma failed: ${e.message}`);
+      .catch((error) => {
+        this.logger.warn('Updating community rule karma failed');
+        this.logger.debug(error);
         return this.createReturnStatus(
           false,
           'Updating community rule karma failed',
@@ -1392,11 +1399,11 @@ export class RulesService {
       }
 
       return result;
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         `Couldn't determine if rulegroup with id ${rulegroup.id} requires a cache reset`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
       return false;
     }
   }

@@ -122,9 +122,9 @@ export class SeerrGetterService {
                 return [...new Set(userNames)];
               }
               return [];
-            } catch (e) {
+            } catch (error) {
               this.logger.warn("Couldn't get addUser from Seerr");
-              this.logger.debug(e);
+              this.logger.debug(error);
               return null;
             }
           }
@@ -220,7 +220,7 @@ export class SeerrGetterService {
               } else {
                 return mediaResponse?.mediaInfo.requests.length > 0 ? 1 : 0;
               }
-            } catch (e) {
+            } catch (error) {
               return 0;
             }
           }
@@ -234,11 +234,14 @@ export class SeerrGetterService {
         );
         return null;
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `Seerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
+        `Seerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Seerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        error,
+      );
       return undefined;
     }
   }

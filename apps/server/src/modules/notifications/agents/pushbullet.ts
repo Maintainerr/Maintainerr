@@ -83,17 +83,17 @@ class PushbulletAgent implements NotificationAgent {
             },
           },
         );
-      } catch (e) {
+      } catch (error) {
         this.logger.error(
           `Error sending Pushbullet notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: e.response?.data,
+            response: error.response?.data,
           })}`,
-          e,
+          error,
         );
 
-        return `Failure: ${e.message}`;
+        return `Failure: ${error.message}`;
       }
     } else if (
       hasNotificationType(type, settings.types ?? [0]) &&
@@ -108,17 +108,17 @@ class PushbulletAgent implements NotificationAgent {
             'Access-Token': settings.options.accessToken,
           },
         });
-      } catch (e) {
+      } catch (error) {
         this.logger.error(
           `Error sending Pushbullet notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: e.response?.data,
+            response: error.response?.data,
           })}`,
-          e,
+          error,
         );
 
-        return `Failure: ${e.message}`;
+        return `Failure: ${error.message}`;
       }
     }
 

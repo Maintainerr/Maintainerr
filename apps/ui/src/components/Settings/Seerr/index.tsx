@@ -100,7 +100,7 @@ const SeerrSettings = () => {
       } else {
         setSubmitError(true)
       }
-    } catch (err) {
+    } catch (error) {
       setSubmitError(true)
     }
   }
@@ -130,11 +130,11 @@ const SeerrSettings = () => {
           })
         }
       })
-      .catch((err: unknown) => {
+      .catch((error: unknown) => {
         setTestResult({
           status: false,
           message: getApiErrorMessage(
-            err,
+            error,
             'Failed to connect to Overseerr. Verify URL and API key.',
           ),
         })

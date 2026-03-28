@@ -97,11 +97,11 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
         communityRulesPromise,
         karmaPromise,
       ])
-        .catch((e) => {
+        .catch((error) => {
           setError(true)
           void logClientError(
             'Failed to fetch community rules modal data',
-            e,
+            error,
             'Common.CommunityRuleModal.fetchData',
           )
         })

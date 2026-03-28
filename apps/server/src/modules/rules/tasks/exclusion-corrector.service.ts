@@ -52,8 +52,9 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
       if (isSetup) {
         await this.correctExclusionTypes();
       }
-    } catch (e) {
-      this.logger.warn(`Exclusion type corrections failed: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Exclusion type corrections failed');
+      this.logger.debug(error);
     }
   }
 

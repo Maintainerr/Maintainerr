@@ -193,12 +193,13 @@ export class RuleExecutorService {
 
         this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
       }
-    } catch (err) {
+    } catch (error) {
       const executionBeingAborted =
-        err instanceof DOMException && err.name === 'AbortError';
+        error instanceof DOMException && error.name === 'AbortError';
 
       if (!executionBeingAborted) {
-        this.logger.error('Error running rules executor.', err);
+        this.logger.error('Error running rules executor.');
+        this.logger.debug(error);
         this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
       } else {
         this.logger.log(`Execution of rule '${ruleGroup.name}' was aborted.`);
@@ -219,22 +220,18 @@ export class RuleExecutorService {
     touchedMediaServerIds: Set<string>,
   ) {
     if (rulegroup && rulegroup.collectionId) {
-      let collection = await this.collectionService.getCollection(
-        rulegroup.collectionId,
-      );
+      const collection = await this.getCollectionForMediaServerSync(rulegroup);
 
-      collection =
-        await this.collectionService.relinkManualCollection(collection);
-
-      if (collection && collection.mediaServerId) {
+      if (collection) {
         const collectionMedia = await this.collectionService.getCollectionMedia(
           rulegroup.collectionId,
         );
 
-        const mediaServer = await this.getMediaServer();
-        const children = await mediaServer.getCollectionChildren(
-          collection.mediaServerId,
-        );
+        const children = await this.getCollectionChildrenForSync(collection);
+
+        if (children === undefined) {
+          return;
+        }
 
         // Handle manually added
         if (children && children.length > 0) {
@@ -342,6 +339,66 @@ export class RuleExecutorService {
           }' with media server`,
         );
       }
+    }
+  }
+
+  private async getCollectionForMediaServerSync(
+    rulegroup: RuleGroup,
+  ): Promise<Collection | undefined> {
+    const collection = await this.collectionService.getCollection(
+      rulegroup.collectionId,
+    );
+
+    if (!collection) {
+      return undefined;
+    }
+
+    if (collection.manualCollection) {
+      const relinkedCollection =
+        await this.collectionService.relinkManualCollection(collection);
+
+      return relinkedCollection.mediaServerId ? relinkedCollection : undefined;
+    }
+
+    const linkedCollection =
+      await this.collectionService.checkAutomaticMediaServerLink(collection);
+
+    if (!linkedCollection.mediaServerId) {
+      this.logger.warn(
+        `Skipping media server sync for collection '${linkedCollection.title}' because the linked media server collection is unavailable.`,
+      );
+      return undefined;
+    }
+
+    return linkedCollection;
+  }
+
+  private async getCollectionChildrenForSync(
+    collection: Collection,
+  ): Promise<MediaItem[] | undefined> {
+    try {
+      const mediaServer = await this.getMediaServer();
+      return await mediaServer.getCollectionChildren(collection.mediaServerId);
+    } catch (error) {
+      this.logger.warn(
+        `Skipping media server child sync for collection '${collection.title}' because the linked media server collection could not be enumerated.`,
+      );
+      this.logger.debug(error);
+
+      if (!collection.manualCollection) {
+        const linkedCollection =
+          await this.collectionService.checkAutomaticMediaServerLink(
+            collection,
+          );
+
+        if (!linkedCollection.mediaServerId) {
+          this.logger.warn(
+            `Cleared stale media server link for collection '${linkedCollection.title}' after child sync failed.`,
+          );
+        }
+      }
+
+      return undefined;
     }
   }
 
@@ -603,14 +660,13 @@ export class RuleExecutorService {
 
         return new Set<string>();
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw err;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
       }
 
-      this.logger.warn(
-        `Exception occurred while handling rule: ${err.message}`,
-      );
+      this.logger.warn('Exception occurred while handling rule');
+      this.logger.debug(error);
 
       this.eventEmitter.emit(
         MaintainerrEvent.RuleHandler_Failed,

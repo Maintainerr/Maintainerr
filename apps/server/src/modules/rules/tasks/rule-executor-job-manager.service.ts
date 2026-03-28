@@ -59,8 +59,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     if (this.processQueuePromise != null) {
       try {
         await this.processQueuePromise;
-      } catch (err) {
-        this.logger.debug(err);
+      } catch (error) {
+        this.logger.debug(
+          'Failed while waiting for the active rule execution to stop',
+          error,
+        );
       }
     }
   }
@@ -185,10 +188,10 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
         request.ruleGroupId,
         this.abortController.signal,
       );
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         `An error occurred while executing job for rule group ${request.ruleGroupId}`,
-        e,
+        error,
       );
     } finally {
       release();
