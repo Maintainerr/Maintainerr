@@ -886,6 +886,7 @@ export class CollectionsService {
       this.logger.warn(
         'An error occurred while performing collection actions.',
       );
+      this.logger.debug(err);
       return undefined;
     }
   }
