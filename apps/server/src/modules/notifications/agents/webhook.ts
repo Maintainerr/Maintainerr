@@ -125,17 +125,17 @@ class WebhookAgent implements NotificationAgent {
       );
 
       return 'Success';
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         `Error sending Webhook notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: e.response?.data,
+          response: error.response?.data,
         })}`,
-        e,
+        error,
       );
 
-      return `Failure: ${e.message}`;
+      return `Failure: ${error.message}`;
     }
   }
 }

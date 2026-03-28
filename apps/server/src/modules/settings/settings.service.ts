@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import {
   formatConnectionFailureMessage,
+  getErrorMessage,
   logConnectionTestError,
 } from '../../utils/connection-error';
 import { maskSecret } from '../../utils/secretMasking';
@@ -177,11 +178,16 @@ export class SettingsService implements SettingDto {
   public async getSettings() {
     try {
       return this.settingsRepo.findOne({ where: {} });
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Something went wrong while getting settings. Is the database file locked?',
+        error,
       );
-      return { status: 'NOK', code: 0, message: err } as BasicResponseDto;
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get settings'),
+      } as BasicResponseDto;
     }
   }
 
@@ -208,22 +214,32 @@ export class SettingsService implements SettingDto {
   public async getRadarrSettings() {
     try {
       return this.radarrSettingsRepo.find();
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Something went wrong while getting radarr settings. Is the database file locked?',
+        error,
       );
-      return { status: 'NOK', code: 0, message: err } as BasicResponseDto;
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get Radarr settings'),
+      } as BasicResponseDto;
     }
   }
 
   public async getRadarrSetting(id: number) {
     try {
       return this.radarrSettingsRepo.findOne({ where: { id: id } });
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         `Something went wrong while getting radarr setting ${id}. Is the database file locked?`,
+        error,
       );
-      return { status: 'NOK', code: 0, message: err } as BasicResponseDto;
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get Radarr setting'),
+      } as BasicResponseDto;
     }
   }
 
@@ -242,8 +258,8 @@ export class SettingsService implements SettingDto {
         code: 1,
         message: 'Success',
       };
-    } catch (e) {
-      this.logger.error('Error while adding Radarr setting: ', e);
+    } catch (error) {
+      this.logger.error('Error while adding Radarr setting: ', error);
       return { status: 'NOK', code: 0, message: 'Failure' };
     }
   }
@@ -268,8 +284,8 @@ export class SettingsService implements SettingDto {
       this.servarr.deleteCachedRadarrApiClient(settings.id);
       this.logger.log('Radarr settings updated');
       return { data, status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating Radarr settings: ', e);
+    } catch (error) {
+      this.logger.error('Error while updating Radarr settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failure' };
     }
   }
@@ -302,8 +318,8 @@ export class SettingsService implements SettingDto {
 
       this.logger.log('Radarr setting deleted');
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while deleting Radarr setting: ', e);
+    } catch (error) {
+      this.logger.error('Error while deleting Radarr setting: ', error);
       return { status: 'NOK', code: 0, message: 'Failure', data: null };
     }
   }
@@ -311,22 +327,32 @@ export class SettingsService implements SettingDto {
   public async getSonarrSettings() {
     try {
       return this.sonarrSettingsRepo.find();
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Something went wrong while getting sonarr settings. Is the database file locked?',
+        error,
       );
-      return { status: 'NOK', code: 0, message: err } as BasicResponseDto;
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get Sonarr settings'),
+      } as BasicResponseDto;
     }
   }
 
   public async getSonarrSetting(id: number) {
     try {
       return this.sonarrSettingsRepo.findOne({ where: { id: id } });
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         `Something went wrong while getting sonarr setting ${id}. Is the database file locked?`,
+        error,
       );
-      return { status: 'NOK', code: 0, message: err } as BasicResponseDto;
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get Sonarr setting'),
+      } as BasicResponseDto;
     }
   }
 
@@ -345,8 +371,8 @@ export class SettingsService implements SettingDto {
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error removing Tautulli settings: ', e);
+    } catch (error) {
+      this.logger.error('Error removing Tautulli settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -368,8 +394,8 @@ export class SettingsService implements SettingDto {
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating Tautulli settings: ', e);
+    } catch (error) {
+      this.logger.error('Error while updating Tautulli settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -389,8 +415,8 @@ export class SettingsService implements SettingDto {
       this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error removing Seerr settings: ', e);
+    } catch (error) {
+      this.logger.error('Error removing Seerr settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -412,8 +438,8 @@ export class SettingsService implements SettingDto {
       this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating Seerr settings: ', e);
+    } catch (error) {
+      this.logger.error('Error while updating Seerr settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -453,13 +479,13 @@ export class SettingsService implements SettingDto {
           'Failed to connect to Jellyfin. Verify URL and API key.',
         ),
       };
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Jellyfin', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Jellyfin', error);
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Jellyfin. Verify URL and API key.',
         ),
       };
@@ -531,10 +557,10 @@ export class SettingsService implements SettingDto {
 
       this.logger.log('Jellyfin settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while saving Jellyfin settings: ', e);
+    } catch (error) {
+      this.logger.error('Error while saving Jellyfin settings: ', error);
       const message =
-        e instanceof Error ? e.message : 'Failed to save settings';
+        error instanceof Error ? error.message : 'Failed to save settings';
       return { status: 'NOK', code: 0, message };
     }
   }
@@ -577,7 +603,7 @@ export class SettingsService implements SettingDto {
 
       return undefined;
     } catch (error) {
-      this.logger.error('Failed to auto-detect Jellyfin admin user: ', error);
+      this.logger.error('Failed to auto-detect Jellyfin admin user', error);
       return undefined;
     }
   }
@@ -607,8 +633,8 @@ export class SettingsService implements SettingDto {
 
       this.logger.log('Jellyfin settings cleared');
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error removing Jellyfin settings: ', e);
+    } catch (error) {
+      this.logger.error('Error removing Jellyfin settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -628,8 +654,8 @@ export class SettingsService implements SettingDto {
         code: 1,
         message: 'Success',
       };
-    } catch (e) {
-      this.logger.error('Error while adding Sonarr setting: ', e);
+    } catch (error) {
+      this.logger.error('Error while adding Sonarr setting: ', error);
       return { status: 'NOK', code: 0, message: 'Failure' };
     }
   }
@@ -655,8 +681,8 @@ export class SettingsService implements SettingDto {
 
       this.logger.log('Sonarr settings updated');
       return { data, status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating Sonarr settings: ', e);
+    } catch (error) {
+      this.logger.error('Error while updating Sonarr settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failure' };
     }
   }
@@ -688,8 +714,8 @@ export class SettingsService implements SettingDto {
 
       this.logger.log('Sonarr settings deleted');
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while deleting Sonarr setting: ', e);
+    } catch (error) {
+      this.logger.error('Error while deleting Sonarr setting: ', error);
       return { status: 'NOK', code: 0, message: 'Failure', data: null };
     }
   }
@@ -709,12 +735,16 @@ export class SettingsService implements SettingDto {
       this.plexApi.uninitialize();
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Something went wrong while deleting the Plex auth token',
-        err,
+        error,
       );
-      return { status: 'NOK', code: 0, message: err };
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to delete the Plex auth token'),
+      };
     }
   }
 
@@ -734,8 +764,8 @@ export class SettingsService implements SettingDto {
       this.plex_auth_token = plex_auth_token;
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating Plex auth token: ', e);
+    } catch (error) {
+      this.logger.error('Error while updating Plex auth token: ', error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
   }
@@ -837,8 +867,8 @@ export class SettingsService implements SettingDto {
       }
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
-      this.logger.error('Error while updating settings: ', e);
+    } catch (error) {
+      this.logger.error('Error while updating settings: ', error);
       return { status: 'NOK', code: 0, message: 'Failure' };
     }
   }
@@ -879,13 +909,13 @@ export class SettingsService implements SettingDto {
             message: resp.response.data?.tautulli_version,
           }
         : { status: 'NOK', code: 0, message: 'Failure' };
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Tautulli', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Tautulli', error);
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Tautulli. Verify URL and API key.',
         ),
       };
@@ -910,13 +940,13 @@ export class SettingsService implements SettingDto {
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Radarr', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Radarr', error);
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Radarr. Verify URL and API key.',
         ),
       };
@@ -941,13 +971,13 @@ export class SettingsService implements SettingDto {
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Sonarr', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Sonarr', error);
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Sonarr. Verify URL and API key.',
         ),
       };
@@ -960,13 +990,13 @@ export class SettingsService implements SettingDto {
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Plex', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Plex', error);
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Plex. Verify host and credentials.',
         ),
       };
@@ -1047,8 +1077,11 @@ export class SettingsService implements SettingDto {
         seerrState &&
         tautulliState
       );
-    } catch (e) {
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.debug(
+        'Failed to verify external service connectivity',
+        error,
+      );
       return false;
     }
   }
@@ -1108,8 +1141,11 @@ export class SettingsService implements SettingDto {
         }
       }
       return false;
-    } catch (e) {
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.debug(
+        'Failed to determine whether the application setup is complete',
+        error,
+      );
       return false;
     }
   }

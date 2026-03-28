@@ -80,10 +80,10 @@ const RuleGroup = (props: {
         if (resp.code === 1) props.onDelete()
         else toast.error('Failed to delete rule group.')
       })
-      .catch((err: unknown) => {
+      .catch((error: unknown) => {
         void logClientError(
           'Failed to delete rule group.',
-          err,
+          error,
           'RuleGroup.confirmedDelete',
         )
         toast.error('Failed to delete rule group. Check logs for details.')

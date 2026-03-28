@@ -773,11 +773,14 @@ export class PlexGetterService {
           return null;
         }
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `Plex-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
+        `Plex-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Plex-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        error,
+      );
       return undefined;
     }
   }

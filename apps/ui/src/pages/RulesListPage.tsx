@@ -71,9 +71,9 @@ const RulesListPage = () => {
     try {
       await PostApiHandler(`/rules/execute`, {})
       toast.success('Rule execution started.')
-    } catch (e) {
-      if (e instanceof AxiosError && e.response?.data?.message) {
-        toast.error(e.response.data.message)
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.data?.message) {
+        toast.error(error.response.data.message)
         return
       }
       toast.error('Failed to initiate rule execution.')

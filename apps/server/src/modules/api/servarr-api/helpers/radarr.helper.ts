@@ -1,5 +1,5 @@
-import { MaintainerrLogger } from '../../../logging/logs.service';
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   RadarrImportListExclusion,
@@ -30,9 +30,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       const response = await this.get<RadarrMovie[]>('/movie');
 
       return response;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve movies`);
-      this.logger.debug(`Failed to retrieve movies: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve movies');
+      this.logger.debug(error);
     }
   };
 
@@ -40,9 +40,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     try {
       const response = await this.get<RadarrMovie>(`/movie/${id}`);
       return response;
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(`Failed to retrieve movie with id ${id}`);
-      this.logger.debug(`Failed to retrieve movie: ${e.message}`);
+      this.logger.debug(error);
     }
   };
 
@@ -55,9 +55,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       return response[0];
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(`Error retrieving movie by TMDb ID ${id}`);
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -66,11 +66,11 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
 
     try {
       await this.runCommand('MoviesSearch', { movieIds: [movieId] });
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         'Something went wrong while executing Radarr movie search.',
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -83,9 +83,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       await this.runDelete(
         `movie/${movieId}?deleteFiles=${deleteFiles}&addImportExclusion=${importExclusion}`,
       );
-    } catch (e) {
+    } catch (error) {
       this.logger.log("Couldn't delete movie. Does it exist in radarr?");
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -120,9 +120,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
           movieYear: movieData.year,
         } satisfies RadarrImportListExclusion);
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -134,9 +134,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
         })
       ).data;
       return info ? info : null;
-    } catch (e) {
+    } catch (error) {
       this.logger.warn("Couldn't fetch Radarr info.. Is Radarr up?");
-      this.logger.debug(e);
+      this.logger.debug(error);
       return null;
     }
   }

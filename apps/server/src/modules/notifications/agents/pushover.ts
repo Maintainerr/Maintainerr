@@ -70,8 +70,8 @@ class PushoverAgent implements NotificationAgent {
         attachment_base64: base64,
         attachment_type: contentType,
       };
-    } catch (e) {
-      this.logger.error(`Error getting image payload`, e);
+    } catch (error) {
+      this.logger.error(`Error getting image payload`, error);
       return {};
     }
   }
@@ -134,16 +134,16 @@ class PushoverAgent implements NotificationAgent {
           user: settings.options.userToken,
           sound: settings.options.sound,
         } as PushoverPayload);
-      } catch (e) {
+      } catch (error) {
         this.logger.error(
           `Error sending Pushover notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: e.response?.data,
+            response: error.response?.data,
           })}`,
-          e,
+          error,
         );
-        return `Failure: ${e.message}`;
+        return `Failure: ${error.message}`;
       }
     }
 

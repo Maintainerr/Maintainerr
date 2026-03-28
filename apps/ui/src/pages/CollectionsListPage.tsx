@@ -49,9 +49,9 @@ const CollectionsListPage = () => {
       await PostApiHandler(`/collections/handle`, {})
 
       toast.success('Initiated collection handling in the background.')
-    } catch (e) {
-      if (e instanceof AxiosError) {
-        if (e.response?.status === 409) {
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 409) {
           toast.error('Collection handling is already running.')
           return
         }

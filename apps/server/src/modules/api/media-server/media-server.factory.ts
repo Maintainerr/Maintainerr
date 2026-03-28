@@ -3,9 +3,9 @@ import {
   forwardRef,
   Inject,
   Injectable,
-  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -31,8 +31,6 @@ function isSettings(obj: unknown): obj is Settings {
  */
 @Injectable()
 export class MediaServerFactory {
-  private readonly logger = new Logger(MediaServerFactory.name);
-
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settingsService: SettingsService,
@@ -40,7 +38,10 @@ export class MediaServerFactory {
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly plexAdapter: PlexAdapterService,
     private readonly jellyfinAdapter: JellyfinAdapterService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(MediaServerFactory.name);
+  }
 
   /**
    * Initialize the configured media server service.
@@ -49,8 +50,8 @@ export class MediaServerFactory {
   async initialize(): Promise<void> {
     try {
       await this.getService();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
       if (message === 'No media server type configured') {
         this.logger.log(
           'No media server configured yet - skipping initialization',

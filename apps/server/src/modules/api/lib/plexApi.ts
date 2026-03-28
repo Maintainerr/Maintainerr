@@ -156,35 +156,35 @@ class PlexApi {
     try {
       const response = await this.axios.request(requestConfig);
       return response.data as T;
-    } catch (err) {
+    } catch (error) {
       const url = this.axios.getUri(requestConfig);
 
-      if (err instanceof AxiosError) {
-        if (err.response?.status === 403) {
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 403) {
           throw new Error(
             `${requestConfig.method} ${url} failed: Plex Server denied request due to lack of managed user permissions! In case of a delete request, delete content must be allowed in plex-media-server options.`,
-            { cause: err },
+            { cause: error },
           );
-        } else if (err.response?.status === 401) {
+        } else if (error.response?.status === 401) {
           throw new Error(
             `${requestConfig.method} ${url} failed: Plex Server denied request`,
-            { cause: err },
+            { cause: error },
           );
-        } else if (err.response?.status) {
+        } else if (error.response?.status) {
           throw new Error(
-            `${requestConfig.method} ${url} failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: ${err.response?.status}`,
-            { cause: err },
+            `${requestConfig.method} ${url} failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: ${error.response?.status}`,
+            { cause: error },
           );
         } else {
           throw new Error(
-            `${requestConfig.method} ${url} failed with exception: ${err}`,
-            { cause: err },
+            `${requestConfig.method} ${url} failed with exception: ${error}`,
+            { cause: error },
           );
         }
       } else {
         throw new Error(
-          `${requestConfig.method} ${url} failed with exception: ${err}${err.cause?.code ? `, error code: ${err.cause.code}` : ''}`,
-          { cause: err },
+          `${requestConfig.method} ${url} failed with exception: ${error}${error.cause?.code ? `, error code: ${error.cause.code}` : ''}`,
+          { cause: error },
         );
       }
     }
@@ -193,7 +193,7 @@ class PlexApi {
   private serializeCacheKey(params: Record<string, unknown>) {
     try {
       return `${JSON.stringify(params)}`;
-    } catch (err) {
+    } catch (error) {
       return undefined;
     }
   }
@@ -253,7 +253,7 @@ class PlexApi {
         false,
       );
       return status?.MediaContainer ? true : false;
-    } catch (err) {
+    } catch (error) {
       return false;
     }
   }

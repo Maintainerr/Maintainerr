@@ -45,10 +45,10 @@ export abstract class TaskBase
 
         reject();
       })();
-    }).catch((err) => {
+    }).catch((error) => {
       this.logger.error(
         `Creation of ${this.name} task failed after 3 attempts.`,
-        err,
+        error,
       );
     });
   }

@@ -105,16 +105,16 @@ class TelegramAgent implements NotificationAgent {
           chat_id: settings.options.chatId,
           disable_notification: !!settings.options.sendSilently,
         } as TelegramMessagePayload | TelegramPhotoPayload);
-      } catch (e) {
+      } catch (error) {
         this.logger.error(
           `Error sending Telegram notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: e.response?.data,
+            response: error.response?.data,
           })}`,
-          e,
+          error,
         );
-        return `Failure: ${e.message}`;
+        return `Failure: ${error.message}`;
       }
     }
 

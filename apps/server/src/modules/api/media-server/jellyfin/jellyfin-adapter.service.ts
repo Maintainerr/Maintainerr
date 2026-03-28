@@ -36,8 +36,9 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -67,55 +68,15 @@ import { JellyfinMapper } from './jellyfin.mapper';
 export class JellyfinAdapterService implements IMediaServerService {
   private api: Api | undefined;
   private initialized = false;
-  private readonly logger = new Logger(JellyfinAdapterService.name);
   private readonly cache: Cache;
-
-  private getErrorSummary(error: unknown): string {
-    if (error instanceof Error) {
-      const typedError = error as Error & {
-        code?: string;
-        response?: { status?: number; statusText?: string };
-      };
-
-      const parts = [typedError.message];
-
-      if (typedError.code) {
-        parts.push(`code=${typedError.code}`);
-      }
-
-      if (typedError.response?.status) {
-        parts.push(
-          `status=${typedError.response.status}${typedError.response.statusText ? ` ${typedError.response.statusText}` : ''}`,
-        );
-      }
-
-      return parts.join(' | ');
-    }
-
-    return String(error);
-  }
-
-  private logCollectionMutationFailure(
-    action: 'add' | 'remove',
-    collectionId: string,
-    itemCount: number,
-    error: unknown,
-  ): void {
-    const actionLabel = action === 'add' ? 'to' : 'from';
-    this.logger.error(
-      `Failed to ${action} ${itemCount} item${itemCount === 1 ? '' : 's'} ${actionLabel} collection ${collectionId}: ${this.getErrorSummary(error)}`,
-    );
-
-    if (error instanceof Error && error.stack) {
-      this.logger.debug(error.stack);
-    }
-  }
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
     private readonly settingsService: SettingsService,
+    private readonly logger: MaintainerrLogger,
   ) {
     this.cache = cacheManager.getCache('jellyfin');
+    this.logger.setContext(JellyfinAdapterService.name);
   }
 
   /**
@@ -179,14 +140,14 @@ export class JellyfinAdapterService implements IMediaServerService {
         version: systemInfo.data.Version || undefined,
         users,
       };
-    } catch (e) {
+    } catch (error) {
       return {
         success: false,
         error: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Jellyfin. Verify URL and API key.',
         ),
-        cause: e,
+        cause: error,
       };
     }
   }
@@ -1049,7 +1010,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
       });
     } catch (error) {
-      this.logCollectionMutationFailure('add', collectionId, 1, error);
+      this.logger.error(
+        `Failed to add item ${itemId} to collection ${collectionId}`,
+        error,
+      );
       throw error;
     }
   }
@@ -1071,10 +1035,8 @@ export class JellyfinAdapterService implements IMediaServerService {
           ids: chunk,
         });
       } catch (error) {
-        this.logCollectionMutationFailure(
-          'add',
-          collectionId,
-          chunk.length,
+        this.logger.error(
+          `Failed to add ${chunk.length} items to collection ${collectionId}`,
           error,
         );
         failedIds.push(...chunk);
@@ -1096,7 +1058,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
       });
     } catch (error) {
-      this.logCollectionMutationFailure('remove', collectionId, 1, error);
+      this.logger.error(
+        `Failed to remove ${itemId} from collection ${collectionId}`,
+        error,
+      );
       throw error;
     }
   }
@@ -1118,10 +1083,8 @@ export class JellyfinAdapterService implements IMediaServerService {
           ids: chunk,
         });
       } catch (error) {
-        this.logCollectionMutationFailure(
-          'remove',
-          collectionId,
-          chunk.length,
+        this.logger.error(
+          `Failed to remove ${chunk.length} items from collection ${collectionId}`,
           error,
         );
         failedIds.push(...chunk);

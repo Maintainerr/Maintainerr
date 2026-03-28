@@ -55,7 +55,7 @@ const LogSettingsForm = () => {
     try {
       await PostApiHandler('/logs/settings', data)
       setIsSubmitSuccessful(true)
-    } catch (err) {
+    } catch (error) {
       setSaveError(true)
     }
   }

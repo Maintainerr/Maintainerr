@@ -188,10 +188,10 @@ export class CollectionWorkerService extends TaskBase {
               this.infoLogger(
                 `All collections handled. Triggered Seerr's availability-sync because media was altered`,
               );
-            } catch (err) {
+            } catch (error) {
               this.logger.error(
                 `Failed to trigger Seerr's availability-sync`,
-                err,
+                error,
               );
             }
           });
@@ -208,9 +208,9 @@ export class CollectionWorkerService extends TaskBase {
           await this.collectionsService.updateCollectionTotalSize(
             collection.id,
           );
-        } catch (e) {
+        } catch (error) {
           this.logger.debug(
-            `Failed to update size for collection '${collection.title}': ${e.message}`,
+            `Failed to update size for collection '${collection.title}': ${error.message}`,
           );
         }
       }

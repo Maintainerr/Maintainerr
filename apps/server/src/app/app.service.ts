@@ -40,8 +40,8 @@ export class AppService {
           versionTag,
         ),
       };
-    } catch (err) {
-      this.logger.error(`Couldn't fetch app version status`, err);
+    } catch (error) {
+      this.logger.error(`Couldn't fetch app version status`, error);
       return {
         status: 0,
         version: '0.0.1',

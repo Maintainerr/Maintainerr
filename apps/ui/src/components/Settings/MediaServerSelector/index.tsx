@@ -89,10 +89,10 @@ const MediaServerSelector = ({
         setPendingType(null)
         // Navigate to the new media server's settings page
         navigate(`/settings/${type}`, { replace: true })
-      } catch (err) {
+      } catch (error) {
         void logClientError(
           'Failed to set media server',
-          err,
+          error,
           'Settings.MediaServerSelector.handleServerChange',
         )
         toast.error('Failed to set media server. Check logs for details.')
@@ -106,7 +106,7 @@ const MediaServerSelector = ({
       const preview = await previewSwitch(type)
       setPreviewData(preview)
       setShowConfirmModal(true)
-    } catch (err) {
+    } catch (error) {
       toast.error('Failed to preview switch')
       setPendingType(null)
     }
@@ -128,10 +128,10 @@ const MediaServerSelector = ({
       } else {
         setIsSwitchComplete(true)
       }
-    } catch (err: any) {
+    } catch (error: any) {
       const message =
-        err?.response?.data?.message ||
-        err?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
         'Failed to switch media server'
       setSwitchError(message)
     }

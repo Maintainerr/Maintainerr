@@ -140,9 +140,9 @@ export class TautulliApiService {
         },
       );
       return response;
-    } catch (e) {
-      this.logger.log(`Couldn't fetch Tautulli info: ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli info");
+      this.logger.debug("Couldn't fetch Tautulli info", error);
       return null;
     }
   }
@@ -168,11 +168,9 @@ export class TautulliApiService {
       }
 
       return response.response.data;
-    } catch (e) {
-      this.logger.log(
-        `Couldn't fetch Tautulli paginated history: ${e.message}`,
-      );
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli paginated history");
+      this.logger.debug("Couldn't fetch Tautulli paginated history", error);
       return null;
     }
   }
@@ -222,9 +220,9 @@ export class TautulliApiService {
       }
 
       return results;
-    } catch (e) {
-      this.logger.log(`Couldn't fetch Tautulli history: ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli history");
+      this.logger.debug("Couldn't fetch Tautulli history", error);
       return null;
     }
   }
@@ -245,9 +243,9 @@ export class TautulliApiService {
       }
 
       return response.response.data;
-    } catch (e) {
-      this.logger.log(`Couldn't fetch Tautulli metadata: ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli metadata");
+      this.logger.debug("Couldn't fetch Tautulli metadata", error);
       return null;
     }
   }
@@ -273,11 +271,9 @@ export class TautulliApiService {
       }
 
       return response.response.data.children_list;
-    } catch (e) {
-      this.logger.log(
-        `Couldn't fetch Tautulli children metadata: ${e.message}`,
-      );
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli children metadata");
+      this.logger.debug("Couldn't fetch Tautulli children metadata", error);
       return null;
     }
   }
@@ -295,9 +291,9 @@ export class TautulliApiService {
       }
 
       return response.response.data;
-    } catch (e) {
-      this.logger.log(`Couldn't fetch Tautulli users: ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli users");
+      this.logger.debug("Couldn't fetch Tautulli users", error);
       return null;
     }
   }
@@ -347,12 +343,12 @@ export class TautulliApiService {
           message: response.data.response.data.tautulli_version,
         };
       }
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Tautulli', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Tautulli', error);
 
-      if (e instanceof AxiosError) {
-        if (e.response?.status === 400) {
-          const data = e.response.data as Response<unknown>;
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 400) {
+          const data = error.response.data as Response<unknown>;
 
           // Surface a Tautulli looking response to the user
           if (data.response?.message && data.response?.result === 'error') {
@@ -369,7 +365,7 @@ export class TautulliApiService {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Tautulli. Verify URL and API key.',
         ),
       };

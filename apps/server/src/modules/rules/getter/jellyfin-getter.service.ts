@@ -425,9 +425,9 @@ export class JellyfinGetterService {
           return null;
         }
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `Jellyfin-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e instanceof Error ? e.message : String(e)}`,
+        `Jellyfin-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${error instanceof Error ? error.message : String(error)}`,
       );
       return undefined;
     }

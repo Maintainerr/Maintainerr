@@ -1,5 +1,5 @@
-import { MaintainerrLogger } from '../../../logging/logs.service';
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   SonarrEpisode,
@@ -34,9 +34,9 @@ export class SonarrApi extends ServarrApi<{
       const response = await this.get<SonarrSeries[]>('/series');
 
       return response;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve series: ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve series');
+      this.logger.debug(error);
     }
   }
 
@@ -55,11 +55,12 @@ export class SonarrApi extends ServarrApi<{
       return episodeNumbers
         ? response.filter((el) => episodeNumbers.includes(el.episodeNumber))
         : response;
-    } catch (e) {
-      this.logger.warn(
-        `Failed to retrieve show ${seriesID}'s episodes ${episodeNumbers.join(', ')}: ${e.message}`,
-      );
-      this.logger.debug(e);
+    } catch (error) {
+      const episodeList = episodeNumbers?.join(', ');
+      const message = `Failed to retrieve show ${seriesID}'s episodes${episodeList ? ` ${episodeList}` : ''}`;
+
+      this.logger.warn(message);
+      this.logger.debug(error);
     }
   }
   public async getEpisodeFile(
@@ -71,11 +72,9 @@ export class SonarrApi extends ServarrApi<{
       );
 
       return response;
-    } catch (e) {
-      this.logger.warn(
-        `Failed to retrieve episode file id ${episodeFileId}: ${e.message}`,
-      );
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn(`Failed to retrieve episode file id ${episodeFileId}`);
+      this.logger.debug(error);
     }
   }
 
@@ -92,11 +91,9 @@ export class SonarrApi extends ServarrApi<{
       }
 
       return response;
-    } catch (e) {
-      this.logger.warn(
-        `Error retrieving series by series title '${title}': ${e.message}`,
-      );
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn(`Error retrieving series by series title '${title}'`);
+      this.logger.debug(error);
     }
   }
 
@@ -110,9 +107,9 @@ export class SonarrApi extends ServarrApi<{
       }
 
       return response[0];
-    } catch (e) {
-      this.logger.warn(`Error retrieving show by tvdb ID ${id}. ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn(`Error retrieving show by tvdb ID ${id}`);
+      this.logger.debug(error);
     }
   }
 
@@ -127,11 +124,11 @@ export class SonarrApi extends ServarrApi<{
 
     try {
       await this.runCommand('SeriesSearch', { seriesId });
-    } catch (e) {
+    } catch (error) {
       this.logger.log(
-        `Something went wrong while executing Sonarr series search for series Id ${seriesId}: ${e.message}`,
+        `Something went wrong while executing Sonarr series search for series Id ${seriesId}`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -145,11 +142,11 @@ export class SonarrApi extends ServarrApi<{
       await this.runDelete(
         `series/${seriesId}?deleteFiles=${deleteFiles}&addImportListExclusion=${importListExclusion}`,
       );
-    } catch (e) {
+    } catch (error) {
       this.logger.log(
-        `Couldn't delete show by ID ${seriesId}. Does it exist in Sonarr? ${e.message}`,
+        `Couldn't delete show by ID ${seriesId}. Does it exist in Sonarr?`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -182,11 +179,11 @@ export class SonarrApi extends ServarrApi<{
           await this.runDelete(`episodefile/${e.episodeFileId}`);
         }
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         `Couldn't remove/unmonitor episodes: ${episodeIds.join(', ')} for series ID: ${seriesId}`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -255,11 +252,11 @@ export class SonarrApi extends ServarrApi<{
       );
 
       return data;
-    } catch (e) {
+    } catch (error) {
       this.logger.log(
         `Couldn't unmonitor/delete seasons for series ID ${seriesId}. Does it exist in Sonarr?`,
       );
-      this.logger.debug(e);
+      this.logger.debug(error);
     }
   }
 
@@ -296,9 +293,9 @@ export class SonarrApi extends ServarrApi<{
         })
       ).data;
       return info ? info : null;
-    } catch (e) {
+    } catch (error) {
       this.logger.warn("Couldn't fetch Sonarr info.. Is Sonarr up?");
-      this.logger.debug(e);
+      this.logger.debug(error);
       return null;
     }
   }

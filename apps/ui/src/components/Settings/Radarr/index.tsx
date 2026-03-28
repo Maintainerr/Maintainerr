@@ -68,10 +68,10 @@ const RadarrSettings = () => {
           setCollectionsInUseWarning(resp.data.collectionsInUse)
         }
       })
-      .catch((err: unknown) => {
+      .catch((error: unknown) => {
         void logClientError(
           'Failed to delete Radarr setting',
-          err,
+          error,
           'Settings.Radarr.confirmedDelete',
         )
         toast.error('Failed to delete Radarr setting. Check logs for details.')

@@ -186,6 +186,7 @@ When modifying existing code, follow these specific refactoring priorities:
 - **Type Specifications**: When creating new code, specify explicit types including `undefined` when applicable, rather than relying on computed types.
 - **Any Type Elimination**: When encountering `any` types during code changes, attempt to use proper types or create specific type definitions. This includes external API requests and responses.
 - **Gradual Migration**: Incrementally improve type safety without breaking existing functionality.
+- **Logging**: In injectable server code, prefer `MaintainerrLogger` over raw Nest `Logger`. Set the context once in the constructor. For paired caught-error logs, keep `warn`/`log`/`error` messages plain and put the throwable on `logger.debug(error)`; only use `logger.error('message', error)` when the higher-level log should intentionally carry the throwable.
 
 ## External Integrations
 

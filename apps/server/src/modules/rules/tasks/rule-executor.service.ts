@@ -193,12 +193,12 @@ export class RuleExecutorService {
 
         this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
       }
-    } catch (err) {
+    } catch (error) {
       const executionBeingAborted =
-        err instanceof DOMException && err.name === 'AbortError';
+        error instanceof DOMException && error.name === 'AbortError';
 
       if (!executionBeingAborted) {
-        this.logger.error('Error running rules executor.', err);
+        this.logger.error('Error running rules executor.', error);
         this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
       } else {
         this.logger.log(`Execution of rule '${ruleGroup.name}' was aborted.`);
@@ -603,13 +603,13 @@ export class RuleExecutorService {
 
         return new Set<string>();
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw err;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
       }
 
       this.logger.warn(
-        `Exception occurred while handling rule: ${err.message}`,
+        `Exception occurred while handling rule: ${error.message}`,
       );
 
       this.eventEmitter.emit(

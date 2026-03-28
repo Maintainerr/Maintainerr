@@ -1,7 +1,10 @@
 import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../../../utils/connection-error';
+import {
+  CONNECTION_TEST_TIMEOUT_MS,
+  getErrorMessage,
+} from '../../../utils/connection-error';
 import cacheManager from '../../api/lib/cache';
 import PlexCommunityApi, {
   PlexCommunityErrorResponse,
@@ -113,10 +116,10 @@ export class PlexApiService {
           "Plex API isn't fully initialized, required settings aren't set",
         );
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         `Couldn't connect to Plex.. Please check your settings`,
-        err,
+        error,
       );
     }
   }
@@ -132,10 +135,10 @@ export class PlexApiService {
         false,
       );
       return response.MediaContainer;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -168,10 +171,10 @@ export class PlexApiService {
         }
       });
       return filteredResults;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -183,10 +186,10 @@ export class PlexApiService {
         uri: '/accounts',
       });
       return response.MediaContainer.Account;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -198,10 +201,10 @@ export class PlexApiService {
         uri: `/accounts/${id}`,
       });
       return response?.MediaContainer?.Account[0];
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -218,10 +221,10 @@ export class PlexApiService {
           (x) => x.type == 'movie' || x.type == 'show',
         ) ?? []
       );
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -242,10 +245,10 @@ export class PlexApiService {
       });
 
       return response.MediaContainer.totalSize;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -274,10 +277,10 @@ export class PlexApiService {
         totalSize: response.MediaContainer.totalSize,
         items: (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [],
       };
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -300,10 +303,10 @@ export class PlexApiService {
       });
 
       return response.MediaContainer.Metadata as PlexLibraryItem[];
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -337,10 +340,10 @@ export class PlexApiService {
       } else {
         return undefined;
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -371,10 +374,10 @@ export class PlexApiService {
       );
 
       return response.data.MediaContainer.UserState;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         "Outbound call to discover.provider.plex.tv failed. Couldn't fetch userState",
-        err,
+        error,
       );
       return undefined;
     }
@@ -384,10 +387,10 @@ export class PlexApiService {
     try {
       const response = await this.plexTvClient.getUsers();
       return response.MediaContainer.User;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         "Outbound call to plex.tv failed. Couldn't fetch users",
-        err,
+        error,
       );
       return undefined;
     }
@@ -396,10 +399,10 @@ export class PlexApiService {
   public async getOwnerDataFromPlexTv(): Promise<PlexUser> {
     try {
       return await this.plexTvClient.getUser();
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         "Outbound call to plex.tv failed. Couldn't fetch owner",
-        err,
+        error,
       );
       return undefined;
     }
@@ -412,10 +415,10 @@ export class PlexApiService {
       });
 
       return response.MediaContainer.Metadata;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -434,10 +437,10 @@ export class PlexApiService {
         )}`,
       });
       return response.MediaContainer.Metadata as PlexLibraryItem[];
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -450,10 +453,10 @@ export class PlexApiService {
           uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
         });
       return response.MediaContainer.Metadata as PlexSeenBy[];
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -471,10 +474,10 @@ export class PlexApiService {
         .Metadata as PlexCollection[];
 
       return collection;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -512,10 +515,10 @@ export class PlexApiService {
       }
 
       return filteredItems;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -529,10 +532,10 @@ export class PlexApiService {
       this.logger.log(
         `[Plex] Removed media with ID ${plexId} from Plex library.`,
       );
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         `Something went wrong while removing media ${plexId} from Plex.`,
-        e,
+        error,
       );
     }
   }
@@ -554,10 +557,10 @@ export class PlexApiService {
       ) as PlexCollection;
 
       return collection;
-    } catch (err) {
+    } catch (error) {
       this.logger.debug(
         `Couldn't find collection with id ${+collectionId}`,
-        err,
+        error,
       );
       return undefined;
     }
@@ -579,10 +582,10 @@ export class PlexApiService {
         return this.updateCollection(params);
       }
       return collection;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -607,10 +610,10 @@ export class PlexApiService {
       }
       await this.plexClient.putQuery({ uri });
       return await this.getCollection(+body.collectionId);
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -623,15 +626,15 @@ export class PlexApiService {
       await this.plexClient.deleteQuery({
         uri: `/library/collections/${collectionId}`,
       });
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return {
         status: 'NOK',
         code: 0,
-        message: `Something went wrong while deleting the collection from Plex: ${err}`,
+        message: `Something went wrong while deleting the collection from Plex: ${error}`,
       };
     }
     this.logger.log('Removed collection from Plex');
@@ -661,10 +664,10 @@ export class PlexApiService {
       }
 
       return response.MediaContainer.Metadata as PlexLibraryItem[];
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -681,15 +684,18 @@ export class PlexApiService {
         uri: `/library/collections/${collectionId}/items?uri=server:\/\/${this.machineId}\/com.plexapp.plugins.library\/library\/metadata\/${childId}`,
       });
       return response.MediaContainer.Metadata[0] as PlexCollection;
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        e,
+        error,
       );
       return {
         status: 'NOK',
         code: 0,
-        message: e,
+        message: getErrorMessage(
+          error,
+          'Plex api communication failure.. Is the application running?',
+        ),
       } as BasicResponseDto;
     }
   }
@@ -707,15 +713,18 @@ export class PlexApiService {
         code: 1,
         message: `successfully deleted child with id ${childId}`,
       } as BasicResponseDto;
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        e,
+        error,
       );
       return {
         status: 'NOK',
         code: 0,
-        message: e.message,
+        message: getErrorMessage(
+          error,
+          'Plex api communication failure.. Is the application running?',
+        ),
       } as BasicResponseDto;
     }
   }
@@ -730,10 +739,10 @@ export class PlexApiService {
         }&promotedToRecommended=${+params.recommended}&promotedToOwnHome=${+params.ownHome}&promotedToSharedHome=${+params.sharedHome}`,
       });
       return response.MediaContainer.Hub[0] as PlexHub;
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }
@@ -791,11 +800,11 @@ export class PlexApiService {
         );
       }
       return devices;
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         'Plex api communication failure.. Is the application running?',
+        error,
       );
-      this.logger.debug(e);
       return [];
     }
   }
@@ -862,11 +871,11 @@ export class PlexApiService {
         }
       }
       return result;
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
         `Failure while fetching watchlist of user ${userId} (${username})`,
+        error,
       );
-      this.logger.debug(e);
     }
   }
 
@@ -1064,10 +1073,10 @@ export class PlexApiService {
         this.logger.warn("Couldn't reach Plex");
         return null;
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
-        err,
+        error,
       );
       return undefined;
     }

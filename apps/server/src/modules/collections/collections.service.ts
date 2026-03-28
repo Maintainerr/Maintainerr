@@ -80,6 +80,16 @@ export class CollectionsService {
     return this.mediaServerFactory.getService();
   }
 
+  private warnWithDebug(message: string, error: unknown): void {
+    this.logger.warn(message);
+    this.logger.debug(error);
+  }
+
+  private errorWithDebug(message: string, error: unknown): void {
+    this.logger.error(message);
+    this.logger.debug(error);
+  }
+
   /**
    * Get the currently configured media server type
    */
@@ -94,11 +104,11 @@ export class CollectionsService {
       } else {
         return await this.collectionRepo.findOne({ where: { id: id } });
       }
-    } catch (err) {
-      this.logger.warn(
-        `An error occurred while performing collection actions: ${err.message}`,
+    } catch (error) {
+      this.warnWithDebug(
+        'An error occurred while performing collection actions',
+        error,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -108,9 +118,9 @@ export class CollectionsService {
       return await this.CollectionMediaRepo.find({
         where: { collectionId: id },
       });
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
-        'An error occurred while performing collection actions: ' + err,
+        'An error occurred while performing collection actions: ' + error,
       );
       return undefined;
     }
@@ -184,9 +194,9 @@ export class CollectionsService {
         totalSize: itemCount,
         items: entitiesWithMediaData ?? [],
       };
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
-        'An error occurred while performing collection actions: ' + err,
+        'An error occurred while performing collection actions: ' + error,
       );
       return undefined;
     }
@@ -296,9 +306,9 @@ export class CollectionsService {
         totalSize: itemCount,
         items: entities ?? [],
       };
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
-        'An error occurred while performing collection actions: ' + err,
+        'An error occurred while performing collection actions: ' + error,
       );
       return undefined;
     }
@@ -327,11 +337,11 @@ export class CollectionsService {
           };
         }),
       );
-    } catch (err) {
-      this.logger.warn(
+    } catch (error) {
+      this.warnWithDebug(
         'An error occurred while performing collection actions.',
+        error,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -339,9 +349,11 @@ export class CollectionsService {
   async getAllCollections() {
     try {
       return await this.collectionRepo.find();
-    } catch (err) {
-      this.logger.warn('An error occurred while fetching collections.');
-      this.logger.debug(err);
+    } catch (error) {
+      this.warnWithDebug(
+        'An error occurred while fetching collections.',
+        error,
+      );
       return [];
     }
   }
@@ -423,11 +435,11 @@ export class CollectionsService {
           collection.mediaServerId ? collection.mediaServerId : undefined,
         );
       return { dbCollection: collectionDb };
-    } catch (err) {
-      this.logger.error(
-        `An error occurred while creating or fetching a collection: ${err}`,
+    } catch (error) {
+      this.errorWithDebug(
+        'An error occurred while creating or fetching a collection',
+        error,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -459,9 +471,13 @@ export class CollectionsService {
       }
 
       return createdCollection;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
+      );
+      this.logger.debug(
+        'An error occurred while performing collection actions.',
+        error,
       );
       return undefined;
     }
@@ -559,9 +575,9 @@ export class CollectionsService {
       );
 
       return { dbCollection: dbResp };
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
-        `An error occurred while performing collection actions: ${err.message || err}`,
+        `An error occurred while performing collection actions: ${error.message || error}`,
       );
       await this.addLogRecord(
         { id: collection.id } as Collection,
@@ -882,11 +898,11 @@ export class CollectionsService {
       } else {
         this.logger.warn("Collection doesn't exist.");
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
+        error,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -962,9 +978,9 @@ export class CollectionsService {
               ...collection,
               mediaServerId: null,
             });
-          } catch (err) {
+          } catch (error) {
             this.logger.warn(
-              `Failed to delete collection from media server: ${err.message}`,
+              `Failed to delete collection from media server: ${error.message}`,
             );
           }
         }
@@ -973,11 +989,11 @@ export class CollectionsService {
       this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
       return collection;
-    } catch (err) {
-      this.logger.warn(
+    } catch (error) {
+      this.warnWithDebug(
         `An error occurred while removing media from collection with internal id ${collectionDbId}`,
+        error,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -989,9 +1005,9 @@ export class CollectionsService {
         await this.removeFromCollection(collection.id, media);
       }
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `An error occurred while removing media from all collections : ${e}`,
+        `An error occurred while removing media from all collections : ${error}`,
       );
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
@@ -1016,14 +1032,14 @@ export class CollectionsService {
       if (collection.mediaServerId && !collection.manualCollection) {
         try {
           await mediaServer.deleteCollection(collection.mediaServerId);
-        } catch (err) {
+        } catch (error) {
           this.logger.warn(
-            `Failed to delete collection from media server: ${err.message}`,
+            `Failed to delete collection from media server: ${error.message}`,
           );
         }
       }
       return await this.RemoveCollectionFromDB(collection);
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
       );
@@ -1041,9 +1057,9 @@ export class CollectionsService {
       if (!collection.manualCollection && collection.mediaServerId) {
         try {
           await mediaServer.deleteCollection(collection.mediaServerId);
-        } catch (err) {
+        } catch (error) {
           this.logger.warn(
-            `Failed to delete collection from media server: ${err.message}`,
+            `Failed to delete collection from media server: ${error.message}`,
           );
         }
       }
@@ -1072,7 +1088,7 @@ export class CollectionsService {
           isActive: false,
         });
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
       );
@@ -1108,7 +1124,7 @@ export class CollectionsService {
           isActive: true,
         });
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
       );
@@ -1186,9 +1202,9 @@ export class CollectionsService {
           'add',
           childMedia.reason,
         );
-      } catch (err) {
+      } catch (error) {
         this.logger.warn(
-          `Couldn't add media ${childMedia.mediaServerId} to collection: ${err.message}`,
+          `Couldn't add media ${childMedia.mediaServerId} to collection: ${error.message}`,
         );
 
         try {
@@ -1279,9 +1295,9 @@ export class CollectionsService {
           childMedia.reason,
         );
         removedItemIds.push(childMedia.mediaServerId);
-      } catch (err) {
+      } catch (error) {
         this.logger.warn(
-          `Couldn't remove media ${childMedia.mediaServerId} from collection: ${err.message}`,
+          `Couldn't remove media ${childMedia.mediaServerId} from collection: ${error.message}`,
         );
       }
     }
@@ -1352,10 +1368,10 @@ export class CollectionsService {
         ECollectionLogType.COLLECTION,
       );
       return dbCol;
-    } catch (err) {
-      this.logger.error(
+    } catch (error) {
+      this.errorWithDebug(
         `Something went wrong creating the collection in the database..`,
-        err,
+        error,
       );
       return undefined;
     }
@@ -1377,10 +1393,10 @@ export class CollectionsService {
       );
 
       return { status: 'OK', code: 1, message: 'Success' };
-    } catch (err) {
-      this.logger.error(
+    } catch (error) {
+      this.errorWithDebug(
         `Something went wrong deleting the collection from the database..`,
-        err,
+        error,
       );
       return { status: 'NOK', code: 0, message: 'Removing from DB failed' };
     }
@@ -1410,11 +1426,11 @@ export class CollectionsService {
         });
         return found;
       }
-    } catch (err) {
-      this.logger.warn(
+    } catch (error) {
+      this.warnWithDebug(
         'An error occurred while searching for a specific collection.',
+        error,
       );
-      this.logger.debug(err);
       return undefined;
     }
   }
@@ -1538,11 +1554,11 @@ export class CollectionsService {
           );
         }
       }
-    } catch (e) {
-      this.logger.warn(
+    } catch (error) {
+      this.warnWithDebug(
         `An error occurred while removing old collection logs for collection '${collection?.title}'`,
+        error,
       );
-      this.logger.debug(e);
     }
   }
 
@@ -1595,9 +1611,9 @@ export class CollectionsService {
               hasAnySize = true;
             }
           }
-        } catch (e) {
+        } catch (error) {
           this.logger.debug(
-            `Failed to get size for media ${media.mediaServerId}: ${e.message}`,
+            `Failed to get size for media ${media.mediaServerId}: ${error.message}`,
           );
         }
       }
@@ -1605,9 +1621,9 @@ export class CollectionsService {
       await this.collectionRepo.update(collectionId, {
         totalSizeBytes: hasAnySize ? totalBytes : null,
       });
-    } catch (e) {
+    } catch (error) {
       this.logger.debug(
-        `Failed to update total size for collection ${collectionId}: ${e.message}`,
+        `Failed to update total size for collection ${collectionId}: ${error.message}`,
       );
     }
   }

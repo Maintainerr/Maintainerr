@@ -8,6 +8,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
 import { DataSource, Repository } from 'typeorm';
+import { getErrorMessage } from '../../utils/connection-error';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
@@ -169,9 +170,19 @@ export class NotificationService {
       // reset & reload notification agents
       await this.registerConfiguredAgents(true);
       return { code: 1, status: 'OK', message: 'Success' };
-    } catch (err) {
-      this.logger.error('Adding a new notification configuration failed', err);
-      return { code: 0, status: 'NOK', message: err };
+    } catch (error) {
+      this.logger.error(
+        'Adding a new notification configuration failed',
+        error,
+      );
+      return {
+        code: 0,
+        status: 'NOK',
+        message: getErrorMessage(
+          error,
+          'Failed to add notification configuration',
+        ),
+      };
     }
   }
 
@@ -197,12 +208,18 @@ export class NotificationService {
       }
       this.logger.warn('Connecting the notification configuration failed');
       return { code: 0, result: 'failed' };
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Connecting the notification configuration failed',
-        err,
+        error,
       );
-      return { code: 0, result: err };
+      return {
+        code: 0,
+        result: getErrorMessage(
+          error,
+          'Failed to connect notification configuration',
+        ),
+      };
     }
   }
 
@@ -228,12 +245,18 @@ export class NotificationService {
       }
 
       return { code: 0, result: 'failed' };
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
         'Disconnecting the notification configuration failed',
-        err,
+        error,
       );
-      return { code: 0, result: err };
+      return {
+        code: 0,
+        result: getErrorMessage(
+          error,
+          'Failed to disconnect notification configuration',
+        ),
+      };
     }
   }
 
@@ -253,8 +276,8 @@ export class NotificationService {
       }
 
       return await this.notificationRepo.find();
-    } catch (err) {
-      this.logger.error('Fetching Notification configurations failed', err);
+    } catch (error) {
+      this.logger.error('Fetching Notification configurations failed', error);
     }
   }
 
@@ -412,9 +435,15 @@ export class NotificationService {
       await this.registerConfiguredAgents(true);
 
       return { code: 1, result: 'success' };
-    } catch (err) {
-      this.logger.error('Notification configuration removal failed', err);
-      return { code: 0, result: err };
+    } catch (error) {
+      this.logger.error('Notification configuration removal failed', error);
+      return {
+        code: 0,
+        result: getErrorMessage(
+          error,
+          'Failed to remove notification configuration',
+        ),
+      };
     }
   }
 
@@ -818,8 +847,8 @@ export class NotificationService {
           : message;
 
       return message;
-    } catch (e) {
-      this.logger.error("Couldn't transform notification message", e);
+    } catch (error) {
+      this.logger.error("Couldn't transform notification message", error);
     }
   }
 

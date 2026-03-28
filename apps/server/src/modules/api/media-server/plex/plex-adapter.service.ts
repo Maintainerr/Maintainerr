@@ -16,7 +16,8 @@ import {
   UpdateCollectionParams,
   WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { supportsFeature } from '../media-server.constants';
@@ -32,12 +33,13 @@ import { PlexMapper } from './plex.mapper';
  */
 @Injectable()
 export class PlexAdapterService implements IMediaServerService {
-  private readonly logger = new Logger(PlexAdapterService.name);
-
   constructor(
     @Inject(forwardRef(() => PlexApiService))
     private readonly plexApi: PlexApiService,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(PlexAdapterService.name);
+  }
 
   async initialize(): Promise<void> {
     await this.plexApi.initialize();

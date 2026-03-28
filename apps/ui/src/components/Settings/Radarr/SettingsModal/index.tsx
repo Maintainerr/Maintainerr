@@ -190,11 +190,11 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
           })
         }
       })
-      .catch((err: unknown) => {
+      .catch((error: unknown) => {
         setTestResult({
           status: false,
           version: getApiErrorMessage(
-            err,
+            error,
             'Failed to connect to Radarr. Verify URL and API key.',
           ),
         })

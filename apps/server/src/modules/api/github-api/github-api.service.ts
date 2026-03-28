@@ -99,9 +99,9 @@ export class GitHubApiService {
       this.cache?.data.set(cacheKey, release);
 
       return release;
-    } catch (err) {
+    } catch (error) {
       this.logger.debug(
-        `Failed to fetch latest release for ${owner}/${repo}: ${err.message}`,
+        `Failed to fetch latest release for ${owner}/${repo}: ${error.message}`,
       );
       return undefined;
     }
@@ -136,9 +136,9 @@ export class GitHubApiService {
       this.cache?.data.set(cacheKey, commit);
 
       return commit;
-    } catch (err) {
+    } catch (error) {
       this.logger.debug(
-        `Failed to fetch commit ${ref} for ${owner}/${repo}: ${err.message}`,
+        `Failed to fetch commit ${ref} for ${owner}/${repo}: ${error.message}`,
       );
       return undefined;
     }
@@ -173,9 +173,9 @@ export class GitHubApiService {
       this.cache?.data.set(cacheKey, releases);
 
       return releases;
-    } catch (err) {
+    } catch (error) {
       this.logger.debug(
-        `Failed to fetch releases for ${owner}/${repo}: ${err.message}`,
+        `Failed to fetch releases for ${owner}/${repo}: ${error.message}`,
       );
       return undefined;
     }

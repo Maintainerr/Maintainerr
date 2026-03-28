@@ -64,7 +64,7 @@ function createDataDirectoryStructure() {
     if (fs.existsSync(db)) {
       fs.accessSync(db, fs.constants.R_OK | fs.constants.W_OK);
     }
-  } catch (err) {
+  } catch (error) {
     console.warn(
       `THE CONTAINER NO LONGER OPERATES WITH PRIVILEGED USER PERMISSIONS. PLEASE UPDATE YOUR CONFIGURATION ACCORDINGLY: https://github.com/Maintainerr/Maintainerr/releases/tag/v2.0.0`,
     );

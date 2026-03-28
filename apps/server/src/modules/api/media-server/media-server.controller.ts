@@ -18,7 +18,6 @@ import {
   Controller,
   Delete,
   Get,
-  Logger,
   Param,
   ParseIntPipe,
   Post,
@@ -26,6 +25,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaServerSetupGuard } from './guards';
 import { MediaServerFactory } from './media-server.factory';
 import { IMediaServerService } from './media-server.interface';
@@ -41,9 +41,12 @@ import { IMediaServerService } from './media-server.interface';
 @Controller('api/media-server')
 @UseGuards(MediaServerSetupGuard)
 export class MediaServerController {
-  private readonly logger = new Logger(MediaServerController.name);
-
-  constructor(private readonly mediaServerFactory: MediaServerFactory) {}
+  constructor(
+    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(MediaServerController.name);
+  }
 
   private async attachParentMetadata(
     items: MediaItem[],
