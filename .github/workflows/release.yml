@@ -20,6 +20,7 @@ env:
 jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
+    permissions: {}
     with:
       is_manual: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
@@ -29,6 +30,7 @@ jobs:
     name: Guard release branch
     needs: guard_manual_run
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Ensure release was started from main
         run: |

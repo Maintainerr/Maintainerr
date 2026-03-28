@@ -52,6 +52,40 @@ describe('logFormatting', () => {
     });
   });
 
+  it('masks IPv4 addresses keeping first and last octet', () => {
+    expect(
+      sanitizeLogValue('GET http://192.168.1.100:32400/library failed'),
+    ).toBe('GET http://192.***.***.100:32400/library failed');
+
+    expect(sanitizeLogValue('Connected to 10.0.0.1 successfully')).toBe(
+      'Connected to 10.***.***.1 successfully',
+    );
+  });
+
+  it('masks plex.direct hostnames using first/last 3 chars', () => {
+    expect(
+      sanitizeLogValue(
+        'GET http://192-168-1-100.abc123def456.plex.direct:32400/library failed',
+      ),
+    ).toBe('GET http://192...456.plex.direct:32400/library failed');
+
+    expect(sanitizeLogValue('host: abc.plex.direct')).toBe(
+      'host: ****.plex.direct',
+    );
+
+    expect(sanitizeLogValue('host:abc.plex.direct,')).toBe(
+      'host:****.plex.direct,',
+    );
+
+    expect(sanitizeLogValue('host=(abc.plex.direct)')).toBe(
+      'host=(****.plex.direct)',
+    );
+
+    expect(sanitizeLogValue('host=abc.plex.directory')).toBe(
+      'host=abc.plex.directory',
+    );
+  });
+
   it('formats message with stack trace', () => {
     const result = formatLogMessage('Request failed', [
       'Error: something went wrong',

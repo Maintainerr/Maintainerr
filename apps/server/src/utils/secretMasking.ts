@@ -7,6 +7,7 @@ const SENSITIVE_PARAM_KEYS = [
   'api_key',
   'apikey',
   'x-api-key',
+  'x-plex-token',
   'token',
   'auth_token',
   'access_token',
@@ -36,6 +37,9 @@ const isIdentifierCharacter = (character: string | undefined): boolean => {
     character === '-'
   );
 };
+
+const isHostnameCharacter = (character: string | undefined): boolean =>
+  character === '.' || isIdentifierCharacter(character);
 
 const replaceRange = (
   value: string,
@@ -251,6 +255,118 @@ const sanitizePathSegmentValues = (value: string, segment: string): string => {
   return sanitized;
 };
 
+const readIPv4Octet = (
+  value: string,
+  startIndex: number,
+): { valid: boolean; endIndex: number } => {
+  let cursor = startIndex;
+  while (cursor < value.length && value[cursor] >= '0' && value[cursor] <= '9') {
+    cursor++;
+  }
+  const digits = cursor - startIndex;
+  if (digits === 0 || digits > 3) return { valid: false, endIndex: cursor };
+  const num = parseInt(value.slice(startIndex, cursor), 10);
+  return { valid: num <= 255, endIndex: cursor };
+};
+
+const sanitizeIPv4Addresses = (value: string): string => {
+  let sanitized = value;
+  let i = 0;
+
+  while (i < sanitized.length) {
+    if (sanitized[i] < '0' || sanitized[i] > '9') {
+      i++;
+      continue;
+    }
+
+    const before = sanitized[i - 1];
+    if (before !== undefined && (isIdentifierCharacter(before) || before === '.')) {
+      i++;
+      continue;
+    }
+
+    let cursor = i;
+    let valid = true;
+    const octetBounds: Array<{ start: number; end: number }> = [];
+
+    for (let octet = 0; octet < 4 && valid; octet++) {
+      if (octet > 0) {
+        if (sanitized[cursor] !== '.') {
+          valid = false;
+          break;
+        }
+        cursor++;
+      }
+      const start = cursor;
+      const result = readIPv4Octet(sanitized, cursor);
+      if (!result.valid) {
+        valid = false;
+        break;
+      }
+      octetBounds.push({ start, end: result.endIndex });
+      cursor = result.endIndex;
+    }
+
+    const after = sanitized[cursor];
+    const atBoundary =
+      after === undefined ||
+      (after !== '.' && (after < '0' || after > '9'));
+
+    if (valid && atBoundary && octetBounds.length === 4) {
+      const octet1 = sanitized.slice(octetBounds[0].start, octetBounds[0].end);
+      const octet4 = sanitized.slice(octetBounds[3].start, octetBounds[3].end);
+      const masked = octet1 + '.' + '***' + '.' + '***' + '.' + octet4;
+      sanitized = replaceRange(sanitized, i, cursor, masked);
+      i += masked.length;
+    } else {
+      i++;
+    }
+  }
+
+  return sanitized;
+};
+
+const sanitizePlexDirectHostnames = (value: string): string => {
+  const PLEX_DIRECT_SUFFIX = '.plex.direct';
+  let sanitized = value;
+  let lower = sanitized.toLowerCase();
+  let searchIndex = 0;
+
+  while (searchIndex < sanitized.length) {
+    const suffixIndex = lower.indexOf(PLEX_DIRECT_SUFFIX, searchIndex);
+    if (suffixIndex === -1) return sanitized;
+
+    const suffixEnd = suffixIndex + PLEX_DIRECT_SUFFIX.length;
+    if (isHostnameCharacter(sanitized[suffixEnd])) {
+      searchIndex = suffixEnd;
+      continue;
+    }
+
+    let hostStart = suffixIndex;
+    while (hostStart > 0 && isHostnameCharacter(sanitized[hostStart - 1])) {
+      hostStart--;
+    }
+
+    const prefix = sanitized.slice(hostStart, suffixIndex);
+    if (prefix.length === 0) {
+      searchIndex = suffixEnd;
+      continue;
+    }
+
+    const masked = maskSecretString(prefix) + PLEX_DIRECT_SUFFIX;
+    sanitized = replaceRange(
+      sanitized,
+      hostStart,
+      suffixEnd,
+      masked,
+    );
+    lower = sanitized.toLowerCase();
+    searchIndex = hostStart + masked.length;
+  }
+
+  return sanitized;
+};
+
 export const maskSecret = sharedMaskSecret;
 
 export const maskSecretString = sharedMaskSecretString;
@@ -331,6 +447,8 @@ const sanitizeSecretValueInternal = (
 
 export const sanitizeSecretString = (value: string): string => {
   let sanitized = sanitizeAuthorizationValues(value);
+  sanitized = sanitizeIPv4Addresses(sanitized);
+  sanitized = sanitizePlexDirectHostnames(sanitized);
 
   for (const key of SENSITIVE_PARAM_KEYS) {
     sanitized = sanitizeQueryParameterValues(sanitized, key);
