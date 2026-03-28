@@ -48,6 +48,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         ['show', 'season', 'episode'].includes(mediaType) ? 'tv' : mediaType,
       [mediaType],
     )
+    const resolvedBackdrop = tmdbid ? backdrop : null
 
     const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
@@ -85,7 +86,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           `No TMDB ID found for "${title}" (id: ${id}). Backdrop image unavailable. ` +
             'Please check your media server metadata - the item may not be matched correctly.',
         )
-        setBackdrop(null)
       }
     }, [id, mediaType, tmdbid, title])
 
@@ -110,8 +110,8 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
               style={{
-                backgroundImage: backdrop
-                  ? `url(https://image.tmdb.org/t/p/w1280${backdrop})`
+                backgroundImage: resolvedBackdrop
+                  ? `url(https://image.tmdb.org/t/p/w1280${resolvedBackdrop})`
                   : 'linear-gradient(to bottom, #1e293b, #1e293b)',
               }}
             ></div>

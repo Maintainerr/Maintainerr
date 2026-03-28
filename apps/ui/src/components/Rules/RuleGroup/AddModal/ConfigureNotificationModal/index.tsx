@@ -26,7 +26,7 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
         setIsloading(false)
       },
     )
-  }, [])
+  }, [props.selectedAgents])
 
   return (
     <Modal

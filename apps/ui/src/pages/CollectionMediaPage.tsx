@@ -1,6 +1,6 @@
 import { type MediaItem } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { ICollection, ICollectionMedia } from '../components/Collection'
 import OverviewContent from '../components/Overview/Content'
@@ -38,27 +38,7 @@ const CollectionMediaPage = () => {
     setIsLoadingExtra(value)
   }
 
-  useEffect(() => {
-    // Initial first fetch
-    setPage(1)
-  }, [])
-
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.scrollHeight * 0.9
-    ) {
-      if (
-        !loadingRef.current &&
-        !loadingExtraRef.current &&
-        !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-      ) {
-        setPage(pageData.current + 1)
-      }
-    }
-  }
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!loadingRef.current) {
       setLoadingExtra(true)
     }
@@ -85,14 +65,50 @@ const CollectionMediaPage = () => {
       setLoading(false)
       setLoadingExtra(false)
     }
-  }
+  }, [id])
+
+  const loadInitialPage = useEffectEvent(() => {
+    setPage(1)
+  })
+
+  const handleScroll = useEffectEvent(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.scrollHeight * 0.9 &&
+      !loadingRef.current &&
+      !loadingExtraRef.current &&
+      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
+    ) {
+      setPage(pageData.current + 1)
+    }
+  })
+
+  const loadCurrentPage = useEffectEvent((currentPage: number) => {
+    if (currentPage !== 0) {
+      pageData.current = pageData.current + 1
+      void fetchData()
+    }
+  })
+
+  const fillViewportIfNeeded = useEffectEvent(() => {
+    if (
+      !loadingRef.current &&
+      !loadingExtraRef.current &&
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.scrollHeight * 0.9 &&
+      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
+    ) {
+      setPage((currentPage) => currentPage + 1)
+    }
+  })
 
   useEffect(() => {
-    if (page !== 0) {
-      // Ignore initial page render
-      pageData.current = pageData.current + 1
-      fetchData()
-    }
+    // Initial first fetch
+    loadInitialPage()
+  }, [])
+
+  useEffect(() => {
+    loadCurrentPage(page)
   }, [page])
 
   useEffect(() => {
@@ -107,16 +123,7 @@ const CollectionMediaPage = () => {
   useEffect(() => {
     dataRef.current = data
 
-    // If page is not filled yet, fetch more
-    if (
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.9 &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage(page + 1)
-    }
+    fillViewportIfNeeded()
   }, [data])
 
   useEffect(() => {

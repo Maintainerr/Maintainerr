@@ -88,65 +88,88 @@ const RuleCreator = (props: iRuleCreator) => {
   const initialRuleAmount: [number, number[]] = initialSections
     ? calculateRuleAmount(props.editData, initialSections)
     : [1, [1]]
+  const initialRuleAmountArr = calculateRuleAmountArr(initialRuleAmount)
+  const initialAddedIds = initialSections ? [] : [1]
 
+  const ruleAmountRef = useRef<[number, number[]]>(initialRuleAmount)
   const [ruleAmount, setRuleAmount] =
     useState<[number, number[]]>(initialRuleAmount)
   const [editData, setEditData] = useState<{ rules: IRule[] } | undefined>(
     props.editData,
   )
-  const [ruleAmountArr, setRuleAmountArr] = useState<[number[], [number[]]]>(
-    calculateRuleAmountArr(initialRuleAmount),
-  )
-  const rulesCreated = useRef<IRulesToCreate[]>([])
-  const deleted = useRef<number>(0)
-  const added = useRef<number[]>(initialSections ? [] : [1])
+  const [ruleAmountArr, setRuleAmountArr] =
+    useState<[number[], [number[]]]>(initialRuleAmountArr)
+  const rulesCreatedRef = useRef<IRulesToCreate[]>([])
+  const [rulesCreated, setRulesCreated] = useState<IRulesToCreate[]>([])
+  const deletedCountRef = useRef(0)
+  const [deletedCount, setDeletedCount] = useState(0)
+  const addedIdsRef = useRef<number[]>(initialAddedIds)
+  const [addedIds, setAddedIds] = useState<number[]>(initialAddedIds)
+
+  const updateRulesCreated = (rules: IRulesToCreate[]) => {
+    rulesCreatedRef.current = rules
+    setRulesCreated(rules)
+    props.onUpdate(rules.map((entry) => entry.rule))
+  }
+
+  const updateAddedIds = (ids: number[]) => {
+    addedIdsRef.current = ids
+    setAddedIds(ids)
+  }
+
+  const updateDeletedCount = (count: number) => {
+    deletedCountRef.current = count
+    setDeletedCount(count)
+  }
+
+  const updateEditData = (data: { rules: IRule[] } | undefined) => {
+    setEditData(data)
+  }
 
   const ruleCommited = (id: number, rule: IRule) => {
-    if (rulesCreated) {
-      const rules = rulesCreated.current.filter((el) => el.id !== id)
-      const toCommit = [...rules, { id: id, rule: rule }].sort(
-        (a, b) => a.id - b.id,
-      )
-      rulesCreated.current = toCommit
-      props.onUpdate(rulesCreated.current.map((el) => el.rule))
-      added.current = added.current.filter((e) => e !== id)
-    }
+    const rules = rulesCreatedRef.current.filter((el) => el.id !== id)
+    const toCommit = [...rules, { id: id, rule: rule }].sort(
+      (a, b) => a.id - b.id,
+    )
+    updateRulesCreated(toCommit)
+    updateAddedIds(addedIdsRef.current.filter((e) => e !== id))
   }
 
   const ruleOmitted = (id: number) => {
-    if (rulesCreated) {
-      const rules = rulesCreated.current?.filter((el) => el.id !== id)
-      rulesCreated.current = [...rules]
-      props.onUpdate(rulesCreated.current.map((el) => el.rule))
-    }
+    const rules = rulesCreatedRef.current.filter((el) => el.id !== id)
+    updateRulesCreated(rules)
   }
 
   const ruleDeleted = (section = 0, id: number) => {
-    if (rulesCreated.current.length > 0) {
-      let rules = rulesCreated.current?.filter((el) => el.id !== id)
-      const section1IsEmpty = !rules.some((r) => r.rule.section === 0)
+    let nextRules = rulesCreatedRef.current.filter((el) => el.id !== id)
+    const section1IsEmpty = !nextRules.some((r) => r.rule.section === 0)
 
-      rules = rules.map((e) => {
-        e.id = e.id > id ? e.id - 1 : e.id
+    nextRules = nextRules.map((entry) => {
+      const nextEntry = {
+        ...entry,
+        id: entry.id > id ? entry.id - 1 : entry.id,
+        rule: { ...entry.rule },
+      }
 
-        if (section1IsEmpty && section === 1 && e.rule.section) {
-          e.rule.section -= 1
-        }
+      if (section1IsEmpty && section === 1 && nextEntry.rule.section) {
+        nextEntry.rule.section -= 1
+      }
 
-        return e
-      })
-      rulesCreated.current = [...rules]
-      props.onUpdate(rulesCreated.current.map((el) => el.rule))
-    }
+      return nextEntry
+    })
 
-    added.current = added.current
-      .filter((e) => e !== id)
-      .map((e) => {
-        return (e = e > id ? e - 1 : e)
-      })
-    setEditData({ rules: rulesCreated.current.map((el) => el.rule) })
+    updateRulesCreated(nextRules)
 
-    const rules = [...ruleAmount[1]]
+    updateAddedIds(
+      addedIdsRef.current
+        .filter((e) => e !== id)
+        .map((e) => {
+          return e > id ? e - 1 : e
+        }),
+    )
+    updateEditData({ rules: nextRules.map((el) => el.rule) })
+
+    const rules = [...ruleAmountRef.current[1]]
     rules[section - 1] = rules[section - 1] - 1
 
     // Find sections that still contain rules
@@ -158,44 +181,48 @@ const RuleCreator = (props: iRuleCreator) => {
       nonEmptySections.length > 0 ? nonEmptySections : [1],
     ])
 
-    deleted.current = deleted.current + 1
+    updateDeletedCount(deletedCountRef.current + 1)
   }
 
   const RuleAdded = (section: number) => {
     const ruleId =
-      ruleAmount[1].reduce((prev, cur, idx) =>
+      ruleAmountRef.current[1].reduce((prev, cur, idx) =>
         idx + 1 <= section ? prev + cur : prev,
       ) + 1
 
-    added.current = [...added.current, ruleId]
+    updateAddedIds([...addedIdsRef.current, ruleId])
 
-    rulesCreated.current.map((e) => {
-      if (e.id >= ruleId) {
-        e.id = e.id + 1
-      }
-      return e
-    })
+    updateRulesCreated(
+      rulesCreatedRef.current.map((entry) => {
+        if (entry.id >= ruleId) {
+          return { ...entry, id: entry.id + 1 }
+        }
 
-    const rules = [...ruleAmount[1]]
+        return entry
+      }),
+    )
+
+    const rules = [...ruleAmountRef.current[1]]
     rules[section - 1] = rules[section - 1] + 1
 
-    updateRuleAmount([ruleAmount[0], rules])
+    updateRuleAmount([ruleAmountRef.current[0], rules])
   }
 
   const addSection = () => {
-    const rules = [...ruleAmount[1]]
+    const rules = [...ruleAmountRef.current[1]]
     rules.push(1)
 
     const ruleId =
-      ruleAmount[1].reduce((prev, cur, idx) =>
-        idx + 1 <= ruleAmount[0] + 1 ? prev + cur : prev,
+      ruleAmountRef.current[1].reduce((prev, cur, idx) =>
+        idx + 1 <= ruleAmountRef.current[0] + 1 ? prev + cur : prev,
       ) + 1
-    added.current = [...added.current, ruleId]
+    updateAddedIds([...addedIdsRef.current, ruleId])
 
-    updateRuleAmount([ruleAmount[0] + 1, rules])
+    updateRuleAmount([ruleAmountRef.current[0] + 1, rules])
   }
 
   const updateRuleAmount = (ruleAmount: [number, number[]]) => {
+    ruleAmountRef.current = ruleAmount
     setRuleAmountArr(calculateRuleAmountArr(ruleAmount))
     setRuleAmount(ruleAmount)
   }
@@ -204,7 +231,7 @@ const RuleCreator = (props: iRuleCreator) => {
     <div className="text-zinc-100">
       {ruleAmountArr[0].map((sid) => {
         return (
-          <div key={`${sid}-${deleted.current}`} className="mb-4">
+          <div key={`${sid}-${deletedCount}`} className="mb-4">
             <div className="rounded-lg bg-zinc-700 px-6 py-0.5 shadow-md">
               <SectionHeading id={sid} name={'Section'} />
               <div className="flex flex-col space-y-2">
@@ -251,7 +278,7 @@ const RuleCreator = (props: iRuleCreator) => {
                             : undefined
                         }
                         section={sid}
-                        newlyAdded={added.current}
+                        newlyAdded={addedIds}
                         mediaType={props.mediaType}
                         dataType={props.dataType}
                         radarrSettingsId={props.radarrSettingsId}
@@ -268,7 +295,7 @@ const RuleCreator = (props: iRuleCreator) => {
                 ))}
               </div>
 
-              {added.current.length <= 0 ? (
+              {addedIds.length <= 0 ? (
                 <div className="mb-2 flex w-full justify-end">
                   <button
                     type="button"
@@ -288,7 +315,7 @@ const RuleCreator = (props: iRuleCreator) => {
         )
       })}
 
-      {added.current.length <= 0 ? (
+      {addedIds.length <= 0 ? (
         <div className="mb-3 mt-3 flex w-full">
           <div className="m-auto xl:m-0">
             <button
@@ -306,8 +333,7 @@ const RuleCreator = (props: iRuleCreator) => {
         </div>
       ) : undefined}
 
-      {rulesCreated.current.length !==
-      ruleAmount[1].reduce((pv, cv) => pv + cv) ? (
+      {rulesCreated.length !== ruleAmount[1].reduce((pv, cv) => pv + cv) ? (
         <div className="max-width-form-head mt-5">
           <Alert>{`Some incomplete rules won't be saved`} </Alert>
         </div>
