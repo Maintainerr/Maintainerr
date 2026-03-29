@@ -237,7 +237,10 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
             {`Import rules made by the community. This will override your current rules.`}
           </Alert>
         </div>
-        <SearchBar onSearch={(input) => setSearchText(input)} />
+        <SearchBar
+          onSearch={(input) => setSearchText(input)}
+          value={searchText}
+        />
         {!loading ? (
           <div className="flex flex-col">
             <div className="-mx-4 overflow-x-auto md:mx-0 lg:mx-0">

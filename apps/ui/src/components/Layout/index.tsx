@@ -111,7 +111,11 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
             >
               <ArrowLeftIcon className="w-7" />
             </button>
-            <SearchBar onSearch={handleSearch} />
+            <SearchBar
+              key={SearchCtx.search.text === '' ? 'empty' : 'active'}
+              initialValue={SearchCtx.search.text}
+              onSearch={handleSearch}
+            />
           </div>
         </div>
 

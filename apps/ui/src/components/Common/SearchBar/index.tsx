@@ -1,20 +1,22 @@
-import { ChangeEvent, useContext, useState } from 'react'
-import SearchContext from '../../../contexts/search-context'
+import { ChangeEvent, useState } from 'react'
 
 interface ISearchBar {
   placeholder?: string
+  initialValue?: string
+  value?: string
   onSearch: (input: string) => void
 }
 
 const SearchBar = (props: ISearchBar) => {
-  const { onSearch, placeholder } = props
-  const [text, setText] = useState<string>('')
-  const SearchCtx = useContext(SearchContext)
-  const displayedText = SearchCtx.search.text === '' ? '' : text
+  const { initialValue = '', onSearch, placeholder, value } = props
+  const [text, setText] = useState(initialValue)
+  const displayedValue = value ?? text
 
   const inputHandler = (e: ChangeEvent<HTMLInputElement>) => {
     const nextText = e.target.value.toLowerCase()
-    setText(nextText)
+    if (value === undefined) {
+      setText(nextText)
+    }
     onSearch(nextText)
   }
 
@@ -38,7 +40,7 @@ const SearchBar = (props: ISearchBar) => {
         type="search"
         onChange={(e) => inputHandler(e)}
         placeholder={placeholder ? placeholder : 'Search'}
-        value={displayedText}
+        value={displayedValue}
         className="block w-full rounded-full border border-zinc-600 bg-zinc-900 bg-opacity-80 py-2 pl-10 text-white placeholder-zinc-300 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0 sm:text-base"
       />
     </div>
