@@ -9,9 +9,9 @@ jobs:
     uses: ./.github/workflows/guard-manual.yml
     permissions: {}
     with:
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,enoch85"
+      source: manual workflow run
 
   close-issues:
     needs: guard_manual_run
