@@ -76,7 +76,7 @@ describe('Layout search', () => {
     expect(screen.getByTestId('search-text').textContent).toBe('')
 
     act(() => {
-      vi.advanceTimersByTime(249)
+      vi.advanceTimersByTime(999)
     })
 
     expect(screen.getByTestId('search-text').textContent).toBe('')

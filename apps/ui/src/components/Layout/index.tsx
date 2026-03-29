@@ -40,7 +40,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
     const debouncedSearch = debounce((text: string) => {
       SearchCtx.addText(text)
       navigate('/overview')
-    }, 250)
+    }, 1000)
 
     debouncedSearchRef.current = debouncedSearch
 
