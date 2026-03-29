@@ -8,6 +8,7 @@ import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import GetApiHandler from '../../utils/ApiHandler'
+import { startsWithDigit } from '../../utils/version'
 
 enum messages {
   LOCAL = 'Keep it up! 👍',
@@ -38,7 +39,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
   }, [])
 
   const tag = version?.split('-')[0] ?? ''
-  const isRelease = /^\d/.test(tag)
+  const isRelease = startsWithDigit(tag)
 
   const versionStream =
     commitTag === 'local'

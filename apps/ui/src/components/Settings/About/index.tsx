@@ -2,6 +2,7 @@ import { InformationCircleIcon } from '@heroicons/react/solid'
 import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
+import { startsWithDigit } from '../../../utils/version'
 import Releases from './Releases'
 
 const AboutSettings = () => {
@@ -26,6 +27,15 @@ const AboutSettings = () => {
     })
   }, [])
   // End Maintainerr Version
+
+  const showReleaseTag =
+    startsWithDigit(version) && commitTag !== '' && commitTag !== 'local'
+  const displayVersion =
+    commitTag === 'local'
+      ? 'local'
+      : showReleaseTag
+        ? `${version} (${commitTag})`
+        : version
 
   // Maintainerr Rules Count
   const [ruleCount, setRuleCount] = useState<number>()
@@ -94,9 +104,7 @@ const AboutSettings = () => {
             <div className="form-input">
               <div className="form-input-field">
                 <span className="">
-                  <code>
-                    {commitTag === 'local' ? 'local' : <>{version}</>}
-                  </code>
+                  <code>{displayVersion}</code>
                 </span>
               </div>
             </div>

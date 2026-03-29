@@ -150,7 +150,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             GIT_SHA=${{ github.sha }}
-            VERSION_TAG=stable
+            VERSION_TAG=latest
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=true
 

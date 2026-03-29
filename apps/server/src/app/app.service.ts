@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { GitHubApiService } from '../modules/api/github-api/github-api.service';
 import { MaintainerrLogger } from '../modules/logging/logs.service';
 
+const RELEASE_VERSION_TAGS = new Set(['latest', 'stable']);
+
 @Injectable()
 export class AppService {
   constructor(
@@ -21,20 +23,26 @@ export class AppService {
       const versionTag = process.env.VERSION_TAG
         ? process.env.VERSION_TAG
         : 'develop';
+      const gitSha = process.env.GIT_SHA;
 
-      const calculatedVersion =
-        versionTag === 'latest'
-          ? `${packageVersion}`
-          : process.env.GIT_SHA
-            ? `${versionTag}-${process.env.GIT_SHA.substring(0, 7)}`
-            : `${versionTag}-`;
+      const isReleaseBuild = RELEASE_VERSION_TAGS.has(versionTag);
+      const imageTag = gitSha
+        ? `${versionTag}-${gitSha.substring(0, 7)}`
+        : versionTag;
+
+      const calculatedVersion = isReleaseBuild
+        ? `${packageVersion}`
+        : gitSha
+          ? `${versionTag}-${gitSha.substring(0, 7)}`
+          : `${versionTag}-`;
 
       const local = process.env.NODE_ENV !== 'production';
+      const commitTag = local ? 'local' : isReleaseBuild ? imageTag : '';
 
       return {
         status: 1,
         version: calculatedVersion,
-        commitTag: `${local ? 'local' : ''}`,
+        commitTag,
         updateAvailable: await this.isUpdateAvailable(
           packageVersion,
           versionTag,
@@ -53,7 +61,7 @@ export class AppService {
   }
 
   private async isUpdateAvailable(currentVersion: string, versionTag: string) {
-    if (versionTag === 'latest') {
+    if (RELEASE_VERSION_TAGS.has(versionTag)) {
       const githubResp = await this.githubApi.getLatestRelease(
         'Maintainerr',
         'Maintainerr',
@@ -75,14 +83,16 @@ export class AppService {
       const branch = versionTag === 'main' ? 'main' : 'development';
 
       // For non-stable builds, compare the current image SHA to the tracked branch head.
-      if (process.env.GIT_SHA) {
+      const gitSha = process.env.GIT_SHA;
+
+      if (gitSha) {
         const githubResp = await this.githubApi.getCommit(
           'Maintainerr',
           'Maintainerr',
           branch,
         );
         if (githubResp && githubResp.sha) {
-          return githubResp.sha !== process.env.GIT_SHA;
+          return githubResp.sha !== gitSha;
         }
       }
     }
