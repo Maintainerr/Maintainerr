@@ -1,4 +1,4 @@
-import { maskSecret } from '../../utils/secretMasking';
+import { maskSecret, maskSecretString } from '../../utils/secretMasking';
 import {
   formatLogMessage,
   sanitizeLogInfo,
@@ -20,7 +20,7 @@ describe('logFormatting', () => {
         'myauthorization: Bearer token123 Authorization: Bearer super-secret-token, apikey=secret123 /token/abcdef123456/details token=keepmehidden',
       ),
     ).toBe(
-      'myauthorization: Bearer token123 Authorization: Bearer sup...ken, apikey=sec...123 /token/abc...456/details token=kee...den',
+      'myauthorization: Bearer tok...123 Authorization: Bearer sup...ken, apikey=sec...123 /token/abc...456/details token=kee...den',
     );
   });
 
@@ -41,7 +41,7 @@ describe('logFormatting', () => {
         [splatSymbol]: ['Authorization: Bearer super-secret-token'],
       }),
     ).toEqual({
-      message: 'POST https://example.com?api_key=abc...234 failed',
+      message: 'POST https://exa...com?ap...234 failed',
       stack: ['Authorization=Basic dGV...g=='],
       meta: {
         token: 'token=kee...den',
@@ -52,10 +52,26 @@ describe('logFormatting', () => {
     });
   });
 
-  it('masks IPv4 addresses keeping first and last octet', () => {
+  it('masks http and https URL payloads using the shared standard', () => {
     expect(
-      sanitizeLogValue('GET http://192.168.1.100:32400/library failed'),
-    ).toBe('GET http://192.***.***.100:32400/library failed');
+      sanitizeLogValue(
+        'Fetch failed for https://jelly.example.com/web/index.html',
+      ),
+    ).toBe('Fetch failed for https://jel...com/we...tml');
+
+    expect(sanitizeLogValue('Redirected to http://192.168.1.100:32400/,')).toBe(
+      'Redirected to http://192.***.***.100:32400/,',
+    );
+
+    expect(sanitizeLogValue('See (https://abc.plex.direct/details?id=1)')).toBe(
+      'See (https://****.plex.direct/de...d=1)',
+    );
+  });
+
+  it('masks IPv4 addresses keeping first and last octet', () => {
+    expect(sanitizeLogValue('Target host 192.168.1.100:32400 failed')).toBe(
+      'Target host 192.***.***.100:32400 failed',
+    );
 
     expect(sanitizeLogValue('Connected to 10.0.0.1 successfully')).toBe(
       'Connected to 10.***.***.1 successfully',
@@ -65,9 +81,9 @@ describe('logFormatting', () => {
   it('masks plex.direct hostnames using first/last 3 chars', () => {
     expect(
       sanitizeLogValue(
-        'GET http://192-168-1-100.abc123def456.plex.direct:32400/library failed',
+        'Host 192-168-1-100.abc123def456.plex.direct:32400 failed',
       ),
-    ).toBe('GET http://192...456.plex.direct:32400/library failed');
+    ).toBe('Host 192...456.plex.direct:32400 failed');
 
     expect(sanitizeLogValue('host: abc.plex.direct')).toBe(
       'host: ****.plex.direct',
@@ -84,6 +100,34 @@ describe('logFormatting', () => {
     expect(sanitizeLogValue('host=abc.plex.directory')).toBe(
       'host=abc.plex.directory',
     );
+  });
+
+  it('masks DNS resolution hosts in error messages and stacks', () => {
+    const host = 'reqFULLADDRESS';
+    const maskedHost = maskSecretString(host);
+    const error = new Error(`getaddrinfo ENOTFOUND ${host}`);
+    Object.assign(error, { code: 'ENOTFOUND' });
+
+    const sanitized = sanitizeLogValue(error) as Record<string, unknown>;
+
+    expect(sanitized.message).toBe(`getaddrinfo ENOTFOUND ${maskedHost}`);
+    expect(sanitized.stack).toContain(`getaddrinfo ENOTFOUND ${maskedHost}`);
+  });
+
+  it('preserves host structure when masking URL authorities', () => {
+    expect(sanitizeLogValue('http://1.152.99.2')).toBe('http://1.***.***.2');
+    expect(sanitizeLogValue('https://requr.domain.n')).toBe(
+      'https://req...n.n',
+    );
+    expect(sanitizeLogValue('http://[2001:db8::7334]:32400')).toBe(
+      'http://[200...334]:32400',
+    );
+  });
+
+  it('masks bracketed IPv6 hosts in DNS errors', () => {
+    expect(
+      sanitizeLogValue('Error: getaddrinfo ENOTFOUND [2001:db8::7334]'),
+    ).toBe('Error: getaddrinfo ENOTFOUND [200...334]');
   });
 
   it('formats message with stack trace', () => {
