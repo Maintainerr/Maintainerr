@@ -68,7 +68,9 @@ describe('RulesService.deleteRuleGroup', () => {
     };
 
     const collectionService = {
-      deleteCollection: jest.fn().mockResolvedValue(undefined),
+      deleteCollection: jest
+        .fn()
+        .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' }),
     };
 
     const eventEmitter = {
@@ -178,6 +180,28 @@ describe('RulesService.deleteRuleGroup', () => {
       await service.deleteRuleGroup(42);
 
       expect(collectionService.deleteCollection).toHaveBeenCalledWith(100);
+    });
+
+    it('does not delete rule group rows when collection cleanup fails', async () => {
+      const group = { id: 42, collectionId: 100 };
+      const { service, collectionService, exclusionRepo, ruleGroupRepository } =
+        createRulesService({ group });
+
+      collectionService.deleteCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'Failed to delete collection from media server',
+      });
+
+      const result = await service.deleteRuleGroup(42);
+
+      expect(result).toEqual({
+        code: 0,
+        result: 'Delete Failed',
+        message: 'Delete Failed',
+      });
+      expect(exclusionRepo.delete).not.toHaveBeenCalled();
+      expect(ruleGroupRepository.delete).not.toHaveBeenCalled();
     });
 
     it('does not delete collection when group has no collectionId', async () => {

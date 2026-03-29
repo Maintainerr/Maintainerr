@@ -196,11 +196,14 @@ export class TautulliGetterService {
           return null;
         }
       }
-    } catch (e) {
+    } catch (error) {
       this.logger.warn(
-        `Tautulli-Getter - Action failed for '${libItem.title}' with id '${libItem.id}': ${e.message}`,
+        `Tautulli-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Tautulli-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        error,
+      );
       return undefined;
     }
   }

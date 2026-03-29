@@ -1,5 +1,6 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import { ServiceUnavailableException } from '@nestjs/common';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -9,6 +10,11 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
 
 describe('MediaServerFactory', () => {
   let factory: MediaServerFactory;
+  const logger = {
+    setContext: jest.fn(),
+    log: jest.fn(),
+    warn: jest.fn(),
+  } as unknown as jest.Mocked<MaintainerrLogger>;
 
   const settingsService = {
     getSettings: jest.fn(),
@@ -50,6 +56,7 @@ describe('MediaServerFactory', () => {
       mediaServerSwitchService,
       plexAdapter,
       jellyfinAdapter,
+      logger,
     );
 
     mediaServerSwitchService.isSwitching.mockReturnValue(false);

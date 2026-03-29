@@ -156,10 +156,11 @@ export class PlexTvApi extends ExternalApiService {
       }
 
       return account.user;
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
-        `Something went wrong while getting the account from plex.tv: ${e.message}`,
+        'Something went wrong while getting the account from plex.tv',
       );
+      this.logger.debug(error);
       throw new Error('Invalid auth token');
     }
   }
@@ -239,8 +240,9 @@ export class PlexTvApi extends ExternalApiService {
         totalSize: response.MediaContainer.totalSize,
         items: filteredList,
       };
-    } catch (e) {
-      this.logger.error(`Failed to retrieve watchlist items: ${e.message}`);
+    } catch (error) {
+      this.logger.error('Failed to retrieve watchlist items');
+      this.logger.debug(error);
       return {
         offset,
         size,
@@ -299,11 +301,11 @@ export class PlexTvApi extends ExternalApiService {
           local: conn.$.local == '1' ? true : false,
         })),
       }));
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         'Something went wrong getting the devices from plex.tv',
+        error,
       );
-      this.logger.debug(e);
       return [];
     }
   }

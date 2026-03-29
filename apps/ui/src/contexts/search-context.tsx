@@ -24,6 +24,7 @@ export function SearchContextProvider(props: { children: ReactNode }) {
       return { text: input } as ISearch
     })
   }
+
   function removeSearchHandler() {
     setSearch(() => {
       return { text: '' } as ISearch

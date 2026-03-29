@@ -49,8 +49,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       const response = await this.axios.get<SystemStatus>('/system/status');
 
       return response.data;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve system status: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve system status');
+      this.logger.debug(error);
     }
   };
 
@@ -63,8 +64,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       );
 
       return data;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve profiles: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve profiles');
+      this.logger.debug(error);
     }
   };
 
@@ -77,8 +79,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       );
 
       return data;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve root folders: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve root folders');
+      this.logger.debug(error);
     }
   };
 
@@ -91,8 +94,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       );
 
       return data;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve disk space: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve disk space');
+      this.logger.debug(error);
     }
   };
 
@@ -150,8 +154,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
         await this.axios.get<QueueResponse<QueueItemAppendT>>(`/queue`);
 
       return response.data.records;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve queue: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve queue');
+      this.logger.debug(error);
     }
   };
 
@@ -160,8 +165,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       const response = await this.axios.get<Tag[]>(`/tag`);
 
       return response.data;
-    } catch (e) {
-      this.logger.warn(`Failed to retrieve tags: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to retrieve tags');
+      this.logger.debug(error);
     }
   };
 
@@ -172,8 +178,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       });
 
       return response.data;
-    } catch (e) {
-      this.logger.warn(`Failed to create tag: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to create tag');
+      this.logger.debug(error);
     }
   };
 
@@ -192,24 +199,27 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
           resp.data = await this.get('/command/' + resp.data.id);
       }
       return resp ? resp.data : undefined;
-    } catch (e) {
-      this.logger.warn(`Failed to run command: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to run command');
+      this.logger.debug(error);
     }
   }
 
   protected async runDelete(command: string): Promise<void> {
     try {
       await this.delete(`/${command}`);
-    } catch (e) {
-      this.logger.warn(`Failed to run DELETE: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to run DELETE');
+      this.logger.debug(error);
     }
   }
 
   protected async runPut(command: string, body: string): Promise<void> {
     try {
       await this.put(`/${command}`, body);
-    } catch (e) {
-      this.logger.warn(`Failed to run PUT: ${e.message}`);
+    } catch (error) {
+      this.logger.warn('Failed to run PUT');
+      this.logger.debug(error);
     }
   }
 }

@@ -4,7 +4,6 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import 'react-toastify/dist/ReactToastify.css'
 import '../styles/globals.css'
-import LoadingSpinner from './components/Common/LoadingSpinner'
 import { EventsProvider } from './contexts/events-context'
 import { SearchContextProvider } from './contexts/search-context'
 import { TaskStatusProvider } from './contexts/taskstatus-context'
@@ -18,10 +17,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <EventsProvider>
         <TaskStatusProvider>
           <SearchContextProvider>
-            <RouterProvider
-              router={router}
-              fallbackElement={<LoadingSpinner />}
-            />
+            <RouterProvider router={router} />
           </SearchContextProvider>
         </TaskStatusProvider>
       </EventsProvider>

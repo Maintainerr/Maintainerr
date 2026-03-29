@@ -182,11 +182,14 @@ export class SeerrApiService {
     try {
       const response: SeerrMovieResponse = await this.api.get(`/movie/${id}`);
       return response;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        'Seerr communication failed. Is the application running?',
+        error,
+      );
       return undefined;
     }
   }
@@ -198,11 +201,14 @@ export class SeerrApiService {
         return response;
       }
       return undefined;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        'Seerr communication failed. Is the application running?',
+        error,
+      );
       return undefined;
     }
   }
@@ -219,11 +225,14 @@ export class SeerrApiService {
         return response;
       }
       return undefined;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        'Seerr communication failed. Is the application running?',
+        error,
+      );
       return undefined;
     }
   }
@@ -250,11 +259,14 @@ export class SeerrApiService {
         }
       }
       return users;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         `Couldn't fetch Seerr users. Is the application running?`,
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        `Couldn't fetch Seerr users. Is the application running?`,
+        error,
+      );
       return [];
     }
   }
@@ -265,11 +277,14 @@ export class SeerrApiService {
         `/request/${requestId}`,
       );
       return response;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        'Seerr communication failed. Is the application running?',
+        error,
+      );
       return undefined;
     }
   }
@@ -291,11 +306,14 @@ export class SeerrApiService {
           await this.api.delete(`/media/${media.id}`);
         }
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        'Seerr communication failed. Is the application running?',
+        error,
+      );
       return undefined;
     }
   }
@@ -306,11 +324,14 @@ export class SeerrApiService {
         `/media/${mediaId}`,
       );
       return response;
-    } catch (e) {
+    } catch (error) {
       this.logger.log(
-        `Couldn't delete media ${mediaId}. Does it exist in Seerr? ${e.message}`,
+        `Couldn't delete media ${mediaId}. Does it exist in Seerr?`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Couldn't delete media ${mediaId}. Does it exist in Seerr?`,
+        error,
+      );
       return null;
     }
   }
@@ -330,16 +351,23 @@ export class SeerrApiService {
 
       try {
         await this.deleteMediaItem(media.mediaInfo.id.toString());
-      } catch (e) {
+      } catch (error) {
         this.logger.log(
-          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr? ${e.message}`,
+          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr?`,
+        );
+        this.logger.debug(
+          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr?`,
+          error,
         );
       }
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
       );
-      this.logger.debug(err);
+      this.logger.debug(
+        'Seerr communication failed. Is the application running?',
+        error,
+      );
       return undefined;
     }
   }
@@ -350,9 +378,9 @@ export class SeerrApiService {
         signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
       });
       return response;
-    } catch (e) {
-      this.logger.log(`Couldn't fetch Seerr status: ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.log("Couldn't fetch Seerr status");
+      this.logger.debug(error);
       return null;
     }
   }
@@ -392,14 +420,14 @@ export class SeerrApiService {
         code: 1,
         message: response.data.version,
       };
-    } catch (e) {
-      logConnectionTestError(this.logger, 'Seerr', e);
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Seerr');
 
       return {
         status: 'NOK',
         code: 0,
         message: formatConnectionFailureMessage(
-          e,
+          error,
           'Failed to connect to Seerr. Verify URL and API key.',
         ),
       };

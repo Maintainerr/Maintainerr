@@ -188,7 +188,10 @@ describe('ExclusionTypeCorrectorService', () => {
       await service.onModuleInit();
 
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('connection refused'),
+        'Exclusion type corrections failed',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'connection refused' }),
       );
     });
   });

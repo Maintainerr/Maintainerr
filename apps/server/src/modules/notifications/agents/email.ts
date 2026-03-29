@@ -88,17 +88,17 @@ class EmailAgent implements NotificationAgent {
       await email.send(
         this.buildMessage(type, payload, this.getSettings().options.emailTo),
       );
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         `Error sending Email notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: e.response?.data,
+          response: error.response?.data,
         })}`,
-        e,
+        error,
       );
 
-      return `Failure: ${e.message}`;
+      return `Failure: ${error.message}`;
     }
 
     return 'Success';

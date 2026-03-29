@@ -22,8 +22,8 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
     try {
       const authToken = await plexOAuth.login()
       onAuthToken(authToken)
-    } catch (e) {
-      onError?.(e instanceof Error ? e.message : 'Unknown error')
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : 'Unknown error')
     } finally {
       setLoading(false)
     }

@@ -114,6 +114,7 @@ describe('RuleExecutorService', () => {
       settings,
       eventEmitter,
       progressManager,
+      logger,
     };
   };
 
@@ -142,6 +143,42 @@ describe('RuleExecutorService', () => {
     );
 
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+  });
+
+  it('skips media server sync when an automatic collection link is stale', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: null,
+      manualCollection: false,
+    } as any);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
+
+    expect(collectionService.checkAutomaticMediaServerLink).toHaveBeenCalled();
+    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping media server sync for 'Test Collection' — no media server collection exists because no items currently match the rule.",
+    );
   });
 
   it('removes collection items on Plex when children are empty', async () => {
@@ -212,6 +249,57 @@ describe('RuleExecutorService', () => {
       ],
       true,
     );
+  });
+
+  it('treats child enumeration failures as recoverable and clears stale automatic links', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    mediaServer.getCollectionChildren.mockRejectedValueOnce(new Error('boom'));
+    collectionService.checkAutomaticMediaServerLink
+      .mockResolvedValueOnce({
+        id: 1,
+        title: 'Test Collection',
+        mediaServerId: 'coll-1',
+        manualCollection: false,
+      } as any)
+      .mockResolvedValueOnce({
+        id: 1,
+        title: 'Test Collection',
+        mediaServerId: null,
+        manualCollection: false,
+      } as any);
+
+    await expect(
+      (
+        service as unknown as {
+          syncManualMediaServerToCollectionDB: (
+            ruleGroup: {
+              id: number;
+              collectionId: number;
+            },
+            touchedMediaServerIds: Set<string>,
+          ) => Promise<void>;
+        }
+      ).syncManualMediaServerToCollectionDB(
+        { id: 10, collectionId: 1 },
+        new Set(),
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(
+      collectionService.checkAutomaticMediaServerLink,
+    ).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Skipping media server child sync for collection 'Test Collection' because the linked media server collection could not be enumerated.",
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Cleared stale media server link for collection 'Test Collection' after child sync failed.",
+    );
+    expect(logger.debug).toHaveBeenCalledWith(expect.any(Error));
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
   });
 
   it('does not re-add a rule-removed item as manual when media server returns stale children', async () => {
@@ -392,6 +480,45 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.RuleHandler_Failed,
     );
     expect(progressManager.reset).not.toHaveBeenCalled();
+  });
+
+  it('does not emit started and still cleans up when execution was already aborted before starting', async () => {
+    const {
+      service,
+      rulesService,
+      eventEmitter,
+      progressManager,
+      settings,
+      logger,
+    } = createService(MediaServerType.JELLYFIN);
+
+    rulesService.getRuleGroup.mockResolvedValue({
+      id: 77,
+      name: 'Aborted Group',
+      isActive: true,
+      libraryId: 'library-1',
+      rules: [],
+      useRules: false,
+    } as any);
+
+    const abortController = new AbortController();
+    abortController.abort();
+
+    await service.executeForRuleGroups(77, abortController.signal);
+
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Started,
+      expect.anything(),
+    );
+    expect(settings.testConnections).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      "Execution of rule 'Aborted Group' was aborted.",
+    );
+    expect(progressManager.reset).toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Finished,
+      expect.anything(),
+    );
   });
 
   it('aborts between collection add and remove phases', async () => {

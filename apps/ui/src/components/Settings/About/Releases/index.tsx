@@ -117,10 +117,10 @@ const Releases = ({ currentVersion }: ReleasesProps) => {
       try {
         const response = await GetApiHandler<GitHubRelease[]>(`/app/releases`)
         setData(response)
-      } catch (err) {
+      } catch (error) {
         setError(
-          err instanceof Error && err.message
-            ? err.message
+          error instanceof Error && error.message
+            ? error.message
             : 'Failed to fetch releases',
         )
       }

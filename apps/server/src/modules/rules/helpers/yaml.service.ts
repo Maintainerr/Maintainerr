@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import YAML from 'yaml';
 import {
   MediaDataTypeStrings,
   MediaItemType,
   MediaItemTypes,
 } from '@maintainerr/contracts';
+import { Injectable } from '@nestjs/common';
+import YAML from 'yaml';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   ICustomIdentifier,
@@ -103,9 +103,9 @@ export class RuleYamlService {
         result: yaml,
         message: 'success',
       };
-    } catch (e) {
-      this.logger.warn(`Yaml export failed : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Yaml export failed');
+      this.logger.debug(error);
       return {
         code: 0,
         message: 'Yaml export failed. Please check logs',
@@ -187,9 +187,9 @@ export class RuleYamlService {
         result: JSON.stringify(returnObj),
         message: 'success',
       };
-    } catch (e) {
-      this.logger.warn(`Yaml import failed. Is the yaml valid?`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Yaml import failed. Is the yaml valid?');
+      this.logger.debug(error);
       return {
         code: 0,
         message: 'Import failed, please check your yaml',

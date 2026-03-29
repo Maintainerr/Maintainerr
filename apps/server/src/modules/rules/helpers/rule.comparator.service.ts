@@ -137,15 +137,18 @@ export class RuleComparatorService {
 
       // return comparatorReturnValue
       return { stats: this.statistics, data: this.resultData };
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        throw e;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
       }
 
       this.logger.log(
         `Something went wrong while running rule ${rulegroup.name}`,
       );
-      this.logger.debug(e);
+      this.logger.debug(
+        `Something went wrong while running rule ${rulegroup.name}`,
+        error,
+      );
     }
   }
 
@@ -378,7 +381,7 @@ export class RuleComparatorService {
       rule.firstVal,
     );
 
-    this.logger.warn(
+    this.logger.debug(
       `Skipping rule comparison due to missing operand: ` +
         `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
         `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +

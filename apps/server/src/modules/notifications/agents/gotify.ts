@@ -87,17 +87,17 @@ class GotifyAgent implements NotificationAgent {
       await axios.post(endpoint, notificationPayload);
 
       return 'Success';
-    } catch (e) {
+    } catch (error) {
       this.logger.error(
         `Error sending Gotify notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: e.response?.data,
+          response: error.response?.data,
         })}`,
-        e,
+        error,
       );
 
-      return `Failure: ${e.message}`;
+      return `Failure: ${error.message}`;
     }
   }
 }

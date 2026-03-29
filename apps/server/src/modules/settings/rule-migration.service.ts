@@ -4,9 +4,10 @@ import {
   RuleMigrationResult,
   SkippedRuleDetail,
 } from '@maintainerr/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { Application, RuleConstants } from '../rules/constants/rules.constants';
 import { RuleDto } from '../rules/dtos/rule.dto';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
@@ -113,14 +114,15 @@ function computePropertyCompatibility(
 
 @Injectable()
 export class RuleMigrationService {
-  private readonly logger = new Logger(RuleMigrationService.name);
-
   constructor(
     @InjectRepository(Rules)
     private readonly rulesRepo: Repository<Rules>,
     @InjectRepository(RuleGroup)
     private readonly ruleGroupRepo: Repository<RuleGroup>,
-  ) {}
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(RuleMigrationService.name);
+  }
 
   /**
    * Preview what will happen if rules are migrated between media servers.
@@ -279,7 +281,8 @@ export class RuleMigrationService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed to migrate rule ${rule.id}: ${errorMessage}`);
+        this.logger.error(`Failed to migrate rule ${rule.id}`);
+        this.logger.debug(error);
         result.skippedRules++;
         groupStatus.skipped++;
         result.skippedDetails.push({

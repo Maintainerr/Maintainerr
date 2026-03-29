@@ -34,9 +34,9 @@ export class TmdbIdService {
           `Failed to fetch metadata of media server item : ${mediaServerId}`,
         );
       }
-    } catch (e) {
-      this.logger.warn(`Failed to fetch id : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Failed to fetch id');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -96,9 +96,9 @@ export class TmdbIdService {
           : 'movie',
         id: id,
       };
-    } catch (e) {
-      this.logger.warn(`Failed to fetch id : ${e.message}`);
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.warn('Failed to fetch id');
+      this.logger.debug(error);
       return undefined;
     }
   }

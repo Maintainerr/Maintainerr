@@ -36,6 +36,19 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     logger.setContext(RuleExecutorJobManagerService.name);
   }
 
+  private emitStatusUpdate() {
+    this.eventEmitter.emit(
+      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+    );
+  }
+
+  private getPendingRuleGroupIds(): number[] {
+    return Array.from(this.reservedRuleGroupIds).filter(
+      (ruleGroupId) => ruleGroupId !== this.executingRuleGroupId,
+    );
+  }
+
   async onApplicationShutdown() {
     if (this.isShuttingDown) return;
 
@@ -50,17 +63,17 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
 
     this.abortController?.abort();
 
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-    );
+    this.emitStatusUpdate();
 
     // Wait for the active execution to exit (it will finish quickly once aborted)
     if (this.processQueuePromise != null) {
       try {
         await this.processQueuePromise;
-      } catch (err) {
-        this.logger.debug(err);
+      } catch (error) {
+        this.logger.debug(
+          'Failed while waiting for the active rule execution to stop',
+          error,
+        );
       }
     }
   }
@@ -106,10 +119,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
 
     this.queue.push({ ruleGroupId: request.ruleGroupId });
 
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-    );
+    this.emitStatusUpdate();
 
     void this.processQueue();
     return true;
@@ -118,8 +128,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   public stopProcessingRuleGroup(ruleGroupId: number) {
     this.tryRemoveRuleGroupFromPendingQueue(ruleGroupId);
 
-    // Abort if currently executing
-    if (this.executingRuleGroupId === ruleGroupId) {
+    // Abort if executing or waiting for the execution lock
+    if (
+      this.executingRuleGroupId === ruleGroupId ||
+      this.reservedRuleGroupIds.has(ruleGroupId)
+    ) {
       this.abortController?.abort();
     }
   }
@@ -139,10 +152,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     if (indexOfJob !== -1) {
       this.queue.splice(indexOfJob, 1);
 
-      this.eventEmitter.emit(
-        MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-        new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-      );
+      this.emitStatusUpdate();
     }
   }
 
@@ -153,10 +163,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       try {
         while (this.queue.length > 0) {
           const next = this.queue.shift();
-          this.eventEmitter.emit(
-            MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-            new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-          );
+          this.emitStatusUpdate();
           if (!next) break;
 
           await this.executeJob(next);
@@ -172,35 +179,36 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
 
   private async executeJob(request: QueueItem) {
     this.reservedRuleGroupIds.add(request.ruleGroupId);
-    const release = await this.executionLock.acquire('rules-collections-lock');
-    this.executingRuleGroupId = request.ruleGroupId;
+    // Create AbortController before acquiring the lock so that stopProcessingRuleGroup
+    // can signal an abort even while the job is waiting for the lock to be released.
     this.abortController = new AbortController();
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-    );
+    this.emitStatusUpdate();
 
     try {
-      await this.ruleExecutorService.executeForRuleGroups(
-        request.ruleGroupId,
-        this.abortController.signal,
+      const release = await this.executionLock.acquire(
+        'rules-collections-lock',
       );
-    } catch (e) {
-      this.logger.error(
-        `An error occurred while executing job for rule group ${request.ruleGroupId}`,
-        e,
-      );
+      this.executingRuleGroupId = request.ruleGroupId;
+      this.emitStatusUpdate();
+
+      try {
+        await this.ruleExecutorService.executeForRuleGroups(
+          request.ruleGroupId,
+          this.abortController.signal,
+        );
+      } catch (error) {
+        this.logger.error(
+          `An error occurred while executing job for rule group ${request.ruleGroupId}`,
+          error,
+        );
+      } finally {
+        release();
+        this.executingRuleGroupId = null;
+      }
     } finally {
-      release();
-
-      this.executingRuleGroupId = null;
       this.abortController = undefined;
-
       this.reservedRuleGroupIds.delete(request.ruleGroupId);
-      this.eventEmitter.emit(
-        MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-        new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-      );
+      this.emitStatusUpdate();
     }
   }
 
@@ -208,6 +216,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     return {
       processingQueue: this.processingQueue,
       executingRuleGroupId: this.executingRuleGroupId,
+      pendingRuleGroupIds: this.getPendingRuleGroupIds(),
       queue: this.queue.map((q) => q.ruleGroupId),
     };
   }

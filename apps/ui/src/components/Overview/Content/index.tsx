@@ -56,7 +56,7 @@ const OverviewContent = (props: IOverviewContent) => {
 
   const isNearBottom = () =>
     window.innerHeight + document.documentElement.scrollTop >=
-    document.documentElement.scrollHeight * 0.8
+    document.documentElement.scrollHeight * 0.7
 
   const handleScroll = useEffectEvent(() => {
     if (isNearBottom() && !extrasLoading && !dataFinished) {

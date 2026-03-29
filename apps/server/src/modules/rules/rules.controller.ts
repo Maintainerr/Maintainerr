@@ -138,15 +138,12 @@ export class RulesController {
       );
     }
 
-    this.ruleExecutorSchedulerService.enqueueAllActiveRuleGroups().catch((e) =>
-      this.logger.error(
-        {
-          message: 'Failed to enqueue all active rule groups',
-          error: e,
-        },
-        e instanceof Error ? e.stack : undefined,
-      ),
-    );
+    this.ruleExecutorSchedulerService
+      .enqueueAllActiveRuleGroups()
+      .catch((error) => {
+        this.logger.error('Failed to enqueue all active rule groups');
+        this.logger.debug(error);
+      });
   }
 
   @Post('/:id/execute')
@@ -205,15 +202,10 @@ export class RulesController {
       return;
     }
 
-    this.ruleExecutorJobManagerService.stopProcessing().catch((e) =>
-      this.logger.error(
-        {
-          message: 'Failed to stop rule execution processing',
-          error: e,
-        },
-        e instanceof Error ? e.stack : undefined,
-      ),
-    );
+    this.ruleExecutorJobManagerService.stopProcessing().catch((error) => {
+      this.logger.error('Failed to stop rule execution processing');
+      this.logger.debug(error);
+    });
     res.status(HttpStatus.ACCEPTED).send();
   }
 
@@ -319,7 +311,7 @@ export class RulesController {
         JSON.parse(body.rules),
         body.mediaType,
       );
-    } catch (err) {
+    } catch (error) {
       return {
         code: 0,
         result: 'Invalid input',
@@ -339,7 +331,7 @@ export class RulesController {
   ): Promise<ReturnStatus> {
     try {
       return this.rulesService.decodeFromYaml(body.yaml, body.mediaType);
-    } catch (err) {
+    } catch (error) {
       return {
         code: 0,
         result: 'Invalid input',
@@ -364,7 +356,7 @@ export class RulesController {
     try {
       const rules = JSON.parse(body.rules);
       return await this.rulesService.migrateRules(rules);
-    } catch (err) {
+    } catch (error) {
       return {
         code: 0,
         result: 'Invalid input',

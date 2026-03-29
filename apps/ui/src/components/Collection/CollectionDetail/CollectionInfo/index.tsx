@@ -144,7 +144,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const handleScroll = useEffectEvent(() => {
     if (
       window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.9 &&
+        document.documentElement.scrollHeight * 0.8 &&
       !loadingRef.current &&
       !loadingExtraRef.current &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
@@ -158,7 +158,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
       !loadingRef.current &&
       !loadingExtraRef.current &&
       window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.9 &&
+        document.documentElement.scrollHeight * 0.8 &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
     ) {
       setPage((currentPage) => currentPage + 1)

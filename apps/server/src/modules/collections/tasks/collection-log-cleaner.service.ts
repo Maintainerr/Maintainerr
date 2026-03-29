@@ -28,8 +28,9 @@ export class CollectionLogCleanerService extends TaskBase {
       for (const collection of collections) {
         await this.collectionService.removeOldCollectionLogs(collection);
       }
-    } catch (e) {
-      this.logger.debug(e);
+    } catch (error) {
+      this.logger.debug('Failed to clean old collection logs');
+      this.logger.debug(error);
     }
   }
 }

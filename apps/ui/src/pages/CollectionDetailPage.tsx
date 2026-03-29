@@ -48,10 +48,10 @@ const CollectionDetailPage = () => {
         setCollection(result.data)
         setIsLoading(false)
       }
-    } catch (err) {
+    } catch (error) {
       void logClientError(
         'Failed to load collection',
-        err,
+        error,
         'CollectionDetailPage.fetchData',
       )
       toast.error('Failed to load collection. Check logs for details.')

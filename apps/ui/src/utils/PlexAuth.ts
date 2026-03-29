@@ -131,9 +131,9 @@ class PlexOAuth {
         } else {
           reject(new Error('Popup closed without completing login'))
         }
-      } catch (e) {
+      } catch (error) {
         this.closePopup()
-        reject(e)
+        reject(error)
       }
     }
 

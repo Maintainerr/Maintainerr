@@ -16,6 +16,10 @@ const createDeferred = () => {
 describe('RuleExecutorJobManagerService', () => {
   const logger = createMockLogger();
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   const buildService = (executeMock?: ExecuteMock) => {
     const ruleExecutorService = {
       executeForRuleGroups:
@@ -135,6 +139,7 @@ describe('RuleExecutorJobManagerService', () => {
     expect(service.getStatus()).toEqual({
       processingQueue: false,
       executingRuleGroupId: null,
+      pendingRuleGroupIds: [],
       queue: [],
     });
 
@@ -142,10 +147,90 @@ describe('RuleExecutorJobManagerService', () => {
     await flushMicrotasks();
     const status = service.getStatus();
     expect(status.executingRuleGroupId).toBe(7);
+    expect(status.pendingRuleGroupIds).toEqual([]);
     expect(status.queue).toHaveLength(0);
 
     // finish the in-flight job to avoid dangling work
     inFlight.resolve();
     await flushMicrotasks();
+  });
+
+  it('reports a rule group as pending while waiting for the execution lock', async () => {
+    const lockDeferred = createDeferred();
+    const release = jest.fn();
+    const executeMock: ExecuteMock = jest.fn().mockResolvedValue(undefined);
+
+    const { service, executionLock, eventEmitter } = buildService(executeMock);
+    jest.spyOn(executionLock, 'acquire').mockImplementation(async () => {
+      await lockDeferred.promise;
+      return release;
+    });
+
+    service.enqueue({ ruleGroupId: 11 });
+    await flushMicrotasks();
+
+    expect(service.getStatus()).toEqual({
+      processingQueue: true,
+      executingRuleGroupId: null,
+      pendingRuleGroupIds: [11],
+      queue: [],
+    });
+    expect(eventEmitter.emit.mock.calls).toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          expect.anything(),
+          expect.objectContaining({
+            data: expect.objectContaining({
+              pendingRuleGroupIds: [11],
+            }),
+          }),
+        ]),
+      ]),
+    );
+
+    lockDeferred.resolve();
+    await flushMicrotasks();
+    await waitForNextTick();
+
+    expect(service.getStatus()).toEqual({
+      processingQueue: false,
+      executingRuleGroupId: null,
+      pendingRuleGroupIds: [],
+      queue: [],
+    });
+    expect(executeMock).toHaveBeenCalledWith(11, expect.any(AbortSignal));
+  });
+
+  it('preserves an abort request while waiting for the execution lock', async () => {
+    const lockDeferred = createDeferred();
+    const release = jest.fn();
+    const executeMock: ExecuteMock = jest.fn().mockResolvedValue(undefined);
+
+    const { service, executionLock } = buildService(executeMock);
+    jest.spyOn(executionLock, 'acquire').mockImplementation(async () => {
+      await lockDeferred.promise;
+      return release;
+    });
+
+    service.enqueue({ ruleGroupId: 42 });
+    await flushMicrotasks();
+
+    service.stopProcessingRuleGroup(42);
+
+    const abortController = (service as any).abortController as
+      | AbortController
+      | undefined;
+    expect(abortController?.signal.aborted).toBe(true);
+    expect(service.getStatus()).toEqual({
+      processingQueue: true,
+      executingRuleGroupId: null,
+      pendingRuleGroupIds: [42],
+      queue: [],
+    });
+
+    lockDeferred.resolve();
+    await flushMicrotasks();
+
+    expect(executeMock).toHaveBeenCalledWith(42, expect.any(AbortSignal));
   });
 });
