@@ -119,8 +119,6 @@ export const getErrorMessage = (
 export const logConnectionTestError = (
   logger: MaintainerrLogger,
   serviceName: string,
-  error: unknown,
 ) => {
   logger.error(`${serviceName} connection test failed`);
-  logger.debug(error);
 };

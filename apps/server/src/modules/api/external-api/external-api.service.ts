@@ -40,10 +40,10 @@ export class ExternalApiService {
       retryDelay: axiosRetry.exponentialDelay,
       onRetry: (retryCount, error, requestConfig) => {
         const url = this.axios.getUri(requestConfig);
+        const errorMsg = `${error.message}${error.code ? ` | code=${error.code}` : ''}`;
         this.logger.debug(
-          `Retry ${retryCount}/3 ${requestConfig.method.toUpperCase()} ${url}`,
+          `Retry ${retryCount}/3 ${requestConfig.method.toUpperCase()} ${url}: ${errorMsg}`,
         );
-        this.logger.debug(error);
       },
     });
     this.baseUrl = baseUrl;

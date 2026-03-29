@@ -421,7 +421,7 @@ export class SeerrApiService {
         message: response.data.version,
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Seerr', error);
+      logConnectionTestError(this.logger, 'Seerr');
 
       return {
         status: 'NOK',

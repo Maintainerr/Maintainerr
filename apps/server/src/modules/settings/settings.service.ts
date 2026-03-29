@@ -487,7 +487,7 @@ export class SettingsService implements SettingDto {
         ),
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Jellyfin', error);
+      logConnectionTestError(this.logger, 'Jellyfin');
       return {
         status: 'NOK',
         code: 0,
@@ -925,7 +925,7 @@ export class SettingsService implements SettingDto {
           }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Tautulli', error);
+      logConnectionTestError(this.logger, 'Tautulli');
       return {
         status: 'NOK',
         code: 0,
@@ -956,7 +956,7 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Radarr', error);
+      logConnectionTestError(this.logger, 'Radarr');
       return {
         status: 'NOK',
         code: 0,
@@ -987,7 +987,7 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Sonarr', error);
+      logConnectionTestError(this.logger, 'Sonarr');
       return {
         status: 'NOK',
         code: 0,
@@ -1006,7 +1006,7 @@ export class SettingsService implements SettingDto {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Plex', error);
+      logConnectionTestError(this.logger, 'Plex');
       return {
         status: 'NOK',
         code: 0,

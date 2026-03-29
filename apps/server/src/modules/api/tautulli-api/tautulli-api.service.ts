@@ -344,7 +344,7 @@ export class TautulliApiService {
         };
       }
     } catch (error) {
-      logConnectionTestError(this.logger, 'Tautulli', error);
+      logConnectionTestError(this.logger, 'Tautulli');
 
       if (error instanceof AxiosError) {
         if (error.response?.status === 400) {
