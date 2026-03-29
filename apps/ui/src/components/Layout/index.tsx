@@ -6,11 +6,13 @@ import {
   Outlet,
   useLocation,
   useNavigate,
+  useNavigation,
   useRouteError,
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
+import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
 
@@ -22,11 +24,13 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = useContext(SearchContext)
   const navigate = useNavigate()
+  const navigation = useNavigation()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
   const debouncedSearchRef = useRef<ReturnType<typeof debounce> | undefined>(
     undefined,
   )
+  const isNavigating = navigation.state !== 'idle'
 
   const handleNavbar = () => {
     setNavBarOpen(!navBarOpen)
@@ -133,6 +137,13 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
                 theme="dark"
                 closeOnClick
               />
+              {isNavigating ? (
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center bg-zinc-900/20 pt-10 backdrop-blur-[1px]">
+                  <div className="rounded-full border border-zinc-700/70 bg-zinc-900/85 px-6 py-2 shadow-lg">
+                    <SmallLoadingSpinner className="h-8 w-8" />
+                  </div>
+                </div>
+              ) : null}
               {children}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import type { RouteObject } from 'react-router-dom'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
 import Overview from './components/Overview'
 // Settings is kept eager because it wraps an <Outlet /> — making it lazy
@@ -100,13 +101,8 @@ const settingsAboutRoute = createLazyRoute(
  * createLazyRoute carry both `lazy` (for the router) and `preload`
  * (for hover-prefetching) from the same object, so they can't drift.
  */
-type AppRoute = {
-  path?: string
-  index?: boolean
-  lazy?: LazyRoute['lazy']
+type AppRoute = RouteObject & {
   preload?: LazyRoute['preload']
-  element?: React.ReactNode
-  errorElement?: React.ReactNode
   children?: AppRoute[]
 }
 
@@ -322,7 +318,9 @@ const collectPreloaders = (
       const rest = remaining.slice(routeSegments.length)
       if (rest.length === 0) {
         // Exact match — also preload the index child if present
-        const indexChild = route.children?.find((c) => c.index)
+        const indexChild = route.children?.find(
+          (child): child is AppRoute => child.index === true,
+        )
         if (indexChild?.preload) preloaders.push(indexChild.preload)
         return true
       }
