@@ -1,3 +1,38 @@
+# [3.3.0](https://github.com/maintainerr/Maintainerr/compare/v3.2.0...v3.3.0) (2026-03-29)
+
+
+### Bug Fixes
+
+* **collections:** prevent orphaned collections, duplicate creation, and stuck rule UI ([5eaaef7](https://github.com/maintainerr/Maintainerr/commit/5eaaef76ed36f0cbde326732caced226ea65685f))
+* **collections:** prevent orphaned collections, duplicates, and stuck rules ([#2551](https://github.com/maintainerr/Maintainerr/issues/2551)) ([7375014](https://github.com/maintainerr/Maintainerr/commit/7375014f31aed3d8bce1ff10c248b250d35b8ca2))
+* **collections:** remove batch collection creation causing crash on Jellyfin ([#2548](https://github.com/maintainerr/Maintainerr/issues/2548)) ([cbd4ef2](https://github.com/maintainerr/Maintainerr/commit/cbd4ef2f4a3cc11ef48972e7a8c4aa86d04d2e34))
+* DeprecationWarning:`url.parse()` ([77d64a7](https://github.com/maintainerr/Maintainerr/commit/77d64a7cb29131f2dfdfea7a4b87876a5c486a30))
+* downgrade missing-operand log from warn to debug ([adfb09a](https://github.com/maintainerr/Maintainerr/commit/adfb09a775b3bbf412a6936aa2f82d7e40c2a302))
+* **jellyfin:** chunk collection mutations to stay within Kestrel's 8 KB request-line limit ([6927d94](https://github.com/maintainerr/Maintainerr/commit/6927d948f3d56053b880c2b28fc7a31e46b7cda1))
+* **jellyfin:** use Items API for search to include provider IDs ([119421a](https://github.com/maintainerr/Maintainerr/commit/119421ad4529128fa9c1737aa3c71e4d69e97c84))
+* **logging:** reduce noise in connection test and retry debug logs ([380e277](https://github.com/maintainerr/Maintainerr/commit/380e277bf1f27cd17ac11918ab34043dac19989c))
+* **logging:** tighten secret sanitization and fix edge cases ([e3111ba](https://github.com/maintainerr/Maintainerr/commit/e3111baee088edb4149690cbdf3834d776133ea4))
+* remove duplicate attachParentMetadata introduced by merge ([764a269](https://github.com/maintainerr/Maintainerr/commit/764a269b1de4b2dbf2e848b2ab53e0caabbb4d20))
+* remove stray blank line in jellyfin import statement ([de2631d](https://github.com/maintainerr/Maintainerr/commit/de2631da5598cac957de57b5e487dddf4cb20538))
+* **ui:** debounce search input and clear immediately ([7a14fde](https://github.com/maintainerr/Maintainerr/commit/7a14fdee099ed035051964ce33165f79538367b4))
+* **ui:** preserve search input while debouncing results ([3564f78](https://github.com/maintainerr/Maintainerr/commit/3564f7888e27cd2ead8c6b1587ed565e7976d7bc))
+* **ui:** prevent stale responses and fix rules page infinite spinner ([65b841f](https://github.com/maintainerr/Maintainerr/commit/65b841fb4b35e46a3fdbe0a4aec133ad2696b3ba))
+* **ui:** restore 1s search debounce ([5c2f450](https://github.com/maintainerr/Maintainerr/commit/5c2f45000c9302af7251e48c5f9d0e6722552425))
+* **ui:** restore loading feedback and add layout regression test ([cc06698](https://github.com/maintainerr/Maintainerr/commit/cc06698ad989e1bdcb98be4375e6e3c9ef448d5f))
+* **ui:** restore overview poster loading on mobile ([dbb39e2](https://github.com/maintainerr/Maintainerr/commit/dbb39e28de5026ed4de0c630e0f26412ff718579))
+* **ui:** restore search UX and prevent rule editor freezes ([69bccb5](https://github.com/maintainerr/Maintainerr/commit/69bccb57b4bc9a13b4f0cf99d73ffbc33f2d9daa))
+* **ui:** trigger infinite scroll earlier ([8f5b559](https://github.com/maintainerr/Maintainerr/commit/8f5b5592c146d9aecb9f42f476e763819bde994a))
+
+
+### Features
+
+* **logging:** mask X-Plex-Token, IPv4 addresses, and plex.direct hostnames ([dc585eb](https://github.com/maintainerr/Maintainerr/commit/dc585eba2d67085137f83073a1ed071abd007ebb))
+
+
+### Performance Improvements
+
+* **ui:** lazy-load routes and heavy UI dependencies ([#2544](https://github.com/maintainerr/Maintainerr/issues/2544)) ([33f31de](https://github.com/maintainerr/Maintainerr/commit/33f31de8b8163afb22078491f7662bd443db6d57))
+
 # [3.2.0](https://github.com/maintainerr/Maintainerr/compare/v3.1.0...v3.2.0) (2026-03-26)
 
 
