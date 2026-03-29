@@ -20,7 +20,8 @@ env:
 jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
-    permissions: {}
+    permissions:
+      contents: read
     with:
       enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
