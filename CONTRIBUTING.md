@@ -159,6 +159,64 @@ When adding new UI text, please try to adhere to the following guidelines:
 10. Do your best to check for spelling errors and grammatical mistakes.
 11. Do not misspell "Maintainerr."
 
+## Branching Strategy & Release Workflow (Maintainers)
+
+### Branch Roles
+
+| Branch        | Purpose                                                    |
+| ------------- | ---------------------------------------------------------- |
+| `development` | Default branch. All PRs target here. Granular commit history. |
+| `main`        | Stable release branch. Updated via squash-merge PRs from `development`. |
+
+### Squash-Merge to `main`
+
+When a PR from `development` is **squash-merged** into `main`, GitHub creates a single new commit with a new SHA. The original granular commits on `development` remain but are not ancestors of `main`. This causes `git log` to show the branches as "diverged" even though their **file content is identical**.
+
+### Reconciling Branches After a Squash-Merge
+
+After squash-merging a PR into `main`, reconcile the branches so GitHub no longer shows them as diverged:
+
+1. **Verify the branches have identical content** (safe, read-only):
+
+   ```bash
+   git fetch origin
+   git diff origin/main origin/development --shortstat
+   # Expected: no output (zero file differences)
+   ```
+
+2. **Optional dry-run** — preview the merge without changing anything:
+
+   ```bash
+   git merge-tree $(git merge-base origin/main origin/development) origin/main origin/development
+   # Expected: empty output (no conflicts, no file changes)
+   ```
+
+3. **Merge `main` into `development`** — tells git that `development` knows about `main`'s squash commit:
+
+   ```bash
+   git checkout development
+   git pull origin development
+   git merge main --no-ff -m "chore: reconcile with main after squash-merge"
+   git push origin development
+   ```
+
+4. **Fast-forward `main` to `development`** — so both branches point to the same commit:
+
+   ```bash
+   git checkout main
+   git merge development --ff-only
+   git push origin main
+   ```
+
+5. **Verify** — both branches should now show 0 commits behind/ahead:
+
+   ```bash
+   git rev-list --count origin/main..origin/development   # should be 0
+   git rev-list --count origin/development..origin/main    # should be 0
+   ```
+
+After this, GitHub will show the branches as even, with identical content and a shared commit history.
+
 ## Attribution
 
 This contribution guide was inspired by the [Overseerr](https://github.com/sct/overseerr) contribution guide.
