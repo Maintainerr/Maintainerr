@@ -30,60 +30,33 @@ jobs:
       review_actor: ${{ steps.context.outputs.review_actor }}
     steps:
       - name: Download release context artifact
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-
-            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id,
-            });
-
-            const artifact = artifacts.artifacts.find((item) => item.name === 'release-push-to-main-context');
-
-            if (!artifact) {
-              core.setFailed(`No release context artifact found for workflow run ${context.payload.workflow_run.id}.`);
-              return;
-            }
-
-            const download = await github.rest.actions.downloadArtifact({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              artifact_id: artifact.id,
-              archive_format: 'zip',
-            });
-
-            const archivePath = path.join(process.env.RUNNER_TEMP, 'release-push-to-main-context.zip');
-            fs.writeFileSync(archivePath, Buffer.from(download.data));
-
-      - name: Unzip release context artifact
-        run: unzip -o "${RUNNER_TEMP}/release-push-to-main-context.zip" -d "${RUNNER_TEMP}/release-push-to-main-context"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh run download "$RUN_ID" \
+            --name release-push-to-main-context \
+            --dir "${RUNNER_TEMP}/release-push-to-main-context"
 
       - name: Read release context
         id: context
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
+        run: |
+          context_file="${RUNNER_TEMP}/release-push-to-main-context/context.json"
 
-            const contextPath = path.join(process.env.RUNNER_TEMP, 'release-push-to-main-context', 'context.json');
-            const releaseContext = JSON.parse(fs.readFileSync(contextPath, 'utf8'));
+          pr_number=$(jq -r '.pr_number // 0' "$context_file")
+          review_actor=$(jq -r '.review_actor // ""' "$context_file")
 
-            const prNumber = Number(releaseContext.pr_number ?? 0);
-            const reviewActor = String(releaseContext.review_actor ?? '');
+          if [[ "$pr_number" -eq 0 || -z "$review_actor" ]]; then
+            echo "::error::Invalid release context: $(cat "$context_file")"
+            exit 1
+          fi
 
-            if (!prNumber || !reviewActor) {
-              core.setFailed(`Invalid release context: ${JSON.stringify(releaseContext)}`);
-              return;
-            }
-
-            core.setOutput('should_run', 'true');
-            core.setOutput('pr_number', String(prNumber));
-            core.setOutput('review_actor', reviewActor);
+          {
+            echo "should_run=true"
+            echo "pr_number=${pr_number}"
+            echo "review_actor=${review_actor}"
+          } >> "$GITHUB_OUTPUT"
 
   guard_review_actor:
     name: Guard approving actor
@@ -194,6 +167,9 @@ jobs:
             const successfulConclusions = new Set(['success', 'neutral', 'skipped']);
             let postedPendingComment = false;
 
+            const truncate = (str, max = 800) =>
+              str.length > max ? str.slice(0, max) + '\n… (truncated)' : str;
+
             const createComment = async (body) => {
               await github.rest.issues.createComment({
                 owner,
@@ -214,25 +190,25 @@ jobs:
               const pendingChecks = [];
               const failingChecks = [];
 
-              for await (const response of github.paginate.iterator(github.rest.checks.listForRef, {
+              const checkRuns = await github.paginate(github.rest.checks.listForRef, {
                 owner,
                 repo,
                 ref,
                 per_page: 100,
-              })) {
-                for (const checkRun of response.data.check_runs) {
-                  if (ignoredCheckNames.has(checkRun.name)) {
-                    continue;
-                  }
+              });
 
-                  if (checkRun.status !== 'completed') {
-                    pendingChecks.push(`${checkRun.name}: ${checkRun.status}`);
-                    continue;
-                  }
+              for (const checkRun of checkRuns) {
+                if (ignoredCheckNames.has(checkRun.name)) {
+                  continue;
+                }
 
-                  if (!successfulConclusions.has(checkRun.conclusion ?? '')) {
-                    failingChecks.push(`${checkRun.name}: ${checkRun.conclusion}`);
-                  }
+                if (checkRun.status !== 'completed') {
+                  pendingChecks.push(`${checkRun.name}: ${checkRun.status}`);
+                  continue;
+                }
+
+                if (!successfulConclusions.has(checkRun.conclusion ?? '')) {
+                  failingChecks.push(`${checkRun.name}: ${checkRun.conclusion}`);
                 }
               }
 
@@ -257,64 +233,82 @@ jobs:
               return { pendingChecks, failingChecks };
             };
 
-            for (let attempt = 0; attempt < 80; attempt += 1) {
-              const { pendingChecks, failingChecks } = await collectCheckState();
+            try {
+              for (let attempt = 0; attempt < 80; attempt += 1) {
+                const { pendingChecks, failingChecks } = await collectCheckState();
 
-              if (failingChecks.length > 0) {
-                await createComment(
-                  [
-                    ':bangbang: `Release 2.5 - Execute Push PR To Main` stopped before merge because non-release checks failed.',
-                    '',
-                    ...failingChecks.map((check) => `- ${check}`),
-                    '',
-                    'Fix the failing checks above, then submit a fresh CODEOWNER approval to re-run the release flow.',
-                  ].join('\n'),
+                if (failingChecks.length > 0) {
+                  await createComment(
+                    [
+                      ':bangbang: `Release 2.5 - Execute Push PR To Main` stopped before merge because non-release checks failed.',
+                      '',
+                      ...failingChecks.map((check) => `- ${check}`),
+                      '',
+                      'Fix the failing checks above, then submit a fresh CODEOWNER approval to re-run the release flow.',
+                    ].join('\n'),
+                  );
+                  core.setFailed(
+                    `PR #${prNumber} has failing non-release checks: ${failingChecks.join(', ')}`,
+                  );
+                  return;
+                }
+
+                if (pendingChecks.length === 0) {
+                  core.notice(`All non-release checks are green for PR #${prNumber}.`);
+                  return;
+                }
+
+                if (!postedPendingComment && attempt === 9) {
+                  await createComment(
+                    [
+                      ':hourglass_flowing_sand: `Release 2.5 - Execute Push PR To Main` is still waiting on non-release checks before merging to `main`.',
+                      '',
+                      ...pendingChecks.map((check) => `- ${check}`),
+                      '',
+                      'This is informational. The workflow will keep polling automatically.',
+                    ].join('\n'),
+                  );
+                  postedPendingComment = true;
+                }
+
+                if (attempt === 79) {
+                  await createComment(
+                    [
+                      ':bangbang: `Release 2.5 - Execute Push PR To Main` timed out waiting for non-release checks.',
+                      '',
+                      ...pendingChecks.map((check) => `- ${check}`),
+                      '',
+                      'When the pending checks finish, submit a fresh CODEOWNER approval to try again.',
+                    ].join('\n'),
+                  );
+                  core.setFailed(
+                    `PR #${prNumber} still has pending non-release checks: ${pendingChecks.join(', ')}`,
+                  );
+                  return;
+                }
+
+                core.info(
+                  `PR #${prNumber} is still waiting on non-release checks: ${pendingChecks.join(', ')}. ` +
+                    'Waiting 15 seconds before retrying.',
                 );
-                core.setFailed(
-                  `PR #${prNumber} has failing non-release checks: ${failingChecks.join(', ')}`,
-                );
-                return;
+                await new Promise((resolve) => setTimeout(resolve, 15000));
               }
-
-              if (pendingChecks.length === 0) {
-                core.notice(`All non-release checks are green for PR #${prNumber}.`);
-                return;
-              }
-
-              if (!postedPendingComment && attempt === 9) {
-                await createComment(
-                  [
-                    ':hourglass_flowing_sand: `Release 2.5 - Execute Push PR To Main` is still waiting on non-release checks before merging to `main`.',
-                    '',
-                    ...pendingChecks.map((check) => `- ${check}`),
-                    '',
-                    'This is informational. The workflow will keep polling automatically.',
-                  ].join('\n'),
-                );
-                postedPendingComment = true;
-              }
-
-              if (attempt === 79) {
-                await createComment(
-                  [
-                    ':bangbang: `Release 2.5 - Execute Push PR To Main` timed out waiting for non-release checks.',
-                    '',
-                    ...pendingChecks.map((check) => `- ${check}`),
-                    '',
-                    'When the pending checks finish, submit a fresh CODEOWNER approval to try again.',
-                  ].join('\n'),
-                );
-                core.setFailed(
-                  `PR #${prNumber} still has pending non-release checks: ${pendingChecks.join(', ')}`,
-                );
-                return;
-              }
-
-              core.info(
-                `PR #${prNumber} is still waiting on non-release checks: ${pendingChecks.join(', ')}. ` +
-                  'Waiting 15 seconds before retrying.',
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : '';
+              await createComment(
+                [
+                  ':bangbang: `Release 2.5 - Execute Push PR To Main` crashed during check verification.',
+                  '',
+                  '```',
+                  truncate(errorMessage),
+                  '```',
+                  '',
+                  errorStack ? `<details><summary>Stack trace</summary>\n\n\`\`\`\n${truncate(errorStack)}\n\`\`\`\n</details>\n` : '',
+                  'Submit a fresh CODEOWNER approval to retry.',
+                ].join('\n'),
               );
-              await new Promise((resolve) => setTimeout(resolve, 15000));
+              throw error;
             }
 
   merge_pr:
@@ -364,6 +358,17 @@ jobs:
             printf '%s\n' "$preview"
           fi
 
+      - name: Approve PR as github-actions bot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ needs.resolve_pr.outputs.pr_number }}
+        run: |
+          gh pr review "$PR_NUMBER" --approve \
+            --body "Approved by release automation (CODEOWNER approval was verified by Release 2)."
+          echo "Waiting for GitHub to recalculate mergeable state…"
+          sleep 10
+
       - name: Squash-merge PR
         id: merge
         uses: actions/github-script@v8
@@ -383,65 +388,133 @@ jobs:
               });
             };
 
-            for (let attempt = 0; attempt < 8; attempt += 1) {
-              const { data: pr } = await github.rest.pulls.get({
-                owner,
-                repo,
-                pull_number: pullNumber,
-              });
+            const isTransientError = (err) => {
+              const status = err?.status ?? err?.response?.status ?? 0;
+              return status >= 500 && status < 600;
+            };
 
-              if (pr.state !== 'open') {
-                core.setFailed(`PR #${pullNumber} is not open.`);
-                return;
-              }
+            const truncate = (str, max = 800) =>
+              str.length > max ? str.slice(0, max) + '\n… (truncated)' : str;
 
-              if (pr.mergeable_state === 'dirty' || pr.mergeable_state === 'draft') {
-                core.setFailed(`PR #${pullNumber} is not mergeable. mergeable_state=${pr.mergeable_state}`);
-                return;
-              }
-
-              if (pr.mergeable_state === 'behind') {
-                core.setFailed(`PR #${pullNumber} is behind main and must be updated before release automation can continue.`);
-                return;
-              }
-
-              if (pr.mergeable_state === 'clean' || pr.mergeable_state === 'has_hooks') {
-                const result = await github.rest.pulls.merge({
+            try {
+              for (let attempt = 0; attempt < 8; attempt += 1) {
+                const { data: pr } = await github.rest.pulls.get({
                   owner,
                   repo,
                   pull_number: pullNumber,
-                  merge_method: 'squash',
                 });
 
-                if (!result.data.merged) {
-                  core.setFailed(result.data.message ?? 'PR merge failed.');
+                if (pr.state !== 'open') {
+                  await createComment(
+                    `:bangbang: \`Release 2.5\` stopped: PR #${pullNumber} is no longer open (state=\`${pr.state}\`).`,
+                  );
+                  core.setFailed(`PR #${pullNumber} is not open.`);
                   return;
                 }
 
-                core.setOutput('merge_sha', result.data.sha ?? '');
-                return;
-              }
+                if (pr.mergeable_state === 'dirty' || pr.mergeable_state === 'draft') {
+                  await createComment(
+                    `:bangbang: \`Release 2.5\` stopped: PR #${pullNumber} is not mergeable (mergeable_state=\`${pr.mergeable_state}\`).`,
+                  );
+                  core.setFailed(`PR #${pullNumber} is not mergeable. mergeable_state=${pr.mergeable_state}`);
+                  return;
+                }
 
-              if (attempt === 7) {
-                await createComment(
-                  [
-                    ':bangbang: `Release 2.5 - Execute Push PR To Main` stopped because branch protection still blocks the squash merge after approval.',
-                    '',
-                    `- Last mergeable state: ${pr.mergeable_state}`,
-                    '- Non-release checks were already green, so the remaining blocker is review or branch protection state.',
-                    '- Check required reviews, required checks, and any temporary branch protection blockers, then re-approve the PR.',
-                  ].join('\n'),
-                );
-                core.setFailed(
-                  `PR #${pullNumber} did not become merge-ready before timeout. ` +
-                    `Last mergeable_state=${pr.mergeable_state}. ` +
-                    'Required checks or branch protection are still blocking the merge.',
-                );
-                return;
-              }
+                if (pr.mergeable_state === 'behind') {
+                  await createComment(
+                    `:bangbang: \`Release 2.5\` stopped: PR #${pullNumber} is behind \`main\` (mergeable_state=\`behind\`). Update the branch and re-approve.`,
+                  );
+                  core.setFailed(`PR #${pullNumber} is behind main and must be updated before release automation can continue.`);
+                  return;
+                }
 
-              core.info(`PR #${pullNumber} is not ready yet. mergeable_state=${pr.mergeable_state}. Waiting 15 seconds before retrying.`);
-              await new Promise((resolve) => setTimeout(resolve, 15000));
+                if (pr.mergeable_state === 'clean' || pr.mergeable_state === 'has_hooks' || pr.mergeable_state === 'unstable') {
+                  try {
+                    const result = await github.rest.pulls.merge({
+                      owner,
+                      repo,
+                      pull_number: pullNumber,
+                      merge_method: 'squash',
+                    });
+
+                    if (!result.data.merged) {
+                      await createComment(
+                        `:bangbang: \`Release 2.5\` merge API returned merged=false: \`${result.data.message ?? 'no message'}\`.`,
+                      );
+                      core.setFailed(result.data.message ?? 'PR merge failed.');
+                      return;
+                    }
+
+                    core.setOutput('merge_sha', result.data.sha ?? '');
+                    return;
+                  } catch (mergeError) {
+                    const status = mergeError?.status ?? mergeError?.response?.status ?? 0;
+
+                    // GitHub may return 5xx even though the merge succeeded on
+                    // their backend (the infamous Unicorn page). Check PR state
+                    // before deciding whether to retry or fail.
+                    if (isTransientError(mergeError)) {
+                      core.warning(
+                        `Merge attempt ${attempt + 1} got HTTP ${status}. Checking if the PR was merged anyway…`,
+                      );
+                      await new Promise((resolve) => setTimeout(resolve, 5000));
+                      const { data: recheck } = await github.rest.pulls.get({
+                        owner,
+                        repo,
+                        pull_number: pullNumber,
+                      });
+                      if (recheck.merged) {
+                        core.notice(`PR #${pullNumber} was merged despite the ${status} response.`);
+                        core.setOutput('merge_sha', recheck.merge_commit_sha ?? '');
+                        return;
+                      }
+                      if (attempt < 7) {
+                        core.warning(`PR not merged yet. Retrying in 15s…`);
+                        await new Promise((resolve) => setTimeout(resolve, 15000));
+                        continue;
+                      }
+                    }
+                    throw mergeError;
+                  }
+                }
+
+                if (attempt === 7) {
+                  await createComment(
+                    [
+                      ':bangbang: `Release 2.5 - Execute Push PR To Main` stopped because the PR did not reach a mergeable state.',
+                      '',
+                      `- Last mergeable state: \`${pr.mergeable_state}\``,
+                      '',
+                      'Check required reviews, required checks, and any temporary branch protection blockers, then re-approve the PR.',
+                    ].join('\n'),
+                  );
+                  core.setFailed(
+                    `PR #${pullNumber} did not become merge-ready before timeout. ` +
+                      `Last mergeable_state=${pr.mergeable_state}. ` +
+                      'Required checks or branch protection are still blocking the merge.',
+                  );
+                  return;
+                }
+
+                core.info(`PR #${pullNumber} is not ready yet. mergeable_state=${pr.mergeable_state}. Waiting 15 seconds before retrying.`);
+                await new Promise((resolve) => setTimeout(resolve, 15000));
+              }
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const errorStack = error instanceof Error ? error.stack : '';
+              await createComment(
+                [
+                  ':bangbang: `Release 2.5 - Execute Push PR To Main` crashed during squash-merge.',
+                  '',
+                  '```',
+                  truncate(errorMessage),
+                  '```',
+                  '',
+                  errorStack ? `<details><summary>Stack trace</summary>\n\n\`\`\`\n${truncate(errorStack)}\n\`\`\`\n</details>\n` : '',
+                  'Submit a fresh CODEOWNER approval to retry.',
+                ].join('\n'),
+              );
+              throw error;
             }
 
   sync_back:
@@ -488,43 +561,35 @@ jobs:
       pull-requests: write
     steps:
       - name: Add result comment
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const verifyChecksResult = '${{ needs.verify_pr_checks.result }}';
-            const mergeResult = '${{ needs.merge_pr.result }}';
-            const syncBackResult = '${{ needs.sync_back.result }}';
-            const buildResult = '${{ needs.build_main.result }}';
-            const prNumber = Number('${{ needs.resolve_pr.outputs.pr_number }}');
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ needs.resolve_pr.outputs.pr_number }}
+          VERIFY_RESULT: ${{ needs.verify_pr_checks.result }}
+          MERGE_RESULT: ${{ needs.merge_pr.result }}
+          SYNC_RESULT: ${{ needs.sync_back.result }}
+          BUILD_RESULT: ${{ needs.build_main.result }}
+        run: |
+          if [[ "$VERIFY_RESULT" != "success" ]]; then
+            body=":bangbang: \`Release 2.5 - Execute Push PR To Main\` stopped before merge because non-release checks did not finish cleanly.
 
-            let body;
-            if (verifyChecksResult !== 'success') {
-              body = [
-                ':bangbang: `Release 2.5 - Execute Push PR To Main` stopped before merge because non-release checks did not finish cleanly.',
-                '',
-                'See the earlier blocker comment on this PR for the failing or pending checks.',
-              ].join('\n');
-            } else if (mergeResult !== 'success') {
-              body = [
-                ':bangbang: `Release 2.5 - Execute Push PR To Main` failed during squash-merge after approval.',
-                '',
-                'See the earlier blocker comment on this PR for the last mergeable state and the remaining protection blocker.',
-              ].join('\n');
-            } else {
-              const lines = [
-                ':rocket: `Release 2.5 - Execute Push PR To Main` completed after approval.',
-                '',
-                '- PR squash-merged into `main`',
-                `- Sync back: ${syncBackResult}`,
-                `- Build Main: ${buildResult}`,
-              ];
+          - Verify checks result: \`${VERIFY_RESULT}\`
 
-              body = lines.join('\n');
-            }
+          See the earlier blocker comment on this PR for specifics."
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body,
-            });
+          elif [[ "$MERGE_RESULT" != "success" ]]; then
+            body=":bangbang: \`Release 2.5 - Execute Push PR To Main\` failed during squash-merge after approval.
+
+          - Merge result: \`${MERGE_RESULT}\`
+
+          See the earlier blocker comment on this PR for specifics."
+
+          else
+            body=":rocket: \`Release 2.5 - Execute Push PR To Main\` completed after approval.
+
+          - PR squash-merged into \`main\`
+          - Sync back: ${SYNC_RESULT}
+          - Build Main: ${BUILD_RESULT}"
+          fi
+
+          gh pr comment "$PR_NUMBER" --body "$body"
