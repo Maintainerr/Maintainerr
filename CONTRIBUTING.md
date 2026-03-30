@@ -172,13 +172,19 @@ Maintainers should promote `development` to `main` through the release PR workfl
 
 ```bash
 ./release.sh prepare-pr
-# Approve the release PR to continue the flow
-./release.sh sync-back --dry-run
-./release.sh sync-back
+# Approve the release PR to trigger Release 2 and Release 2.5
+# Wait for the PR summary comment confirming merge, sync-back, and Build Main
 REF=main ./release.sh release
 ```
 
-If branch sync needs to be rerun manually, the workflow-only fallback is [release_3_sync_back.yml](.github/workflows/release_3_sync_back.yml).
+If branch sync needs to be rerun manually, use:
+
+```bash
+./release.sh sync-back --dry-run
+./release.sh sync-back
+```
+
+The workflow-only fallback is [release_3_sync_back.yml](.github/workflows/release_3_sync_back.yml).
 
 ## Attribution
 
