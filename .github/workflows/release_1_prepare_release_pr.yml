@@ -1,0 +1,129 @@
+name: "Release 1 - Prepare PR"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release-prepare-pr-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  MAIN_BRANCH: main
+  DEVELOPMENT_BRANCH: development
+  RELEASE_PR_TITLE: "chore: sync development to main"
+  RELEASE_PR_TEMPLATE: .github/PULL_REQUEST_TEMPLATE/release-main.md
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: manual workflow run
+
+  guard_release_branch:
+    name: Guard release branch
+    needs: guard_manual_run
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Ensure release PR prep was started from development
+        run: |
+          if [ "${{ github.ref_name }}" != "development" ]; then
+            echo "Prepare Release PR must be run from development. Current ref: ${{ github.ref_name }}"
+            exit 1
+          fi
+
+  prepare_pr:
+    name: Create or update release PR
+    needs: guard_release_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
+      - name: Checkout development
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Run preflight checks
+        run: |
+          git fetch origin
+
+          development_ahead_of_main="$(git rev-list --count origin/main..origin/development)"
+          main_ahead_of_development="$(git rev-list --count origin/development..origin/main)"
+
+          echo "development_ahead_of_main=${development_ahead_of_main}"
+          echo "main_ahead_of_development=${main_ahead_of_development}"
+
+          echo "==> Content diff summary"
+          git diff --shortstat origin/main origin/development || true
+
+          echo "==> Changed files"
+          git diff --name-status origin/main origin/development || true
+
+          echo "==> merge-tree preview"
+          merge_base="$(git merge-base origin/main origin/development)"
+          preview="$(git merge-tree "$merge_base" origin/main origin/development)"
+          if [ -z "$preview" ]; then
+            echo "clean"
+          else
+            printf '%s\n' "$preview"
+          fi
+
+          {
+            echo "## Release Preflight"
+            echo
+            echo "- development_ahead_of_main=${development_ahead_of_main}"
+            echo "- main_ahead_of_development=${main_ahead_of_development}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update release PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          existing_number="$(gh pr list --base "$MAIN_BRANCH" --head "$DEVELOPMENT_BRANCH" --state open --json number --jq '.[0].number // empty')"
+
+          if [ -n "$existing_number" ]; then
+            gh pr edit "$existing_number" \
+              --title "$RELEASE_PR_TITLE" \
+              --body-file "$RELEASE_PR_TEMPLATE"
+
+            pr_url="$(gh pr view "$existing_number" --json url --jq '.url')"
+            echo "Updated release PR: $pr_url"
+            {
+              echo "## Release PR"
+              echo
+              echo "Updated existing PR: $pr_url"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          pr_url="$(gh pr create \
+            --base "$MAIN_BRANCH" \
+            --head "$DEVELOPMENT_BRANCH" \
+            --title "$RELEASE_PR_TITLE" \
+            --body-file "$RELEASE_PR_TEMPLATE")"
+
+          echo "Created release PR: $pr_url"
+          {
+            echo "## Release PR"
+            echo
+            echo "Created PR: $pr_url"
+          } >> "$GITHUB_STEP_SUMMARY"

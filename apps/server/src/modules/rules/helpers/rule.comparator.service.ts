@@ -250,7 +250,7 @@ export class RuleComparatorService {
           }
         }
       } else {
-        this.logMissingOperand(rule, mediaId, firstVal, secondVal);
+        this.logMissingOperand(rule, ruleGroup, mediaId, firstVal, secondVal);
         this.addStatistictoParent(rule, firstVal, secondVal, mediaId, false);
 
         if (rule.operator != null && +rule.operator === +RuleOperators.AND) {
@@ -373,6 +373,7 @@ export class RuleComparatorService {
 
   private logMissingOperand(
     rule: RuleDto,
+    ruleGroup: RulesDto,
     mediaId: string,
     firstVal: RuleValueType,
     secondVal: RuleValueType,
@@ -382,7 +383,8 @@ export class RuleComparatorService {
     );
 
     this.logger.debug(
-      `Skipping rule comparison due to missing operand: ` +
+      `Skipping rule comparison because a value is unavailable: ` +
+        `ruleGroup="${ruleGroup.name}", section=${rule.section}, ` +
         `mediaId=${mediaId}, action=${RulePossibility[rule.action]}, ` +
         `firstValueName=${firstValueName}, firstValue=${JSON.stringify(firstVal)}, ` +
         `secondValueName=${this.getSecondValueName(rule)}, secondValue=${JSON.stringify(secondVal)}`,
