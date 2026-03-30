@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ./release.sh prepare-pr
-  ./release.sh sync-back [--dry-run]
+  ./release.sh sync-back [--post-release] [--dry-run]
   ./release.sh release [--dry-run] [--with-docker-images]
 
 Environment:
@@ -28,12 +28,27 @@ run_prepare_pr() {
 }
 
 run_sync_back() {
-  if [[ "${1:-}" == "--dry-run" ]]; then
-    gh workflow run release_3_sync_back.yml --ref "$REF" -f dry_run=true
-    return
-  fi
+  local mode="reconcile"
+  local dry_run="false"
 
-  gh workflow run release_3_sync_back.yml --ref "$REF"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run)
+        dry_run="true"
+        ;;
+      --post-release)
+        mode="post-release"
+        ;;
+      *)
+        usage >&2
+        echo "Error: unknown sync-back option: $1" >&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
+
+  gh workflow run release_3_sync_back.yml --ref "$REF" -f mode="$mode" -f dry_run="$dry_run"
 }
 
 run_release() {
@@ -69,7 +84,7 @@ main() {
       ;;
     sync-back)
       shift
-      run_sync_back "${1:-}"
+      run_sync_back "$@"
       ;;
     release)
       shift

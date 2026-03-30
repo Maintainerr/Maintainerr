@@ -3,6 +3,13 @@ name: "Release 3 - Sync Back"
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        type: choice
+        description: Sync strategy to run
+        options:
+          - reconcile
+          - post-release
+        default: reconcile
       dry_run:
         type: boolean
         description: Preview sync-back without pushing changes
@@ -13,6 +20,10 @@ on:
         type: string
         required: false
         default: development
+      mode:
+        type: string
+        required: false
+        default: reconcile
       dry_run:
         type: boolean
         required: false
@@ -30,6 +41,7 @@ env:
   MAIN_BRANCH: main
   DEVELOPMENT_BRANCH: development
   RECONCILE_COMMIT_MESSAGE: "chore: reconcile with main after squash-merge"
+  POST_RELEASE_COMMIT_MESSAGE: "chore: sync release changes back from main"
 
 jobs:
   guard_manual_run:
@@ -80,65 +92,145 @@ jobs:
         run: |
           set -euo pipefail
 
-          git fetch "$REMOTE"
-
-          shortstat="$(git diff --shortstat "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
-          if [ -n "$shortstat" ]; then
-            echo "$shortstat" >&2
-            echo "Branches do not have identical content. Squash-merge the PR first." >&2
-            exit 1
+          sync_mode='${{ inputs.mode }}'
+          if [ -z "$sync_mode" ]; then
+            sync_mode='${{ github.event.inputs.mode }}'
           fi
-
-          merge_base="$(git merge-base "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
-          preview="$(git merge-tree "$merge_base" "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
-          if [ -n "$preview" ]; then
-            printf '%s\n' "$preview" >&2
-            echo "Reconciliation preview is not clean. Resolve branch differences before syncing back." >&2
-            exit 1
+          if [ -z "$sync_mode" ]; then
+            sync_mode='reconcile'
           fi
-
-          if [ "$DRY_RUN" = "true" ]; then
-            {
-              echo "## Sync Back"
-              echo
-              echo "- Mode: dry run"
-              echo "- Status: branches have identical content and the merge preview is clean"
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          git checkout "$DEVELOPMENT_BRANCH"
-          git pull --ff-only "$REMOTE" "$DEVELOPMENT_BRANCH"
-
-          if git show-ref --verify --quiet "refs/heads/$MAIN_BRANCH"; then
-            git checkout "$MAIN_BRANCH"
-          else
-            git checkout -b "$MAIN_BRANCH" "$REMOTE/$MAIN_BRANCH"
-          fi
-          git pull --ff-only "$REMOTE" "$MAIN_BRANCH"
-
-          git checkout "$DEVELOPMENT_BRANCH"
-          git merge "$MAIN_BRANCH" --no-ff -m "$RECONCILE_COMMIT_MESSAGE"
-          git push "$REMOTE" "$DEVELOPMENT_BRANCH"
-
-          git checkout "$MAIN_BRANCH"
-          git merge "$DEVELOPMENT_BRANCH" --ff-only
-          git push "$REMOTE" "$MAIN_BRANCH"
 
           git fetch "$REMOTE"
 
-          ahead_dev="$(git rev-list --count "$REMOTE/$MAIN_BRANCH..$REMOTE/$DEVELOPMENT_BRANCH")"
-          ahead_main="$(git rev-list --count "$REMOTE/$DEVELOPMENT_BRANCH..$REMOTE/$MAIN_BRANCH")"
+          case "$sync_mode" in
+            reconcile)
+              shortstat="$(git diff --shortstat "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
+              if [ -n "$shortstat" ]; then
+                echo "$shortstat" >&2
+                echo "Branches do not have identical content. Squash-merge the PR first." >&2
+                exit 1
+              fi
 
-          if [ "$ahead_dev" != "0" ] || [ "$ahead_main" != "0" ]; then
-            echo "Branches are still diverged after sync-back." >&2
-            exit 1
-          fi
+              merge_base="$(git merge-base "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
+              preview="$(git merge-tree "$merge_base" "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
+              if [ -n "$preview" ]; then
+                printf '%s\n' "$preview" >&2
+                echo "Reconciliation preview is not clean. Resolve branch differences before syncing back." >&2
+                exit 1
+              fi
 
-          {
-            echo "## Sync Back"
-            echo
-            echo "- Mode: apply"
-            echo "- development_ahead_of_main=$ahead_dev"
-            echo "- main_ahead_of_development=$ahead_main"
-          } >> "$GITHUB_STEP_SUMMARY"
+              if [ "$DRY_RUN" = "true" ]; then
+                {
+                  echo "## Sync Back"
+                  echo
+                  echo "- Strategy: reconcile"
+                  echo "- Mode: dry run"
+                  echo "- Status: branches have identical content and the merge preview is clean"
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+
+              git checkout "$DEVELOPMENT_BRANCH"
+              git pull --ff-only "$REMOTE" "$DEVELOPMENT_BRANCH"
+
+              if git show-ref --verify --quiet "refs/heads/$MAIN_BRANCH"; then
+                git checkout "$MAIN_BRANCH"
+              else
+                git checkout -b "$MAIN_BRANCH" "$REMOTE/$MAIN_BRANCH"
+              fi
+              git pull --ff-only "$REMOTE" "$MAIN_BRANCH"
+
+              git checkout "$DEVELOPMENT_BRANCH"
+              git merge "$MAIN_BRANCH" --no-ff -m "$RECONCILE_COMMIT_MESSAGE"
+              git push "$REMOTE" "$DEVELOPMENT_BRANCH"
+
+              git checkout "$MAIN_BRANCH"
+              git merge "$DEVELOPMENT_BRANCH" --ff-only
+              git push "$REMOTE" "$MAIN_BRANCH"
+
+              git fetch "$REMOTE"
+
+              ahead_dev="$(git rev-list --count "$REMOTE/$MAIN_BRANCH..$REMOTE/$DEVELOPMENT_BRANCH")"
+              ahead_main="$(git rev-list --count "$REMOTE/$DEVELOPMENT_BRANCH..$REMOTE/$MAIN_BRANCH")"
+
+              if [ "$ahead_dev" != "0" ] || [ "$ahead_main" != "0" ]; then
+                echo "Branches are still diverged after sync-back." >&2
+                exit 1
+              fi
+
+              {
+                echo "## Sync Back"
+                echo
+                echo "- Strategy: reconcile"
+                echo "- Mode: apply"
+                echo "- development_ahead_of_main=$ahead_dev"
+                echo "- main_ahead_of_development=$ahead_main"
+              } >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            post-release)
+              ahead_dev_before="$(git rev-list --count "$REMOTE/$MAIN_BRANCH..$REMOTE/$DEVELOPMENT_BRANCH")"
+              ahead_main_before="$(git rev-list --count "$REMOTE/$DEVELOPMENT_BRANCH..$REMOTE/$MAIN_BRANCH")"
+
+              git checkout "$DEVELOPMENT_BRANCH"
+              git pull --ff-only "$REMOTE" "$DEVELOPMENT_BRANCH"
+
+              if [ "$ahead_main_before" = "0" ]; then
+                {
+                  echo "## Sync Back"
+                  echo
+                  echo "- Strategy: post-release"
+                  echo "- Mode: $([ "$DRY_RUN" = "true" ] && echo dry\ run || echo apply)"
+                  echo "- Status: development already contains main"
+                  echo "- development_ahead_of_main=$ahead_dev_before"
+                  echo "- main_ahead_of_development=$ahead_main_before"
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+
+              if ! git merge --no-commit --no-ff "$REMOTE/$MAIN_BRANCH"; then
+                git merge --abort || true
+                echo "Post-release sync-back hit merge conflicts. Resolve the branch drift before retrying." >&2
+                exit 1
+              fi
+
+              if [ "$DRY_RUN" = "true" ]; then
+                git merge --abort
+                {
+                  echo "## Sync Back"
+                  echo
+                  echo "- Strategy: post-release"
+                  echo "- Mode: dry run"
+                  echo "- Status: main can be merged back into development cleanly"
+                  echo "- development_ahead_of_main=$ahead_dev_before"
+                  echo "- main_ahead_of_development=$ahead_main_before"
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+
+              git commit -m "$POST_RELEASE_COMMIT_MESSAGE"
+              git push "$REMOTE" "$DEVELOPMENT_BRANCH"
+
+              git fetch "$REMOTE"
+
+              ahead_dev_after="$(git rev-list --count "$REMOTE/$MAIN_BRANCH..$REMOTE/$DEVELOPMENT_BRANCH")"
+              ahead_main_after="$(git rev-list --count "$REMOTE/$DEVELOPMENT_BRANCH..$REMOTE/$MAIN_BRANCH")"
+
+              if [ "$ahead_main_after" != "0" ]; then
+                echo "main is still ahead of development after post-release sync-back." >&2
+                exit 1
+              fi
+
+              {
+                echo "## Sync Back"
+                echo
+                echo "- Strategy: post-release"
+                echo "- Mode: apply"
+                echo "- development_ahead_of_main=$ahead_dev_after"
+                echo "- main_ahead_of_development=$ahead_main_after"
+              } >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              echo "Unknown sync mode: $sync_mode" >&2
+              exit 1
+              ;;
+          esac

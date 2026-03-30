@@ -88,6 +88,19 @@ jobs:
           npx semantic-release
           fi
 
+  sync_back_release_commit:
+    name: Sync release commit back to development
+    needs: semantic-release
+    if: ${{ needs.semantic-release.result == 'success' && github.event.inputs.dry-run-semantic-release != 'true' }}
+    uses: ./.github/workflows/release_3_sync_back.yml
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      ref: development
+      mode: post-release
+      dry_run: false
+
   build-docker-image:
     if: github.event.inputs.with-docker-images == 'true'
     name: Build ${{ matrix.platform }}
