@@ -2874,7 +2874,7 @@ __metadata:
     email-templates: "npm:13.0.1"
     eslint: "npm:^9.39.2"
     eslint-config-prettier: "npm:^10.1.8"
-    eslint-plugin-jest: "npm:^29.15.0"
+    eslint-plugin-jest: "npm:^29.15.1"
     http-terminator: "npm:^3.2.0"
     jest: "npm:^30.3.0"
     lodash: "npm:^4.17.23"
@@ -10013,16 +10013,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-jest@npm:^29.15.0":
-  version: 29.15.0
-  resolution: "eslint-plugin-jest@npm:29.15.0"
+"eslint-plugin-jest@npm:^29.15.1":
+  version: 29.15.1
+  resolution: "eslint-plugin-jest@npm:29.15.1"
   dependencies:
     "@typescript-eslint/utils": "npm:^8.0.0"
   peerDependencies:
     "@typescript-eslint/eslint-plugin": ^8.0.0
     eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
     jest: "*"
-    typescript: ">=4.8.4 <6.0.0"
+    typescript: ">=4.8.4 <7.0.0"
   peerDependenciesMeta:
     "@typescript-eslint/eslint-plugin":
       optional: true
@@ -10030,7 +10030,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/e3d8f67708ba4a77a628f8d97a9ebbb20f62ad690d7cc155c0a1066d36b74a6ad8e943fda5c54264c4ad4186dd8d212075bce9f5c2debdd35708ed74ecdc81ef
+  checksum: 10c0/daa54dfa2246c4fc822ae565a77ee35c456a0b6d41de5af56279264c47ceadc72c88c70ebf72fcb4bc1e114ad52bc8196fb23574a06674946a7d560fb627d27c
   languageName: node
   linkType: hard
 
