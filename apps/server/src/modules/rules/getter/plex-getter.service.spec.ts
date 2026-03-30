@@ -8,6 +8,7 @@ import { PlexGetterService } from './plex-getter.service';
 
 const VIEWCOUNT_PROP_ID = 5;
 const ISWATCHED_PROP_ID = 43;
+const PLEX_ITEM_ID = 'plex-item-123';
 
 const makeMetadata = (overrides: Partial<PlexMetadata> = {}): PlexMetadata =>
   ({
@@ -68,10 +69,10 @@ describe('PlexGetterService', () => {
   });
 
   it('requests external media metadata for IMDb ratings', async () => {
-    const mediaItem = createMediaItem();
+    const mediaItem = createMediaItem({ id: PLEX_ITEM_ID });
 
     plexApi.getMetadata.mockResolvedValue({
-      ratingKey: 'plex-item-123',
+      ratingKey: PLEX_ITEM_ID,
       type: 'movie',
       title: 'Test Movie',
       Guid: [],
@@ -94,17 +95,17 @@ describe('PlexGetterService', () => {
     );
 
     expect(result).toBe(7.8);
-    expect(plexApi.getMetadata).toHaveBeenCalledWith('plex-item-123', {
+    expect(plexApi.getMetadata).toHaveBeenCalledWith(PLEX_ITEM_ID, {
       includeExternalMedia: true,
     });
   });
 
   it('requests external media metadata for show IMDb ratings', async () => {
-    const mediaItem = createMediaItem({ type: 'episode' });
+    const mediaItem = createMediaItem({ id: PLEX_ITEM_ID, type: 'episode' });
 
     plexApi.getMetadata
       .mockResolvedValueOnce({
-        ratingKey: 'plex-item-123',
+        ratingKey: PLEX_ITEM_ID,
         type: 'episode',
         title: 'Episode 1',
         Guid: [],
@@ -144,7 +145,7 @@ describe('PlexGetterService', () => {
     );
 
     expect(result).toBe(8.2);
-    expect(plexApi.getMetadata).toHaveBeenNthCalledWith(1, 'plex-item-123', {
+    expect(plexApi.getMetadata).toHaveBeenNthCalledWith(1, PLEX_ITEM_ID, {
       includeExternalMedia: true,
     });
     expect(plexApi.getMetadata).toHaveBeenNthCalledWith(2, 'show-1', {
