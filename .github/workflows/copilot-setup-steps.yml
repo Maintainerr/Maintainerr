@@ -14,21 +14,24 @@ on:
 jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
-    permissions: {}
+    permissions:
+      contents: read
     with:
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
       allowed: "ydkmlt84"
+      source: manual workflow run
 
   # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
   copilot-setup-steps:
     needs: guard_manual_run
     runs-on: ubuntu-latest
 
-    # Set the permissions to the lowest permissions possible needed for your steps.
+    # Set the permissions to the lowest permissions needed for these steps.
     # Copilot will be given its own token for its operations.
     permissions:
-      # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission. If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
+      # If setup steps clone the repo, they need `contents: read`.
+      # Otherwise Copilot will check out the code after setup completes.
       contents: read
 
     # You can define any steps you want, and they will run before the agent starts.

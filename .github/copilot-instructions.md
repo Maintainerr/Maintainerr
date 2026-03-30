@@ -107,7 +107,7 @@ yarn workspace @maintainerr/contracts build
 - **Prettier**: Consistent formatting (run `yarn format`)
 - **Commits**: Follow [Conventional Commits](https://conventionalcommits.org/) specification
 - **Import Organization**: Prefer absolute imports, group by type (external, internal, relative)
-- **String Handling**: Avoid regex for simple prefix/suffix/substring checks or single-character trimming. Prefer string primitives such as `endsWith`, `startsWith`, `slice`, `substring`, or direct character inspection to reduce unnecessary regex risk; see [OWASP ReDoS guidance](https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS).
+- **String Handling**: Avoid regex for simple prefix/suffix/substring checks or single-character trimming. Prefer string primitives such as `endsWith`, `startsWith`, `slice`, `substring`, or direct character inspection to reduce unnecessary regex risk; see [OWASP ReDoS guidance](https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS). Example: `fix: avoid regex backtracking in disk path normalization (#2526)`.
 
 ### TypeScript Guidelines
 

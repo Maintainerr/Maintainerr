@@ -1,4 +1,4 @@
-name: "Release PR"
+name: "PR Comment - Build Release Images"
 
 on:
   issue_comment:
@@ -17,7 +17,17 @@ env:
 jobs:
   resolve-pr:
     name: Resolve PR context
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/release-pr') && github.event.issue.state == 'open' && (github.event.comment.author_association == 'COLLABORATOR' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER') }}
+    if: >-
+      ${{
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/release-pr') &&
+        github.event.issue.state == 'open' &&
+        (
+          github.event.comment.author_association == 'COLLABORATOR' ||
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'MEMBER'
+        )
+      }}
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.pr.outputs.should_run }}
@@ -45,7 +55,9 @@ jobs:
             core.setOutput('should_run', shouldRun ? 'true' : 'false');
 
             if (!shouldRun) {
-              core.warning(`Refusing to run privileged release workflow on forked repository ${headRepo}.`);
+              core.warning(
+                `Refusing to run privileged release workflow on forked repository ${headRepo}.`,
+              );
             }
 
       - name: Notify unsupported fork
@@ -55,7 +67,9 @@ jobs:
           allow-repeats: false
           issue: ${{ github.event.issue.number }}
           message: |
-            :lock: Release builds can only be triggered for branches in the `${{ github.repository }}` repository. This prevents running privileged jobs on forks.
+            :lock: Release builds can only be triggered for branches in the
+            `${{ github.repository }}` repository. This prevents running
+            privileged jobs on forks.
 
   build-docker-image:
     needs: resolve-pr
@@ -194,9 +208,11 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
 
       - name: Notify of release

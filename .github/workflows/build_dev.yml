@@ -21,9 +21,9 @@ jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
     with:
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,enoch85"
+      source: manual workflow run
 
   build_docker_image:
     name: Build ${{ matrix.platform }}
@@ -73,7 +73,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME  }}
           password: ${{ secrets.DOCKERHUB_TOKEN  }}
 
-      - name: ${{ github.event_name == 'pull_request' && 'Build image' || 'Build & push by digest' }}
+      - name: >-
+          ${{
+            github.event_name == 'pull_request' &&
+            'Build image' ||
+            'Build & push by digest'
+          }}
         id: build
         uses: docker/build-push-action@v7
         with:
@@ -83,7 +88,10 @@ jobs:
             GIT_SHA=${{ github.sha }}
             VERSION_TAG=development
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+          outputs: >-
+            type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",
+            push-by-digest=true,name-canonical=true,
+            push=${{ github.event_name != 'pull_request' }}
 
       - name: Export digest
         if: github.event_name != 'pull_request'
@@ -145,7 +153,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)

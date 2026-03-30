@@ -1,0 +1,12 @@
+extends: default
+
+ignore: |
+  **/node_modules/**
+  **/.yarn/**
+
+rules:
+  document-start: disable
+  truthy: disable
+  line-length:
+    max: 160
+    allow-non-breakable-words: true

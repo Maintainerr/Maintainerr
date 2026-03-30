@@ -159,6 +159,36 @@ When adding new UI text, please try to adhere to the following guidelines:
 10. Do your best to check for spelling errors and grammatical mistakes.
 11. Do not misspell "Maintainerr."
 
+## Branching Strategy & Release Workflow (Maintainers)
+
+### Branch Roles
+
+| Branch        | Purpose                                                                 |
+| ------------- | ----------------------------------------------------------------------- |
+| `development` | Default branch. All PRs target here. Granular commit history.           |
+| `main`        | Stable release branch. Updated via squash-merge PRs from `development`. |
+
+Maintainers should promote `development` to `main` through the release PR workflow. After the release PR is approved, automation will squash-merge it into `main`, sync the branches, and run `Release 4 - Build Main`. After `Release 5 - Publish` creates the release commit on `main`, automation runs a second sync-back so `development` does not stay behind `main`.
+
+```bash
+./release.sh prepare-pr
+# Approve the release PR to trigger Release 2 and Release 2.5
+# Wait for the PR summary comment confirming merge, sync-back, and Build Main
+REF=main ./release.sh release
+# Release 5 finishes with a post-publish sync-back into development
+```
+
+If branch sync needs to be rerun manually, use:
+
+```bash
+./release.sh sync-back --dry-run
+./release.sh sync-back
+./release.sh sync-back --post-release --dry-run
+./release.sh sync-back --post-release
+```
+
+The workflow-only fallback is [release_3_sync_back.yml](.github/workflows/release_3_sync_back.yml).
+
 ## Attribution
 
 This contribution guide was inspired by the [Overseerr](https://github.com/sct/overseerr) contribution guide.

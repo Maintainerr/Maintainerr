@@ -1,4 +1,4 @@
-name: "Release"
+name: "Release 5 - Publish"
 
 on:
   workflow_dispatch:
@@ -12,6 +12,10 @@ on:
         description: Build and push docker images
         default: false
 
+concurrency:
+  group: release-final-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
 env:
   DOCKERHUB_SLUG: maintainerr/maintainerr
   DOCKERHUB_LEGACY_SLUG: jorenn92/maintainerr
@@ -20,11 +24,12 @@ env:
 jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
-    permissions: {}
+    permissions:
+      contents: read
     with:
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,enoch85"
+      source: manual workflow run
 
   guard_release_branch:
     name: Guard release branch
@@ -82,6 +87,19 @@ jobs:
           else
           npx semantic-release
           fi
+
+  sync_back_release_commit:
+    name: Sync release commit back to development
+    needs: semantic-release
+    if: ${{ needs.semantic-release.result == 'success' && github.event.inputs.dry-run-semantic-release != 'true' }}
+    uses: ./.github/workflows/release_3_sync_back.yml
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      ref: development
+      mode: post-release
+      dry_run: false
 
   build-docker-image:
     if: github.event.inputs.with-docker-images == 'true'
@@ -150,7 +168,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             GIT_SHA=${{ github.sha }}
-            VERSION_TAG=stable
+            VERSION_TAG=latest
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=true
 
@@ -224,9 +242,11 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)
 
       # Legacy mirror -- Keep here until Synology and Unraid Community Apps migrate to maintainerr repo
