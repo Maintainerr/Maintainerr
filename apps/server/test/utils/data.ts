@@ -7,9 +7,12 @@ import {
   MediaLibrary,
   MediaServerType,
 } from '@maintainerr/contracts';
+import { PlexCollection } from '../../src/modules/api/plex-api/interfaces/collection.interface';
 import {
   PlexLibrary,
   PlexLibraryItem,
+  PlexSeenBy,
+  PlexUserAccount,
 } from '../../src/modules/api/plex-api/interfaces/library.interfaces';
 import { PlexMetadata } from '../../src/modules/api/plex-api/interfaces/media.interface';
 import {
@@ -228,6 +231,57 @@ export const createPlexLibrary = (
   type: faker.helpers.arrayElement(['movie', 'show']),
   key: faker.string.sample(10),
   title: faker.string.sample(10),
+  ...properties,
+});
+
+export const createPlexUserAccount = (
+  properties: Partial<PlexUserAccount> = {},
+): PlexUserAccount => ({
+  id: faker.number.int(),
+  key: faker.string.sample(10),
+  name: faker.string.sample(10),
+  defaultAudioLanguage: 'en',
+  autoSelectAudio: true,
+  defaultSubtitleLanguage: 'en',
+  subtitleMode: faker.number.int(),
+  thumb: faker.system.filePath(),
+  ...properties,
+});
+
+export const createPlexSeenBy = (
+  properties: Partial<PlexSeenBy> = {},
+): PlexSeenBy => ({
+  ...createPlexLibraryItem('movie', properties),
+  historyKey: faker.string.sample(10),
+  key: faker.string.sample(10),
+  ratingKey: properties.ratingKey ?? faker.string.sample(10),
+  title: properties.title ?? faker.string.sample(10),
+  thumb: faker.system.filePath(),
+  originallyAvailableAt: faker.date.past().toISOString().split('T')[0],
+  viewedAt: faker.date.past().getTime(),
+  accountID: faker.number.int(),
+  deviceID: faker.number.int(),
+  ...properties,
+});
+
+export const createPlexCollection = (
+  properties: Partial<PlexCollection> = {},
+): PlexCollection => ({
+  ratingKey: faker.string.sample(10),
+  key: faker.string.sample(10),
+  guid: faker.string.sample(10),
+  type: 'collection',
+  title: faker.string.sample(10),
+  subtype: 'movie',
+  summary: faker.string.sample(10),
+  index: faker.number.int(),
+  ratingCount: faker.number.int(),
+  thumb: faker.system.filePath(),
+  addedAt: faker.date.past().getTime(),
+  updatedAt: faker.date.past().getTime(),
+  childCount: faker.number.int().toString(),
+  maxYear: faker.number.int().toString(),
+  minYear: faker.number.int().toString(),
   ...properties,
 });
 

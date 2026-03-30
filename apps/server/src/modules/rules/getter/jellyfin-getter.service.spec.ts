@@ -63,6 +63,8 @@ describe('JellyfinGetterService', () => {
   let jellyfinGetterService: JellyfinGetterService;
   let jellyfinAdapter: Mocked<JellyfinAdapterService>;
 
+  const JELLYFIN_IS_WATCHED_PROP_ID = 42;
+
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
       JellyfinGetterService,
@@ -359,16 +361,14 @@ describe('JellyfinGetterService', () => {
   });
 
   describe('viewCount (id: 5)', () => {
-    it('should return total view count from watch history', async () => {
+    it('should return total view count from shared watch state', async () => {
       const mediaItem = createMediaItem();
-      const watchHistory: WatchRecord[] = [
-        createWatchRecord({ userId: 'user-1' }),
-        createWatchRecord({ userId: 'user-2' }),
-        createWatchRecord({ userId: 'user-1' }),
-      ];
 
       jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-      jellyfinAdapter.getWatchHistory.mockResolvedValue(watchHistory);
+      jellyfinAdapter.getWatchState.mockResolvedValue({
+        viewCount: 3,
+        isWatched: true,
+      });
 
       const response = await jellyfinGetterService.get(
         5,
@@ -378,6 +378,46 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toBe(3);
+    });
+  });
+
+  describe('isWatched', () => {
+    it('should return true when shared watch state reports the item as watched', async () => {
+      const mediaItem = createMediaItem();
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getWatchState.mockResolvedValue({
+        viewCount: 1,
+        isWatched: true,
+      });
+
+      const response = await jellyfinGetterService.get(
+        JELLYFIN_IS_WATCHED_PROP_ID,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBe(true);
+    });
+
+    it('should return false when shared watch state reports the item as unwatched', async () => {
+      const mediaItem = createMediaItem();
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getWatchState.mockResolvedValue({
+        viewCount: 0,
+        isWatched: false,
+      });
+
+      const response = await jellyfinGetterService.get(
+        JELLYFIN_IS_WATCHED_PROP_ID,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBe(false);
     });
   });
 

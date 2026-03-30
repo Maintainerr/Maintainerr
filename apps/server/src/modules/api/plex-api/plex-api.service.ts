@@ -446,12 +446,18 @@ export class PlexApiService {
     }
   }
 
-  public async getWatchHistory(itemId: string): Promise<PlexSeenBy[]> {
+  public async getWatchHistory(
+    itemId: string,
+    useCache: boolean = true,
+  ): Promise<PlexSeenBy[]> {
     try {
       const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>({
-          uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
-        });
+        await this.plexClient.queryAll<PlexLibraryResponse>(
+          {
+            uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
+          },
+          useCache,
+        );
       return response.MediaContainer.Metadata as PlexSeenBy[];
     } catch (error) {
       this.logger.error(

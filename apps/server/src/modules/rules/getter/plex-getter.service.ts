@@ -9,6 +9,7 @@ import {
   SimplePlexUser,
 } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
+import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -26,6 +27,7 @@ export class PlexGetterService {
 
   constructor(
     private readonly plexApi: PlexApiService,
+    private readonly plexAdapter: PlexAdapterService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(PlexGetterService.name);
@@ -112,8 +114,18 @@ export class PlexGetterService {
           return metadata.Role ? metadata.Role.map((el) => el.tag) : null;
         }
         case 'viewCount': {
-          const count = await this.plexApi.getWatchHistory(metadata.ratingKey);
-          return count ? count.length : 0;
+          const watchState = await this.plexAdapter.getWatchState(
+            metadata.ratingKey,
+            libItem.viewCount,
+          );
+          return watchState.viewCount;
+        }
+        case 'isWatched': {
+          const watchState = await this.plexAdapter.getWatchState(
+            metadata.ratingKey,
+            libItem.viewCount,
+          );
+          return watchState.isWatched;
         }
         case 'labels': {
           const item =
