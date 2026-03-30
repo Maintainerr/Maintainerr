@@ -1,0 +1,144 @@
+name: "Release 3 - Sync Back"
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        description: Preview sync-back without pushing changes
+        default: false
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: development
+      dry_run:
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: release-sync-back-${{ inputs.ref || github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  REMOTE: origin
+  MAIN_BRANCH: main
+  DEVELOPMENT_BRANCH: development
+  RECONCILE_COMMIT_MESSAGE: "chore: reconcile with main after squash-merge"
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: manual workflow run
+
+  sync_back:
+    name: Reconcile branches
+    needs: guard_manual_run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure sync-back was started from development
+        run: |
+          target_ref="${{ inputs.ref || github.ref_name }}"
+          if [ "$target_ref" != "$DEVELOPMENT_BRANCH" ]; then
+            echo "Sync Back must be run from $DEVELOPMENT_BRANCH. Current ref: $target_ref"
+            exit 1
+          fi
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
+      - name: Checkout development
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.ref_name }}
+          persist-credentials: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "maintainerr-bot"
+          git config user.email "actions@github.com"
+
+      - name: Run sync-back
+        env:
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+
+          git fetch "$REMOTE"
+
+          shortstat="$(git diff --shortstat "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
+          if [ -n "$shortstat" ]; then
+            echo "$shortstat" >&2
+            echo "Branches do not have identical content. Squash-merge the PR first." >&2
+            exit 1
+          fi
+
+          merge_base="$(git merge-base "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
+          preview="$(git merge-tree "$merge_base" "$REMOTE/$MAIN_BRANCH" "$REMOTE/$DEVELOPMENT_BRANCH")"
+          if [ -n "$preview" ]; then
+            printf '%s\n' "$preview" >&2
+            echo "Reconciliation preview is not clean. Resolve branch differences before syncing back." >&2
+            exit 1
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            {
+              echo "## Sync Back"
+              echo
+              echo "- Mode: dry run"
+              echo "- Status: branches have identical content and the merge preview is clean"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git checkout "$DEVELOPMENT_BRANCH"
+          git pull --ff-only "$REMOTE" "$DEVELOPMENT_BRANCH"
+
+          if git show-ref --verify --quiet "refs/heads/$MAIN_BRANCH"; then
+            git checkout "$MAIN_BRANCH"
+          else
+            git checkout -b "$MAIN_BRANCH" "$REMOTE/$MAIN_BRANCH"
+          fi
+          git pull --ff-only "$REMOTE" "$MAIN_BRANCH"
+
+          git checkout "$DEVELOPMENT_BRANCH"
+          git merge "$MAIN_BRANCH" --no-ff -m "$RECONCILE_COMMIT_MESSAGE"
+          git push "$REMOTE" "$DEVELOPMENT_BRANCH"
+
+          git checkout "$MAIN_BRANCH"
+          git merge "$DEVELOPMENT_BRANCH" --ff-only
+          git push "$REMOTE" "$MAIN_BRANCH"
+
+          git fetch "$REMOTE"
+
+          ahead_dev="$(git rev-list --count "$REMOTE/$MAIN_BRANCH..$REMOTE/$DEVELOPMENT_BRANCH")"
+          ahead_main="$(git rev-list --count "$REMOTE/$DEVELOPMENT_BRANCH..$REMOTE/$MAIN_BRANCH")"
+
+          if [ "$ahead_dev" != "0" ] || [ "$ahead_main" != "0" ]; then
+            echo "Branches are still diverged after sync-back." >&2
+            exit 1
+          fi
+
+          {
+            echo "## Sync Back"
+            echo
+            echo "- Mode: apply"
+            echo "- development_ahead_of_main=$ahead_dev"
+            echo "- main_ahead_of_development=$ahead_main"
+          } >> "$GITHUB_STEP_SUMMARY"

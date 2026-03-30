@@ -7,11 +7,12 @@ on:
 jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
-    permissions: {}
+    permissions:
+      contents: read
     with:
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,enoch85"
+      source: manual workflow run
 
   close-issues:
     needs: guard_manual_run

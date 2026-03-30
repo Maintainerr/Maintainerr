@@ -88,8 +88,14 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     });
     expect(logger.debug).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Skipping rule comparison due to missing operand',
+        'Skipping rule comparison because a value is unavailable',
       ),
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('ruleGroup="'),
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('section=0'),
     );
   });
 

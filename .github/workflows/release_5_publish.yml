@@ -1,4 +1,4 @@
-name: "Release"
+name: "Release 5 - Publish"
 
 on:
   workflow_dispatch:
@@ -12,6 +12,10 @@ on:
         description: Build and push docker images
         default: false
 
+concurrency:
+  group: release-final-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
 env:
   DOCKERHUB_SLUG: maintainerr/maintainerr
   DOCKERHUB_LEGACY_SLUG: jorenn92/maintainerr
@@ -20,11 +24,12 @@ env:
 jobs:
   guard_manual_run:
     uses: ./.github/workflows/guard-manual.yml
-    permissions: {}
+    permissions:
+      contents: read
     with:
-      is_manual: ${{ github.event_name == 'workflow_dispatch' }}
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
       actor: ${{ github.actor }}
-      allowed: "ydkmlt84,enoch85"
+      source: manual workflow run
 
   guard_release_branch:
     name: Guard release branch

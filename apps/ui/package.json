@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -30,7 +30,7 @@
     "lodash-es": "^4.17.23",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-hook-form": "^7.71.2",
+    "react-hook-form": "^7.72.0",
     "react-markdown": "10.1.0",
     "react-router-dom": "^7.13.1",
     "react-select": "^5.10.2",
@@ -52,8 +52,8 @@
     "@types/node": "^22",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "10.4.27",
     "eslint": "^9.39.2",

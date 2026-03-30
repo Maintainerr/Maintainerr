@@ -1,4 +1,4 @@
-name: "Release PR"
+name: "PR Comment - Build Release Images"
 
 on:
   issue_comment:
