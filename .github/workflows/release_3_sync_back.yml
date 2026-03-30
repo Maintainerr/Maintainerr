@@ -83,8 +83,8 @@ jobs:
 
       - name: Configure git identity
         run: |
-          git config user.name "maintainerr-bot"
-          git config user.email "actions@github.com"
+          git config user.name "maintainerr-automation[bot]"
+          git config user.email "${{ secrets.MERGE_APP_ID }}+maintainerr-automation[bot]@users.noreply.github.com"
 
       - name: Run sync-back
         env:
