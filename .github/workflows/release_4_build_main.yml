@@ -96,7 +96,10 @@ jobs:
             GIT_SHA=${{ steps.vars.outputs.sha }}
             VERSION_TAG=main
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
+          outputs: >-
+            type=image,"name=${{ env.DOCKERHUB_SLUG }},${{ env.GHCR_SLUG }}",
+            push-by-digest=true,name-canonical=true,
+            push=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
 
       - name: Export digest
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
@@ -159,7 +162,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.DOCKERHUB_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.DOCKERHUB_SLUG }}@sha256:%s ' *)
-          docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("${{ env.GHCR_SLUG }}")) | "--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_SLUG }}@sha256:%s ' *)

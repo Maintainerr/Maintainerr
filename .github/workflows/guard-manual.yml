@@ -47,7 +47,16 @@ jobs:
           fi
 
           allowed_from_codeowners="$({
-            grep -v '^[[:space:]]*#' .github/CODEOWNERS | grep -v '^[[:space:]]*$' | tr -s '[:space:]' ' ' | cut -d' ' -f2- | tr ' ' '\n' | grep '^@' | grep -v '/' | sed 's/^@//' | sort -u | paste -sd, -
+            grep -v '^[[:space:]]*#' .github/CODEOWNERS |
+              grep -v '^[[:space:]]*$' |
+              tr -s '[:space:]' ' ' |
+              cut -d' ' -f2- |
+              tr ' ' '\n' |
+              grep '^@' |
+              grep -v '/' |
+              sed 's/^@//' |
+              sort -u |
+              paste -sd, -
           } || true)"
 
           if [ -z "$allowed_from_codeowners" ]; then
