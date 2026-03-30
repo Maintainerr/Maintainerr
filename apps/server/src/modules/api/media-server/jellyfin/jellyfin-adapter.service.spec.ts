@@ -427,6 +427,36 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getWatchState', () => {
+    it('should derive count and watched state from watch history', async () => {
+      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([
+        {
+          userId: 'user-1',
+          itemId: 'item123',
+          watchedAt: new Date('2024-06-03T00:00:00.000Z'),
+        },
+      ]);
+
+      const watchState = await service.getWatchState('item123');
+
+      expect(watchState).toEqual({
+        viewCount: 1,
+        isWatched: true,
+      });
+    });
+
+    it('should return unwatched state when no history exists', async () => {
+      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123');
+
+      expect(watchState).toEqual({
+        viewCount: 0,
+        isWatched: false,
+      });
+    });
+  });
+
   describe('getItemFavoritedBy', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(

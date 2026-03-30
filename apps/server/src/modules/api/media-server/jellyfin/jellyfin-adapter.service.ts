@@ -42,7 +42,10 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
-import type { IMediaServerService } from '../media-server.interface';
+import type {
+  IMediaServerService,
+  MediaWatchState,
+} from '../media-server.interface';
 import {
   JELLYFIN_BATCH_SIZE,
   JELLYFIN_CACHE_KEYS,
@@ -709,6 +712,15 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.logger.debug(error);
       return [];
     }
+  }
+
+  async getWatchState(itemId: string): Promise<MediaWatchState> {
+    const history = await this.getWatchHistory(itemId);
+
+    return {
+      viewCount: history.length,
+      isWatched: history.length > 0,
+    };
   }
 
   async getItemSeenBy(itemId: string): Promise<string[]> {
