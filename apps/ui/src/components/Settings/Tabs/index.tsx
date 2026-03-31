@@ -150,7 +150,7 @@ const SettingsTabs: React.FC<{
                 regex={route.regex}
                 key={`standard-settings-link-${index}`}
               >
-                {route.text}
+                {route.content ?? route.text}
               </SettingsLink>
             ))}
           </nav>

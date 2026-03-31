@@ -50,7 +50,7 @@ vi.mock('react-router-dom', async () => {
       </a>
     ),
     Outlet: () => <div>settings outlet</div>,
-    useLocation: () => ({ pathname: '/settings/main' }),
+    useLocation: () => ({ pathname: '/settings/jellyfin' }),
     useNavigate: () => navigate,
   }
 })
@@ -71,12 +71,12 @@ describe('SettingsWrapper', () => {
     }
   })
 
-  it('keeps a media server tab slot in place while settings are loading', () => {
+  it('keeps the configured media server tab stable while settings are loading', () => {
     const { container, rerender } = render(<SettingsWrapper />)
 
     expect(getDesktopTabLabels(container)).toEqual([
       'General',
-      'Media Server',
+      'Jellyfin',
       'Seerr',
       'Radarr',
       'Sonarr',
