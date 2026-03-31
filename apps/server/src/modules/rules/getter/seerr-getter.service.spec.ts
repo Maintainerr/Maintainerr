@@ -6,8 +6,7 @@ import {
   SeerrMovieResponse,
   SeerrTVResponse,
 } from '../../api/seerr-api/seerr-api.service';
-import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import { SeerrGetterService } from './seerr-getter.service';
 
 describe('SeerrGetterService', () => {
@@ -17,8 +16,6 @@ describe('SeerrGetterService', () => {
       getShow: jest.fn(),
       getSeason: jest.fn(),
     } as unknown as jest.Mocked<SeerrApiService>;
-
-    const tmdbApi = {} as jest.Mocked<TmdbApiService>;
 
     const mediaServerFactory = {
       getService: jest.fn().mockResolvedValue({
@@ -31,19 +28,37 @@ describe('SeerrGetterService', () => {
       getTmdbIdFromMediaItem: jest
         .fn()
         .mockResolvedValue({ id: 12345, type: 'movie' }),
-    } as unknown as jest.Mocked<TmdbIdService>;
+    };
+
+    const metadataService = {
+      resolveIdsFromMediaItem: jest.fn(async () => {
+        const tmdb = await tmdbIdHelper.getTmdbIdFromMediaItem();
+
+        if (!tmdb) {
+          return undefined;
+        }
+
+        return { tmdb: tmdb.id, type: tmdb.type } as any;
+      }),
+    } as unknown as jest.Mocked<MetadataService>;
 
     const logger = createMockLogger();
 
     const service = new SeerrGetterService(
       seerrApi,
-      tmdbApi,
       mediaServerFactory,
-      tmdbIdHelper,
+      metadataService,
       logger,
     );
 
-    return { service, seerrApi, tmdbIdHelper, mediaServerFactory, logger };
+    return {
+      service,
+      seerrApi,
+      tmdbIdHelper,
+      metadataService,
+      mediaServerFactory,
+      logger,
+    };
   };
 
   const movieLibItem = createMediaItem({ type: 'movie' });

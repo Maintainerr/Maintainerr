@@ -1,8 +1,9 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
-import { MediaItemType } from '@maintainerr/contracts'
+import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
+import { buildMetadataImagePath } from '../../../utils/mediaTypeUtils'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
@@ -16,7 +17,7 @@ interface IMediaCard {
   title: string
   userScore: number
   inProgress?: boolean
-  tmdbid?: string
+  providerIds?: MediaProviderIds
   libraryId?: string
   type?: MediaItemType
   collectionPage: boolean
@@ -39,7 +40,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   collectionId = 0,
   daysLeft = 9999,
   exclusionId = undefined,
-  tmdbid = undefined,
+  providerIds = undefined,
   userScore,
   collectionPage = false,
   exclusionType = undefined,
@@ -54,10 +55,11 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [excludeModal, setExcludeModal] = useState(false)
   const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
-  const imageType = ['season', 'episode'].includes(mediaType)
-    ? 'show'
-    : mediaType
-  const imageRequestKey = tmdbid ? `${imageType}:${tmdbid}` : undefined
+  const imageRequestPath = buildMetadataImagePath(
+    'image',
+    mediaType,
+    providerIds,
+  )
   const hasExclusion = exclusionId !== undefined || exclusionType !== undefined
 
   const openMediaModal = () => {
@@ -69,21 +71,35 @@ const MediaCard: React.FC<IMediaCard> = ({
   useEffect(() => {
     let isActive = true
 
-    if (tmdbid) {
-      GetApiHandler(`/moviedb/image/${imageType}/${tmdbid}`).then((resp) => {
+    if (!imageRequestPath) {
+      setImageResult({ requestKey: undefined, path: null })
+      return () => {
+        isActive = false
+      }
+    }
+
+    GetApiHandler<{ url: string } | undefined>(imageRequestPath)
+      .then((resp) => {
         if (isActive) {
-          setImageResult({ requestKey: imageRequestKey, path: resp })
+          setImageResult({
+            requestKey: imageRequestPath,
+            path: resp?.url ?? null,
+          })
         }
       })
-    }
+      .catch(() => {
+        if (isActive) {
+          setImageResult({ requestKey: imageRequestPath, path: null })
+        }
+      })
 
     return () => {
       isActive = false
     }
-  }, [imageRequestKey, imageType, tmdbid])
+  }, [imageRequestPath])
 
   const image =
-    imageResult.requestKey === imageRequestKey ? imageResult.path : null
+    imageResult.requestKey === imageRequestPath ? imageResult.path : null
 
   // Just to get the year from the date
   if (year && mediaType !== 'episode') {
@@ -136,7 +152,7 @@ const MediaCard: React.FC<IMediaCard> = ({
             <img
               className="absolute inset-0 h-full w-full object-cover"
               alt=""
-              src={`https://image.tmdb.org/t/p/w300_and_h450_face${image}`}
+              src={image}
               loading="lazy"
               decoding="async"
             />
@@ -343,7 +359,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           title={title}
           summary={summary || 'No description available.'}
           mediaType={mediaType}
-          tmdbid={tmdbid}
+          providerIds={providerIds}
           year={year}
           userScore={userScore}
         />

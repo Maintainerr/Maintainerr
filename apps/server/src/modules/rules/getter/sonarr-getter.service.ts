@@ -8,12 +8,16 @@ import {
   SonarrSeries,
 } from '../../../modules/api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
-import { TmdbIdService } from '../../../modules/api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../../../modules/api/tmdb-api/tmdb.service';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
+import {
+  findServarrLookupMatch,
+  formatServarrLookupCandidates,
+  ServarrLookupCandidate,
+} from '../../metadata/servarr-lookup.util';
 import {
   Application,
   Property,
@@ -30,8 +34,7 @@ export class SonarrGetterService {
   constructor(
     private readonly servarrService: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly tmdbApi: TmdbApiService,
-    private readonly tmdbIdHelper: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SonarrGetterService.name);
@@ -95,11 +98,12 @@ export class SonarrGetterService {
         );
       }
 
-      const tvdbIds = await this.findAllTvdbIdsFromMediaItem(libItem);
+      const lookupCandidates =
+        await this.findLookupCandidatesFromMediaItem(libItem);
 
-      if (!tvdbIds || tvdbIds.length === 0) {
+      if (lookupCandidates.length === 0) {
         this.logger.warn(
-          `[TVDB] Failed to fetch tvdb id for '${libItem.title}' with id '${libItem.id}. As a result, no Sonarr query could be made.`,
+          `Failed to resolve external IDs for '${libItem.title}' with id '${libItem.id}'. As a result, no Sonarr query could be made.`,
         );
         return null;
       }
@@ -108,24 +112,17 @@ export class SonarrGetterService {
         ruleGroup.collection.sonarrSettingsId,
       );
 
-      let showResponse: SonarrSeries | undefined;
-      let attemptCount = 0;
-      for (const tvdbId of tvdbIds) {
-        attemptCount++;
-        showResponse = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
-        if (showResponse?.id) {
-          if (attemptCount > 1) {
-            this.logger.debug(
-              `[TVDB] Found '${libItem.title}' in Sonarr using TVDB ID ${tvdbId} (attempt ${attemptCount}/${tvdbIds.length}). Consider checking upstream provider data quality.`,
-            );
-          }
-          break;
-        }
-      }
+      const matchedResult = await findServarrLookupMatch(lookupCandidates, {
+        tmdb: (lookupId) => sonarrApiClient.getSeriesByTmdbId(lookupId),
+        tvdb: (lookupId) => sonarrApiClient.getSeriesByTvdbId(lookupId),
+      });
+      const showResponse: SonarrSeries | undefined = matchedResult?.result;
 
       if (!showResponse?.id) {
+        const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+
         this.logger.warn(
-          `[TVDB] None of the TVDB IDs [${tvdbIds.join(', ')}] for '${libItem.title}' matched a series in Sonarr.`,
+          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a series in Sonarr.`,
         );
         return null;
       }
@@ -396,7 +393,7 @@ export class SonarrGetterService {
 
           return (await sonarrApiClient.getProfiles())?.find(
             (el) => el.id === showProfile,
-          ).name;
+          )?.name;
         }
         case 'fileAudioLanguages': {
           const episodeFile = await getEpisodeFile();
@@ -462,45 +459,14 @@ export class SonarrGetterService {
     return undefined;
   }
 
-  public async findAllTvdbIdsFromMediaItem(
+  public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
-  ): Promise<number[]> {
-    const tvdbIds: number[] = [];
+  ): Promise<ServarrLookupCandidate[]> {
+    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
 
-    if (libItem.providerIds?.tvdb) {
-      for (const tvdbId of libItem.providerIds.tvdb) {
-        const numId = Number(tvdbId);
-        if (numId && !tvdbIds.includes(numId)) {
-          tvdbIds.push(numId);
-        }
-      }
-    }
-
-    if (tvdbIds.length === 0) {
-      const mediaServer = await this.getMediaServer();
-      const metadata = await mediaServer.getMetadata(libItem.id);
-      if (metadata?.providerIds?.tvdb) {
-        for (const tvdbId of metadata.providerIds.tvdb) {
-          const numId = Number(tvdbId);
-          if (numId && !tvdbIds.includes(numId)) {
-            tvdbIds.push(numId);
-          }
-        }
-      }
-    }
-
-    // Last resort: try to get TVDB via TMDB
-    if (tvdbIds.length === 0) {
-      const tmdbResp = await this.tmdbIdHelper.getTmdbIdFromMediaItem(libItem);
-      const tmdbId = tmdbResp?.id;
-      if (tmdbId) {
-        const tmdbShow = await this.tmdbApi.getTvShow({ tvId: tmdbId });
-        if (tmdbShow?.external_ids?.tvdb_id) {
-          tvdbIds.push(tmdbShow.external_ids.tvdb_id);
-        }
-      }
-    }
-
-    return tvdbIds;
+    return this.metadataService.buildServarrLookupCandidates({
+      tmdb: ids?.tmdb as number | undefined,
+      tvdb: ids?.tvdb as number | undefined,
+    });
   }
 }

@@ -21,8 +21,7 @@ export function removePortFromUrl(url: string): string | undefined {
     const urlObject = new URL(url)
     urlObject.port = ''
     return urlObject.toString()
-  } catch (error) {
-    console.error('Invalid URL:', error)
+  } catch {
     return undefined
   }
 }
@@ -37,7 +36,7 @@ export function getPortFromUrl(url: string): string | undefined {
       port = '443'
     }
     return port
-  } catch (error) {
+  } catch {
     return undefined
   }
 }
@@ -47,8 +46,7 @@ export function getHostname(url: string): string | undefined {
     const urlObject = new URL(url)
     const baseUrl = urlObject.protocol + '//' + urlObject.hostname
     return baseUrl
-  } catch (error) {
-    console.error('Invalid URL:', error)
+  } catch {
     return undefined
   }
 }
@@ -59,8 +57,7 @@ export function getBaseUrl(url: string): string | undefined {
     let baseUrl = urlObject.pathname
     baseUrl = baseUrl.startsWith('/') ? baseUrl.substring(1) : baseUrl
     return baseUrl
-  } catch (error) {
-    console.error('Invalid URL:', error)
+  } catch {
     return undefined
   }
 }

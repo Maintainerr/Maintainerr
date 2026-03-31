@@ -3,11 +3,12 @@ import {
   JellyfinSetting,
   MaintainerrEvent,
   MediaServerType,
+  MetadataProviderPreference,
   SeerrSetting,
   TautulliSetting,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isValidCron } from 'cron-validator';
 import { randomUUID } from 'crypto';
@@ -79,6 +80,12 @@ export class SettingsService implements SettingDto {
 
   seerr_api_key: string;
 
+  tmdb_api_key?: string;
+
+  tvdb_api_key?: string;
+
+  metadata_provider_preference?: MetadataProviderPreference;
+
   tautulli_url: string;
 
   tautulli_api_key: string;
@@ -135,6 +142,11 @@ export class SettingsService implements SettingDto {
       this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
       this.seerr_url = settingsDb?.seerr_url;
       this.seerr_api_key = settingsDb?.seerr_api_key;
+      this.tmdb_api_key = settingsDb?.tmdb_api_key;
+      this.tvdb_api_key = settingsDb?.tvdb_api_key;
+      this.metadata_provider_preference =
+        settingsDb?.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY;
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
       this.collection_handler_job_cron =
@@ -175,6 +187,29 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  @OnEvent(MaintainerrEvent.Settings_Updated)
+  handleMetadataSettingsUpdate(payload: {
+    settings: {
+      tmdb_api_key?: string | null;
+      tvdb_api_key?: string | null;
+      metadata_provider_preference?: MetadataProviderPreference;
+    };
+  }) {
+    if ('tmdb_api_key' in payload.settings) {
+      this.tmdb_api_key = payload.settings.tmdb_api_key ?? undefined;
+    }
+
+    if ('tvdb_api_key' in payload.settings) {
+      this.tvdb_api_key = payload.settings.tvdb_api_key ?? undefined;
+    }
+
+    if ('metadata_provider_preference' in payload.settings) {
+      this.metadata_provider_preference =
+        payload.settings.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY;
+    }
+  }
+
   public async getSettings() {
     try {
       return this.settingsRepo.findOne({ where: {} });
@@ -207,6 +242,8 @@ export class SettingsService implements SettingDto {
       plex_auth_token: maskSecret(settings.plex_auth_token),
       jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
       seerr_api_key: maskSecret(settings.seerr_api_key),
+      tmdb_api_key: maskSecret(settings.tmdb_api_key),
+      tvdb_api_key: maskSecret(settings.tvdb_api_key),
       tautulli_api_key: maskSecret(settings.tautulli_api_key),
     };
   }

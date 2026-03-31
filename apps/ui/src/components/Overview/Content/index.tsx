@@ -1,5 +1,6 @@
 import {
   type MediaItem,
+  type MediaProviderIds,
   type MediaItemWithParent,
 } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
@@ -23,29 +24,27 @@ interface IOverviewContent {
   collectionId?: number
 }
 
-/**
- * Extract TMDB ID from a MediaItem.
- * For episodes/seasons, checks parent item's providerIds.
- */
-function extractTmdbId(
+function extractProviderIds(
   item: MediaItem | MediaItemWithParent,
-): string | undefined {
+): MediaProviderIds | undefined {
   const parentItem = (item as MediaItemWithParent).parentItem
 
-  // For seasons/episodes, always use the parent show's TMDB ID
   if (
     (item.type === 'season' || item.type === 'episode') &&
-    parentItem?.providerIds?.tmdb?.[0]
+    parentItem?.providerIds
   ) {
-    return parentItem.providerIds.tmdb[0]
+    return parentItem.providerIds
   }
 
-  if (item.providerIds?.tmdb?.[0]) {
-    return item.providerIds.tmdb[0]
+  if (item.providerIds && Object.keys(item.providerIds).length > 0) {
+    return item.providerIds
   }
 
-  if (parentItem?.providerIds?.tmdb?.[0]) {
-    return parentItem.providerIds.tmdb[0]
+  if (
+    parentItem?.providerIds &&
+    Object.keys(parentItem.providerIds).length > 0
+  ) {
+    return parentItem.providerIds
   }
 
   return undefined
@@ -162,7 +161,7 @@ const OverviewContent = (props: IOverviewContent) => {
                   ? el.maintainerrExclusionId
                   : undefined
               }
-              tmdbid={extractTmdbId(el)}
+              providerIds={extractProviderIds(el)}
               collectionPage={
                 props.collectionPage ? props.collectionPage : false
               }

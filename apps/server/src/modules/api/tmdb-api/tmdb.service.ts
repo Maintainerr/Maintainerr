@@ -1,5 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { SettingsService } from '../../settings/settings.service';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../utils/connection-error';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
 import {
@@ -9,20 +16,88 @@ import {
   TmdbTvDetails,
 } from './interfaces/tmdb.interface';
 
+const TMDB_DEFAULT_API_KEY = 'db55323b8d3e4154498498a75642b381';
+
 @Injectable()
 export class TmdbApiService extends ExternalApiService {
-  constructor(protected readonly logger: MaintainerrLogger) {
+  constructor(
+    @Inject(forwardRef(() => SettingsService))
+    private readonly settings: SettingsService,
+    protected readonly logger: MaintainerrLogger,
+  ) {
     logger.setContext(TmdbApiService.name);
     super(
       'https://api.themoviedb.org/3',
       {
-        api_key: 'db55323b8d3e4154498498a75642b381',
+        api_key: TMDB_DEFAULT_API_KEY,
       },
       logger,
       {
         nodeCache: cacheManager.getCache('tmdb').data,
       },
     );
+  }
+
+  onApplicationBootstrap() {
+    const customKey = this.settings.tmdb_api_key;
+    if (customKey) {
+      this.updateApiKey(customKey);
+    }
+  }
+
+  @OnEvent(MaintainerrEvent.Settings_Updated)
+  handleSettingsUpdate(payload: {
+    oldSettings: { tmdb_api_key?: string };
+    settings: { tmdb_api_key?: string };
+  }) {
+    const newKey = payload.settings.tmdb_api_key;
+    const oldKey = payload.oldSettings.tmdb_api_key;
+
+    if (newKey !== oldKey) {
+      this.updateApiKey(newKey || TMDB_DEFAULT_API_KEY);
+      this.logger.log(
+        newKey
+          ? 'TMDB API key updated to user-configured key'
+          : 'TMDB API key reset to default',
+      );
+    }
+  }
+
+  private updateApiKey(apiKey: string) {
+    this.axios.defaults.params = {
+      ...this.axios.defaults.params,
+      api_key: apiKey,
+    };
+  }
+
+  public async testConnection(apiKey?: string): Promise<BasicResponseDto> {
+    const testKey = apiKey || String(this.axios.defaults.params?.api_key || '');
+
+    if (!testKey) {
+      return { status: 'NOK', code: 0, message: 'No TMDB API key configured' };
+    }
+
+    try {
+      const response = await this.axios.get<{ id: number }>('/movie/550', {
+        params: { api_key: testKey },
+      });
+
+      return response.data?.id
+        ? { status: 'OK', code: 1, message: 'Success' }
+        : { status: 'NOK', code: 0, message: 'Unexpected response' };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'TMDB');
+      this.logger.debug(error);
+
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to connect to TMDB. Verify API key.',
+        ),
+      };
+    }
   }
 
   public getPerson = async ({
@@ -94,45 +169,6 @@ export class TmdbApiService extends ExternalApiService {
       return data;
     } catch (error) {
       this.logger.warn('Failed to fetch TV show details');
-      this.logger.debug(error);
-    }
-  };
-
-  // TODO: ADD CACHING!!!!
-  public getImagePath = async ({
-    tmdbId,
-    type,
-  }: {
-    tmdbId: number;
-    type: 'movie' | 'show';
-  }): Promise<string> => {
-    try {
-      if (type === 'movie') {
-        return (await this.getMovie({ movieId: tmdbId }))?.poster_path;
-      } else {
-        return (await this.getTvShow({ tvId: tmdbId }))?.poster_path;
-      }
-    } catch (error) {
-      this.logger.warn('Failed to fetch image path');
-      this.logger.debug(error);
-    }
-  };
-
-  public getBackdropImagePath = async ({
-    tmdbId,
-    type,
-  }: {
-    tmdbId: number;
-    type: 'movie' | 'show';
-  }): Promise<string> => {
-    try {
-      if (type === 'movie') {
-        return (await this.getMovie({ movieId: tmdbId }))?.backdrop_path;
-      } else {
-        return (await this.getTvShow({ tvId: tmdbId }))?.backdrop_path;
-      }
-    } catch (error) {
-      this.logger.warn('Failed to fetch backdrop image path');
       this.logger.debug(error);
     }
   };

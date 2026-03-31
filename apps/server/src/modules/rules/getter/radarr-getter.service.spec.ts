@@ -13,15 +13,18 @@ import {
 import { RadarrApi } from '../../api/servarr-api/helpers/radarr.helper';
 import { RadarrMovie } from '../../api/servarr-api/interfaces/radarr.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../../api/tmdb-api/tmdb-id.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import { RadarrGetterService } from './radarr-getter.service';
 
 describe('RadarrGetterService', () => {
   let radarrGetterService: RadarrGetterService;
   let servarrService: Mocked<ServarrService>;
-  let tmdbIdService: Mocked<TmdbIdService>;
+  let metadataService: Mocked<MetadataService>;
+  let tmdbIdService: {
+    getTmdbIdFromMediaServerId: jest.Mock;
+  };
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -30,8 +33,38 @@ describe('RadarrGetterService', () => {
 
     radarrGetterService = unit;
     servarrService = unitRef.get(ServarrService);
-    tmdbIdService = unitRef.get(TmdbIdService);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+
+    tmdbIdService = {
+      getTmdbIdFromMediaServerId: jest.fn(),
+    };
+
+    metadataService.resolveIdsFromMediaItem.mockImplementation(async () => {
+      const tmdb = await tmdbIdService.getTmdbIdFromMediaServerId();
+
+      if (!tmdb) {
+        return undefined;
+      }
+
+      return { tmdb: tmdb.id, type: tmdb.type } as any;
+    });
+    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
+      const candidates = [] as Array<{
+        providerKey: 'tmdb' | 'tvdb';
+        id: number;
+      }>;
+
+      if (ids.tmdb) {
+        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
+      }
+
+      if (ids.tvdb) {
+        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
+      }
+
+      return candidates;
+    });
   });
 
   afterEach(() => {
@@ -294,8 +327,12 @@ describe('RadarrGetterService', () => {
       .mockResolvedValue(mockedRadarrApi);
 
     if (movie) {
+      jest.spyOn(mockedRadarrApi, 'getMovieByTvdbId').mockResolvedValue(movie);
       jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(movie);
     } else {
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTvdbId')
+        .mockImplementation(jest.fn());
       jest
         .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
         .mockImplementation(jest.fn());

@@ -3,6 +3,8 @@ import {
   JellyfinSetting,
   MediaServerSwitchPreview,
   MediaServerType,
+  MetadataProviderPreference,
+  MetadataProviderSetting,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
 } from '@maintainerr/contracts'
@@ -48,6 +50,7 @@ interface ISettings {
   tautulli_api_key: string
   collection_handler_job_cron: string
   rules_handler_job_cron: string
+  metadata_provider_preference?: MetadataProviderPreference
 }
 
 // Jellyfin test result (not in contracts as it's UI-specific)
@@ -319,6 +322,82 @@ export const useSwitchMediaServer = (options?: UseSwitchMediaServerOptions) => {
 }
 
 export type UseSwitchMediaServerResult = ReturnType<typeof useSwitchMediaServer>
+
+type UseMetadataProviderPreferenceQueryKey = ['settings', 'metadata-provider']
+
+type UseMetadataProviderPreferenceOptions = Omit<
+  UseQueryOptions<
+    { preference: MetadataProviderPreference },
+    Error,
+    MetadataProviderPreference,
+    UseMetadataProviderPreferenceQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const useMetadataProviderPreference = (
+  options?: UseMetadataProviderPreferenceOptions,
+) => {
+  return useQuery<
+    { preference: MetadataProviderPreference },
+    Error,
+    MetadataProviderPreference,
+    UseMetadataProviderPreferenceQueryKey
+  >({
+    queryKey: ['settings', 'metadata-provider'],
+    queryFn: async () => {
+      return await GetApiHandler<{ preference: MetadataProviderPreference }>(
+        '/settings/metadata-provider',
+      )
+    },
+    select: (result) => result.preference,
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseMetadataProviderPreferenceResult = ReturnType<
+  typeof useMetadataProviderPreference
+>
+
+type UseUpdateMetadataProviderPreferenceOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, MetadataProviderPreference>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useUpdateMetadataProviderPreference = (
+  options?: UseUpdateMetadataProviderPreferenceOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, MetadataProviderPreference>({
+    mutationKey: ['settings', 'updateMetadataProviderPreference'],
+    mutationFn: async (preference) => {
+      return await PostApiHandler<BasicResponseDto>(
+        '/settings/metadata-provider',
+        {
+          preference,
+        } satisfies MetadataProviderSetting,
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'settings',
+          'metadata-provider',
+        ] satisfies UseMetadataProviderPreferenceQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseUpdateMetadataProviderPreferenceResult = ReturnType<
+  typeof useUpdateMetadataProviderPreference
+>
 
 export const downloadDatabase = async (
   customFilename?: string,
