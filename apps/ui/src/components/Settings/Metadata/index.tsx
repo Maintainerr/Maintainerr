@@ -1,5 +1,4 @@
 import { SaveIcon } from '@heroicons/react/solid'
-import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
   MetadataProviderPreference,
@@ -7,8 +6,7 @@ import {
   tvdbSettingSchema,
 } from '@maintainerr/contracts'
 import { type ReactNode, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
-import { type ZodType } from 'zod'
+import { useForm, useWatch, type Resolver } from 'react-hook-form'
 import {
   useMetadataProviderPreference,
   useUpdateMetadataProviderPreference,
@@ -24,6 +22,7 @@ import GetApiHandler, {
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import { InputGroup } from '../../Forms/Input'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface ProviderConfig {
   key: 'tmdb' | 'tvdb'
@@ -31,11 +30,38 @@ interface ProviderConfig {
   description: ReactNode
   helpText?: string
   testFailureMessage: string
-  schema: ZodType<ApiKeyFormResult>
 }
 
 interface ApiKeyFormResult {
   api_key: string
+}
+
+const metadataApiKeySchema = tmdbSettingSchema
+const metadataApiKeyResolver: Resolver<ApiKeyFormResult> = async (values) => {
+  const result = metadataApiKeySchema.safeParse(values)
+
+  if (result.success) {
+    return {
+      values: result.data,
+      errors: {},
+    }
+  }
+
+  const apiKeyIssue = result.error.issues.find(
+    (issue) => issue.path[0] === 'api_key',
+  )
+
+  return {
+    values: {},
+    errors: apiKeyIssue
+      ? {
+          api_key: {
+            type: apiKeyIssue.code,
+            message: apiKeyIssue.message,
+          },
+        }
+      : {},
+  }
 }
 
 const providers: ProviderConfig[] = [
@@ -59,7 +85,6 @@ const providers: ProviderConfig[] = [
     ),
     helpText: 'Leave empty to use the built-in shared key.',
     testFailureMessage: 'Failed to connect to TMDB. Verify the API key.',
-    schema: tmdbSettingSchema,
   },
   {
     key: 'tvdb',
@@ -79,7 +104,6 @@ const providers: ProviderConfig[] = [
       </>
     ),
     testFailureMessage: 'Failed to connect to TVDB. Verify the API key.',
-    schema: tvdbSettingSchema,
   },
 ]
 
@@ -104,8 +128,8 @@ function useProviderForm(config: ProviderConfig) {
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
-  } = useForm<ApiKeyFormResult, any, ApiKeyFormResult>({
-    resolver: zodResolver(config.schema),
+  } = useForm({
+    resolver: metadataApiKeyResolver,
     defaultValues: async () => {
       try {
         setLoadError(false)
@@ -219,14 +243,16 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
 
   return (
     <>
-      {submitError ? (
-        <Alert type="warning" title="Something went wrong" />
-      ) : submitSuccess ? (
-        <Alert
-          type="info"
-          title={`${config.title} settings successfully updated`}
-        />
-      ) : undefined}
+      <SettingsAlertSlot>
+        {submitError ? (
+          <Alert type="warning" title="Something went wrong" />
+        ) : submitSuccess ? (
+          <Alert
+            type="info"
+            title={`${config.title} settings successfully updated`}
+          />
+        ) : null}
+      </SettingsAlertSlot>
 
       {loadError ? (
         <Alert
@@ -322,11 +348,19 @@ const MetadataSettings = () => {
           </p>
         </div>
 
-        {preferenceError ? (
-          <Alert type="warning" title="Failed to update provider preference" />
-        ) : preferenceSuccess ? (
-          <Alert type="info" title="Provider preference updated successfully" />
-        ) : undefined}
+        <SettingsAlertSlot>
+          {preferenceError ? (
+            <Alert
+              type="warning"
+              title="Failed to update provider preference"
+            />
+          ) : preferenceSuccess ? (
+            <Alert
+              type="info"
+              title="Provider preference updated successfully"
+            />
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <h4 className="text-lg font-bold text-amber-500">

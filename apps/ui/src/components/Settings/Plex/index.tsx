@@ -5,6 +5,7 @@ import { orderBy } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useSettingsOutletContext } from '..'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 import {
   useDeletePlexAuth,
   usePatchSettings,
@@ -275,25 +276,23 @@ const PlexSettings = () => {
           <p className="description">Plex configuration</p>
         </div>
 
-        {error && <Alert type="error" title={error} />}
-
-        {deletePlexAuthError && (
-          <Alert
-            type="error"
-            title="There was an error clearing Plex authentication."
-          />
-        )}
-
-        {updateSettingsError && (
-          <Alert
-            type="error"
-            title="There was an error updating Plex settings."
-          />
-        )}
-
-        {(deletePlexAuthSuccess || updateSettingsSuccess) && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
+        <SettingsAlertSlot>
+          {error ? (
+            <Alert type="error" title={error} />
+          ) : deletePlexAuthError ? (
+            <Alert
+              type="error"
+              title="There was an error clearing Plex authentication."
+            />
+          ) : updateSettingsError ? (
+            <Alert
+              type="error"
+              title="There was an error updating Plex settings."
+            />
+          ) : deletePlexAuthSuccess || updateSettingsSuccess ? (
+            <Alert type="info" title="Settings successfully updated" />
+          ) : null}
+        </SettingsAlertSlot>
 
         {tokenValid || settings?.plex_auth_token ? (
           ''

@@ -15,6 +15,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { useSettingsOutletContext } from '..'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 import {
   useDeleteJellyfinSettings,
   useJellyfinSettings,
@@ -213,16 +214,16 @@ const JellyfinSettings = () => {
           </p>
         </div>
 
-        {saveError && (
-          <Alert
-            type="error"
-            title="There was an error saving Jellyfin settings."
-          />
-        )}
-
-        {(saveSuccess || deleteSuccess) && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
+        <SettingsAlertSlot>
+          {saveError ? (
+            <Alert
+              type="error"
+              title="There was an error saving Jellyfin settings."
+            />
+          ) : saveSuccess || deleteSuccess ? (
+            <Alert type="info" title="Settings successfully updated" />
+          ) : null}
+        </SettingsAlertSlot>
 
         {testResult && (
           <Alert

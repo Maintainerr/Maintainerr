@@ -20,6 +20,7 @@ import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import { InputGroup } from '../../Forms/Input'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface TestStatus {
   status: boolean
@@ -154,11 +155,13 @@ const SeerrSettings = () => {
             Seerr configuration (also compatible with Overseerr and Jellyseerr)
           </p>
         </div>
-        {submitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : isSubmitSuccessful ? (
-          <Alert type="info" title="Seerr settings successfully updated" />
-        ) : undefined}
+        <SettingsAlertSlot>
+          {submitError ? (
+            <Alert type="warning" title="Something went wrong" />
+          ) : isSubmitSuccessful ? (
+            <Alert type="info" title="Seerr settings successfully updated" />
+          ) : null}
+        </SettingsAlertSlot>
 
         {testResult != null &&
           (testResult?.status ? (

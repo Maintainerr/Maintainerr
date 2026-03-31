@@ -12,6 +12,7 @@ import {
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
+import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
@@ -40,7 +41,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
     const debouncedSearch = debounce((text: string) => {
       SearchCtx.addText(text)
       navigate('/overview')
-    }, 1000)
+    }, INTERACTION_DEBOUNCE_MS)
 
     debouncedSearchRef.current = debouncedSearch
 

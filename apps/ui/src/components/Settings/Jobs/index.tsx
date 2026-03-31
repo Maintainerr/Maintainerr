@@ -2,6 +2,7 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { isValidCron } from 'cron-validator'
 import { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 import { usePatchSettings } from '../../../api/settings'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
@@ -11,18 +12,18 @@ const JobSettings = () => {
   const collectionHandlerRef = useRef<HTMLInputElement>(null)
   const [secondCronValid, setSecondCronValid] = useState(true)
   const [firstCronValid, setFirstCronValid] = useState(true)
-  const [missingValuesError, setMissingValuesError] = useState<boolean>(false)
+  const [submitStatus, setSubmitStatus] = useState<
+    'idle' | 'validation-error' | 'error' | 'success'
+  >('idle')
+  const [successCount, setSuccessCount] = useState(0)
   const {
     mutateAsync: updateSettings,
-    isError: updateSettingsError,
     isPending: updateSettingsPending,
-    isSuccess: updateSettingsSuccess,
   } = usePatchSettings()
   const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setMissingValuesError(false)
 
     if (
       rulehanderRef.current?.value &&
@@ -35,9 +36,15 @@ const JobSettings = () => {
         rules_handler_job_cron: rulehanderRef.current.value,
       }
 
-      await updateSettings(payload)
+      try {
+        await updateSettings(payload)
+        setSubmitStatus('success')
+        setSuccessCount((current) => current + 1)
+      } catch {
+        setSubmitStatus('error')
+      }
     } else {
-      setMissingValuesError(true)
+      setSubmitStatus('validation-error')
     }
   }
 
@@ -50,20 +57,25 @@ const JobSettings = () => {
           <p className="description">Job configuration</p>
         </div>
 
-        {missingValuesError && (
-          <Alert type="error" title="Please make sure all values are valid" />
-        )}
-
-        {updateSettingsError && (
-          <Alert
-            type="error"
-            title="Something went wrong, please check your values"
-          />
-        )}
-
-        {updateSettingsSuccess && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
+        <SettingsAlertSlot>
+          {submitStatus === 'validation-error' ? (
+            <Alert
+              type="error"
+              title="Please make sure all values are valid"
+            />
+          ) : submitStatus === 'error' ? (
+            <Alert
+              type="error"
+              title="Something went wrong, please check your values"
+            />
+          ) : submitStatus === 'success' ? (
+            <Alert
+              key={`jobs-settings-success-${successCount}`}
+              type="info"
+              title="Settings successfully updated"
+            />
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <form onSubmit={submit}>

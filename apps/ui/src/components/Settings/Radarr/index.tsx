@@ -9,7 +9,6 @@ import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
-import LoadingSpinner from '../../Common/LoadingSpinner'
 import Modal from '../../Common/Modal'
 import RadarrSettingsModal from './SettingsModal'
 
@@ -89,17 +88,6 @@ const RadarrSettings = () => {
     setSettingsModalActive(true)
   }
 
-  if (!loaded) {
-    return (
-      <>
-        <title>Radarr settings - Maintainerr</title>
-        <div className="mt-6">
-          <LoadingSpinner />
-        </div>
-      </>
-    )
-  }
-
   return (
     <>
       <title>Radarr settings - Maintainerr</title>
@@ -110,7 +98,8 @@ const RadarrSettings = () => {
         </div>
 
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {settings.map((setting) => (
+          {loaded
+            ? settings.map((setting) => (
             <li
               key={setting.id}
               className="h-full rounded-xl bg-zinc-800 p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
@@ -141,7 +130,8 @@ const RadarrSettings = () => {
                 />
               </div>
             </li>
-          ))}
+              ))
+            : null}
 
           <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
             <button

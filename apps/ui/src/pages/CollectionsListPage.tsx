@@ -4,14 +4,13 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
-import LoadingSpinner from '../components/Common/LoadingSpinner'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
-  const [collections, setCollections] = useState<ICollection[]>()
+  const [collections, setCollections] = useState<ICollection[]>([])
   const { invalidate, guardedFetch } = useRequestGeneration()
 
   const fetchData = async (libraryId?: string) => {
@@ -63,15 +62,6 @@ const CollectionsListPage = () => {
 
   const openDetail = (collection: ICollection) => {
     navigate(`/collections/${collection.id}`)
-  }
-
-  if (isLoading) {
-    return (
-      <>
-        <title>Collections - Maintainerr</title>
-        <LoadingSpinner />
-      </>
-    )
   }
 
   return (

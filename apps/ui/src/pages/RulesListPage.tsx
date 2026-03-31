@@ -6,7 +6,6 @@ import { useStopAllRuleExecution } from '../api/rules'
 import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
 import LibrarySwitcher from '../components/Common/LibrarySwitcher'
-import LoadingSpinner from '../components/Common/LoadingSpinner'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
@@ -14,7 +13,7 @@ import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const RulesListPage = () => {
   const navigate = useNavigate()
-  const [data, setData] = useState<IRuleGroup[]>()
+  const [data, setData] = useState<IRuleGroup[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
   const { invalidate, guardedFetch } = useRequestGeneration()
@@ -78,17 +77,6 @@ const RulesListPage = () => {
       }
       toast.error('Failed to initiate rule execution.')
     }
-  }
-
-  if (!data || isLoading) {
-    return (
-      <>
-        <title>Rules - Maintainerr</title>
-        <span>
-          <LoadingSpinner />
-        </span>
-      </>
-    )
   }
 
   return (

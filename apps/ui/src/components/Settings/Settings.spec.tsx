@@ -1,5 +1,5 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsWrapper from './index'
 
@@ -71,7 +71,7 @@ describe('SettingsWrapper', () => {
     }
   })
 
-  it('keeps the configured media server tab stable while settings are loading', () => {
+  it('keeps the configured media server tab stable while settings are loading without showing a shell spinner', () => {
     const { container, rerender } = render(<SettingsWrapper />)
 
     expect(getDesktopTabLabels(container)).toEqual([
@@ -86,6 +86,7 @@ describe('SettingsWrapper', () => {
       'Jobs',
       'About',
     ])
+    expect(screen.queryByText('Loading...')).toBeNull()
 
     currentSettingsResult = {
       data: {
@@ -99,6 +100,8 @@ describe('SettingsWrapper', () => {
     }
 
     rerender(<SettingsWrapper />)
+
+    expect(screen.queryByText('Loading...')).toBeNull()
 
     expect(getDesktopTabLabels(container)).toEqual([
       'General',

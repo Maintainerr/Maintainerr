@@ -21,6 +21,7 @@ import Button from '../../Common/Button'
 import Table from '../../Common/Table'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 const LogSettings = () => {
   return (
@@ -36,8 +37,9 @@ const LogSettings = () => {
 }
 
 const LogSettingsForm = () => {
-  const [saveError, setSaveError] = useState<boolean>(false)
-  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
+  const [submitStatus, setSubmitStatus] = useState<
+    'idle' | 'success' | 'error'
+  >('idle')
 
   const {
     register,
@@ -50,14 +52,15 @@ const LogSettingsForm = () => {
   })
 
   const onSubmit = async (data: LogSettingSchemaOutput) => {
-    setSaveError(false)
-    setIsSubmitSuccessful(false)
+    if (submitStatus === 'error') {
+      setSubmitStatus('idle')
+    }
 
     try {
       await PostApiHandler('/logs/settings', data)
-      setIsSubmitSuccessful(true)
-    } catch (error) {
-      setSaveError(true)
+      setSubmitStatus('success')
+    } catch {
+      setSubmitStatus('error')
     }
   }
 
@@ -68,11 +71,13 @@ const LogSettingsForm = () => {
         <p className="description">Log configuration</p>
       </div>
 
-      {saveError ? (
-        <Alert type="warning" title="Something went wrong" />
-      ) : isSubmitSuccessful ? (
-        <Alert type="info" title="Log settings successfully updated" />
-      ) : undefined}
+      <SettingsAlertSlot>
+        {submitStatus === 'error' ? (
+          <Alert type="warning" title="Something went wrong" />
+        ) : submitStatus === 'success' ? (
+          <Alert type="info" title="Log settings successfully updated" />
+        ) : null}
+      </SettingsAlertSlot>
 
       <div className="section">
         <form onSubmit={handleSubmit(onSubmit)}>

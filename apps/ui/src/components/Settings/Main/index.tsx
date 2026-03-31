@@ -8,6 +8,7 @@ import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import DatabaseBackupModal from './DatabaseBackupModal'
 import MediaServerSelector from '../MediaServerSelector'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
@@ -52,13 +53,13 @@ const MainSettings = () => {
           <h3 className="heading">General Settings</h3>
           <p className="description">Configure global settings</p>
         </div>
-        {missingValuesError && (
-          <Alert type="error" title="Not all fields contain values" />
-        )}
-
-        {isSuccess && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
+        <SettingsAlertSlot>
+          {missingValuesError ? (
+            <Alert type="error" title="Not all fields contain values" />
+          ) : isSuccess ? (
+            <Alert type="info" title="Settings successfully updated" />
+          ) : null}
+        </SettingsAlertSlot>
 
         {showDownloadModal && (
           <DatabaseBackupModal onClose={() => setShowDownloadModal(false)} />

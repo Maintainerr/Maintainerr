@@ -20,6 +20,7 @@ import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import { InputGroup } from '../../Forms/Input'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface TestStatus {
   status: boolean
@@ -152,11 +153,13 @@ const TautulliSettings = () => {
           <h3 className="heading">Tautulli Settings</h3>
           <p className="description">Tautulli configuration</p>
         </div>
-        {submitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : isSubmitSuccessful ? (
-          <Alert type="info" title="Tautulli settings successfully updated" />
-        ) : undefined}
+        <SettingsAlertSlot>
+          {submitError ? (
+            <Alert type="warning" title="Something went wrong" />
+          ) : isSubmitSuccessful ? (
+            <Alert type="info" title="Tautulli settings successfully updated" />
+          ) : null}
+        </SettingsAlertSlot>
 
         {testResult != null &&
           (testResult?.status ? (
