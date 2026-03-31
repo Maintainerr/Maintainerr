@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { useSettings, type UseSettingsResult } from '../../api/settings'
 import Alert from '../Common/Alert'
+import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from './Tabs'
 
 const mediaServerTabContent = (label?: string) => {
@@ -178,6 +179,7 @@ const SettingsWrapper = () => {
         <div className="mt-6">
           <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={false} />
         </div>
+        <LoadingSpinner />
       </>
     )
   }

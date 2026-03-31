@@ -9,6 +9,7 @@ import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
+import LoadingSpinner from '../../Common/LoadingSpinner'
 import Modal from '../../Common/Modal'
 import RadarrSettingsModal from './SettingsModal'
 
@@ -96,6 +97,8 @@ const RadarrSettings = () => {
           <h3 className="heading">Radarr Settings</h3>
           <p className="description">Radarr configuration</p>
         </div>
+
+        {!loaded ? <LoadingSpinner /> : null}
 
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {loaded

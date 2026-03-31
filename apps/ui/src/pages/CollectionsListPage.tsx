@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
+import LoadingSpinner from '../components/Common/LoadingSpinner'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
@@ -67,14 +68,18 @@ const CollectionsListPage = () => {
   return (
     <>
       <title>Collections - Maintainerr</title>
-      <div className="w-full">
-        <CollectionOverview
-          onSwitchLibrary={onSwitchLibrary}
-          collections={collections}
-          doActions={doActions}
-          openDetail={openDetail}
-        />
-      </div>
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="w-full">
+          <CollectionOverview
+            onSwitchLibrary={onSwitchLibrary}
+            collections={collections}
+            doActions={doActions}
+            openDetail={openDetail}
+          />
+        </div>
+      )}
     </>
   )
 }
