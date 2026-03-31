@@ -16,10 +16,8 @@ const JobSettings = () => {
     'idle' | 'validation-error' | 'error' | 'success'
   >('idle')
   const [successCount, setSuccessCount] = useState(0)
-  const {
-    mutateAsync: updateSettings,
-    isPending: updateSettingsPending,
-  } = usePatchSettings()
+  const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
+    usePatchSettings()
   const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,10 +57,7 @@ const JobSettings = () => {
 
         <SettingsAlertSlot>
           {submitStatus === 'validation-error' ? (
-            <Alert
-              type="error"
-              title="Please make sure all values are valid"
-            />
+            <Alert type="error" title="Please make sure all values are valid" />
           ) : submitStatus === 'error' ? (
             <Alert
               type="error"
