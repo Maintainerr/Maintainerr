@@ -72,10 +72,7 @@ const MediaCard: React.FC<IMediaCard> = ({
     let isActive = true
 
     if (!imageRequestPath) {
-      setImageResult({ requestKey: undefined, path: null })
-      return () => {
-        isActive = false
-      }
+      return
     }
 
     GetApiHandler<{ url: string } | undefined>(imageRequestPath)
