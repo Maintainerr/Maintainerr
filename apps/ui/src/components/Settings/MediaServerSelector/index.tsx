@@ -384,7 +384,7 @@ const MediaServerSelector = ({
                 <div className="flex items-center space-x-2">
                   <XCircleIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium">
-                    Something went wrong: {switchError}
+                    Media server switch could not be completed: {switchError}
                   </span>
                 </div>
                 <p className="mt-1 pl-7 text-xs text-red-400/70">

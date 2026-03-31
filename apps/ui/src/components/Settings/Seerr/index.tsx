@@ -20,6 +20,10 @@ import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import { InputGroup } from '../../Forms/Input'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 interface TestStatus {
   status: boolean
@@ -47,8 +51,8 @@ const SeerrSettings = () => {
 
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
-  const [submitError, setSubmitError] = useState<boolean>(false)
-  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Seerr settings')
 
   const {
     register,
@@ -85,8 +89,7 @@ const SeerrSettings = () => {
     !isLoading
 
   const onSubmit = async (data: SeerrSetting) => {
-    setSubmitError(false)
-    setIsSubmitSuccessful(false)
+    clearError()
 
     const removingSetting = data.api_key === '' && data.url === ''
 
@@ -96,12 +99,12 @@ const SeerrSettings = () => {
         : PostApiHandler<BasicResponseDto>('/settings/seerr', data))
 
       if (resp.code) {
-        setIsSubmitSuccessful(true)
+        showUpdated()
       } else {
-        setSubmitError(true)
+        showUpdateError()
       }
-    } catch (error) {
-      setSubmitError(true)
+    } catch {
+      showUpdateError()
     }
   }
 
@@ -154,11 +157,7 @@ const SeerrSettings = () => {
             Seerr configuration (also compatible with Overseerr and Jellyseerr)
           </p>
         </div>
-        {submitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : isSubmitSuccessful ? (
-          <Alert type="info" title="Seerr settings successfully updated" />
-        ) : undefined}
+        <SettingsFeedbackAlert feedback={feedback} />
 
         {testResult != null &&
           (testResult?.status ? (
@@ -229,7 +228,7 @@ const SeerrSettings = () => {
                     className="ml-3"
                     disabled={testing || isGoingToRemoveSetting}
                   >
-                    {testing ? 'Testing...' : 'Test'}
+                    {testing ? 'Testing Connection...' : 'Test Connection'}
                   </Button>
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
                     <Button

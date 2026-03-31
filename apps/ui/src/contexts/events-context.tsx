@@ -14,7 +14,7 @@ import { logClientError } from '../utils/ClientLogger'
 const EventsContext = createContext<EventSource | undefined>(undefined)
 
 export const EventsProvider = (props: any) => {
-  const hasLoggedStreamError = useRef(false)
+  const hasWarnedStreamError = useRef(false)
 
   const eventSource = useMemo(() => {
     const source = new ReconnectingEventSource(
@@ -22,19 +22,18 @@ export const EventsProvider = (props: any) => {
     )
 
     source.onopen = () => {
-      hasLoggedStreamError.current = false
+      hasWarnedStreamError.current = false
     }
 
     source.onerror = (error) => {
-      if (hasLoggedStreamError.current) {
+      if (hasWarnedStreamError.current) {
         return
       }
 
-      hasLoggedStreamError.current = true
-      void logClientError(
-        'Event stream connection failed',
+      hasWarnedStreamError.current = true
+      console.warn(
+        'Event stream disconnected. Reconnecting automatically.',
         error,
-        'EventsProvider.stream',
       )
     }
 

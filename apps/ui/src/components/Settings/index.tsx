@@ -1,10 +1,76 @@
 import { MediaServerType } from '@maintainerr/contracts'
 import { useMemo } from 'react'
-import { Outlet, useOutletContext } from 'react-router-dom'
+import { Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { useSettings, type UseSettingsResult } from '../../api/settings'
 import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from './Tabs'
+
+const mediaServerTabContent = (label?: string) => {
+  if (label) {
+    return <span className="inline-block min-w-16 text-center">{label}</span>
+  }
+
+  return (
+    <span aria-hidden className="invisible inline-block min-w-16 text-center">
+      Jellyfin
+    </span>
+  )
+}
+
+const getMediaServerTypeFromPath = (
+  pathname: string,
+): MediaServerType | undefined => {
+  if (pathname.startsWith('/settings/jellyfin')) {
+    return MediaServerType.JELLYFIN
+  }
+
+  if (
+    pathname.startsWith('/settings/plex') ||
+    pathname.startsWith('/settings/tautulli')
+  ) {
+    return MediaServerType.PLEX
+  }
+
+  return undefined
+}
+
+const getMediaServerRoute = (
+  mediaServerType: MediaServerType | null | undefined,
+  isLoading: boolean,
+): SettingsRoute | undefined => {
+  if (mediaServerType === MediaServerType.JELLYFIN) {
+    return {
+      text: 'Jellyfin',
+      content: mediaServerTabContent('Jellyfin'),
+      route: '/settings/jellyfin',
+      regex: /^\/settings\/jellyfin$/,
+    }
+  }
+
+  if (mediaServerType === MediaServerType.PLEX) {
+    return {
+      text: 'Plex',
+      content: mediaServerTabContent('Plex'),
+      route: '/settings/plex',
+      regex: /^\/settings\/plex$/,
+    }
+  }
+
+  if (isLoading) {
+    return {
+      text: '',
+      content: mediaServerTabContent(),
+      // Reuse the General route while loading so the tab slot stays reserved
+      // without showing a wider temporary label that shifts later tabs.
+      route: '/settings/main',
+      regex: /^\/settings\/main$/,
+      activeRegex: /^\/settings\/__placeholder__$/,
+    }
+  }
+
+  return undefined
+}
 
 export type SettingsOutletContext = {
   settings: NonNullable<UseSettingsResult['data']>
@@ -14,10 +80,13 @@ export const useSettingsOutletContext = () =>
   useOutletContext<SettingsOutletContext>()
 
 const SettingsWrapper = () => {
+  const location = useLocation()
   const { data: settings, isLoading, error } = useSettings()
 
   // Determine which media server tab to show based on settings
-  const mediaServerType = settings?.media_server_type
+  const mediaServerType =
+    settings?.media_server_type ??
+    (isLoading ? getMediaServerTypeFromPath(location.pathname) : undefined)
 
   const settingsRoutes: SettingsRoute[] = useMemo(() => {
     const baseRoutes: SettingsRoute[] = [
@@ -28,23 +97,10 @@ const SettingsWrapper = () => {
       },
     ]
 
-    // Only show media server tab after user has selected a type
-    // During initial setup, user selects via MediaServerSelector in General tab
-    if (mediaServerType === MediaServerType.JELLYFIN) {
-      baseRoutes.push({
-        text: 'Jellyfin',
-        route: '/settings/jellyfin',
-        regex: /^\/settings\/jellyfin$/,
-      })
-    } else if (mediaServerType === MediaServerType.PLEX) {
-      baseRoutes.push({
-        text: 'Plex',
-        route: '/settings/plex',
-        regex: /^\/settings\/plex$/,
-      })
+    const mediaServerRoute = getMediaServerRoute(mediaServerType, isLoading)
+    if (mediaServerRoute) {
+      baseRoutes.push(mediaServerRoute)
     }
-    // When no mediaServerType is set, don't show either tab
-    // User must select via MediaServerSelector in General settings
 
     // Add remaining tabs
     baseRoutes.push(
@@ -103,7 +159,7 @@ const SettingsWrapper = () => {
     )
 
     return baseRoutes
-  }, [mediaServerType])
+  }, [isLoading, mediaServerType])
 
   if (error) {
     return (
@@ -131,10 +187,10 @@ const SettingsWrapper = () => {
 
   if (settings) {
     // Allow access if either Plex or Jellyfin is configured
-    const isMediaServerConfigured = Boolean(
-      settings.plex_auth_token !== null ||
-      (settings.jellyfin_url && settings.jellyfin_api_key),
-    )
+    const hasPlexConfig = settings.plex_auth_token !== null
+    const hasJellyfinConfig =
+      Boolean(settings.jellyfin_url) && Boolean(settings.jellyfin_api_key)
+    const isMediaServerConfigured = hasPlexConfig || hasJellyfinConfig
 
     return (
       <>

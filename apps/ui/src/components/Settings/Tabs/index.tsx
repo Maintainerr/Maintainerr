@@ -7,6 +7,9 @@ export interface SettingsRoute {
   content?: React.ReactNode
   route: string
   regex: RegExp
+  // Allows a route to render one tab target while matching active state against another pattern.
+  // This is used for the loading placeholder media-server tab so it does not appear selected.
+  activeRegex?: RegExp
 }
 export interface ISettingsLink {
   tabType: 'default' | 'button'
@@ -81,8 +84,9 @@ const SettingsTabs: React.FC<{
   }, [allEnabled])
 
   const currentRoute =
-    settingsRoutes.find((route) => route.regex.test(location.pathname))
-      ?.route ?? ''
+    settingsRoutes.find((route) =>
+      (route.activeRegex ?? route.regex).test(location.pathname),
+    )?.route ?? ''
 
   return (
     <>
@@ -112,7 +116,7 @@ const SettingsTabs: React.FC<{
               tabType={tabType}
               currentPath={location.pathname}
               route={route.route}
-              regex={route.regex}
+              regex={route.activeRegex ?? route.regex}
               isMobile
               key={`mobile-settings-link-${index}`}
             >
@@ -130,7 +134,7 @@ const SettingsTabs: React.FC<{
                 tabType={tabType}
                 currentPath={location.pathname}
                 route={route.route}
-                regex={route.regex}
+                regex={route.activeRegex ?? route.regex}
                 key={`button-settings-link-${index}`}
               >
                 {route.content ?? route.text}
@@ -147,10 +151,10 @@ const SettingsTabs: React.FC<{
                 tabType={tabType}
                 currentPath={location.pathname}
                 route={route.route}
-                regex={route.regex}
+                regex={route.activeRegex ?? route.regex}
                 key={`standard-settings-link-${index}`}
               >
-                {route.text}
+                {route.content ?? route.text}
               </SettingsLink>
             ))}
           </nav>

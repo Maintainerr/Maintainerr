@@ -14,7 +14,7 @@ import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 const RulesListPage = () => {
   const navigate = useNavigate()
-  const [data, setData] = useState<IRuleGroup[]>()
+  const [data, setData] = useState<IRuleGroup[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
   const { invalidate, guardedFetch } = useRequestGeneration()
@@ -80,57 +80,53 @@ const RulesListPage = () => {
     }
   }
 
-  if (!data || isLoading) {
-    return (
-      <>
-        <title>Rules - Maintainerr</title>
-        <span>
-          <LoadingSpinner />
-        </span>
-      </>
-    )
-  }
-
   return (
     <>
       <title>Rules - Maintainerr</title>
-      <div className="w-full">
-        <LibrarySwitcher onLibraryChange={onSwitchLibrary} />
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="w-full">
+          <LibrarySwitcher onLibraryChange={onSwitchLibrary} />
 
-        <div className="m-auto mb-3 flex">
-          <div className="ml-auto sm:ml-0">
-            <AddButton onClick={() => navigate('/rules/new')} text="New Rule" />
-          </div>
-          <div className="ml-2 mr-auto sm:mr-0">
-            <ExecuteButton
-              onClick={() => {
-                if (ruleHandlerRunning) {
-                  stopAllExecution()
-                } else {
-                  sync()
-                }
-              }}
-              text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
-              executing={ruleHandlerRunning}
-            />
-          </div>
-        </div>
-        <h1 className="mb-3 text-lg font-bold text-zinc-200">{'Rules'}</h1>
-        <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
-          {data.map((el) => (
-            <li
-              key={el.id}
-              className="collection relative mb-5 flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
-            >
-              <RuleGroup
-                onDelete={refreshData}
-                onEdit={editHandler}
-                group={el}
+          <div className="m-auto mb-3 flex">
+            <div className="ml-auto sm:ml-0">
+              <AddButton
+                onClick={() => navigate('/rules/new')}
+                text="New Rule"
               />
-            </li>
-          ))}
-        </ul>
-      </div>
+            </div>
+            <div className="ml-2 mr-auto sm:mr-0">
+              <ExecuteButton
+                onClick={() => {
+                  if (ruleHandlerRunning) {
+                    stopAllExecution()
+                  } else {
+                    sync()
+                  }
+                }}
+                text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
+                executing={ruleHandlerRunning}
+              />
+            </div>
+          </div>
+          <h1 className="mb-3 text-lg font-bold text-zinc-200">Rules</h1>
+          <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
+            {data.map((el) => (
+              <li
+                key={el.id}
+                className="collection relative mb-5 flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
+              >
+                <RuleGroup
+                  onDelete={refreshData}
+                  onEdit={editHandler}
+                  group={el}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </>
   )
 }

@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { INTERACTION_DEBOUNCE_MS } from '../../../utils/uiTiming'
 
 interface SmallLoadingSpinnerProps {
   className?: string
@@ -38,6 +39,22 @@ export const SmallLoadingSpinner: React.FC<SmallLoadingSpinnerProps> = (
 }
 
 const LoadingSpinner: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setIsVisible(true)
+    }, INTERACTION_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [])
+
+  if (!isVisible) {
+    return null
+  }
+
   return (
     <div className="inset-0 flex h-64 items-center justify-center text-zinc-200">
       <svg

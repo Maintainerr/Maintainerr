@@ -3,26 +3,26 @@ import { isValidCron } from 'cron-validator'
 import { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
-import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 const JobSettings = () => {
   const rulehanderRef = useRef<HTMLInputElement>(null)
   const collectionHandlerRef = useRef<HTMLInputElement>(null)
   const [secondCronValid, setSecondCronValid] = useState(true)
   const [firstCronValid, setFirstCronValid] = useState(true)
-  const [missingValuesError, setMissingValuesError] = useState<boolean>(false)
-  const {
-    mutateAsync: updateSettings,
-    isError: updateSettingsError,
-    isPending: updateSettingsPending,
-    isSuccess: updateSettingsSuccess,
-  } = usePatchSettings()
+  const { feedback, showError, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Job settings')
+  const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
+    usePatchSettings()
   const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setMissingValuesError(false)
+    clearError()
 
     if (
       rulehanderRef.current?.value &&
@@ -35,9 +35,14 @@ const JobSettings = () => {
         rules_handler_job_cron: rulehanderRef.current.value,
       }
 
-      await updateSettings(payload)
+      try {
+        await updateSettings(payload)
+        showUpdated()
+      } catch {
+        showUpdateError()
+      }
     } else {
-      setMissingValuesError(true)
+      showError('Please make sure all values are valid')
     }
   }
 
@@ -50,20 +55,7 @@ const JobSettings = () => {
           <p className="description">Job configuration</p>
         </div>
 
-        {missingValuesError && (
-          <Alert type="error" title="Please make sure all values are valid" />
-        )}
-
-        {updateSettingsError && (
-          <Alert
-            type="error"
-            title="Something went wrong, please check your values"
-          />
-        )}
-
-        {updateSettingsSuccess && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <div className="section">
           <form onSubmit={submit}>

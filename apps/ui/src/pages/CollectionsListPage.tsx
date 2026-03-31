@@ -11,7 +11,7 @@ import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
-  const [collections, setCollections] = useState<ICollection[]>()
+  const [collections, setCollections] = useState<ICollection[]>([])
   const { invalidate, guardedFetch } = useRequestGeneration()
 
   const fetchData = async (libraryId?: string) => {
@@ -65,26 +65,21 @@ const CollectionsListPage = () => {
     navigate(`/collections/${collection.id}`)
   }
 
-  if (isLoading) {
-    return (
-      <>
-        <title>Collections - Maintainerr</title>
-        <LoadingSpinner />
-      </>
-    )
-  }
-
   return (
     <>
       <title>Collections - Maintainerr</title>
-      <div className="w-full">
-        <CollectionOverview
-          onSwitchLibrary={onSwitchLibrary}
-          collections={collections}
-          doActions={doActions}
-          openDetail={openDetail}
-        />
-      </div>
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="w-full">
+          <CollectionOverview
+            onSwitchLibrary={onSwitchLibrary}
+            collections={collections}
+            doActions={doActions}
+            openDetail={openDetail}
+          />
+        </div>
+      )}
     </>
   )
 }

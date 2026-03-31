@@ -81,7 +81,9 @@ const TestButton = <T,>(props: ITestButton<T>) => {
         ) : (
           <BeakerIcon />
         )}
-        <span className="ml-1">Test Saved</span>
+        <span className="ml-1">
+          {loading ? 'Testing Connection...' : 'Test Connection'}
+        </span>
       </Button>
     </span>
   )

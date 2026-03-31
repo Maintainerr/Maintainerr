@@ -8,7 +8,6 @@ import {
 } from '@maintainerr/contracts'
 import { type ReactNode, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { type ZodType } from 'zod'
 import {
   useMetadataProviderPreference,
   useUpdateMetadataProviderPreference,
@@ -24,6 +23,10 @@ import GetApiHandler, {
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import { InputGroup } from '../../Forms/Input'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 interface ProviderConfig {
   key: 'tmdb' | 'tvdb'
@@ -31,7 +34,7 @@ interface ProviderConfig {
   description: ReactNode
   helpText?: string
   testFailureMessage: string
-  schema: ZodType<ApiKeyFormResult>
+  schema: typeof tmdbSettingSchema | typeof tvdbSettingSchema
 }
 
 interface ApiKeyFormResult {
@@ -95,8 +98,8 @@ function useProviderForm(config: ProviderConfig) {
   const [testing, setTesting] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
-  const [submitError, setSubmitError] = useState(false)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback(`${config.title} settings`)
 
   const {
     register,
@@ -104,7 +107,7 @@ function useProviderForm(config: ProviderConfig) {
     trigger,
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
-  } = useForm<ApiKeyFormResult, any, ApiKeyFormResult>({
+  } = useForm({
     resolver: zodResolver(config.schema),
     defaultValues: async () => {
       try {
@@ -133,8 +136,7 @@ function useProviderForm(config: ProviderConfig) {
     !loadError
 
   const onSubmit = async (data: ApiKeyFormResult) => {
-    setSubmitError(false)
-    setSubmitSuccess(false)
+    clearError()
 
     try {
       const resp = await (data.api_key === ''
@@ -142,12 +144,12 @@ function useProviderForm(config: ProviderConfig) {
         : PostApiHandler<BasicResponseDto>(`/settings/${config.key}`, data))
 
       if (resp.code) {
-        setSubmitSuccess(true)
+        showUpdated()
       } else {
-        setSubmitError(true)
+        showUpdateError()
       }
     } catch {
-      setSubmitError(true)
+      showUpdateError()
     }
   }
 
@@ -191,8 +193,7 @@ function useProviderForm(config: ProviderConfig) {
     errors,
     testing,
     testResult,
-    submitError,
-    submitSuccess,
+    feedback,
     loadError,
     isGoingToRemove,
     canSave,
@@ -208,8 +209,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
     errors,
     testing,
     testResult,
-    submitError,
-    submitSuccess,
+    feedback,
     loadError,
     isGoingToRemove,
     canSave,
@@ -219,14 +219,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
 
   return (
     <>
-      {submitError ? (
-        <Alert type="warning" title="Something went wrong" />
-      ) : submitSuccess ? (
-        <Alert
-          type="info"
-          title={`${config.title} settings successfully updated`}
-        />
-      ) : undefined}
+      <SettingsFeedbackAlert feedback={feedback} />
 
       {loadError ? (
         <Alert
@@ -268,7 +261,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
                   className="ml-3"
                   disabled={testing || isGoingToRemove || loadError}
                 >
-                  {testing ? 'Testing...' : 'Test'}
+                  {testing ? 'Testing Connection...' : 'Test Connection'}
                 </Button>
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
                   <Button
@@ -303,12 +296,21 @@ const MetadataSettings = () => {
     isLoading: preferenceLoading,
   } = useMetadataProviderPreference()
 
-  const {
-    mutate: savePreference,
-    isPending: preferenceSaving,
-    isSuccess: preferenceSuccess,
-    isError: preferenceError,
-  } = useUpdateMetadataProviderPreference()
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Metadata settings')
+  const { mutateAsync: savePreference, isPending: preferenceSaving } =
+    useUpdateMetadataProviderPreference()
+
+  const handlePreferenceChange = async (value: MetadataProviderPreference) => {
+    clearError()
+
+    try {
+      await savePreference(value)
+      showUpdated()
+    } catch {
+      showUpdateError()
+    }
+  }
 
   return (
     <>
@@ -322,11 +324,7 @@ const MetadataSettings = () => {
           </p>
         </div>
 
-        {preferenceError ? (
-          <Alert type="warning" title="Failed to update provider preference" />
-        ) : preferenceSuccess ? (
-          <Alert type="info" title="Provider preference updated successfully" />
-        ) : undefined}
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <div className="section">
           <h4 className="text-lg font-bold text-amber-500">
@@ -351,7 +349,9 @@ const MetadataSettings = () => {
               value={preference}
               disabled={preferenceLoading || preferenceSaving}
               onChange={(event) =>
-                savePreference(event.target.value as MetadataProviderPreference)
+                void handlePreferenceChange(
+                  event.target.value as MetadataProviderPreference,
+                )
               }
             >
               {preferenceOptions.map((option) => (

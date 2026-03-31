@@ -20,12 +20,12 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ZodValidationPipe } from 'nestjs-zod';
 import { Response } from 'express';
 import { createReadStream, readdir } from 'fs';
 import { readdir as readdirp, stat } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import mime from 'mime-types';
+import { ZodValidationPipe } from 'nestjs-zod';
 import path from 'path';
 import readLastLines from 'read-last-lines';
 import {
@@ -43,8 +43,7 @@ import {
 } from 'rxjs';
 import { Readable } from 'stream';
 import { formatLogMessage } from './logFormatting';
-import { MaintainerrLogger } from './logs.service';
-import { LogSettingsService } from './logs.service';
+import { LogSettingsService, MaintainerrLogger } from './logs.service';
 
 const logsDirectory =
   process.env.NODE_ENV === 'production'
@@ -313,14 +312,19 @@ export class LogsController implements BeforeApplicationShutdown {
     },
   ) {
     const message = payload?.message || 'Client error';
-    this.logger.error(
+    const context = payload?.context || 'UI';
+    const logClientEvent =
+      context === 'EventsProvider.stream'
+        ? this.logger.debug.bind(this.logger)
+        : this.logger.error.bind(this.logger);
+
+    logClientEvent(
       {
         message,
         details: payload?.details,
         source: 'ui',
       },
-      payload?.stack,
-      payload?.context || 'UI',
+      context,
     );
 
     return {

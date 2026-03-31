@@ -89,17 +89,6 @@ const SonarrSettings = () => {
     setSettingsModalActive(true)
   }
 
-  if (!loaded) {
-    return (
-      <>
-        <title>Sonarr settings - Maintainerr</title>
-        <div className="mt-6">
-          <LoadingSpinner />
-        </div>
-      </>
-    )
-  }
-
   return (
     <>
       <title>Sonarr settings - Maintainerr</title>
@@ -109,39 +98,43 @@ const SonarrSettings = () => {
           <p className="description">Sonarr configuration</p>
         </div>
 
+        {!loaded ? <LoadingSpinner /> : null}
+
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {settings.map((setting) => (
-            <li
-              key={setting.id}
-              className="h-full rounded-xl bg-zinc-800 p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
-            >
-              <div className="mb-2 flex items-center gap-x-3 text-base font-medium text-white sm:text-lg">
-                {setting.serverName}
-              </div>
-              <p className="mb-4 space-x-2 truncate text-gray-300">
-                <span className="font-semibold">Address</span>
-                <a href={setting.url} className="hover:underline">
-                  {setting.url}
-                </a>
-              </p>
-              <div>
-                <Button
-                  buttonType="twin-primary-l"
-                  buttonSize="md"
-                  className="h-10 w-1/2"
-                  onClick={() => {
-                    setSettingsModalActive(setting)
-                  }}
+          {loaded
+            ? settings.map((setting) => (
+                <li
+                  key={setting.id}
+                  className="h-full rounded-xl bg-zinc-800 p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
                 >
-                  {<DocumentAddIcon className="m-auto" />}{' '}
-                  <p className="m-auto font-semibold">Edit</p>
-                </Button>
-                <DeleteButton
-                  onDeleteRequested={() => confirmedDelete(setting.id)}
-                />
-              </div>
-            </li>
-          ))}
+                  <div className="mb-2 flex items-center gap-x-3 text-base font-medium text-white sm:text-lg">
+                    {setting.serverName}
+                  </div>
+                  <p className="mb-4 space-x-2 truncate text-gray-300">
+                    <span className="font-semibold">Address</span>
+                    <a href={setting.url} className="hover:underline">
+                      {setting.url}
+                    </a>
+                  </p>
+                  <div>
+                    <Button
+                      buttonType="twin-primary-l"
+                      buttonSize="md"
+                      className="h-10 w-1/2"
+                      onClick={() => {
+                        setSettingsModalActive(setting)
+                      }}
+                    >
+                      {<DocumentAddIcon className="m-auto" />}{' '}
+                      <p className="m-auto font-semibold">Edit</p>
+                    </Button>
+                    <DeleteButton
+                      onDeleteRequested={() => confirmedDelete(setting.id)}
+                    />
+                  </div>
+                </li>
+              ))
+            : null}
 
           <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
             <button

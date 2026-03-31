@@ -214,7 +214,7 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
       okButtonType={'primary'}
       okDisabled={requiresTest}
       secondaryButtonType="success"
-      secondaryText={testing ? 'Testing...' : 'Test'}
+      secondaryText={testing ? 'Testing Connection...' : 'Test Connection'}
       secondaryDisabled={testing}
       onSecondary={performTest}
       title={'Radarr Settings'}
