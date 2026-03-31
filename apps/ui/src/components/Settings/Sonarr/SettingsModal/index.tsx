@@ -214,7 +214,7 @@ const SonarrSettingsModal = (props: ISonarrSettingsModal) => {
       okButtonType={'primary'}
       okDisabled={requiresTest}
       secondaryButtonType="success"
-      secondaryText={testing ? 'Testing...' : 'Test'}
+      secondaryText={testing ? 'Testing Connection...' : 'Test Connection'}
       secondaryDisabled={testing}
       onSecondary={performTest}
       title={'Sonarr Settings'}

@@ -140,9 +140,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               />
               {isNavigating ? (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center bg-zinc-900/20 pt-10 backdrop-blur-[1px]">
-                  <div className="rounded-full border border-zinc-700/70 bg-zinc-900/85 px-6 py-2 shadow-lg">
-                    <SmallLoadingSpinner className="h-8 w-8" />
-                  </div>
+                  <SmallLoadingSpinner className="h-8 w-8" />
                 </div>
               ) : null}
               {children}

@@ -5,7 +5,6 @@ import { orderBy } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useSettingsOutletContext } from '..'
-import SettingsAlertSlot from '../SettingsAlertSlot'
 import {
   useDeletePlexAuth,
   usePatchSettings,
@@ -17,6 +16,10 @@ import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import TestButton from '../../Common/TestButton'
 import PlexLoginButton from '../../Login/Plex'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 interface PresetServerDisplay {
   name: string
@@ -73,7 +76,6 @@ const PlexSettings = () => {
   const portRef = useRef<HTMLInputElement>(null)
   const sslRef = useRef<HTMLInputElement>(null)
   const serverPresetRef = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState<string | undefined>()
   const [tokenValid, setTokenValid] = useState<boolean>(false)
   const [clearTokenClicked, setClearTokenClicked] = useState<boolean>(false)
   const [testBanner, setTestbanner] = useState<{
@@ -82,26 +84,20 @@ const PlexSettings = () => {
   }>({ status: false, version: '' })
   const [availableServers, setAvailableServers] = useState<PlexDevice[]>()
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
+  const { feedback, showUpdated, showUpdateError, showError, clearError } =
+    useSettingsFeedback('Plex settings')
 
-  const {
-    mutateAsync: updateSettings,
-    isPending,
-    isSuccess: updateSettingsSuccess,
-    isError: updateSettingsError,
-  } = usePatchSettings()
-  const {
-    mutateAsync: deletePlexAuth,
-    isSuccess: deletePlexAuthSuccess,
-    isError: deletePlexAuthError,
-    isPending: deletePlexAuthPending,
-  } = useDeletePlexAuth()
+  const { mutateAsync: updateSettings, isPending } = usePatchSettings()
+  const { mutateAsync: deletePlexAuth, isPending: deletePlexAuthPending } =
+    useDeletePlexAuth()
   const { mutateAsync: updatePlexAuth, isPending: updatePlexAuthPending } =
     useUpdatePlexAuth()
   const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement> | undefined) => {
     e?.preventDefault()
-    setError(undefined)
+    clearError()
+
     if (
       hostnameRef.current?.value &&
       nameRef.current?.value &&
@@ -129,13 +125,12 @@ const PlexSettings = () => {
 
       try {
         await updateSettings(payload)
-        toast.success('Settings successfully updated!')
+        showUpdated()
       } catch {
-        toast.error('Failed to update settings')
+        showUpdateError()
       }
     } else {
-      setError('Please fill in all required fields.')
-      toast.error('Please fill in all required fields.')
+      showError('Please fill in all required fields.')
     }
   }
 
@@ -143,7 +138,12 @@ const PlexSettings = () => {
     plex_token?: { plex_auth_token: string } | undefined,
   ) => {
     if (plex_token) {
-      await updatePlexAuth(plex_token.plex_auth_token)
+      try {
+        await updatePlexAuth(plex_token.plex_auth_token)
+        showUpdated()
+      } catch {
+        showError('There was an error updating Plex authentication.')
+      }
     }
   }
 
@@ -167,20 +167,26 @@ const PlexSettings = () => {
   }, [availableServers])
 
   const authsuccess = (token: string) => {
-    setError(undefined)
+    clearError()
     verifyToken(token)
-    submitPlexToken({ plex_auth_token: token })
+    void submitPlexToken({ plex_auth_token: token })
   }
 
   const authFailed = () => {
-    setError('Authentication failed')
-    toast.error('Authentication failed')
+    showError('Authentication failed')
   }
 
   const deleteToken = async () => {
-    await deletePlexAuth()
-    setTokenValid(false)
-    setClearTokenClicked(false)
+    clearError()
+
+    try {
+      await deletePlexAuth()
+      setTokenValid(false)
+      setClearTokenClicked(false)
+      showUpdated()
+    } catch {
+      showError('There was an error clearing Plex authentication.')
+    }
   }
 
   const verifyToken = useCallback(
@@ -276,23 +282,7 @@ const PlexSettings = () => {
           <p className="description">Plex configuration</p>
         </div>
 
-        <SettingsAlertSlot>
-          {error ? (
-            <Alert type="error" title={error} />
-          ) : deletePlexAuthError ? (
-            <Alert
-              type="error"
-              title="There was an error clearing Plex authentication."
-            />
-          ) : updateSettingsError ? (
-            <Alert
-              type="error"
-              title="There was an error updating Plex settings."
-            />
-          ) : deletePlexAuthSuccess || updateSettingsSuccess ? (
-            <Alert type="info" title="Settings successfully updated" />
-          ) : null}
-        </SettingsAlertSlot>
+        <SettingsFeedbackAlert feedback={feedback} />
 
         {tokenValid || settings?.plex_auth_token ? (
           ''

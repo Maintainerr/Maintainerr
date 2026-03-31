@@ -65,6 +65,7 @@ const getMediaServerRoute = (
       // without showing a wider temporary label that shifts later tabs.
       route: '/settings/main',
       regex: /^\/settings\/main$/,
+      activeRegex: /^\/settings\/__placeholder__$/,
     }
   }
 
@@ -186,10 +187,10 @@ const SettingsWrapper = () => {
 
   if (settings) {
     // Allow access if either Plex or Jellyfin is configured
-    const isMediaServerConfigured = Boolean(
-      settings.plex_auth_token !== null ||
-      (settings.jellyfin_url && settings.jellyfin_api_key),
-    )
+    const hasPlexConfig = settings.plex_auth_token !== null
+    const hasJellyfinConfig =
+      Boolean(settings.jellyfin_url) && Boolean(settings.jellyfin_api_key)
+    const isMediaServerConfigured = hasPlexConfig || hasJellyfinConfig
 
     return (
       <>

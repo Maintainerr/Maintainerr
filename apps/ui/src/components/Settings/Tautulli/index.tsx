@@ -20,7 +20,10 @@ import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import { InputGroup } from '../../Forms/Input'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 interface TestStatus {
   status: boolean
@@ -48,8 +51,8 @@ const TautulliSettings = () => {
 
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
-  const [submitError, setSubmitError] = useState<boolean>(false)
-  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Tautulli settings')
 
   const {
     register,
@@ -86,8 +89,7 @@ const TautulliSettings = () => {
     !isLoading
 
   const onSubmit = async (data: TautulliSetting) => {
-    setSubmitError(false)
-    setIsSubmitSuccessful(false)
+    clearError()
 
     const removingSetting = data.api_key === '' && data.url === ''
 
@@ -97,12 +99,12 @@ const TautulliSettings = () => {
         : PostApiHandler<BasicResponseDto>('/settings/tautulli', data))
 
       if (resp.code) {
-        setIsSubmitSuccessful(true)
+        showUpdated()
       } else {
-        setSubmitError(true)
+        showUpdateError()
       }
-    } catch (error) {
-      setSubmitError(true)
+    } catch {
+      showUpdateError()
     }
   }
 
@@ -153,13 +155,7 @@ const TautulliSettings = () => {
           <h3 className="heading">Tautulli Settings</h3>
           <p className="description">Tautulli configuration</p>
         </div>
-        <SettingsAlertSlot>
-          {submitError ? (
-            <Alert type="warning" title="Something went wrong" />
-          ) : isSubmitSuccessful ? (
-            <Alert type="info" title="Tautulli settings successfully updated" />
-          ) : null}
-        </SettingsAlertSlot>
+        <SettingsFeedbackAlert feedback={feedback} />
 
         {testResult != null &&
           (testResult?.status ? (
@@ -230,7 +226,7 @@ const TautulliSettings = () => {
                     className="ml-3"
                     disabled={testing || isGoingToRemoveSetting}
                   >
-                    {testing ? 'Testing...' : 'Test'}
+                    {testing ? 'Testing Connection...' : 'Test Connection'}
                   </Button>
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
                     <Button

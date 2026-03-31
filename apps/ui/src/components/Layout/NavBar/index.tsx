@@ -80,6 +80,22 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
     void prefetchRoute(path)
   }
 
+  const logo = (
+    <Link to="/" className="block w-full max-w-[204px]">
+      <div className="block h-[60px] w-full overflow-hidden">
+        <img
+          className="block h-full w-full object-contain object-left"
+          src={`${basePath}/logo.svg`}
+          alt="Maintainerr logo"
+          width={340}
+          height={100}
+          decoding="sync"
+          fetchPriority="high"
+        />
+      </div>
+    </Link>
+  )
+
   return (
     <div>
       <div className="lg:hidden">
@@ -103,16 +119,8 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                   ref={navRef}
                   className="flex h-0 flex-1 flex-col overflow-y-auto pb-8 pt-4 sm:pb-4"
                 >
-                  <div className="flex flex-shrink-0 items-center px-2">
-                    <span className="px-4 text-xl text-zinc-50">
-                      <Link to="/">
-                        <img
-                          style={{ width: '100%', height: 'auto' }}
-                          src={`${basePath}/logo.svg`}
-                          alt="Logo"
-                        />
-                      </Link>
-                    </span>
+                  <div className="flex h-[60px] flex-shrink-0 items-center px-6">
+                    {logo}
                   </div>
                   <nav className="mt-12 flex-1 space-y-4 px-4">
                     {navBarItems.map((link) => {
@@ -161,16 +169,8 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         <div className="sidebar flex w-64 flex-col">
           <div className="flex h-0 flex-1 flex-col">
             <div className="flex flex-1 flex-col overflow-y-auto pb-4 pt-4">
-              <div className="flex flex-shrink-0 items-center">
-                <span className="px-4 text-2xl text-zinc-50">
-                  <Link to="/">
-                    <img
-                      style={{ width: '100%', height: 'auto' }}
-                      src={`${basePath}/logo.svg`}
-                      alt="Logo"
-                    />
-                  </Link>
-                </span>
+              <div className="flex h-[60px] flex-shrink-0 items-center px-6">
+                {logo}
               </div>
               <nav className="mt-12 flex-1 space-y-4 px-4">
                 {navBarItems.map((navBarLink) => {

@@ -16,12 +16,14 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
-import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import Table from '../../Common/Table'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 const LogSettings = () => {
   return (
@@ -37,9 +39,8 @@ const LogSettings = () => {
 }
 
 const LogSettingsForm = () => {
-  const [submitStatus, setSubmitStatus] = useState<
-    'idle' | 'success' | 'error'
-  >('idle')
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Log settings')
 
   const {
     register,
@@ -52,15 +53,13 @@ const LogSettingsForm = () => {
   })
 
   const onSubmit = async (data: LogSettingSchemaOutput) => {
-    if (submitStatus === 'error') {
-      setSubmitStatus('idle')
-    }
+    clearError()
 
     try {
       await PostApiHandler('/logs/settings', data)
-      setSubmitStatus('success')
+      showUpdated()
     } catch {
-      setSubmitStatus('error')
+      showUpdateError()
     }
   }
 
@@ -71,13 +70,7 @@ const LogSettingsForm = () => {
         <p className="description">Log configuration</p>
       </div>
 
-      <SettingsAlertSlot>
-        {submitStatus === 'error' ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : submitStatus === 'success' ? (
-          <Alert type="info" title="Log settings successfully updated" />
-        ) : null}
-      </SettingsAlertSlot>
+      <SettingsFeedbackAlert feedback={feedback} />
 
       <div className="section">
         <form onSubmit={handleSubmit(onSubmit)}>

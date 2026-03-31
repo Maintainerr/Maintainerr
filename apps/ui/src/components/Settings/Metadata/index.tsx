@@ -1,4 +1,5 @@
 import { SaveIcon } from '@heroicons/react/solid'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
   MetadataProviderPreference,
@@ -6,7 +7,7 @@ import {
   tvdbSettingSchema,
 } from '@maintainerr/contracts'
 import { type ReactNode, useState } from 'react'
-import { useForm, useWatch, type Resolver } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   useMetadataProviderPreference,
   useUpdateMetadataProviderPreference,
@@ -22,7 +23,10 @@ import GetApiHandler, {
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import { InputGroup } from '../../Forms/Input'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 interface ProviderConfig {
   key: 'tmdb' | 'tvdb'
@@ -30,38 +34,11 @@ interface ProviderConfig {
   description: ReactNode
   helpText?: string
   testFailureMessage: string
+  schema: typeof tmdbSettingSchema | typeof tvdbSettingSchema
 }
 
 interface ApiKeyFormResult {
   api_key: string
-}
-
-const metadataApiKeySchema = tmdbSettingSchema
-const metadataApiKeyResolver: Resolver<ApiKeyFormResult> = async (values) => {
-  const result = metadataApiKeySchema.safeParse(values)
-
-  if (result.success) {
-    return {
-      values: result.data,
-      errors: {},
-    }
-  }
-
-  const apiKeyIssue = result.error.issues.find(
-    (issue) => issue.path[0] === 'api_key',
-  )
-
-  return {
-    values: {},
-    errors: apiKeyIssue
-      ? {
-          api_key: {
-            type: apiKeyIssue.code,
-            message: apiKeyIssue.message,
-          },
-        }
-      : {},
-  }
 }
 
 const providers: ProviderConfig[] = [
@@ -85,6 +62,7 @@ const providers: ProviderConfig[] = [
     ),
     helpText: 'Leave empty to use the built-in shared key.',
     testFailureMessage: 'Failed to connect to TMDB. Verify the API key.',
+    schema: tmdbSettingSchema,
   },
   {
     key: 'tvdb',
@@ -104,6 +82,7 @@ const providers: ProviderConfig[] = [
       </>
     ),
     testFailureMessage: 'Failed to connect to TVDB. Verify the API key.',
+    schema: tvdbSettingSchema,
   },
 ]
 
@@ -119,8 +98,8 @@ function useProviderForm(config: ProviderConfig) {
   const [testing, setTesting] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
-  const [submitError, setSubmitError] = useState(false)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback(`${config.title} settings`)
 
   const {
     register,
@@ -129,7 +108,7 @@ function useProviderForm(config: ProviderConfig) {
     control,
     formState: { errors, isSubmitting, isLoading, defaultValues },
   } = useForm({
-    resolver: metadataApiKeyResolver,
+    resolver: zodResolver(config.schema),
     defaultValues: async () => {
       try {
         setLoadError(false)
@@ -157,8 +136,7 @@ function useProviderForm(config: ProviderConfig) {
     !loadError
 
   const onSubmit = async (data: ApiKeyFormResult) => {
-    setSubmitError(false)
-    setSubmitSuccess(false)
+    clearError()
 
     try {
       const resp = await (data.api_key === ''
@@ -166,12 +144,12 @@ function useProviderForm(config: ProviderConfig) {
         : PostApiHandler<BasicResponseDto>(`/settings/${config.key}`, data))
 
       if (resp.code) {
-        setSubmitSuccess(true)
+        showUpdated()
       } else {
-        setSubmitError(true)
+        showUpdateError()
       }
     } catch {
-      setSubmitError(true)
+      showUpdateError()
     }
   }
 
@@ -215,8 +193,7 @@ function useProviderForm(config: ProviderConfig) {
     errors,
     testing,
     testResult,
-    submitError,
-    submitSuccess,
+    feedback,
     loadError,
     isGoingToRemove,
     canSave,
@@ -232,8 +209,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
     errors,
     testing,
     testResult,
-    submitError,
-    submitSuccess,
+    feedback,
     loadError,
     isGoingToRemove,
     canSave,
@@ -243,16 +219,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
 
   return (
     <>
-      <SettingsAlertSlot>
-        {submitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : submitSuccess ? (
-          <Alert
-            type="info"
-            title={`${config.title} settings successfully updated`}
-          />
-        ) : null}
-      </SettingsAlertSlot>
+      <SettingsFeedbackAlert feedback={feedback} />
 
       {loadError ? (
         <Alert
@@ -294,7 +261,7 @@ function ProviderSection({ config }: { config: ProviderConfig }) {
                   className="ml-3"
                   disabled={testing || isGoingToRemove || loadError}
                 >
-                  {testing ? 'Testing...' : 'Test'}
+                  {testing ? 'Testing Connection...' : 'Test Connection'}
                 </Button>
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
                   <Button
@@ -329,12 +296,21 @@ const MetadataSettings = () => {
     isLoading: preferenceLoading,
   } = useMetadataProviderPreference()
 
-  const {
-    mutate: savePreference,
-    isPending: preferenceSaving,
-    isSuccess: preferenceSuccess,
-    isError: preferenceError,
-  } = useUpdateMetadataProviderPreference()
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Metadata settings')
+  const { mutateAsync: savePreference, isPending: preferenceSaving } =
+    useUpdateMetadataProviderPreference()
+
+  const handlePreferenceChange = async (value: MetadataProviderPreference) => {
+    clearError()
+
+    try {
+      await savePreference(value)
+      showUpdated()
+    } catch {
+      showUpdateError()
+    }
+  }
 
   return (
     <>
@@ -348,19 +324,7 @@ const MetadataSettings = () => {
           </p>
         </div>
 
-        <SettingsAlertSlot>
-          {preferenceError ? (
-            <Alert
-              type="warning"
-              title="Failed to update provider preference"
-            />
-          ) : preferenceSuccess ? (
-            <Alert
-              type="info"
-              title="Provider preference updated successfully"
-            />
-          ) : null}
-        </SettingsAlertSlot>
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <div className="section">
           <h4 className="text-lg font-bold text-amber-500">
@@ -385,7 +349,9 @@ const MetadataSettings = () => {
               value={preference}
               disabled={preferenceLoading || preferenceSaving}
               onChange={(event) =>
-                savePreference(event.target.value as MetadataProviderPreference)
+                void handlePreferenceChange(
+                  event.target.value as MetadataProviderPreference,
+                )
               }
             >
               {preferenceOptions.map((option) => (

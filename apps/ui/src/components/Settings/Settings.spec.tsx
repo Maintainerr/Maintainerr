@@ -1,9 +1,18 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, render } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
 import SettingsWrapper from './index'
 
 const navigate = vi.fn()
+
+const getMediaServerSettingsPath = (mediaServerType: MediaServerType) => {
+  return mediaServerType === MediaServerType.PLEX
+    ? '/settings/plex'
+    : '/settings/jellyfin'
+}
+
+let currentPath = getMediaServerSettingsPath(MediaServerType.JELLYFIN)
 
 type MockSettingsResult = {
   data?: {
@@ -26,10 +35,6 @@ vi.mock('../Common/Alert', () => ({
   default: ({ title }: { title: string }) => <div>{title}</div>,
 }))
 
-vi.mock('../Common/LoadingSpinner', () => ({
-  default: () => <div>Loading...</div>,
-}))
-
 vi.mock('../../router', () => ({
   prefetchRoute: vi.fn(),
 }))
@@ -50,7 +55,7 @@ vi.mock('react-router-dom', async () => {
       </a>
     ),
     Outlet: () => <div>settings outlet</div>,
-    useLocation: () => ({ pathname: '/settings/jellyfin' }),
+    useLocation: () => ({ pathname: currentPath }),
     useNavigate: () => navigate,
   }
 })
@@ -63,7 +68,9 @@ const getDesktopTabLabels = (container: HTMLElement) => {
 
 describe('SettingsWrapper', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     navigate.mockReset()
+    currentPath = getMediaServerSettingsPath(MediaServerType.JELLYFIN)
     currentSettingsResult = {
       data: undefined,
       isLoading: true,
@@ -71,7 +78,12 @@ describe('SettingsWrapper', () => {
     }
   })
 
-  it('keeps the configured media server tab stable while settings are loading without showing a shell spinner', () => {
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
+  it('keeps the configured media server tab stable while settings are loading', () => {
     const { container, rerender } = render(<SettingsWrapper />)
 
     expect(getDesktopTabLabels(container)).toEqual([
@@ -86,7 +98,10 @@ describe('SettingsWrapper', () => {
       'Jobs',
       'About',
     ])
-    expect(screen.queryByText('Loading...')).toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(INTERACTION_DEBOUNCE_MS - 1)
+    })
 
     currentSettingsResult = {
       data: {
@@ -101,8 +116,6 @@ describe('SettingsWrapper', () => {
 
     rerender(<SettingsWrapper />)
 
-    expect(screen.queryByText('Loading...')).toBeNull()
-
     expect(getDesktopTabLabels(container)).toEqual([
       'General',
       'Jellyfin',
@@ -115,5 +128,19 @@ describe('SettingsWrapper', () => {
       'Jobs',
       'About',
     ])
+  })
+
+  it('does not mark the loading placeholder media server tab as active on the general route', () => {
+    currentPath = '/settings/main'
+
+    const { container } = render(<SettingsWrapper />)
+
+    const desktopLinks = Array.from(container.querySelectorAll('nav.flex a'))
+    const activeLinks = desktopLinks.filter((link) =>
+      link.className.includes('text-amber-500'),
+    )
+
+    expect(activeLinks).toHaveLength(1)
+    expect(activeLinks[0]?.textContent?.trim()).toBe('General')
   })
 })

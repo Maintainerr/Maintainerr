@@ -2,26 +2,27 @@ import { SaveIcon } from '@heroicons/react/solid'
 import { isValidCron } from 'cron-validator'
 import { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
-import SettingsAlertSlot from '../SettingsAlertSlot'
 import { usePatchSettings } from '../../../api/settings'
-import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 const JobSettings = () => {
   const rulehanderRef = useRef<HTMLInputElement>(null)
   const collectionHandlerRef = useRef<HTMLInputElement>(null)
   const [secondCronValid, setSecondCronValid] = useState(true)
   const [firstCronValid, setFirstCronValid] = useState(true)
-  const [submitStatus, setSubmitStatus] = useState<
-    'idle' | 'validation-error' | 'error' | 'success'
-  >('idle')
-  const [successCount, setSuccessCount] = useState(0)
+  const { feedback, showError, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Job settings')
   const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
     usePatchSettings()
   const { settings } = useSettingsOutletContext()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    clearError()
 
     if (
       rulehanderRef.current?.value &&
@@ -36,13 +37,12 @@ const JobSettings = () => {
 
       try {
         await updateSettings(payload)
-        setSubmitStatus('success')
-        setSuccessCount((current) => current + 1)
+        showUpdated()
       } catch {
-        setSubmitStatus('error')
+        showUpdateError()
       }
     } else {
-      setSubmitStatus('validation-error')
+      showError('Please make sure all values are valid')
     }
   }
 
@@ -55,22 +55,7 @@ const JobSettings = () => {
           <p className="description">Job configuration</p>
         </div>
 
-        <SettingsAlertSlot>
-          {submitStatus === 'validation-error' ? (
-            <Alert type="error" title="Please make sure all values are valid" />
-          ) : submitStatus === 'error' ? (
-            <Alert
-              type="error"
-              title="Something went wrong, please check your values"
-            />
-          ) : submitStatus === 'success' ? (
-            <Alert
-              key={`jobs-settings-success-${successCount}`}
-              type="info"
-              title="Settings successfully updated"
-            />
-          ) : null}
-        </SettingsAlertSlot>
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <div className="section">
           <form onSubmit={submit}>
