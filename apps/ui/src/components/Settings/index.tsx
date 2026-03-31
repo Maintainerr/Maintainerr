@@ -6,6 +6,39 @@ import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from './Tabs'
 
+const getMediaServerRoute = (
+  mediaServerType: MediaServerType | null | undefined,
+  isLoading: boolean,
+): SettingsRoute | undefined => {
+  if (mediaServerType === MediaServerType.JELLYFIN) {
+    return {
+      text: 'Jellyfin',
+      route: '/settings/jellyfin',
+      regex: /^\/settings\/jellyfin$/,
+    }
+  }
+
+  if (mediaServerType === MediaServerType.PLEX) {
+    return {
+      text: 'Plex',
+      route: '/settings/plex',
+      regex: /^\/settings\/plex$/,
+    }
+  }
+
+  if (isLoading) {
+    return {
+      text: 'Media Server',
+      // Reuse the General route while loading so the tab slot stays reserved
+      // without introducing a synthetic route or a placeholder-only regex.
+      route: '/settings/main',
+      regex: /^\/settings\/main$/,
+    }
+  }
+
+  return undefined
+}
+
 export type SettingsOutletContext = {
   settings: NonNullable<UseSettingsResult['data']>
 }
@@ -28,23 +61,10 @@ const SettingsWrapper = () => {
       },
     ]
 
-    // Only show media server tab after user has selected a type
-    // During initial setup, user selects via MediaServerSelector in General tab
-    if (mediaServerType === MediaServerType.JELLYFIN) {
-      baseRoutes.push({
-        text: 'Jellyfin',
-        route: '/settings/jellyfin',
-        regex: /^\/settings\/jellyfin$/,
-      })
-    } else if (mediaServerType === MediaServerType.PLEX) {
-      baseRoutes.push({
-        text: 'Plex',
-        route: '/settings/plex',
-        regex: /^\/settings\/plex$/,
-      })
+    const mediaServerRoute = getMediaServerRoute(mediaServerType, isLoading)
+    if (mediaServerRoute) {
+      baseRoutes.push(mediaServerRoute)
     }
-    // When no mediaServerType is set, don't show either tab
-    // User must select via MediaServerSelector in General settings
 
     // Add remaining tabs
     baseRoutes.push(
@@ -103,7 +123,7 @@ const SettingsWrapper = () => {
     )
 
     return baseRoutes
-  }, [mediaServerType])
+  }, [isLoading, mediaServerType])
 
   if (error) {
     return (
