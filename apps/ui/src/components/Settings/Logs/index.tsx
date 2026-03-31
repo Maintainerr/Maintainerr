@@ -15,6 +15,7 @@ import GetApiHandler, {
   API_BASE_PATH,
   PostApiHandler,
 } from '../../../utils/ApiHandler'
+import { logClientError } from '../../../utils/ClientLogger'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import Table from '../../Common/Table'
@@ -130,30 +131,50 @@ const Logs = () => {
   const [logFilter, setLogFilter] = useState<string>('')
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
   const logsRef = useRef<HTMLDivElement>(null)
+  const hasLoggedStreamError = useRef(false)
 
   useEffect(() => {
     const MAX_LOG_LINES = 1000
     const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/logs/stream`)
 
     const handleLog = (event: MessageEvent) => {
-      const message: LogEvent = JSON.parse(event.data)
-      setLogLines((prev) => {
-        const newLines = [...prev, message]
-        // Keep only the last MAX_LOG_LINES
-        return newLines.slice(-MAX_LOG_LINES)
-      })
+      try {
+        const message: LogEvent = JSON.parse(event.data)
+        setLogLines((prev) => {
+          const newLines = [...prev, message]
+          return newLines.slice(-MAX_LOG_LINES)
+        })
+      } catch (error) {
+        void logClientError(
+          'Error parsing log stream data',
+          error,
+          'Settings.Logs.handleLog',
+        )
+      }
     }
 
     es.addEventListener('log', handleLog)
 
-    es.onerror = (e) => {
-      console.error('EventSource failed:', e)
+    es.onopen = () => {
+      hasLoggedStreamError.current = false
+    }
+
+    es.onerror = (error) => {
+      if (hasLoggedStreamError.current) {
+        return
+      }
+
+      hasLoggedStreamError.current = true
+      void logClientError(
+        'Log stream connection failed',
+        error,
+        'Settings.Logs.stream',
+      )
     }
 
     return () => {
       es.removeEventListener('log', handleLog)
       es.close()
-      // Clear logs on unmount to prevent memory leak
       setLogLines([])
     }
   }, [])

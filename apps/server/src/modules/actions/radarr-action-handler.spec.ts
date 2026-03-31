@@ -12,16 +12,16 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 describe('RadarrActionHandler', () => {
   let radarrActionHandler: RadarrActionHandler;
   let mediaServerFactory: Mocked<MediaServerFactory>;
   let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
-  let tmdbIdService: Mocked<TmdbIdService>;
+  let metadataService: Mocked<MetadataService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -31,8 +31,25 @@ describe('RadarrActionHandler', () => {
     radarrActionHandler = unit;
     mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
-    tmdbIdService = unitRef.get(TmdbIdService);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+
+    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
+      const candidates = [] as Array<{
+        providerKey: 'tmdb' | 'tvdb';
+        id: number;
+      }>;
+
+      if (ids.tmdb) {
+        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
+      }
+
+      if (ids.tvdb) {
+        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
+      }
+
+      return candidates;
+    });
 
     // Setup mock for MediaServerFactory
     mediaServer = {
@@ -53,13 +70,13 @@ describe('RadarrActionHandler', () => {
       tmdbId: undefined,
     });
 
-    tmdbIdService.getTmdbIdFromMediaServerId.mockResolvedValue(undefined);
+    metadataService.resolveIds.mockResolvedValue(undefined);
 
     const mockedRadarrApi = mockRadarrApi(servarrService, logger);
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(tmdbIdService.getTmdbIdFromMediaServerId).toHaveBeenCalled();
+    expect(metadataService.resolveIds).toHaveBeenCalled();
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 

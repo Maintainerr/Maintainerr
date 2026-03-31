@@ -2,21 +2,23 @@ import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MediaIdFinder } from './media-id-finder';
+import { MetadataService } from '../metadata/metadata.service';
+import {
+  findServarrLookupMatch,
+  formatServarrLookupCandidates,
+} from '../metadata/servarr-lookup.util';
 
 @Injectable()
 export class SonarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
-    private readonly tmdbIdService: TmdbIdService,
-    private readonly mediaIdFinder: MediaIdFinder,
-    private readonly logger: MaintainerrLogger,
     private readonly mediaServerFactory: MediaServerFactory,
+    private readonly metadataService: MetadataService,
+    private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SonarrActionHandler.name);
   }
@@ -32,70 +34,42 @@ export class SonarrActionHandler {
 
     let mediaData: MediaItem | undefined = undefined;
 
-    // get the tvdb id
-    let tvdbId: number | undefined = undefined;
-    switch (collection.type) {
-      case 'season':
-        mediaData = await mediaServer.getMetadata(media.mediaServerId);
-        tvdbId = await this.mediaIdFinder.findTvdbId(
-          mediaData?.parentId,
-          media.tmdbId,
-        );
-        media.tmdbId = media.tmdbId
-          ? media.tmdbId
-          : (
-              await this.tmdbIdService.getTmdbIdFromMediaServerId(
-                mediaData?.parentId,
-              )
-            )?.id;
-        break;
-      case 'episode':
-        mediaData = await mediaServer.getMetadata(media.mediaServerId);
-        tvdbId = await this.mediaIdFinder.findTvdbId(
-          mediaData?.grandparentId,
-          media.tmdbId,
-        );
-        media.tmdbId = media.tmdbId
-          ? media.tmdbId
-          : (
-              await this.tmdbIdService.getTmdbIdFromMediaServerId(
-                mediaData?.grandparentId,
-              )
-            )?.id;
-        break;
-      default:
-        tvdbId = await this.mediaIdFinder.findTvdbId(
-          media.mediaServerId,
-          media.tmdbId,
-        );
-        media.tmdbId = media.tmdbId
-          ? media.tmdbId
-          : (
-              await this.tmdbIdService.getTmdbIdFromMediaServerId(
-                media.mediaServerId,
-              )
-            )?.id;
-        break;
+    if (['season', 'episode'].includes(collection.type)) {
+      mediaData = await mediaServer.getMetadata(media.mediaServerId);
     }
 
-    if (!tvdbId) {
+    const ids = await this.metadataService.resolveIds(media.mediaServerId);
+    const resolvedIds = {
+      tmdb: (ids?.tmdb as number | undefined) ?? media.tmdbId,
+      tvdb: (ids?.tvdb as number | undefined) ?? media.tvdbId,
+    };
+    const lookupCandidates =
+      this.metadataService.buildServarrLookupCandidates(resolvedIds);
+
+    if (lookupCandidates.length === 0) {
       this.logger.log(
-        `Couldn't find correct tvdb id. No action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Please check this show manually`,
+        `Couldn't resolve any supported external IDs for media server item ${media.mediaServerId}. No action was taken. Please check this show manually.`,
       );
       return;
     }
 
-    let sonarrMedia = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+    const matchedResult = await findServarrLookupMatch(lookupCandidates, {
+      tmdb: (id) => sonarrApiClient.getSeriesByTmdbId(id),
+      tvdb: (id) => sonarrApiClient.getSeriesByTvdbId(id),
+    });
+    let sonarrMedia = matchedResult?.result;
 
     if (!sonarrMedia?.id) {
+      const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+
       if (collection.arrAction !== ServarrAction.UNMONITOR) {
         this.logger.log(
-          `Couldn't find correct tvdb id. No Sonarr action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}. Attempting to remove from the filesystem via media server.`,
+          `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
       } else {
         this.logger.log(
-          `Couldn't find correct tvdb id. No unmonitor action was taken for show: https://www.themoviedb.org/tv/${media.tmdbId}`,
+          `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. No unmonitor action was taken.`,
         );
       }
       return;
@@ -131,7 +105,7 @@ export class SonarrActionHandler {
               true,
               collection.listExclusions,
             );
-            this.logger.log(`Removed show ${sonarrMedia.title}' from Sonarr`);
+            this.logger.log(`Removed show '${sonarrMedia.title}' from Sonarr`);
             break;
         }
         break;
@@ -213,7 +187,7 @@ export class SonarrActionHandler {
               true,
             );
             this.logger.log(
-              `[Sonarr] Removed exisiting episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed existing episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             break;
           case 'show':
@@ -228,7 +202,7 @@ export class SonarrActionHandler {
               sonarrMedia.monitored = false;
               await sonarrApiClient.updateSeries(sonarrMedia);
               this.logger.log(
-                `[Sonarr] Unmonitored show '${sonarrMedia.title}' and Removed exisiting episodes`,
+                `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed existing episodes`,
               );
             }
 

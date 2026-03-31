@@ -5,7 +5,7 @@ export interface ICollectionMedia {
   collectionId: number;
   mediaServerId: string;
   tmdbId: number;
-  tvdbid: number;
+  tvdbId: number;
   addDate: Date;
 }
 

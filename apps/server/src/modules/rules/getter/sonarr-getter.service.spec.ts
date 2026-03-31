@@ -17,6 +17,7 @@ import { SonarrSeries } from '../../api/servarr-api/interfaces/sonarr.interface'
 import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MetadataService } from '../../metadata/metadata.service';
 import { SonarrGetterService } from './sonarr-getter.service';
 
 describe('SonarrGetterService', () => {
@@ -26,6 +27,7 @@ describe('SonarrGetterService', () => {
   let mockMediaServer: {
     getMetadata: jest.Mock<Promise<MediaItem>, [string]>;
   };
+  let metadataService: Mocked<MetadataService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -36,7 +38,30 @@ describe('SonarrGetterService', () => {
 
     servarrService = unitRef.get(ServarrService);
     mediaServerFactory = unitRef.get(MediaServerFactory);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+
+    metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+      tmdb: 1,
+      tvdb: 1,
+      type: 'tv',
+    } as any);
+    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
+      const candidates = [] as Array<{
+        providerKey: 'tmdb' | 'tvdb';
+        id: number;
+      }>;
+
+      if (ids.tmdb) {
+        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
+      }
+
+      if (ids.tvdb) {
+        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
+      }
+
+      return candidates;
+    });
 
     // Create mock media server
     mockMediaServer = {
@@ -582,9 +607,15 @@ describe('SonarrGetterService', () => {
 
     if (series) {
       jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTmdbId')
+        .mockResolvedValue(series);
+      jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockResolvedValue(series);
     } else {
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTmdbId')
+        .mockImplementation(jest.fn());
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockImplementation(jest.fn());

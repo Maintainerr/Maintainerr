@@ -73,6 +73,9 @@ const settingsJellyfinRoute = createLazyRoute(
 const settingsSonarrRoute = createLazyRoute(
   () => import('./components/Settings/Sonarr'),
 )
+const settingsMetadataRoute = createLazyRoute(
+  () => import('./components/Settings/Metadata'),
+)
 const settingsRadarrRoute = createLazyRoute(
   () => import('./components/Settings/Radarr'),
 )
@@ -205,6 +208,11 @@ const appRoutes: AppRoute[] = [
         path: 'sonarr',
         lazy: settingsSonarrRoute.lazy,
         preload: settingsSonarrRoute.preload,
+      },
+      {
+        path: 'metadata',
+        lazy: settingsMetadataRoute.lazy,
+        preload: settingsMetadataRoute.preload,
       },
       {
         path: 'radarr',

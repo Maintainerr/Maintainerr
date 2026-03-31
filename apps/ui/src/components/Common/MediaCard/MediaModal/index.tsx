@@ -1,7 +1,12 @@
-import { MediaItem } from '@maintainerr/contracts'
+import { MediaItem, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import { logClientError } from '../../../../utils/ClientLogger'
+import {
+  buildMetadataImagePath,
+  toApiMediaType,
+} from '../../../../utils/mediaTypeUtils'
 
 interface ModalContentProps {
   onClose: () => void
@@ -15,7 +20,7 @@ interface ModalContentProps {
   title: string
   canExpand?: boolean
   inProgress?: boolean
-  tmdbid?: string
+  providerIds?: MediaProviderIds
   libraryId?: string
   type?: 1 | 2 | 3 | 4
   daysLeft?: number
@@ -32,10 +37,13 @@ const ratingIcons: Record<string, string> = {
 }
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
-  ({ onClose, mediaType, id, summary, year, title, tmdbid }) => {
+  ({ onClose, mediaType, id, summary, year, title, providerIds }) => {
     const { isPlex, isJellyfin } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
-    const [backdrop, setBackdrop] = useState<string | null>(null)
+    const [backdropUrl, setBackdropUrl] = useState<string | null>(null)
+    const [fetchedBackdropPath, setFetchedBackdropPath] = useState<
+      string | null
+    >(null)
     const [machineId, setMachineId] = useState<string | null>(null)
     const [serverUrl, setServerUrl] = useState<string | null>(null)
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
@@ -43,12 +51,16 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     )
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
 
-    const mediaTypeOf = useMemo(
-      () =>
-        ['show', 'season', 'episode'].includes(mediaType) ? 'tv' : mediaType,
-      [mediaType],
+    const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
+    const effectiveProviderIds = providerIds ?? metadata?.providerIds
+    const tmdbId = effectiveProviderIds?.tmdb?.[0]
+    const backdropRequestPath = buildMetadataImagePath(
+      'backdrop',
+      mediaType,
+      effectiveProviderIds,
     )
-    const resolvedBackdrop = tmdbid ? backdrop : null
+    const resolvedBackdrop =
+      fetchedBackdropPath === backdropRequestPath ? backdropUrl : null
 
     const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
@@ -67,27 +79,42 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         setMetadata(data)
         setLoading(false)
       })
-      // Only fetch backdrop if tmdbid is available
-      if (tmdbid) {
-        const backdropType = ['season', 'episode'].includes(mediaType)
-          ? 'show'
-          : mediaType
-        GetApiHandler(`/moviedb/backdrop/${backdropType}/${tmdbid}`)
-          .then((resp) => setBackdrop(resp))
-          .catch((error) => {
-            console.error(
-              'Error fetching backdrop image. Check your media server metadata',
-              error,
-            )
-            setBackdrop(null)
-          })
-      } else {
-        console.warn(
-          `No TMDB ID found for "${title}" (id: ${id}). Backdrop image unavailable. ` +
-            'Please check your media server metadata - the item may not be matched correctly.',
-        )
+    }, [id])
+
+    useEffect(() => {
+      if (!backdropRequestPath) {
+        return
       }
-    }, [id, mediaType, tmdbid, title])
+
+      let active = true
+
+      GetApiHandler<{ url: string } | undefined>(backdropRequestPath)
+        .then((resp) => {
+          if (!active) {
+            return
+          }
+
+          setBackdropUrl(resp?.url ?? null)
+          setFetchedBackdropPath(backdropRequestPath)
+        })
+        .catch((error) => {
+          if (!active) {
+            return
+          }
+
+          void logClientError(
+            'Error fetching backdrop image. Check your media server metadata',
+            error,
+            'MediaCard.MediaModal.backdropFetch',
+          )
+          setBackdropUrl(null)
+          setFetchedBackdropPath(backdropRequestPath)
+        })
+
+      return () => {
+        active = false
+      }
+    }, [backdropRequestPath])
 
     useEffect(() => {
       document.body.style.overflow = 'hidden'
@@ -111,7 +138,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
               style={{
                 backgroundImage: resolvedBackdrop
-                  ? `url(https://image.tmdb.org/t/p/w1280${resolvedBackdrop})`
+                  ? `url(${resolvedBackdrop})`
                   : 'linear-gradient(to bottom, #1e293b, #1e293b)',
               }}
             ></div>
@@ -176,10 +203,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
               <div className="flex flex-col items-end">
                 <div className="max-w-fit grow">
-                  {tmdbid && (
+                  {tmdbId && (
                     <div>
                       <a
-                        href={`https://themoviedb.org/${mediaTypeOf}/${tmdbid}`}
+                        href={`https://themoviedb.org/${mediaTypeOf}/${tmdbId}`}
                         target="_blank"
                         rel="noreferrer"
                       >

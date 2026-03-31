@@ -18,13 +18,8 @@ import { Brackets, DataSource, LessThan, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
-import {
-  TmdbMovieDetails,
-  TmdbTvDetails,
-} from '../api/tmdb-api/interfaces/tmdb.interface';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
-import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsService } from '../settings/settings.service';
@@ -65,8 +60,7 @@ export class CollectionsService {
     private readonly connection: DataSource,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly settingsService: SettingsService,
-    private readonly tmdbApi: TmdbApiService,
-    private readonly tmdbIdHelper: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -1161,19 +1155,12 @@ export class CollectionsService {
       }
 
       try {
-        const tmdb = await this.tmdbIdHelper.getTmdbIdFromMediaServerId(
+        const ids = await this.metadataService.resolveIds(
           childMedia.mediaServerId,
         );
-
-        let tmdbMedia: TmdbTvDetails | TmdbMovieDetails;
-        switch (tmdb.type) {
-          case 'movie':
-            tmdbMedia = await this.tmdbApi.getMovie({ movieId: tmdb.id });
-            break;
-          case 'tv':
-            tmdbMedia = await this.tmdbApi.getTvShow({ tvId: tmdb.id });
-            break;
-        }
+        const details = ids
+          ? await this.metadataService.getDetails(ids, ids.type)
+          : undefined;
 
         await this.connection
           .createQueryBuilder()
@@ -1184,8 +1171,13 @@ export class CollectionsService {
               collectionId: collectionIds.dbId,
               mediaServerId: childMedia.mediaServerId,
               addDate: new Date().toDateString(),
-              tmdbId: tmdbMedia?.id,
-              image_path: tmdbMedia?.poster_path,
+              tmdbId:
+                (ids?.tmdb as number | undefined) ??
+                (details?.externalIds?.tmdb as number | undefined),
+              tvdbId:
+                (ids?.tvdb as number | undefined) ??
+                (details?.externalIds?.tvdb as number | undefined),
+              image_path: details?.posterUrl,
               isManual: manual,
             },
           ])

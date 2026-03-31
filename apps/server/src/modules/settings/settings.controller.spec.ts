@@ -6,6 +6,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 
@@ -28,6 +29,16 @@ describe('SettingsController', () => {
     executeSwitch: jest.fn(),
   } as unknown as jest.Mocked<MediaServerSwitchService>;
 
+  const metadataSettingsService = {
+    updateTmdbSetting: jest.fn(),
+    removeTmdbSetting: jest.fn(),
+    testTmdb: jest.fn(),
+    updateTvdbSetting: jest.fn(),
+    removeTvdbSetting: jest.fn(),
+    testTvdb: jest.fn(),
+    updateMetadataProviderPreference: jest.fn(),
+  } as unknown as jest.Mocked<MetadataSettingsService>;
+
   const databaseDownloadService = {
     getDatabaseDownload: jest.fn(),
   } as unknown as jest.Mocked<DatabaseDownloadService>;
@@ -48,6 +59,7 @@ describe('SettingsController', () => {
     jest.clearAllMocks();
     controller = new SettingsController(
       settingsService,
+      metadataSettingsService,
       mediaServerSwitchService,
       databaseDownloadService,
     );

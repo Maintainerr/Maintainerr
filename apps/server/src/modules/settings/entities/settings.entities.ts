@@ -1,4 +1,7 @@
-import { MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaServerType,
+  MetadataProviderPreference,
+} from '@maintainerr/contracts';
 import { CronExpression } from '@nestjs/schedule';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { SettingDto } from "../dto's/setting.dto";
@@ -64,6 +67,19 @@ export class Settings implements SettingDto {
   // Seerr integration
   @Column({ nullable: true })
   seerr_api_key: string;
+
+  @Column({ nullable: true })
+  tmdb_api_key?: string;
+
+  @Column({ nullable: true })
+  tvdb_api_key?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    default: MetadataProviderPreference.TMDB_PRIMARY,
+  })
+  metadata_provider_preference?: MetadataProviderPreference;
 
   @Column({ nullable: true })
   tautulli_url: string;
