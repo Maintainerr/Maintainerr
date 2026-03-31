@@ -1,13 +1,13 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddMetadataSupport1771878383243 implements MigrationInterface {
-    name = 'AddMetadataSupport1771878383243'
+  name = 'AddMetadataSupport1771878383243';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP INDEX "idx_collection_media_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection_media" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -20,7 +20,7 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 CONSTRAINT "FK_604b0cd0f85150923289b7f2c19" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection_media"(
                     "id",
                     "collectionId",
@@ -39,17 +39,17 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 "isManual"
             FROM "collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection_media"
                 RENAME TO "collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_media_collection_id" ON "collection_media" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -78,7 +78,7 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 "metadata_provider_preference" varchar NOT NULL DEFAULT ('tmdb_primary')
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_settings"(
                     "id",
                     "clientId",
@@ -127,23 +127,23 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 "seerr_api_key"
             FROM "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_settings"
                 RENAME TO "settings"
         `);
-    }
+  }
 
-    // This rollback restores the pre-metadata schema, which necessarily drops
-    // metadata-specific settings columns and collection_media.tvdbId data.
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  // This rollback restores the pre-metadata schema, which necessarily drops
+  // metadata-specific settings columns and collection_media.tvdbId data.
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "settings"
                 RENAME TO "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -169,7 +169,7 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 "seerr_api_key" varchar
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "settings"(
                     "id",
                     "clientId",
@@ -218,17 +218,17 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 "seerr_api_key"
             FROM "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_media_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection_media"
                 RENAME TO "temporary_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection_media" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -240,7 +240,7 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 CONSTRAINT "FK_604b0cd0f85150923289b7f2c19" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection_media"(
                     "id",
                     "collectionId",
@@ -259,12 +259,11 @@ export class AddMetadataSupport1771878383243 implements MigrationInterface {
                 "isManual"
             FROM "temporary_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_media_collection_id" ON "collection_media" ("collectionId")
         `);
-    }
-
+  }
 }
