@@ -1,1 +1,1 @@
-export const defaultInfiniteScrollThreshold = 0.8
+export const defaultInfiniteScrollThreshold = 0.7
