@@ -6,10 +6,12 @@ import {
   MediaItem,
   MediaItemType,
   MediaLibrary,
+  MediaLibrarySortField,
   MediaPlaylist,
   MediaServerFeature,
   MediaServerStatus,
   MediaServerType,
+  MediaSortOrder,
   MediaUser,
   PagedResult,
   RecentlyAddedOptions,
@@ -26,6 +28,26 @@ import {
   type MediaWatchState,
 } from '../media-server.interface';
 import { PlexMapper } from './plex.mapper';
+
+const toPlexSort = (
+  sort?: MediaLibrarySortField,
+  sortOrder?: MediaSortOrder,
+): string | undefined => {
+  const direction = sortOrder ?? 'asc';
+
+  switch (sort) {
+    case 'airDate':
+      return `originallyAvailableAt:${direction}`;
+    case 'rating':
+      return `audienceRating:${direction}`;
+    case 'watchCount':
+      return `viewCount:${direction}`;
+    case 'title':
+      return `titleSort:${direction}`;
+    default:
+      return undefined;
+  }
+};
 
 /**
  * Adapter that wraps PlexApiService to implement IMediaServerService.
@@ -111,6 +133,7 @@ export class PlexAdapterService implements IMediaServerService {
       {
         offset: options?.offset ?? 0,
         size: options?.limit ?? 50,
+        sort: toPlexSort(options?.sort, options?.sortOrder),
       },
       plexType,
     );

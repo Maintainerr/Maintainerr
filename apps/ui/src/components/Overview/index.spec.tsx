@@ -1,0 +1,150 @@
+import type { MediaLibrary } from '@maintainerr/contracts'
+import { render, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useMediaServerLibraries } from '../../api/media-server'
+import { SearchContextProvider } from '../../contexts/search-context'
+import GetApiHandler from '../../utils/ApiHandler'
+import {
+  getCollectionMediaSortConfig,
+  getMediaLibrarySortConfig,
+} from '../Common/MediaLibrarySortControl'
+import Overview, { buildLibraryContentQuery } from './index'
+
+vi.mock('../../api/media-server', () => ({
+  useMediaServerLibraries: vi.fn(),
+}))
+
+vi.mock('../../utils/ApiHandler', () => ({
+  default: vi.fn(),
+}))
+
+vi.mock('../Common/LibrarySwitcher', () => ({
+  default: () => null,
+}))
+
+vi.mock('./Content', () => ({
+  default: () => null,
+}))
+
+describe('Overview', () => {
+  const librariesHookMock = vi.mocked(useMediaServerLibraries)
+  const getApiHandlerMock = vi.mocked(GetApiHandler)
+  let libraries: MediaLibrary[] | undefined
+  const getLibrariesResult = (): ReturnType<typeof useMediaServerLibraries> =>
+    ({
+      data: libraries,
+      error: undefined,
+      isLoading: false,
+    }) as unknown as ReturnType<typeof useMediaServerLibraries>
+
+  beforeEach(() => {
+    libraries = undefined
+    librariesHookMock.mockReset()
+    getApiHandlerMock.mockReset()
+
+    librariesHookMock.mockImplementation(getLibrariesResult)
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/library/')) {
+        return {
+          totalSize: 0,
+          items: [],
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+  })
+
+  it('shows title ascending as the default overview option', () => {
+    const sortConfig = getMediaLibrarySortConfig('show')
+
+    expect(sortConfig.options[0]?.label).toBe('Title (A-Z) Ascending')
+    expect(sortConfig.options[0]?.sortParams).toBeUndefined()
+  })
+
+  it('only exposes the reachable delete soonest collection sort option', () => {
+    const sortConfig = getCollectionMediaSortConfig('show', true)
+    const deleteSoonestOptions = sortConfig.options.filter(
+      (option) => option.sortParams?.sort === 'deleteSoonest',
+    )
+
+    expect(
+      sortConfig.options.some((option) => option.value === 'deleteSoonest.asc'),
+    ).toBe(true)
+    expect(deleteSoonestOptions).toHaveLength(1)
+    expect(deleteSoonestOptions[0]?.sortParams).toEqual({
+      sort: 'deleteSoonest',
+      sortOrder: 'asc',
+    })
+  })
+
+  it('omits sort params until a sort option is selected', () => {
+    const url = new URL(
+      `/media-server/library/shows-library/content?${buildLibraryContentQuery({
+        page: 1,
+        limit: 30,
+        libraryType: 'show',
+      })}`,
+      'http://localhost',
+    )
+
+    expect(url.searchParams.get('type')).toBeNull()
+    expect(url.searchParams.get('sort')).toBeNull()
+    expect(url.searchParams.get('sortOrder')).toBeNull()
+  })
+
+  it('includes the selected show library type in content requests', () => {
+    const url = new URL(
+      `/media-server/library/shows-library/content?${buildLibraryContentQuery({
+        page: 1,
+        limit: 30,
+        libraryType: 'show',
+        sortParams: { sort: 'title', sortOrder: 'asc' },
+      })}`,
+      'http://localhost',
+    )
+
+    expect(url.searchParams.get('type')).toBe('show')
+    expect(url.searchParams.get('sort')).toBe('title')
+    expect(url.searchParams.get('sortOrder')).toBe('asc')
+  })
+
+  it('does not refetch overview content when libraries revalidate with the same first id', async () => {
+    libraries = [
+      {
+        id: 'movies-library',
+        title: 'Movies',
+        type: 'movie',
+      } as MediaLibrary,
+    ]
+
+    const { rerender } = render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    })
+
+    libraries = [
+      {
+        id: 'movies-library',
+        title: 'Movies',
+        type: 'movie',
+      } as MediaLibrary,
+    ]
+
+    rerender(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    })
+  })
+})

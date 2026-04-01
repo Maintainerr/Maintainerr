@@ -1,6 +1,7 @@
-import React, { ReactNode, useEffect } from 'react'
+import React, { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { prefetchRoute } from '../../../router'
+import { showMediaServerSetupRequiredToast } from '../../Layout/MediaServerSetupGuard'
 
 export interface SettingsRoute {
   text: string
@@ -19,20 +20,21 @@ export interface ISettingsLink {
   hidden?: boolean
   isMobile?: boolean
   disabled?: boolean
+  onBlockedNavigate?: () => void
   children?: ReactNode
 }
 
 const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
   if (props.isMobile) {
     return (
-      <option disabled={props.disabled} value={props.route}>
+      <option value={props.route} disabled={props.disabled}>
         {props.children}
       </option>
     )
   }
 
   let linkClasses =
-    (props.disabled ? 'pointer-events-none touch-none ' : '') +
+    (props.disabled ? 'cursor-not-allowed opacity-50 ' : '') +
     'px-1 py-4 ml-8 text-sm font-medium leading-5 transition duration-300 border-b-2  whitespace-nowrap first:ml-0'
   let activeLinkColor = 'text-amber-500 border-amber-600 border-b'
   let inactiveLinkColor =
@@ -48,14 +50,33 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
   return (
     <Link
       to={props.route}
-      onMouseEnter={() => void prefetchRoute(props.route)}
-      onFocus={() => void prefetchRoute(props.route)}
-      onTouchStart={() => void prefetchRoute(props.route)}
+      onMouseEnter={() => {
+        if (!props.disabled) {
+          void prefetchRoute(props.route)
+        }
+      }}
+      onFocus={() => {
+        if (!props.disabled) {
+          void prefetchRoute(props.route)
+        }
+      }}
+      onTouchStart={() => {
+        if (!props.disabled) {
+          void prefetchRoute(props.route)
+        }
+      }}
+      onClick={(event) => {
+        if (props.disabled) {
+          event.preventDefault()
+          props.onBlockedNavigate?.()
+        }
+      }}
       className={`${linkClasses} ${
         props.currentPath.match(props.regex)
           ? activeLinkColor
           : inactiveLinkColor
       }`}
+      aria-disabled={props.disabled}
       aria-current="page"
     >
       {props.children}
@@ -67,21 +88,19 @@ const SettingsTabs: React.FC<{
   tabType?: 'default' | 'button'
   settingsRoutes: SettingsRoute[]
   allEnabled?: boolean
-}> = ({ tabType = 'default', settingsRoutes, allEnabled = true }) => {
+  isRouteDisabled?: (route: SettingsRoute) => boolean
+}> = ({
+  tabType = 'default',
+  settingsRoutes,
+  allEnabled = true,
+  isRouteDisabled,
+}) => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      if (!allEnabled) {
-        e.preventDefault()
-      }
-    }
-    window.addEventListener('touchstart', handleTouchStart)
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart)
-    }
-  }, [allEnabled])
+  const routeIsDisabled = (route: SettingsRoute) => {
+    return !allEnabled || isRouteDisabled?.(route) === true
+  }
 
   const currentRoute =
     settingsRoutes.find((route) =>
@@ -102,17 +121,33 @@ const SettingsTabs: React.FC<{
             }
           }}
           onChange={(e) => {
+            const nextRoute = settingsRoutes.find(
+              (route) => route.route === e.target.value,
+            )
+
+            if (nextRoute && routeIsDisabled(nextRoute)) {
+              showMediaServerSetupRequiredToast()
+              navigate(currentRoute)
+              return
+            }
+
             void prefetchRoute(e.target.value)
             navigate(e.target.value)
           }}
           onBlur={(e) => {
-            navigate(e.target.value)
+            const nextRoute = settingsRoutes.find(
+              (route) => route.route === e.target.value,
+            )
+
+            if (!nextRoute || !routeIsDisabled(nextRoute)) {
+              navigate(e.target.value)
+            }
           }}
           aria-label="Selected Tab"
         >
           {settingsRoutes.map((route, index) => (
             <SettingsLink
-              disabled={!allEnabled}
+              disabled={routeIsDisabled(route)}
               tabType={tabType}
               currentPath={location.pathname}
               route={route.route}
@@ -130,11 +165,12 @@ const SettingsTabs: React.FC<{
           <nav className="-mx-2 -my-1 flex flex-wrap" aria-label="Tabs">
             {settingsRoutes.map((route, index) => (
               <SettingsLink
-                disabled={!allEnabled}
+                disabled={routeIsDisabled(route)}
                 tabType={tabType}
                 currentPath={location.pathname}
                 route={route.route}
                 regex={route.activeRegex ?? route.regex}
+                onBlockedNavigate={showMediaServerSetupRequiredToast}
                 key={`button-settings-link-${index}`}
               >
                 {route.content ?? route.text}
@@ -147,11 +183,12 @@ const SettingsTabs: React.FC<{
           <nav className="flex">
             {settingsRoutes.map((route, index) => (
               <SettingsLink
-                disabled={!allEnabled}
+                disabled={routeIsDisabled(route)}
                 tabType={tabType}
                 currentPath={location.pathname}
                 route={route.route}
                 regex={route.activeRegex ?? route.regex}
+                onBlockedNavigate={showMediaServerSetupRequiredToast}
                 key={`standard-settings-link-${index}`}
               >
                 {route.content ?? route.text}

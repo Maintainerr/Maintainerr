@@ -4,14 +4,12 @@ import { ReactNode, useContext, useEffect, useRef, useState } from 'react'
 import {
   isRouteErrorResponse,
   Outlet,
-  useLocation,
   useNavigate,
   useNavigation,
   useRouteError,
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import GetApiHandler from '../../utils/ApiHandler'
 import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
@@ -27,7 +25,6 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const navigate = useNavigate()
   const navigation = useNavigation()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-  const location = useLocation()
   const debouncedSearchRef = useRef<ReturnType<typeof debounce> | undefined>(
     undefined,
   )
@@ -63,25 +60,6 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
 
     debouncedSearchRef.current?.(text)
   }
-
-  useEffect(() => {
-    // Check if setup is complete, if not redirect to appropriate settings page
-    Promise.all([
-      GetApiHandler('/settings/test/setup'),
-      GetApiHandler('/settings'),
-    ]).then(([setupDone, settings]) => {
-      if (!setupDone) {
-        const mediaServerType = settings?.media_server_type
-        if (mediaServerType) {
-          // User has chosen a media server, redirect to its settings
-          navigate(`/settings/${mediaServerType}`)
-        } else {
-          // No media server chosen yet, go to main settings to choose
-          navigate('/settings/main')
-        }
-      }
-    })
-  }, [navigate, location.pathname])
 
   return (
     <section>

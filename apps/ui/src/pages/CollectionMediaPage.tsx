@@ -1,9 +1,14 @@
 import { type MediaItem } from '@maintainerr/contracts'
-import { debounce } from 'lodash-es'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { ICollection, ICollectionMedia } from '../components/Collection'
+import {
+  getCollectionMediaSortConfig,
+  MediaLibrarySortControl,
+  useMediaLibrarySort,
+} from '../components/Common/MediaLibrarySortControl'
 import OverviewContent from '../components/Overview/Content'
+import useInfinitePaginatedList from '../hooks/useInfinitePaginatedList'
 import GetApiHandler from '../utils/ApiHandler'
 
 interface CollectionContextType {
@@ -13,152 +18,133 @@ interface CollectionContextType {
 const CollectionMediaPage = () => {
   const { collection } = useOutletContext<CollectionContextType>()
   const { id } = useParams<{ id: string }>()
-  const [data, setData] = useState<MediaItem[]>([])
   const [media, setMedia] = useState<ICollectionMedia[]>([])
-  // paging
-  const pageData = useRef<number>(0)
   const fetchAmount = 25
-  const [totalSize, setTotalSize] = useState<number>(999)
-  const totalSizeRef = useRef<number>(999)
-  const dataRef = useRef<MediaItem[]>([])
   const mediaRef = useRef<ICollectionMedia[]>([])
-  const loadingRef = useRef<boolean>(true)
-  const loadingExtraRef = useRef<boolean>(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
-  const [page, setPage] = useState(0)
+  const libraryType = collection.type === 'movie' ? 'movie' : 'show'
+  const sortConfig = getCollectionMediaSortConfig(
+    libraryType,
+    collection.deleteAfterDays != null,
+  )
+  const { sortValue, sortParams, onSortChange } = useMediaLibrarySort(sortConfig)
 
-  const setLoading = (value: boolean) => {
-    loadingRef.current = value
-    setIsLoading(value)
-  }
-
-  const setLoadingExtra = (value: boolean) => {
-    loadingExtraRef.current = value
-    setIsLoadingExtra(value)
-  }
-
-  const fetchData = useCallback(async () => {
-    if (!loadingRef.current) {
-      setLoadingExtra(true)
-    }
-    try {
-      const resp: { totalSize: number; items: ICollectionMedia[] } =
-        await GetApiHandler(
-          `/collections/media/${id}/content/${pageData.current}?size=${fetchAmount}`,
-        )
-
-      setTotalSize(resp.totalSize)
-
-      setMedia([...mediaRef.current, ...resp.items])
-
-      setData([
-        ...dataRef.current,
-        ...resp.items.map((el) => {
-          if (el.mediaData) {
-            el.mediaData.maintainerrIsManual = el.isManual ? el.isManual : false
-          }
-          return el.mediaData ? el.mediaData : ({} as MediaItem)
-        }),
-      ])
-    } finally {
-      setLoading(false)
-      setLoadingExtra(false)
-    }
-  }, [id])
-
-  const loadInitialPage = useEffectEvent(() => {
-    setPage(1)
-  })
-
-  const handleScroll = useEffectEvent(() => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage(pageData.current + 1)
-    }
-  })
-
-  const loadCurrentPage = useEffectEvent((currentPage: number) => {
-    if (currentPage !== 0) {
-      pageData.current = pageData.current + 1
-      void fetchData()
-    }
-  })
-
-  const fillViewportIfNeeded = useEffectEvent(() => {
-    if (
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage((currentPage) => currentPage + 1)
-    }
-  })
-
-  useEffect(() => {
-    // Initial first fetch
-    loadInitialPage()
+  const appendMediaPage = useCallback((items: ICollectionMedia[]) => {
+    const nextMedia = [...mediaRef.current, ...items]
+    mediaRef.current = nextMedia
+    setMedia(nextMedia)
   }, [])
 
-  useEffect(() => {
-    loadCurrentPage(page)
-  }, [page])
+  const updateMedia = useCallback(
+    (updater: (currentMedia: ICollectionMedia[]) => ICollectionMedia[]) => {
+      const nextMedia = updater(mediaRef.current)
+      mediaRef.current = nextMedia
+      setMedia(nextMedia)
+    },
+    [],
+  )
 
-  useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
-    window.addEventListener('scroll', debouncedScroll)
-    return () => {
-      window.removeEventListener('scroll', debouncedScroll)
-      debouncedScroll.cancel() // Cancel pending debounced calls
-    }
+  const resetMedia = useCallback(() => {
+    mediaRef.current = []
+    setMedia([])
   }, [])
 
-  useEffect(() => {
-    dataRef.current = data
+  const mapCollectionMediaItems = useCallback((items: ICollectionMedia[]) => {
+    return items.map((item) => {
+      if (item.mediaData) {
+        item.mediaData.maintainerrIsManual = item.isManual ?? false
+      }
 
-    fillViewportIfNeeded()
-  }, [data])
+      return item.mediaData ? item.mediaData : ({} as MediaItem)
+    })
+  }, [])
 
-  useEffect(() => {
-    mediaRef.current = media
-  }, [media])
+  const fetchCollectionMediaPage = useCallback(
+    async (page: number, requestSortParams = sortParams) => {
+      const query = new URLSearchParams({
+        size: `${fetchAmount}`,
+        ...(requestSortParams ?? {}),
+      })
 
-  useEffect(() => {
-    totalSizeRef.current = totalSize
-  }, [totalSize])
+      return await GetApiHandler<{
+        totalSize: number
+        items: ICollectionMedia[]
+      }>(`/collections/media/${id}/content/${page}?${query.toString()}`)
+    },
+    [fetchAmount, id, sortParams],
+  )
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      return await fetchCollectionMediaPage(page)
+    },
+    [fetchCollectionMediaPage],
+  )
+
+  const {
+    data,
+    hasMoreData,
+    isLoading,
+    isLoadingExtra,
+    resetAndLoad,
+    updateData,
+  } = useInfinitePaginatedList<ICollectionMedia, MediaItem>({
+    fetchAmount,
+    fetchPage,
+    mapPageItems: mapCollectionMediaItems,
+    onAppendPageItems: appendMediaPage,
+    onReset: resetMedia,
+  })
+
+  const handleSortChange = (nextSortValue: string) => {
+    const nextSortState = onSortChange(nextSortValue)
+    if (!nextSortState) {
+      return
+    }
+
+    resetAndLoad({
+      fetchPage: (page) =>
+        fetchCollectionMediaPage(page, nextSortState.sortParams),
+    })
+  }
 
   return (
-    <OverviewContent
-      dataFinished={true}
-      fetchData={() => {}}
-      loading={isLoading}
-      data={data}
-      libraryId={collection.libraryId}
-      collectionPage={true}
-      extrasLoading={
-        isLoadingExtra &&
-        !isLoading &&
-        totalSize >= pageData.current * fetchAmount
-      }
-      onRemove={(id: string) =>
-        setTimeout(() => {
-          setData(dataRef.current.filter((el) => el.id !== id))
-          setMedia(mediaRef.current.filter((el) => el.mediaServerId !== id))
-        }, 500)
-      }
-      collectionInfo={media.map((el) => {
-        collection.media = []
-        el.collection = collection
-        return el
-      })}
-    />
+    <div className="w-full">
+      <div className="mb-5 w-full sm:max-w-sm">
+        <MediaLibrarySortControl
+          ariaLabel="Sort collection items"
+          options={sortConfig.options}
+          value={sortValue}
+          onSortChange={handleSortChange}
+        />
+      </div>
+
+      <OverviewContent
+        dataFinished={true}
+        fetchData={() => {}}
+        loading={isLoading}
+        data={data}
+        libraryId={collection.libraryId}
+        collectionPage={true}
+        extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
+        onRemove={(id: string) =>
+          setTimeout(() => {
+            updateData((currentData) =>
+              currentData.filter((item) => item.id !== id),
+            )
+            updateMedia((currentMedia) =>
+              currentMedia.filter((item) => item.mediaServerId !== id),
+            )
+          }, 500)
+        }
+        collectionInfo={media.map((item) => ({
+          ...item,
+          collection: {
+            ...collection,
+            media: [],
+          },
+        }))}
+      />
+    </div>
   )
 }
 

@@ -1,8 +1,13 @@
 import { type MediaItem } from '@maintainerr/contracts'
-import { debounce } from 'lodash-es'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { ICollection } from '../..'
+import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import {
+  getCollectionSortConfig,
+  MediaLibrarySortControl,
+  useMediaLibrarySort,
+} from '../../../Common/MediaLibrarySortControl'
 import OverviewContent from '../../../Overview/Content'
 
 interface ICollectionExclusions {
@@ -21,142 +26,101 @@ export interface IExclusionMedia {
 }
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
-  const [data, setData] = useState<MediaItem[]>([])
-  // paging
-  const pageData = useRef<number>(0)
   const fetchAmount = 25
-  const [totalSize, setTotalSize] = useState<number>(999)
-  const totalSizeRef = useRef<number>(999)
-  const dataRef = useRef<MediaItem[]>([])
-  const loadingRef = useRef<boolean>(true)
-  const loadingExtraRef = useRef<boolean>(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
-  const [page, setPage] = useState(0)
+  const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
+  const sortConfig = getCollectionSortConfig(libraryType)
+  const { sortValue, sortParams, onSortChange } = useMediaLibrarySort(sortConfig)
 
-  const setLoading = (value: boolean) => {
-    loadingRef.current = value
-    setIsLoading(value)
-  }
+  const mapExclusionItems = useCallback((items: IExclusionMedia[]) => {
+    return items.map((item) => {
+      if (item.mediaData) {
+        item.mediaData.maintainerrExclusionId = item.id
+        item.mediaData.maintainerrExclusionType = item.ruleGroupId
+          ? 'specific'
+          : 'global'
+      }
 
-  const setLoadingExtra = (value: boolean) => {
-    loadingExtraRef.current = value
-    setIsLoadingExtra(value)
-  }
-
-  const fetchData = useCallback(async () => {
-    if (!loadingRef.current) {
-      setLoadingExtra(true)
-    }
-    try {
-      const resp: { totalSize: number; items: IExclusionMedia[] } =
-        await GetApiHandler(
-          `/collections/exclusions/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}`,
-        )
-
-      setTotalSize(resp.totalSize)
-
-      setData([
-        ...dataRef.current,
-        ...resp.items.map((el) => {
-          if (el.mediaData) {
-            el.mediaData.maintainerrExclusionId = el.id
-            el.mediaData.maintainerrExclusionType = el.ruleGroupId
-              ? 'specific'
-              : 'global'
-          }
-          return el.mediaData ? el.mediaData : ({} as MediaItem)
-        }),
-      ])
-    } finally {
-      setLoading(false)
-      setLoadingExtra(false)
-    }
-  }, [props.collection.id])
-
-  const loadInitialPage = useEffectEvent(() => {
-    setPage(1)
-  })
-
-  const handleScroll = useEffectEvent(() => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage(pageData.current + 1)
-    }
-  })
-
-  const loadCurrentPage = useEffectEvent((currentPage: number) => {
-    if (currentPage !== 0) {
-      pageData.current = pageData.current + 1
-      void fetchData()
-    }
-  })
-
-  const fillViewportIfNeeded = useEffectEvent(() => {
-    if (
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage((currentPage) => currentPage + 1)
-    }
-  })
-
-  useEffect(() => {
-    // Initial first fetch
-    loadInitialPage()
+      return item.mediaData ? item.mediaData : ({} as MediaItem)
+    })
   }, [])
 
-  useEffect(() => {
-    loadCurrentPage(page)
-  }, [page])
+  const fetchExclusionsPage = useCallback(
+    async (page: number, requestSortParams = sortParams) => {
+      const query = new URLSearchParams({
+        size: `${fetchAmount}`,
+        ...(requestSortParams ?? {}),
+      })
 
-  useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
-    window.addEventListener('scroll', debouncedScroll)
-    return () => {
-      window.removeEventListener('scroll', debouncedScroll)
-      debouncedScroll.cancel() // Cancel pending debounced calls
+      return await GetApiHandler<{
+        totalSize: number
+        items: IExclusionMedia[]
+      }>(
+        `/collections/exclusions/${props.collection.id}/content/${page}?${query.toString()}`,
+      )
+    },
+    [fetchAmount, props.collection.id, sortParams],
+  )
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      return await fetchExclusionsPage(page)
+    },
+    [fetchExclusionsPage],
+  )
+
+  const {
+    data,
+    hasMoreData,
+    isLoading,
+    isLoadingExtra,
+    resetAndLoad,
+    updateData,
+  } = useInfinitePaginatedList<IExclusionMedia, MediaItem>({
+    fetchAmount,
+    fetchPage,
+    mapPageItems: mapExclusionItems,
+  })
+
+  const handleSortChange = (nextSortValue: string) => {
+    const nextSortState = onSortChange(nextSortValue)
+    if (!nextSortState) {
+      return
     }
-  }, [])
 
-  useEffect(() => {
-    dataRef.current = data
-
-    fillViewportIfNeeded()
-  }, [data])
-
-  useEffect(() => {
-    totalSizeRef.current = totalSize
-  }, [totalSize])
+    resetAndLoad({
+      fetchPage: (page) => fetchExclusionsPage(page, nextSortState.sortParams),
+    })
+  }
 
   return (
-    <OverviewContent
-      dataFinished={true}
-      fetchData={() => {}}
-      loading={isLoading}
-      data={data}
-      libraryId={props.libraryId}
-      collectionPage={true}
-      collectionId={props.collection.id}
-      extrasLoading={
-        isLoadingExtra &&
-        !isLoading &&
-        totalSize >= pageData.current * fetchAmount
-      }
-      onRemove={(id: string) =>
-        setTimeout(() => {
-          setData(dataRef.current.filter((el) => el.id !== id))
-        }, 500)
-      }
-    />
+    <div className="w-full">
+      <div className="mb-5 w-full sm:max-w-sm">
+        <MediaLibrarySortControl
+          ariaLabel="Sort collection exclusions"
+          options={sortConfig.options}
+          value={sortValue}
+          onSortChange={handleSortChange}
+        />
+      </div>
+
+      <OverviewContent
+        dataFinished={true}
+        fetchData={() => {}}
+        loading={isLoading}
+        data={data}
+        libraryId={props.libraryId}
+        collectionPage={true}
+        collectionId={props.collection.id}
+        extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
+        onRemove={(id: string) =>
+          setTimeout(() => {
+            updateData((currentData) =>
+              currentData.filter((item) => item.id !== id),
+            )
+          }, 500)
+        }
+      />
+    </div>
   )
 }
 export default CollectionExcludions

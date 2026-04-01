@@ -1,7 +1,7 @@
+import { MediaItemTypeLabels } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import { ICollection } from '..'
 import { useMediaServerLibraries } from '../../../api/media-server'
-import { MediaItemTypeLabels } from '@maintainerr/contracts'
 import GetApiHandler from '../../../utils/ApiHandler'
 import {
   buildMetadataImagePath,

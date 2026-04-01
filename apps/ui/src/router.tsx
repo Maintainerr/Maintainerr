@@ -1,7 +1,8 @@
 import type { ComponentType } from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
 import type { RouteObject } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
+import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
 import Overview from './components/Overview'
 // Settings is kept eager because it wraps an <Outlet /> — making it lazy
 // would cause two sequential fetches (wrapper then child) on every settings navigation.
@@ -115,70 +116,75 @@ const appRoutes: AppRoute[] = [
     element: <Navigate to="/overview" replace />,
   },
   {
-    path: 'overview',
-    element: <Overview />,
-  },
-  {
-    path: 'collections',
+    element: <MediaServerSetupGuard />,
     children: [
       {
-        index: true,
-        lazy: collectionsListRoute.lazy,
-        preload: collectionsListRoute.preload,
+        path: 'overview',
+        element: <Overview />,
       },
       {
-        path: ':id',
-        lazy: collectionDetailRoute.lazy,
-        preload: collectionDetailRoute.preload,
+        path: 'collections',
         children: [
           {
             index: true,
-            lazy: collectionMediaRoute.lazy,
-            preload: collectionMediaRoute.preload,
+            lazy: collectionsListRoute.lazy,
+            preload: collectionsListRoute.preload,
           },
           {
-            path: 'exclusions',
-            lazy: collectionExclusionsRoute.lazy,
-            preload: collectionExclusionsRoute.preload,
-          },
-          {
-            path: 'info',
-            lazy: collectionInfoRoute.lazy,
-            preload: collectionInfoRoute.preload,
+            path: ':id',
+            lazy: collectionDetailRoute.lazy,
+            preload: collectionDetailRoute.preload,
+            children: [
+              {
+                index: true,
+                lazy: collectionMediaRoute.lazy,
+                preload: collectionMediaRoute.preload,
+              },
+              {
+                path: 'exclusions',
+                lazy: collectionExclusionsRoute.lazy,
+                preload: collectionExclusionsRoute.preload,
+              },
+              {
+                path: 'info',
+                lazy: collectionInfoRoute.lazy,
+                preload: collectionInfoRoute.preload,
+              },
+            ],
           },
         ],
       },
+      {
+        path: 'rules',
+        children: [
+          {
+            index: true,
+            lazy: rulesListRoute.lazy,
+            preload: rulesListRoute.preload,
+          },
+          {
+            path: 'new',
+            lazy: ruleFormRoute.lazy,
+            preload: ruleFormRoute.preload,
+          },
+          {
+            path: 'edit/:id',
+            lazy: ruleFormRoute.lazy,
+            preload: ruleFormRoute.preload,
+          },
+          {
+            path: 'clone/:id',
+            lazy: ruleFormRoute.lazy,
+            preload: ruleFormRoute.preload,
+          },
+        ],
+      },
+      {
+        path: 'docs',
+        lazy: docsRoute.lazy,
+        preload: docsRoute.preload,
+      },
     ],
-  },
-  {
-    path: 'rules',
-    children: [
-      {
-        index: true,
-        lazy: rulesListRoute.lazy,
-        preload: rulesListRoute.preload,
-      },
-      {
-        path: 'new',
-        lazy: ruleFormRoute.lazy,
-        preload: ruleFormRoute.preload,
-      },
-      {
-        path: 'edit/:id',
-        lazy: ruleFormRoute.lazy,
-        preload: ruleFormRoute.preload,
-      },
-      {
-        path: 'clone/:id',
-        lazy: ruleFormRoute.lazy,
-        preload: ruleFormRoute.preload,
-      },
-    ],
-  },
-  {
-    path: 'docs',
-    lazy: docsRoute.lazy,
-    preload: docsRoute.preload,
   },
   {
     path: 'settings',

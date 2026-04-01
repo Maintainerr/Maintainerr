@@ -19,6 +19,7 @@ import { ICollection } from '../..'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
 import { useRequestGeneration } from '../../../../hooks/useRequestGeneration'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import { defaultInfiniteScrollThreshold } from '../../../../utils/infiniteScroll'
 import Alert from '../../../Common/Alert'
 import Badge from '../../../Common/Badge'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
@@ -144,7 +145,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const handleScroll = useEffectEvent(() => {
     if (
       window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
+        document.documentElement.scrollHeight * defaultInfiniteScrollThreshold &&
       !loadingRef.current &&
       !loadingExtraRef.current &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
@@ -158,7 +159,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
       !loadingRef.current &&
       !loadingExtraRef.current &&
       window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight * 0.8 &&
+        document.documentElement.scrollHeight * defaultInfiniteScrollThreshold &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
     ) {
       setPage((currentPage) => currentPage + 1)
