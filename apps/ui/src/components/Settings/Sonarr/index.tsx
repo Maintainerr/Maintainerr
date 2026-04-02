@@ -9,7 +9,6 @@ import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
-import { SmallLoadingSpinner } from '../../Common/LoadingSpinner'
 import Modal from '../../Common/Modal'
 import SonarrSettingsModal from './SettingsModal'
 
@@ -104,9 +103,14 @@ const SonarrSettings = () => {
               <div
                 role="status"
                 aria-label="Loading Sonarr servers"
-                className="flex min-h-[9.75rem] items-center justify-center"
+                className="min-h-[9.75rem]"
               >
-                <SmallLoadingSpinner className="h-8 w-8" />
+                <div className="mb-3 h-6 w-32 rounded bg-zinc-700" />
+                <div className="mb-5 h-5 w-48 rounded bg-zinc-750" />
+                <div className="flex">
+                  <div className="h-10 w-1/2 rounded-l bg-zinc-700" />
+                  <div className="h-10 w-1/2 rounded-r bg-zinc-900" />
+                </div>
               </div>
             </li>
           ) : null}
