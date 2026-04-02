@@ -1,8 +1,3 @@
-import {
-  ExclamationIcon,
-  InformationCircleIcon,
-  XCircleIcon,
-} from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
@@ -28,6 +23,7 @@ import Button from '../../Common/Button'
 import { Input } from '../../Forms/Input'
 import {
   type SettingsFeedback,
+  SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
 
@@ -44,6 +40,11 @@ interface ProviderConfig {
 
 interface ApiKeyFormResult {
   api_key: string
+}
+
+interface RefreshActionState {
+  canRun: boolean
+  label: string
 }
 
 function resolveMetadataPreference(
@@ -84,6 +85,50 @@ function useOptimisticMetadataPreference(
   return {
     effectivePreference: pendingPreference ?? resolvedPreference,
     setPendingPreference,
+  }
+}
+
+function getRefreshActionState({
+  providerKey,
+  refreshing,
+  loadError,
+  isLoading,
+  isSubmitting,
+  hasChanges,
+  isConfigured,
+}: {
+  providerKey: ProviderConfig['key']
+  refreshing: boolean
+  loadError: boolean
+  isLoading: boolean
+  isSubmitting: boolean
+  hasChanges: boolean
+  isConfigured: boolean
+}): RefreshActionState {
+  if (refreshing) {
+    return {
+      canRun: false,
+      label: 'Refreshing...',
+    }
+  }
+
+  if (hasChanges) {
+    return {
+      canRun: false,
+      label: 'Save to refresh',
+    }
+  }
+
+  if (providerKey === 'tvdb' && !isConfigured) {
+    return {
+      canRun: false,
+      label: 'Configure to refresh',
+    }
+  }
+
+  return {
+    canRun: !loadError && !isLoading && !isSubmitting,
+    label: 'Refresh metadata',
   }
 }
 
@@ -140,6 +185,7 @@ function useProviderForm(config: ProviderConfig) {
     { api_key: string } | undefined
   >()
   const [testing, setTesting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const { feedback, clear, showError, showInfo, showUpdated, showUpdateError } =
     useSettingsFeedback(`${config.title} settings`)
@@ -174,6 +220,15 @@ function useProviderForm(config: ProviderConfig) {
   const isGoingToRemove = apiKey === ''
   const hasBeenTested = apiKey === testedSettings?.api_key
   const isConfigured = savedApiKey !== ''
+  const refreshAction = getRefreshActionState({
+    providerKey: config.key,
+    refreshing,
+    loadError,
+    isLoading,
+    isSubmitting,
+    hasChanges,
+    isConfigured,
+  })
   const canSave =
     hasChanges &&
     (hasBeenTested || isGoingToRemove) &&
@@ -240,6 +295,35 @@ function useProviderForm(config: ProviderConfig) {
       })
   }
 
+  const performRefresh = async () => {
+    if (!refreshAction.canRun) return
+
+    clear()
+    setRefreshing(true)
+
+    await PostApiHandler<BasicResponseDto>(
+      `/settings/metadata/refresh/${config.key}`,
+      {},
+    )
+      .then((response) => {
+        if (response.code === 1) {
+          showInfo(
+            response.message ?? `${config.title} metadata refresh started`,
+          )
+        } else {
+          showError(
+            response.message ?? `Failed to refresh ${config.title} metadata`,
+          )
+        }
+      })
+      .catch(() => {
+        showError(`Failed to refresh ${config.title} metadata`)
+      })
+      .finally(() => {
+        setRefreshing(false)
+      })
+  }
+
   return {
     registerApiKey,
     handleSubmit,
@@ -247,12 +331,15 @@ function useProviderForm(config: ProviderConfig) {
     isConfigured,
     isLoading,
     testing,
+    refreshing,
+    refreshAction,
     feedback,
     loadError,
     isGoingToRemove,
     canSave,
     onSubmit,
     performTest,
+    performRefresh,
   }
 }
 
@@ -295,43 +382,6 @@ function PrimarySwitch({
   )
 }
 
-function FeedbackMessage({
-  feedback,
-  className = 'mt-2.5',
-}: {
-  feedback: SettingsFeedback
-  className?: string
-}) {
-  if (!feedback) {
-    return (
-      <div className={`${className} h-6 bg-transparent`} aria-hidden="true" />
-    )
-  }
-
-  const design = {
-    icon: <ExclamationIcon className="h-4 w-4" />,
-    textColor: 'text-zinc-100',
-  }
-
-  if (feedback.type === 'info') {
-    design.icon = <InformationCircleIcon className="h-4 w-4" />
-  }
-
-  if (feedback.type === 'error') {
-    design.icon = <XCircleIcon className="h-4 w-4" />
-    design.textColor = 'text-red-300'
-  }
-
-  return (
-    <div
-      className={`${className} flex h-6 items-center gap-2 overflow-hidden bg-transparent text-sm`}
-    >
-      <span className={design.textColor}>{design.icon}</span>
-      <span className={`truncate ${design.textColor}`}>{feedback.title}</span>
-    </div>
-  )
-}
-
 function ProviderSection({
   config,
   isPrimary,
@@ -342,6 +392,8 @@ function ProviderSection({
   isLoading,
   isGoingToRemove,
   testing,
+  refreshing,
+  refreshAction,
   loadError,
   registerApiKey,
   handleSubmit,
@@ -349,6 +401,7 @@ function ProviderSection({
   canSave,
   onSubmit,
   performTest,
+  performRefresh,
   onTogglePrimary,
 }: {
   config: ProviderConfig
@@ -360,6 +413,8 @@ function ProviderSection({
   isLoading: boolean
   isGoingToRemove: boolean
   testing: boolean
+  refreshing: boolean
+  refreshAction: ReturnType<typeof useProviderForm>['refreshAction']
   loadError: boolean
   registerApiKey: ReturnType<typeof useProviderForm>['registerApiKey']
   handleSubmit: ReturnType<typeof useProviderForm>['handleSubmit']
@@ -367,6 +422,7 @@ function ProviderSection({
   canSave: ReturnType<typeof useProviderForm>['canSave']
   onSubmit: ReturnType<typeof useProviderForm>['onSubmit']
   performTest: ReturnType<typeof useProviderForm>['performTest']
+  performRefresh: ReturnType<typeof useProviderForm>['performRefresh']
   onTogglePrimary: () => void
 }) {
   const apiKeyStatus = isConfigured ? 'Configured' : config.emptyStateLabel
@@ -382,8 +438,19 @@ function ProviderSection({
   return (
     <div className="flex h-full flex-col rounded-xl bg-zinc-800 px-4 pb-4 pt-5 text-zinc-400 shadow ring-1 ring-zinc-700">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="text-base font-medium text-white sm:text-lg">
-          {config.title}
+        <div className="flex items-center gap-3">
+          <div className="text-base font-medium text-white sm:text-lg">
+            {config.title}
+          </div>
+          <Button
+            buttonType="ghost"
+            buttonSize="sm"
+            type="button"
+            onClick={() => void performRefresh()}
+            disabled={!refreshAction.canRun}
+          >
+            <span className="font-semibold">{refreshAction.label}</span>
+          </Button>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-zinc-300">Primary</span>
@@ -423,7 +490,9 @@ function ProviderSection({
           </div>
         </div>
 
-        <FeedbackMessage feedback={alertFeedback} />
+        <div className="mt-2.5">
+          <SettingsFeedbackAlert feedback={alertFeedback} />
+        </div>
 
         <div className="mt-auto w-full pt-2.5">
           <Button
@@ -521,7 +590,9 @@ const MetadataSettings = () => {
         </div>
 
         <div className="max-w-6xl">
-          <FeedbackMessage feedback={feedback} className="mt-4" />
+          <div className="mt-4">
+            <SettingsFeedbackAlert feedback={feedback} />
+          </div>
         </div>
 
         <ul className="mt-4 grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-2">
@@ -545,6 +616,8 @@ const MetadataSettings = () => {
                   isLoading={provider.isLoading}
                   isGoingToRemove={provider.isGoingToRemove}
                   testing={provider.testing}
+                  refreshing={provider.refreshing}
+                  refreshAction={provider.refreshAction}
                   loadError={provider.loadError}
                   registerApiKey={provider.registerApiKey}
                   handleSubmit={provider.handleSubmit}
@@ -552,6 +625,7 @@ const MetadataSettings = () => {
                   canSave={provider.canSave}
                   onSubmit={provider.onSubmit}
                   performTest={provider.performTest}
+                  performRefresh={provider.performRefresh}
                   onTogglePrimary={() => {
                     void handlePreferenceChange(config.preference)
                   }}

@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { Select } from '../Forms/Select'
 
 const defaultSortValue = ''
+const defaultOverviewSortValue: MediaLibrarySortKey = 'title.asc'
 const titleAscendingSortLabel = 'Title (A-Z) Ascending'
 
 type SortParams = {
@@ -103,12 +104,12 @@ export const getMediaLibrarySortConfig = (
   libraryType?: MediaLibrary['type'],
 ): SortConfig<MediaLibrarySortParams> => {
   return {
-    defaultValue: defaultSortValue,
+    defaultValue: defaultOverviewSortValue,
     options: [
-      {
-        value: defaultSortValue,
-        label: titleAscendingSortLabel,
-      },
+      createMediaLibrarySortOption(
+        defaultOverviewSortValue,
+        titleAscendingSortLabel,
+      ),
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
       }),
@@ -143,7 +144,7 @@ export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
   includeDeleteSoonest: boolean = false,
 ): SortConfig<CollectionMediaSortParams> => {
-  const baseOptions = getCollectionSortConfig(
+  const options = getCollectionSortConfig(
     libraryType,
     includeDeleteSoonest ? 'Delete Latest' : 'Recently Added',
   ).options.map((option) => ({
@@ -157,20 +158,13 @@ export const getCollectionMediaSortConfig = (
       : undefined,
   }))
 
-  const [defaultOption, titleAscendingOption, ...remainingOptions] = baseOptions
+  if (includeDeleteSoonest) {
+    options.push(collectionDeleteSoonestSortOption)
+  }
 
   return {
     defaultValue: defaultSortValue,
-    options: includeDeleteSoonest
-      ? defaultOption && titleAscendingOption
-        ? [
-            defaultOption,
-            titleAscendingOption,
-            ...remainingOptions,
-            collectionDeleteSoonestSortOption,
-          ]
-        : baseOptions
-      : baseOptions,
+    options,
   }
 }
 

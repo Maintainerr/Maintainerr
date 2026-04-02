@@ -1,6 +1,12 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import { render, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../../api/media-server'
 import { SearchContextProvider } from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
@@ -56,11 +62,19 @@ describe('Overview', () => {
     })
   })
 
+  afterEach(() => {
+    cleanup()
+  })
+
   it('shows title ascending as the default overview option', () => {
     const sortConfig = getMediaLibrarySortConfig('show')
 
     expect(sortConfig.options[0]?.label).toBe('Title (A-Z) Ascending')
-    expect(sortConfig.options[0]?.sortParams).toBeUndefined()
+    expect(sortConfig.options[0]?.value).toBe('title.asc')
+    expect(sortConfig.options[0]?.sortParams).toEqual({
+      sort: 'title',
+      sortOrder: 'asc',
+    })
   })
 
   it('only exposes the reachable delete soonest collection sort option', () => {
@@ -79,7 +93,7 @@ describe('Overview', () => {
     })
   })
 
-  it('omits sort params until a sort option is selected', () => {
+  it('keeps the selected library type in the query even without explicit sort params', () => {
     const url = new URL(
       `/media-server/library/shows-library/content?${buildLibraryContentQuery({
         page: 1,
@@ -89,7 +103,7 @@ describe('Overview', () => {
       'http://localhost',
     )
 
-    expect(url.searchParams.get('type')).toBeNull()
+    expect(url.searchParams.get('type')).toBe('show')
     expect(url.searchParams.get('sort')).toBeNull()
     expect(url.searchParams.get('sortOrder')).toBeNull()
   })
@@ -146,5 +160,49 @@ describe('Overview', () => {
     await waitFor(() => {
       expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('refetches overview content with explicit title ascending params when switching back', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain(
+      'sort=title&sortOrder=desc',
+    )
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.asc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(3)
+    })
+
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain(
+      'sort=title&sortOrder=asc',
+    )
   })
 })

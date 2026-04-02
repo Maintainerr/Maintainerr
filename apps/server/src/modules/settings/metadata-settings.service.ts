@@ -5,20 +5,31 @@ import {
   TmdbSetting,
   TvdbSetting,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { MEDIA_SERVER_BATCH_SIZE } from '../api/media-server/media-server.constants';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import cacheManager from '../api/lib/cache';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Settings } from './entities/settings.entities';
+import { MetadataProvider } from './metadata-provider';
 
 @Injectable()
 export class MetadataSettingsService {
+  private activeMetadataRefreshProvider: MetadataProvider | null = null;
+
   constructor(
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
+    @InjectRepository(CollectionMedia)
+    private readonly collectionMediaRepo: Repository<CollectionMedia>,
+    @Inject(forwardRef(() => MediaServerFactory))
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly tmdbApi: TmdbApiService,
     private readonly tvdbApi: TvdbApiService,
@@ -44,7 +55,7 @@ export class MetadataSettingsService {
   }
 
   private async updateMetadataApiKey(
-    provider: 'tmdb' | 'tvdb',
+    provider: MetadataProvider,
     apiKey: string,
     validateApiKey: (apiKey: string) => Promise<BasicResponseDto>,
   ): Promise<BasicResponseDto> {
@@ -68,7 +79,7 @@ export class MetadataSettingsService {
   }
 
   private async removeMetadataApiKey(
-    provider: 'tmdb' | 'tvdb',
+    provider: MetadataProvider,
   ): Promise<BasicResponseDto> {
     const column = `${provider}_api_key` as const;
 
@@ -124,6 +135,106 @@ export class MetadataSettingsService {
       this.logger.error('Error while updating metadata provider preference');
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async refreshMetadataCache(
+    provider: MetadataProvider,
+  ): Promise<BasicResponseDto> {
+    if (this.activeMetadataRefreshProvider) {
+      return {
+        status: 'OK',
+        code: 1,
+        message: `${this.activeMetadataRefreshProvider.toUpperCase()} metadata refresh is already in progress`,
+      };
+    }
+
+    this.activeMetadataRefreshProvider = provider;
+
+    try {
+      const connection =
+        provider === 'tmdb'
+          ? await this.tmdbApi.testConnection()
+          : await this.tvdbApi.testConnection();
+
+      if (connection.code !== 1) {
+        this.activeMetadataRefreshProvider = null;
+        return { status: 'NOK', code: 0, message: connection.message };
+      }
+
+      cacheManager.getCache(provider)?.flush();
+      this.logger.log(`${provider.toUpperCase()} metadata cache cleared`);
+
+      void this.refreshMediaServerItems(provider).finally(() => {
+        if (this.activeMetadataRefreshProvider === provider) {
+          this.activeMetadataRefreshProvider = null;
+        }
+      });
+
+      return {
+        status: 'OK',
+        code: 1,
+        message: `${provider.toUpperCase()} metadata refresh started`,
+      };
+    } catch (error) {
+      this.activeMetadataRefreshProvider = null;
+      this.logger.error(
+        `Error refreshing ${provider.toUpperCase()} metadata cache`,
+      );
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  private async refreshMediaServerItems(
+    provider: MetadataProvider,
+  ): Promise<void> {
+    try {
+      const mediaServer = await this.mediaServerFactory.getService();
+      if (!mediaServer?.isSetup()) return;
+
+      const column = provider === 'tmdb' ? 'tmdbId' : 'tvdbId';
+      const rows = await this.collectionMediaRepo
+        .createQueryBuilder('cm')
+        .select('DISTINCT cm.mediaServerId', 'mediaServerId')
+        .where(`cm.${column} IS NOT NULL`)
+        .getRawMany<{ mediaServerId: string }>();
+
+      if (rows.length === 0) return;
+
+      let failed = 0;
+
+      for (
+        let index = 0;
+        index < rows.length;
+        index += MEDIA_SERVER_BATCH_SIZE.METADATA_REFRESH
+      ) {
+        const batch = rows.slice(
+          index,
+          index + MEDIA_SERVER_BATCH_SIZE.METADATA_REFRESH,
+        );
+        const results = await Promise.allSettled(
+          batch.map(({ mediaServerId }) =>
+            mediaServer.refreshItemMetadata(mediaServerId),
+          ),
+        );
+
+        failed += results.filter(
+          (result) => result.status === 'rejected',
+        ).length;
+      }
+
+      this.logger.log(
+        `${provider.toUpperCase()} media server refresh: ${rows.length - failed}/${rows.length} items queued`,
+      );
+      if (failed > 0) {
+        this.logger.warn(`${failed} item(s) could not be refreshed`);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Could not refresh ${provider.toUpperCase()} items on media server`,
+      );
+      this.logger.debug(error);
     }
   }
 }

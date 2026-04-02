@@ -9,6 +9,7 @@ import {
 import {
   getCollectionApi,
   getConfigurationApi,
+  getItemRefreshApi,
   getItemsApi,
   getItemUpdateApi,
   getLibraryApi,
@@ -1426,6 +1427,24 @@ export class JellyfinAdapterService implements IMediaServerService {
     } else {
       // Clear all Jellyfin cache
       this.cache.data.flushAll();
+    }
+  }
+
+  async refreshItemMetadata(itemId: string): Promise<void> {
+    if (!this.api) {
+      throw new Error(
+        'Jellyfin API not initialized — cannot refresh item metadata',
+      );
+    }
+
+    try {
+      await getItemRefreshApi(this.api).refreshItem({ itemId });
+    } catch (error) {
+      this.logger.error(
+        `Failed to refresh Jellyfin metadata for item ${itemId}`,
+      );
+      this.logger.debug(error);
+      throw error;
     }
   }
 

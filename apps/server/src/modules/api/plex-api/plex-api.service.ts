@@ -551,6 +551,20 @@ export class PlexApiService {
     }
   }
 
+  public async refreshMediaMetadata(ratingKey: string): Promise<void> {
+    try {
+      await this.plexClient.putQuery({
+        uri: `/library/metadata/${ratingKey}/refresh`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to refresh Plex metadata for item ${ratingKey}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
   public async getCollection(
     collectionId: string | number,
   ): Promise<PlexCollection> {

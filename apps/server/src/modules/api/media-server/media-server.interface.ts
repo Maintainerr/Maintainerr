@@ -271,4 +271,11 @@ export interface IMediaServerService {
    * @param itemId - If provided, only reset cache for this item. Otherwise reset all.
    */
   resetMetadataCache(itemId?: string): void;
+
+  /**
+   * Ask the media server to re-fetch metadata for a specific item from its
+   * own configured agents. This is a best-effort, fire-and-forget operation
+   * on the server side — the call returns quickly while the server works async.
+   */
+  refreshItemMetadata(itemId: string): Promise<void>;
 }
