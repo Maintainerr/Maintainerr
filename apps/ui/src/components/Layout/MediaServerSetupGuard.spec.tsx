@@ -51,9 +51,8 @@ describe('MediaServerSetupGuard', () => {
       isNotConfigured: true,
     })
 
-    const { default: MediaServerSetupGuard } = await import(
-      './MediaServerSetupGuard'
-    )
+    const { default: MediaServerSetupGuard } =
+      await import('./MediaServerSetupGuard')
 
     render(<MediaServerSetupGuard />)
 
@@ -73,9 +72,8 @@ describe('MediaServerSetupGuard', () => {
       isNotConfigured: true,
     })
 
-    const { default: MediaServerSetupGuard } = await import(
-      './MediaServerSetupGuard'
-    )
+    const { default: MediaServerSetupGuard } =
+      await import('./MediaServerSetupGuard')
 
     render(<MediaServerSetupGuard />)
 
