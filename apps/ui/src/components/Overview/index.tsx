@@ -1,4 +1,8 @@
-import { type MediaItem } from '@maintainerr/contracts'
+import type {
+  MediaItem,
+  MediaLibrary,
+  MediaLibrarySortParams,
+} from '@maintainerr/contracts'
 import {
   useCallback,
   useContext,
@@ -12,7 +16,32 @@ import SearchContext from '../../contexts/search-context'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
+import {
+  getMediaLibrarySortConfig,
+  MediaLibrarySortControl,
+  sortMediaItems,
+  useMediaLibrarySort,
+} from '../Common/MediaLibrarySortControl'
 import OverviewContent from './Content'
+
+export const buildLibraryContentQuery = ({
+  page,
+  limit,
+  libraryType,
+  sortParams,
+}: {
+  page: number
+  limit: number
+  libraryType?: MediaLibrary['type']
+  sortParams?: MediaLibrarySortParams
+}) => {
+  return new URLSearchParams({
+    page: `${page}`,
+    limit: `${limit}`,
+    ...(libraryType && sortParams ? { type: libraryType } : {}),
+    ...(sortParams ?? {}),
+  })
+}
 
 const Overview = () => {
   const loadingRef = useRef<boolean>(false)
@@ -35,7 +64,20 @@ const Overview = () => {
   const { invalidate, guardedFetch } = useRequestGeneration()
   const SearchCtx = useContext(SearchContext)
 
-  const { data: libraries } = useMediaServerLibraries()
+  const {
+    data: libraries,
+    error: librariesError,
+    isLoading: librariesLoading,
+  } = useMediaServerLibraries()
+  const defaultLibraryId = libraries?.[0]?.id
+  const currentLibraryType = libraries?.find(
+    (library) =>
+      library.id ===
+      (selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId),
+  )?.type
+  const sortConfig = getMediaLibrarySortConfig(currentLibraryType)
+  const { sortValue, sortParams, onSortChange } =
+    useMediaLibrarySort(sortConfig)
 
   const fetchAmount = 30
 
@@ -58,164 +100,173 @@ const Overview = () => {
     setFetching(false)
   }, [invalidate])
 
-  const fetchData = async (libraryId = selectedLibraryRef.current) => {
-    if (
-      fetchingRef.current ||
-      !libraryId ||
-      SearchCtx.search.text !== '' ||
-      !(totalSizeRef.current >= pageData.current * fetchAmount)
-    ) {
-      return
-    }
+  const fetchData = useCallback(
+    async (
+      libraryId = selectedLibraryRef.current,
+      requestSortParams = sortParams,
+    ) => {
+      if (
+        fetchingRef.current ||
+        !libraryId ||
+        SearchCtx.search.text !== '' ||
+        !(totalSizeRef.current >= pageData.current * fetchAmount)
+      ) {
+        return
+      }
 
-    setFetching(true)
-    if (!loadingRef.current) {
-      setLoadingExtra(true)
-    }
+      setFetching(true)
+      if (!loadingRef.current) {
+        setLoadingExtra(true)
+      }
 
-    try {
-      const result = await guardedFetch<{
-        totalSize: number
-        items: MediaItem[]
-      }>(() =>
-        GetApiHandler(
-          `/media-server/library/${libraryId}/content?page=${pageData.current + 1}&limit=${fetchAmount}`,
-        ),
-      )
+      try {
+        const libraryType = libraries?.find(
+          (library) => library.id === libraryId,
+        )?.type
+        const query = buildLibraryContentQuery({
+          page: pageData.current + 1,
+          limit: fetchAmount,
+          libraryType,
+          sortParams: requestSortParams,
+        })
 
-      if (result.status === 'success') {
-        setTotalSize(result.data.totalSize)
-        pageData.current = pageData.current + 1
-        setData([...dataRef.current, ...(result.data.items ?? [])])
+        const result = await guardedFetch<{
+          totalSize: number
+          items: MediaItem[]
+        }>(() =>
+          GetApiHandler(
+            `/media-server/library/${libraryId}/content?${query.toString()}`,
+          ),
+        )
+
+        if (result.status === 'success') {
+          setTotalSize(result.data.totalSize)
+          pageData.current = pageData.current + 1
+          setData([...dataRef.current, ...(result.data.items ?? [])])
+          setLoadingExtra(false)
+          setLoading(false)
+          setFetching(false)
+        }
+      } catch {
         setLoadingExtra(false)
         setLoading(false)
         setFetching(false)
       }
-    } catch {
-      setLoadingExtra(false)
-      setLoading(false)
-      setFetching(false)
-    }
-  }
+    },
+    [SearchCtx.search.text, guardedFetch, libraries, sortParams],
+  )
 
-  const onSwitchLibrary = (libraryId: string) => {
-    if (
-      SearchCtx.search.text === '' &&
-      selectedLibraryRef.current === libraryId
-    ) {
-      return
-    }
+  const performOverviewSync = useCallback(
+    async (libraryId?: string, nextSortParams = sortParams) => {
+      invalidateFetches()
 
-    invalidateFetches()
-    setLoading(true)
-    setLoadingExtra(false)
-    pageData.current = 0
-    setTotalSize(999)
-    setData([])
-    dataRef.current = []
-    setSearchUsed(false)
-    setSelectedLibrary(libraryId)
-  }
+      if (SearchCtx.search.text !== '') {
+        setLoading(true)
+        setLoadingExtra(false)
+        if (libraryId) {
+          selectedLibraryRef.current = libraryId
+          setSelectedLibrary(libraryId)
+        }
 
-  const syncFallbackLibrary = useEffectEvent((libraryId: string) => {
-    if (
-      loadingRef.current &&
-      dataRef.current.length === 0 &&
-      !selectedLibraryRef.current &&
-      SearchCtx.search.text === ''
-    ) {
-      onSwitchLibrary(libraryId)
-    }
-  })
+        const searchData = async () => {
+          try {
+            const result = await guardedFetch<MediaItem[]>(() =>
+              GetApiHandler(`/media-server/search/${SearchCtx.search.text}`),
+            )
 
-  const syncOverviewData = useEffectEvent((libraryId?: string) => {
-    invalidateFetches()
-
-    if (SearchCtx.search.text !== '') {
-      setLoading(true)
-      setLoadingExtra(false)
-      if (libraryId) {
-        selectedLibraryRef.current = libraryId
-        setSelectedLibrary(libraryId)
-      }
-
-      const searchData = async () => {
-        try {
-          const result = await guardedFetch<MediaItem[]>(() =>
-            GetApiHandler(`/media-server/search/${SearchCtx.search.text}`),
-          )
-
-          if (result.status === 'success') {
-            setSearchUsed(true)
-            setTotalSize(result.data.length)
-            pageData.current = result.data.length * 50
-            setData(result.data)
+            if (result.status === 'success') {
+              setSearchUsed(true)
+              setTotalSize(result.data.length)
+              pageData.current = result.data.length * 50
+              setData(sortMediaItems(result.data, nextSortParams))
+              setLoading(false)
+            }
+          } catch {
             setLoading(false)
           }
-        } catch {
-          setLoading(false)
         }
+
+        await searchData()
+        return
       }
 
-      void searchData()
+      const nextLibraryId =
+        libraryId ?? selectedLibraryRef.current ?? selectedLibrary
+
+      setSearchUsed(false)
+      setData([])
+      dataRef.current = []
+      setTotalSize(999)
+      totalSizeRef.current = 999
+      pageData.current = 0
+      setLoading(true)
+      setLoadingExtra(false)
+
+      if (!nextLibraryId) {
+        setLoading(false)
+        return
+      }
+
+      selectedLibraryRef.current = nextLibraryId
+      setSelectedLibrary(nextLibraryId)
+      await fetchData(nextLibraryId, nextSortParams)
+    },
+    [
+      SearchCtx.search.text,
+      fetchData,
+      guardedFetch,
+      invalidateFetches,
+      selectedLibrary,
+      sortParams,
+    ],
+  )
+
+  const syncOverviewData = useEffectEvent((libraryId?: string) => {
+    void performOverviewSync(libraryId)
+  })
+
+  const onSwitchLibrary = useCallback(
+    (libraryId: string) => {
+      if (
+        SearchCtx.search.text === '' &&
+        selectedLibraryRef.current === libraryId
+      ) {
+        return
+      }
+
+      void performOverviewSync(libraryId)
+    },
+    [SearchCtx.search.text, performOverviewSync],
+  )
+
+  const handleSortChange = (nextSortValue: string) => {
+    const nextSortState = onSortChange(nextSortValue)
+    if (!nextSortState) {
       return
     }
 
-    const nextLibraryId =
-      selectedLibraryRef.current ?? selectedLibrary ?? libraryId
-
-    setSearchUsed(false)
-    setData([])
-    dataRef.current = []
-    setTotalSize(999)
-    totalSizeRef.current = 999
-    pageData.current = 0
-    setLoading(true)
-    setLoadingExtra(false)
-
-    if (!nextLibraryId) {
-      setLoading(false)
-      return
-    }
-
-    selectedLibraryRef.current = nextLibraryId
-    setSelectedLibrary(nextLibraryId)
-    void fetchData(nextLibraryId)
-  })
-
-  const syncSelectedLibrary = useEffectEvent((libraryId?: string) => {
-    selectedLibraryRef.current = libraryId
-    void fetchData()
-  })
+    void performOverviewSync(
+      selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId,
+      nextSortState.sortParams,
+    )
+  }
 
   useEffect(() => {
-    if (!libraries || libraries.length === 0) {
-      return
-    }
-
-    const fallbackTimer = setTimeout(() => {
-      syncFallbackLibrary(libraries[0].id)
-    }, 300)
-
     return () => {
-      clearTimeout(fallbackTimer)
       invalidateFetches()
-      setData([])
       dataRef.current = []
       totalSizeRef.current = 999
       pageData.current = 0
+      selectedLibraryRef.current = undefined
+      setFetching(false)
     }
-  }, [invalidateFetches, libraries])
+  }, [invalidateFetches])
 
   useEffect(() => {
-    if (!libraries || libraries.length === 0) return
+    if (!defaultLibraryId) return
 
-    syncOverviewData(libraries[0]?.id)
-  }, [SearchCtx.search.text, libraries])
-
-  useEffect(() => {
-    syncSelectedLibrary(selectedLibrary)
-  }, [selectedLibrary])
+    void syncOverviewData(defaultLibraryId)
+  }, [SearchCtx.search.text, defaultLibraryId])
 
   useEffect(() => {
     dataRef.current = data
@@ -232,11 +283,27 @@ const Overview = () => {
       <title>Overview - Maintainerr</title>
       <div className="w-full">
         {!searchUsed ? (
-          <LibrarySwitcher
-            shouldShowAllOption={false}
-            onLibraryChange={onSwitchLibrary}
-            selectedLibraryId={selectedLibrary}
-          />
+          <div className="mb-5 flex w-full flex-col gap-3 sm:flex-row">
+            <div className="w-full sm:w-1/2">
+              <LibrarySwitcher
+                shouldShowAllOption={false}
+                onLibraryChange={onSwitchLibrary}
+                selectedLibraryId={selectedLibrary ?? defaultLibraryId}
+                formClassName="max-w-none"
+                libraries={libraries}
+                librariesLoading={librariesLoading}
+                librariesError={!!librariesError}
+              />
+            </div>
+            <div className="w-full sm:w-1/2">
+              <MediaLibrarySortControl
+                ariaLabel="Sort overview items"
+                options={sortConfig.options}
+                value={sortValue}
+                onSortChange={handleSortChange}
+              />
+            </div>
+          </div>
         ) : undefined}
         {selectedLibrary ? (
           <OverviewContent

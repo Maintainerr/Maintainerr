@@ -1,4 +1,5 @@
 import { MediaItemType } from './enums'
+import { MediaLibrarySortField, MediaSortOrder } from './sorting'
 
 /**
  * Provider IDs for external databases (IMDB, TMDB, TVDB)
@@ -184,8 +185,8 @@ export interface LibraryQueryOptions {
   type?: MediaItemType
   offset?: number
   limit?: number
-  sort?: string
-  sortOrder?: 'asc' | 'desc'
+  sort?: MediaLibrarySortField
+  sortOrder?: MediaSortOrder
 }
 
 /**

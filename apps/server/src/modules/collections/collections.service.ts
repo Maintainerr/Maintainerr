@@ -1,6 +1,8 @@
 import {
   BasicResponseDto,
+  CollectionMediaSortField,
   CollectionLogMeta,
+  compareMediaItemsBySort,
   ECollectionLogType,
   isMediaType,
   MaintainerrEvent,
@@ -8,8 +10,10 @@ import {
   MediaItem,
   MediaItemType,
   MediaItemWithParent,
+  MediaLibrarySortField,
   MediaServerFeature,
   MediaServerType,
+  MediaSortOrder,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -117,63 +121,150 @@ export class CollectionsService {
     return await this.CollectionMediaRepo.count();
   }
 
+  private async hydrateCollectionMediaWithMetadata(
+    entities: CollectionMedia[],
+    mediaServer: IMediaServerService,
+  ): Promise<CollectionMediaWithMetadata[]> {
+    return (
+      await Promise.all(
+        entities.map(async (el) => {
+          const mediaItem = await mediaServer.getMetadata(el.mediaServerId);
+
+          if (!mediaItem) {
+            this.logger.debug(
+              `Missing metadata for collection media ${el.id} (mediaServerId=${el.mediaServerId}); skipping item without deleting`,
+            );
+            return { ...el, mediaData: undefined };
+          }
+
+          let parentItem: MediaItem | undefined;
+          if (mediaItem.grandparentId) {
+            parentItem = await mediaServer.getMetadata(mediaItem.grandparentId);
+          } else if (mediaItem.parentId) {
+            parentItem = await mediaServer.getMetadata(mediaItem.parentId);
+          }
+
+          const mediaData: MediaItemWithParent = {
+            ...mediaItem,
+            parentItem,
+          };
+
+          return {
+            ...el,
+            mediaData,
+          };
+        }),
+      )
+    ).filter((el) => el.mediaData !== undefined);
+  }
+
+  private async hydrateExclusionsWithMetadata(
+    entities: Exclusion[],
+    mediaServer: IMediaServerService,
+  ): Promise<Exclusion[]> {
+    return (
+      await Promise.all(
+        entities.map(async (el) => {
+          const mediaItem = await mediaServer.getMetadata(
+            el.mediaServerId.toString(),
+          );
+
+          if (!mediaItem) {
+            return { ...el, mediaData: undefined };
+          }
+
+          let parentItem: MediaItem | undefined;
+          if (mediaItem.grandparentId) {
+            parentItem = await mediaServer.getMetadata(mediaItem.grandparentId);
+          } else if (mediaItem.parentId) {
+            parentItem = await mediaServer.getMetadata(mediaItem.parentId);
+          }
+
+          el.mediaData = {
+            ...mediaItem,
+            parentItem,
+          };
+          return el;
+        }),
+      )
+    ).filter((el) => el.mediaData !== undefined);
+  }
+
   public async getCollectionMediaWithServerDataAndPaging(
     id: number,
-    { offset = 0, size = 25 }: { offset?: number; size?: number } = {},
+    {
+      offset = 0,
+      size = 25,
+      sort,
+      sortOrder,
+    }: {
+      offset?: number;
+      size?: number;
+      sort?: CollectionMediaSortField;
+      sortOrder?: MediaSortOrder;
+    } = {},
   ): Promise<{ totalSize: number; items: CollectionMediaWithMetadata[] }> {
     try {
       const mediaServer = await this.getMediaServer();
       const queryBuilder =
         this.CollectionMediaRepo.createQueryBuilder('collection_media');
 
-      queryBuilder
-        .where('collection_media.collectionId = :id', { id })
-        .orderBy('collection_media.addDate', 'DESC')
-        .addOrderBy('collection_media.id', 'DESC')
-        .skip(offset)
-        .take(size);
+      queryBuilder.where('collection_media.collectionId = :id', { id });
 
       const itemCount = await queryBuilder.getCount();
-      const { entities } = await queryBuilder.getRawAndEntities();
 
-      const entitiesWithMediaData: CollectionMediaWithMetadata[] = (
-        await Promise.all(
-          entities.map(async (el) => {
-            const mediaItem = await mediaServer.getMetadata(el.mediaServerId);
+      if (!sort || sort === 'deleteSoonest') {
+        // deleteSoonest is equivalent to addDate ordering because
+        // deleteAfterDays is constant for every item in a collection.
+        const direction =
+          sort === 'deleteSoonest' && sortOrder === 'asc' ? 'ASC' : 'DESC';
+        const { entities } = await queryBuilder
+          .clone()
+          .orderBy('collection_media.addDate', direction)
+          .addOrderBy('collection_media.id', direction)
+          .skip(offset)
+          .take(size)
+          .getRawAndEntities();
 
-            if (!mediaItem) {
-              this.logger.debug(
-                `Missing metadata for collection media ${el.id} (mediaServerId=${el.mediaServerId}); skipping item without deleting`,
-              );
-              return { ...el, mediaData: undefined };
-            }
+        return {
+          totalSize: itemCount,
+          items: await this.hydrateCollectionMediaWithMetadata(
+            entities,
+            mediaServer,
+          ),
+        };
+      }
 
-            // Get parent metadata if needed (for episodes/seasons)
-            let parentItem: MediaItem | undefined;
-            if (mediaItem.grandparentId) {
-              parentItem = await mediaServer.getMetadata(
-                mediaItem.grandparentId,
-              );
-            } else if (mediaItem.parentId) {
-              parentItem = await mediaServer.getMetadata(mediaItem.parentId);
-            }
+      const { entities } = await queryBuilder
+        .clone()
+        .orderBy('collection_media.addDate', 'DESC')
+        .addOrderBy('collection_media.id', 'DESC')
+        .getRawAndEntities();
 
-            const mediaData: MediaItemWithParent = {
-              ...mediaItem,
-              parentItem,
-            };
+      // Metadata-backed sorts currently hydrate every matching row before
+      // pagination because these sort keys are not persisted locally.
+      // Replace this with cached DB-backed fields when available.
+      this.logger.debug(
+        `Collection ${id} sort ${sort} is hydrating ${itemCount} items before pagination`,
+      );
 
-            return {
-              ...el,
-              mediaData,
-            };
-          }),
+      const entitiesWithMediaData =
+        await this.hydrateCollectionMediaWithMetadata(entities, mediaServer);
+
+      const sortedItems = entitiesWithMediaData
+        .sort((leftItem, rightItem) =>
+          compareMediaItemsBySort(
+            leftItem.mediaData!,
+            rightItem.mediaData!,
+            sort,
+            sortOrder,
+          ),
         )
-      ).filter((el) => el.mediaData !== undefined);
+        .slice(offset, offset + size);
 
       return {
         totalSize: itemCount,
-        items: entitiesWithMediaData ?? [],
+        items: sortedItems ?? [],
       };
     } catch (error) {
       this.logger.warn('An error occurred while performing collection actions');
@@ -209,7 +300,17 @@ export class CollectionsService {
 
   public async getCollectionExclusionsWithServerDataAndPaging(
     id: number,
-    { offset = 0, size = 25 }: { offset?: number; size?: number } = {},
+    {
+      offset = 0,
+      size = 25,
+      sort,
+      sortOrder,
+    }: {
+      offset?: number;
+      size?: number;
+      sort?: MediaLibrarySortField;
+      sortOrder?: MediaSortOrder;
+    } = {},
   ): Promise<{ totalSize: number; items: Exclusion[] }> {
     try {
       const mediaServer = await this.getMediaServer();
@@ -245,46 +346,51 @@ export class CollectionsService {
           }),
         )
         .andWhere('exclusion.type IN (:...validTypes)', { validTypes })
-        .orderBy('id', 'DESC')
-        .skip(offset)
-        .take(size);
+        .orderBy('exclusion.id', 'DESC');
 
       const itemCount = await queryBuilder.getCount();
-      let { entities } = await queryBuilder.getRawAndEntities();
 
-      entities = (
-        await Promise.all(
-          entities.map(async (el) => {
-            const mediaItem = await mediaServer.getMetadata(
-              el.mediaServerId.toString(),
-            );
+      if (!sort) {
+        const { entities } = await queryBuilder
+          .clone()
+          .orderBy('exclusion.id', 'DESC')
+          .skip(offset)
+          .take(size)
+          .getRawAndEntities();
 
-            if (!mediaItem) {
-              return { ...el, mediaData: undefined };
-            }
+        return {
+          totalSize: itemCount,
+          items: await this.hydrateExclusionsWithMetadata(
+            entities,
+            mediaServer,
+          ),
+        };
+      }
 
-            // Get parent metadata if needed (for episodes/seasons)
-            let parentItem: MediaItem | undefined;
-            if (mediaItem.grandparentId) {
-              parentItem = await mediaServer.getMetadata(
-                mediaItem.grandparentId,
-              );
-            } else if (mediaItem.parentId) {
-              parentItem = await mediaServer.getMetadata(mediaItem.parentId);
-            }
+      const { entities } = await queryBuilder
+        .clone()
+        .orderBy('exclusion.id', 'DESC')
+        .getRawAndEntities();
 
-            el.mediaData = {
-              ...mediaItem,
-              parentItem,
-            };
-            return el;
-          }),
+      const entitiesWithMediaData = await this.hydrateExclusionsWithMetadata(
+        entities,
+        mediaServer,
+      );
+
+      const sortedItems = entitiesWithMediaData
+        .sort((leftItem, rightItem) =>
+          compareMediaItemsBySort(
+            leftItem.mediaData!,
+            rightItem.mediaData!,
+            sort,
+            sortOrder,
+          ),
         )
-      ).filter((el) => el.mediaData !== undefined);
+        .slice(offset, offset + size);
 
       return {
         totalSize: itemCount,
-        items: entities ?? [],
+        items: sortedItems ?? [],
       };
     } catch (error) {
       this.logger.warn('An error occurred while performing collection actions');

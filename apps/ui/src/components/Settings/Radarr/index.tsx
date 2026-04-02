@@ -9,7 +9,6 @@ import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
-import LoadingSpinner from '../../Common/LoadingSpinner'
 import Modal from '../../Common/Modal'
 import RadarrSettingsModal from './SettingsModal'
 
@@ -98,8 +97,6 @@ const RadarrSettings = () => {
           <p className="description">Radarr configuration</p>
         </div>
 
-        {!loaded ? <LoadingSpinner /> : null}
-
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {loaded
             ? settings.map((setting) => (
@@ -136,16 +133,18 @@ const RadarrSettings = () => {
               ))
             : null}
 
-          <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
-            <button
-              type="button"
-              className="add-button m-auto flex h-9 rounded bg-amber-600 px-4 text-zinc-200 shadow-md hover:bg-amber-500"
-              onClick={showAddModal}
-            >
-              {<PlusCircleIcon className="m-auto h-5" />}
-              <p className="m-auto ml-1 font-semibold">Add server</p>
-            </button>
-          </li>
+          {loaded ? (
+            <li className="flex h-full min-h-[9.75rem] items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
+              <button
+                type="button"
+                className="add-button m-auto flex h-9 rounded bg-amber-600 px-4 text-zinc-200 shadow-md hover:bg-amber-500"
+                onClick={showAddModal}
+              >
+                {<PlusCircleIcon className="m-auto h-5" />}
+                <p className="m-auto ml-1 font-semibold">Add server</p>
+              </button>
+            </li>
+          ) : null}
         </ul>
       </div>
       {settingsModalActive && (

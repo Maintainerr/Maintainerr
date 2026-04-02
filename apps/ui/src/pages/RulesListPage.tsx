@@ -2,6 +2,7 @@ import { AxiosError } from 'axios'
 import { useEffect, useEffectEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useMediaServerLibraries } from '../api/media-server'
 import { useStopAllRuleExecution } from '../api/rules'
 import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
@@ -17,6 +18,11 @@ const RulesListPage = () => {
   const [data, setData] = useState<IRuleGroup[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const [isLoading, setIsLoading] = useState(true)
+  const {
+    data: libraries,
+    error: librariesError,
+    isLoading: librariesLoading,
+  } = useMediaServerLibraries()
   const { invalidate, guardedFetch } = useRequestGeneration()
   const { ruleHandlerRunning } = useTaskStatusContext()
   const { mutate: stopAllExecution } = useStopAllRuleExecution({
@@ -56,6 +62,8 @@ const RulesListPage = () => {
   const onSwitchLibrary = (libraryId: string) => {
     invalidate()
     setSelectedLibrary(libraryId)
+    setIsLoading(true)
+    setData([])
   }
 
   const refreshData = (): void => {
@@ -83,34 +91,37 @@ const RulesListPage = () => {
   return (
     <>
       <title>Rules - Maintainerr</title>
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : (
-        <div className="w-full">
-          <LibrarySwitcher onLibraryChange={onSwitchLibrary} />
+      <div className="w-full">
+        <LibrarySwitcher
+          onLibraryChange={onSwitchLibrary}
+          selectedLibraryId={selectedLibrary}
+          libraries={libraries}
+          librariesLoading={librariesLoading}
+          librariesError={!!librariesError}
+        />
 
-          <div className="m-auto mb-3 flex">
-            <div className="ml-auto sm:ml-0">
-              <AddButton
-                onClick={() => navigate('/rules/new')}
-                text="New Rule"
-              />
-            </div>
-            <div className="ml-2 mr-auto sm:mr-0">
-              <ExecuteButton
-                onClick={() => {
-                  if (ruleHandlerRunning) {
-                    stopAllExecution()
-                  } else {
-                    sync()
-                  }
-                }}
-                text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
-                executing={ruleHandlerRunning}
-              />
-            </div>
+        <div className="m-auto mb-3 flex">
+          <div className="ml-auto sm:ml-0">
+            <AddButton onClick={() => navigate('/rules/new')} text="New Rule" />
           </div>
-          <h1 className="mb-3 text-lg font-bold text-zinc-200">Rules</h1>
+          <div className="ml-2 mr-auto sm:mr-0">
+            <ExecuteButton
+              onClick={() => {
+                if (ruleHandlerRunning) {
+                  stopAllExecution()
+                } else {
+                  sync()
+                }
+              }}
+              text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
+              executing={ruleHandlerRunning}
+            />
+          </div>
+        </div>
+        <h1 className="mb-3 text-lg font-bold text-zinc-200">Rules</h1>
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : (
           <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
             {data.map((el) => (
               <li
@@ -125,8 +136,8 @@ const RulesListPage = () => {
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
     </>
   )
 }

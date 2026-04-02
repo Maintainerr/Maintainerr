@@ -1,9 +1,19 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { useMemo } from 'react'
-import { Outlet, useLocation, useOutletContext } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
+import {
+  Navigate,
+  Outlet,
+  useLocation,
+  useOutletContext,
+} from 'react-router-dom'
 import { useSettings, type UseSettingsResult } from '../../api/settings'
 import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
+import {
+  bypassMediaServerSetupGuard,
+  isAllowedDuringMediaServerSetup,
+  showMediaServerSetupRequiredToast,
+} from '../Layout/MediaServerSetupGuard'
 import SettingsTabs, { SettingsRoute } from './Tabs'
 
 const mediaServerTabContent = (label?: string) => {
@@ -161,6 +171,17 @@ const SettingsWrapper = () => {
     return baseRoutes
   }, [isLoading, mediaServerType])
 
+  const isMediaServerTypeSelected = Boolean(settings?.media_server_type)
+  const isSetupRestrictedRoute =
+    !bypassMediaServerSetupGuard && !isLoading && !isMediaServerTypeSelected
+  const isAllowedRoute = isAllowedDuringMediaServerSetup(location.pathname)
+
+  useEffect(() => {
+    if (isSetupRestrictedRoute && !isAllowedRoute) {
+      showMediaServerSetupRequiredToast()
+    }
+  }, [isAllowedRoute, isSetupRestrictedRoute])
+
   if (error) {
     return (
       <>
@@ -185,19 +206,26 @@ const SettingsWrapper = () => {
     )
   }
 
+  if (isSetupRestrictedRoute && !isAllowedRoute) {
+    return <Navigate to="/settings/main" replace />
+  }
+
   if (settings) {
-    // Allow access if either Plex or Jellyfin is configured
-    const hasPlexConfig = settings.plex_auth_token !== null
-    const hasJellyfinConfig =
-      Boolean(settings.jellyfin_url) && Boolean(settings.jellyfin_api_key)
-    const isMediaServerConfigured = hasPlexConfig || hasJellyfinConfig
+    const routeIsDisabled = (route: SettingsRoute) => {
+      return (
+        !bypassMediaServerSetupGuard &&
+        !isMediaServerTypeSelected &&
+        !isAllowedDuringMediaServerSetup(route.route)
+      )
+    }
 
     return (
       <>
         <div className="mt-6">
           <SettingsTabs
             settingsRoutes={settingsRoutes}
-            allEnabled={isMediaServerConfigured}
+            allEnabled
+            isRouteDisabled={routeIsDisabled}
           />
         </div>
         <div className="mt-10 text-white">

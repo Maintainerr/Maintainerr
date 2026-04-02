@@ -1,7 +1,8 @@
 import {
+  getAudienceRating,
   type MediaItem,
-  type MediaProviderIds,
   type MediaItemWithParent,
+  type MediaProviderIds,
 } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
@@ -10,6 +11,7 @@ import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
 import MediaCard from '../../Common/MediaCard'
+import { defaultInfiniteScrollThreshold } from '../../../utils/infiniteScroll'
 
 interface IOverviewContent {
   data: MediaItem[]
@@ -55,7 +57,7 @@ const OverviewContent = (props: IOverviewContent) => {
 
   const isNearBottom = () =>
     window.innerHeight + document.documentElement.scrollTop >=
-    document.documentElement.scrollHeight * 0.7
+    document.documentElement.scrollHeight * defaultInfiniteScrollThreshold
 
   const handleScroll = useEffectEvent(() => {
     if (isNearBottom() && !extrasLoading && !dataFinished) {
@@ -109,13 +111,6 @@ const OverviewContent = (props: IOverviewContent) => {
   const getParentYear = (item: MediaItem): number | undefined => {
     const parentItem = (item as MediaItemWithParent).parentItem
     return parentItem?.year
-  }
-
-  /**
-   * Get the audience rating from a MediaItem's ratings array.
-   */
-  const getAudienceRating = (item: MediaItem): number => {
-    return item.ratings?.find((r) => r.type === 'audience')?.value ?? 0
   }
 
   if (loading) {

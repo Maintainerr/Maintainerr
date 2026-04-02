@@ -77,5 +77,9 @@ export function toProviderIds(ids: {
 export function isAbsoluteUrl(
   value: string | null | undefined,
 ): value is string {
-  return value?.startsWith('http://') || value?.startsWith('https://')
+  if (value == null) {
+    return false
+  }
+
+  return value.startsWith('http://') || value.startsWith('https://')
 }
