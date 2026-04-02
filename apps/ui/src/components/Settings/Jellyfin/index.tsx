@@ -17,14 +17,16 @@ import {
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import Alert from '../../Common/Alert'
-import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import PendingButton from '../../Common/PendingButton'
+import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 const JellyfinSettingDeleteSchema = z.object({
   jellyfin_url: z.literal(''),
@@ -210,12 +212,14 @@ const JellyfinSettings = () => {
 
         <SettingsFeedbackAlert feedback={feedback} />
 
-        {testResult && (
-          <Alert
-            type={testResult.status ? 'info' : 'error'}
-            title={testResult.message}
-          />
-        )}
+        <SettingsAlertSlot>
+          {testResult ? (
+            <Alert
+              type={testResult.status ? 'info' : 'error'}
+              title={testResult.message}
+            />
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -297,31 +301,27 @@ const JellyfinSettings = () => {
                   <DocsButton page="Configuration/#jellyfin" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <Button
+                  <TestingButton
                     type="button"
                     buttonType="success"
                     onClick={handleTest}
                     className="ml-3"
                     disabled={isTestPending || isGoingToRemoveSettings}
-                  >
-                    {isTestPending
-                      ? 'Testing Connection...'
-                      : 'Test Connection'}
-                  </Button>
+                    isPending={isTestPending}
+                    feedbackStatus={testResult?.status}
+                  />
 
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
+                    <PendingButton
                       buttonType="primary"
                       type="submit"
                       disabled={!canSaveSettings}
-                    >
-                      <SaveIcon />
-                      <span>
-                        {isSavePending || isDeletePending
-                          ? 'Saving...'
-                          : 'Save Changes'}
-                      </span>
-                    </Button>
+                      idleLabel="Save Changes"
+                      pendingLabel="Saving..."
+                      isPending={isSavePending || isDeletePending}
+                      idleIcon={<SaveIcon />}
+                      reserveLabel="Save Changes"
+                    />
                   </span>
                 </div>
               </div>

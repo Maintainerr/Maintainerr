@@ -43,6 +43,10 @@ import { formatConnectionFailureMessage } from '../../../../utils/connection-err
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
+import {
+  isBlankMediaServerId,
+  isForeignServerId,
+} from '../media-server-id.utils';
 import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
@@ -1437,23 +1441,21 @@ export class JellyfinAdapterService implements IMediaServerService {
       );
     }
 
+    if (isBlankMediaServerId(itemId)) {
+      throw new Error(
+        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+      );
+    }
+
     try {
       await getItemRefreshApi(this.api).refreshItem({ itemId });
     } catch (error) {
-      this.logger.error(
+      this.logger.warn(
         `Failed to refresh Jellyfin metadata for item ${itemId}`,
       );
       this.logger.debug(error);
       throw error;
     }
-  }
-
-  /**
-   * Check if a library ID looks like it's from a different media server
-   * (e.g. Plex numeric IDs) or is empty/invalid.
-   */
-  private isLikelyMigrationId(libraryId: string): boolean {
-    return !libraryId || libraryId.trim() === '' || /^\d+$/.test(libraryId);
   }
 
   /**
@@ -1464,7 +1466,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     operation: string,
     error: unknown,
   ): void {
-    if (this.isLikelyMigrationId(libraryId)) {
+    if (isForeignServerId(MediaServerType.JELLYFIN, libraryId)) {
       this.logger.warn(
         `Library '${libraryId || '(empty)'}' appears to be from a different media server. Please update the library setting in your rules.`,
       );

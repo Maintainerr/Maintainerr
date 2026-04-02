@@ -17,13 +17,15 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
-import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import PendingButton from '../../Common/PendingButton'
+import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface TestStatus {
   status: boolean
@@ -157,15 +159,18 @@ const TautulliSettings = () => {
         </div>
         <SettingsFeedbackAlert feedback={feedback} />
 
-        {testResult != null &&
-          (testResult?.status ? (
-            <Alert
-              type="info"
-              title={`Successfully connected to Tautulli (${testResult.message})`}
-            />
-          ) : (
-            <Alert type="error" title={testResult.message} />
-          ))}
+        <SettingsAlertSlot>
+          {testResult != null ? (
+            testResult?.status ? (
+              <Alert
+                type="info"
+                title={`Successfully connected to Tautulli (${testResult.message})`}
+              />
+            ) : (
+              <Alert type="error" title={testResult.message} />
+            )
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -220,23 +225,26 @@ const TautulliSettings = () => {
                   <DocsButton page="Configuration/#tautulli" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <Button
+                  <TestingButton
+                    type="button"
                     buttonType="success"
                     onClick={performTest}
                     className="ml-3"
                     disabled={testing || isGoingToRemoveSetting}
-                  >
-                    {testing ? 'Testing Connection...' : 'Test Connection'}
-                  </Button>
+                    isPending={testing}
+                    feedbackStatus={testResult?.status}
+                  />
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
+                    <PendingButton
                       buttonType="primary"
                       type="submit"
                       disabled={!canSaveSettings}
-                    >
-                      <SaveIcon />
-                      <span>Save Changes</span>
-                    </Button>
+                      idleLabel="Save Changes"
+                      pendingLabel="Saving..."
+                      isPending={isSubmitting}
+                      idleIcon={<SaveIcon />}
+                      reserveLabel="Save Changes"
+                    />
                   </span>
                 </div>
               </div>

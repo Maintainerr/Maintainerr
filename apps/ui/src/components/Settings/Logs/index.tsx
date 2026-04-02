@@ -17,6 +17,7 @@ import GetApiHandler, {
 } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import Button from '../../Common/Button'
+import PendingButton from '../../Common/PendingButton'
 import Table from '../../Common/Table'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
@@ -109,14 +110,16 @@ const LogSettingsForm = () => {
           />
 
           <div className="actions mt-5 flex w-full justify-end">
-            <Button
+            <PendingButton
               buttonType="primary"
               type="submit"
               disabled={isLoading || isSubmitting}
-            >
-              <SaveIcon />
-              <span>Save Changes</span>
-            </Button>
+              idleLabel="Save Changes"
+              pendingLabel="Saving..."
+              isPending={isLoading || isSubmitting}
+              idleIcon={<SaveIcon />}
+              reserveLabel="Save Changes"
+            />
           </div>
         </form>
       </div>
