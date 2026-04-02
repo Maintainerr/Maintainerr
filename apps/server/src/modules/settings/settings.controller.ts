@@ -47,6 +47,7 @@ import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
+import { MetadataProvider } from './metadata-provider';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsService } from './settings.service';
@@ -307,6 +308,14 @@ export class SettingsController {
     return this.metadataSettingsService.updateMetadataProviderPreference(
       payload.preference,
     );
+  }
+
+  @Post('/metadata/refresh/:provider')
+  async refreshMetadataCache(
+    @Param('provider', new ParseEnumPipe(MetadataProvider))
+    provider: MetadataProvider,
+  ): Promise<BasicResponseDto> {
+    return this.metadataSettingsService.refreshMetadataCache(provider);
   }
 
   // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)

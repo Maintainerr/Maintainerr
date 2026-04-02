@@ -24,6 +24,10 @@ export const MEDIA_SERVER_FEATURES: Record<
   ]),
 };
 
+export const MEDIA_SERVER_BATCH_SIZE = {
+  METADATA_REFRESH: 10,
+} as const;
+
 /**
  * Check if a media server type supports a specific feature.
  */
