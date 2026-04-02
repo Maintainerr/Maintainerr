@@ -71,7 +71,7 @@ describe.each([
     cleanup()
   })
 
-  it('keeps the shell stable while server settings load', async () => {
+  it('does not show transient loading UI while server settings load', async () => {
     const request = createDeferred<
       Array<{
         id: number
@@ -95,8 +95,8 @@ describe.each([
       screen.getByRole('heading', { name: `${label} Settings` }),
     ).toBeTruthy()
     expect(
-      screen.getByRole('status', { name: `Loading ${label} servers` }),
-    ).toBeTruthy()
+      screen.queryByRole('status', { name: `Loading ${label} servers` }),
+    ).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add server' })).toBeNull()
 
     request.resolve([

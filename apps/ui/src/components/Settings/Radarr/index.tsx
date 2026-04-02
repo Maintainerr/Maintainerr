@@ -98,23 +98,6 @@ const RadarrSettings = () => {
         </div>
 
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {!loaded ? (
-            <li className="rounded-xl border border-zinc-700 bg-zinc-800 p-4 text-zinc-400 shadow ring-1 ring-zinc-700">
-              <div
-                role="status"
-                aria-label="Loading Radarr servers"
-                className="min-h-[9.75rem]"
-              >
-                <div className="mb-3 h-6 w-32 rounded bg-zinc-700" />
-                <div className="mb-5 h-5 w-48 rounded bg-zinc-750" />
-                <div className="flex">
-                  <div className="h-10 w-1/2 rounded-l bg-zinc-700" />
-                  <div className="h-10 w-1/2 rounded-r bg-zinc-900" />
-                </div>
-              </div>
-            </li>
-          ) : null}
-
           {loaded
             ? settings.map((setting) => (
                 <li
