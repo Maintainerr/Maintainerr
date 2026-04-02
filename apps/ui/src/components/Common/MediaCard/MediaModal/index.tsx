@@ -36,14 +36,50 @@ const ratingIcons: Record<string, string> = {
   critic: `${basePath}/icons_logos/rt_critic.svg`,
 }
 
+const metadataProviderLogos: Record<
+  string,
+  {
+    logo: string
+    alt: string
+    buildUrl: (mediaType: string, id: string) => string
+    providerIdKey: keyof MediaProviderIds
+  }
+> = {
+  TMDB: {
+    logo: `${basePath}/icons_logos/tmdb_logo.svg`,
+    alt: 'TMDB Logo',
+    buildUrl: (mediaType, id) => `https://themoviedb.org/${mediaType}/${id}`,
+    providerIdKey: 'tmdb',
+  },
+  TVDB: {
+    logo: `${basePath}/icons_logos/tvdb_logo.svg`,
+    alt: 'TheTVDB Logo',
+    buildUrl: (mediaType, id) =>
+      `https://thetvdb.com/dereferrer/${mediaType === 'tv' ? 'series' : 'movie'}/${id}`,
+    providerIdKey: 'tvdb',
+  },
+}
+
+interface BackdropResult {
+  requestKey: string | null
+  url: string | null
+  provider: string | null
+  providerId: number | null
+}
+
+const emptyBackdropResult: BackdropResult = {
+  requestKey: null,
+  url: null,
+  provider: null,
+  providerId: null,
+}
+
 const MediaModalContent: React.FC<ModalContentProps> = memo(
   ({ onClose, mediaType, id, summary, year, title, providerIds }) => {
     const { isPlex, isJellyfin } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
-    const [backdropUrl, setBackdropUrl] = useState<string | null>(null)
-    const [fetchedBackdropPath, setFetchedBackdropPath] = useState<
-      string | null
-    >(null)
+    const [backdropResult, setBackdropResult] =
+      useState<BackdropResult>(emptyBackdropResult)
     const [machineId, setMachineId] = useState<string | null>(null)
     const [serverUrl, setServerUrl] = useState<string | null>(null)
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
@@ -53,14 +89,24 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
     const effectiveProviderIds = providerIds ?? metadata?.providerIds
-    const tmdbId = effectiveProviderIds?.tmdb?.[0]
     const backdropRequestPath = buildMetadataImagePath(
       'backdrop',
       mediaType,
       effectiveProviderIds,
     )
-    const resolvedBackdrop =
-      fetchedBackdropPath === backdropRequestPath ? backdropUrl : null
+    const isCurrentBackdrop = backdropResult.requestKey === backdropRequestPath
+    const resolvedBackdrop = isCurrentBackdrop ? backdropResult.url : null
+
+    const providerLogo = useMemo(() => {
+      if (!isCurrentBackdrop || !backdropResult.provider) return null
+      const cfg = metadataProviderLogos[backdropResult.provider]
+      if (!cfg) return null
+      const linkId =
+        backdropResult.providerId?.toString() ??
+        effectiveProviderIds?.[cfg.providerIdKey]?.[0]
+      if (!linkId) return null
+      return { ...cfg, linkId }
+    }, [isCurrentBackdrop, backdropResult, effectiveProviderIds])
 
     const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
@@ -88,14 +134,20 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
       let active = true
 
-      GetApiHandler<{ url: string } | undefined>(backdropRequestPath)
+      GetApiHandler<{ url: string; provider: string; id: number } | undefined>(
+        backdropRequestPath,
+      )
         .then((resp) => {
           if (!active) {
             return
           }
 
-          setBackdropUrl(resp?.url ?? null)
-          setFetchedBackdropPath(backdropRequestPath)
+          setBackdropResult({
+            requestKey: backdropRequestPath,
+            url: resp?.url ?? null,
+            provider: resp?.provider ?? null,
+            providerId: resp?.id ?? null,
+          })
         })
         .catch((error) => {
           if (!active) {
@@ -107,8 +159,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             error,
             'MediaCard.MediaModal.backdropFetch',
           )
-          setBackdropUrl(null)
-          setFetchedBackdropPath(backdropRequestPath)
+          setBackdropResult({
+            ...emptyBackdropResult,
+            requestKey: backdropRequestPath,
+          })
         })
 
       return () => {
@@ -203,23 +257,27 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
               <div className="flex flex-col items-end">
                 <div className="max-w-fit grow">
-                  {tmdbId && (
-                    <div>
+                  <div className="flex h-8 w-32 justify-end">
+                    {providerLogo && (
                       <a
-                        href={`https://themoviedb.org/${mediaTypeOf}/${tmdbId}`}
+                        href={providerLogo.buildUrl(
+                          mediaTypeOf,
+                          providerLogo.linkId,
+                        )}
                         target="_blank"
                         rel="noreferrer"
+                        className="block h-full w-full"
                       >
                         <img
-                          src={`${basePath}/icons_logos/tmdb_logo.svg`}
-                          alt="TMDB Logo"
+                          src={providerLogo.logo}
+                          alt={providerLogo.alt}
                           width={128}
                           height={32}
                           className="h-8 w-32 rounded-lg bg-black bg-opacity-70 p-2 shadow-lg"
                         />
                       </a>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {isPlex && (
                     <div>
                       <a
@@ -334,6 +392,30 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         tvdb://{id}
                       </span>
                     ))}
+                    {isCurrentBackdrop &&
+                      backdropResult.provider &&
+                      backdropResult.providerId != null &&
+                      (() => {
+                        const key =
+                          metadataProviderLogos[backdropResult.provider!]
+                            ?.providerIdKey
+                        if (
+                          !key ||
+                          metadata.providerIds[key]?.includes(
+                            String(backdropResult.providerId),
+                          )
+                        ) {
+                          return null
+                        }
+                        return (
+                          <span
+                            key={`${key}-${backdropResult.providerId}`}
+                            className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
+                          >
+                            {key}://{backdropResult.providerId}
+                          </span>
+                        )
+                      })()}
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
