@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { throttling } from '@octokit/plugin-throttling';
+import { existsSync, readFileSync, renameSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import { Octokit } from 'octokit';
+import { join } from 'path';
+import { dataDir } from '../../../app/config/dataDir';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import cacheManager from '../lib/cache';
 
@@ -17,13 +21,19 @@ export interface GitHubCommit {
   sha: string;
 }
 
+type PersistedCacheEntry = { value: unknown; expiresAt: number };
+
 @Injectable()
 export class GitHubApiService {
   private octokit: Octokit;
   private cache = cacheManager.getCache('github');
+  private readonly cacheFilePath = join(dataDir, 'github-cache.json');
+  private persistedEntries: Record<string, PersistedCacheEntry> = {};
+  private persistQueue: Promise<void> = Promise.resolve();
 
   constructor(private readonly logger: MaintainerrLogger) {
     logger.setContext(GitHubApiService.name);
+    this.loadPersistedCache();
 
     // Create Octokit instance with throttling plugin
     const OctokitWithPlugins = Octokit.plugin(throttling);
@@ -73,6 +83,79 @@ export class GitHubApiService {
     this.octokit = new OctokitWithPlugins(octokitOptions);
   }
 
+  private quarantineCorruptCacheFile(): void {
+    if (!existsSync(this.cacheFilePath)) return;
+
+    try {
+      renameSync(
+        this.cacheFilePath,
+        `${this.cacheFilePath}.corrupt-${Date.now()}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        'Failed to quarantine corrupt GitHub cache persistence file.',
+      );
+      this.logger.debug(error);
+    }
+  }
+
+  private loadPersistedCache(): void {
+    try {
+      if (!existsSync(this.cacheFilePath)) return;
+      const entries: Record<string, PersistedCacheEntry> = JSON.parse(
+        readFileSync(this.cacheFilePath, 'utf8'),
+      );
+      const now = Date.now();
+      for (const [key, { value, expiresAt }] of Object.entries(entries)) {
+        const remainingTtl = Math.floor((expiresAt - now) / 1000);
+        if (remainingTtl > 0) {
+          this.cache?.data.set(key, value, remainingTtl);
+          this.persistedEntries[key] = { value, expiresAt };
+        }
+      }
+    } catch (error) {
+      this.logger.warn(
+        'GitHub cache persistence file is corrupt. Ignoring persisted entries.',
+      );
+      this.logger.debug(error);
+      this.persistedEntries = {};
+      this.quarantineCorruptCacheFile();
+    }
+  }
+
+  private queuePersistedCacheWrite(
+    entriesSnapshot: Record<string, PersistedCacheEntry>,
+  ): void {
+    this.persistQueue = this.persistQueue
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await writeFile(
+            this.cacheFilePath,
+            JSON.stringify(entriesSnapshot),
+            'utf8',
+          );
+        } catch {
+          // Silently ignore write errors (e.g. read-only filesystem)
+        }
+      });
+  }
+
+  private persistCacheEntry(key: string, value: unknown): void {
+    const now = Date.now();
+
+    for (const persistedKey of Object.keys(this.persistedEntries)) {
+      if (this.persistedEntries[persistedKey].expiresAt <= now) {
+        delete this.persistedEntries[persistedKey];
+      }
+    }
+
+    const ttlMs = (this.cache?.data.options.stdTTL ?? 86400) * 1000;
+    this.persistedEntries[key] = { value, expiresAt: now + ttlMs };
+
+    this.queuePersistedCacheWrite({ ...this.persistedEntries });
+  }
+
   /**
    * Get the latest release for a repository
    * @param owner Repository owner
@@ -97,6 +180,7 @@ export class GitHubApiService {
       const release = response.data as GitHubRelease;
 
       this.cache?.data.set(cacheKey, release);
+      this.persistCacheEntry(cacheKey, release);
 
       return release;
     } catch (error) {
@@ -133,6 +217,7 @@ export class GitHubApiService {
       const commit = { sha: response.data.sha };
 
       this.cache?.data.set(cacheKey, commit);
+      this.persistCacheEntry(cacheKey, commit);
 
       return commit;
     } catch (error) {
@@ -169,6 +254,7 @@ export class GitHubApiService {
       const releases = response.data as GitHubRelease[];
 
       this.cache?.data.set(cacheKey, releases);
+      this.persistCacheEntry(cacheKey, releases);
 
       return releases;
     } catch (error) {

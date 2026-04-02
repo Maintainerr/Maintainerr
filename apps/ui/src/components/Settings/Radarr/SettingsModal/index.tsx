@@ -14,6 +14,11 @@ import {
 import Alert from '../../../Common/Alert'
 import DocsButton from '../../../Common/DocsButton'
 import Modal from '../../../Common/Modal'
+import {
+  getTestingButtonType,
+  TestingButtonContent,
+} from '../../../Common/TestingButton'
+import SettingsAlertSlot from '../../SettingsAlertSlot'
 
 interface IRadarrSettingsModal {
   onUpdate: (setting: IRadarrSetting) => void
@@ -213,28 +218,39 @@ const RadarrSettingsModal = (props: IRadarrSettingsModal) => {
       okText={'Save Changes'}
       okButtonType={'primary'}
       okDisabled={requiresTest}
-      secondaryButtonType="success"
-      secondaryText={testing ? 'Testing Connection...' : 'Test Connection'}
+      secondaryButtonType={getTestingButtonType(
+        'success',
+        testResult?.status,
+        testing,
+      )}
       secondaryDisabled={testing}
+      secondaryContent={
+        <TestingButtonContent
+          isPending={testing}
+          feedbackStatus={testResult?.status}
+        />
+      }
       onSecondary={performTest}
       title={'Radarr Settings'}
       iconSvg={''}
     >
       {error && <Alert type="warning" title="Not all fields contain values" />}
 
-      {testResult != null ? (
-        testResult?.status ? (
-          <Alert
-            type="info"
-            title={`Successfully connected to Radarr (${testResult.version})`}
-          />
-        ) : (
-          <Alert
-            type="error"
-            title={testResult.version || 'Failed to connect to Radarr'}
-          />
-        )
-      ) : undefined}
+      <SettingsAlertSlot>
+        {testResult != null ? (
+          testResult?.status ? (
+            <Alert
+              type="info"
+              title={`Successfully connected to Radarr (${testResult.version})`}
+            />
+          ) : (
+            <Alert
+              type="error"
+              title={testResult.version || 'Failed to connect to Radarr'}
+            />
+          )
+        ) : null}
+      </SettingsAlertSlot>
 
       <div className="form-row">
         <label htmlFor="serverName" className="text-label">

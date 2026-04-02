@@ -2,6 +2,7 @@ import type { MediaItem } from '@maintainerr/contracts'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
+import { createDeferred } from '../../../../test-utils/createDeferred'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import MediaModal from './index'
 
@@ -16,22 +17,6 @@ vi.mock('../../../../utils/ApiHandler', () => ({
 vi.mock('../../../../utils/ClientLogger', () => ({
   logClientError: vi.fn(),
 }))
-
-const createDeferred = <T,>() => {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
 
 describe('MediaModal', () => {
   const useMediaServerTypeMock = vi.mocked(useMediaServerType)

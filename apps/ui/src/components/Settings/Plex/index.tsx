@@ -10,12 +10,18 @@ import {
   usePatchSettings,
   useUpdatePlexAuth,
 } from '../../../api/settings'
+import {
+  getApiErrorMessage,
+  normalizeConnectionErrorMessage,
+} from '../../../utils/ApiError'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import TestButton from '../../Common/TestButton'
+import PendingButton from '../../Common/PendingButton'
+import TestingButton from '../../Common/TestingButton'
 import PlexLoginButton from '../../Login/Plex'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -70,6 +76,28 @@ export interface PlexDevice {
   connection: PlexConnection[]
 }
 
+export interface PlexServerFormState {
+  hostname: string
+  port: string
+  name: string
+  ssl: boolean
+}
+
+const normalizePlexHostname = (hostname?: string) =>
+  hostname?.replace('http://', '').replace('https://', '') ?? ''
+
+export const hasUnsavedPlexServerChanges = (
+  current: PlexServerFormState,
+  saved: PlexServerFormState,
+) => {
+  return (
+    current.hostname !== saved.hostname ||
+    current.port !== saved.port ||
+    current.name !== saved.name ||
+    current.ssl !== saved.ssl
+  )
+}
+
 const PlexSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
@@ -82,10 +110,18 @@ const PlexSettings = () => {
     status: boolean
     version: string
   }>({ status: false, version: '' })
+  const [hasUnsavedServerChanges, setHasUnsavedServerChanges] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [availableServers, setAvailableServers] = useState<PlexDevice[]>()
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
-  const { feedback, showUpdated, showUpdateError, showError, clearError } =
-    useSettingsFeedback('Plex settings')
+  const {
+    feedback,
+    showUpdated,
+    showUpdateError,
+    showError,
+    showWarning,
+    clearError,
+  } = useSettingsFeedback('Plex settings')
 
   const { mutateAsync: updateSettings, isPending } = usePatchSettings()
   const { mutateAsync: deletePlexAuth, isPending: deletePlexAuthPending } =
@@ -93,6 +129,55 @@ const PlexSettings = () => {
   const { mutateAsync: updatePlexAuth, isPending: updatePlexAuthPending } =
     useUpdatePlexAuth()
   const { settings } = useSettingsOutletContext()
+
+  const clearTestBanner = useCallback(() => {
+    setTestbanner({ status: false, version: '' })
+  }, [])
+
+  const savedServerState = useMemo<PlexServerFormState>(
+    () => ({
+      hostname: normalizePlexHostname(settings?.plex_hostname),
+      port: settings?.plex_port != null ? String(settings.plex_port) : '',
+      name: settings?.plex_name ?? '',
+      ssl: Boolean(settings?.plex_ssl),
+    }),
+    [
+      settings?.plex_hostname,
+      settings?.plex_name,
+      settings?.plex_port,
+      settings?.plex_ssl,
+    ],
+  )
+
+  const getCurrentServerState = useCallback((): PlexServerFormState => {
+    return {
+      hostname: normalizePlexHostname(hostnameRef.current?.value),
+      port: portRef.current?.value ?? '',
+      name: nameRef.current?.value ?? '',
+      ssl: Boolean(sslRef.current?.checked),
+    }
+  }, [])
+
+  const syncUnsavedServerChanges = useCallback(() => {
+    const nextHasUnsavedServerChanges = hasUnsavedPlexServerChanges(
+      getCurrentServerState(),
+      savedServerState,
+    )
+
+    setHasUnsavedServerChanges(nextHasUnsavedServerChanges)
+
+    return nextHasUnsavedServerChanges
+  }, [getCurrentServerState, savedServerState])
+
+  const handleServerSettingsChange = useCallback(() => {
+    clearError()
+    clearTestBanner()
+    syncUnsavedServerChanges()
+  }, [clearError, clearTestBanner, syncUnsavedServerChanges])
+
+  useEffect(() => {
+    syncUnsavedServerChanges()
+  }, [syncUnsavedServerChanges])
 
   const submit = async (e: React.FormEvent<HTMLFormElement> | undefined) => {
     e?.preventDefault()
@@ -125,6 +210,8 @@ const PlexSettings = () => {
 
       try {
         await updateSettings(payload)
+        setHasUnsavedServerChanges(false)
+        clearTestBanner()
         showUpdated()
       } catch {
         showUpdateError()
@@ -141,10 +228,13 @@ const PlexSettings = () => {
       try {
         await updatePlexAuth(plex_token.plex_auth_token)
         showUpdated()
+        return true
       } catch {
         showError('There was an error updating Plex authentication.')
       }
     }
+
+    return false
   }
 
   const availablePresets = useMemo(() => {
@@ -166,10 +256,16 @@ const PlexSettings = () => {
     return orderBy(finalPresets, ['status', 'ssl'], ['desc', 'desc'])
   }, [availableServers])
 
-  const authsuccess = (token: string) => {
+  const authsuccess = async (token: string) => {
     clearError()
-    verifyToken(token)
-    void submitPlexToken({ plex_auth_token: token })
+    clearTestBanner()
+    setTokenValid(false)
+
+    const didPersistToken = await submitPlexToken({ plex_auth_token: token })
+
+    if (didPersistToken) {
+      verifyToken(token)
+    }
   }
 
   const authFailed = () => {
@@ -229,8 +325,46 @@ const PlexSettings = () => {
     }
   }, [settings?.plex_auth_token, verifyToken])
 
-  const appTest = (result: { status: boolean; message: string }) => {
-    setTestbanner({ status: result.status, version: result.message })
+  const performTest = async () => {
+    if (testing) return
+
+    if (updatePlexAuthPending) {
+      showWarning('Wait for Plex authentication to finish before testing.')
+      return
+    }
+
+    if (syncUnsavedServerChanges()) {
+      showWarning('Save changes before testing the Plex connection.')
+      return
+    }
+
+    setTesting(true)
+
+    try {
+      const result = await GetApiHandler<{
+        status: 'OK' | 'NOK'
+        code: 0 | 1
+        message: string
+      }>('/settings/test/plex')
+
+      setTestbanner({
+        status: result.code === 1,
+        version: normalizeConnectionErrorMessage(
+          result.message,
+          'Failed to connect to Plex. Verify your Plex configuration.',
+        ),
+      })
+    } catch (error) {
+      setTestbanner({
+        status: false,
+        version: getApiErrorMessage(
+          error,
+          'Failed to connect to Plex. Verify your Plex configuration.',
+        ),
+      })
+    } finally {
+      setTesting(false)
+    }
   }
 
   function setFieldValue(
@@ -293,16 +427,18 @@ const PlexSettings = () => {
           />
         )}
 
-        {testBanner.version ? (
-          testBanner.status ? (
-            <Alert
-              type="info"
-              title={`Successfully connected to Plex (${testBanner.version})`}
-            />
-          ) : (
-            <Alert type="error" title={testBanner.version} />
-          )
-        ) : undefined}
+        <SettingsAlertSlot>
+          {testBanner.version ? (
+            testBanner.status ? (
+              <Alert
+                type="info"
+                title={`Successfully connected to Plex (${testBanner.version})`}
+              />
+            ) : (
+              <Alert type="error" title={testBanner.version} />
+            )
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <form onSubmit={submit}>
@@ -330,6 +466,7 @@ const PlexSettings = () => {
                         setFieldValue(hostnameRef, targPreset.address)
                         setFieldValue(portRef, targPreset.port.toString())
                         setFieldValue(sslRef, targPreset.ssl.toString())
+                        handleServerSettingsChange()
                       }
                     }}
                   >
@@ -358,7 +495,7 @@ const PlexSettings = () => {
                       e.preventDefault()
                       refreshPresetServers()
                     }}
-                    disabled={tokenValid !== true}
+                    disabled={tokenValid !== true || updatePlexAuthPending}
                     className="input-action"
                   >
                     <RefreshIcon
@@ -382,6 +519,7 @@ const PlexSettings = () => {
                     type="text"
                     ref={nameRef}
                     defaultValue={settings.plex_name}
+                    onChange={handleServerSettingsChange}
                   ></input>
                 </div>
               </div>
@@ -401,6 +539,7 @@ const PlexSettings = () => {
                     defaultValue={settings.plex_hostname
                       ?.replace('http://', '')
                       .replace('https://', '')}
+                    onChange={handleServerSettingsChange}
                   ></input>
                 </div>
               </div>
@@ -418,6 +557,7 @@ const PlexSettings = () => {
                     type="number"
                     ref={portRef}
                     defaultValue={settings.plex_port}
+                    onChange={handleServerSettingsChange}
                   ></input>
                 </div>
               </div>
@@ -435,6 +575,7 @@ const PlexSettings = () => {
                     id="ssl"
                     defaultChecked={Boolean(settings.plex_ssl)}
                     ref={sslRef}
+                    onChange={handleServerSettingsChange}
                   ></input>
                 </div>
               </div>
@@ -488,20 +629,40 @@ const PlexSettings = () => {
                   <DocsButton page="Configuration/#plex" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <TestButton
-                    onTestComplete={appTest}
-                    testUrl="/settings/test/plex"
+                  <TestingButton
+                    type="button"
+                    buttonType="success"
+                    onClick={performTest}
+                    className="ml-3"
+                    disabled={
+                      testing ||
+                      hasUnsavedServerChanges ||
+                      updatePlexAuthPending
+                    }
+                    isPending={testing}
+                    feedbackStatus={
+                      testBanner.version ? testBanner.status : undefined
+                    }
+                    title={
+                      updatePlexAuthPending
+                        ? 'Wait for Plex authentication to finish before testing.'
+                        : hasUnsavedServerChanges
+                          ? 'Save changes before testing the Plex connection.'
+                          : undefined
+                    }
                   />
 
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
+                    <PendingButton
                       buttonType="primary"
                       type="submit"
                       disabled={isPending}
-                    >
-                      <SaveIcon />
-                      <span>Save Changes</span>
-                    </Button>
+                      idleLabel="Save Changes"
+                      pendingLabel="Saving..."
+                      isPending={isPending}
+                      idleIcon={<SaveIcon />}
+                      reserveLabel="Save Changes"
+                    />
                   </span>
                 </div>
               </div>

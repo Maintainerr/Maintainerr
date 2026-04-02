@@ -3,7 +3,7 @@ import { isValidCron } from 'cron-validator'
 import { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
-import Button from '../../Common/Button'
+import PendingButton from '../../Common/PendingButton'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -141,14 +141,16 @@ const JobSettings = () => {
             <div className="actions mt-5 w-full">
               <div className="flex justify-end">
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
-                  <Button
+                  <PendingButton
                     buttonType="primary"
                     type="submit"
                     disabled={updateSettingsPending}
-                  >
-                    <SaveIcon />
-                    <span>Save Changes</span>
-                  </Button>
+                    idleLabel="Save Changes"
+                    pendingLabel="Saving..."
+                    isPending={updateSettingsPending}
+                    idleIcon={<SaveIcon />}
+                    reserveLabel="Save Changes"
+                  />
                 </span>
               </div>
             </div>

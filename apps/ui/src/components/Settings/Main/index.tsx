@@ -5,6 +5,7 @@ import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import PendingButton from '../../Common/PendingButton'
 import MediaServerSelector from '../MediaServerSelector'
 import {
   SettingsFeedbackAlert,
@@ -135,14 +136,16 @@ const MainSettings = () => {
                   </span>
                 </div>
                 <span className="flex rounded-md shadow-sm sm:ml-auto">
-                  <Button
+                  <PendingButton
                     buttonType="primary"
                     type="submit"
                     disabled={isPending}
-                  >
-                    <SaveIcon />
-                    <span>Save Changes</span>
-                  </Button>
+                    idleLabel="Save Changes"
+                    pendingLabel="Saving..."
+                    isPending={isPending}
+                    idleIcon={<SaveIcon />}
+                    reserveLabel="Save Changes"
+                  />
                 </span>
               </div>
             </div>

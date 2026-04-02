@@ -7,6 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createDeferred } from '../../test-utils/createDeferred'
 import MetadataSettings from './Metadata'
 
 const getApiHandler = vi.fn()
@@ -36,22 +37,6 @@ vi.mock('../../utils/ApiHandler', () => ({
   PostApiHandler: (url: string, payload?: unknown) =>
     postApiHandler(url, payload),
 }))
-
-const createDeferred = <T,>() => {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
 
 describe('MetadataSettings', () => {
   beforeEach(() => {

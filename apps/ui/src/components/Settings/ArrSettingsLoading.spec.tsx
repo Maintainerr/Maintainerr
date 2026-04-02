@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createDeferred } from '../../test-utils/createDeferred'
 import RadarrSettings from './Radarr'
 import SonarrSettings from './Sonarr'
 
@@ -31,22 +32,6 @@ vi.mock('./Radarr/SettingsModal', () => ({
 vi.mock('./Sonarr/SettingsModal', () => ({
   default: () => <div>Sonarr modal</div>,
 }))
-
-const createDeferred = <T,>() => {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-
-  return {
-    promise,
-    resolve,
-    reject,
-  }
-}
 
 describe.each([
   {
