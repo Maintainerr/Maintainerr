@@ -45,7 +45,7 @@
     "cron-validator": "^1.4.0",
     "email-templates": "13.0.1",
     "http-terminator": "^3.2.0",
-    "lodash": "^4.17.23",
+    "lodash": "^4.18.1",
     "mime-types": "^3.0.2",
     "nestjs-zod": "^5.2.1",
     "node-cache": "^5.1.2",
