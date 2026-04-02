@@ -76,7 +76,8 @@ const Overview = () => {
       (selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId),
   )?.type
   const sortConfig = getMediaLibrarySortConfig(currentLibraryType)
-  const { sortValue, sortParams, onSortChange } = useMediaLibrarySort(sortConfig)
+  const { sortValue, sortParams, onSortChange } =
+    useMediaLibrarySort(sortConfig)
 
   const fetchAmount = 30
 
@@ -156,10 +157,7 @@ const Overview = () => {
   )
 
   const performOverviewSync = useCallback(
-    async (
-      libraryId?: string,
-      nextSortParams = sortParams,
-    ) => {
+    async (libraryId?: string, nextSortParams = sortParams) => {
       invalidateFetches()
 
       if (SearchCtx.search.text !== '') {

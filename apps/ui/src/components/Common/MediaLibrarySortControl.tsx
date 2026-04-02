@@ -88,10 +88,7 @@ const getMediaLibrarySortOptions = (
 
   options.push(
     createMediaLibrarySortOption('title.desc', 'Title (Z-A) Descending'),
-    createMediaLibrarySortOption(
-      'airDate.desc',
-      `${airDateLabel} Descending`,
-    ),
+    createMediaLibrarySortOption('airDate.desc', `${airDateLabel} Descending`),
     createMediaLibrarySortOption('airDate.asc', `${airDateLabel} Ascending`),
     createMediaLibrarySortOption('rating.desc', 'Rating Descending'),
     createMediaLibrarySortOption('rating.asc', 'Rating Ascending'),
@@ -135,11 +132,12 @@ export const getCollectionSortConfig = (
   }
 }
 
-const collectionDeleteSoonestSortOption: SortOption<CollectionMediaSortParams> = {
-  value: 'deleteSoonest.asc',
-  label: 'Delete Soonest',
-  sortParams: { sort: 'deleteSoonest', sortOrder: 'asc' },
-}
+const collectionDeleteSoonestSortOption: SortOption<CollectionMediaSortParams> =
+  {
+    value: 'deleteSoonest.asc',
+    label: 'Delete Soonest',
+    sortParams: { sort: 'deleteSoonest', sortOrder: 'asc' },
+  }
 
 export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
@@ -159,8 +157,7 @@ export const getCollectionMediaSortConfig = (
       : undefined,
   }))
 
-  const [defaultOption, titleAscendingOption, ...remainingOptions] =
-    baseOptions
+  const [defaultOption, titleAscendingOption, ...remainingOptions] = baseOptions
 
   return {
     defaultValue: defaultSortValue,

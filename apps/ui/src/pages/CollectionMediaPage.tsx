@@ -26,7 +26,8 @@ const CollectionMediaPage = () => {
     libraryType,
     collection.deleteAfterDays != null,
   )
-  const { sortValue, sortParams, onSortChange } = useMediaLibrarySort(sortConfig)
+  const { sortValue, sortParams, onSortChange } =
+    useMediaLibrarySort(sortConfig)
 
   const appendMediaPage = useCallback((items: ICollectionMedia[]) => {
     const nextMedia = [...mediaRef.current, ...items]

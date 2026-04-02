@@ -1,5 +1,5 @@
 import { debounce } from 'lodash-es'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { defaultInfiniteScrollThreshold } from '../utils/infiniteScroll'
 
 interface PaginatedResponse<TPageItem> {
@@ -35,6 +35,12 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
 }: UseInfinitePaginatedListOptions<TPageItem, TItem>) => {
   const [data, setData] = useState<TItem[]>([])
   const dataRef = useRef<TItem[]>([])
+  const fetchPageRef = useRef(fetchPage)
+  const mapPageItemsRef = useRef(mapPageItems)
+  const onAppendPageItemsRef = useRef(onAppendPageItems)
+  const onResetRef = useRef(onReset)
+  const fetchAmountRef = useRef(fetchAmount)
+  const scrollThresholdRef = useRef(scrollThreshold)
   const pageDataRef = useRef<number>(0)
   const totalSizeRef = useRef<number>(defaultTotalSize)
   const [totalSize, setTotalSize] = useState<number>(defaultTotalSize)
@@ -69,90 +75,85 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
     [],
   )
 
-  const fetchRequestedPage = useEffectEvent(
-    async (
-      page: number,
-      fetchPageOverride?: PaginatedPageFetcher<TPageItem>,
-    ) => {
-      return await (fetchPageOverride ?? fetchPage)(page)
-    },
-  )
+  useEffect(() => {
+    fetchPageRef.current = fetchPage
+    mapPageItemsRef.current = mapPageItems
+    onAppendPageItemsRef.current = onAppendPageItems
+    onResetRef.current = onReset
+    fetchAmountRef.current = fetchAmount
+    scrollThresholdRef.current = scrollThreshold
+  }, [
+    fetchAmount,
+    fetchPage,
+    mapPageItems,
+    onAppendPageItems,
+    onReset,
+    scrollThreshold,
+  ])
 
-  const mapRequestedPageItems = useEffectEvent((items: TPageItem[]) => {
-    return mapPageItems(items)
-  })
+  const canLoadMoreData = useCallback(() => {
+    return (
+      fetchAmountRef.current * (pageDataRef.current - 1) < totalSizeRef.current
+    )
+  }, [])
 
-  const appendRequestedPageItems = useEffectEvent((items: TPageItem[]) => {
-    onAppendPageItems?.(items)
-  })
-
-  const runReset = useEffectEvent(() => {
-    onReset?.()
-  })
-
-  const canLoadMoreData = useEffectEvent(() => {
-    return fetchAmount * (pageDataRef.current - 1) < totalSizeRef.current
-  })
-
-  const isNearBottom = useEffectEvent(() => {
+  const isNearBottom = useCallback(() => {
     return (
       window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.scrollHeight * scrollThreshold
+      document.documentElement.scrollHeight * scrollThresholdRef.current
     )
-  })
+  }, [])
 
-  const loadNextPage = useCallback(async (options?: ResetAndLoadOptions<TPageItem>) => {
-    if (fetchingRef.current) {
-      return
-    }
-
-    if (!loadingRef.current && !canLoadMoreData()) {
-      return
-    }
-
-    const requestGeneration = requestGenerationRef.current
-    const nextPage = pageDataRef.current + 1
-
-    fetchingRef.current = true
-    if (!loadingRef.current) {
-      setLoadingExtra(true)
-    }
-
-    try {
-      const response = await fetchRequestedPage(nextPage, options?.fetchPage)
-
-      if (requestGeneration !== requestGenerationRef.current) {
+  const loadNextPage = useCallback(
+    async (options?: ResetAndLoadOptions<TPageItem>) => {
+      if (fetchingRef.current) {
         return
       }
 
-      pageDataRef.current = nextPage
-      totalSizeRef.current = response.totalSize
-      setTotalSize(response.totalSize)
-      appendRequestedPageItems(response.items)
-
-      const nextData = [
-        ...dataRef.current,
-        ...mapRequestedPageItems(response.items),
-      ]
-      dataRef.current = nextData
-      setData(nextData)
-    } finally {
-      if (requestGeneration === requestGenerationRef.current) {
-        fetchingRef.current = false
-        setLoading(false)
-        setLoadingExtra(false)
+      if (!loadingRef.current && !canLoadMoreData()) {
+        return
       }
-    }
-  }, [
-    appendRequestedPageItems,
-    canLoadMoreData,
-    fetchRequestedPage,
-    mapRequestedPageItems,
-    setLoading,
-    setLoadingExtra,
-  ])
 
-  const loadNextPageIfNeeded = useEffectEvent(() => {
+      const requestGeneration = requestGenerationRef.current
+      const nextPage = pageDataRef.current + 1
+
+      fetchingRef.current = true
+      if (!loadingRef.current) {
+        setLoadingExtra(true)
+      }
+
+      try {
+        const response = await (options?.fetchPage ?? fetchPageRef.current)(
+          nextPage,
+        )
+
+        if (requestGeneration !== requestGenerationRef.current) {
+          return
+        }
+
+        pageDataRef.current = nextPage
+        totalSizeRef.current = response.totalSize
+        setTotalSize(response.totalSize)
+        onAppendPageItemsRef.current?.(response.items)
+
+        const nextData = [
+          ...dataRef.current,
+          ...mapPageItemsRef.current(response.items),
+        ]
+        dataRef.current = nextData
+        setData(nextData)
+      } finally {
+        if (requestGeneration === requestGenerationRef.current) {
+          fetchingRef.current = false
+          setLoading(false)
+          setLoadingExtra(false)
+        }
+      }
+    },
+    [canLoadMoreData, setLoading, setLoadingExtra],
+  )
+
+  const loadNextPageIfNeeded = useCallback(() => {
     if (
       isNearBottom() &&
       !loadingRef.current &&
@@ -161,7 +162,7 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
     ) {
       void loadNextPage()
     }
-  })
+  }, [canLoadMoreData, isNearBottom, loadNextPage])
 
   const reset = useCallback(() => {
     invalidateRequests()
@@ -172,24 +173,19 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
     setTotalSize(defaultTotalSize)
     setLoading(true)
     setLoadingExtra(false)
-    runReset()
-  }, [invalidateRequests, runReset, setLoading, setLoadingExtra])
+    onResetRef.current?.()
+  }, [invalidateRequests, setLoading, setLoadingExtra])
 
-  const resetAndLoad = useCallback((options?: ResetAndLoadOptions<TPageItem>) => {
-    reset()
-    void loadNextPage(options)
-  }, [loadNextPage, reset])
-
-  const loadInitialPage = useEffectEvent(() => {
-    void loadNextPage()
-  })
-
-  const handleScroll = useEffectEvent(() => {
-    loadNextPageIfNeeded()
-  })
+  const resetAndLoad = useCallback(
+    (options?: ResetAndLoadOptions<TPageItem>) => {
+      reset()
+      void loadNextPage(options)
+    },
+    [loadNextPage, reset],
+  )
 
   useEffect(() => {
-    loadInitialPage()
+    void loadNextPage()
 
     return () => {
       invalidateRequests()
@@ -197,21 +193,21 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
       pageDataRef.current = 0
       totalSizeRef.current = defaultTotalSize
     }
-  }, [invalidateRequests])
+  }, [invalidateRequests, loadNextPage])
 
   useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
+    const debouncedScroll = debounce(loadNextPageIfNeeded, 200)
     window.addEventListener('scroll', debouncedScroll)
 
     return () => {
       window.removeEventListener('scroll', debouncedScroll)
       debouncedScroll.cancel()
     }
-  }, [])
+  }, [loadNextPageIfNeeded])
 
   useEffect(() => {
     loadNextPageIfNeeded()
-  }, [data])
+  }, [data, loadNextPageIfNeeded])
 
   return {
     data,

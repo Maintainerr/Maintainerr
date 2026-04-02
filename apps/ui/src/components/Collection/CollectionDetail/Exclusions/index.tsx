@@ -29,7 +29,8 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
   const fetchAmount = 25
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(libraryType)
-  const { sortValue, sortParams, onSortChange } = useMediaLibrarySort(sortConfig)
+  const { sortValue, sortParams, onSortChange } =
+    useMediaLibrarySort(sortConfig)
 
   const mapExclusionItems = useCallback((items: IExclusionMedia[]) => {
     return items.map((item) => {
