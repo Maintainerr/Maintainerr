@@ -202,7 +202,6 @@ export class PlexAdapterService implements IMediaServerService {
 
     if (!results) return [];
 
-    // Apply limit if provided
     const limited = options?.limit ? results.slice(0, options.limit) : results;
     return limited.map(PlexMapper.toMediaItem);
   }
@@ -247,7 +246,6 @@ export class PlexAdapterService implements IMediaServerService {
 
   async getItemSeenBy(itemId: string): Promise<string[]> {
     const history = await this.getWatchHistory(itemId);
-    // Extract unique user IDs
     const userIds = new Set(history.map((record) => record.userId));
     return Array.from(userIds);
   }

@@ -24,10 +24,6 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { Settings } from './entities/settings.entities';
 import { MetadataProvider } from './metadata-provider';
 
-interface RefreshMediaServerItemsOptions {
-  retryFailedItemsWithMetadataLookup?: boolean;
-}
-
 @Injectable()
 export class MetadataSettingsService {
   private activeMetadataRefreshProvider: MetadataProvider | null = null;
@@ -199,14 +195,22 @@ export class MetadataSettingsService {
 
   private async refreshMediaServerItems(
     provider: MetadataProvider,
-    options: RefreshMediaServerItemsOptions = {},
+    {
+      retryFailedItemsWithMetadataLookup = false,
+    }: {
+      retryFailedItemsWithMetadataLookup?: boolean;
+    } = {},
   ): Promise<void> {
     try {
       const mediaServer = await this.mediaServerFactory.getService();
       if (!mediaServer?.isSetup()) return;
       const serverType = mediaServer.getServerType();
 
-      const column = provider === 'tmdb' ? 'tmdbId' : 'tvdbId';
+      const providerColumn: Record<MetadataProvider, 'tmdbId' | 'tvdbId'> = {
+        tmdb: 'tmdbId',
+        tvdb: 'tvdbId',
+      };
+      const column = providerColumn[provider];
       const rows = await this.collectionMediaRepo
         .createQueryBuilder('cm')
         .select('DISTINCT cm.mediaServerId', 'mediaServerId')
@@ -245,7 +249,11 @@ export class MetadataSettingsService {
         );
         const results = await Promise.allSettled(
           batch.map((mediaServerId) =>
-            this.refreshMediaServerItem(mediaServer, mediaServerId, options),
+            this.refreshMediaServerItem(
+              mediaServer,
+              mediaServerId,
+              retryFailedItemsWithMetadataLookup,
+            ),
           ),
         );
 
@@ -271,12 +279,12 @@ export class MetadataSettingsService {
   private async refreshMediaServerItem(
     mediaServer: IMediaServerService,
     itemId: string,
-    options: RefreshMediaServerItemsOptions,
+    retryFailedItemsWithMetadataLookup: boolean,
   ): Promise<void> {
     try {
       await mediaServer.refreshItemMetadata(itemId);
     } catch (error) {
-      if (!options.retryFailedItemsWithMetadataLookup) {
+      if (!retryFailedItemsWithMetadataLookup) {
         throw error;
       }
 
