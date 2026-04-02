@@ -114,4 +114,5 @@ export class Collection {
     onDelete: 'CASCADE',
   })
   collectionLog: CollectionLog[];
+  addRemainingDaysOverlay?: boolean;
 }
