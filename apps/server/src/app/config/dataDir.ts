@@ -8,9 +8,9 @@ export const productionDataDir =
 export const dataDir =
   process.env.NODE_ENV === 'production'
     ? productionDataDir
-    : path.join(__dirname, '../../../../data');
+    : path.join(__dirname, '../../../../../data');
 
 export const databasePath =
   process.env.NODE_ENV === 'production'
     ? path.join(productionDataDir, 'maintainerr.sqlite')
-    : '../../data/maintainerr.sqlite';
+    : path.join(dataDir, 'maintainerr.sqlite');

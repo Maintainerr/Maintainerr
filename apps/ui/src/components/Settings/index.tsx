@@ -10,6 +10,7 @@ import { useSettings, type UseSettingsResult } from '../../api/settings'
 import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import {
+  bypassMediaServerSetupGuard,
   isAllowedDuringMediaServerSetup,
   showMediaServerSetupRequiredToast,
 } from '../Layout/MediaServerSetupGuard'
@@ -171,7 +172,8 @@ const SettingsWrapper = () => {
   }, [isLoading, mediaServerType])
 
   const isMediaServerTypeSelected = Boolean(settings?.media_server_type)
-  const isSetupRestrictedRoute = !isLoading && !isMediaServerTypeSelected
+  const isSetupRestrictedRoute =
+    !bypassMediaServerSetupGuard && !isLoading && !isMediaServerTypeSelected
   const isAllowedRoute = isAllowedDuringMediaServerSetup(location.pathname)
 
   useEffect(() => {
@@ -211,6 +213,7 @@ const SettingsWrapper = () => {
   if (settings) {
     const routeIsDisabled = (route: SettingsRoute) => {
       return (
+        !bypassMediaServerSetupGuard &&
         !isMediaServerTypeSelected &&
         !isAllowedDuringMediaServerSetup(route.route)
       )

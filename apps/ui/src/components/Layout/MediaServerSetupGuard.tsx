@@ -4,6 +4,9 @@ import { toast } from 'react-toastify'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
 import LoadingSpinner from '../Common/LoadingSpinner'
 
+export const bypassMediaServerSetupGuard =
+  import.meta.env.MODE === 'development'
+
 export const mediaServerSetupRequiredToastId = 'media-server-setup-required'
 
 export const mediaServerSetupRequiredMessage =
@@ -14,6 +17,10 @@ export const isAllowedDuringMediaServerSetup = (pathname: string) => {
 }
 
 export const showMediaServerSetupRequiredToast = () => {
+  if (bypassMediaServerSetupGuard) {
+    return
+  }
+
   toast.error(mediaServerSetupRequiredMessage, {
     toastId: mediaServerSetupRequiredToastId,
   })
@@ -24,6 +31,10 @@ export const useMediaServerSetupNavigationGuard = () => {
 
   const isRouteBlocked = useCallback(
     (pathname: string) => {
+      if (bypassMediaServerSetupGuard) {
+        return false
+      }
+
       return (
         !isLoading &&
         isNotConfigured &&
@@ -46,10 +57,18 @@ const MediaServerSetupGuard = () => {
     useMediaServerSetupNavigationGuard()
 
   useEffect(() => {
+    if (bypassMediaServerSetupGuard) {
+      return
+    }
+
     if (!isLoading && isNotConfigured) {
       showBlockedNavigationToast()
     }
   }, [isLoading, isNotConfigured, showBlockedNavigationToast])
+
+  if (bypassMediaServerSetupGuard) {
+    return <Outlet />
+  }
 
   if (isLoading) {
     return <LoadingSpinner />
