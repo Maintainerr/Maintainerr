@@ -516,7 +516,7 @@ function ProviderSection({
             type="button"
             onClick={performTest}
             disabled={testing || isGoingToRemove || loadError || isLoading}
-            label="Test"
+            label="Test Connection"
             isPending={testing}
             feedbackStatus={testStatus}
             contentSize="compact"

@@ -219,7 +219,9 @@ describe('MetadataSettings', () => {
     const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Test' })[0])
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Test Connection' })[0],
+    )
 
     expect(
       await screen.findByText('Successfully connected to TMDB'),
