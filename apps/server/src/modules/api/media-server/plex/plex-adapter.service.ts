@@ -22,6 +22,10 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../plex-api/plex-api.service';
+import {
+  isBlankMediaServerId,
+  isForeignServerId,
+} from '../media-server-id.utils';
 import { supportsFeature } from '../media-server.constants';
 import {
   IMediaServerService,
@@ -114,10 +118,7 @@ export class PlexAdapterService implements IMediaServerService {
     libraryId: string,
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
-    // Check for migration issue: Jellyfin uses 32-char hex UUIDs, Plex uses numeric IDs
-    // TODO: Extract migration ID detection to shared utility (see JellyfinAdapterService.isLikelyMigrationId)
-    const isJellyfinId = /^[a-f0-9]{32}$/i.test(libraryId);
-    if (!libraryId || libraryId.trim() === '' || isJellyfinId) {
+    if (isForeignServerId(MediaServerType.PLEX, libraryId)) {
       this.logger.warn(
         `Library '${libraryId || '(empty)'}' appears to be from a different media server. Please update the library setting in your rules.`,
       );
@@ -471,6 +472,12 @@ export class PlexAdapterService implements IMediaServerService {
   }
 
   async refreshItemMetadata(itemId: string): Promise<void> {
+    if (isBlankMediaServerId(itemId)) {
+      throw new Error(
+        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+      );
+    }
+
     await this.plexApi.refreshMediaMetadata(itemId);
   }
 }

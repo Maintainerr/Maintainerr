@@ -12,6 +12,7 @@ const jellyfinApiMocks = {
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
   getItemUserData: jest.fn(),
+  refreshItem: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -104,6 +105,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     removeFromCollection: (...args: unknown[]) =>
       collectionApiMocks.removeFromCollection(...args),
   })),
+  getItemRefreshApi: jest.fn().mockImplementation(() => ({
+    refreshItem: (...args: unknown[]) => jellyfinApiMocks.refreshItem(...args),
+  })),
   getSearchApi: jest.fn(),
   getPlaylistsApi: jest.fn(),
   getUserViewsApi: jest.fn(),
@@ -155,6 +159,7 @@ describe('JellyfinAdapterService', () => {
       data: { MaxResumePct: 90 },
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+    jellyfinApiMocks.refreshItem.mockResolvedValue(undefined);
     collectionApiMocks.createCollection.mockResolvedValue({
       data: { Id: 'collection-1' },
     });
@@ -254,6 +259,33 @@ describe('JellyfinAdapterService', () => {
 
     it('should not throw when resetting all cache', () => {
       expect(() => service.resetMetadataCache()).not.toThrow();
+    });
+  });
+
+  describe('refreshItemMetadata', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('queues refresh for valid Jellyfin item ids', async () => {
+      const itemId = 'a852a27afe324084ae66db579ee3ee18';
+
+      await service.refreshItemMetadata(itemId);
+
+      expect(jellyfinApiMocks.refreshItem).toHaveBeenCalledWith({ itemId });
+    });
+
+    it('rejects blank Jellyfin item ids before calling the API', async () => {
+      await expect(service.refreshItemMetadata('   ')).rejects.toThrow(
+        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+      );
+
+      expect(jellyfinApiMocks.refreshItem).not.toHaveBeenCalled();
     });
   });
 
