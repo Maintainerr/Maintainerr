@@ -16,6 +16,7 @@ interface ModalProps {
   cancelText?: string
   okText?: string
   secondaryText?: string
+  secondaryContent?: ReactNode
   tertiaryText?: string
   specialText?: string
   okDisabled?: boolean
@@ -68,6 +69,7 @@ const Modal: React.FC<ModalProps> = ({
   secondaryDisabled = false,
   onSecondary,
   secondaryText,
+  secondaryContent,
   tertiaryButtonType = 'default',
   tertiaryDisabled = false,
   tertiaryText,
@@ -167,20 +169,23 @@ const Modal: React.FC<ModalProps> = ({
                 onClick={onOk}
                 className="ml-3"
                 disabled={okDisabled}
+                type="button"
               >
                 {okText ? okText : 'Ok'}
               </Button>
             )}
-            {typeof onSecondary === 'function' && secondaryText && (
-              <Button
-                buttonType={secondaryButtonType}
-                onClick={onSecondary}
-                className="ml-3"
-                disabled={secondaryDisabled}
-              >
-                {secondaryText}
-              </Button>
-            )}
+            {typeof onSecondary === 'function' &&
+              (secondaryText || secondaryContent) && (
+                <Button
+                  buttonType={secondaryButtonType}
+                  onClick={onSecondary}
+                  className="ml-3"
+                  disabled={secondaryDisabled}
+                  type="button"
+                >
+                  {secondaryContent ?? secondaryText}
+                </Button>
+              )}
             {typeof onTertiary === 'function' && tertiaryText && (
               <Button
                 buttonType={tertiaryButtonType}
@@ -196,6 +201,7 @@ const Modal: React.FC<ModalProps> = ({
                 buttonType={cancelButtonType}
                 onClick={onCancel}
                 className="ml-3"
+                type="button"
               >
                 {cancelText ? cancelText : 'Cancel'}
               </Button>

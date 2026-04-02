@@ -1,3 +1,4 @@
+import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
@@ -20,6 +21,8 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
+import PendingButton from '../../Common/PendingButton'
+import TestingButton from '../../Common/TestingButton'
 import { Input } from '../../Forms/Input'
 import {
   type SettingsFeedback,
@@ -184,6 +187,7 @@ function useProviderForm(config: ProviderConfig) {
   const [testedSettings, setTestedSettings] = useState<
     { api_key: string } | undefined
   >()
+  const [testStatus, setTestStatus] = useState<boolean | undefined>()
   const [testing, setTesting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -240,6 +244,7 @@ function useProviderForm(config: ProviderConfig) {
     onChange: () => {
       clear()
       setTestedSettings(undefined)
+      setTestStatus(undefined)
     },
   })
 
@@ -256,6 +261,9 @@ function useProviderForm(config: ProviderConfig) {
         setTestedSettings(
           data.api_key === '' ? undefined : { api_key: data.api_key },
         )
+        if (data.api_key === '') {
+          setTestStatus(undefined)
+        }
         showUpdated()
       } else {
         showUpdateError()
@@ -282,12 +290,15 @@ function useProviderForm(config: ProviderConfig) {
 
         if (response.code === 1) {
           setTestedSettings({ api_key: apiKey })
+          setTestStatus(true)
           showInfo(`Successfully connected to ${config.title}`)
         } else {
+          setTestStatus(false)
           showError(message)
         }
       })
       .catch((error: unknown) => {
+        setTestStatus(false)
         showError(getApiErrorMessage(error, config.testFailureMessage))
       })
       .finally(() => {
@@ -330,6 +341,8 @@ function useProviderForm(config: ProviderConfig) {
     errors,
     isConfigured,
     isLoading,
+    isSubmitting,
+    testStatus,
     testing,
     refreshing,
     refreshAction,
@@ -390,9 +403,10 @@ function ProviderSection({
   feedback,
   isConfigured,
   isLoading,
+  isSubmitting,
+  testStatus,
   isGoingToRemove,
   testing,
-  refreshing,
   refreshAction,
   loadError,
   registerApiKey,
@@ -411,9 +425,10 @@ function ProviderSection({
   feedback: SettingsFeedback
   isConfigured: boolean
   isLoading: boolean
+  isSubmitting: boolean
+  testStatus?: boolean
   isGoingToRemove: boolean
   testing: boolean
-  refreshing: boolean
   refreshAction: ReturnType<typeof useProviderForm>['refreshAction']
   loadError: boolean
   registerApiKey: ReturnType<typeof useProviderForm>['registerApiKey']
@@ -495,27 +510,29 @@ function ProviderSection({
         </div>
 
         <div className="mt-auto w-full pt-2.5">
-          <Button
-            buttonSize="md"
+          <TestingButton
             buttonType="twin-secondary-l"
             className="h-10 w-1/2"
             type="button"
             onClick={performTest}
             disabled={testing || isGoingToRemove || loadError || isLoading}
-          >
-            <span className="font-semibold">
-              {testing ? 'Testing...' : 'Test'}
-            </span>
-          </Button>
-          <Button
+            label="Test Connection"
+            isPending={testing}
+            feedbackStatus={testStatus}
+            contentSize="compact"
+          />
+          <PendingButton
             buttonType="twin-primary-r"
-            buttonSize="md"
             className="h-10 w-1/2"
             type="submit"
             disabled={!canSave}
-          >
-            <span className="font-semibold">Save</span>
-          </Button>
+            idleLabel="Save"
+            pendingLabel="Saving"
+            isPending={isSubmitting}
+            idleIcon={<SaveIcon />}
+            reserveLabel="Saving"
+            contentSize="compact"
+          />
         </div>
       </form>
     </div>
@@ -614,9 +631,10 @@ const MetadataSettings = () => {
                   feedback={provider.feedback}
                   isConfigured={provider.isConfigured}
                   isLoading={provider.isLoading}
+                  isSubmitting={provider.isSubmitting}
+                  testStatus={provider.testStatus}
                   isGoingToRemove={provider.isGoingToRemove}
                   testing={provider.testing}
-                  refreshing={provider.refreshing}
                   refreshAction={provider.refreshAction}
                   loadError={provider.loadError}
                   registerApiKey={provider.registerApiKey}

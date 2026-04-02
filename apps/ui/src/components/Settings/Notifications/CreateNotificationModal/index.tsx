@@ -1,19 +1,27 @@
 import { BasicResponseDto } from '@maintainerr/contracts'
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'react-toastify'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { camelCaseToPrettyText } from '../../../../utils/SettingsUtils'
+import Alert from '../../../Common/Alert'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
+import {
+  getTestingButtonType,
+  TestingButtonContent,
+} from '../../../Common/TestingButton'
 import ToggleItem from '../../../Common/ToggleButton'
+import SettingsAlertSlot from '../../SettingsAlertSlot'
 
 interface agentSpec {
   name: string
   friendlyName: string
-  options: [
-    { field: string; type: string; required: boolean; extraInfo: string },
-  ]
+  options: Array<{
+    field: string
+    type: string
+    required: boolean
+    extraInfo: string
+  }>
 }
 
 interface typeSpec {
@@ -33,9 +41,14 @@ export interface AgentConfiguration {
 
 interface CreateNotificationModal {
   selected?: AgentConfiguration
-  onSave: (status: boolean) => void
+  onSave: () => void
   onTest: () => void
   onCancel: () => void
+}
+
+interface TestStatus {
+  status: boolean
+  message: string
 }
 
 const CreateNotificationModal = (props: CreateNotificationModal) => {
@@ -50,58 +63,95 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
 
   const [targetAgent, setTargetAgent] = useState<agentSpec>()
   const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
+  const [error, setError] = useState<string>()
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<TestStatus>()
 
-  const handleSubmit = () => {
+  const selectedAgentIndex = targetAgent
+    ? (availableAgents?.findIndex((agent) => agent.name === targetAgent.name) ??
+      0)
+    : 0
+
+  const hasValidTargetAgent = Boolean(targetAgent && targetAgent.name !== '-')
+
+  const clearFeedback = () => {
+    setError(undefined)
+    setTestResult(undefined)
+  }
+
+  const handleSubmit = async () => {
     const types = targetTypes ? targetTypes.map((t) => t.id) : []
 
-    if (targetAgent && nameRef.current !== '') {
+    if (hasValidTargetAgent && nameRef.current !== '') {
       const payload: AgentConfiguration = {
         id: props.selected?.id,
         name: nameRef.current,
-        agent: targetAgent.name,
+        agent: targetAgent!.name,
         enabled: enabledRef.current,
         types: types,
         aboutScale: aboutScaleRef.current,
         options: formValues,
       }
-      postNotificationConfig(payload)
+      clearFeedback()
+      await postNotificationConfig(payload)
     } else {
-      props.onSave(false)
+      setError('Not all fields contain values')
     }
   }
 
-  const doTest = () => {
-    if (targetAgent && nameRef.current !== '') {
-      const types = targetTypes ? targetTypes.map((t) => t.id) : []
+  const doTest = async () => {
+    if (testing) return
 
-      PostApiHandler(`/notifications/test`, {
+    if (hasValidTargetAgent && nameRef.current !== '') {
+      const types = targetTypes ? targetTypes.map((t) => t.id) : []
+      clearFeedback()
+      setTesting(true)
+
+      await PostApiHandler<string>(`/notifications/test`, {
         id: props.selected?.id,
         name: nameRef.current,
-        agent: targetAgent.name,
+        agent: targetAgent!.name,
         enabled: enabledRef.current,
         types: types,
         aboutScale: aboutScaleRef.current,
         options: formValues,
-      }).then((resp) => {
-        if (resp !== 'Success') {
-          toast.error(resp, {
-            autoClose: 10000,
-          })
-        } else {
-          toast.success('Successfully fired the notification!')
-        }
       })
+        .then((resp) => {
+          setTestResult({
+            status: resp === 'Success',
+            message:
+              resp === 'Success'
+                ? 'Successfully fired the notification!'
+                : resp,
+          })
+        })
+        .catch(() => {
+          setTestResult({
+            status: false,
+            message: 'Failed to fire the notification.',
+          })
+        })
+        .finally(() => {
+          setTesting(false)
+        })
+    } else {
+      setError('Not all fields contain values')
     }
   }
 
   useEffect(() => {
     GetApiHandler('/notifications/agents').then((agents) => {
-      setAvailableAgents([{ name: '-', options: [] }, ...agents])
+      const agentsWithPlaceholder = [
+        { name: '-', friendlyName: '', options: [] },
+        ...agents,
+      ]
+
+      setAvailableAgents(agentsWithPlaceholder)
 
       // load selected agents if editing
       if (props.selected && props.selected.agent) {
         setTargetAgent(
-          agents.find(
+          agentsWithPlaceholder.find(
             (agent: agentSpec) => props.selected!.agent === agent.name,
           ),
         )
@@ -120,12 +170,18 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     })
   }, [props.selected])
 
-  const postNotificationConfig = (payload: AgentConfiguration) => {
-    PostApiHandler('/notifications/configuration/add', payload).then(
-      (status: BasicResponseDto) => {
-        props.onSave(status.status === 'OK')
-      },
+  const postNotificationConfig = async (payload: AgentConfiguration) => {
+    const status = await PostApiHandler<BasicResponseDto>(
+      '/notifications/configuration/add',
+      payload,
     )
+
+    if (status.status === 'OK') {
+      props.onSave()
+      return
+    }
+
+    setError(status.message)
   }
 
   const handleInputChange = (fieldName: string, value: any) => {
@@ -133,36 +189,65 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       ...prevValues,
       [fieldName]: value,
     }))
+    clearFeedback()
   }
 
-  if (!availableAgents || !availableTypes) {
-    return (
-      <span>
-        <LoadingSpinner />
-      </span>
-    )
-  } else {
-    return (
-      <Modal
-        loading={false}
-        backgroundClickable={false}
-        onCancel={() => props.onCancel()}
-        okDisabled={false}
-        okText="Save"
-        okButtonType={'primary'}
-        title={
-          props.selected?.id
-            ? 'Edit Notification Agent'
-            : 'New Notification Agent'
-        }
-        iconSvg={''}
-        onOk={handleSubmit}
-        secondaryButtonType="success"
-        secondaryText={'Test'}
-        onSecondary={doTest}
-      >
-        <div>
+  const isLoading = !availableAgents || !availableTypes
+
+  const modalTitle = props.selected?.id
+    ? 'Edit Notification Agent'
+    : 'New Notification Agent'
+
+  return (
+    <Modal
+      loading={false}
+      backgroundClickable={false}
+      onCancel={() => props.onCancel()}
+      okDisabled={isLoading}
+      okText="Save"
+      okButtonType={'primary'}
+      title={modalTitle}
+      iconSvg={''}
+      onOk={handleSubmit}
+      secondaryButtonType={getTestingButtonType(
+        'success',
+        testResult?.status,
+        testing,
+      )}
+      secondaryDisabled={isLoading || testing}
+      secondaryContent={
+        <TestingButtonContent
+          isPending={testing}
+          feedbackStatus={testResult?.status}
+        />
+      }
+      onSecondary={doTest}
+    >
+      <div className="min-h-[16rem]">
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : (
           <form className="space-y-4">
+            {error ? (
+              <Alert
+                type={
+                  error === 'Not all fields contain values'
+                    ? 'warning'
+                    : 'error'
+                }
+                title={error}
+              />
+            ) : null}
+
+            <SettingsAlertSlot>
+              {testResult ? (
+                <Alert
+                  type={testResult.status ? 'info' : 'error'}
+                  title={testResult.message}
+                />
+              ) : null}
+            </SettingsAlertSlot>
+
             {/* Config Name */}
             <div className="form-row">
               <label htmlFor="name" className="text-label">
@@ -175,9 +260,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     id="name"
                     name="name"
                     defaultValue={props.selected?.name}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                      (nameRef.current = event.target.value)
-                    }
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                      nameRef.current = event.target.value
+                      clearFeedback()
+                    }}
                   ></input>
                 </div>
               </div>
@@ -194,9 +280,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     name="enabled"
                     id="enabled"
                     defaultChecked={props.selected?.enabled}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                      (enabledRef.current = event.target.checked)
-                    }
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                      enabledRef.current = event.target.checked
+                      clearFeedback()
+                    }}
                   ></input>
                 </div>
               </div>
@@ -211,22 +298,16 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                   <select
                     id="agent"
                     name="agent"
+                    value={selectedAgentIndex}
                     onChange={(e) => {
                       setFormValues({})
                       setTargetAgent(availableAgents[Number(e.target.value)])
+                      clearFeedback()
                     }}
                     className="rounded-l-only"
                   >
                     {availableAgents?.map((agent, index) => (
-                      <option
-                        key={`agent-${index}`}
-                        value={index}
-                        selected={
-                          props.selected
-                            ? agent.name === props.selected?.agent
-                            : false
-                        }
-                      >
+                      <option key={`agent-${index}`} value={index}>
                         {`${agent.friendlyName ? agent.friendlyName : ''}`}
                       </option>
                     ))}
@@ -322,15 +403,23 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     <div key={n.id}>
                       <ToggleItem
                         label={n.title}
-                        toggled={props.selected?.types.includes(n.id)}
+                        toggled={targetTypes.some((type) => type.id === n.id)}
                         onStateChange={(state) => {
                           if (state) {
-                            setTargetTypes([...targetTypes, n])
+                            setTargetTypes((current) => {
+                              if (current.some((type) => type.id === n.id)) {
+                                return current
+                              }
+
+                              return [...current, n]
+                            })
                           } else {
-                            setTargetTypes(
-                              targetTypes.filter((el) => el.id !== n.id),
+                            setTargetTypes((current) =>
+                              current.filter((el) => el.id !== n.id),
                             )
                           }
+
+                          clearFeedback()
                         }}
                       />
                       {/* Show only when 'Media About To Be Handled' is selected */}
@@ -347,9 +436,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                                 defaultValue={props.selected?.aboutScale ?? 3}
                                 onChange={(
                                   event: React.ChangeEvent<HTMLInputElement>,
-                                ) =>
-                                  (aboutScaleRef.current = +event.target.value)
-                                }
+                                ) => {
+                                  aboutScaleRef.current = +event.target.value
+                                  clearFeedback()
+                                }}
                               />
                             </div>
                           </div>
@@ -361,9 +451,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
               </div>
             </div>
           </form>
-        </div>
-      </Modal>
-    )
-  }
+        )}
+      </div>
+    </Modal>
+  )
 }
 export default CreateNotificationModal
