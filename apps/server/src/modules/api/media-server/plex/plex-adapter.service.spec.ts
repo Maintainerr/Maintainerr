@@ -71,6 +71,24 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('refreshItemMetadata', () => {
+    it('should delegate metadata refresh for non-empty item ids', async () => {
+      plexApi.refreshMediaMetadata.mockResolvedValue(undefined);
+
+      await service.refreshItemMetadata('12345');
+
+      expect(plexApi.refreshMediaMetadata).toHaveBeenCalledWith('12345');
+    });
+
+    it('should reject blank item ids before calling PlexApiService', async () => {
+      await expect(service.refreshItemMetadata('   ')).rejects.toThrow(
+        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+      );
+
+      expect(plexApi.refreshMediaMetadata).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getStatus', () => {
     it('should return undefined when PlexApiService returns undefined', async () => {
       plexApi.getStatus.mockResolvedValue(undefined);
