@@ -38,7 +38,7 @@ export const buildLibraryContentQuery = ({
   return new URLSearchParams({
     page: `${page}`,
     limit: `${limit}`,
-    ...(libraryType && sortParams ? { type: libraryType } : {}),
+    ...(libraryType ? { type: libraryType } : {}),
     ...(sortParams ?? {}),
   })
 }
