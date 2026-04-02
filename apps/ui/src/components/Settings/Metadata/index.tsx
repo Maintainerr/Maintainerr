@@ -167,7 +167,7 @@ const providers: ProviderConfig[] = [
       <>
         You can create an API key at{' '}
         <a
-          href="https://thetvdb.com/api-information/signup"
+          href="https://thetvdb.com/dashboard/account/apikey"
           target="_blank"
           rel="noreferrer"
           className="text-amber-500 underline hover:text-amber-400"
