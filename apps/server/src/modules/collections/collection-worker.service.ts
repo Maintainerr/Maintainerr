@@ -7,7 +7,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { delay } from '../../utils/delay';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionMediaHandledDto } from '../events/events.dto';
@@ -17,6 +17,7 @@ import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
+import { handleMediaCollectionOverlay } from './collection-media-overlay-handler';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
@@ -133,7 +134,7 @@ export class CollectionWorkerService extends TaskBase {
         0,
       );
       emitProgressedEvent();
-
+      // deletes media
       for (const collectionGroup of collectionHandleMediaGroup) {
         const collection = collectionGroup.collection;
         const collectionMedia = collectionGroup.mediaToHandle;
@@ -214,6 +215,30 @@ export class CollectionWorkerService extends TaskBase {
         }
       }
       this.logger.log('Collection size cache updated');
+
+      const collectionPosterOverlayMediaGroup: {
+        collection: Collection;
+        mediaToHandle: CollectionMedia[];
+      }[] = [];
+      // add overlay to media item
+      for (const collection of collectionsToHandle) {
+        const dangerDate = new Date(
+          new Date().getTime() - +collection.deleteAfterDays * 86400000,
+        );
+
+        const mediaToHandle = await this.collectionMediaRepo.find({
+          where: {
+            collectionId: collection.id,
+            addDate: MoreThan(dangerDate),
+          },
+        });
+
+        collectionPosterOverlayMediaGroup.push({
+          collection,
+          mediaToHandle,
+        });
+      }
+      handleMediaCollectionOverlay(collectionPosterOverlayMediaGroup);
     } finally {
       release();
 
