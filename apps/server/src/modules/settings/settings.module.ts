@@ -6,6 +6,8 @@ import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
+import { TmdbApiModule } from '../api/tmdb-api/tmdb.module';
+import { TvdbApiModule } from '../api/tvdb-api/tvdb.module';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -17,6 +19,7 @@ import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
@@ -29,6 +32,8 @@ import { SettingsService } from './settings.service';
     forwardRef(() => ServarrApiModule),
     forwardRef(() => SeerrApiModule),
     forwardRef(() => TautulliApiModule),
+    forwardRef(() => TmdbApiModule),
+    forwardRef(() => TvdbApiModule),
     forwardRef(() => InternalApiModule),
     TypeOrmModule.forFeature([
       Settings,
@@ -44,6 +49,7 @@ import { SettingsService } from './settings.service';
   ],
   providers: [
     SettingsService,
+    MetadataSettingsService,
     RuleMigrationService,
     MediaServerSwitchService,
     DatabaseDownloadService,

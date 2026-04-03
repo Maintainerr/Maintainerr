@@ -12,6 +12,7 @@ import SearchContext from '../../../contexts/search-context'
 import { prefetchRoute } from '../../../router'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
+import { useMediaServerSetupNavigationGuard } from '../MediaServerSetupGuard'
 
 interface NavBarLink {
   key: string
@@ -31,6 +32,8 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const SearchCtx = useContext(SearchContext)
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
+  const { isRouteBlocked, showBlockedNavigationToast } =
+    useMediaServerSetupNavigationGuard()
   // Keep variable for potential future customization
   const collectionsLabel = 'Collections'
 
@@ -80,6 +83,61 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
     void prefetchRoute(path)
   }
 
+  const linkIsDisabled = (href: string) => {
+    return isRouteBlocked(href)
+  }
+
+  const getNavLinkHandlers = (
+    link: NavBarLink,
+    isDisabled: boolean,
+    onNavigate?: () => void,
+  ) => ({
+    onMouseEnter: () => {
+      if (!isDisabled) {
+        handlePrefetch(link.href)
+      }
+    },
+    onFocus: () => {
+      if (!isDisabled) {
+        handlePrefetch(link.href)
+      }
+    },
+    onTouchStart: () => {
+      if (!isDisabled) {
+        handlePrefetch(link.href)
+      }
+    },
+    onClick: (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (isDisabled) {
+        event.preventDefault()
+        showBlockedNavigationToast()
+        return
+      }
+
+      if (link.href === '/overview') {
+        SearchCtx.removeText()
+      }
+
+      onNavigate?.()
+    },
+  })
+
+  const logo = (
+    <Link to="/" className="block w-full max-w-[204px]">
+      <div className="block h-[60px] w-full overflow-hidden">
+        <img
+          className="block h-full w-full object-contain object-left"
+          src={`${basePath}/logo.svg`}
+          alt="Maintainerr logo"
+          width={340}
+          height={100}
+          decoding="sync"
+          fetchPriority="high"
+        />
+      </div>
+    </Link>
+  )
+
   return (
     <div>
       <div className="lg:hidden">
@@ -103,38 +161,32 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                   ref={navRef}
                   className="flex h-0 flex-1 flex-col overflow-y-auto pb-8 pt-4 sm:pb-4"
                 >
-                  <div className="flex flex-shrink-0 items-center px-2">
-                    <span className="px-4 text-xl text-zinc-50">
-                      <Link to="/">
-                        <img
-                          style={{ width: '100%', height: 'auto' }}
-                          src={`${basePath}/logo.svg`}
-                          alt="Logo"
-                        />
-                      </Link>
-                    </span>
+                  <div className="flex h-[60px] flex-shrink-0 items-center px-6">
+                    {logo}
                   </div>
                   <nav className="mt-12 flex-1 space-y-4 px-4">
                     {navBarItems.map((link) => {
+                      const isDisabled = linkIsDisabled(link.href)
+                      const linkHandlers = getNavLinkHandlers(
+                        link,
+                        isDisabled,
+                        setClosed,
+                      )
+
                       return (
                         <Link
                           key={link.key}
                           to={link.href}
-                          onMouseEnter={() => handlePrefetch(link.href)}
-                          onFocus={() => handlePrefetch(link.href)}
-                          onTouchStart={() => handlePrefetch(link.href)}
-                          onClick={() => {
-                            if (link.href === '/overview') {
-                              SearchCtx.removeText()
-                            }
-                            setClosed()
-                          }}
+                          {...linkHandlers}
                           role="button"
                           tabIndex={0}
+                          aria-disabled={isDisabled}
                           className={`flex items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out ${
                             linkIsActive(link)
                               ? 'bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700'
-                              : 'hover:bg-zinc-700'
+                              : isDisabled
+                                ? 'cursor-not-allowed opacity-50'
+                                : 'hover:bg-zinc-700'
                           } focus:bg-amber-800 focus:outline-none`}
                         >
                           {link.svgIcon}
@@ -161,35 +213,29 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         <div className="sidebar flex w-64 flex-col">
           <div className="flex h-0 flex-1 flex-col">
             <div className="flex flex-1 flex-col overflow-y-auto pb-4 pt-4">
-              <div className="flex flex-shrink-0 items-center">
-                <span className="px-4 text-2xl text-zinc-50">
-                  <Link to="/">
-                    <img
-                      style={{ width: '100%', height: 'auto' }}
-                      src={`${basePath}/logo.svg`}
-                      alt="Logo"
-                    />
-                  </Link>
-                </span>
+              <div className="flex h-[60px] flex-shrink-0 items-center px-6">
+                {logo}
               </div>
               <nav className="mt-12 flex-1 space-y-4 px-4">
                 {navBarItems.map((navBarLink) => {
+                  const isDisabled = linkIsDisabled(navBarLink.href)
+                  const linkHandlers = getNavLinkHandlers(
+                    navBarLink,
+                    isDisabled,
+                  )
+
                   return (
                     <Link
                       key={`desktop-${navBarLink.key}`}
                       to={navBarLink.href}
-                      onMouseEnter={() => handlePrefetch(navBarLink.href)}
-                      onFocus={() => handlePrefetch(navBarLink.href)}
-                      onTouchStart={() => handlePrefetch(navBarLink.href)}
-                      onClick={() => {
-                        if (navBarLink.href === '/overview') {
-                          SearchCtx.removeText()
-                        }
-                      }}
+                      {...linkHandlers}
+                      aria-disabled={isDisabled}
                       className={`group flex items-center rounded-md px-2 py-2 text-lg font-medium leading-6 text-white transition duration-150 ease-in-out ${
                         linkIsActive(navBarLink)
                           ? 'bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700'
-                          : 'hover:bg-zinc-700'
+                          : isDisabled
+                            ? 'cursor-not-allowed opacity-50'
+                            : 'hover:bg-zinc-700'
                       } focus:bg-amber-800 focus:outline-none`}
                     >
                       {navBarLink.svgIcon}

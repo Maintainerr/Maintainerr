@@ -6,10 +6,12 @@ import {
   MediaItem,
   MediaItemType,
   MediaLibrary,
+  MediaLibrarySortField,
   MediaPlaylist,
   MediaServerFeature,
   MediaServerStatus,
   MediaServerType,
+  MediaSortOrder,
   MediaUser,
   PagedResult,
   RecentlyAddedOptions,
@@ -20,9 +22,36 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../plex-api/plex-api.service';
+import {
+  isBlankMediaServerId,
+  isForeignServerId,
+} from '../media-server-id.utils';
 import { supportsFeature } from '../media-server.constants';
-import { IMediaServerService } from '../media-server.interface';
+import {
+  IMediaServerService,
+  type MediaWatchState,
+} from '../media-server.interface';
 import { PlexMapper } from './plex.mapper';
+
+const toPlexSort = (
+  sort?: MediaLibrarySortField,
+  sortOrder?: MediaSortOrder,
+): string | undefined => {
+  const direction = sortOrder ?? 'asc';
+
+  switch (sort) {
+    case 'airDate':
+      return `originallyAvailableAt:${direction}`;
+    case 'rating':
+      return `audienceRating:${direction}`;
+    case 'watchCount':
+      return `viewCount:${direction}`;
+    case 'title':
+      return `titleSort:${direction}`;
+    default:
+      return undefined;
+  }
+};
 
 /**
  * Adapter that wraps PlexApiService to implement IMediaServerService.
@@ -89,10 +118,7 @@ export class PlexAdapterService implements IMediaServerService {
     libraryId: string,
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
-    // Check for migration issue: Jellyfin uses 32-char hex UUIDs, Plex uses numeric IDs
-    // TODO: Extract migration ID detection to shared utility (see JellyfinAdapterService.isLikelyMigrationId)
-    const isJellyfinId = /^[a-f0-9]{32}$/i.test(libraryId);
-    if (!libraryId || libraryId.trim() === '' || isJellyfinId) {
+    if (isForeignServerId(MediaServerType.PLEX, libraryId)) {
       this.logger.warn(
         `Library '${libraryId || '(empty)'}' appears to be from a different media server. Please update the library setting in your rules.`,
       );
@@ -108,6 +134,7 @@ export class PlexAdapterService implements IMediaServerService {
       {
         offset: options?.offset ?? 0,
         size: options?.limit ?? 50,
+        sort: toPlexSort(options?.sort, options?.sortOrder),
       },
       plexType,
     );
@@ -175,7 +202,6 @@ export class PlexAdapterService implements IMediaServerService {
 
     if (!results) return [];
 
-    // Apply limit if provided
     const limited = options?.limit ? results.slice(0, options.limit) : results;
     return limited.map(PlexMapper.toMediaItem);
   }
@@ -192,9 +218,34 @@ export class PlexAdapterService implements IMediaServerService {
     return history.map(PlexMapper.toWatchRecord);
   }
 
+  async getWatchState(
+    itemId: string,
+    nativeViewCount?: number,
+  ): Promise<MediaWatchState> {
+    const history = await this.plexApi.getWatchHistory(itemId, false);
+
+    if (history && history.length > 0) {
+      return {
+        viewCount: history.length,
+        isWatched: true,
+      };
+    }
+
+    // When watch history is empty (purged or item was marked watched without
+    // a play event), fall back to the native Plex viewCount for the boolean
+    // only.  This value is per-user (admin token) so we do not use it for
+    // the numeric viewCount to avoid misrepresenting server-wide counts.
+    const watchedByNative =
+      nativeViewCount !== undefined && nativeViewCount > 0;
+
+    return {
+      viewCount: 0,
+      isWatched: watchedByNative,
+    };
+  }
+
   async getItemSeenBy(itemId: string): Promise<string[]> {
     const history = await this.getWatchHistory(itemId);
-    // Extract unique user IDs
     const userIds = new Set(history.map((record) => record.userId));
     return Array.from(userIds);
   }
@@ -416,5 +467,15 @@ export class PlexAdapterService implements IMediaServerService {
     }
     // Note: PlexApiService doesn't support full cache flush through this method
     // Only individual item cache reset is supported
+  }
+
+  async refreshItemMetadata(itemId: string): Promise<void> {
+    if (isBlankMediaServerId(itemId)) {
+      throw new Error(
+        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+      );
+    }
+
+    await this.plexApi.refreshMediaMetadata(itemId);
   }
 }

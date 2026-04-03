@@ -256,15 +256,20 @@ export class PlexApiService {
 
   public async getLibraryContents(
     id: string,
-    { offset = 0, size = 50 }: { offset?: number; size?: number } = {},
+    {
+      offset = 0,
+      size = 50,
+      sort,
+    }: { offset?: number; size?: number; sort?: string } = {},
     datatype?: EPlexDataType,
     useCache: boolean = true,
   ): Promise<{ totalSize: number; items: PlexLibraryItem[] }> {
     try {
       const type = datatype ? '&type=' + datatype : '';
+      const sortQuery = sort ? `&sort=${encodeURIComponent(sort)}` : '';
       const response = await this.plexClient.query<PlexLibraryResponse>(
         {
-          uri: `/library/sections/${id}/all?includeGuids=1${type}`,
+          uri: `/library/sections/${id}/all?includeGuids=1${type}${sortQuery}`,
           extraHeaders: {
             'X-Plex-Container-Start': `${offset}`,
             'X-Plex-Container-Size': `${size}`,
@@ -446,12 +451,18 @@ export class PlexApiService {
     }
   }
 
-  public async getWatchHistory(itemId: string): Promise<PlexSeenBy[]> {
+  public async getWatchHistory(
+    itemId: string,
+    useCache: boolean = true,
+  ): Promise<PlexSeenBy[]> {
     try {
       const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>({
-          uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
-        });
+        await this.plexClient.queryAll<PlexLibraryResponse>(
+          {
+            uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
+          },
+          useCache,
+        );
       return response.MediaContainer.Metadata as PlexSeenBy[];
     } catch (error) {
       this.logger.error(
@@ -537,6 +548,20 @@ export class PlexApiService {
         `Something went wrong while removing media ${plexId} from Plex.`,
       );
       this.logger.debug(error);
+    }
+  }
+
+  public async refreshMediaMetadata(ratingKey: string): Promise<void> {
+    try {
+      await this.plexClient.putQuery({
+        uri: `/library/metadata/${ratingKey}/refresh`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to refresh Plex metadata for item ${ratingKey}`,
+      );
+      this.logger.debug(error);
+      throw error;
     }
   }
 

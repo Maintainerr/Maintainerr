@@ -4,6 +4,9 @@ import {
   jellyfinSettingSchema,
   MediaServerSwitchPreview,
   MediaServerType,
+  MetadataProviderPreference,
+  MetadataProviderSetting,
+  metadataProviderSettingSchema,
   RadarrSetting,
   radarrSettingSchema,
   SeerrSetting,
@@ -15,6 +18,12 @@ import {
   switchMediaServerSchema,
   TautulliSetting,
   tautulliSettingSchema,
+  TmdbSetting,
+  tmdbSettingSchema,
+  TmdbSettingForm,
+  TvdbSetting,
+  tvdbSettingSchema,
+  TvdbSettingForm,
 } from '@maintainerr/contracts';
 import {
   Body,
@@ -38,13 +47,16 @@ import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
+import { MetadataProvider } from './metadata-provider';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsService } from './settings.service';
 
 @Controller('/api/settings')
 export class SettingsController {
   constructor(
     private readonly settingsService: SettingsService,
+    private readonly metadataSettingsService: MetadataSettingsService,
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly databaseDownloadService: DatabaseDownloadService,
   ) {}
@@ -201,6 +213,109 @@ export class SettingsController {
     payload: TautulliSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testTautulli(payload);
+  }
+
+  @Get('/tmdb')
+  async getTmdbSetting(): Promise<TmdbSettingForm | BasicResponseDto> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      api_key: settings.tmdb_api_key ?? '',
+    };
+  }
+
+  @Post('/tmdb')
+  async updateTmdbSetting(
+    @Body(new ZodValidationPipe(tmdbSettingSchema))
+    payload: TmdbSetting,
+  ) {
+    return await this.metadataSettingsService.updateTmdbSetting(payload);
+  }
+
+  @Delete('/tmdb')
+  async removeTmdbSetting() {
+    return await this.metadataSettingsService.removeTmdbSetting();
+  }
+
+  @Post('/test/tmdb')
+  testTmdb(
+    @Body(new ZodValidationPipe(tmdbSettingSchema))
+    payload: TmdbSetting,
+  ): Promise<BasicResponseDto> {
+    return this.metadataSettingsService.testTmdb(payload);
+  }
+
+  @Get('/tvdb')
+  async getTvdbSetting(): Promise<TvdbSettingForm | BasicResponseDto> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      api_key: settings.tvdb_api_key ?? '',
+    };
+  }
+
+  @Post('/tvdb')
+  async updateTvdbSetting(
+    @Body(new ZodValidationPipe(tvdbSettingSchema))
+    payload: TvdbSetting,
+  ) {
+    return await this.metadataSettingsService.updateTvdbSetting(payload);
+  }
+
+  @Delete('/tvdb')
+  async removeTvdbSetting() {
+    return await this.metadataSettingsService.removeTvdbSetting();
+  }
+
+  @Post('/test/tvdb')
+  testTvdb(
+    @Body(new ZodValidationPipe(tvdbSettingSchema))
+    payload: TvdbSetting,
+  ): Promise<BasicResponseDto> {
+    return this.metadataSettingsService.testTvdb(payload);
+  }
+
+  @Get('/metadata-provider')
+  async getMetadataProviderPreference(): Promise<{
+    preference: MetadataProviderPreference;
+  }> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return { preference: MetadataProviderPreference.TMDB_PRIMARY };
+    }
+
+    return {
+      preference:
+        settings.metadata_provider_preference ??
+        MetadataProviderPreference.TMDB_PRIMARY,
+    };
+  }
+
+  @Post('/metadata-provider')
+  async updateMetadataProviderPreference(
+    @Body(new ZodValidationPipe(metadataProviderSettingSchema))
+    payload: MetadataProviderSetting,
+  ): Promise<BasicResponseDto> {
+    return this.metadataSettingsService.updateMetadataProviderPreference(
+      payload.preference,
+    );
+  }
+
+  @Post('/metadata/refresh/:provider')
+  async refreshMetadataCache(
+    @Param('provider', new ParseEnumPipe(MetadataProvider))
+    provider: MetadataProvider,
+  ): Promise<BasicResponseDto> {
+    return this.metadataSettingsService.refreshMetadataCache(provider);
   }
 
   // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)

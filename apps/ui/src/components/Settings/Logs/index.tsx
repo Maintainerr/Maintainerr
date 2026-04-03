@@ -15,11 +15,16 @@ import GetApiHandler, {
   API_BASE_PATH,
   PostApiHandler,
 } from '../../../utils/ApiHandler'
-import Alert from '../../Common/Alert'
+import { logClientError } from '../../../utils/ClientLogger'
 import Button from '../../Common/Button'
+import PendingButton from '../../Common/PendingButton'
 import Table from '../../Common/Table'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 
 const LogSettings = () => {
   return (
@@ -35,8 +40,8 @@ const LogSettings = () => {
 }
 
 const LogSettingsForm = () => {
-  const [saveError, setSaveError] = useState<boolean>(false)
-  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Log settings')
 
   const {
     register,
@@ -49,14 +54,13 @@ const LogSettingsForm = () => {
   })
 
   const onSubmit = async (data: LogSettingSchemaOutput) => {
-    setSaveError(false)
-    setIsSubmitSuccessful(false)
+    clearError()
 
     try {
       await PostApiHandler('/logs/settings', data)
-      setIsSubmitSuccessful(true)
-    } catch (error) {
-      setSaveError(true)
+      showUpdated()
+    } catch {
+      showUpdateError()
     }
   }
 
@@ -67,11 +71,7 @@ const LogSettingsForm = () => {
         <p className="description">Log configuration</p>
       </div>
 
-      {saveError ? (
-        <Alert type="warning" title="Something went wrong" />
-      ) : isSubmitSuccessful ? (
-        <Alert type="info" title="Log settings successfully updated" />
-      ) : undefined}
+      <SettingsFeedbackAlert feedback={feedback} />
 
       <div className="section">
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -110,14 +110,16 @@ const LogSettingsForm = () => {
           />
 
           <div className="actions mt-5 flex w-full justify-end">
-            <Button
+            <PendingButton
               buttonType="primary"
               type="submit"
               disabled={isLoading || isSubmitting}
-            >
-              <SaveIcon />
-              <span>Save Changes</span>
-            </Button>
+              idleLabel="Save Changes"
+              pendingLabel="Saving..."
+              isPending={isLoading || isSubmitting}
+              idleIcon={<SaveIcon />}
+              reserveLabel="Save Changes"
+            />
           </div>
         </form>
       </div>
@@ -130,30 +132,50 @@ const Logs = () => {
   const [logFilter, setLogFilter] = useState<string>('')
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
   const logsRef = useRef<HTMLDivElement>(null)
+  const hasLoggedStreamError = useRef(false)
 
   useEffect(() => {
     const MAX_LOG_LINES = 1000
     const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/logs/stream`)
 
     const handleLog = (event: MessageEvent) => {
-      const message: LogEvent = JSON.parse(event.data)
-      setLogLines((prev) => {
-        const newLines = [...prev, message]
-        // Keep only the last MAX_LOG_LINES
-        return newLines.slice(-MAX_LOG_LINES)
-      })
+      try {
+        const message: LogEvent = JSON.parse(event.data)
+        setLogLines((prev) => {
+          const newLines = [...prev, message]
+          return newLines.slice(-MAX_LOG_LINES)
+        })
+      } catch (error) {
+        void logClientError(
+          'Error parsing log stream data',
+          error,
+          'Settings.Logs.handleLog',
+        )
+      }
     }
 
     es.addEventListener('log', handleLog)
 
-    es.onerror = (e) => {
-      console.error('EventSource failed:', e)
+    es.onopen = () => {
+      hasLoggedStreamError.current = false
+    }
+
+    es.onerror = (error) => {
+      if (hasLoggedStreamError.current) {
+        return
+      }
+
+      hasLoggedStreamError.current = true
+      void logClientError(
+        'Log stream connection failed',
+        error,
+        'Settings.Logs.stream',
+      )
     }
 
     return () => {
       es.removeEventListener('log', handleLog)
       es.close()
-      // Clear logs on unmount to prevent memory leak
       setLogLines([])
     }
   }, [])

@@ -6,7 +6,11 @@ import {
   MediaItemType,
   MediaItemWithParent,
   MediaLibrary,
+  MediaLibrarySortField,
+  mediaLibrarySortFields,
+  mediaSortOrders,
   MediaServerStatus,
+  MediaSortOrder,
   MediaUser,
   PagedResult,
   UpdateCollectionParams,
@@ -25,10 +29,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ZodValidationPipe } from 'nestjs-zod';
+import { z } from 'zod';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaServerSetupGuard } from './guards';
 import { MediaServerFactory } from './media-server.factory';
 import { IMediaServerService } from './media-server.interface';
+
+const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
+const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 
 /**
  * Unified Media Server Controller
@@ -96,6 +105,10 @@ export class MediaServerController {
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('type') type?: MediaItemType,
+    @Query('sort', new ZodValidationPipe(mediaLibrarySortQuerySchema))
+    sort?: MediaLibrarySortField,
+    @Query('sortOrder', new ZodValidationPipe(mediaSortOrderQuerySchema))
+    sortOrder?: MediaSortOrder,
   ): Promise<PagedResult<MediaItem>> {
     const mediaServer = await this.mediaServerFactory.getService();
     const pageNum = Math.max(page ?? 1, 1);
@@ -106,6 +119,8 @@ export class MediaServerController {
       offset,
       limit: size,
       type,
+      sort,
+      sortOrder,
     });
   }
 

@@ -1,4 +1,13 @@
-import { ECollectionLogType, MediaItemType } from '@maintainerr/contracts';
+import {
+  CollectionMediaSortField,
+  ECollectionLogType,
+  MediaItemType,
+  MediaLibrarySortField,
+  collectionMediaSortFields,
+  mediaLibrarySortFields,
+  mediaSortOrders,
+  MediaSortOrder,
+} from '@maintainerr/contracts';
 import {
   Body,
   Controller,
@@ -12,6 +21,8 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { ZodValidationPipe } from 'nestjs-zod';
+import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
@@ -19,6 +30,12 @@ import {
   AddRemoveCollectionMedia,
   IAlterableMediaDto,
 } from './interfaces/collection-media.interface';
+
+const collectionMediaSortQuerySchema = z
+  .enum(collectionMediaSortFields)
+  .optional();
+const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
+const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 
 @Controller('api/collections')
 export class CollectionsController {
@@ -172,6 +189,10 @@ export class CollectionsController {
   getLibraryContent(
     @Param('id', ParseIntPipe) id: number,
     @Param('page', ParseIntPipe) page: number,
+    @Query('sort', new ZodValidationPipe(collectionMediaSortQuerySchema))
+    sort?: CollectionMediaSortField,
+    @Query('sortOrder', new ZodValidationPipe(mediaSortOrderQuerySchema))
+    sortOrder?: MediaSortOrder,
     @Query('size', new ParseIntPipe({ optional: true })) amount?: number,
   ) {
     const size = amount ?? 25;
@@ -181,6 +202,8 @@ export class CollectionsController {
       {
         offset: offset,
         size: size,
+        sort,
+        sortOrder,
       },
     );
   }
@@ -189,6 +212,10 @@ export class CollectionsController {
   getExclusions(
     @Param('id', ParseIntPipe) id: number,
     @Param('page', ParseIntPipe) page: number,
+    @Query('sort', new ZodValidationPipe(mediaLibrarySortQuerySchema))
+    sort?: MediaLibrarySortField,
+    @Query('sortOrder', new ZodValidationPipe(mediaSortOrderQuerySchema))
+    sortOrder?: MediaSortOrder,
     @Query('size', new ParseIntPipe({ optional: true })) amount?: number,
   ) {
     const size = amount ?? 25;
@@ -198,6 +225,8 @@ export class CollectionsController {
       {
         offset: offset,
         size: size,
+        sort,
+        sortOrder,
       },
     );
   }

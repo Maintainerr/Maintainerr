@@ -1,9 +1,4 @@
-import {
-  BeakerIcon,
-  CheckIcon,
-  ExclamationIcon,
-  SaveIcon,
-} from '@heroicons/react/solid'
+import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type JellyfinSetting,
@@ -12,7 +7,6 @@ import {
 } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { useSettingsOutletContext } from '..'
 import {
@@ -23,10 +17,16 @@ import {
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import Alert from '../../Common/Alert'
-import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import PendingButton from '../../Common/PendingButton'
+import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 const JellyfinSettingDeleteSchema = z.object({
   jellyfin_url: z.literal(''),
@@ -55,6 +55,8 @@ const JellyfinSettings = () => {
   const [jellyfinUsers, setJellyfinUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
+  const { feedback, showUpdated, showUpdateError, showError, clearError } =
+    useSettingsFeedback('Jellyfin settings')
 
   const { settings } = useSettingsOutletContext()
 
@@ -64,17 +66,10 @@ const JellyfinSettings = () => {
 
   const { mutateAsync: testJellyfin, isPending: isTestPending } =
     useTestJellyfin()
-  const {
-    mutateAsync: saveSettings,
-    isPending: isSavePending,
-    isSuccess: saveSuccess,
-    isError: saveError,
-  } = useSaveJellyfinSettings()
-  const {
-    mutateAsync: deleteSettings,
-    isPending: isDeletePending,
-    isSuccess: deleteSuccess,
-  } = useDeleteJellyfinSettings()
+  const { mutateAsync: saveSettings, isPending: isSavePending } =
+    useSaveJellyfinSettings()
+  const { mutateAsync: deleteSettings, isPending: isDeletePending } =
+    useDeleteJellyfinSettings()
 
   const {
     register,
@@ -157,13 +152,10 @@ const JellyfinSettings = () => {
             keepCurrentSelection ? currentUserId : sorted[0].id,
           )
         }
-
-        toast.success('Jellyfin connection successful!')
       } else {
         setTestResult({ status: false, message: result.message })
         setTestedSettings(null)
         setJellyfinUsers([])
-        toast.error(`Connection failed: ${result.message}`)
       }
     } catch (error) {
       const message = getApiErrorMessage(
@@ -173,30 +165,35 @@ const JellyfinSettings = () => {
       setTestResult({ status: false, message })
       setTestedSettings(null)
       setJellyfinUsers([])
-      toast.error(message)
     }
   }
 
   const onSubmit = async (data: JellyfinSettingFormResult) => {
+    clearError()
+
     if (data.jellyfin_url === '' && data.jellyfin_api_key === '') {
       try {
         await deleteSettings()
         setTestResult(null)
         setTestedSettings(null)
         setJellyfinUsers([])
-        toast.success('Jellyfin settings cleared')
+        showUpdated()
       } catch {
-        toast.error('Failed to clear Jellyfin settings')
+        showUpdateError()
       }
       return
     }
 
     try {
       await saveSettings(data as JellyfinSetting)
-      toast.success('Jellyfin settings saved successfully!')
+      showUpdated()
     } catch (error) {
       const message = getApiErrorMessage(error, 'Failed to save settings')
-      toast.error(message)
+      showError(
+        message === 'Failed to save settings'
+          ? 'Jellyfin settings could not be updated'
+          : message,
+      )
     }
   }
 
@@ -213,23 +210,16 @@ const JellyfinSettings = () => {
           </p>
         </div>
 
-        {saveError && (
-          <Alert
-            type="error"
-            title="There was an error saving Jellyfin settings."
-          />
-        )}
+        <SettingsFeedbackAlert feedback={feedback} />
 
-        {(saveSuccess || deleteSuccess) && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
-
-        {testResult && (
-          <Alert
-            type={testResult.status ? 'info' : 'error'}
-            title={testResult.message}
-          />
-        )}
+        <SettingsAlertSlot>
+          {testResult ? (
+            <Alert
+              type={testResult.status ? 'info' : 'error'}
+              title={testResult.message}
+            />
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -305,56 +295,35 @@ const JellyfinSettings = () => {
               </div>
             </div>
 
-            <div className="actions mt-6">
-              <div className="flex flex-wrap justify-between">
-                <div className="flex">
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
-                      type="button"
-                      buttonType={
-                        testResult
-                          ? testResult.status
-                            ? 'success'
-                            : 'danger'
-                          : 'default'
-                      }
-                      onClick={handleTest}
-                      disabled={isTestPending || isGoingToRemoveSettings}
-                    >
-                      {testResult ? (
-                        testResult.status ? (
-                          <CheckIcon className="h-5 w-5" />
-                        ) : (
-                          <ExclamationIcon className="h-5 w-5" />
-                        )
-                      ) : (
-                        <BeakerIcon className="h-5 w-5" />
-                      )}
-                      <span className="ml-1">
-                        {isTestPending ? 'Testing...' : 'Test Connection'}
-                      </span>
-                    </Button>
-                  </span>
+            <div className="actions mt-5 w-full">
+              <div className="flex w-full flex-wrap sm:flex-nowrap">
+                <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+                  <DocsButton page="Configuration/#jellyfin" />
+                </span>
+                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+                  <TestingButton
+                    type="button"
+                    buttonType="success"
+                    onClick={handleTest}
+                    className="ml-3"
+                    disabled={isTestPending || isGoingToRemoveSettings}
+                    isPending={isTestPending}
+                    feedbackStatus={testResult?.status}
+                  />
 
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
+                    <PendingButton
                       buttonType="primary"
                       type="submit"
                       disabled={!canSaveSettings}
-                    >
-                      <SaveIcon className="h-5 w-5" />
-                      <span className="ml-1">
-                        {isSavePending || isDeletePending
-                          ? 'Saving...'
-                          : 'Save Changes'}
-                      </span>
-                    </Button>
+                      idleLabel="Save Changes"
+                      pendingLabel="Saving..."
+                      isPending={isSavePending || isDeletePending}
+                      idleIcon={<SaveIcon />}
+                      reserveLabel="Save Changes"
+                    />
                   </span>
                 </div>
-
-                <span className="ml-3 inline-flex rounded-md shadow-sm">
-                  <DocsButton page="Configuration/#jellyfin" />
-                </span>
               </div>
             </div>
           </form>

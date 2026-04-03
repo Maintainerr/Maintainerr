@@ -9,17 +9,32 @@ import {
 } from 'react'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import { API_BASE_PATH } from '../utils/ApiHandler'
+import { logClientError } from '../utils/ClientLogger'
 
 const EventsContext = createContext<EventSource | undefined>(undefined)
 
 export const EventsProvider = (props: any) => {
+  const hasWarnedStreamError = useRef(false)
+
   const eventSource = useMemo(() => {
     const source = new ReconnectingEventSource(
       `${API_BASE_PATH}/api/events/stream`,
     )
 
-    source.onerror = (e) => {
-      console.error('EventSource failed:', e)
+    source.onopen = () => {
+      hasWarnedStreamError.current = false
+    }
+
+    source.onerror = (error) => {
+      if (hasWarnedStreamError.current) {
+        return
+      }
+
+      hasWarnedStreamError.current = true
+      console.warn(
+        'Event stream disconnected. Reconnecting automatically.',
+        error,
+      )
     }
 
     return source
@@ -59,7 +74,11 @@ export const useEvent = <T,>(
         setLastEvent(parsed)
         listenerRef.current?.(parsed)
       } catch (error) {
-        console.error('Error parsing event data:', error)
+        void logClientError(
+          'Error parsing event stream data',
+          error,
+          `useEvent.${type}`,
+        )
       }
     }
 

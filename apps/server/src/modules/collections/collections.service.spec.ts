@@ -7,7 +7,7 @@ import {
 } from '../../../test/utils/data';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
@@ -18,7 +18,10 @@ describe('CollectionsService', () => {
   let mediaServer: Mocked<IMediaServerService>;
   let collectionRepo: Mocked<Repository<Collection>>;
   let collectionMediaRepo: Mocked<Repository<CollectionMedia>>;
-  let tmdbIdService: Mocked<TmdbIdService>;
+  let metadataService: Mocked<MetadataService>;
+  let tmdbIdService: {
+    getTmdbIdFromMediaServerId: jest.Mock;
+  };
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -30,7 +33,25 @@ describe('CollectionsService', () => {
     collectionMediaRepo = unitRef.get(
       getRepositoryToken(CollectionMedia) as string,
     );
-    tmdbIdService = unitRef.get(TmdbIdService);
+    metadataService = unitRef.get(MetadataService);
+    tmdbIdService = {
+      getTmdbIdFromMediaServerId: jest.fn(),
+    };
+
+    metadataService.resolveIds.mockImplementation(async (mediaServerId) => {
+      const tmdb =
+        await tmdbIdService.getTmdbIdFromMediaServerId(mediaServerId);
+
+      if (!tmdb) {
+        return undefined;
+      }
+
+      return { tmdb: tmdb.id, type: tmdb.type } as any;
+    });
+    metadataService.getDetails.mockResolvedValue({
+      externalIds: { tmdb: 1 },
+      posterUrl: undefined,
+    } as any);
 
     mediaServer = {
       supportsFeature: jest.fn().mockReturnValue(false),

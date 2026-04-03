@@ -9,6 +9,7 @@ import {
 import {
   getCollectionApi,
   getConfigurationApi,
+  getItemRefreshApi,
   getItemsApi,
   getItemUpdateApi,
   getLibraryApi,
@@ -28,6 +29,7 @@ import {
   type MediaItem,
   type MediaItemType,
   type MediaLibrary,
+  type MediaLibrarySortField,
   type MediaPlaylist,
   type MediaServerStatus,
   type MediaUser,
@@ -41,8 +43,15 @@ import { formatConnectionFailureMessage } from '../../../../utils/connection-err
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
+import {
+  isBlankMediaServerId,
+  isForeignServerId,
+} from '../media-server-id.utils';
 import { supportsFeature } from '../media-server.constants';
-import type { IMediaServerService } from '../media-server.interface';
+import type {
+  IMediaServerService,
+  MediaWatchState,
+} from '../media-server.interface';
 import {
   JELLYFIN_BATCH_SIZE,
   JELLYFIN_CACHE_KEYS,
@@ -51,6 +60,22 @@ import {
   JELLYFIN_DEVICE_INFO,
 } from './jellyfin.constants';
 import { JellyfinMapper } from './jellyfin.mapper';
+
+const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
+  // The Jellyfin SDK enum does not expose every server-supported sort key,
+  // so use the documented raw values and narrow them for the request model.
+  switch (sort) {
+    case 'airDate':
+      return 'PremiereDate' as ItemSortBy;
+    case 'rating':
+      return 'CommunityRating' as ItemSortBy;
+    case 'watchCount':
+      return 'PlayCount' as ItemSortBy;
+    case 'title':
+    default:
+      return ItemSortBy.SortName;
+  }
+};
 
 /**
  * Jellyfin media server service implementation.
@@ -436,7 +461,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ? JellyfinMapper.toBaseItemKinds([options.type])
           : [BaseItemKind.Movie, BaseItemKind.Series],
         enableUserData: true,
-        sortBy: [(options?.sort as ItemSortBy) || ItemSortBy.SortName],
+        sortBy: [toJellyfinSortBy(options?.sort)],
         sortOrder: [
           options?.sortOrder === 'desc'
             ? SortOrder.Descending
@@ -709,6 +734,15 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.logger.debug(error);
       return [];
     }
+  }
+
+  async getWatchState(itemId: string): Promise<MediaWatchState> {
+    const history = await this.getWatchHistory(itemId);
+
+    return {
+      viewCount: history.length,
+      isWatched: history.length > 0,
+    };
   }
 
   async getItemSeenBy(itemId: string): Promise<string[]> {
@@ -1400,12 +1434,28 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
-  /**
-   * Check if a library ID looks like it's from a different media server
-   * (e.g. Plex numeric IDs) or is empty/invalid.
-   */
-  private isLikelyMigrationId(libraryId: string): boolean {
-    return !libraryId || libraryId.trim() === '' || /^\d+$/.test(libraryId);
+  async refreshItemMetadata(itemId: string): Promise<void> {
+    if (!this.api) {
+      throw new Error(
+        'Jellyfin API not initialized — cannot refresh item metadata',
+      );
+    }
+
+    if (isBlankMediaServerId(itemId)) {
+      throw new Error(
+        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+      );
+    }
+
+    try {
+      await getItemRefreshApi(this.api).refreshItem({ itemId });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to refresh Jellyfin metadata for item ${itemId}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
   }
 
   /**
@@ -1416,7 +1466,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     operation: string,
     error: unknown,
   ): void {
-    if (this.isLikelyMigrationId(libraryId)) {
+    if (isForeignServerId(MediaServerType.JELLYFIN, libraryId)) {
       this.logger.warn(
         `Library '${libraryId || '(empty)'}' appears to be from a different media server. Please update the library setting in your rules.`,
       );

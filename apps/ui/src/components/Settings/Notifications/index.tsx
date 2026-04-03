@@ -4,19 +4,22 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 
-import { lazy, useEffect, useState } from 'react'
-import { toast } from 'react-toastify'
+import { useEffect, useState } from 'react'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
-import LazyModalBoundary from '../../Common/LazyModalBoundary'
-import type { AgentConfiguration } from './CreateNotificationModal'
-
-const CreateNotificationModal = lazy(() => import('./CreateNotificationModal'))
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
+import CreateNotificationModal, {
+  type AgentConfiguration,
+} from './CreateNotificationModal'
 
 const NotificationSettings = () => {
   const [addModalActive, setAddModalActive] = useState(false)
   const [configurations, setConfigurations] = useState<AgentConfiguration[]>()
   const [editConfig, setEditConfig] = useState<AgentConfiguration>()
+  const { feedback, showInfo } = useSettingsFeedback('Notification settings')
 
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
@@ -63,6 +66,8 @@ const NotificationSettings = () => {
           </h3>
           <p className="description">Notification Agent configuration</p>
         </div>
+
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <div>
           <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
@@ -120,47 +125,31 @@ const NotificationSettings = () => {
         </div>
 
         {addModalActive ? (
-          <LazyModalBoundary
-            title={
-              editConfig
-                ? 'Edit Notification Agent'
-                : 'Create Notification Agent'
-            }
+          <CreateNotificationModal
             onCancel={() => {
               updateAddModalActive(!addModalActive)
               setEditConfig(undefined)
             }}
-          >
-            <CreateNotificationModal
-              onCancel={() => {
-                updateAddModalActive(!addModalActive)
-                setEditConfig(undefined)
-              }}
-              onSave={(bool) => {
-                updateAddModalActive(!addModalActive)
-                setEditConfig(undefined)
-                if (bool) {
-                  toast.success('Successfully saved notification agent')
-                } else {
-                  toast.error("Didn't save incomplete notification agent")
+            onSave={() => {
+              updateAddModalActive(!addModalActive)
+              setEditConfig(undefined)
+              showInfo('Notification agent saved')
+            }}
+            onTest={() => {}}
+            {...(editConfig
+              ? {
+                  selected: {
+                    id: editConfig.id!,
+                    name: editConfig.name!,
+                    enabled: editConfig.enabled!,
+                    agent: editConfig.agent!,
+                    types: editConfig.types!,
+                    options: editConfig.options!,
+                    aboutScale: editConfig.aboutScale!,
+                  },
                 }
-              }}
-              onTest={() => {}}
-              {...(editConfig
-                ? {
-                    selected: {
-                      id: editConfig.id!,
-                      name: editConfig.name!,
-                      enabled: editConfig.enabled!,
-                      agent: editConfig.agent!,
-                      types: editConfig.types!,
-                      options: editConfig.options!,
-                      aboutScale: editConfig.aboutScale!,
-                    },
-                  }
-                : {})}
-            />
-          </LazyModalBoundary>
+              : {})}
+          />
         ) : null}
       </div>
     </>

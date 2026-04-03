@@ -17,6 +17,11 @@ import {
   WatchRecord,
 } from '@maintainerr/contracts';
 
+export interface MediaWatchState {
+  viewCount: number;
+  isWatched: boolean;
+}
+
 /**
  * Core interface for media server implementations.
  * Both Plex and Jellyfin adapters must implement this interface.
@@ -138,6 +143,20 @@ export interface IMediaServerService {
   getWatchHistory(itemId: string): Promise<WatchRecord[]>;
 
   /**
+   * Get aggregate watch state for a specific item.
+   *
+   * @param nativeViewCount - Optional native view count from the media item
+   *   metadata. Used as a fallback signal for `isWatched` when watch history
+   *   has been purged or the item was marked watched without a play event.
+   *   Note: on Plex this value is per-user (admin token), so it is only used
+   *   for the boolean `isWatched`, not for the numeric `viewCount`.
+   */
+  getWatchState(
+    itemId: string,
+    nativeViewCount?: number,
+  ): Promise<MediaWatchState>;
+
+  /**
    * Get list of user IDs who have watched/seen a specific item.
    * Convenience method built on top of getWatchHistory.
    */
@@ -252,4 +271,11 @@ export interface IMediaServerService {
    * @param itemId - If provided, only reset cache for this item. Otherwise reset all.
    */
   resetMetadataCache(itemId?: string): void;
+
+  /**
+   * Ask the media server to re-fetch metadata for a specific item from its
+   * own configured agents. This is a best-effort, fire-and-forget operation
+   * on the server side — the call returns quickly while the server works async.
+   */
+  refreshItemMetadata(itemId: string): Promise<void>;
 }

@@ -113,6 +113,22 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
+  public async getSeriesByTmdbId(id: number): Promise<SonarrSeries> {
+    try {
+      const response = await this.get<SonarrSeries[]>(`/series?tmdbId=${id}`);
+
+      if (!response?.[0]) {
+        this.logger.warn(`Could not retrieve show by tmdb ID ${id}`);
+        return undefined;
+      }
+
+      return response[0];
+    } catch (error) {
+      this.logger.warn(`Error retrieving show by tmdb ID ${id}`);
+      this.logger.debug(error);
+    }
+  }
+
   public async updateSeries(series: SonarrSeries) {
     await this.axios.put<SonarrSeries>('/series', series);
   }

@@ -4,14 +4,13 @@ import { ReactNode, useContext, useEffect, useRef, useState } from 'react'
 import {
   isRouteErrorResponse,
   Outlet,
-  useLocation,
   useNavigate,
   useNavigation,
   useRouteError,
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import GetApiHandler from '../../utils/ApiHandler'
+import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
@@ -26,7 +25,6 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const navigate = useNavigate()
   const navigation = useNavigation()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-  const location = useLocation()
   const debouncedSearchRef = useRef<ReturnType<typeof debounce> | undefined>(
     undefined,
   )
@@ -40,7 +38,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
     const debouncedSearch = debounce((text: string) => {
       SearchCtx.addText(text)
       navigate('/overview')
-    }, 1000)
+    }, INTERACTION_DEBOUNCE_MS)
 
     debouncedSearchRef.current = debouncedSearch
 
@@ -62,25 +60,6 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
 
     debouncedSearchRef.current?.(text)
   }
-
-  useEffect(() => {
-    // Check if setup is complete, if not redirect to appropriate settings page
-    Promise.all([
-      GetApiHandler('/settings/test/setup'),
-      GetApiHandler('/settings'),
-    ]).then(([setupDone, settings]) => {
-      if (!setupDone) {
-        const mediaServerType = settings?.media_server_type
-        if (mediaServerType) {
-          // User has chosen a media server, redirect to its settings
-          navigate(`/settings/${mediaServerType}`)
-        } else {
-          // No media server chosen yet, go to main settings to choose
-          navigate('/settings/main')
-        }
-      }
-    })
-  }, [navigate, location.pathname])
 
   return (
     <section>
@@ -139,9 +118,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               />
               {isNavigating ? (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center bg-zinc-900/20 pt-10 backdrop-blur-[1px]">
-                  <div className="rounded-full border border-zinc-700/70 bg-zinc-900/85 px-6 py-2 shadow-lg">
-                    <SmallLoadingSpinner className="h-8 w-8" />
-                  </div>
+                  <SmallLoadingSpinner className="h-8 w-8" />
                 </div>
               ) : null}
               {children}

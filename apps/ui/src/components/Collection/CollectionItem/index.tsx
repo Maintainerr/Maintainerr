@@ -1,6 +1,13 @@
+import { MediaItemTypeLabels } from '@maintainerr/contracts'
+import { useEffect, useMemo, useState } from 'react'
 import { ICollection } from '..'
 import { useMediaServerLibraries } from '../../../api/media-server'
-import { MediaItemTypeLabels } from '@maintainerr/contracts'
+import GetApiHandler from '../../../utils/ApiHandler'
+import {
+  buildMetadataImagePath,
+  isAbsoluteUrl,
+  toProviderIds,
+} from '../../../utils/mediaTypeUtils'
 
 interface ICollectionItem {
   collection: ICollection
@@ -18,6 +25,55 @@ function formatSize(bytes: number | null | undefined): string {
 
 const CollectionItem = (props: ICollectionItem) => {
   const { data: libraries } = useMediaServerLibraries()
+  const previewMedia = useMemo(
+    () => props.collection.media?.slice(0, 2) ?? [],
+    [props.collection.media],
+  )
+  const [previewImages, setPreviewImages] = useState<(string | null)[]>([])
+
+  useEffect(() => {
+    let isActive = true
+
+    void Promise.all(
+      previewMedia.map(async (media) => {
+        try {
+          if (isAbsoluteUrl(media.image_path)) {
+            return media.image_path
+          }
+
+          const imageRequestPath = buildMetadataImagePath(
+            'image',
+            props.collection.type,
+            toProviderIds({
+              tmdbId: media.tmdbId,
+              tvdbId: media.tvdbId,
+            }),
+          )
+
+          if (!imageRequestPath) {
+            return null
+          }
+
+          const response = await GetApiHandler<{ url: string } | undefined>(
+            imageRequestPath,
+          )
+
+          return response?.url ?? null
+        } catch {
+          return null
+        }
+      }),
+    ).then((images) => {
+      if (isActive) {
+        setPreviewImages(images)
+      }
+    })
+
+    return () => {
+      isActive = false
+    }
+  }, [previewMedia, props.collection.type])
+
   return (
     <>
       <a
@@ -28,24 +84,28 @@ const CollectionItem = (props: ICollectionItem) => {
       >
         {props.collection.media && props.collection.media.length > 1 ? (
           <div className="absolute inset-0 z-[-100] flex flex-row overflow-hidden">
-            <img
-              className="backdrop-image"
-              width="600"
-              height="800"
-              src={`https://image.tmdb.org/t/p/w500${props.collection.media[0].image_path}`}
-              alt="img"
-              loading="lazy"
-              decoding="async"
-            />
-            <img
-              className="backdrop-image"
-              width="600"
-              height="800"
-              src={`https://image.tmdb.org/t/p/w500/${props.collection.media[1].image_path}`}
-              alt="img"
-              loading="lazy"
-              decoding="async"
-            />
+            {previewImages[0] ? (
+              <img
+                className="backdrop-image"
+                width="600"
+                height="800"
+                src={previewImages[0]}
+                alt="img"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : undefined}
+            {previewImages[1] ? (
+              <img
+                className="backdrop-image"
+                width="600"
+                height="800"
+                src={previewImages[1]}
+                alt="img"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : undefined}
             <div className="collection-backdrop"></div>
           </div>
         ) : undefined}

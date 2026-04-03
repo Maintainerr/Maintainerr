@@ -3,45 +3,60 @@ import React, { useRef, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
-import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import DatabaseBackupModal from './DatabaseBackupModal'
+import PendingButton from '../../Common/PendingButton'
 import MediaServerSelector from '../MediaServerSelector'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
+import DatabaseBackupModal from './DatabaseBackupModal'
 
 const MainSettings = () => {
   const hostnameRef = useRef<HTMLInputElement>(null)
   const apiKeyRef = useRef<HTMLInputElement>(null)
-  const [missingValuesError, setMissingValuesError] = useState<boolean>()
   const [showDownloadModal, setShowDownloadModal] = useState(false)
+  const { feedback, showError, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('General settings')
   const { settings } = useSettingsOutletContext()
-  const {
-    mutateAsync: updateSettings,
-    isSuccess,
-    isPending,
-  } = usePatchSettings()
+  const { mutateAsync: updateSettings, isPending } = usePatchSettings()
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setMissingValuesError(false)
+    clearError()
+
     if (hostnameRef.current?.value && apiKeyRef.current?.value) {
       const payload = {
         applicationUrl: hostnameRef.current.value,
         apikey: apiKeyRef.current.value,
       }
 
-      await updateSettings(payload)
+      try {
+        await updateSettings(payload)
+        showUpdated()
+      } catch {
+        showUpdateError()
+      }
     } else {
-      setMissingValuesError(true)
+      showError('Not all fields contain values')
     }
   }
 
   const regenerateApi = async () => {
-    const key = await GetApiHandler('/settings/api/generate')
+    clearError()
 
-    await updateSettings({
-      apikey: key,
-    })
+    try {
+      const key = await GetApiHandler('/settings/api/generate')
+
+      await updateSettings({
+        apikey: key,
+      })
+
+      showUpdated()
+    } catch {
+      showUpdateError()
+    }
   }
 
   return (
@@ -52,13 +67,7 @@ const MainSettings = () => {
           <h3 className="heading">General Settings</h3>
           <p className="description">Configure global settings</p>
         </div>
-        {missingValuesError && (
-          <Alert type="error" title="Not all fields contain values" />
-        )}
-
-        {isSuccess && (
-          <Alert type="info" title="Settings successfully updated" />
-        )}
+        <SettingsFeedbackAlert feedback={feedback} />
 
         {showDownloadModal && (
           <DatabaseBackupModal onClose={() => setShowDownloadModal(false)} />
@@ -127,14 +136,16 @@ const MainSettings = () => {
                   </span>
                 </div>
                 <span className="flex rounded-md shadow-sm sm:ml-auto">
-                  <Button
+                  <PendingButton
                     buttonType="primary"
                     type="submit"
                     disabled={isPending}
-                  >
-                    <SaveIcon />
-                    <span>Save Changes</span>
-                  </Button>
+                    idleLabel="Save Changes"
+                    pendingLabel="Saving..."
+                    isPending={isPending}
+                    idleIcon={<SaveIcon />}
+                    reserveLabel="Save Changes"
+                  />
                 </span>
               </div>
             </div>

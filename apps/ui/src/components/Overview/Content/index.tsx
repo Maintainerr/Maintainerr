@@ -1,6 +1,8 @@
 import {
+  getAudienceRating,
   type MediaItem,
   type MediaItemWithParent,
+  type MediaProviderIds,
 } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
@@ -9,6 +11,7 @@ import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
 import MediaCard from '../../Common/MediaCard'
+import { defaultInfiniteScrollThreshold } from '../../../utils/infiniteScroll'
 
 interface IOverviewContent {
   data: MediaItem[]
@@ -23,29 +26,27 @@ interface IOverviewContent {
   collectionId?: number
 }
 
-/**
- * Extract TMDB ID from a MediaItem.
- * For episodes/seasons, checks parent item's providerIds.
- */
-function extractTmdbId(
+function extractProviderIds(
   item: MediaItem | MediaItemWithParent,
-): string | undefined {
+): MediaProviderIds | undefined {
   const parentItem = (item as MediaItemWithParent).parentItem
 
-  // For seasons/episodes, always use the parent show's TMDB ID
   if (
     (item.type === 'season' || item.type === 'episode') &&
-    parentItem?.providerIds?.tmdb?.[0]
+    parentItem?.providerIds
   ) {
-    return parentItem.providerIds.tmdb[0]
+    return parentItem.providerIds
   }
 
-  if (item.providerIds?.tmdb?.[0]) {
-    return item.providerIds.tmdb[0]
+  if (item.providerIds && Object.keys(item.providerIds).length > 0) {
+    return item.providerIds
   }
 
-  if (parentItem?.providerIds?.tmdb?.[0]) {
-    return parentItem.providerIds.tmdb[0]
+  if (
+    parentItem?.providerIds &&
+    Object.keys(parentItem.providerIds).length > 0
+  ) {
+    return parentItem.providerIds
   }
 
   return undefined
@@ -56,7 +57,7 @@ const OverviewContent = (props: IOverviewContent) => {
 
   const isNearBottom = () =>
     window.innerHeight + document.documentElement.scrollTop >=
-    document.documentElement.scrollHeight * 0.7
+    document.documentElement.scrollHeight * defaultInfiniteScrollThreshold
 
   const handleScroll = useEffectEvent(() => {
     if (isNearBottom() && !extrasLoading && !dataFinished) {
@@ -112,13 +113,6 @@ const OverviewContent = (props: IOverviewContent) => {
     return parentItem?.year
   }
 
-  /**
-   * Get the audience rating from a MediaItem's ratings array.
-   */
-  const getAudienceRating = (item: MediaItem): number => {
-    return item.ratings?.find((r) => r.type === 'audience')?.value ?? 0
-  }
-
   if (loading) {
     return <LoadingSpinner />
   }
@@ -162,7 +156,7 @@ const OverviewContent = (props: IOverviewContent) => {
                   ? el.maintainerrExclusionId
                   : undefined
               }
-              tmdbid={extractTmdbId(el)}
+              providerIds={extractProviderIds(el)}
               collectionPage={
                 props.collectionPage ? props.collectionPage : false
               }

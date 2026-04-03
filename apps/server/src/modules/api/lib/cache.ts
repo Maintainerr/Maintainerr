@@ -2,6 +2,7 @@ import NodeCache from 'node-cache';
 
 type AvailableCacheIds =
   | 'tmdb'
+  | 'tvdb'
   | 'plexguid'
   | 'plextv'
   | 'seerr'
@@ -53,6 +54,10 @@ export class Cache {
 class CacheManager {
   private availableCaches: Record<AvailableCacheIds, Cache> = {
     tmdb: new Cache('tmdb', 'The Movie Database API', 'tmdb', {
+      stdTtl: 21600, // 6 hours
+      checkPeriod: 60 * 30,
+    }),
+    tvdb: new Cache('tvdb', 'TheTVDB API', 'tvdb', {
       stdTtl: 21600, // 6 hours
       checkPeriod: 60 * 30,
     }),

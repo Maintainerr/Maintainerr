@@ -5,10 +5,10 @@ import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
-import { TmdbApiModule } from '../api/tmdb-api/tmdb.module';
 import { CollectionsModule } from '../collections/collections.module';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { MetadataModule } from '../metadata/metadata.module';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
@@ -57,7 +57,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     ]),
     SeerrApiModule,
     TautulliApiModule,
-    TmdbApiModule,
+    MetadataModule,
     forwardRef(() => CollectionsModule),
     TasksModule,
   ],

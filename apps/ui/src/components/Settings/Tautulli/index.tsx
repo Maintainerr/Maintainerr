@@ -17,9 +17,15 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
-import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import PendingButton from '../../Common/PendingButton'
+import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface TestStatus {
   status: boolean
@@ -47,8 +53,8 @@ const TautulliSettings = () => {
 
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
-  const [submitError, setSubmitError] = useState<boolean>(false)
-  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState<boolean>(false)
+  const { feedback, showUpdated, showUpdateError, clearError } =
+    useSettingsFeedback('Tautulli settings')
 
   const {
     register,
@@ -85,8 +91,7 @@ const TautulliSettings = () => {
     !isLoading
 
   const onSubmit = async (data: TautulliSetting) => {
-    setSubmitError(false)
-    setIsSubmitSuccessful(false)
+    clearError()
 
     const removingSetting = data.api_key === '' && data.url === ''
 
@@ -96,12 +101,12 @@ const TautulliSettings = () => {
         : PostApiHandler<BasicResponseDto>('/settings/tautulli', data))
 
       if (resp.code) {
-        setIsSubmitSuccessful(true)
+        showUpdated()
       } else {
-        setSubmitError(true)
+        showUpdateError()
       }
-    } catch (error) {
-      setSubmitError(true)
+    } catch {
+      showUpdateError()
     }
   }
 
@@ -152,21 +157,20 @@ const TautulliSettings = () => {
           <h3 className="heading">Tautulli Settings</h3>
           <p className="description">Tautulli configuration</p>
         </div>
-        {submitError ? (
-          <Alert type="warning" title="Something went wrong" />
-        ) : isSubmitSuccessful ? (
-          <Alert type="info" title="Tautulli settings successfully updated" />
-        ) : undefined}
+        <SettingsFeedbackAlert feedback={feedback} />
 
-        {testResult != null &&
-          (testResult?.status ? (
-            <Alert
-              type="info"
-              title={`Successfully connected to Tautulli (${testResult.message})`}
-            />
-          ) : (
-            <Alert type="error" title={testResult.message} />
-          ))}
+        <SettingsAlertSlot>
+          {testResult != null ? (
+            testResult?.status ? (
+              <Alert
+                type="info"
+                title={`Successfully connected to Tautulli (${testResult.message})`}
+              />
+            ) : (
+              <Alert type="error" title={testResult.message} />
+            )
+          ) : null}
+        </SettingsAlertSlot>
 
         <div className="section">
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -221,23 +225,26 @@ const TautulliSettings = () => {
                   <DocsButton page="Configuration/#tautulli" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <Button
+                  <TestingButton
+                    type="button"
                     buttonType="success"
                     onClick={performTest}
                     className="ml-3"
                     disabled={testing || isGoingToRemoveSetting}
-                  >
-                    {testing ? 'Testing...' : 'Test'}
-                  </Button>
+                    isPending={testing}
+                    feedbackStatus={testResult?.status}
+                  />
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <Button
+                    <PendingButton
                       buttonType="primary"
                       type="submit"
                       disabled={!canSaveSettings}
-                    >
-                      <SaveIcon />
-                      <span>Save Changes</span>
-                    </Button>
+                      idleLabel="Save Changes"
+                      pendingLabel="Saving..."
+                      isPending={isSubmitting}
+                      idleIcon={<SaveIcon />}
+                      reserveLabel="Save Changes"
+                    />
                   </span>
                 </div>
               </div>

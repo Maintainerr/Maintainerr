@@ -15,7 +15,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MediaIdFinder } from './media-id-finder';
+import { MetadataService } from '../metadata/metadata.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
 
 describe('SonarrActionHandler', () => {
@@ -23,7 +23,10 @@ describe('SonarrActionHandler', () => {
   let mediaServerFactory: Mocked<MediaServerFactory>;
   let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
-  let mediaIdFinder: Mocked<MediaIdFinder>;
+  let metadataService: Mocked<MetadataService>;
+  let mediaIdFinder: {
+    findTvdbId: jest.Mock<Promise<number | undefined>, []>;
+  };
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -33,8 +36,39 @@ describe('SonarrActionHandler', () => {
     sonarrActionHandler = unit;
     mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
-    mediaIdFinder = unitRef.get(MediaIdFinder);
+    metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
+
+    mediaIdFinder = {
+      findTvdbId: jest.fn(),
+    };
+
+    metadataService.resolveIds.mockImplementation(async () => {
+      const tvdbId = await mediaIdFinder.findTvdbId();
+
+      if (tvdbId === undefined) {
+        return undefined;
+      }
+
+      return { tmdb: 1, tvdb: tvdbId, type: 'tv' } as any;
+    });
+
+    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
+      const candidates = [] as Array<{
+        providerKey: 'tmdb' | 'tvdb';
+        id: number;
+      }>;
+
+      if (ids.tmdb) {
+        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
+      }
+
+      if (ids.tvdb) {
+        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
+      }
+
+      return candidates;
+    });
 
     // Setup media server mock
     mediaServer = {
@@ -68,7 +102,7 @@ describe('SonarrActionHandler', () => {
         type: type as MediaItemType,
       });
       const collectionMedia = createCollectionMediaWithMetadata(collection, {
-        tmdbId: 1,
+        tmdbId: undefined,
       });
 
       mockMediaServerMetadata(collectionMedia.mediaData);

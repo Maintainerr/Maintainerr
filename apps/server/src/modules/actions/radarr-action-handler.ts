@@ -1,18 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import { TmdbIdService } from '../api/tmdb-api/tmdb-id.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { MetadataService } from '../metadata/metadata.service';
+import {
+  findServarrLookupMatch,
+  formatServarrLookupCandidates,
+} from '../metadata/servarr-lookup.util';
 
 @Injectable()
 export class RadarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly tmdbIdService: TmdbIdService,
+    private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RadarrActionHandler.name);
@@ -26,18 +30,26 @@ export class RadarrActionHandler {
       collection.radarrSettingsId,
     );
 
-    // find tmdbid
-    const tmdbid = media.tmdbId
-      ? media.tmdbId
-      : (
-          await this.tmdbIdService.getTmdbIdFromMediaServerId(
-            media.mediaServerId,
-          )
-        )?.id;
+    const ids = await this.metadataService.resolveIds(media.mediaServerId);
+    const resolvedIds = {
+      tmdb: (ids?.tmdb as number | undefined) ?? media.tmdbId,
+      tvdb: (ids?.tvdb as number | undefined) ?? media.tvdbId,
+    };
+    const lookupCandidates =
+      this.metadataService.buildServarrLookupCandidates(resolvedIds);
 
-    if (tmdbid) {
-      const radarrMedia = await radarrApiClient.getMovieByTmdbId(tmdbid);
+    if (lookupCandidates.length > 0) {
+      const matchedResult = await findServarrLookupMatch(lookupCandidates, {
+        tmdb: (id) => radarrApiClient.getMovieByTmdbId(id),
+        tvdb: (id) => radarrApiClient.getMovieByTvdbId(id),
+      });
+      const radarrMedia = matchedResult?.result;
+
       if (radarrMedia?.id) {
+        const matchedProvider =
+          matchedResult.candidate.providerKey.toUpperCase();
+        const matchedId = matchedResult.candidate.id;
+
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
           case ServarrAction.UNMONITOR_DELETE_EXISTING:
@@ -47,7 +59,7 @@ export class RadarrActionHandler {
               collection.listExclusions,
             );
             this.logger.log(
-              `Removed movie with tmdb id ${tmdbid} from filesystem & Radarr`,
+              `Removed movie with ${matchedProvider} ID ${matchedId} from filesystem & Radarr`,
             );
             break;
           case ServarrAction.UNMONITOR:
@@ -56,7 +68,7 @@ export class RadarrActionHandler {
               addImportExclusion: collection.listExclusions,
             });
             this.logger.log(
-              `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
+              `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
             );
             break;
           case ServarrAction.UNMONITOR_DELETE_ALL:
@@ -66,26 +78,28 @@ export class RadarrActionHandler {
               addImportExclusion: collection.listExclusions,
             });
             this.logger.log(
-              `Unmonitored movie with tmdb id ${tmdbid}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
+              `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             break;
         }
       } else {
+        const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+
         if (collection.arrAction !== ServarrAction.UNMONITOR) {
           this.logger.log(
-            `Couldn't find movie with tmdb id ${tmdbid} in Radarr, so no Radarr action was taken for movie with media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
+            `Couldn't find movie in Radarr using resolved external IDs [${attemptedIds}] for media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
           );
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);
         } else {
           this.logger.log(
-            `Radarr unmonitor action was not possible, couldn't find movie with tmdb id ${tmdbid} in Radarr. No action was taken for movie with media server ID ${media.mediaServerId}`,
+            `Radarr unmonitor action was not possible because no resolved external ID [${attemptedIds}] matched a movie in Radarr for media server ID ${media.mediaServerId}.`,
           );
         }
       }
     } else {
       this.logger.log(
-        `Couldn't find correct tmdb id. No action taken for movie with media server ID: ${media.mediaServerId}. Please check this movie manually`,
+        `Couldn't resolve any supported external IDs for movie with media server ID ${media.mediaServerId}. Please check this movie manually.`,
       );
     }
   }

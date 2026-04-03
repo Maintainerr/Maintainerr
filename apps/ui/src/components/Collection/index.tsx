@@ -32,10 +32,10 @@ export interface ICollectionMedia {
   id: number
   collectionId: number
   mediaServerId: string
-  tmdbId: number
-  tvdbid: number
+  tmdbId?: number
+  tvdbId?: number
   addDate: Date
-  image_path: string
+  image_path?: string
   isManual: boolean
   collection: ICollection
   /** Server-agnostic media metadata */

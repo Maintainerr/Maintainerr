@@ -21,13 +21,16 @@ export class CollectionMedia {
   mediaServerId: string;
 
   @Column({ nullable: true })
-  tmdbId: number;
+  tmdbId?: number;
+
+  @Column({ nullable: true })
+  tvdbId?: number;
 
   @Column()
   addDate: Date;
 
   @Column({ nullable: true })
-  image_path: string;
+  image_path?: string;
 
   @Column({ default: false, nullable: true })
   isManual: boolean;
