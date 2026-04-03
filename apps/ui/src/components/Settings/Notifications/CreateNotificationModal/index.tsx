@@ -1,11 +1,12 @@
 import { BasicResponseDto } from '@maintainerr/contracts'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { camelCaseToPrettyText } from '../../../../utils/SettingsUtils'
 import Alert from '../../../Common/Alert'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
+import { SaveButtonContent } from '../../../Common/SaveButton'
 import {
   getTestingButtonType,
   TestingButtonContent,
@@ -51,12 +52,14 @@ interface TestStatus {
   message: string
 }
 
+const stringifyValue = (value: unknown) => JSON.stringify(value ?? null)
+
 const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
-  const nameRef = useRef<string>(props.selected?.name ?? '')
-  const aboutScaleRef = useRef<number>(props.selected?.aboutScale ?? 3)
-  const enabledRef = useRef<boolean>(props.selected?.enabled ?? false)
+  const [name, setName] = useState(props.selected?.name ?? '')
+  const [aboutScale, setAboutScale] = useState(props.selected?.aboutScale ?? 3)
+  const [enabled, setEnabled] = useState(props.selected?.enabled ?? false)
   const [formValues, setFormValues] = useState<any>(
     props.selected?.options ?? {},
   )
@@ -64,8 +67,18 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [targetAgent, setTargetAgent] = useState<agentSpec>()
   const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
   const [error, setError] = useState<string>()
+  const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
+
+  const initialAgentName = props.selected?.agent ?? '-'
+  const initialName = props.selected?.name ?? ''
+  const initialEnabled = props.selected?.enabled ?? false
+  const initialAboutScale = props.selected?.aboutScale ?? 3
+  const initialTypeIds = [...(props.selected?.types ?? [])].sort(
+    (a, b) => a - b,
+  )
+  const initialOptions = props.selected?.options ?? {}
 
   const selectedAgentIndex = targetAgent
     ? (availableAgents?.findIndex((agent) => agent.name === targetAgent.name) ??
@@ -73,6 +86,23 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     : 0
 
   const hasValidTargetAgent = Boolean(targetAgent && targetAgent.name !== '-')
+  const selectedTypeIds = [...targetTypes.map((type) => type.id)].sort(
+    (left, right) => left - right,
+  )
+  const hasChanges =
+    name !== initialName ||
+    enabled !== initialEnabled ||
+    aboutScale !== initialAboutScale ||
+    (targetAgent?.name ?? '-') !== initialAgentName ||
+    stringifyValue(selectedTypeIds) !== stringifyValue(initialTypeIds) ||
+    stringifyValue(formValues) !== stringifyValue(initialOptions)
+  const isLoading = !availableAgents || !availableTypes
+  const canSave =
+    !isLoading &&
+    hasValidTargetAgent &&
+    name.trim() !== '' &&
+    hasChanges &&
+    !saving
 
   const clearFeedback = () => {
     setError(undefined)
@@ -82,14 +112,14 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const handleSubmit = async () => {
     const types = targetTypes ? targetTypes.map((t) => t.id) : []
 
-    if (hasValidTargetAgent && nameRef.current !== '') {
+    if (hasValidTargetAgent && name.trim() !== '') {
       const payload: AgentConfiguration = {
         id: props.selected?.id,
-        name: nameRef.current,
+        name,
         agent: targetAgent!.name,
-        enabled: enabledRef.current,
+        enabled,
         types: types,
-        aboutScale: aboutScaleRef.current,
+        aboutScale,
         options: formValues,
       }
       clearFeedback()
@@ -102,18 +132,18 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const doTest = async () => {
     if (testing) return
 
-    if (hasValidTargetAgent && nameRef.current !== '') {
+    if (hasValidTargetAgent && name.trim() !== '') {
       const types = targetTypes ? targetTypes.map((t) => t.id) : []
       clearFeedback()
       setTesting(true)
 
       await PostApiHandler<string>(`/notifications/test`, {
         id: props.selected?.id,
-        name: nameRef.current,
+        name,
         agent: targetAgent!.name,
-        enabled: enabledRef.current,
+        enabled,
         types: types,
-        aboutScale: aboutScaleRef.current,
+        aboutScale,
         options: formValues,
       })
         .then((resp) => {
@@ -171,17 +201,25 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   }, [props.selected])
 
   const postNotificationConfig = async (payload: AgentConfiguration) => {
-    const status = await PostApiHandler<BasicResponseDto>(
-      '/notifications/configuration/add',
-      payload,
-    )
+    setSaving(true)
 
-    if (status.status === 'OK') {
-      props.onSave()
-      return
+    try {
+      const status = await PostApiHandler<BasicResponseDto>(
+        '/notifications/configuration/add',
+        payload,
+      )
+
+      if (status.status === 'OK') {
+        props.onSave()
+        return
+      }
+
+      setError(status.message)
+    } catch {
+      setError('Failed to save notification agent')
+    } finally {
+      setSaving(false)
     }
-
-    setError(status.message)
   }
 
   const handleInputChange = (fieldName: string, value: any) => {
@@ -192,8 +230,6 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     clearFeedback()
   }
 
-  const isLoading = !availableAgents || !availableTypes
-
   const modalTitle = props.selected?.id
     ? 'Edit Notification Agent'
     : 'New Notification Agent'
@@ -203,8 +239,8 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       loading={false}
       backgroundClickable={false}
       onCancel={() => props.onCancel()}
-      okDisabled={isLoading}
-      okText="Save"
+      okDisabled={!canSave}
+      okContent={<SaveButtonContent isPending={saving} label="Save" />}
       okButtonType={'primary'}
       title={modalTitle}
       iconSvg={''}
@@ -259,9 +295,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     type="text"
                     id="name"
                     name="name"
-                    defaultValue={props.selected?.name}
+                    value={name}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                      nameRef.current = event.target.value
+                      setName(event.target.value)
                       clearFeedback()
                     }}
                   ></input>
@@ -279,9 +315,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     type="checkbox"
                     name="enabled"
                     id="enabled"
-                    defaultChecked={props.selected?.enabled}
+                    checked={enabled}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                      enabledRef.current = event.target.checked
+                      setEnabled(event.target.checked)
                       clearFeedback()
                     }}
                   ></input>
@@ -433,11 +469,11 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                               <input
                                 type="number"
                                 name="about-scale"
-                                defaultValue={props.selected?.aboutScale ?? 3}
+                                value={aboutScale}
                                 onChange={(
                                   event: React.ChangeEvent<HTMLInputElement>,
                                 ) => {
-                                  aboutScaleRef.current = +event.target.value
+                                  setAboutScale(+event.target.value)
                                   clearFeedback()
                                 }}
                               />

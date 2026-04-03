@@ -53,7 +53,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
         {props.isLoading ? (
           <LoadingSpinner />
         ) : (
-          <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
+          <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] xs:gap-4">
             {props.collections?.map((col) => (
               <li
                 key={+col.id!}

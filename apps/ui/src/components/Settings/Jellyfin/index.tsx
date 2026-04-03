@@ -1,4 +1,3 @@
-import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type JellyfinSetting,
@@ -16,17 +15,18 @@ import {
   useTestJellyfin,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
+import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import Alert from '../../Common/Alert'
 import DocsButton from '../../Common/DocsButton'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
+import SettingsAlertSlot from '../SettingsAlertSlot'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
-import SettingsAlertSlot from '../SettingsAlertSlot'
 
 const JellyfinSettingDeleteSchema = z.object({
   jellyfin_url: z.literal(''),
@@ -40,8 +40,6 @@ const JellyfinSettingFormSchema = z.union([
 ])
 
 type JellyfinSettingFormResult = z.infer<typeof JellyfinSettingFormSchema>
-
-const stripTrailingSlashes = (url: string) => url.replace(/\/+$/, '')
 
 const JellyfinSettings = () => {
   const [testResult, setTestResult] = useState<{
@@ -104,19 +102,27 @@ const JellyfinSettings = () => {
   }, [jellyfinData, reset])
 
   const isGoingToRemoveSettings = jellyfinUrl === '' && jellyfinApiKey === ''
-  const enteredSettingsAreSameAsSaved =
-    jellyfinUrl === (jellyfinData?.jellyfin_url ?? '') &&
-    jellyfinApiKey === (jellyfinData?.jellyfin_api_key ?? '')
+  const hasChanges =
+    jellyfinUrl !== (jellyfinData?.jellyfin_url ?? '') ||
+    jellyfinApiKey !== (jellyfinData?.jellyfin_api_key ?? '')
   const enteredSettingsHaveBeenTested =
     jellyfinUrl === testedSettings?.url &&
     jellyfinApiKey === testedSettings?.apiKey &&
     testResult?.status
-  const canSaveSettings =
-    (enteredSettingsAreSameAsSaved ||
-      enteredSettingsHaveBeenTested ||
-      isGoingToRemoveSettings) &&
-    !isSavePending &&
-    !isDeletePending
+  const canSaveSettings = hasChanges && !isSavePending && !isDeletePending
+
+  const clearTransientState = () => {
+    clearError()
+    setTestResult(null)
+    setTestedSettings(null)
+    setJellyfinUsers([])
+  }
+
+  const registerApiKey = register('jellyfin_api_key', {
+    onChange: () => {
+      clearTransientState()
+    },
+  })
 
   const handleTest = async () => {
     if (isTestPending || !(await trigger())) return
@@ -174,6 +180,11 @@ const JellyfinSettings = () => {
     if (data.jellyfin_url === '' && data.jellyfin_api_key === '') {
       try {
         await deleteSettings()
+        reset({
+          jellyfin_url: '',
+          jellyfin_api_key: '',
+          jellyfin_user_id: '',
+        })
         setTestResult(null)
         setTestedSettings(null)
         setJellyfinUsers([])
@@ -186,6 +197,7 @@ const JellyfinSettings = () => {
 
     try {
       await saveSettings(data as JellyfinSetting)
+      reset(data)
       showUpdated()
     } catch (error) {
       const message = getApiErrorMessage(error, 'Failed to save settings')
@@ -231,7 +243,10 @@ const JellyfinSettings = () => {
                   label="Jellyfin URL"
                   value={field.value}
                   placeholder="http://jellyfin.local:8096"
-                  onChange={field.onChange}
+                  onChange={(event) => {
+                    clearTransientState()
+                    field.onChange(event)
+                  }}
                   onBlur={(event) =>
                     field.onChange(stripTrailingSlashes(event.target.value))
                   }
@@ -247,7 +262,7 @@ const JellyfinSettings = () => {
             <InputGroup
               label="API Key"
               type="password"
-              {...register('jellyfin_api_key')}
+              {...registerApiKey}
               error={errors.jellyfin_api_key?.message}
               helpText={
                 <>
@@ -308,19 +323,18 @@ const JellyfinSettings = () => {
                     className="ml-3"
                     disabled={isTestPending || isGoingToRemoveSettings}
                     isPending={isTestPending}
-                    feedbackStatus={testResult?.status}
+                    feedbackStatus={
+                      enteredSettingsHaveBeenTested
+                        ? testResult?.status
+                        : undefined
+                    }
                   />
 
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <PendingButton
-                      buttonType="primary"
+                    <SaveButton
                       type="submit"
                       disabled={!canSaveSettings}
-                      idleLabel="Save Changes"
-                      pendingLabel="Saving..."
                       isPending={isSavePending || isDeletePending}
-                      idleIcon={<SaveIcon />}
-                      reserveLabel="Save Changes"
                     />
                   </span>
                 </div>

@@ -1,8 +1,8 @@
 import { RefreshIcon } from '@heroicons/react/outline'
-import { SaveIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'react-toastify'
 import { useSettingsOutletContext } from '..'
 import {
@@ -18,7 +18,7 @@ import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import PlexLoginButton from '../../Login/Plex'
 import SettingsAlertSlot from '../SettingsAlertSlot'
@@ -86,6 +86,34 @@ export interface PlexServerFormState {
 const normalizePlexHostname = (hostname?: string) =>
   hostname?.replace('http://', '').replace('https://', '') ?? ''
 
+const buildPlexServerState = (settings?: {
+  plex_hostname?: string
+  plex_port?: number
+  plex_name?: string
+  plex_ssl?: number
+}): PlexServerFormState => ({
+  hostname: normalizePlexHostname(settings?.plex_hostname),
+  port: settings?.plex_port != null ? String(settings.plex_port) : '',
+  name: settings?.plex_name ?? '',
+  ssl: Boolean(settings?.plex_ssl),
+})
+
+const isCompletePlexServerState = (state: PlexServerFormState) =>
+  state.hostname !== '' && state.port !== '' && state.name !== ''
+
+const buildPlexServerPayload = (state: PlexServerFormState) => {
+  const normalizedHostname = normalizePlexHostname(state.hostname)
+
+  return {
+    plex_hostname: state.ssl
+      ? `https://${normalizedHostname}`
+      : normalizedHostname,
+    plex_port: Number(state.port),
+    plex_name: state.name,
+    plex_ssl: Number(state.ssl),
+  }
+}
+
 export const hasUnsavedPlexServerChanges = (
   current: PlexServerFormState,
   saved: PlexServerFormState,
@@ -99,18 +127,14 @@ export const hasUnsavedPlexServerChanges = (
 }
 
 const PlexSettings = () => {
-  const hostnameRef = useRef<HTMLInputElement>(null)
-  const nameRef = useRef<HTMLInputElement>(null)
-  const portRef = useRef<HTMLInputElement>(null)
-  const sslRef = useRef<HTMLInputElement>(null)
-  const serverPresetRef = useRef<HTMLInputElement>(null)
   const [tokenValid, setTokenValid] = useState<boolean>(false)
   const [clearTokenClicked, setClearTokenClicked] = useState<boolean>(false)
+  const [manualToken, setManualToken] = useState('')
+  const [selectedPreset, setSelectedPreset] = useState('manual')
   const [testBanner, setTestbanner] = useState<{
     status: boolean
     version: string
   }>({ status: false, version: '' })
-  const [hasUnsavedServerChanges, setHasUnsavedServerChanges] = useState(false)
   const [testing, setTesting] = useState(false)
   const [availableServers, setAvailableServers] = useState<PlexDevice[]>()
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
@@ -129,19 +153,13 @@ const PlexSettings = () => {
   const { mutateAsync: updatePlexAuth, isPending: updatePlexAuthPending } =
     useUpdatePlexAuth()
   const { settings } = useSettingsOutletContext()
+  const hasStoredPlexCredentials =
+    tokenValid || Boolean(settings?.plex_auth_token)
 
-  const clearTestBanner = useCallback(() => {
-    setTestbanner({ status: false, version: '' })
-  }, [])
-
-  const savedServerState = useMemo<PlexServerFormState>(
-    () => ({
-      hostname: normalizePlexHostname(settings?.plex_hostname),
-      port: settings?.plex_port != null ? String(settings.plex_port) : '',
-      name: settings?.plex_name ?? '',
-      ssl: Boolean(settings?.plex_ssl),
-    }),
+  const initialServerState = useMemo(
+    () => buildPlexServerState(settings),
     [
+      settings?.plex_auth_token,
       settings?.plex_hostname,
       settings?.plex_name,
       settings?.plex_port,
@@ -149,75 +167,93 @@ const PlexSettings = () => {
     ],
   )
 
-  const getCurrentServerState = useCallback((): PlexServerFormState => {
-    return {
-      hostname: normalizePlexHostname(hostnameRef.current?.value),
-      port: portRef.current?.value ?? '',
-      name: nameRef.current?.value ?? '',
-      ssl: Boolean(sslRef.current?.checked),
-    }
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    getValues,
+    control,
+    formState: { defaultValues },
+  } = useForm<PlexServerFormState>({
+    defaultValues: initialServerState,
+  })
+
+  const clearTestBanner = useCallback(() => {
+    setTestbanner({ status: false, version: '' })
   }, [])
 
-  const syncUnsavedServerChanges = useCallback(() => {
-    const nextHasUnsavedServerChanges = hasUnsavedPlexServerChanges(
-      getCurrentServerState(),
-      savedServerState,
-    )
+  const hostname = useWatch({ control, name: 'hostname' }) ?? ''
+  const port = useWatch({ control, name: 'port' }) ?? ''
+  const name = useWatch({ control, name: 'name' }) ?? ''
+  const ssl = Boolean(useWatch({ control, name: 'ssl' }))
 
-    setHasUnsavedServerChanges(nextHasUnsavedServerChanges)
+  const currentServerState = useMemo<PlexServerFormState>(
+    () => ({
+      hostname: normalizePlexHostname(hostname),
+      port,
+      name,
+      ssl,
+    }),
+    [hostname, name, port, ssl],
+  )
 
-    return nextHasUnsavedServerChanges
-  }, [getCurrentServerState, savedServerState])
+  const savedServerState = useMemo<PlexServerFormState>(
+    () => ({
+      hostname: normalizePlexHostname(defaultValues?.hostname),
+      port: defaultValues?.port ?? '',
+      name: defaultValues?.name ?? '',
+      ssl: Boolean(defaultValues?.ssl),
+    }),
+    [
+      defaultValues?.hostname,
+      defaultValues?.name,
+      defaultValues?.port,
+      defaultValues?.ssl,
+    ],
+  )
 
-  const handleServerSettingsChange = useCallback(() => {
+  const hasUnsavedServerChanges = useMemo(
+    () => hasUnsavedPlexServerChanges(currentServerState, savedServerState),
+    [currentServerState, savedServerState],
+  )
+
+  const clearServerSettingsFeedback = useCallback(() => {
     clearError()
     clearTestBanner()
-    syncUnsavedServerChanges()
-  }, [clearError, clearTestBanner, syncUnsavedServerChanges])
+    setSelectedPreset('manual')
+  }, [clearError, clearTestBanner])
 
   useEffect(() => {
-    syncUnsavedServerChanges()
-  }, [syncUnsavedServerChanges])
+    reset(initialServerState)
+    setSelectedPreset('manual')
+  }, [initialServerState, reset])
 
-  const submit = async (e: React.FormEvent<HTMLFormElement> | undefined) => {
-    e?.preventDefault()
+  const submit = async (values: PlexServerFormState) => {
     clearError()
 
-    if (
-      hostnameRef.current?.value &&
-      nameRef.current?.value &&
-      portRef.current?.value &&
-      sslRef.current !== null
-    ) {
-      const payload: {
-        plex_hostname: string
-        plex_port: number
-        plex_name: string
-        plex_ssl: number
-        plex_auth_token?: string
-      } = {
-        plex_hostname: sslRef.current?.checked
-          ? `https://${hostnameRef.current.value
-              .replace('http://', '')
-              .replace('https://', '')}`
-          : hostnameRef.current.value
-              .replace('http://', '')
-              .replace('https://', ''),
-        plex_port: +portRef.current.value,
-        plex_name: nameRef.current.value,
-        plex_ssl: +sslRef.current.checked, // not used, server derives this from https://
-      }
+    if (!hasStoredPlexCredentials) {
+      showWarning('Authenticate with Plex before saving server settings.')
+      return
+    }
 
-      try {
-        await updateSettings(payload)
-        setHasUnsavedServerChanges(false)
-        clearTestBanner()
-        showUpdated()
-      } catch {
-        showUpdateError()
-      }
-    } else {
+    const normalizedValues = {
+      ...values,
+      hostname: normalizePlexHostname(values.hostname),
+    }
+
+    if (!isCompletePlexServerState(normalizedValues)) {
       showError('Please fill in all required fields.')
+      return
+    }
+
+    try {
+      await updateSettings(buildPlexServerPayload(normalizedValues))
+      reset(normalizedValues)
+      clearTestBanner()
+      showUpdated()
+    } catch {
+      showUpdateError()
     }
   }
 
@@ -257,6 +293,13 @@ const PlexSettings = () => {
   }, [availableServers])
 
   const authsuccess = async (token: string) => {
+    await persistToken(token)
+  }
+
+  const persistToken = async (
+    token: string,
+    { clearManualInput = false }: { clearManualInput?: boolean } = {},
+  ) => {
     clearError()
     clearTestBanner()
     setTokenValid(false)
@@ -264,12 +307,30 @@ const PlexSettings = () => {
     const didPersistToken = await submitPlexToken({ plex_auth_token: token })
 
     if (didPersistToken) {
+      if (clearManualInput) {
+        setManualToken('')
+      }
+
       verifyToken(token)
     }
   }
 
   const authFailed = () => {
     showError('Authentication failed')
+  }
+
+  const saveManualToken = async () => {
+    clearError()
+    clearTestBanner()
+
+    const trimmedToken = manualToken.trim()
+
+    if (!trimmedToken) {
+      showWarning('Enter a Plex token before saving authentication.')
+      return
+    }
+
+    await persistToken(trimmedToken, { clearManualInput: true })
   }
 
   const deleteToken = async () => {
@@ -333,7 +394,12 @@ const PlexSettings = () => {
       return
     }
 
-    if (syncUnsavedServerChanges()) {
+    if (!hasStoredPlexCredentials) {
+      showWarning('Authenticate with Plex before testing the connection.')
+      return
+    }
+
+    if (hasUnsavedServerChanges) {
       showWarning('Save changes before testing the Plex connection.')
       return
     }
@@ -364,19 +430,6 @@ const PlexSettings = () => {
       })
     } finally {
       setTesting(false)
-    }
-  }
-
-  function setFieldValue(
-    ref: React.MutableRefObject<HTMLInputElement | null>,
-    value: string,
-  ) {
-    if (ref.current) {
-      if (ref.current.type === 'checkbox') {
-        ref.current.checked = value == 'true'
-      } else {
-        ref.current.value = value
-      }
     }
   }
 
@@ -441,7 +494,7 @@ const PlexSettings = () => {
         </SettingsAlertSlot>
 
         <div className="section">
-          <form onSubmit={submit}>
+          <form onSubmit={handleSubmit(submit)}>
             {/* Load preset server list */}
             <div className="form-row">
               <label htmlFor="preset" className="text-label">
@@ -452,21 +505,25 @@ const PlexSettings = () => {
                   <select
                     id="preset"
                     name="preset"
-                    value={serverPresetRef?.current?.value}
+                    value={selectedPreset}
                     disabled={
                       (!availableServers || isRefreshingPresets) &&
                       tokenValid === true
                     }
                     className="rounded-l-only"
-                    onChange={async (e) => {
-                      const targPreset =
-                        availablePresets[Number(e.target.value)]
+                    onChange={(event) => {
+                      const { value } = event.target
+                      setSelectedPreset(value)
+                      clearError()
+                      clearTestBanner()
+
+                      const targPreset = availablePresets[Number(value)]
+
                       if (targPreset) {
-                        setFieldValue(nameRef, targPreset.name)
-                        setFieldValue(hostnameRef, targPreset.address)
-                        setFieldValue(portRef, targPreset.port.toString())
-                        setFieldValue(sslRef, targPreset.ssl.toString())
-                        handleServerSettingsChange()
+                        setValue('name', targPreset.name)
+                        setValue('hostname', targPreset.address)
+                        setValue('port', targPreset.port.toString())
+                        setValue('ssl', targPreset.ssl)
                       }
                     }}
                   >
@@ -517,9 +574,9 @@ const PlexSettings = () => {
                     name="name"
                     id="name"
                     type="text"
-                    ref={nameRef}
-                    defaultValue={settings.plex_name}
-                    onChange={handleServerSettingsChange}
+                    {...register('name', {
+                      onChange: clearServerSettingsFeedback,
+                    })}
                   ></input>
                 </div>
               </div>
@@ -535,11 +592,9 @@ const PlexSettings = () => {
                     name="hostname"
                     id="hostname"
                     type="text"
-                    ref={hostnameRef}
-                    defaultValue={settings.plex_hostname
-                      ?.replace('http://', '')
-                      .replace('https://', '')}
-                    onChange={handleServerSettingsChange}
+                    {...register('hostname', {
+                      onChange: clearServerSettingsFeedback,
+                    })}
                   ></input>
                 </div>
               </div>
@@ -555,9 +610,9 @@ const PlexSettings = () => {
                     name="port"
                     id="port"
                     type="number"
-                    ref={portRef}
-                    defaultValue={settings.plex_port}
-                    onChange={handleServerSettingsChange}
+                    {...register('port', {
+                      onChange: clearServerSettingsFeedback,
+                    })}
                   ></input>
                 </div>
               </div>
@@ -573,9 +628,9 @@ const PlexSettings = () => {
                     type="checkbox"
                     name="ssl"
                     id="ssl"
-                    defaultChecked={Boolean(settings.plex_ssl)}
-                    ref={sslRef}
-                    onChange={handleServerSettingsChange}
+                    {...register('ssl', {
+                      onChange: clearServerSettingsFeedback,
+                    })}
                   ></input>
                 </div>
               </div>
@@ -623,6 +678,46 @@ const PlexSettings = () => {
               </div>
             </div>
 
+            <div className="form-row">
+              <label htmlFor="manual-token" className="text-label">
+                Manual Token
+                <span className="label-tip">
+                  Paste a Plex token if you want to authenticate without the
+                  Plex popup flow.
+                </span>
+              </label>
+              <div className="form-input">
+                <div className="form-input-field flex items-center gap-3">
+                  <input
+                    name="manual-token"
+                    id="manual-token"
+                    type="password"
+                    className="flex-1"
+                    value={manualToken}
+                    onChange={(event) => {
+                      clearError()
+                      clearTestBanner()
+                      setManualToken(event.target.value)
+                    }}
+                  ></input>
+                  <span className="inline-flex rounded-md shadow-sm">
+                    <SaveButton
+                      type="button"
+                      label="Save Token"
+                      pendingLabel="Saving Token..."
+                      disabled={
+                        manualToken.trim() === '' || updatePlexAuthPending
+                      }
+                      isPending={updatePlexAuthPending}
+                      onClick={() => {
+                        void saveManualToken()
+                      }}
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">
                 <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
@@ -636,6 +731,7 @@ const PlexSettings = () => {
                     className="ml-3"
                     disabled={
                       testing ||
+                      !hasStoredPlexCredentials ||
                       hasUnsavedServerChanges ||
                       updatePlexAuthPending
                     }
@@ -646,22 +742,33 @@ const PlexSettings = () => {
                     title={
                       updatePlexAuthPending
                         ? 'Wait for Plex authentication to finish before testing.'
-                        : hasUnsavedServerChanges
-                          ? 'Save changes before testing the Plex connection.'
-                          : undefined
+                        : !hasStoredPlexCredentials
+                          ? 'Authenticate with Plex before testing the connection.'
+                          : hasUnsavedServerChanges
+                            ? 'Save changes before testing the Plex connection.'
+                            : undefined
                     }
                   />
 
                   <span className="ml-3 inline-flex rounded-md shadow-sm">
-                    <PendingButton
-                      buttonType="primary"
+                    <SaveButton
                       type="submit"
-                      disabled={isPending}
-                      idleLabel="Save Changes"
-                      pendingLabel="Saving..."
+                      disabled={
+                        !hasUnsavedServerChanges ||
+                        isPending ||
+                        updatePlexAuthPending ||
+                        !hasStoredPlexCredentials
+                      }
                       isPending={isPending}
-                      idleIcon={<SaveIcon />}
-                      reserveLabel="Save Changes"
+                      title={
+                        updatePlexAuthPending
+                          ? 'Wait for Plex authentication to finish before saving.'
+                          : !hasStoredPlexCredentials
+                            ? 'Authenticate with Plex before saving server settings.'
+                            : !hasUnsavedServerChanges
+                              ? 'Change a Plex server setting before saving.'
+                              : undefined
+                      }
                     />
                   </span>
                 </div>

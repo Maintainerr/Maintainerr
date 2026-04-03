@@ -58,23 +58,33 @@ const RadarrSettings = () => {
     setSettingsModalActive(undefined)
   }
 
-  const confirmedDelete = (id: number) => {
-    DeleteApiHandler<DeleteRadarrSettingResponseDto>(`/settings/radarr/${id}`)
-      .then((resp) => {
-        if (resp.code === 1) {
-          setSettings(settings.filter((s) => s.id !== id))
-        } else if (resp.data?.collectionsInUse) {
-          setCollectionsInUseWarning(resp.data.collectionsInUse)
-        }
-      })
-      .catch((error: unknown) => {
-        void logClientError(
-          'Failed to delete Radarr setting',
-          error,
-          'Settings.Radarr.confirmedDelete',
+  const confirmedDelete = async (id: number) => {
+    try {
+      const resp = await DeleteApiHandler<DeleteRadarrSettingResponseDto>(
+        `/settings/radarr/${id}`,
+      )
+
+      if (resp.code === 1) {
+        setSettings((currentSettings) =>
+          currentSettings.filter((setting) => setting.id !== id),
         )
-        toast.error('Failed to delete Radarr setting. Check logs for details.')
-      })
+        setSettingsModalActive(undefined)
+        return true
+      }
+
+      if (resp.data?.collectionsInUse) {
+        setCollectionsInUseWarning(resp.data.collectionsInUse)
+      }
+    } catch (error: unknown) {
+      void logClientError(
+        'Failed to delete Radarr setting',
+        error,
+        'Settings.Radarr.confirmedDelete',
+      )
+      toast.error('Failed to delete Radarr setting. Check logs for details.')
+    }
+
+    return false
   }
 
   useEffect(() => {
@@ -126,7 +136,9 @@ const RadarrSettings = () => {
                       <p className="m-auto font-semibold">Edit</p>
                     </Button>
                     <DeleteButton
-                      onDeleteRequested={() => confirmedDelete(setting.id)}
+                      onDeleteRequested={() => {
+                        void confirmedDelete(setting.id)
+                      }}
                     />
                   </div>
                 </li>
@@ -155,6 +167,7 @@ const RadarrSettings = () => {
               : settingsModalActive
           }
           onUpdate={handleSettingsSaved}
+          onDelete={confirmedDelete}
           onCancel={() => {
             setSettingsModalActive(undefined)
           }}

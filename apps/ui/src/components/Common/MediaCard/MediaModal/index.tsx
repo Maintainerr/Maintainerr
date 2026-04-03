@@ -30,6 +30,45 @@ interface ModalContentProps {
   isManual?: boolean
 }
 
+const mergeProviderIds = (
+  preferred?: MediaProviderIds,
+  fallback?: MediaProviderIds,
+): MediaProviderIds | undefined => {
+  const mergedEntries = new Map<string, string[]>()
+
+  for (const source of [preferred, fallback]) {
+    if (!source) {
+      continue
+    }
+
+    for (const [key, values] of Object.entries(source) as [
+      string,
+      string[] | undefined,
+    ][]) {
+      if (!values?.length) {
+        continue
+      }
+
+      const existingValues = mergedEntries.get(key) ?? []
+      const nextValues = [...existingValues]
+
+      values.forEach((value) => {
+        if (!nextValues.includes(value)) {
+          nextValues.push(value)
+        }
+      })
+
+      mergedEntries.set(key, nextValues)
+    }
+  }
+
+  if (mergedEntries.size === 0) {
+    return undefined
+  }
+
+  return Object.fromEntries(mergedEntries) as MediaProviderIds
+}
+
 const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 const ratingIcons: Record<string, string> = {
   audience: `${basePath}/icons_logos/tmdb_icon.svg`,
@@ -75,7 +114,15 @@ const emptyBackdropResult: BackdropResult = {
 }
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
-  ({ onClose, mediaType, id, summary, year, title, providerIds }) => {
+  ({
+    onClose,
+    mediaType,
+    id,
+    summary,
+    year,
+    title,
+    providerIds: fallbackProviderIds,
+  }) => {
     const { isPlex, isJellyfin } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdropResult, setBackdropResult] =
@@ -88,11 +135,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
 
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
-    const effectiveProviderIds = providerIds ?? metadata?.providerIds
+    const providerIds = useMemo(
+      () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
+      [metadata?.providerIds, fallbackProviderIds],
+    )
     const backdropRequestPath = buildMetadataImagePath(
       'backdrop',
       mediaType,
-      effectiveProviderIds,
+      providerIds,
     )
     const isCurrentBackdrop = backdropResult.requestKey === backdropRequestPath
     const resolvedBackdrop = isCurrentBackdrop ? backdropResult.url : null
@@ -103,10 +153,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       if (!cfg) return null
       const linkId =
         backdropResult.providerId?.toString() ??
-        effectiveProviderIds?.[cfg.providerIdKey]?.[0]
+        providerIds?.[cfg.providerIdKey]?.[0]
       if (!linkId) return null
       return { ...cfg, linkId }
-    }, [isCurrentBackdrop, backdropResult, effectiveProviderIds])
+    }, [isCurrentBackdrop, backdropResult, providerIds])
 
     const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
@@ -362,13 +412,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
 
             <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
-              {metadata?.providerIds &&
+              {providerIds &&
                 ['movie', 'show'].includes(mediaType) &&
-                (metadata.providerIds.tmdb?.length ||
-                  metadata.providerIds.imdb?.length ||
-                  metadata.providerIds.tvdb?.length) && (
+                (providerIds.tmdb?.length ||
+                  providerIds.imdb?.length ||
+                  providerIds.tvdb?.length) && (
                   <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                    {metadata.providerIds.tmdb?.map((id) => (
+                    {providerIds.tmdb?.map((id) => (
                       <span
                         key={`tmdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
@@ -376,7 +426,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         tmdb://{id}
                       </span>
                     ))}
-                    {metadata.providerIds.imdb?.map((id) => (
+                    {providerIds.imdb?.map((id) => (
                       <span
                         key={`imdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
@@ -384,7 +434,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         imdb://{id}
                       </span>
                     ))}
-                    {metadata.providerIds.tvdb?.map((id) => (
+                    {providerIds.tvdb?.map((id) => (
                       <span
                         key={`tvdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
@@ -401,7 +451,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                             ?.providerIdKey
                         if (
                           !key ||
-                          metadata.providerIds[key]?.includes(
+                          providerIds[key]?.includes(
                             String(backdropResult.providerId),
                           )
                         ) {

@@ -15,6 +15,7 @@ interface ModalProps {
   onSpecial?: (e?: MouseEvent<HTMLButtonElement>) => void
   cancelText?: string
   okText?: string
+  okContent?: ReactNode
   secondaryText?: string
   secondaryContent?: ReactNode
   tertiaryText?: string
@@ -57,6 +58,7 @@ const Modal: React.FC<ModalProps> = ({
   onOk,
   cancelText,
   okText,
+  okContent,
   okDisabled = false,
   cancelButtonType = 'default',
   okButtonType = 'primary',
@@ -171,7 +173,7 @@ const Modal: React.FC<ModalProps> = ({
                 disabled={okDisabled}
                 type="button"
               >
-                {okText ? okText : 'Ok'}
+                {okContent ?? (okText ? okText : 'Ok')}
               </Button>
             )}
             {typeof onSecondary === 'function' &&

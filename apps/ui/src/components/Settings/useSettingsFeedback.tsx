@@ -90,11 +90,13 @@ export const useSettingsFeedback = (scope = 'Settings') => {
 
 export const SettingsFeedbackAlert = ({
   feedback,
+  reserveSpace = true,
 }: {
   feedback: SettingsFeedback
+  reserveSpace?: boolean
 }) => {
   return (
-    <SettingsAlertSlot>
+    <SettingsAlertSlot reserveSpace={reserveSpace}>
       {feedback ? <Alert type={feedback.type} title={feedback.title} /> : null}
     </SettingsAlertSlot>
   )

@@ -1,11 +1,12 @@
-import { DownloadIcon, RefreshIcon, SaveIcon } from '@heroicons/react/solid'
-import React, { useRef, useState } from 'react'
+import { DownloadIcon, RefreshIcon } from '@heroicons/react/solid'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import MediaServerSelector from '../MediaServerSelector'
 import {
   SettingsFeedbackAlert,
@@ -13,33 +14,52 @@ import {
 } from '../useSettingsFeedback'
 import DatabaseBackupModal from './DatabaseBackupModal'
 
+interface GeneralSettingsFormValues {
+  applicationUrl: string
+  apikey: string
+}
+
 const MainSettings = () => {
-  const hostnameRef = useRef<HTMLInputElement>(null)
-  const apiKeyRef = useRef<HTMLInputElement>(null)
   const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const { feedback, showError, showUpdated, showUpdateError, clearError } =
+  const { feedback, showUpdated, showUpdateError, clearError } =
     useSettingsFeedback('General settings')
   const { settings } = useSettingsOutletContext()
   const { mutateAsync: updateSettings, isPending } = usePatchSettings()
 
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const initialValues = useMemo<GeneralSettingsFormValues>(
+    () => ({
+      applicationUrl: settings.applicationUrl ?? '',
+      apikey: settings.apikey ?? '',
+    }),
+    [settings.apikey, settings.applicationUrl],
+  )
+
+  const { register, handleSubmit, reset, getValues, control, formState } =
+    useForm<GeneralSettingsFormValues>({
+      defaultValues: initialValues,
+    })
+
+  const applicationUrl = useWatch({ control, name: 'applicationUrl' }) ?? ''
+  const apiKey = useWatch({ control, name: 'apikey' }) ?? ''
+
+  useEffect(() => {
+    reset(initialValues)
+  }, [initialValues, reset])
+
+  const hasChanges =
+    applicationUrl !== (formState.defaultValues?.applicationUrl ?? '') ||
+    apiKey !== (formState.defaultValues?.apikey ?? '')
+  const canSave = hasChanges && !isPending
+
+  const submit = async (data: GeneralSettingsFormValues) => {
     clearError()
 
-    if (hostnameRef.current?.value && apiKeyRef.current?.value) {
-      const payload = {
-        applicationUrl: hostnameRef.current.value,
-        apikey: apiKeyRef.current.value,
-      }
-
-      try {
-        await updateSettings(payload)
-        showUpdated()
-      } catch {
-        showUpdateError()
-      }
-    } else {
-      showError('Not all fields contain values')
+    try {
+      await updateSettings(data)
+      reset(data)
+      showUpdated()
+    } catch {
+      showUpdateError()
     }
   }
 
@@ -47,9 +67,14 @@ const MainSettings = () => {
     clearError()
 
     try {
-      const key = await GetApiHandler('/settings/api/generate')
+      const key = await GetApiHandler<string>('/settings/api/generate')
 
       await updateSettings({
+        apikey: key,
+      })
+
+      reset({
+        applicationUrl: getValues('applicationUrl'),
         apikey: key,
       })
 
@@ -74,7 +99,7 @@ const MainSettings = () => {
         )}
 
         <div className="section">
-          <form onSubmit={submit}>
+          <form onSubmit={handleSubmit(submit)}>
             <div className="form-row">
               <label htmlFor="hostname" className="text-label">
                 Hostname
@@ -85,8 +110,7 @@ const MainSettings = () => {
                     name="hostname"
                     id="hostname"
                     type="text"
-                    ref={hostnameRef}
-                    defaultValue={settings.applicationUrl}
+                    {...register('applicationUrl', { onChange: clearError })}
                   ></input>
                 </div>
               </div>
@@ -103,13 +127,12 @@ const MainSettings = () => {
                     name="api-key"
                     id="api-key"
                     type="text"
-                    ref={apiKeyRef}
-                    defaultValue={settings.apikey}
+                    {...register('apikey', { onChange: clearError })}
                   ></input>
                   <button
                     onClick={(e) => {
                       e.preventDefault()
-                      regenerateApi()
+                      void regenerateApi()
                     }}
                     className="input-action ml-3"
                   >
@@ -136,15 +159,10 @@ const MainSettings = () => {
                   </span>
                 </div>
                 <span className="flex rounded-md shadow-sm sm:ml-auto">
-                  <PendingButton
-                    buttonType="primary"
+                  <SaveButton
                     type="submit"
-                    disabled={isPending}
-                    idleLabel="Save Changes"
-                    pendingLabel="Saving..."
+                    disabled={!canSave}
                     isPending={isPending}
-                    idleIcon={<SaveIcon />}
-                    reserveLabel="Save Changes"
                   />
                 </span>
               </div>
@@ -152,10 +170,10 @@ const MainSettings = () => {
           </form>
         </div>
 
-        {/* Media Server Selector */}
         <MediaServerSelector currentType={settings.media_server_type ?? null} />
       </div>
     </>
   )
 }
+
 export default MainSettings

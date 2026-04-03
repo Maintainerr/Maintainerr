@@ -193,7 +193,7 @@ describe('MetadataSettings', () => {
     ).toBe('true')
   })
 
-  it('keeps provider save feedback inline within the provider card flow', async () => {
+  it('renders provider feedback in the shared page feedback slot above the cards', async () => {
     postApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/test/tmdb') {
         return Promise.resolve({
@@ -223,12 +223,165 @@ describe('MetadataSettings', () => {
       screen.getAllByRole('button', { name: 'Test Connection' })[0],
     )
 
+    const testStatusMessage = await screen.findByText(
+      'Successfully connected to TMDB',
+    )
+    const firstProviderCard = screen.getAllByRole('listitem')[0]
+
+    expect(
+      testStatusMessage.compareDocumentPosition(firstProviderCard) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
+
+    const saveStatusMessage = await screen.findByText('TMDB settings updated')
+
+    expect(
+      saveStatusMessage.compareDocumentPosition(firstProviderCard) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
+  })
+
+  it('enables Save Changes as soon as the API key changes without requiring a prior test', async () => {
+    render(<MetadataSettings />)
+
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+
+    expect(
+      (
+        screen.getAllByRole('button', {
+          name: 'Save Changes',
+        })[0] as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+
+    fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
+
+    await waitFor(() => {
+      expect(
+        (
+          screen.getAllByRole('button', {
+            name: 'Save Changes',
+          })[0] as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
+    })
+  })
+
+  it('allows clearing a saved API key and saving the empty value', async () => {
+    getApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/tmdb') {
+        return Promise.resolve({ api_key: 'tmdb-key' })
+      }
+
+      if (url === '/settings/tvdb') {
+        return Promise.resolve({ api_key: '' })
+      }
+
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    deleteApiHandler.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Deleted',
+    })
+
+    render(<MetadataSettings />)
+
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+
+    fireEvent.change(tmdbApiKeyInput, { target: { value: '' } })
+
+    await waitFor(() => {
+      expect(
+        (
+          screen.getAllByRole('button', {
+            name: 'Save Changes',
+          })[0] as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
+
+    await waitFor(() => {
+      expect(deleteApiHandler).toHaveBeenCalledWith('/settings/tmdb')
+    })
+  })
+
+  it('clears stale page-level preference feedback before provider saves', async () => {
+    getApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/tmdb') {
+        return Promise.resolve({ api_key: '' })
+      }
+
+      if (url === '/settings/tvdb') {
+        return Promise.resolve({ api_key: 'tvdb-key' })
+      }
+
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    postApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/test/tmdb') {
+        return Promise.resolve({
+          status: 'OK',
+          code: 1,
+          message: 'Connected',
+        })
+      }
+
+      if (url === '/settings/tmdb') {
+        return Promise.resolve({
+          status: 'OK',
+          code: 1,
+          message: 'Saved',
+        })
+      }
+
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    render(<MetadataSettings />)
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole('switch', { name: 'TVDB primary' })
+          .getAttribute('aria-disabled'),
+      ).toBe('false')
+    })
+
+    fireEvent.click(screen.getByRole('switch', { name: 'TVDB primary' }))
+
+    expect(
+      await screen.findByText('Metadata provider preference updated'),
+    ).toBeTruthy()
+
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+    fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Metadata provider preference updated'),
+      ).toBeNull()
+    })
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Test Connection' })[0],
+    )
+
     expect(
       await screen.findByText('Successfully connected to TMDB'),
     ).toBeTruthy()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
 
     expect(await screen.findByText('TMDB settings updated')).toBeTruthy()
+    expect(
+      screen.queryByText('Metadata provider preference updated'),
+    ).toBeNull()
   })
 })

@@ -330,7 +330,7 @@ export class MetadataService {
     ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
     const bag: ResolvedMediaIds = { ...ids, type };
-    await this.resolveAllIds(bag);
+    await this.resolveAllIds(bag, this.getOrderedProviderKeys());
 
     for (const [key, value] of Object.entries(bag)) {
       if (value !== undefined && key !== 'type') {

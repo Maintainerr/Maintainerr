@@ -158,13 +158,15 @@ export const getCollectionMediaSortConfig = (
       : undefined,
   }))
 
-  if (includeDeleteSoonest) {
-    options.push(collectionDeleteSoonestSortOption)
-  }
+  const resolvedOptions = includeDeleteSoonest
+    ? [collectionDeleteSoonestSortOption, ...options]
+    : options
 
   return {
-    defaultValue: defaultSortValue,
-    options,
+    defaultValue: includeDeleteSoonest
+      ? collectionDeleteSoonestSortOption.value
+      : defaultSortValue,
+    options: resolvedOptions,
   }
 }
 

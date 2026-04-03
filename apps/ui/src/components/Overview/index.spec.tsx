@@ -83,6 +83,8 @@ describe('Overview', () => {
       (option) => option.sortParams?.sort === 'deleteSoonest',
     )
 
+    expect(sortConfig.defaultValue).toBe('deleteSoonest.asc')
+    expect(sortConfig.options[0]?.value).toBe('deleteSoonest.asc')
     expect(
       sortConfig.options.some((option) => option.value === 'deleteSoonest.asc'),
     ).toBe(true)

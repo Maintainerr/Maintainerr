@@ -62,6 +62,16 @@ export function getBaseUrl(url: string): string | undefined {
   }
 }
 
+export function stripTrailingSlashes(value: string): string {
+  let endIndex = value.length
+
+  while (endIndex > 0 && value[endIndex - 1] === '/') {
+    endIndex -= 1
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex)
+}
+
 export function camelCaseToPrettyText(camelCaseStr: string): string {
   return camelCaseStr
     .replace(/([a-z])([A-Z])/g, '$1 $2')
