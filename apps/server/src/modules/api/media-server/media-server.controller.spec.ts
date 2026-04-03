@@ -1,9 +1,9 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { BadRequestException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
-import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { IMediaServerService } from './media-server.interface';
 
 /**
@@ -25,6 +25,7 @@ describe('MediaServerController', () => {
 
   beforeEach(() => {
     mockMediaServerService = {
+      getLibraries: jest.fn().mockResolvedValue([]),
       getLibraryContents: jest.fn().mockResolvedValue({
         items: [],
         totalSize: 0,
@@ -104,6 +105,79 @@ describe('MediaServerController', () => {
         'lib1',
         { offset: 0, limit: 50, type: 'movie' },
       );
+    });
+  });
+
+  describe('getOverviewBootstrap', () => {
+    it('should return libraries with the first library content in one response', async () => {
+      const library = {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      };
+      const item = {
+        id: 'show-1',
+        title: 'Show 1',
+        guid: 'guid-show-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['1'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [item],
+        totalSize: 1,
+        offset: 0,
+        limit: 30,
+      });
+
+      const result = await controller.getOverviewBootstrap(30);
+
+      expect(mockMediaServerService.getLibraries).toHaveBeenCalledTimes(1);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
+        'shows-library',
+        {
+          offset: 0,
+          limit: 30,
+          type: 'show',
+          sort: undefined,
+          sortOrder: undefined,
+        },
+      );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        item,
+      ]);
+      expect(result).toEqual({
+        libraries: [library],
+        selectedLibraryId: 'shows-library',
+        content: {
+          items: [item],
+          totalSize: 1,
+          offset: 0,
+          limit: 30,
+        },
+      });
+    });
+
+    it('should return an empty bootstrap payload when there are no libraries', async () => {
+      mockMediaServerService.getLibraries.mockResolvedValue([]);
+
+      const result = await controller.getOverviewBootstrap(30);
+
+      expect(mockMediaServerService.getLibraryContents).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        libraries: [],
+        selectedLibraryId: undefined,
+        content: {
+          items: [],
+          totalSize: 0,
+          offset: 0,
+          limit: 30,
+        },
+      });
     });
   });
 

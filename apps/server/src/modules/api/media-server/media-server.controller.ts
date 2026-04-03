@@ -40,6 +40,12 @@ import { IMediaServerService } from './media-server.interface';
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 
+interface OverviewBootstrapResult {
+  libraries: MediaLibrary[];
+  selectedLibraryId?: string;
+  content: PagedResult<MediaItem>;
+}
+
 /**
  * Unified Media Server Controller
  *
@@ -111,6 +117,50 @@ export class MediaServerController {
   async getLibraries(): Promise<MediaLibrary[]> {
     const mediaServer = await this.mediaServerFactory.getService();
     return await mediaServer.getLibraries();
+  }
+
+  @Get('overview/bootstrap')
+  async getOverviewBootstrap(
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+    @Query('sort', new ZodValidationPipe(mediaLibrarySortQuerySchema))
+    sort?: MediaLibrarySortField,
+    @Query('sortOrder', new ZodValidationPipe(mediaSortOrderQuerySchema))
+    sortOrder?: MediaSortOrder,
+  ): Promise<OverviewBootstrapResult> {
+    const mediaServer = await this.mediaServerFactory.getService();
+    const libraries = await mediaServer.getLibraries();
+    const selectedLibrary = libraries[0];
+    const size = limit ?? 50;
+
+    if (!selectedLibrary) {
+      return {
+        libraries,
+        selectedLibraryId: undefined,
+        content: {
+          items: [],
+          totalSize: 0,
+          offset: 0,
+          limit: size,
+        },
+      };
+    }
+
+    const content = await mediaServer.getLibraryContents(selectedLibrary.id, {
+      offset: 0,
+      limit: size,
+      type: selectedLibrary.type,
+      sort,
+      sortOrder,
+    });
+
+    return {
+      libraries,
+      selectedLibraryId: selectedLibrary.id,
+      content: {
+        ...content,
+        items: await this.enrichItems(content.items),
+      },
+    };
   }
 
   @Get('library/:id/content')

@@ -7,7 +7,6 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useMediaServerLibraries } from '../../api/media-server'
 import { SearchContextProvider } from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import {
@@ -15,10 +14,6 @@ import {
   getMediaLibrarySortConfig,
 } from '../Common/MediaLibrarySortControl'
 import Overview, { buildLibraryContentQuery } from './index'
-
-vi.mock('../../api/media-server', () => ({
-  useMediaServerLibraries: vi.fn(),
-}))
 
 vi.mock('../../utils/ApiHandler', () => ({
   default: vi.fn(),
@@ -50,24 +45,25 @@ vi.mock('./Content', () => ({
 }))
 
 describe('Overview', () => {
-  const librariesHookMock = vi.mocked(useMediaServerLibraries)
   const getApiHandlerMock = vi.mocked(GetApiHandler)
   let libraries: MediaLibrary[] | undefined
-  const getLibrariesResult = (): ReturnType<typeof useMediaServerLibraries> =>
-    ({
-      data: libraries,
-      error: undefined,
-      isLoading: false,
-    }) as unknown as ReturnType<typeof useMediaServerLibraries>
 
   beforeEach(() => {
     libraries = undefined
-    librariesHookMock.mockReset()
     getApiHandlerMock.mockReset()
 
-    librariesHookMock.mockImplementation(getLibrariesResult)
-
     getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries: libraries ?? [],
+          selectedLibraryId: libraries?.[0]?.id,
+          content: {
+            totalSize: 0,
+            items: [],
+          },
+        }
+      }
+
       if (path.startsWith('/media-server/library/')) {
         return {
           totalSize: 0,
@@ -94,12 +90,29 @@ describe('Overview', () => {
     })
   })
 
-  it('shows a bootstrap spinner while libraries are still loading before the first overview request starts', () => {
-    librariesHookMock.mockReturnValue({
-      data: undefined,
-      error: undefined,
-      isLoading: true,
-    } as unknown as ReturnType<typeof useMediaServerLibraries>)
+  it('bootstraps overview data in a single request before rendering the first page', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
+          },
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
 
     render(
       <SearchContextProvider>
@@ -107,7 +120,14 @@ describe('Overview', () => {
       </SearchContextProvider>,
     )
 
-    expect(screen.getByTestId('overview-refresh-spinner')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item')).toBeTruthy()
+    })
+
+    expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    expect(getApiHandlerMock).toHaveBeenCalledWith(
+      expect.stringContaining('/media-server/overview/bootstrap?'),
+    )
   })
 
   it('only exposes the reachable delete soonest collection sort option', () => {
@@ -255,6 +275,19 @@ describe('Overview', () => {
       | undefined
 
     getApiHandlerMock.mockImplementation((path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return Promise.resolve({
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [
+              { id: 'existing-item', title: 'Existing Item', type: 'show' },
+            ],
+          },
+        })
+      }
+
       if (!path.startsWith('/media-server/library/')) {
         return Promise.reject(new Error(`Unexpected API request: ${path}`))
       }
@@ -265,10 +298,7 @@ describe('Overview', () => {
         })
       }
 
-      return Promise.resolve({
-        totalSize: 1,
-        items: [{ id: 'existing-item', title: 'Existing Item', type: 'show' }],
-      })
+      return Promise.reject(new Error(`Unexpected API request: ${path}`))
     })
 
     render(
