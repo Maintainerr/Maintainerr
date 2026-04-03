@@ -16,6 +16,7 @@ import SearchContext from '../../contexts/search-context'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
+import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import {
   getMediaLibrarySortConfig,
   MediaLibrarySortControl,
@@ -104,12 +105,14 @@ const Overview = () => {
     async (
       libraryId = selectedLibraryRef.current,
       requestSortParams = sortParams,
+      options?: { replaceExisting?: boolean },
     ) => {
       if (
         fetchingRef.current ||
         !libraryId ||
         SearchCtx.search.text !== '' ||
-        !(totalSizeRef.current >= pageData.current * fetchAmount)
+        (!options?.replaceExisting &&
+          !(totalSizeRef.current >= pageData.current * fetchAmount))
       ) {
         return
       }
@@ -140,9 +143,16 @@ const Overview = () => {
         )
 
         if (result.status === 'success') {
+          const nextItems = result.data.items ?? []
+          const mergedItems = options?.replaceExisting
+            ? nextItems
+            : [...dataRef.current, ...nextItems]
+
           setTotalSize(result.data.totalSize)
-          pageData.current = pageData.current + 1
-          setData([...dataRef.current, ...(result.data.items ?? [])])
+          totalSizeRef.current = result.data.totalSize
+          pageData.current = options?.replaceExisting ? 1 : pageData.current + 1
+          dataRef.current = mergedItems
+          setData(mergedItems)
           setLoadingExtra(false)
           setLoading(false)
           setFetching(false)
@@ -192,15 +202,19 @@ const Overview = () => {
 
       const nextLibraryId =
         libraryId ?? selectedLibraryRef.current ?? selectedLibrary
+      const hasExistingData = dataRef.current.length > 0
 
       setSearchUsed(false)
-      setData([])
-      dataRef.current = []
-      setTotalSize(999)
-      totalSizeRef.current = 999
       pageData.current = 0
       setLoading(true)
       setLoadingExtra(false)
+
+      if (!hasExistingData) {
+        setData([])
+        dataRef.current = []
+        setTotalSize(999)
+        totalSizeRef.current = 999
+      }
 
       if (!nextLibraryId) {
         setLoading(false)
@@ -209,7 +223,7 @@ const Overview = () => {
 
       selectedLibraryRef.current = nextLibraryId
       setSelectedLibrary(nextLibraryId)
-      await fetchData(nextLibraryId, nextSortParams)
+      await fetchData(nextLibraryId, nextSortParams, { replaceExisting: true })
     },
     [
       SearchCtx.search.text,
@@ -276,7 +290,9 @@ const Overview = () => {
     totalSizeRef.current = totalSize
   }, [totalSize])
 
+  const hasData = data.length > 0
   const hasMoreData = data.length < totalSize
+  const showRefreshing = isLoading && hasData
 
   return (
     <>
@@ -296,12 +312,21 @@ const Overview = () => {
               />
             </div>
             <div className="w-full sm:w-1/2">
-              <MediaLibrarySortControl
-                ariaLabel="Sort overview items"
-                options={sortConfig.options}
-                value={sortValue}
-                onSortChange={handleSortChange}
-              />
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <MediaLibrarySortControl
+                    ariaLabel="Sort overview items"
+                    options={sortConfig.options}
+                    value={sortValue}
+                    onSortChange={handleSortChange}
+                  />
+                </div>
+                <div className="flex min-h-6 min-w-6 items-center justify-end">
+                  {showRefreshing ? (
+                    <SmallLoadingSpinner className="h-6 w-6" />
+                  ) : undefined}
+                </div>
+              </div>
             </div>
           </div>
         ) : undefined}

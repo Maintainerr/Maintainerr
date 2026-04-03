@@ -28,8 +28,25 @@ vi.mock('../Common/LibrarySwitcher', () => ({
   default: () => null,
 }))
 
+vi.mock('../Common/LoadingSpinner', () => ({
+  SmallLoadingSpinner: () => <div data-testid="overview-refresh-spinner" />,
+}))
+
 vi.mock('./Content', () => ({
-  default: () => null,
+  default: ({
+    data,
+    loading,
+  }: {
+    data: Array<{ id: string; title: string }>
+    loading: boolean
+  }) => (
+    <div>
+      {loading ? <span data-testid="overview-content-loading" /> : null}
+      {data.map((item) => (
+        <span key={item.id}>{item.title}</span>
+      ))}
+    </div>
+  ),
 }))
 
 describe('Overview', () => {
@@ -206,5 +223,67 @@ describe('Overview', () => {
     expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain(
       'sort=title&sortOrder=asc',
     )
+  })
+
+  it('keeps existing overview items visible while a refreshed request is in flight', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    let resolveSecondRequest:
+      | ((value: { totalSize: number; items: any[] }) => void)
+      | undefined
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (!path.startsWith('/media-server/library/')) {
+        return Promise.reject(new Error(`Unexpected API request: ${path}`))
+      }
+
+      if (path.includes('sort=title&sortOrder=desc')) {
+        return new Promise((resolve) => {
+          resolveSecondRequest = resolve
+        })
+      }
+
+      return Promise.resolve({
+        totalSize: 1,
+        items: [{ id: 'existing-item', title: 'Existing Item', type: 'show' }],
+      })
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Existing Item')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(screen.getByText('Existing Item')).toBeTruthy()
+    expect(screen.getByTestId('overview-refresh-spinner')).toBeTruthy()
+    expect(screen.getByTestId('overview-content-loading')).toBeTruthy()
+
+    resolveSecondRequest?.({
+      totalSize: 1,
+      items: [{ id: 'next-item', title: 'Next Item', type: 'show' }],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Next Item')).toBeTruthy()
+    })
   })
 })
