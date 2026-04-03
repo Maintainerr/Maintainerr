@@ -9,6 +9,9 @@ vi.mock('../../Common/LoadingSpinner', () => ({
       data-container-class={containerClassName}
     />
   ),
+  SmallLoadingSpinner: ({ className }: { className?: string }) => (
+    <div data-testid="small-loading-spinner" data-class-name={className} />
+  ),
 }))
 
 vi.mock('../../Common/MediaCard', () => ({
@@ -64,6 +67,21 @@ describe('OverviewContent', () => {
         .getByTestId('loading-spinner')
         .getAttribute('data-container-class'),
     ).toBe('h-24')
+  })
+
+  it('uses the immediate small spinner for the initial overview load before any items exist', () => {
+    render(
+      <OverviewContent
+        data={[]}
+        dataFinished={false}
+        loading={true}
+        extrasLoading={false}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    expect(screen.getByTestId('small-loading-spinner')).toBeTruthy()
   })
 
   it('passes included and excluded overview state through to media cards', () => {

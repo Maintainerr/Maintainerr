@@ -6,7 +6,7 @@ import {
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
 import { ICollectionMedia } from '../../Collection'
-import LoadingSpinner from '../../Common/LoadingSpinner'
+import LoadingSpinner, { SmallLoadingSpinner } from '../../Common/LoadingSpinner'
 import MediaCard from '../../Common/MediaCard'
 import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../utils/uiBehavior'
 
@@ -117,8 +117,8 @@ const OverviewContent = (props: IOverviewContent) => {
   return (
     <>
       {showInitialLoading ? (
-        <div className="min-h-[20rem]">
-          <LoadingSpinner />
+        <div className="flex min-h-[20rem] items-center justify-center">
+          <SmallLoadingSpinner className="h-16 w-16" />
         </div>
       ) : hasData ? (
         <ul className="cards-vertical" aria-busy={loading}>
