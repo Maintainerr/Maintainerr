@@ -1,7 +1,7 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MetadataService } from './metadata.service';
 import { IMetadataProvider } from './interfaces/metadata-provider.interface';
+import { MetadataService } from './metadata.service';
 
 describe('MetadataService', () => {
   const createService = ({
@@ -22,8 +22,7 @@ describe('MetadataService', () => {
       name: 'TMDB',
       idKey: 'tmdb',
       isAvailable: () => true,
-      extractId: (ids) =>
-        typeof ids.tmdb === 'number' ? ids.tmdb : undefined,
+      extractId: (ids) => (typeof ids.tmdb === 'number' ? ids.tmdb : undefined),
       assignId: (ids, id) => {
         ids.tmdb = id;
       },
@@ -47,8 +46,7 @@ describe('MetadataService', () => {
       name: 'TVDB',
       idKey: 'tvdb',
       isAvailable: () => true,
-      extractId: (ids) =>
-        typeof ids.tvdb === 'number' ? ids.tvdb : undefined,
+      extractId: (ids) => (typeof ids.tvdb === 'number' ? ids.tvdb : undefined),
       assignId: (ids, id) => {
         ids.tvdb = id;
       },
@@ -115,7 +113,11 @@ describe('MetadataService', () => {
       'tt0099785',
       'imdb',
     );
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(202, 'movie', 'w500');
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(
+      202,
+      'movie',
+      'w500',
+    );
     expect(tmdbProvider.getPosterUrl).not.toHaveBeenCalled();
   });
 });
