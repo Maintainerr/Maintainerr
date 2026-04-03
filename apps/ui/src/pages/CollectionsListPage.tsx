@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
+import useLibrarySelection from '../hooks/useLibrarySelection'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
@@ -13,7 +14,12 @@ const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [collections, setCollections] = useState<ICollection[]>([])
-  const [selectedLibrary, setSelectedLibrary] = useState('all')
+  const {
+    selectedLibrary,
+    selectedLibraryRef,
+    applySelectedLibrary,
+    shouldSkipLibrarySwitch,
+  } = useLibrarySelection({ initialLibraryId: 'all' })
   const { invalidate, guardedFetch } = useRequestGeneration()
 
   const fetchData = async (
@@ -48,21 +54,21 @@ const CollectionsListPage = () => {
   }, [])
 
   const onSwitchLibrary = (id: string) => {
-    if (selectedLibrary === id) {
+    if (shouldSkipLibrarySwitch(id)) {
       return
     }
 
-    const previousLibrary = selectedLibrary
+    const previousLibrary = selectedLibraryRef.current ?? 'all'
 
     invalidate()
-    setSelectedLibrary(id)
+    applySelectedLibrary(id)
     setIsLoading(true)
 
     void (async () => {
       const result = await fetchData(id !== 'all' ? id : undefined)
 
       if (result === 'error') {
-        setSelectedLibrary(previousLibrary)
+        applySelectedLibrary(previousLibrary)
       }
     })()
   }

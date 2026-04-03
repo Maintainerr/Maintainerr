@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { useMediaServerLibraries } from '../../api/media-server'
 import SearchContext from '../../contexts/search-context'
+import useLibrarySelection from '../../hooks/useLibrarySelection'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
@@ -56,9 +57,14 @@ const Overview = () => {
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
 
-  const [selectedLibrary, setSelectedLibrary] = useState<string>()
-  const selectedLibraryRef = useRef<string | undefined>(undefined)
+  const {
+    selectedLibrary,
+    selectedLibraryRef,
+    applySelectedLibrary,
+    shouldSkipLibrarySwitch,
+  } = useLibrarySelection()
   const [searchUsed, setSearchUsed] = useState<boolean>(false)
+  const lastAutoSyncKeyRef = useRef<string | undefined>(undefined)
 
   const pageData = useRef<number>(0)
   const fetchingRef = useRef<boolean>(false)
@@ -163,7 +169,13 @@ const Overview = () => {
         setFetching(false)
       }
     },
-    [SearchCtx.search.text, guardedFetch, libraries, sortParams],
+    [
+      SearchCtx.search.text,
+      guardedFetch,
+      libraries,
+      selectedLibraryRef,
+      sortParams,
+    ],
   )
 
   const performOverviewSync = useCallback(
@@ -174,8 +186,7 @@ const Overview = () => {
         setLoading(true)
         setLoadingExtra(false)
         if (libraryId) {
-          selectedLibraryRef.current = libraryId
-          setSelectedLibrary(libraryId)
+          applySelectedLibrary(libraryId)
         }
 
         const searchData = async () => {
@@ -221,16 +232,17 @@ const Overview = () => {
         return
       }
 
-      selectedLibraryRef.current = nextLibraryId
-      setSelectedLibrary(nextLibraryId)
+      applySelectedLibrary(nextLibraryId)
       await fetchData(nextLibraryId, nextSortParams, { replaceExisting: true })
     },
     [
       SearchCtx.search.text,
+      applySelectedLibrary,
       fetchData,
       guardedFetch,
       invalidateFetches,
       selectedLibrary,
+      selectedLibraryRef,
       sortParams,
     ],
   )
@@ -241,16 +253,13 @@ const Overview = () => {
 
   const onSwitchLibrary = useCallback(
     (libraryId: string) => {
-      if (
-        SearchCtx.search.text === '' &&
-        selectedLibraryRef.current === libraryId
-      ) {
+      if (SearchCtx.search.text === '' && shouldSkipLibrarySwitch(libraryId)) {
         return
       }
 
       void performOverviewSync(libraryId)
     },
-    [SearchCtx.search.text, performOverviewSync],
+    [SearchCtx.search.text, performOverviewSync, shouldSkipLibrarySwitch],
   )
 
   const handleSortChange = (nextSortValue: string) => {
@@ -274,13 +283,51 @@ const Overview = () => {
       selectedLibraryRef.current = undefined
       setFetching(false)
     }
-  }, [invalidateFetches])
+  }, [invalidateFetches, selectedLibraryRef])
 
   useEffect(() => {
-    if (!defaultLibraryId) return
+    const nextLibraryId = selectedLibraryRef.current ?? defaultLibraryId
+    const nextSyncKey =
+      SearchCtx.search.text !== ''
+        ? `search:${SearchCtx.search.text}`
+        : nextLibraryId
+          ? `library:${nextLibraryId}`
+          : undefined
 
-    void syncOverviewData(defaultLibraryId)
-  }, [SearchCtx.search.text, defaultLibraryId])
+    if (!nextSyncKey || lastAutoSyncKeyRef.current === nextSyncKey) {
+      return
+    }
+
+    lastAutoSyncKeyRef.current = nextSyncKey
+    void syncOverviewData(nextLibraryId)
+  }, [SearchCtx.search.text, defaultLibraryId, selectedLibraryRef])
+
+  useEffect(() => {
+    if (!libraries?.length || !selectedLibraryRef.current) {
+      return
+    }
+
+    const isSelectedLibraryAvailable = libraries.some(
+      (library) => library.id === selectedLibraryRef.current,
+    )
+
+    if (isSelectedLibraryAvailable) {
+      return
+    }
+
+    lastAutoSyncKeyRef.current = undefined
+    applySelectedLibrary(undefined)
+
+    if (defaultLibraryId) {
+      void performOverviewSync(defaultLibraryId)
+    }
+  }, [
+    applySelectedLibrary,
+    defaultLibraryId,
+    libraries,
+    performOverviewSync,
+    selectedLibraryRef,
+  ])
 
   useEffect(() => {
     dataRef.current = data
@@ -296,7 +343,9 @@ const Overview = () => {
   const showBootstrapLoading =
     !searchUsed &&
     !hasData &&
-    (librariesLoading || isLoading || (!selectedLibrary && Boolean(defaultLibraryId)))
+    (librariesLoading ||
+      isLoading ||
+      (!selectedLibrary && Boolean(defaultLibraryId)))
 
   return (
     <>
