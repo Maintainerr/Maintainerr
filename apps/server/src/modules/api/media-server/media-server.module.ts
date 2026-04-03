@@ -7,9 +7,9 @@ import { PlexApiModule } from '../plex-api/plex-api.module';
 import { MediaServerSetupGuard } from './guards/media-server-setup.guard';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { JellyfinModule } from './jellyfin/jellyfin.module';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
-import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { PlexAdapterService } from './plex/plex-adapter.service';
 
 /**

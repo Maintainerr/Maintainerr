@@ -20,8 +20,8 @@ describe('MediaServerController', () => {
   let controller: MediaServerController;
   let mockMediaServerFactory: jest.Mocked<MediaServerFactory>;
   let mockMediaServerService: jest.Mocked<IMediaServerService>;
-  let mediaItemEnrichmentService: jest.Mocked<MediaItemEnrichmentService>;
   let logger: jest.Mocked<MaintainerrLogger>;
+  let mediaItemEnrichmentService: jest.Mocked<MediaItemEnrichmentService>;
 
   beforeEach(() => {
     mockMediaServerService = {

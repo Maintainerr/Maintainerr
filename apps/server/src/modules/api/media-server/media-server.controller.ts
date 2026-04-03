@@ -8,9 +8,9 @@ import {
   MediaLibrary,
   MediaLibrarySortField,
   mediaLibrarySortFields,
-  mediaSortOrders,
   MediaServerStatus,
   MediaSortOrder,
+  mediaSortOrders,
   MediaUser,
   PagedResult,
   UpdateCollectionParams,
@@ -33,9 +33,9 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaServerSetupGuard } from './guards';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { MediaServerFactory } from './media-server.factory';
 import { IMediaServerService } from './media-server.interface';
-import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
