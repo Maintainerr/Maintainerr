@@ -212,17 +212,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     clearFeedback()
 
     if (settings?.id != null && isEmptyServarrState(values)) {
-      const id = settings?.id
-
-      if (id == null) {
-        setErrorMessage(`Failed to remove ${serviceName} settings.`)
-        return
-      }
-
       setSaving(true)
 
       try {
-        const wasDeleted = await onDelete(id)
+        const wasDeleted = await onDelete(settings.id)
 
         if (!wasDeleted) {
           setErrorMessage(`Failed to remove ${serviceName} settings.`)

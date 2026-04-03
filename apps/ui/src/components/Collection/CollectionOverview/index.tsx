@@ -3,7 +3,9 @@ import { useMediaServerLibraries } from '../../../api/media-server'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
 import ExecuteButton from '../../Common/ExecuteButton'
 import LibrarySwitcher from '../../Common/LibrarySwitcher'
-import LoadingSpinner from '../../Common/LoadingSpinner'
+import LoadingSpinner, {
+  SmallLoadingSpinner,
+} from '../../Common/LoadingSpinner'
 import CollectionItem from '../CollectionItem'
 
 interface ICollectionOverview {
@@ -22,6 +24,10 @@ const CollectionOverview = (props: ICollectionOverview) => {
     error: librariesError,
     isLoading: librariesLoading,
   } = useMediaServerLibraries()
+  const collectionCount = props.collections?.length ?? 0
+  const hasCollections = collectionCount > 0
+  const showInitialLoading = props.isLoading && !hasCollections
+  const showRefreshing = props.isLoading && hasCollections
 
   return (
     <div>
@@ -45,15 +51,25 @@ const CollectionOverview = (props: ICollectionOverview) => {
       </div>
 
       <div className="w-full">
-        <div className="m-auto mb-3 flex">
+        <div className="m-auto mb-3 flex items-center justify-between gap-3">
           <h1 className="m-auto text-lg font-bold text-zinc-200 sm:m-0 xl:m-0">
             {'Automatic collections'}
           </h1>
+          <div className="flex min-h-6 min-w-6 items-center justify-end">
+            {showRefreshing ? (
+              <SmallLoadingSpinner className="h-6 w-6" />
+            ) : undefined}
+          </div>
         </div>
-        {props.isLoading ? (
-          <LoadingSpinner />
-        ) : (
-          <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] xs:gap-4">
+        {showInitialLoading ? (
+          <div className="min-h-[20rem]">
+            <LoadingSpinner />
+          </div>
+        ) : hasCollections ? (
+          <ul
+            aria-busy={props.isLoading}
+            className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] xs:gap-4"
+          >
             {props.collections?.map((col) => (
               <li
                 key={+col.id!}
@@ -67,6 +83,10 @@ const CollectionOverview = (props: ICollectionOverview) => {
               </li>
             ))}
           </ul>
+        ) : (
+          <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
+            No collections found for this library.
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,4 @@
 import {
-  getAudienceRating,
   type MediaItem,
   type MediaItemWithParent,
   type MediaProviderIds,
@@ -7,11 +6,9 @@ import {
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
 import { ICollectionMedia } from '../../Collection'
-import LoadingSpinner, {
-  SmallLoadingSpinner,
-} from '../../Common/LoadingSpinner'
+import LoadingSpinner from '../../Common/LoadingSpinner'
 import MediaCard from '../../Common/MediaCard'
-import { defaultInfiniteScrollThreshold } from '../../../utils/infiniteScroll'
+import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../utils/uiBehavior'
 
 interface IOverviewContent {
   data: MediaItem[]
@@ -57,7 +54,7 @@ const OverviewContent = (props: IOverviewContent) => {
 
   const isNearBottom = () =>
     window.innerHeight + document.documentElement.scrollTop >=
-    document.documentElement.scrollHeight * defaultInfiniteScrollThreshold
+    document.documentElement.scrollHeight * DEFAULT_INFINITE_SCROLL_THRESHOLD
 
   const handleScroll = useEffectEvent(() => {
     if (isNearBottom() && !extrasLoading && !dataFinished) {
@@ -113,72 +110,86 @@ const OverviewContent = (props: IOverviewContent) => {
     return parentItem?.year
   }
 
-  if (loading) {
-    return <LoadingSpinner />
-  }
+  const hasData = data && data.length > 0
+  const showInitialLoading = loading && !hasData
+  const showAppendLoading = Boolean(extrasLoading) && hasData
 
-  if (data && data.length > 0) {
-    return (
-      <ul className="cards-vertical">
-        {data.map((el) => (
-          <li key={el.id}>
-            <MediaCard
-              id={el.id}
-              libraryId={props.libraryId}
-              type={el.type}
-              summary={
-                el.type === 'movie' || el.type === 'show'
-                  ? el.summary
-                  : el.type === 'season'
-                    ? el.title
-                    : el.type === 'episode'
-                      ? 'Episode ' + el.index + ' - ' + el.title
-                      : ''
-              }
-              year={
-                el.type === 'episode'
-                  ? el.parentTitle
-                  : getParentYear(el)
-                    ? getParentYear(el)?.toString()
-                    : el.year?.toString()
-              }
-              mediaType={el.type}
-              title={
-                el.grandparentTitle
-                  ? el.grandparentTitle
-                  : el.parentTitle
+  return (
+    <>
+      {showInitialLoading ? (
+        <div className="min-h-[20rem]">
+          <LoadingSpinner />
+        </div>
+      ) : hasData ? (
+        <ul className="cards-vertical" aria-busy={loading}>
+          {data.map((el) => (
+            <li key={el.id}>
+              <MediaCard
+                id={el.id}
+                libraryId={props.libraryId}
+                type={el.type}
+                summary={
+                  el.type === 'movie' || el.type === 'show'
+                    ? el.summary
+                    : el.type === 'season'
+                      ? el.title
+                      : el.type === 'episode'
+                        ? 'Episode ' + el.index + ' - ' + el.title
+                        : ''
+                }
+                year={
+                  el.type === 'episode'
                     ? el.parentTitle
-                    : el.title
-              }
-              userScore={getAudienceRating(el)}
-              exclusionId={
-                el.maintainerrExclusionId
-                  ? el.maintainerrExclusionId
-                  : undefined
-              }
-              providerIds={extractProviderIds(el)}
-              collectionPage={
-                props.collectionPage ? props.collectionPage : false
-              }
-              exclusionType={el.maintainerrExclusionType}
-              onRemove={props.onRemove}
-              collectionId={props.collectionId}
-              isManual={el.maintainerrIsManual ? el.maintainerrIsManual : false}
-              {...(props.collectionInfo
-                ? {
-                    daysLeft: getDaysLeft(el.id),
-                    collectionId: props.collectionInfo.find(
-                      (colEl) => colEl.mediaServerId === el.id,
-                    )?.collectionId,
-                  }
-                : undefined)}
-            />
-          </li>
-        ))}
-        {props.extrasLoading ? <SmallLoadingSpinner /> : undefined}
-      </ul>
-    )
-  }
-  return <></>
+                    : getParentYear(el)
+                      ? getParentYear(el)?.toString()
+                      : el.year?.toString()
+                }
+                mediaType={el.type}
+                title={
+                  el.grandparentTitle
+                    ? el.grandparentTitle
+                    : el.parentTitle
+                      ? el.parentTitle
+                      : el.title
+                }
+                exclusionId={
+                  el.maintainerrExclusionId
+                    ? el.maintainerrExclusionId
+                    : undefined
+                }
+                providerIds={extractProviderIds(el)}
+                collectionPage={
+                  props.collectionPage ? props.collectionPage : false
+                }
+                exclusionType={el.maintainerrExclusionType}
+                onRemove={props.onRemove}
+                collectionId={props.collectionId}
+                isManual={
+                  el.maintainerrIsManual ? el.maintainerrIsManual : false
+                }
+                {...(props.collectionInfo
+                  ? {
+                      daysLeft: getDaysLeft(el.id),
+                      collectionId: props.collectionInfo.find(
+                        (colEl) => colEl.mediaServerId === el.id,
+                      )?.collectionId,
+                    }
+                  : undefined)}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
+          No items found.
+        </div>
+      )}
+      <div className="mt-4 min-h-24" aria-live="polite">
+        {showAppendLoading ? (
+          <LoadingSpinner containerClassName="h-24" />
+        ) : null}
+      </div>
+    </>
+  )
 }
 export default OverviewContent

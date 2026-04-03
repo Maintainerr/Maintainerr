@@ -10,7 +10,7 @@ import {
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
+import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiBehavior'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'

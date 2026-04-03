@@ -1,1 +1,0 @@
-export const INTERACTION_DEBOUNCE_MS = 1000

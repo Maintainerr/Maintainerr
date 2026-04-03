@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { INTERACTION_DEBOUNCE_MS } from '../../../utils/uiTiming'
+import { LOADING_SPINNER_DELAY_MS } from '../../../utils/uiBehavior'
 
 interface SmallLoadingSpinnerProps {
   className?: string
@@ -38,13 +38,21 @@ export const SmallLoadingSpinner: React.FC<SmallLoadingSpinnerProps> = (
   )
 }
 
-const LoadingSpinner: React.FC = () => {
+interface LoadingSpinnerProps {
+  className?: string
+  containerClassName?: string
+}
+
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  className,
+  containerClassName,
+}) => {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setIsVisible(true)
-    }, INTERACTION_DEBOUNCE_MS)
+    }, LOADING_SPINNER_DELAY_MS)
 
     return () => {
       window.clearTimeout(timeout)
@@ -56,9 +64,11 @@ const LoadingSpinner: React.FC = () => {
   }
 
   return (
-    <div className="inset-0 flex h-64 items-center justify-center text-zinc-200">
+    <div
+      className={`inset-0 flex items-center justify-center text-zinc-200 ${containerClassName ?? 'h-64'}`}
+    >
       <svg
-        className="h-16 w-16"
+        className={className ?? 'h-16 w-16'}
         viewBox="0 0 38 38"
         xmlns="http://www.w3.org/2000/svg"
         stroke="currentColor"

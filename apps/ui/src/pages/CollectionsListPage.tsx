@@ -7,6 +7,8 @@ import CollectionOverview from '../components/Collection/CollectionOverview'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
+type FetchCollectionsStatus = 'success' | 'error' | 'stale'
+
 const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
@@ -14,7 +16,9 @@ const CollectionsListPage = () => {
   const [selectedLibrary, setSelectedLibrary] = useState('all')
   const { invalidate, guardedFetch } = useRequestGeneration()
 
-  const fetchData = async (libraryId?: string) => {
+  const fetchData = async (
+    libraryId?: string,
+  ): Promise<FetchCollectionsStatus> => {
     try {
       const result = await guardedFetch<ICollection[]>(() =>
         libraryId
@@ -25,9 +29,13 @@ const CollectionsListPage = () => {
       if (result.status === 'success') {
         setCollections(result.data)
         setIsLoading(false)
+        return 'success'
       }
+
+      return 'stale'
     } catch {
       setIsLoading(false)
+      return 'error'
     }
   }
 
@@ -40,11 +48,23 @@ const CollectionsListPage = () => {
   }, [])
 
   const onSwitchLibrary = (id: string) => {
+    if (selectedLibrary === id) {
+      return
+    }
+
+    const previousLibrary = selectedLibrary
+
     invalidate()
     setSelectedLibrary(id)
     setIsLoading(true)
-    setCollections([])
-    void fetchData(id !== 'all' ? id : undefined)
+
+    void (async () => {
+      const result = await fetchData(id !== 'all' ? id : undefined)
+
+      if (result === 'error') {
+        setSelectedLibrary(previousLibrary)
+      }
+    })()
   }
 
   const doActions = async () => {
