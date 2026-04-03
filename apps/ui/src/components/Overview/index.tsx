@@ -293,6 +293,10 @@ const Overview = () => {
   const hasData = data.length > 0
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
+  const showBootstrapLoading =
+    !searchUsed &&
+    !hasData &&
+    (librariesLoading || isLoading || (!selectedLibrary && Boolean(defaultLibraryId)))
 
   return (
     <>
@@ -330,7 +334,11 @@ const Overview = () => {
             </div>
           </div>
         ) : undefined}
-        {selectedLibrary ? (
+        {showBootstrapLoading ? (
+          <div className="flex min-h-[20rem] items-center justify-center">
+            <SmallLoadingSpinner className="h-16 w-16" />
+          </div>
+        ) : selectedLibrary ? (
           <OverviewContent
             dataFinished={!hasMoreData}
             fetchData={fetchData}

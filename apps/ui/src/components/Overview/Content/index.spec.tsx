@@ -43,7 +43,23 @@ describe('OverviewContent', () => {
     cleanup()
   })
 
-  it('keeps rendered items visible while append loading uses the delayed shared spinner slot', () => {
+  it('uses the delayed shared spinner for the initial empty overview load', () => {
+    render(
+      <OverviewContent
+        data={[]}
+        dataFinished={false}
+        loading={true}
+        extrasLoading={false}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    expect(screen.getByTestId('loading-spinner')).toBeTruthy()
+    expect(screen.queryByTestId('small-loading-spinner')).toBeNull()
+  })
+
+  it('keeps rendered items visible while append loading uses the small spinner slot', () => {
     render(
       <OverviewContent
         data={[
@@ -62,17 +78,20 @@ describe('OverviewContent', () => {
     )
 
     expect(screen.getByText('Item One')).toBeTruthy()
-    expect(
-      screen
-        .getByTestId('loading-spinner')
-        .getAttribute('data-container-class'),
-    ).toBe('h-24')
+    expect(screen.getByTestId('small-loading-spinner')).toBeTruthy()
+    expect(screen.queryByTestId('loading-spinner')).toBeNull()
   })
 
-  it('uses the immediate small spinner for the initial overview load before any items exist', () => {
+  it('shows the small spinner while a sort or refresh request is replacing visible data', () => {
     render(
       <OverviewContent
-        data={[]}
+        data={[
+          {
+            id: '1',
+            title: 'Item One',
+            type: 'movie',
+          } as any,
+        ]}
         dataFinished={false}
         loading={true}
         extrasLoading={false}

@@ -112,13 +112,13 @@ const OverviewContent = (props: IOverviewContent) => {
 
   const hasData = data && data.length > 0
   const showInitialLoading = loading && !hasData
-  const showAppendLoading = Boolean(extrasLoading) && hasData
+  const showBackgroundLoading = hasData && (loading || Boolean(extrasLoading))
 
   return (
     <>
       {showInitialLoading ? (
-        <div className="flex min-h-[20rem] items-center justify-center">
-          <SmallLoadingSpinner className="h-16 w-16" />
+        <div className="min-h-[20rem]">
+          <LoadingSpinner />
         </div>
       ) : hasData ? (
         <ul className="cards-vertical" aria-busy={loading}>
@@ -189,8 +189,10 @@ const OverviewContent = (props: IOverviewContent) => {
         </div>
       )}
       <div className="mt-4 min-h-24" aria-live="polite">
-        {showAppendLoading ? (
-          <LoadingSpinner containerClassName="h-24" />
+        {showBackgroundLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <SmallLoadingSpinner className="h-10 w-10" />
+          </div>
         ) : null}
       </div>
     </>

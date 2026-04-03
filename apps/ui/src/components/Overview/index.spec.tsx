@@ -94,6 +94,22 @@ describe('Overview', () => {
     })
   })
 
+  it('shows a bootstrap spinner while libraries are still loading before the first overview request starts', () => {
+    librariesHookMock.mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isLoading: true,
+    } as unknown as ReturnType<typeof useMediaServerLibraries>)
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    expect(screen.getByTestId('overview-refresh-spinner')).toBeTruthy()
+  })
+
   it('only exposes the reachable delete soonest collection sort option', () => {
     const sortConfig = getCollectionMediaSortConfig('show', true)
     const deleteSoonestOptions = sortConfig.options.filter(
