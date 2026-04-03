@@ -340,18 +340,24 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       title={title}
       iconSvg=""
     >
-      {errorMessage ? <Alert type="warning" title={errorMessage} /> : null}
-
       <SettingsAlertSlot>
-        {testResult ? (
-          <Alert
-            type={testResult.status ? 'info' : 'error'}
-            title={
-              testResult.status
-                ? `Successfully connected to ${serviceName} (${testResult.version})`
-                : testResult.version || `Failed to connect to ${serviceName}`
-            }
-          />
+        {errorMessage || testResult ? (
+          <div className="space-y-4">
+            {errorMessage ? (
+              <Alert type="warning" title={errorMessage} />
+            ) : null}
+            {testResult ? (
+              <Alert
+                type={testResult.status ? 'success' : 'error'}
+                title={
+                  testResult.status
+                    ? `Successfully connected to ${serviceName} (${testResult.version})`
+                    : testResult.version ||
+                      `Failed to connect to ${serviceName}`
+                }
+              />
+            ) : null}
+          </div>
         ) : null}
       </SettingsAlertSlot>
 
@@ -362,7 +368,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         <div className="form-input">
           <div className="form-input-field">
             <input
-              name="serverName"
               id="serverName"
               type="text"
               {...register('serverName', { onChange: clearFeedback })}
@@ -378,7 +383,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         <div className="form-input">
           <div className="form-input-field">
             <input
-              name="hostname"
               id="hostname"
               type="text"
               {...register('hostname', { onChange: clearFeedback })}
@@ -394,7 +398,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         <div className="form-input">
           <div className="form-input-field">
             <input
-              name="port"
               id="port"
               type="number"
               {...register('port', { onChange: clearFeedback })}
@@ -411,7 +414,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         <div className="form-input">
           <div className="form-input-field">
             <input
-              name="baseUrl"
               id="baseUrl"
               type="text"
               {...register('baseUrl', { onChange: clearFeedback })}
@@ -427,7 +429,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         <div className="form-input">
           <div className="form-input-field">
             <input
-              name="apikey"
               id="apikey"
               type="password"
               {...register('apiKey', { onChange: clearFeedback })}

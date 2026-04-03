@@ -3,7 +3,7 @@ import Alert from '../Common/Alert'
 import SettingsAlertSlot from './SettingsAlertSlot'
 
 export type SettingsFeedback = {
-  type: 'warning' | 'info' | 'error'
+  type: 'warning' | 'info' | 'success' | 'error'
   title: string
 } | null
 
@@ -34,7 +34,7 @@ export const useSettingsFeedback = (scope = 'Settings') => {
   )
 
   const showUpdated = useCallback(() => {
-    showFeedback('info', scopedMessages.updated)
+    showFeedback('success', scopedMessages.updated)
   }, [scopedMessages.updated, showFeedback])
 
   const showUpdateError = useCallback(() => {
@@ -44,6 +44,13 @@ export const useSettingsFeedback = (scope = 'Settings') => {
   const showInfo = useCallback(
     (title: string) => {
       showFeedback('info', title)
+    },
+    [showFeedback],
+  )
+
+  const showSuccess = useCallback(
+    (title: string) => {
+      showFeedback('success', title)
     },
     [showFeedback],
   )
@@ -71,6 +78,7 @@ export const useSettingsFeedback = (scope = 'Settings') => {
       showUpdated,
       showUpdateError,
       showInfo,
+      showSuccess,
       showWarning,
       showError,
     }),
@@ -81,6 +89,7 @@ export const useSettingsFeedback = (scope = 'Settings') => {
       showError,
       showFeedback,
       showInfo,
+      showSuccess,
       showUpdated,
       showUpdateError,
       showWarning,

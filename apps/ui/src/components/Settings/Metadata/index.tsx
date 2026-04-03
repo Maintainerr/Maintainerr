@@ -187,8 +187,14 @@ function useProviderForm(config: ProviderConfig) {
   const [testing, setTesting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
-  const { feedback, clear, showError, showInfo, showUpdated, showUpdateError } =
-    useSettingsFeedback(`${config.title} settings`)
+  const {
+    feedback,
+    clear,
+    showError,
+    showSuccess,
+    showUpdated,
+    showUpdateError,
+  } = useSettingsFeedback(`${config.title} settings`)
 
   const {
     register,
@@ -276,7 +282,7 @@ function useProviderForm(config: ProviderConfig) {
 
         if (response.code === 1) {
           setTestStatus(true)
-          showInfo(`Successfully connected to ${config.title}`)
+          showSuccess(`Successfully connected to ${config.title}`)
         } else {
           setTestStatus(false)
           showError(message)

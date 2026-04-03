@@ -200,9 +200,9 @@ const CollectionItem = (props: ICollectionItem) => {
               </p>
               <p>
                 {props.collection.isActive ? (
-                  <span className="text-green-500">Active</span>
+                  <span className="text-success-500">Active</span>
                 ) : (
-                  <span className="text-red-500">Inactive</span>
+                  <span className="text-error-500">Inactive</span>
                 )}
               </p>
             </div>

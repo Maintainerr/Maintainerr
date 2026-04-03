@@ -218,7 +218,7 @@ const MediaCard: React.FC<IMediaCard> = ({
               <div
                 className={`pointer-events-none z-40 rounded-full shadow ${
                   daysLeft < 0
-                    ? 'bg-red-700'
+                    ? 'bg-error-700'
                     : mediaType === 'movie'
                       ? 'bg-zinc-900'
                       : mediaType === 'show'

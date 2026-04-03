@@ -3,7 +3,6 @@ import axios from 'axios'
 import { orderBy } from 'lodash-es'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { toast } from 'react-toastify'
 import { useSettingsOutletContext } from '..'
 import {
   useDeletePlexAuth,
@@ -22,10 +21,7 @@ import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import PlexLoginButton from '../../Login/Plex'
 import SettingsAlertSlot from '../SettingsAlertSlot'
-import {
-  SettingsFeedbackAlert,
-  useSettingsFeedback,
-} from '../useSettingsFeedback'
+import { useSettingsFeedback } from '../useSettingsFeedback'
 
 interface PresetServerDisplay {
   name: string
@@ -140,6 +136,7 @@ const PlexSettings = () => {
   const [isRefreshingPresets, setIsRefreshingPresets] = useState(false)
   const {
     feedback,
+    showInfo,
     showUpdated,
     showUpdateError,
     showError,
@@ -157,9 +154,14 @@ const PlexSettings = () => {
     tokenValid || Boolean(settings?.plex_auth_token)
 
   const initialServerState = useMemo(
-    () => buildPlexServerState(settings),
+    () =>
+      buildPlexServerState({
+        plex_hostname: settings?.plex_hostname,
+        plex_port: settings?.plex_port,
+        plex_name: settings?.plex_name,
+        plex_ssl: settings?.plex_ssl,
+      }),
     [
-      settings?.plex_auth_token,
       settings?.plex_hostname,
       settings?.plex_name,
       settings?.plex_port,
@@ -172,7 +174,6 @@ const PlexSettings = () => {
     handleSubmit,
     reset,
     setValue,
-    getValues,
     control,
     formState: { defaultValues },
   } = useForm<PlexServerFormState>({
@@ -435,26 +436,17 @@ const PlexSettings = () => {
 
   const refreshPresetServers = async () => {
     setIsRefreshingPresets(true)
-    const toastId = 'plex-refresh-preset-servers'
+    clearError()
 
     try {
-      const serverPromise = GetApiHandler<PlexDevice[]>(
+      const response = await GetApiHandler<PlexDevice[]>(
         '/settings/plex/devices/servers',
       )
 
-      const response = await toast.promise(
-        serverPromise,
-        {
-          pending: 'Retrieving server list from Plex',
-          success: 'Plex server list retrieved successfully!',
-          error: 'Failed to retrieve Plex server list.',
-        },
-        {
-          toastId,
-        },
-      )
-
       setAvailableServers(response)
+      showInfo('Plex server list retrieved successfully.')
+    } catch {
+      showError('Failed to retrieve Plex server list.')
     } finally {
       setIsRefreshingPresets(false)
     }
@@ -469,8 +461,6 @@ const PlexSettings = () => {
           <p className="description">Plex configuration</p>
         </div>
 
-        <SettingsFeedbackAlert feedback={feedback} />
-
         {tokenValid || settings?.plex_auth_token ? (
           ''
         ) : (
@@ -481,15 +471,22 @@ const PlexSettings = () => {
         )}
 
         <SettingsAlertSlot>
-          {testBanner.version ? (
-            testBanner.status ? (
-              <Alert
-                type="info"
-                title={`Successfully connected to Plex (${testBanner.version})`}
-              />
-            ) : (
-              <Alert type="error" title={testBanner.version} />
-            )
+          {feedback || testBanner.version ? (
+            <div className="space-y-4">
+              {feedback ? (
+                <Alert type={feedback.type} title={feedback.title} />
+              ) : null}
+              {testBanner.version ? (
+                testBanner.status ? (
+                  <Alert
+                    type="success"
+                    title={`Successfully connected to Plex (${testBanner.version})`}
+                  />
+                ) : (
+                  <Alert type="error" title={testBanner.version} />
+                )
+              ) : null}
+            </div>
           ) : null}
         </SettingsAlertSlot>
 
@@ -571,7 +568,6 @@ const PlexSettings = () => {
               <div className="form-input">
                 <div className="form-input-field">
                   <input
-                    name="name"
                     id="name"
                     type="text"
                     {...register('name', {
@@ -589,7 +585,6 @@ const PlexSettings = () => {
               <div className="form-input">
                 <div className="form-input-field">
                   <input
-                    name="hostname"
                     id="hostname"
                     type="text"
                     {...register('hostname', {
@@ -607,7 +602,6 @@ const PlexSettings = () => {
               <div className="form-input">
                 <div className="form-input-field">
                   <input
-                    name="port"
                     id="port"
                     type="number"
                     {...register('port', {
@@ -626,7 +620,6 @@ const PlexSettings = () => {
                 <div className="form-input-field">
                   <input
                     type="checkbox"
-                    name="ssl"
                     id="ssl"
                     {...register('ssl', {
                       onChange: clearServerSettingsFeedback,

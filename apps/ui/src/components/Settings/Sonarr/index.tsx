@@ -4,12 +4,15 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
-import { toast } from 'react-toastify'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
 import SonarrSettingsModal from './SettingsModal'
 
 type DeleteSonarrSettingResponseDto =
@@ -44,6 +47,8 @@ const SonarrSettings = () => {
   const [collectionsInUseWarning, setCollectionsInUseWarning] = useState<
     ICollection[] | undefined
   >()
+  const { feedback, clear, showError, showInfo } =
+    useSettingsFeedback('Sonarr settings')
 
   const handleSettingsSaved = (setting: ISonarrSetting) => {
     const newSettings = [...settings]
@@ -69,11 +74,14 @@ const SonarrSettings = () => {
           currentSettings.filter((setting) => setting.id !== id),
         )
         setSettingsModalActive(undefined)
+        showInfo('Sonarr server removed')
         return true
       }
 
       if (resp.data?.collectionsInUse) {
         setCollectionsInUseWarning(resp.data.collectionsInUse)
+      } else {
+        showError('Failed to delete Sonarr setting.')
       }
     } catch (error: unknown) {
       void logClientError(
@@ -81,7 +89,7 @@ const SonarrSettings = () => {
         error,
         'Settings.Sonarr.confirmedDelete',
       )
-      toast.error('Failed to delete Sonarr setting. Check logs for details.')
+      showError('Failed to delete Sonarr setting. Check logs for details.')
     }
 
     return false
@@ -95,6 +103,7 @@ const SonarrSettings = () => {
   }, [])
 
   const showAddModal = () => {
+    clear()
     setSettingsModalActive(true)
   }
 
@@ -106,6 +115,8 @@ const SonarrSettings = () => {
           <h3 className="heading">Sonarr Settings</h3>
           <p className="description">Sonarr configuration</p>
         </div>
+
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {loaded
@@ -129,6 +140,7 @@ const SonarrSettings = () => {
                       buttonSize="md"
                       className="h-10 w-1/2"
                       onClick={() => {
+                        clear()
                         setSettingsModalActive(setting)
                       }}
                     >

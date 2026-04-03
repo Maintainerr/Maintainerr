@@ -244,7 +244,7 @@ const Logs = () => {
           {filteredLogLines.map((row, index: number) => {
             const levelColor =
               row.level === 'ERROR'
-                ? 'text-red-400'
+                ? 'text-error-400'
                 : row.level === 'WARN'
                   ? 'text-yellow-400'
                   : row.level === 'INFO'

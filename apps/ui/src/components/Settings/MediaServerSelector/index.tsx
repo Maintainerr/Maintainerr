@@ -10,7 +10,6 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import {
   usePreviewMediaServerSwitch,
   useSwitchMediaServer,
@@ -21,6 +20,9 @@ import Modal from '../../Common/Modal'
 interface MediaServerSelectorProps {
   currentType: MediaServerType | null
   onSwitch?: () => void
+  onClearFeedback?: () => void
+  onInfo?: (message: string) => void
+  onError?: (message: string) => void
 }
 
 const basePath = import.meta.env.VITE_BASE_PATH ?? ''
@@ -48,6 +50,9 @@ const serverOptions: {
 const MediaServerSelector = ({
   currentType,
   onSwitch,
+  onClearFeedback,
+  onInfo,
+  onError,
 }: MediaServerSelectorProps) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -68,6 +73,7 @@ const MediaServerSelector = ({
   const handleServerClick = async (type: MediaServerType) => {
     if (type === currentType) return
 
+    onClearFeedback?.()
     setPendingType(type)
 
     // If no current type is set (initial setup), skip preview and just set the type
@@ -76,7 +82,7 @@ const MediaServerSelector = ({
         await switchServer({
           targetServerType: type,
         })
-        toast.success(
+        onInfo?.(
           `Selected ${type === MediaServerType.PLEX ? 'Plex' : 'Jellyfin'} as your media server`,
         )
 
@@ -95,7 +101,7 @@ const MediaServerSelector = ({
           error,
           'Settings.MediaServerSelector.handleServerChange',
         )
-        toast.error('Failed to set media server. Check logs for details.')
+        onError?.('Failed to set media server. Check logs for details.')
         setPendingType(null)
       }
       return
@@ -107,7 +113,7 @@ const MediaServerSelector = ({
       setPreviewData(preview)
       setShowConfirmModal(true)
     } catch (error) {
-      toast.error('Failed to preview switch')
+      onError?.('Failed to preview switch')
       setPendingType(null)
     }
   }
@@ -374,20 +380,20 @@ const MediaServerSelector = ({
 
             {/* Result indicator */}
             {isSwitchComplete && (
-              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-green-900/30 p-3 text-green-400">
+              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-success-900/30 p-3 text-success-400">
                 <CheckCircleIcon className="h-5 w-5" />
                 <span className="text-sm font-medium">Success</span>
               </div>
             )}
             {switchError && (
-              <div className="mb-4 rounded bg-red-900/30 p-3 text-red-400">
+              <div className="bg-error-900/30 text-error-400 mb-4 rounded p-3">
                 <div className="flex items-center space-x-2">
                   <XCircleIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium">
                     Media server switch could not be completed: {switchError}
                   </span>
                 </div>
-                <p className="mt-1 pl-7 text-xs text-red-400/70">
+                <p className="text-error-400/70 mt-1 pl-7 text-xs">
                   Close this dialog and try again.
                 </p>
               </div>

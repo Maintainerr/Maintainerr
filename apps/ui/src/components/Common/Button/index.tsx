@@ -59,7 +59,7 @@ function Button<P extends ElementTypes = 'button'>(
       break
     case 'danger':
       buttonStyle.push(
-        'text-white bg-red-600 border-red-600 hover:bg-red-500 hover:border-red-500 focus:border-red-700 rounded-md focus:ring-red active:bg-red-700 active:border-red-700',
+        'text-white bg-error-600 border-error-600 hover:bg-error-500 hover:border-error-500 focus:border-error-700 rounded-md focus:ring-error active:bg-error-700 active:border-error-700',
       )
       break
     case 'warning':

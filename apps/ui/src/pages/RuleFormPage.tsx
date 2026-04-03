@@ -21,7 +21,7 @@ const RuleFormPage = () => {
     return (
       <>
         <title>{isCloneMode ? 'Clone' : 'Edit'} rule - Maintainerr</title>
-        <div className="m-4 rounded-md bg-red-500/10 p-4 text-red-300">
+        <div className="bg-error-500/10 text-error-300 m-4 rounded-md p-4">
           <h2 className="mb-2 text-lg font-bold">Error loading rule data</h2>
           <p>{error.message}</p>
         </div>

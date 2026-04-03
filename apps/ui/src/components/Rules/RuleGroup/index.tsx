@@ -150,9 +150,9 @@ const RuleGroup = (props: {
               </p>
               <p>
                 {props.group.isActive ? (
-                  <span className="text-green-500">Active</span>
+                  <span className="text-success-500">Active</span>
                 ) : (
-                  <span className="text-red-500">Inactive</span>
+                  <span className="text-error-500">Inactive</span>
                 )}
               </p>
             </div>
@@ -162,7 +162,7 @@ const RuleGroup = (props: {
               </p>
               {hasNoLibrary ? (
                 <p
-                  className="truncate text-red-500"
+                  className="text-error-500 truncate"
                   title="Please edit this rule and select a library"
                 >
                   Not set

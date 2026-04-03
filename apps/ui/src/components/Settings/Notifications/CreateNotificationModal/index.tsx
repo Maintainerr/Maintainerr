@@ -264,23 +264,26 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
           <LoadingSpinner />
         ) : (
           <form className="space-y-4">
-            {error ? (
-              <Alert
-                type={
-                  error === 'Not all fields contain values'
-                    ? 'warning'
-                    : 'error'
-                }
-                title={error}
-              />
-            ) : null}
-
             <SettingsAlertSlot>
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'info' : 'error'}
-                  title={testResult.message}
-                />
+              {error || testResult ? (
+                <div className="space-y-4">
+                  {error ? (
+                    <Alert
+                      type={
+                        error === 'Not all fields contain values'
+                          ? 'warning'
+                          : 'error'
+                      }
+                      title={error}
+                    />
+                  ) : null}
+                  {testResult ? (
+                    <Alert
+                      type={testResult.status ? 'success' : 'error'}
+                      title={testResult.message}
+                    />
+                  ) : null}
+                </div>
               ) : null}
             </SettingsAlertSlot>
 

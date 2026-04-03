@@ -23,10 +23,7 @@ import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
 import SettingsAlertSlot from '../SettingsAlertSlot'
-import {
-  SettingsFeedbackAlert,
-  useSettingsFeedback,
-} from '../useSettingsFeedback'
+import { useSettingsFeedback } from '../useSettingsFeedback'
 
 const JellyfinSettingDeleteSchema = z.object({
   jellyfin_url: z.literal(''),
@@ -61,6 +58,7 @@ const JellyfinSettings = () => {
   const { data: jellyfinData } = useJellyfinSettings({
     enabled: !!settings,
   })
+  const isJellyfinLoading = settings != null && jellyfinData == null
 
   const { mutateAsync: testJellyfin, isPending: isTestPending } =
     useTestJellyfin()
@@ -109,7 +107,12 @@ const JellyfinSettings = () => {
     jellyfinUrl === testedSettings?.url &&
     jellyfinApiKey === testedSettings?.apiKey &&
     testResult?.status
-  const canSaveSettings = hasChanges && !isSavePending && !isDeletePending
+  const canSaveSettings =
+    hasChanges &&
+    !isJellyfinLoading &&
+    !isTestPending &&
+    !isSavePending &&
+    !isDeletePending
 
   const clearTransientState = () => {
     clearError()
@@ -222,14 +225,19 @@ const JellyfinSettings = () => {
           </p>
         </div>
 
-        <SettingsFeedbackAlert feedback={feedback} />
-
         <SettingsAlertSlot>
-          {testResult ? (
-            <Alert
-              type={testResult.status ? 'info' : 'error'}
-              title={testResult.message}
-            />
+          {feedback || testResult ? (
+            <div className="space-y-4">
+              {feedback ? (
+                <Alert type={feedback.type} title={feedback.title} />
+              ) : null}
+              {testResult ? (
+                <Alert
+                  type={testResult.status ? 'success' : 'error'}
+                  title={testResult.message}
+                />
+              ) : null}
+            </div>
           ) : null}
         </SettingsAlertSlot>
 
@@ -321,7 +329,11 @@ const JellyfinSettings = () => {
                     buttonType="success"
                     onClick={handleTest}
                     className="ml-3"
-                    disabled={isTestPending || isGoingToRemoveSettings}
+                    disabled={
+                      isJellyfinLoading ||
+                      isTestPending ||
+                      isGoingToRemoveSettings
+                    }
                     isPending={isTestPending}
                     feedbackStatus={
                       enteredSettingsHaveBeenTested

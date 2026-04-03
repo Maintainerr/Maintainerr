@@ -22,10 +22,7 @@ import SaveButton from '../Common/SaveButton'
 import TestingButton from '../Common/TestingButton'
 import { InputGroup } from '../Forms/Input'
 import SettingsAlertSlot from './SettingsAlertSlot'
-import {
-  SettingsFeedbackAlert,
-  useSettingsFeedback,
-} from './useSettingsFeedback'
+import { useSettingsFeedback } from './useSettingsFeedback'
 
 interface UrlApiKeySettingsValues {
   url: string
@@ -222,18 +219,24 @@ const ExternalServiceSettingsPage = ({
           <h3 className="heading">{heading}</h3>
           <p className="description">{description}</p>
         </div>
-        <SettingsFeedbackAlert feedback={feedback} />
 
         <SettingsAlertSlot>
-          {testResult ? (
-            <Alert
-              type={testResult.status ? 'info' : 'error'}
-              title={
-                testResult.status
-                  ? `Successfully connected to ${testSuccessTitle} (${testResult.message})`
-                  : testResult.message
-              }
-            />
+          {feedback || testResult ? (
+            <div className="space-y-4">
+              {feedback ? (
+                <Alert type={feedback.type} title={feedback.title} />
+              ) : null}
+              {testResult ? (
+                <Alert
+                  type={testResult.status ? 'success' : 'error'}
+                  title={
+                    testResult.status
+                      ? `Successfully connected to ${testSuccessTitle} (${testResult.message})`
+                      : testResult.message
+                  }
+                />
+              ) : null}
+            </div>
           ) : null}
         </SettingsAlertSlot>
 

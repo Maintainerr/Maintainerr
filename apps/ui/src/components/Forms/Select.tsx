@@ -16,7 +16,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         className={clsx(
           'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm transition duration-150 ease-in-out disabled:opacity-50 sm:text-sm sm:leading-5',
           {
-            '!border-red-500 outline-red-500 focus:border-red-500 focus:outline-none focus:ring-0':
+            '!border-error-500 outline-error-500 focus:border-error-500 focus:outline-none focus:ring-0':
               !props.disabled && error,
             className,
           },
@@ -56,7 +56,7 @@ export const SelectGroup = forwardRef<HTMLSelectElement, SelectGroupProps>(
             />
             {props.error && (
               <p
-                className={'mt-2 min-h-5 text-sm text-red-500'}
+                className={'text-error-500 mt-2 min-h-5 text-sm'}
                 id={`${props.name}-error`}
               >
                 {props.error}

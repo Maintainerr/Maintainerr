@@ -21,8 +21,15 @@ interface GeneralSettingsFormValues {
 
 const MainSettings = () => {
   const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const { feedback, showUpdated, showUpdateError, clearError } =
-    useSettingsFeedback('General settings')
+  const {
+    feedback,
+    showUpdated,
+    showUpdateError,
+    showInfo,
+    showError,
+    clear,
+    clearError,
+  } = useSettingsFeedback('General settings')
   const { settings } = useSettingsOutletContext()
   const { mutateAsync: updateSettings, isPending } = usePatchSettings()
 
@@ -107,7 +114,6 @@ const MainSettings = () => {
               <div className="form-input">
                 <div className="form-input-field">
                   <input
-                    name="hostname"
                     id="hostname"
                     type="text"
                     {...register('applicationUrl', { onChange: clearError })}
@@ -124,7 +130,6 @@ const MainSettings = () => {
                 <div className="form-input-field">
                   <input
                     className="!rounded-r-none"
-                    name="api-key"
                     id="api-key"
                     type="text"
                     {...register('apikey', { onChange: clearError })}
@@ -170,7 +175,12 @@ const MainSettings = () => {
           </form>
         </div>
 
-        <MediaServerSelector currentType={settings.media_server_type ?? null} />
+        <MediaServerSelector
+          currentType={settings.media_server_type ?? null}
+          onClearFeedback={clear}
+          onInfo={showInfo}
+          onError={showError}
+        />
       </div>
     </>
   )
