@@ -157,6 +157,9 @@ const OverviewContent = (props: IOverviewContent) => {
                     ? el.maintainerrExclusionId
                     : undefined
                 }
+                isIncluded={
+                  el.maintainerrIsIncluded ?? el.maintainerrIsManual ?? false
+                }
                 providerIds={extractProviderIds(el)}
                 collectionPage={
                   props.collectionPage ? props.collectionPage : false

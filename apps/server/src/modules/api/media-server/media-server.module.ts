@@ -1,4 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CollectionMedia } from '../../collections/entities/collection_media.entities';
+import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { SettingsModule } from '../../settings/settings.module';
 import { PlexApiModule } from '../plex-api/plex-api.module';
 import { MediaServerSetupGuard } from './guards/media-server-setup.guard';
@@ -6,6 +9,7 @@ import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { JellyfinModule } from './jellyfin/jellyfin.module';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { PlexAdapterService } from './plex/plex-adapter.service';
 
 /**
@@ -30,6 +34,7 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
  */
 @Module({
   imports: [
+    TypeOrmModule.forFeature([Exclusion, CollectionMedia]),
     forwardRef(() => PlexApiModule),
     forwardRef(() => SettingsModule),
     JellyfinModule,
@@ -40,6 +45,7 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
     JellyfinAdapterService,
     MediaServerFactory,
     MediaServerSetupGuard,
+    MediaItemEnrichmentService,
   ],
   exports: [
     // PlexAdapterService is exported for PlexGetterService, which now uses the

@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { IMediaServerService } from './media-server.interface';
 
 /**
@@ -19,6 +20,7 @@ describe('MediaServerController', () => {
   let controller: MediaServerController;
   let mockMediaServerFactory: jest.Mocked<MediaServerFactory>;
   let mockMediaServerService: jest.Mocked<IMediaServerService>;
+  let mediaItemEnrichmentService: jest.Mocked<MediaItemEnrichmentService>;
   let logger: jest.Mocked<MaintainerrLogger>;
 
   beforeEach(() => {
@@ -43,7 +45,15 @@ describe('MediaServerController', () => {
       setContext: jest.fn(),
     } as unknown as jest.Mocked<MaintainerrLogger>;
 
-    controller = new MediaServerController(mockMediaServerFactory, logger);
+    mediaItemEnrichmentService = {
+      enrichItems: jest.fn().mockImplementation(async (items) => items),
+    } as unknown as jest.Mocked<MediaItemEnrichmentService>;
+
+    controller = new MediaServerController(
+      mockMediaServerFactory,
+      logger,
+      mediaItemEnrichmentService,
+    );
   });
 
   describe('getLibraryContent - Pagination Logic', () => {
@@ -54,6 +64,7 @@ describe('MediaServerController', () => {
         'lib1',
         { offset: 0, limit: 50, type: undefined },
       );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([]);
     });
 
     it('should calculate offset correctly for page 2 with limit 50', async () => {
@@ -203,6 +214,9 @@ describe('MediaServerController', () => {
       const result = await controller.searchContent('test');
 
       expect(mockMediaServerService.searchContent).toHaveBeenCalledWith('test');
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        episode,
+      ]);
       expect(mockMediaServerService.getMetadata).toHaveBeenCalledWith('show-1');
       expect(result).toEqual([{ ...episode, parentItem: show }]);
     });

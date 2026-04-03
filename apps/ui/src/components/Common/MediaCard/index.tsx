@@ -13,6 +13,7 @@ const mediaBadgeClasses = {
   show: 'bg-amber-900',
   season: 'bg-yellow-700',
   episode: 'bg-rose-900',
+  success: 'bg-emerald-700',
 } as const
 
 const renderBadge = (
@@ -44,6 +45,7 @@ interface IMediaCard {
   daysLeft?: number
   exclusionId?: number
   exclusionType?: 'global' | 'specific' | undefined
+  isIncluded?: boolean
   collectionId?: number
   isManual?: boolean
   onRemove?: (id: string) => void
@@ -63,6 +65,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   providerIds = undefined,
   collectionPage = false,
   exclusionType = undefined,
+  isIncluded = false,
   isManual = false,
   onRemove = () => {},
 }) => {
@@ -124,9 +127,12 @@ const MediaCard: React.FC<IMediaCard> = ({
             <div className="absolute left-0 right-0 flex items-center justify-between p-2">
               {renderBadge(mediaType, mediaType)}
             </div>
-            {hasExclusion && !collectionPage
-              ? renderBadge('EXCL', mediaType, 'absolute right-0 p-2')
-              : undefined}
+            {!collectionPage && (hasExclusion || isIncluded) ? (
+              <div className="absolute right-0 flex items-center gap-2 p-2">
+                {isIncluded ? renderBadge('INCL', 'success') : undefined}
+                {hasExclusion ? renderBadge('EXCL', mediaType) : undefined}
+              </div>
+            ) : undefined}
 
             {collectionPage && isManual && !showDetail
               ? renderBadge(

@@ -12,7 +12,25 @@ vi.mock('../../Common/LoadingSpinner', () => ({
 }))
 
 vi.mock('../../Common/MediaCard', () => ({
-  default: ({ title }: { title: string }) => <div>{title}</div>,
+  default: ({
+    title,
+    isIncluded,
+    exclusionId,
+  }: {
+    title: string
+    isIncluded?: boolean
+    exclusionId?: number
+  }) => (
+    <div>
+      <span>{title}</span>
+      {isIncluded ? (
+        <span data-testid={`included-${title}`}>included</span>
+      ) : null}
+      {exclusionId ? (
+        <span data-testid={`excluded-${title}`}>excluded</span>
+      ) : null}
+    </div>
+  ),
 }))
 
 describe('OverviewContent', () => {
@@ -44,5 +62,29 @@ describe('OverviewContent', () => {
         .getByTestId('loading-spinner')
         .getAttribute('data-container-class'),
     ).toBe('h-24')
+  })
+
+  it('passes included and excluded overview state through to media cards', () => {
+    render(
+      <OverviewContent
+        data={[
+          {
+            id: '1',
+            title: 'Item One',
+            type: 'movie',
+            maintainerrIsIncluded: true,
+            maintainerrExclusionId: 42,
+          } as any,
+        ]}
+        dataFinished={true}
+        loading={false}
+        extrasLoading={false}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    expect(screen.getByTestId('included-Item One')).toBeTruthy()
+    expect(screen.getByTestId('excluded-Item One')).toBeTruthy()
   })
 })

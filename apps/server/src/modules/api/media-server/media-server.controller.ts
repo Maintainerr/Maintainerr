@@ -35,6 +35,7 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaServerSetupGuard } from './guards';
 import { MediaServerFactory } from './media-server.factory';
 import { IMediaServerService } from './media-server.interface';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
@@ -53,6 +54,7 @@ export class MediaServerController {
   constructor(
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly logger: MaintainerrLogger,
+    private readonly mediaItemEnrichmentService: MediaItemEnrichmentService,
   ) {
     this.logger.setContext(MediaServerController.name);
   }
@@ -79,6 +81,18 @@ export class MediaServerController {
         } satisfies MediaItemWithParent;
       }),
     );
+  }
+
+  private async enrichItems(items: MediaItem[]): Promise<MediaItem[]> {
+    return await this.mediaItemEnrichmentService.enrichItems(items);
+  }
+
+  private async enrichAndAttachParentMetadata(
+    items: MediaItem[],
+    mediaServer: IMediaServerService,
+  ): Promise<MediaItem[]> {
+    const enrichedItems = await this.enrichItems(items);
+    return await this.attachParentMetadata(enrichedItems, mediaServer);
   }
 
   @Get()
@@ -114,14 +128,18 @@ export class MediaServerController {
     const pageNum = Math.max(page ?? 1, 1);
     const size = limit ?? 50;
     const offset = (pageNum - 1) * size;
-
-    return await mediaServer.getLibraryContents(id, {
+    const result = await mediaServer.getLibraryContents(id, {
       offset,
       limit: size,
       type,
       sort,
       sortOrder,
     });
+
+    return {
+      ...result,
+      items: await this.enrichItems(result.items),
+    };
   }
 
   @Get('library/:id/content/search/:query')
@@ -132,7 +150,7 @@ export class MediaServerController {
   ): Promise<MediaItem[]> {
     const mediaServer = await this.mediaServerFactory.getService();
     const items = await mediaServer.searchLibraryContents(id, query, type);
-    return await this.attachParentMetadata(items, mediaServer);
+    return await this.enrichAndAttachParentMetadata(items, mediaServer);
   }
 
   @Get('library/:id/recent')
@@ -178,7 +196,7 @@ export class MediaServerController {
   async searchContent(@Param('query') query: string): Promise<MediaItem[]> {
     const mediaServer = await this.mediaServerFactory.getService();
     const items = await mediaServer.searchContent(query);
-    return await this.attachParentMetadata(items, mediaServer);
+    return await this.enrichAndAttachParentMetadata(items, mediaServer);
   }
 
   @Get('library/:id/collections')
