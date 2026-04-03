@@ -380,7 +380,7 @@ const MediaServerSelector = ({
 
             {/* Result indicator */}
             {isSwitchComplete && (
-              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-success-900/30 p-3 text-success-400">
+              <div className="bg-success-900/30 text-success-400 mb-4 flex items-center justify-center space-x-2 rounded p-3">
                 <CheckCircleIcon className="h-5 w-5" />
                 <span className="text-sm font-medium">Success</span>
               </div>
