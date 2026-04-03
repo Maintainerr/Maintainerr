@@ -3,7 +3,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -15,18 +14,21 @@ const EventsContext = createContext<EventSource | undefined>(undefined)
 
 export const EventsProvider = (props: any) => {
   const hasWarnedStreamError = useRef(false)
+  const hasConnectedOnce = useRef(false)
+  const [eventSource, setEventSource] = useState<EventSource | null>(null)
 
-  const eventSource = useMemo(() => {
+  useEffect(() => {
     const source = new ReconnectingEventSource(
       `${API_BASE_PATH}/api/events/stream`,
     )
 
     source.onopen = () => {
+      hasConnectedOnce.current = true
       hasWarnedStreamError.current = false
     }
 
     source.onerror = (error) => {
-      if (hasWarnedStreamError.current) {
+      if (!hasConnectedOnce.current || hasWarnedStreamError.current) {
         return
       }
 
@@ -37,16 +39,14 @@ export const EventsProvider = (props: any) => {
       )
     }
 
-    return source
+    setEventSource(source)
+
+    return () => {
+      source.close()
+    }
   }, [])
 
-  useEffect(() => {
-    return () => {
-      eventSource.close()
-    }
-  }, [eventSource])
-
-  return <EventsContext.Provider value={eventSource} {...props} />
+  return <EventsContext.Provider value={eventSource ?? undefined} {...props} />
 }
 
 export const useEvent = <T,>(
