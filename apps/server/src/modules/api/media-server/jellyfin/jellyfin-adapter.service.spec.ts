@@ -252,6 +252,75 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getLibraryContents', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+    });
+
+    it('requests only the lightweight fields needed for overview lists', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [],
+          TotalRecordCount: 0,
+        },
+      });
+
+      await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+      });
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'library-1',
+          recursive: true,
+          startIndex: 0,
+          limit: 30,
+          fields: ['ProviderIds', 'DateCreated', 'Overview'],
+        }),
+      );
+    });
+
+    it('reuses the cached jellyfin user id across repeated overview list requests', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [],
+          TotalRecordCount: 0,
+        },
+      });
+
+      settingsService.getSettings.mockClear();
+
+      await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+      });
+      await service.getLibraryContents('library-1', {
+        offset: 30,
+        limit: 30,
+        type: 'movie',
+      });
+
+      expect(settingsService.getSettings).not.toHaveBeenCalled();
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+      expect(jellyfinApiMocks.getItems).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ userId: 'user-1', startIndex: 0 }),
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ userId: 'user-1', startIndex: 30 }),
+      );
+    });
+  });
+
   describe('cache management', () => {
     it('should not throw when resetting cache with itemId', () => {
       expect(() => service.resetMetadataCache('item123')).not.toThrow();

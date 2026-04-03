@@ -77,6 +77,12 @@ const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   }
 };
 
+const JELLYFIN_LIBRARY_LIST_FIELDS = [
+  ItemFields.ProviderIds,
+  ItemFields.DateCreated,
+  ItemFields.Overview,
+] as const;
+
 /**
  * Jellyfin media server service implementation.
  *
@@ -93,6 +99,7 @@ const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
 export class JellyfinAdapterService implements IMediaServerService {
   private api: Api | undefined;
   private initialized = false;
+  private jellyfinUserId: string | undefined;
   private readonly cache: Cache;
 
   constructor(
@@ -203,6 +210,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     this.api = api;
     this.initialized = true;
+    this.jellyfinUserId = settings.jellyfin_user_id ?? undefined;
     this.logger.log(
       `Jellyfin connection established: ${result.serverName} (${result.version})`,
     );
@@ -211,6 +219,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   uninitialize(): void {
     this.initialized = false;
     this.api = undefined;
+    this.jellyfinUserId = undefined;
     // Clear the cache when uninitializing
     this.cache.flush();
   }
@@ -447,16 +456,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         recursive: true,
         startIndex: options?.offset || 0,
         limit: options?.limit || JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE,
-        fields: [
-          ItemFields.ProviderIds,
-          ItemFields.Path,
-          ItemFields.DateCreated,
-          ItemFields.MediaSources,
-          ItemFields.Genres,
-          ItemFields.Tags,
-          ItemFields.Overview,
-          ItemFields.People,
-        ],
+        // Keep library listings lean. Full metadata is fetched lazily via /meta/:id.
+        fields: [...JELLYFIN_LIBRARY_LIST_FIELDS],
         includeItemTypes: options?.type
           ? JellyfinMapper.toBaseItemKinds([options.type])
           : [BaseItemKind.Movie, BaseItemKind.Series],
@@ -881,10 +882,17 @@ export class JellyfinAdapterService implements IMediaServerService {
    * authenticating with an API key (no implicit user session).
    */
   private async getUserId(): Promise<string | undefined> {
+    if (this.jellyfinUserId !== undefined) {
+      return this.jellyfinUserId;
+    }
+
     const settings = await this.settingsService.getSettings();
-    return settings && 'jellyfin_user_id' in settings
-      ? settings.jellyfin_user_id
-      : undefined;
+    this.jellyfinUserId =
+      settings && 'jellyfin_user_id' in settings
+        ? settings.jellyfin_user_id
+        : undefined;
+
+    return this.jellyfinUserId;
   }
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
