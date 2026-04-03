@@ -33,6 +33,8 @@ const CollectionItem = (props: ICollectionItem) => {
     props.collection.deleteAfterDays == null
       ? 'Never'
       : `After ${props.collection.deleteAfterDays}d`
+  const mediaCount =
+    props.collection.mediaCount ?? props.collection.media?.length ?? 0
   const previewMedia = useMemo(
     () => props.collection.media?.slice(0, 2) ?? [],
     [props.collection.media],
@@ -168,9 +170,7 @@ const CollectionItem = (props: ICollectionItem) => {
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 Items
               </p>
-              <p className="text-amber-500">
-                {`${props.collection.media ? props.collection.media.length : 0}`}
-              </p>
+              <p className="text-amber-500">{`${mediaCount}`}</p>
             </div>
 
             <div className="min-w-0">

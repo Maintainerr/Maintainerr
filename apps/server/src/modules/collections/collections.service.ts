@@ -1,7 +1,7 @@
 import {
   BasicResponseDto,
-  CollectionMediaSortField,
   CollectionLogMeta,
+  CollectionMediaSortField,
   compareMediaItemsBySort,
   ECollectionLogType,
   isMediaType,
@@ -46,6 +46,23 @@ interface addCollectionDbResponse {
   visibleOnHome: boolean;
   deleteAfterDays: number;
   manualCollection: boolean;
+}
+
+interface CollectionMediaCountRow {
+  collectionId: string;
+  mediaCount: string;
+}
+
+interface CollectionPreviewMediaRow {
+  id: number;
+  collectionId: number;
+  mediaServerId: string;
+  tmdbId?: number;
+  tvdbId?: number;
+  addDate: Date;
+  image_path?: string;
+  isManual: boolean;
+  rowNumber: number;
 }
 
 @Injectable()
@@ -399,6 +416,83 @@ export class CollectionsService {
     }
   }
 
+  private async getCollectionMediaCounts(collectionIds: number[]) {
+    if (collectionIds.length === 0) {
+      return new Map<number, number>();
+    }
+
+    const rows = await this.CollectionMediaRepo.createQueryBuilder(
+      'collection_media',
+    )
+      .select('collection_media.collectionId', 'collectionId')
+      .addSelect('COUNT(collection_media.id)', 'mediaCount')
+      .where('collection_media.collectionId IN (:...collectionIds)', {
+        collectionIds,
+      })
+      .groupBy('collection_media.collectionId')
+      .getRawMany<CollectionMediaCountRow>();
+
+    return new Map<number, number>(
+      rows.map((row) => [Number(row.collectionId), Number(row.mediaCount)]),
+    );
+  }
+
+  private async getCollectionPreviewMedia(collectionIds: number[]) {
+    if (collectionIds.length === 0) {
+      return new Map<number, CollectionMedia[]>();
+    }
+
+    const previewRows = await this.connection
+      .createQueryBuilder()
+      .select('*')
+      .from(
+        (subQuery) =>
+          subQuery
+            .select([
+              'collection_media.id AS id',
+              'collection_media.collectionId AS collectionId',
+              'collection_media.mediaServerId AS mediaServerId',
+              'collection_media.tmdbId AS tmdbId',
+              'collection_media.tvdbId AS tvdbId',
+              'collection_media.addDate AS addDate',
+              'collection_media.image_path AS image_path',
+              'collection_media.isManual AS isManual',
+              'ROW_NUMBER() OVER (PARTITION BY collection_media.collectionId ORDER BY collection_media.addDate DESC, collection_media.id DESC) AS rowNumber',
+            ])
+            .from(CollectionMedia, 'collection_media')
+            .where('collection_media.collectionId IN (:...collectionIds)', {
+              collectionIds,
+            }),
+        'preview_media',
+      )
+      .where('preview_media.rowNumber <= :previewLimit', { previewLimit: 2 })
+      .orderBy('preview_media.collectionId', 'ASC')
+      .addOrderBy('preview_media.rowNumber', 'ASC')
+      .getRawMany<CollectionPreviewMediaRow>();
+
+    const previewMediaByCollection = new Map<number, CollectionMedia[]>();
+
+    for (const row of previewRows) {
+      const collectionId = Number(row.collectionId);
+      const previewMedia = previewMediaByCollection.get(collectionId) ?? [];
+
+      previewMedia.push({
+        id: Number(row.id),
+        collectionId,
+        mediaServerId: row.mediaServerId,
+        tmdbId: row.tmdbId ? Number(row.tmdbId) : undefined,
+        tvdbId: row.tvdbId ? Number(row.tvdbId) : undefined,
+        addDate: row.addDate,
+        image_path: row.image_path,
+        isManual: Boolean(row.isManual),
+      } as CollectionMedia);
+
+      previewMediaByCollection.set(collectionId, previewMedia);
+    }
+
+    return previewMediaByCollection;
+  }
+
   async getCollections(libraryId?: string, typeId?: MediaItemType) {
     try {
       const collections = await this.collectionRepo.find(
@@ -409,19 +503,18 @@ export class CollectionsService {
             : undefined,
       );
 
-      return await Promise.all(
-        collections.map(async (col) => {
-          const colls = await this.CollectionMediaRepo.find({
-            where: {
-              collectionId: +col.id,
-            },
-          });
-          return {
-            ...col,
-            media: colls,
-          };
-        }),
-      );
+      const collectionIds = collections.map((collection) => collection.id);
+      const [mediaCountsByCollection, previewMediaByCollection] =
+        await Promise.all([
+          this.getCollectionMediaCounts(collectionIds),
+          this.getCollectionPreviewMedia(collectionIds),
+        ]);
+
+      return collections.map((collection) => ({
+        ...collection,
+        media: previewMediaByCollection.get(Number(collection.id)) ?? [],
+        mediaCount: mediaCountsByCollection.get(Number(collection.id)) ?? 0,
+      }));
     } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
