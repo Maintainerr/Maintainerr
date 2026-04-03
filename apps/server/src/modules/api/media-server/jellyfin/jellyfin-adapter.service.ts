@@ -893,7 +893,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     const settings = await this.settingsService.getSettings();
     this.jellyfinUserId =
       settings && 'jellyfin_user_id' in settings
-        ? settings.jellyfin_user_id
+        ? (settings.jellyfin_user_id ?? undefined)
         : undefined;
 
     return this.jellyfinUserId;

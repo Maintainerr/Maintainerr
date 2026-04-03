@@ -319,6 +319,44 @@ describe('JellyfinAdapterService', () => {
         expect.objectContaining({ userId: 'user-1', startIndex: 30 }),
       );
     });
+
+    it('treats a null jellyfin_user_id from settings as undefined', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [],
+          TotalRecordCount: 0,
+        },
+      });
+
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: null,
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+
+      await service.initialize();
+      settingsService.getSettings.mockClear();
+
+      await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 10,
+        type: 'movie',
+      });
+      await service.getLibraryContents('library-1', {
+        offset: 10,
+        limit: 10,
+        type: 'movie',
+      });
+
+      expect(settingsService.getSettings).toHaveBeenCalledTimes(2);
+      expect(jellyfinApiMocks.getItems).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ userId: undefined, startIndex: 0 }),
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ userId: undefined, startIndex: 10 }),
+      );
+    });
   });
 
   describe('cache management', () => {

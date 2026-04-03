@@ -38,6 +38,7 @@ const SearchBar = (props: ISearchBar) => {
       </div>
       <input
         type="search"
+        name="search"
         onChange={(e) => inputHandler(e)}
         placeholder={placeholder ? placeholder : 'Search'}
         value={displayedValue}

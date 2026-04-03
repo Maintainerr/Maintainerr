@@ -237,6 +237,7 @@ export const MediaLibrarySortControl = ({
   return (
     <Select
       aria-label={ariaLabel}
+      name="sort"
       value={value}
       onChange={(event) => onSortChange(event.target.value)}
     >

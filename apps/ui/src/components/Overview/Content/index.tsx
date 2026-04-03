@@ -6,7 +6,9 @@ import {
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
 import { ICollectionMedia } from '../../Collection'
-import LoadingSpinner, { SmallLoadingSpinner } from '../../Common/LoadingSpinner'
+import LoadingSpinner, {
+  SmallLoadingSpinner,
+} from '../../Common/LoadingSpinner'
 import MediaCard from '../../Common/MediaCard'
 import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../utils/uiBehavior'
 

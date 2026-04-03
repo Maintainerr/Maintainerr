@@ -1,11 +1,5 @@
 import { MaintainerrEvent } from '@maintainerr/contracts'
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import { API_BASE_PATH } from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
