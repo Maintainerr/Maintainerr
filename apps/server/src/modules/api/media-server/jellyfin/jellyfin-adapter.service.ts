@@ -77,6 +77,10 @@ const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   }
 };
 
+// Overview/search library lists intentionally keep the Jellyfin payload lean.
+// If cards ever start rendering richer metadata such as genres, actors,
+// ratings, media sources, or tags directly in the list view, either add the
+// required fields here or fetch that detail lazily per item via /meta/:id.
 const JELLYFIN_LIBRARY_LIST_FIELDS = [
   ItemFields.ProviderIds,
   ItemFields.DateCreated,
