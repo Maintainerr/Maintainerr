@@ -243,6 +243,40 @@ describe('MetadataSettings', () => {
     ).not.toBe(0)
   })
 
+  it('shows the refresh-started message when metadata refresh succeeds', async () => {
+    postApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/metadata/refresh/tmdb') {
+        return Promise.resolve({
+          status: 'OK',
+          code: 1,
+          message: 'TMDB metadata refresh started',
+        })
+      }
+
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    render(<MetadataSettings />)
+
+    await waitFor(() => {
+      expect(
+        (
+          screen.getAllByRole('button', {
+            name: 'Refresh metadata',
+          })[0] as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
+    })
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Refresh metadata' })[0],
+    )
+
+    expect(
+      await screen.findByText('TMDB metadata refresh started'),
+    ).toBeTruthy()
+  })
+
   it('enables Save Changes as soon as the API key changes without requiring a prior test', async () => {
     render(<MetadataSettings />)
 

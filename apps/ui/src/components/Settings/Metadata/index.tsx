@@ -191,6 +191,7 @@ function useProviderForm(config: ProviderConfig) {
     feedback,
     clear,
     showError,
+    showInfo,
     showSuccess,
     showUpdated,
     showUpdateError,
