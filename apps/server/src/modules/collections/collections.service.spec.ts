@@ -364,7 +364,7 @@ describe('CollectionsService', () => {
     });
   });
 
-  it('limits collection previews to one row per collection for the list payload', async () => {
+  it('limits collection previews to two rows per collection for the list payload', async () => {
     const previewQueryBuilder = {
       select: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
@@ -380,7 +380,7 @@ describe('CollectionsService', () => {
 
     expect(previewQueryBuilder.where).toHaveBeenCalledWith(
       'preview_media.rowNumber <= :previewLimit',
-      { previewLimit: 1 },
+      { previewLimit: 2 },
     );
     expect(result).toEqual(new Map());
   });

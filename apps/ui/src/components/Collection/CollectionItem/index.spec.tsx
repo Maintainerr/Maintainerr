@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GetApiHandler from '../../../utils/ApiHandler'
@@ -73,6 +79,37 @@ describe('CollectionItem', () => {
 
     await waitFor(() => {
       expect(screen.getAllByAltText('img')).toHaveLength(2)
+    })
+
+    expect(getApiHandlerMock).not.toHaveBeenCalled()
+  })
+
+  it('renders a single preview image when the list payload only includes one item', async () => {
+    render(
+      <CollectionItem
+        collection={
+          {
+            id: 1,
+            title: 'Action',
+            libraryId: 'library-1',
+            description: 'Collection description',
+            isActive: true,
+            type: 'movie',
+            arrAction: 0,
+            media: [{ image_path: 'https://image.example/one.jpg' }],
+            manualCollection: false,
+            manualCollectionName: '',
+            addDate: new Date(),
+            handledMediaAmount: 0,
+            lastDurationInSeconds: 0,
+            keepLogsForMonths: 0,
+          } as any
+        }
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getAllByAltText('img')).toHaveLength(1)
     })
 
     expect(getApiHandlerMock).not.toHaveBeenCalled()

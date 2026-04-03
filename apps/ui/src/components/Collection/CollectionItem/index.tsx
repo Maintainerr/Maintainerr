@@ -40,6 +40,9 @@ const CollectionItem = (props: ICollectionItem) => {
     [props.collection.media],
   )
   const [previewImages, setPreviewImages] = useState<(string | null)[]>([])
+  const resolvedPreviewImages = previewImages.filter((image): image is string =>
+    Boolean(image),
+  )
 
   useEffect(() => {
     let isActive = true
@@ -91,30 +94,44 @@ const CollectionItem = (props: ICollectionItem) => {
         ? { onClick: () => props.onClick!(props.collection) }
         : {})}
     >
-      {props.collection.media && props.collection.media.length > 1 ? (
+      {resolvedPreviewImages.length > 1 ? (
         <div className="absolute inset-0 z-[-100] flex flex-row overflow-hidden">
-          {previewImages[0] ? (
+          {resolvedPreviewImages[0] ? (
             <img
               className="backdrop-image"
               width="600"
               height="800"
-              src={previewImages[0]}
+              src={resolvedPreviewImages[0]}
               alt="img"
               loading="lazy"
               decoding="async"
             />
           ) : undefined}
-          {previewImages[1] ? (
+          {resolvedPreviewImages[1] ? (
             <img
               className="backdrop-image"
               width="600"
               height="800"
-              src={previewImages[1]}
+              src={resolvedPreviewImages[1]}
               alt="img"
               loading="lazy"
               decoding="async"
             />
           ) : undefined}
+          <div className="collection-backdrop"></div>
+        </div>
+      ) : resolvedPreviewImages[0] ? (
+        <div className="absolute inset-0 z-[-100] overflow-hidden">
+          <img
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ opacity: 0.08 }}
+            width="1200"
+            height="800"
+            src={resolvedPreviewImages[0]}
+            alt="img"
+            loading="lazy"
+            decoding="async"
+          />
           <div className="collection-backdrop"></div>
         </div>
       ) : undefined}

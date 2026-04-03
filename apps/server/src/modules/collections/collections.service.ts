@@ -608,7 +608,7 @@ export class CollectionsService {
             }),
         'preview_media',
       )
-      .where('preview_media.rowNumber <= :previewLimit', { previewLimit: 1 })
+      .where('preview_media.rowNumber <= :previewLimit', { previewLimit: 2 })
       .orderBy('preview_media.collectionId', 'ASC')
       .addOrderBy('preview_media.rowNumber', 'ASC')
       .getRawMany<CollectionPreviewMediaRow>();
