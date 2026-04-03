@@ -56,7 +56,7 @@ export const SelectGroup = forwardRef<HTMLSelectElement, SelectGroupProps>(
             />
             {props.error && (
               <p
-                className={'text-error-500 mt-2 min-h-5 text-sm'}
+                className={'mt-2 min-h-5 text-sm text-error-500'}
                 id={`${props.name}-error`}
               >
                 {props.error}

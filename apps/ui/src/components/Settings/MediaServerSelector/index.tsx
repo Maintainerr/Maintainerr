@@ -380,20 +380,20 @@ const MediaServerSelector = ({
 
             {/* Result indicator */}
             {isSwitchComplete && (
-              <div className="bg-success-900/30 text-success-400 mb-4 flex items-center justify-center space-x-2 rounded p-3">
+              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-success-900/30 p-3 text-success-400">
                 <CheckCircleIcon className="h-5 w-5" />
                 <span className="text-sm font-medium">Success</span>
               </div>
             )}
             {switchError && (
-              <div className="bg-error-900/30 text-error-400 mb-4 rounded p-3">
+              <div className="mb-4 rounded bg-error-900/30 p-3 text-error-400">
                 <div className="flex items-center space-x-2">
                   <XCircleIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium">
                     Media server switch could not be completed: {switchError}
                   </span>
                 </div>
-                <p className="text-error-400/70 mt-1 pl-7 text-xs">
+                <p className="mt-1 pl-7 text-xs text-error-400/70">
                   Close this dialog and try again.
                 </p>
               </div>

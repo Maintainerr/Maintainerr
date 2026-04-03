@@ -636,7 +636,7 @@ const AddModal = (props: AddModal) => {
                         ></input>
                       </div>
                       {errors.name && (
-                        <p className="text-error-400 mt-1 text-xs">
+                        <p className="mt-1 text-xs text-error-400">
                           {errors.name.message}
                         </p>
                       )}
@@ -690,7 +690,7 @@ const AddModal = (props: AddModal) => {
                         })()}
                       </div>
                       {errors.libraryId && (
-                        <p className="text-error-400 mt-1 text-xs">
+                        <p className="mt-1 text-xs text-error-400">
                           {errors.libraryId.message}
                         </p>
                       )}
@@ -765,7 +765,7 @@ const AddModal = (props: AddModal) => {
                             })()}
                           </div>
                           {errors.dataType && (
-                            <p className="text-error-400 mt-1 text-xs">
+                            <p className="mt-1 text-xs text-error-400">
                               {errors.dataType.message}
                             </p>
                           )}
@@ -841,7 +841,7 @@ const AddModal = (props: AddModal) => {
                         }
                       />
                       {errors.sonarrSettingsId && (
-                        <p className="text-error-400 mt-1 text-xs">
+                        <p className="mt-1 text-xs text-error-400">
                           {errors.sonarrSettingsId.message}
                         </p>
                       )}
@@ -869,7 +869,7 @@ const AddModal = (props: AddModal) => {
                           />
                         </div>
                         {errors.deleteAfterDays && (
-                          <p className="text-error-400 mt-1 text-xs">
+                          <p className="mt-1 text-xs text-error-400">
                             {errors.deleteAfterDays.message}
                           </p>
                         )}
@@ -1073,7 +1073,7 @@ const AddModal = (props: AddModal) => {
                           />
                         </div>
                         {errors.manualCollectionName && (
-                          <p className="text-error-400 mt-1 text-xs">
+                          <p className="mt-1 text-xs text-error-400">
                             {errors.manualCollectionName.message}
                           </p>
                         )}
@@ -1132,7 +1132,7 @@ const AddModal = (props: AddModal) => {
                             {...register('keepLogsForMonths')}
                           />
                           {errors.keepLogsForMonths && (
-                            <p className="text-error-400 mt-1 text-xs">
+                            <p className="mt-1 text-xs text-error-400">
                               {errors.keepLogsForMonths.message}
                             </p>
                           )}
@@ -1186,7 +1186,7 @@ const AddModal = (props: AddModal) => {
                               {...register('tautulliWatchedPercentOverride')}
                             />
                             {errors.tautulliWatchedPercentOverride && (
-                              <p className="text-error-400 mt-1 text-xs">
+                              <p className="mt-1 text-xs text-error-400">
                                 {errors.tautulliWatchedPercentOverride.message}
                               </p>
                             )}
@@ -1221,7 +1221,7 @@ const AddModal = (props: AddModal) => {
                             {...register('ruleHandlerCronSchedule')}
                           />
                           {errors.ruleHandlerCronSchedule && (
-                            <p className="text-error-400 mt-1 text-xs">
+                            <p className="mt-1 text-xs text-error-400">
                               {errors.ruleHandlerCronSchedule.message}
                             </p>
                           )}

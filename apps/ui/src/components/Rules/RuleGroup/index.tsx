@@ -162,7 +162,7 @@ const RuleGroup = (props: {
               </p>
               {hasNoLibrary ? (
                 <p
-                  className="text-error-500 truncate"
+                  className="truncate text-error-500"
                   title="Please edit this rule and select a library"
                 >
                   Not set

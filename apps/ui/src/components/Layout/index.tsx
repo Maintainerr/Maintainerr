@@ -182,17 +182,17 @@ export const LayoutErrorBoundary: React.FC = () => {
     <LayoutShell>
       <div
         role="alert"
-        className="border-error-500/60 bg-error-500/10 text-error-100 rounded border p-6 shadow-lg"
+        className="rounded border border-error-500/60 bg-error-500/10 p-6 text-error-100 shadow-lg"
       >
-        <h2 className="text-error-200 text-lg font-semibold">{title}</h2>
-        <p className="text-error-100 mt-2 text-sm">{message}</p>
-        <p className="text-error-200/80 mt-4 text-xs">
+        <h2 className="text-lg font-semibold text-error-200">{title}</h2>
+        <p className="mt-2 text-sm text-error-100">{message}</p>
+        <p className="mt-4 text-xs text-error-200/80">
           You can try going back or reloading the page. If the problem persists,
           please check the browser console for more details.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
-            className="bg-error-500/30 text-error-50 hover:bg-error-500/40 focus:ring-error-300/60 rounded px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2"
+            className="rounded bg-error-500/30 px-4 py-2 text-sm font-medium text-error-50 transition hover:bg-error-500/40 focus:outline-none focus:ring-2 focus:ring-error-300/60"
             onClick={() => navigate(-1)}
           >
             Go Back

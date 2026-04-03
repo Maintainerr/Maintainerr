@@ -565,7 +565,7 @@ const RuleInput = (props: IRuleInput) => {
 
         {props.allowDelete ? (
           <button
-            className="bg-error-600 hover:bg-error-500 flex items-center rounded-lg px-3 py-1 text-zinc-100 shadow-md"
+            className="flex items-center rounded-lg bg-error-600 px-3 py-1 text-zinc-100 shadow-md hover:bg-error-500"
             onClick={onDelete}
             title={`Remove rule ${props.tagId}, section ${props.section}`}
           >

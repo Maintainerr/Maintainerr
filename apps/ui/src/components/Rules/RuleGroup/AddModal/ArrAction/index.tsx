@@ -117,7 +117,7 @@ const ArrAction = (props: ArrActionProps) => {
             </select>
           </div>
           {props.settingIdError ? (
-            <p className="text-error-400 mt-1 text-xs">
+            <p className="mt-1 text-xs text-error-400">
               {props.settingIdError}
             </p>
           ) : undefined}
@@ -150,7 +150,7 @@ const ArrAction = (props: ArrActionProps) => {
             </select>
           </div>
           {props.accActionError ? (
-            <p className="text-error-400 mt-1 text-xs">
+            <p className="mt-1 text-xs text-error-400">
               {props.accActionError}
             </p>
           ) : undefined}
