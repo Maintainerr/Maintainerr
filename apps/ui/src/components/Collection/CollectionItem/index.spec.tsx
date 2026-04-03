@@ -1,11 +1,16 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import GetApiHandler from '../../../utils/ApiHandler'
 import { useMediaServerLibraries } from '../../../api/media-server'
 import CollectionItem from './index'
 
 vi.mock('../../../api/media-server', () => ({
   useMediaServerLibraries: vi.fn(),
+}))
+
+vi.mock('../../../utils/ApiHandler', () => ({
+  default: vi.fn(),
 }))
 
 vi.mock('../../Common/Button', () => ({
@@ -23,9 +28,11 @@ vi.mock('../../Common/Button', () => ({
 }))
 
 describe('CollectionItem', () => {
+  const getApiHandlerMock = vi.mocked(GetApiHandler)
   const librariesHookMock = vi.mocked(useMediaServerLibraries)
 
   beforeEach(() => {
+    getApiHandlerMock.mockReset()
     librariesHookMock.mockReturnValue({
       data: [{ id: 'library-1', title: 'Movies', type: 'movie' }],
       error: undefined,
@@ -37,8 +44,8 @@ describe('CollectionItem', () => {
     cleanup()
   })
 
-  it('keeps the shared poster card aspect ratio so collection tiles stay visible', () => {
-    const { container } = render(
+  it('renders collection preview images inside the wide backdrop layout', async () => {
+    render(
       <CollectionItem
         collection={
           {
@@ -49,7 +56,10 @@ describe('CollectionItem', () => {
             isActive: true,
             type: 'movie',
             arrAction: 0,
-            media: [],
+            media: [
+              { image_path: 'https://image.example/one.jpg' },
+              { image_path: 'https://image.example/two.jpg' },
+            ],
             manualCollection: false,
             manualCollectionName: '',
             addDate: new Date(),
@@ -61,7 +71,11 @@ describe('CollectionItem', () => {
       />,
     )
 
-    expect(container.querySelector('[class*="pb-[150%]"]')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getAllByAltText('img')).toHaveLength(2)
+    })
+
+    expect(getApiHandlerMock).not.toHaveBeenCalled()
   })
 
   it('delegates direct card clicks to detail navigation when a click handler is provided', () => {
