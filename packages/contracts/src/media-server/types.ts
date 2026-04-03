@@ -97,6 +97,7 @@ export interface MediaItem {
   collections?: string[]
   labels?: string[]
   maintainerrIsIncluded?: boolean
+  maintainerrInclusionTone?: 'info' | 'danger'
   maintainerrExclusionType?: 'specific' | 'global'
   maintainerrExclusionId?: number
   maintainerrIsManual?: boolean

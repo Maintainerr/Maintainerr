@@ -160,6 +160,7 @@ const OverviewContent = (props: IOverviewContent) => {
                 isIncluded={
                   el.maintainerrIsIncluded ?? el.maintainerrIsManual ?? false
                 }
+                inclusionTone={el.maintainerrInclusionTone}
                 providerIds={extractProviderIds(el)}
                 collectionPage={
                   props.collectionPage ? props.collectionPage : false

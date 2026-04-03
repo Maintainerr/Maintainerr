@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
+import { ServarrAction } from '../../collections/interfaces/collection.interface';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 
 interface ExclusionState {
@@ -13,6 +14,7 @@ interface ExclusionState {
 interface InclusionState {
   isIncluded: boolean;
   isManual: boolean;
+  tone: 'info' | 'danger';
 }
 
 @Injectable()
@@ -75,6 +77,7 @@ export class MediaItemEnrichmentService {
         ...(inclusion
           ? {
               maintainerrIsIncluded: inclusion.isIncluded,
+              maintainerrInclusionTone: inclusion.tone,
               maintainerrIsManual: inclusion.isManual,
             }
           : {}),
@@ -114,6 +117,7 @@ export class MediaItemEnrichmentService {
   ): Promise<Map<string, InclusionState>> {
     const collectionMedia = await this.collectionMediaRepo.find({
       where: { mediaServerId: In(ids) },
+      relations: { collection: true },
     });
     const map = new Map<string, InclusionState>();
 
@@ -123,9 +127,17 @@ export class MediaItemEnrichmentService {
       }
 
       const existingState = map.get(item.mediaServerId);
+      const isDestructiveCollection =
+        item.collection?.arrAction !== undefined &&
+        item.collection.arrAction !== ServarrAction.DO_NOTHING;
+
       map.set(item.mediaServerId, {
         isIncluded: true,
         isManual: (existingState?.isManual ?? false) || item.isManual === true,
+        tone:
+          existingState?.tone === 'danger' || isDestructiveCollection
+            ? 'danger'
+            : 'info',
       });
     });
 

@@ -15,16 +15,18 @@ vi.mock('../../Common/MediaCard', () => ({
   default: ({
     title,
     isIncluded,
+    inclusionTone,
     exclusionId,
   }: {
     title: string
     isIncluded?: boolean
+    inclusionTone?: 'info' | 'danger'
     exclusionId?: number
   }) => (
     <div>
       <span>{title}</span>
       {isIncluded ? (
-        <span data-testid={`included-${title}`}>included</span>
+        <span data-testid={`included-${title}`}>{inclusionTone}</span>
       ) : null}
       {exclusionId ? (
         <span data-testid={`excluded-${title}`}>excluded</span>
@@ -73,6 +75,7 @@ describe('OverviewContent', () => {
             title: 'Item One',
             type: 'movie',
             maintainerrIsIncluded: true,
+            maintainerrInclusionTone: 'danger',
             maintainerrExclusionId: 42,
           } as any,
         ]}
@@ -84,7 +87,7 @@ describe('OverviewContent', () => {
       />,
     )
 
-    expect(screen.getByTestId('included-Item One')).toBeTruthy()
+    expect(screen.getByTestId('included-Item One').textContent).toBe('danger')
     expect(screen.getByTestId('excluded-Item One')).toBeTruthy()
   })
 })

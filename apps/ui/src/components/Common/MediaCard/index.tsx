@@ -13,6 +13,7 @@ const mediaBadgeClasses = {
   show: 'bg-amber-900',
   season: 'bg-yellow-700',
   episode: 'bg-rose-900',
+  info: 'bg-zinc-800',
   success: 'bg-emerald-700',
 } as const
 
@@ -46,6 +47,7 @@ interface IMediaCard {
   exclusionId?: number
   exclusionType?: 'global' | 'specific' | undefined
   isIncluded?: boolean
+  inclusionTone?: 'info' | 'danger'
   collectionId?: number
   isManual?: boolean
   onRemove?: (id: string) => void
@@ -66,6 +68,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   collectionPage = false,
   exclusionType = undefined,
   isIncluded = false,
+  inclusionTone = 'info',
   isManual = false,
   onRemove = () => {},
 }) => {
@@ -74,6 +77,13 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
   const hasExclusion = exclusionId !== undefined || exclusionType !== undefined
+  const overviewStatusBadge = !collectionPage
+    ? isIncluded
+      ? { label: 'INCL', tone: inclusionTone }
+      : hasExclusion
+        ? { label: 'EXCL', tone: mediaType }
+        : undefined
+    : undefined
 
   if (year && mediaType !== 'episode') {
     year = year.slice(0, 4)
@@ -127,12 +137,13 @@ const MediaCard: React.FC<IMediaCard> = ({
             <div className="absolute left-0 right-0 flex items-center justify-between p-2">
               {renderBadge(mediaType, mediaType)}
             </div>
-            {!collectionPage && (hasExclusion || isIncluded) ? (
-              <div className="absolute right-0 flex items-center gap-2 p-2">
-                {isIncluded ? renderBadge('INCL', 'success') : undefined}
-                {hasExclusion ? renderBadge('EXCL', mediaType) : undefined}
-              </div>
-            ) : undefined}
+            {!showDetail && overviewStatusBadge
+              ? renderBadge(
+                  overviewStatusBadge.label,
+                  overviewStatusBadge.tone,
+                  'absolute bottom-0 right-0 flex items-center p-2',
+                )
+              : undefined}
 
             {collectionPage && isManual && !showDetail
               ? renderBadge(

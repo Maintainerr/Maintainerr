@@ -1,6 +1,7 @@
 import { type MediaItem } from '@maintainerr/contracts';
 import { Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
+import { ServarrAction } from '../../collections/interfaces/collection.interface';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 
@@ -64,10 +65,16 @@ describe('MediaItemEnrichmentService', () => {
       {
         mediaServerId: 'movie-1',
         isManual: false,
+        collection: {
+          arrAction: ServarrAction.DELETE,
+        },
       },
       {
         mediaServerId: 'episode-1',
         isManual: true,
+        collection: {
+          arrAction: ServarrAction.DO_NOTHING,
+        },
       },
     ] as CollectionMedia[]);
 
@@ -79,6 +86,7 @@ describe('MediaItemEnrichmentService', () => {
         maintainerrExclusionId: 11,
         maintainerrExclusionType: 'global',
         maintainerrIsIncluded: true,
+        maintainerrInclusionTone: 'danger',
         maintainerrIsManual: false,
       },
       {
@@ -86,7 +94,48 @@ describe('MediaItemEnrichmentService', () => {
         maintainerrExclusionId: 22,
         maintainerrExclusionType: 'specific',
         maintainerrIsIncluded: true,
+        maintainerrInclusionTone: 'info',
         maintainerrIsManual: true,
+      },
+    ]);
+  });
+
+  it('keeps the destructive inclusion tone when an item exists in multiple collections', async () => {
+    const movie = {
+      id: 'movie-1',
+      title: 'Movie',
+      guid: 'movie-guid',
+      type: 'movie',
+      addedAt: new Date(),
+      providerIds: {},
+      mediaSources: [],
+      library: { id: 'library-1', title: 'Movies' },
+    } satisfies MediaItem;
+
+    exclusionRepo.find.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([
+      {
+        mediaServerId: 'movie-1',
+        isManual: false,
+        collection: {
+          arrAction: ServarrAction.DO_NOTHING,
+        },
+      },
+      {
+        mediaServerId: 'movie-1',
+        isManual: false,
+        collection: {
+          arrAction: ServarrAction.UNMONITOR,
+        },
+      },
+    ] as CollectionMedia[]);
+
+    await expect(service.enrichItems([movie])).resolves.toEqual([
+      {
+        ...movie,
+        maintainerrIsIncluded: true,
+        maintainerrInclusionTone: 'danger',
+        maintainerrIsManual: false,
       },
     ]);
   });

@@ -32,7 +32,7 @@ describe('MediaCard', () => {
     cleanup()
   })
 
-  it('shows included and excluded badges on overview cards', () => {
+  it('prioritizes the included badge over the exclusion badge on overview cards', () => {
     render(
       <MediaCard
         id="movie-1"
@@ -40,12 +40,13 @@ describe('MediaCard', () => {
         mediaType="movie"
         collectionPage={false}
         isIncluded={true}
+        inclusionTone="danger"
         exclusionId={5}
       />,
     )
 
     expect(screen.getByText('INCL')).toBeTruthy()
-    expect(screen.getByText('EXCL')).toBeTruthy()
+    expect(screen.queryByText('EXCL')).toBeNull()
   })
 
   it('keeps the collection page manual badge instead of the overview included badge', () => {
@@ -61,6 +62,21 @@ describe('MediaCard', () => {
     )
 
     expect(screen.getByText('MANUAL')).toBeTruthy()
+    expect(screen.queryByText('INCL')).toBeNull()
+  })
+
+  it('shows the exclusion badge when the item is excluded but not currently included', () => {
+    render(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={false}
+        exclusionId={5}
+      />,
+    )
+
+    expect(screen.getByText('EXCL')).toBeTruthy()
     expect(screen.queryByText('INCL')).toBeNull()
   })
 })
