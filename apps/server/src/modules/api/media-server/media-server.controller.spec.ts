@@ -44,10 +44,15 @@ describe('MediaServerController', () => {
 
     logger = {
       setContext: jest.fn(),
+      warn: jest.fn(),
     } as unknown as jest.Mocked<MaintainerrLogger>;
 
     mediaItemEnrichmentService = {
       enrichItems: jest.fn().mockImplementation(async (items) => items),
+      getMaintainerrStatusDetails: jest.fn().mockResolvedValue({
+        excludedFrom: [],
+        manuallyAddedTo: [],
+      }),
     } as unknown as jest.Mocked<MediaItemEnrichmentService>;
 
     controller = new MediaServerController(
@@ -104,6 +109,147 @@ describe('MediaServerController', () => {
       expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
         'lib1',
         { offset: 0, limit: 50, type: 'movie' },
+      );
+    });
+
+    it('should sort excluded items server-side before paging', async () => {
+      const alpha = {
+        id: '1',
+        title: 'Alpha',
+        guid: 'guid-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      } satisfies MediaItem;
+      const zulu = {
+        id: '2',
+        title: 'Zulu',
+        guid: 'guid-2',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      } satisfies MediaItem;
+      const bravo = {
+        id: '3',
+        title: 'Bravo',
+        guid: 'guid-3',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [alpha, zulu],
+          totalSize: 3,
+          offset: 0,
+          limit: 250,
+        })
+        .mockResolvedValueOnce({
+          items: [bravo],
+          totalSize: 3,
+          offset: 2,
+          limit: 250,
+        });
+
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
+        alpha,
+        { ...zulu, maintainerrExclusionId: 42 },
+        { ...bravo, maintainerrExclusionId: 84 },
+      ]);
+
+      const result = await controller.getLibraryContent(
+        'lib1',
+        1,
+        2,
+        'show',
+        'excluded',
+        'desc',
+      );
+
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenNthCalledWith(
+        1,
+        'lib1',
+        {
+          offset: 0,
+          limit: 250,
+          type: 'show',
+          sort: 'title',
+          sortOrder: 'asc',
+        },
+      );
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenNthCalledWith(
+        2,
+        'lib1',
+        {
+          offset: 2,
+          limit: 250,
+          type: 'show',
+          sort: 'title',
+          sortOrder: 'asc',
+        },
+      );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        alpha,
+        zulu,
+        bravo,
+      ]);
+      expect(result).toEqual({
+        items: [
+          { ...zulu, maintainerrExclusionId: 42 },
+          { ...bravo, maintainerrExclusionId: 84 },
+        ],
+        totalSize: 3,
+        offset: 0,
+        limit: 2,
+      });
+    });
+
+    it('should warn when status sorting requires a large pre-pagination fetch', async () => {
+      const alpha = {
+        id: '1',
+        title: 'Alpha',
+        guid: 'guid-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [alpha],
+          totalSize: 5001,
+          offset: 0,
+          limit: 250,
+        })
+        .mockResolvedValueOnce({
+          items: [],
+          totalSize: 5001,
+          offset: 1,
+          limit: 250,
+        });
+
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([alpha]);
+
+      await controller.getLibraryContent(
+        'lib1',
+        1,
+        1,
+        'show',
+        'manual',
+        'desc',
+      );
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Status-sorted library request for lib1 (manual.desc) requires fetching 5001 items before paging.',
       );
     });
   });
@@ -178,6 +324,115 @@ describe('MediaServerController', () => {
           limit: 30,
         },
       });
+    });
+
+    it('should apply manual sorting during bootstrap', async () => {
+      const library = {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      };
+      const alpha = {
+        id: 'show-1',
+        title: 'Alpha',
+        guid: 'guid-show-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['1'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+      const bravo = {
+        id: 'show-2',
+        title: 'Bravo',
+        guid: 'guid-show-2',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['2'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [alpha, bravo],
+        totalSize: 2,
+        offset: 0,
+        limit: 250,
+      });
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
+        { ...alpha, maintainerrIsManual: true },
+        bravo,
+      ]);
+
+      const result = await controller.getOverviewBootstrap(
+        30,
+        'manual',
+        'desc',
+      );
+
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
+        'shows-library',
+        {
+          offset: 0,
+          limit: 250,
+          type: 'show',
+          sort: 'title',
+          sortOrder: 'asc',
+        },
+      );
+      expect(result.content.items).toEqual([
+        { ...alpha, maintainerrIsManual: true },
+        bravo,
+      ]);
+    });
+
+    it('should preserve the existing order when manual sorting has no manual items', async () => {
+      const library = {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      };
+      const bravo = {
+        id: 'show-2',
+        title: 'Bravo',
+        guid: 'guid-show-2',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['2'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+      const alpha = {
+        id: 'show-1',
+        title: 'Alpha',
+        guid: 'guid-show-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['1'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [bravo, alpha],
+        totalSize: 2,
+        offset: 0,
+        limit: 250,
+      });
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
+        bravo,
+        alpha,
+      ]);
+
+      const result = await controller.getOverviewBootstrap(
+        30,
+        'manual',
+        'desc',
+      );
+
+      expect(result.content.items).toEqual([bravo, alpha]);
     });
   });
 
@@ -255,6 +510,41 @@ describe('MediaServerController', () => {
       expect(
         mockMediaServerService.updateCollectionVisibility,
       ).toHaveBeenCalledWith(settings);
+    });
+  });
+
+  describe('getMaintainerrStatusDetails', () => {
+    it('should load details using metadata parent relations when available', async () => {
+      mockMediaServerService.getMetadata.mockResolvedValue({
+        id: 'episode-1',
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+      } as MediaItem);
+
+      await controller.getMaintainerrStatusDetails('episode-1');
+
+      expect(
+        mediaItemEnrichmentService.getMaintainerrStatusDetails,
+      ).toHaveBeenCalledWith({
+        id: 'episode-1',
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+      });
+    });
+
+    it('should warn when metadata is unavailable and fall back to direct item lookup', async () => {
+      mockMediaServerService.getMetadata.mockResolvedValue(undefined);
+
+      await controller.getMaintainerrStatusDetails('missing-item');
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Metadata was not found for media item missing-item; Maintainerr status details may omit parent-level exclusions.',
+      );
+      expect(
+        mediaItemEnrichmentService.getMaintainerrStatusDetails,
+      ).toHaveBeenCalledWith({
+        id: 'missing-item',
+      });
     });
   });
 

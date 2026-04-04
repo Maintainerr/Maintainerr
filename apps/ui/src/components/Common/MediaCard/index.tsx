@@ -2,6 +2,7 @@ import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AddModal from '../../AddModal'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
@@ -68,14 +69,23 @@ const MediaCard: React.FC<IMediaCard> = ({
   isManual = false,
   onRemove = () => {},
 }) => {
+  const navigate = useNavigate()
   const [showDetail, setShowDetail] = useState(false)
   const [excludeModal, setExcludeModal] = useState(false)
   const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
-  const hasExclusion = exclusionId !== undefined || exclusionType !== undefined
 
   if (year && mediaType !== 'episode') {
     year = year.slice(0, 4)
+  }
+
+  const handleStatusLink = (targetPath: string) => {
+    if (!targetPath) {
+      return
+    }
+
+    setShowMediaModal(false)
+    navigate(targetPath)
   }
 
   return (
@@ -125,7 +135,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           <>
             <div className="absolute left-0 right-0 flex items-center justify-between p-2">
               {renderBadge(mediaType, mediaType)}
-              {!collectionPage && hasExclusion
+              {!collectionPage && exclusionType === 'global'
                 ? renderBadge('EXCL', mediaType)
                 : undefined}
             </div>
@@ -259,6 +269,9 @@ const MediaCard: React.FC<IMediaCard> = ({
           mediaType={mediaType}
           providerIds={providerIds}
           year={year}
+          exclusionType={exclusionType}
+          isManual={isManual}
+          onStatusLink={handleStatusLink}
         />
       )}
     </div>

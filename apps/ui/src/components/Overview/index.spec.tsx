@@ -91,13 +91,23 @@ describe('Overview', () => {
       sort: 'title',
       sortOrder: 'asc',
     })
-    expect(sortConfig.options[1]).toEqual({
-      value: 'maintainerr.manual',
+
+    expect(sortConfig.options.at(-2)).toEqual({
+      value: 'manual.desc',
       label: 'Manual Added First',
+      sortParams: {
+        sort: 'manual',
+        sortOrder: 'desc',
+      },
     })
-    expect(sortConfig.options[2]).toEqual({
-      value: 'maintainerr.excluded',
+
+    expect(sortConfig.options.at(-1)).toEqual({
+      value: 'excluded.desc',
       label: 'Excluded First',
+      sortParams: {
+        sort: 'excluded',
+        sortOrder: 'desc',
+      },
     })
   })
 
@@ -360,7 +370,7 @@ describe('Overview', () => {
     })
   })
 
-  it('loads the full library and sorts excluded items first for the custom overview sort option', async () => {
+  it('requests excluded sorting from the server for the overview sort option', async () => {
     libraries = [
       {
         id: 'shows-library',
@@ -385,39 +395,24 @@ describe('Overview', () => {
         throw new Error(`Unexpected API request: ${path}`)
       }
 
-      const url = new URL(path, 'http://localhost')
-      const page = url.searchParams.get('page')
-
-      if (page === '1') {
-        return {
-          totalSize: 3,
-          items: [
-            { id: '1', title: 'Alpha', type: 'show' },
-            {
-              id: '2',
-              title: 'Bravo',
-              type: 'show',
-              maintainerrExclusionId: 42,
-            },
-          ],
-        }
+      return {
+        totalSize: 3,
+        items: [
+          {
+            id: '2',
+            title: 'Bravo',
+            type: 'show',
+            maintainerrExclusionId: 42,
+          },
+          {
+            id: '3',
+            title: 'Charlie',
+            type: 'show',
+            maintainerrExclusionId: 84,
+          },
+          { id: '1', title: 'Alpha', type: 'show' },
+        ],
       }
-
-      if (page === '2') {
-        return {
-          totalSize: 3,
-          items: [
-            {
-              id: '3',
-              title: 'Charlie',
-              type: 'show',
-              maintainerrExclusionId: 84,
-            },
-          ],
-        }
-      }
-
-      throw new Error(`Unexpected API request: ${path}`)
     })
 
     render(
@@ -431,12 +426,16 @@ describe('Overview', () => {
     })
 
     fireEvent.change(screen.getByLabelText('Sort overview items'), {
-      target: { value: 'maintainerr.excluded' },
+      target: { value: 'excluded.desc' },
     })
 
     await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(3)
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
     })
+
+    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain(
+      'sort=excluded&sortOrder=desc',
+    )
 
     await waitFor(() => {
       expect(screen.getByText('Alpha')).toBeTruthy()

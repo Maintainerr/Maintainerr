@@ -3,6 +3,10 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MediaCard from './index'
 
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
 vi.mock('../../AddModal', () => ({
   default: () => null,
 }))
@@ -32,7 +36,7 @@ describe('MediaCard', () => {
     cleanup()
   })
 
-  it('shows the exclusion badge on overview cards', () => {
+  it('shows the exclusion badge on overview cards only for global exclusions', () => {
     render(
       <MediaCard
         id="movie-1"
@@ -40,11 +44,27 @@ describe('MediaCard', () => {
         mediaType="movie"
         collectionPage={false}
         exclusionId={5}
+        exclusionType="global"
       />,
     )
 
     expect(screen.getByText('EXCL')).toBeTruthy()
     expect(screen.queryByText('INCL')).toBeNull()
+  })
+
+  it('does not show the exclusion badge on overview cards for collection-specific exclusions', () => {
+    render(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={false}
+        exclusionId={5}
+        exclusionType="specific"
+      />,
+    )
+
+    expect(screen.queryByText('EXCL')).toBeNull()
   })
 
   it('keeps the collection page manual badge without an overview include badge', () => {

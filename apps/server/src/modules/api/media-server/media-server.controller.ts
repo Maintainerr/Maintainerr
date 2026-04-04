@@ -1,6 +1,8 @@
 import {
   CollectionVisibilitySettings,
+  compareMediaItemsBySort,
   CreateCollectionParams,
+  MaintainerrMediaStatusDetails,
   MediaCollection,
   MediaItem,
   MediaItemType,
@@ -8,6 +10,7 @@ import {
   MediaLibrary,
   MediaLibrarySortField,
   mediaLibrarySortFields,
+  mediaLibraryStatusSortFields,
   MediaServerStatus,
   MediaSortOrder,
   mediaSortOrders,
@@ -15,6 +18,7 @@ import {
   PagedResult,
   UpdateCollectionParams,
   WatchRecord,
+  type MediaLibraryStatusSortField,
 } from '@maintainerr/contracts';
 import {
   BadRequestException,
@@ -39,6 +43,8 @@ import { IMediaServerService } from './media-server.interface';
 
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
+const maintainerrServerSortBatchSize = 250;
+const maintainerrServerSortWarnThreshold = 5000;
 
 interface OverviewBootstrapResult {
   libraries: MediaLibrary[];
@@ -101,6 +107,88 @@ export class MediaServerController {
     return await this.attachParentMetadata(enrichedItems, mediaServer);
   }
 
+  private isStatusLibrarySort(sort?: MediaLibrarySortField): boolean {
+    return (
+      sort != null &&
+      mediaLibraryStatusSortFields.includes(sort as MediaLibraryStatusSortField)
+    );
+  }
+
+  private async getLibraryContentPage(
+    mediaServer: IMediaServerService,
+    {
+      libraryId,
+      offset,
+      limit,
+      type,
+      sort,
+      sortOrder,
+    }: {
+      libraryId: string;
+      offset: number;
+      limit: number;
+      type?: MediaItemType;
+      sort?: MediaLibrarySortField;
+      sortOrder?: MediaSortOrder;
+    },
+  ): Promise<PagedResult<MediaItem>> {
+    if (!this.isStatusLibrarySort(sort)) {
+      const result = await mediaServer.getLibraryContents(libraryId, {
+        offset,
+        limit,
+        type,
+        sort,
+        sortOrder,
+      });
+
+      return {
+        ...result,
+        items: await this.enrichItems(result.items),
+      };
+    }
+
+    const allItems: MediaItem[] = [];
+    let nextOffset = 0;
+    let totalSize = 0;
+
+    while (nextOffset === 0 || allItems.length < totalSize) {
+      const result = await mediaServer.getLibraryContents(libraryId, {
+        offset: nextOffset,
+        limit: maintainerrServerSortBatchSize,
+        type,
+        sort: 'title',
+        sortOrder: 'asc',
+      });
+
+      totalSize = result.totalSize;
+
+      if (nextOffset === 0 && totalSize > maintainerrServerSortWarnThreshold) {
+        this.logger.warn(
+          `Status-sorted library request for ${libraryId} (${sort}.${sortOrder ?? 'asc'}) requires fetching ${totalSize} items before paging.`,
+        );
+      }
+
+      if (!result.items.length) {
+        break;
+      }
+
+      allItems.push(...result.items);
+      nextOffset += result.items.length;
+    }
+
+    const enrichedItems = await this.enrichItems(allItems);
+    const sortedItems = [...enrichedItems].sort((leftItem, rightItem) =>
+      compareMediaItemsBySort(leftItem, rightItem, sort, sortOrder),
+    );
+
+    return {
+      items: sortedItems.slice(offset, offset + limit),
+      totalSize: sortedItems.length,
+      offset,
+      limit,
+    };
+  }
+
   @Get()
   async getStatus(): Promise<MediaServerStatus | undefined> {
     const mediaServer = await this.mediaServerFactory.getService();
@@ -145,21 +233,20 @@ export class MediaServerController {
       };
     }
 
-    const content = await mediaServer.getLibraryContents(selectedLibrary.id, {
+    const content = await this.getLibraryContentPage(mediaServer, {
+      libraryId: selectedLibrary.id,
       offset: 0,
       limit: size,
       type: selectedLibrary.type,
       sort,
       sortOrder,
     });
-    const enrichedItems = await this.enrichItems(content.items);
 
     return {
       libraries,
       selectedLibraryId: selectedLibrary.id,
       content: {
         ...content,
-        items: enrichedItems,
       },
     };
   }
@@ -179,18 +266,14 @@ export class MediaServerController {
     const pageNum = Math.max(page ?? 1, 1);
     const size = limit ?? 50;
     const offset = (pageNum - 1) * size;
-    const result = await mediaServer.getLibraryContents(id, {
+    return await this.getLibraryContentPage(mediaServer, {
+      libraryId: id,
       offset,
       limit: size,
       type,
       sort,
       sortOrder,
     });
-
-    return {
-      ...result,
-      items: await this.enrichItems(result.items),
-    };
   }
 
   @Get('library/:id/content/search/:query')
@@ -229,6 +312,30 @@ export class MediaServerController {
   async getMetadata(@Param('id') id: string): Promise<MediaItem | undefined> {
     const mediaServer = await this.mediaServerFactory.getService();
     return mediaServer.getMetadata(id);
+  }
+
+  @Get('meta/:id/maintainerr-status')
+  async getMaintainerrStatusDetails(
+    @Param('id') id: string,
+  ): Promise<MaintainerrMediaStatusDetails> {
+    const mediaServer = await this.mediaServerFactory.getService();
+    const metadata = await mediaServer.getMetadata(id);
+
+    if (!metadata) {
+      this.logger.warn(
+        `Metadata was not found for media item ${id}; Maintainerr status details may omit parent-level exclusions.`,
+      );
+    }
+
+    return await this.mediaItemEnrichmentService.getMaintainerrStatusDetails(
+      metadata
+        ? {
+            id: metadata.id,
+            parentId: metadata.parentId,
+            grandparentId: metadata.grandparentId,
+          }
+        : { id },
+    );
   }
 
   @Get('meta/:id/children')

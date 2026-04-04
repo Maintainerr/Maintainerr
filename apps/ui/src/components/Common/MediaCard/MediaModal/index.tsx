@@ -1,4 +1,9 @@
-import { MediaItem, type MediaProviderIds } from '@maintainerr/contracts'
+import {
+  MediaItem,
+  type MaintainerrMediaStatusDetails,
+  type MaintainerrMediaStatusEntry,
+  type MediaProviderIds,
+} from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
@@ -9,7 +14,13 @@ import {
   toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
-import { SmallLoadingSpinner } from '../../LoadingSpinner'
+import LoadingSpinner from '../../LoadingSpinner'
+import {
+  emptyMaintainerrMediaStatusDetails,
+  getMaintainerrStatusDetailsKey,
+  loadMaintainerrStatusDetails,
+  rememberMaintainerrStatusDetails,
+} from '../maintainerrStatus'
 
 interface ModalContentProps {
   onClose: () => void
@@ -19,6 +30,9 @@ interface ModalContentProps {
   mediaType: 'movie' | 'show' | 'season' | 'episode'
   title: string
   providerIds?: MediaProviderIds
+  exclusionType?: 'global' | 'specific'
+  isManual?: boolean
+  onStatusLink?: (targetPath: string) => void
 }
 
 const mergeProviderIds = (
@@ -104,6 +118,14 @@ const emptyBackdropResult: BackdropResult = {
   providerId: null,
 }
 
+const maintainerrStatusCardStyles = {
+  cardClassName: 'bg-zinc-900/70',
+  titleClassName: 'text-white',
+  contentClassName: 'text-zinc-100',
+  emptyClassName: 'text-zinc-100/80',
+  linkClassName: 'text-amber-500 underline hover:text-amber-400',
+} as const
+
 const MediaModalContent: React.FC<ModalContentProps> = memo(
   ({
     onClose,
@@ -113,6 +135,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     year,
     title,
     providerIds: fallbackProviderIds,
+    exclusionType,
+    isManual = false,
+    onStatusLink,
   }) => {
     useLockBodyScroll(true)
 
@@ -126,8 +151,47 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       null,
     )
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
+    const [maintainerrDetailsState, setMaintainerrDetailsState] = useState<{
+      key: string
+      details: MaintainerrMediaStatusDetails
+    } | null>(null)
+    const [maintainerrDetailsLoading, setMaintainerrDetailsLoading] =
+      useState(false)
 
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
+    const maintainerrDetailsKey = useMemo(
+      () =>
+        getMaintainerrStatusDetailsKey({
+          id,
+          exclusionType,
+          isManual,
+        }),
+      [exclusionType, id, isManual],
+    )
+    const maintainerrDetails = useMemo(() => {
+      if (
+        !maintainerrDetailsKey ||
+        maintainerrDetailsState?.key !== maintainerrDetailsKey
+      ) {
+        return undefined
+      }
+
+      return maintainerrDetailsState.details
+    }, [maintainerrDetailsKey, maintainerrDetailsState])
+    const excludedFromEntries =
+      maintainerrDetails?.excludedFrom ??
+      emptyMaintainerrMediaStatusDetails.excludedFrom
+    const manuallyAddedToEntries =
+      maintainerrDetails?.manuallyAddedTo ??
+      emptyMaintainerrMediaStatusDetails.manuallyAddedTo
+    const shouldShowExcludedDetails = maintainerrDetailsLoading
+      ? exclusionType != null
+      : excludedFromEntries.length > 0
+    const shouldShowManualDetails = maintainerrDetailsLoading
+      ? isManual
+      : manuallyAddedToEntries.length > 0
+    const showMaintainerrDetails =
+      shouldShowExcludedDetails || shouldShowManualDetails
     const providerIds = useMemo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
       [metadata?.providerIds, fallbackProviderIds],
@@ -139,7 +203,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     )
     const isCurrentBackdrop = backdropResult.requestKey === backdropRequestPath
     const resolvedBackdrop = isCurrentBackdrop ? backdropResult.url : null
-
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -150,6 +213,66 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       if (!linkId) return null
       return { ...cfg, linkId }
     }, [isCurrentBackdrop, backdropResult, providerIds])
+
+    useEffect(() => {
+      if (!maintainerrDetailsKey) {
+        return
+      }
+
+      if (maintainerrDetailsState?.key === maintainerrDetailsKey) {
+        return
+      }
+
+      let active = true
+      setMaintainerrDetailsLoading(true)
+
+      const loadDetails = async () => {
+        try {
+          const details = await loadMaintainerrStatusDetails({
+            cacheKey: maintainerrDetailsKey,
+            id,
+            getApiHandler: GetApiHandler,
+          })
+
+          if (!active) {
+            return
+          }
+
+          setMaintainerrDetailsState({
+            key: maintainerrDetailsKey,
+            details,
+          })
+        } catch (error) {
+          if (!active) {
+            return
+          }
+
+          void logClientError(
+            'Failed to load maintainerr status details.',
+            error,
+            'MediaCard.MediaModal.loadMaintainerrDetails',
+          )
+
+          setMaintainerrDetailsState({
+            key: maintainerrDetailsKey,
+            details: rememberMaintainerrStatusDetails(
+              maintainerrDetailsKey,
+              emptyMaintainerrMediaStatusDetails,
+            ),
+          })
+        } finally {
+          if (active) {
+            setMaintainerrDetailsLoading(false)
+          }
+        }
+      }
+
+      void loadDetails()
+
+      return () => {
+        active = false
+      }
+    }, [id, maintainerrDetailsKey, maintainerrDetailsState?.key])
 
     useEffect(() => {
       GetApiHandler('/media-server').then((resp) => {
@@ -211,6 +334,53 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
     }, [backdropRequestPath])
 
+    const renderMaintainerrStatusItems = (
+      entries: ReadonlyArray<MaintainerrMediaStatusEntry>,
+      emptyLabel: string,
+      contentClassName: string,
+      emptyClassName: string,
+      linkClassName: string,
+    ) => {
+      if (entries.length === 0) {
+        return <p className={`text-sm ${emptyClassName}`}>{emptyLabel}</p>
+      }
+
+      return (
+        <ul className={`space-y-2 text-sm ${contentClassName}`}>
+          {entries.map((entry) => {
+            const targetPath = entry.targetPath
+
+            return (
+              <li
+                key={`${entry.label}-${targetPath ?? 'none'}`}
+                className="flex items-start gap-2"
+              >
+                <span className="mt-1 text-xs text-zinc-400">•</span>
+                {targetPath && onStatusLink ? (
+                  <button
+                    type="button"
+                    className={`text-left transition ${linkClassName}`}
+                    onClick={() => onStatusLink(targetPath)}
+                  >
+                    {entry.label}
+                  </button>
+                ) : targetPath ? (
+                  <a
+                    href={targetPath}
+                    className={`transition ${linkClassName}`}
+                  >
+                    {entry.label}
+                  </a>
+                ) : (
+                  <span>{entry.label}</span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )
+    }
+
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 px-3"
@@ -230,8 +400,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               }}
             ></div>
             {loading && (
-              <div className="absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black bg-opacity-50">
-                <SmallLoadingSpinner className="h-16 w-16" />
+              <div className="absolute bottom-0 left-0 right-0 top-0 bg-black bg-opacity-50">
+                <LoadingSpinner
+                  className="h-16 w-16"
+                  containerClassName="h-full w-full"
+                />
               </div>
             )}
 
@@ -389,6 +562,69 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="mt-2 text-gray-300">
               <p>{summary || 'No summary available.'}</p>
             </div>
+
+            {showMaintainerrDetails ? (
+              <div
+                className={`mt-4 grid gap-4 ${shouldShowExcludedDetails && shouldShowManualDetails ? 'md:grid-cols-2' : ''}`}
+              >
+                {shouldShowExcludedDetails ? (
+                  <div
+                    className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
+                    >
+                      Excluded From
+                    </p>
+                    <div className="mt-2">
+                      {maintainerrDetailsLoading
+                        ? renderMaintainerrStatusItems(
+                            [],
+                            'Loading exclusion details...',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )
+                        : renderMaintainerrStatusItems(
+                            excludedFromEntries,
+                            'Not excluded from any collection.',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )}
+                    </div>
+                  </div>
+                ) : null}
+                {shouldShowManualDetails ? (
+                  <div
+                    className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
+                    >
+                      Manually Added To
+                    </p>
+                    <div className="mt-2">
+                      {maintainerrDetailsLoading
+                        ? renderMaintainerrStatusItems(
+                            [],
+                            'Loading manual collection details...',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )
+                        : renderMaintainerrStatusItems(
+                            manuallyAddedToEntries,
+                            'Not manually added to any collection.',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : undefined}
 
             <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
               {providerIds &&
