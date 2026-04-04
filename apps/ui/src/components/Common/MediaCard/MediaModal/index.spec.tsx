@@ -225,7 +225,11 @@ describe('MediaModal', () => {
     const manualHeading = await screen.findByText('Manually Added To')
     expect(manualHeading).toBeTruthy()
     expect(manualHeading.className).toContain('text-white')
-    expect(manualHeading.parentElement?.className).toContain('bg-amber-600')
+    expect(manualHeading.parentElement?.className).toContain('border-2')
+    expect(manualHeading.parentElement?.className).toContain(
+      'border-amber-500/80',
+    )
+    expect(manualHeading.parentElement?.className).toContain('bg-zinc-900/70')
     const manualCollectionEntry = screen.getByRole('link', {
       name: 'Testing (5d left)',
     })
@@ -285,7 +289,11 @@ describe('MediaModal', () => {
     expect(screen.getByText('Global')).toBeTruthy()
     const excludedHeading = screen.getByText('Excluded From')
     expect(excludedHeading.className).toContain('text-white')
-    expect(excludedHeading.parentElement?.className).toContain('bg-amber-900')
+    expect(excludedHeading.parentElement?.className).toContain('border-2')
+    expect(excludedHeading.parentElement?.className).toContain(
+      'border-amber-800/70',
+    )
+    expect(excludedHeading.parentElement?.className).toContain('bg-zinc-900/70')
     expect(testingCollectionEntry.className).toContain('text-white')
 
     fireEvent.click(testingCollectionEntry)

@@ -111,11 +111,11 @@ export const getMediaLibrarySortConfig = (
         defaultOverviewSortValue,
         titleAscendingSortLabel,
       ),
-      createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
-      createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
       }),
+      createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
+      createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
     ],
   }
 }

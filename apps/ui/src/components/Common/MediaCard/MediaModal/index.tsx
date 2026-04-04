@@ -121,14 +121,14 @@ const emptyBackdropResult: BackdropResult = {
 
 const maintainerrStatusStyles = {
   excluded: {
-    cardClassName: 'border-amber-900 bg-amber-900',
+    cardClassName: 'border-2 border-amber-800/70 bg-zinc-900/70',
     titleClassName: 'text-white',
     contentClassName: 'text-zinc-100',
     emptyClassName: 'text-zinc-100/80',
     linkClassName: 'text-white hover:text-zinc-100',
   },
   manual: {
-    cardClassName: 'border-amber-600 bg-amber-600',
+    cardClassName: 'border-2 border-amber-500/80 bg-zinc-900/70',
     titleClassName: 'text-white',
     contentClassName: 'text-zinc-100',
     emptyClassName: 'text-zinc-100/80',

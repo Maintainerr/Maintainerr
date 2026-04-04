@@ -91,7 +91,8 @@ describe('Overview', () => {
       sort: 'title',
       sortOrder: 'asc',
     })
-    expect(sortConfig.options[1]).toEqual({
+
+    expect(sortConfig.options.at(-2)).toEqual({
       value: 'manual.desc',
       label: 'Manual Added First',
       sortParams: {
@@ -99,7 +100,8 @@ describe('Overview', () => {
         sortOrder: 'desc',
       },
     })
-    expect(sortConfig.options[2]).toEqual({
+
+    expect(sortConfig.options.at(-1)).toEqual({
       value: 'excluded.desc',
       label: 'Excluded First',
       sortParams: {
