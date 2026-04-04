@@ -30,4 +30,5 @@ export interface ICollection {
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
   sortTitle?: string;
+  overlayEnabled?: boolean;
 }

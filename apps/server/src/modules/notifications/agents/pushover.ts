@@ -3,9 +3,9 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { Notification } from '../entities/notification.entities';
 import {
-  NotificationAgentKey,
-  NotificationAgentPushover,
-  NotificationType,
+    NotificationAgentKey,
+    NotificationAgentPushover,
+    NotificationType,
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
@@ -136,15 +136,16 @@ class PushoverAgent implements NotificationAgent {
           sound: settings.options.sound,
         } as PushoverPayload);
       } catch (error) {
+        const err = error as Error & { response?: { data?: unknown } };
         this.logger.error(
           `Error sending Pushover notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: error.response?.data,
+            response: err.response?.data,
           })}`,
           error,
         );
-        return `Failure: ${error.message}`;
+        return `Failure: ${err.message}`;
       }
     }
 

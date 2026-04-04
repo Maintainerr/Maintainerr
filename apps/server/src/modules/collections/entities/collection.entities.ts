@@ -1,12 +1,12 @@
 import { MediaItemType, MediaServerType } from '@maintainerr/contracts';
 import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-  PrimaryGeneratedColumn,
+    Column,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    OneToOne,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
 import { CollectionLog } from '../../collections/entities/collection_log.entities';
 import { RulesDto } from '../../rules/dtos/rules.dto';
@@ -102,6 +102,9 @@ export class Collection {
 
   @Column({ type: 'bigint', nullable: true, default: null })
   totalSizeBytes: number | null;
+
+  @Column({ nullable: false, default: false })
+  overlayEnabled: boolean;
 
   @OneToMany(
     () => CollectionMedia,

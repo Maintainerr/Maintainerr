@@ -182,8 +182,9 @@ class PlexApi {
           );
         }
       } else {
+        const causeCode = (error as { cause?: { code?: string } })?.cause?.code;
         throw new Error(
-          `${requestConfig.method} ${url} failed with exception: ${error}${error.cause?.code ? `, error code: ${error.cause.code}` : ''}`,
+          `${requestConfig.method} ${url} failed with exception: ${error}${causeCode ? `, error code: ${causeCode}` : ''}`,
           { cause: error },
         );
       }

@@ -97,6 +97,9 @@ const settingsLogsRoute = createLazyRoute(
 const settingsAboutRoute = createLazyRoute(
   () => import('./components/Settings/About'),
 )
+const settingsOverlaysRoute = createLazyRoute(
+  () => import('./components/Settings/Overlays'),
+)
 
 /**
  * Preloadable route definition — single source of truth for both
@@ -248,6 +251,11 @@ const appRoutes: AppRoute[] = [
         path: 'about',
         lazy: settingsAboutRoute.lazy,
         preload: settingsAboutRoute.preload,
+      },
+      {
+        path: 'overlays',
+        lazy: settingsOverlaysRoute.lazy,
+        preload: settingsOverlaysRoute.preload,
       },
     ],
   },

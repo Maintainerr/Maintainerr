@@ -4,9 +4,9 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { Notification } from '../entities/notification.entities';
 import {
-  NotificationAgentKey,
-  NotificationAgentWebhook,
-  NotificationType,
+    NotificationAgentKey,
+    NotificationAgentWebhook,
+    NotificationType,
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
@@ -126,16 +126,17 @@ class WebhookAgent implements NotificationAgent {
 
       return 'Success';
     } catch (error) {
+      const err = error as Error & { response?: { data?: unknown } };
       this.logger.error(
         `Error sending Webhook notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: error.response?.data,
+          response: err.response?.data,
         })}`,
         error,
       );
 
-      return `Failure: ${error.message}`;
+      return `Failure: ${err.message}`;
     }
   }
 }

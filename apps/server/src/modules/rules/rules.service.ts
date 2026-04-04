@@ -1,8 +1,8 @@
 import {
-  ECollectionLogType,
-  MaintainerrEvent,
-  MediaItemType,
-  MediaServerType,
+    ECollectionLogType,
+    MaintainerrEvent,
+    MediaItemType,
+    MediaServerType,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -24,11 +24,11 @@ import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 import { RuleMigrationService } from '../settings/rule-migration.service';
 import {
-  Application,
-  Property,
-  RuleConstants,
-  RulePossibility,
-  RuleType,
+    Application,
+    Property,
+    RuleConstants,
+    RulePossibility,
+    RuleType,
 } from './constants/rules.constants';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionContextDto } from './dtos/exclusion.dto';
@@ -355,6 +355,7 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          overlayEnabled: params.collection?.overlayEnabled,
         })
       )?.dbCollection;
 
@@ -509,6 +510,7 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          overlayEnabled: params.collection?.overlayEnabled,
         };
 
         // If there's no existing collection (e.g., after rule migration), create a new one

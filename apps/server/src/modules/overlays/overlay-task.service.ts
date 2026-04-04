@@ -1,0 +1,105 @@
+import { MaintainerrEvent } from '@maintainerr/contracts';
+import { Injectable } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
+import { CollectionsService } from '../collections/collections.service';
+import { CollectionMediaAddedDto } from '../events/events.dto';
+import { MaintainerrLogger } from '../logging/logs.service';
+import { TaskBase } from '../tasks/task.base';
+import { TasksService } from '../tasks/tasks.service';
+import { OverlayProcessorService } from './overlay-processor.service';
+import { OverlaySettingsService } from './overlay-settings.service';
+
+@Injectable()
+export class OverlayTaskService extends TaskBase {
+  constructor(
+    protected readonly taskService: TasksService,
+    protected readonly logger: MaintainerrLogger,
+    private readonly processor: OverlayProcessorService,
+    private readonly settingsService: OverlaySettingsService,
+    private readonly collectionsService: CollectionsService,
+  ) {
+    super(taskService, logger);
+    this.logger.setContext(OverlayTaskService.name);
+    this.name = 'Overlay Handler';
+    // Default to a rarely-firing cron — will be set in onBootstrapHook
+    this.cronSchedule = '0 0 0 1 1 *'; // Once a year, Jan 1st
+  }
+
+  protected override async onBootstrapHook(): Promise<void> {
+    try {
+      const settings = await this.settingsService.getSettings();
+      if (settings.cronSchedule && settings.enabled) {
+        this.cronSchedule = settings.cronSchedule;
+        this.logger.log(
+          `Overlay handler cron configured: ${settings.cronSchedule}`,
+        );
+      }
+    } catch (err) {
+      this.logger.debug(err);
+    }
+  }
+
+  protected async executeTask(_abortSignal: AbortSignal): Promise<void> {
+    const settings = await this.settingsService.getSettings();
+    if (!settings.enabled) {
+      this.logger.debug('Overlay feature is disabled, skipping scheduled run');
+      return;
+    }
+
+    await this.processor.processAllCollections();
+  }
+
+  /**
+   * When overlay settings are updated, update the cron schedule.
+   */
+  async updateCronSchedule(
+    cronSchedule: string | null,
+    enabled: boolean,
+  ): Promise<void> {
+    if (cronSchedule && enabled) {
+      this.updateJob(cronSchedule);
+      this.logger.log(`Overlay cron updated to: ${cronSchedule}`);
+    } else {
+      // Set to never-fire cron to effectively disable
+      this.updateJob('0 0 0 1 1 *');
+      this.logger.log('Overlay cron disabled');
+    }
+  }
+
+  /**
+   * Handle CollectionMedia_Added event — apply overlays immediately
+   * when applyOnAdd is enabled.
+   */
+  @OnEvent(MaintainerrEvent.CollectionMedia_Added)
+  async handleCollectionMediaAdded(
+    payload: CollectionMediaAddedDto,
+  ): Promise<void> {
+    try {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.enabled || !settings.applyOnAdd) return;
+
+      const collections =
+        await this.collectionsService.getCollectionsWithOverlayEnabled();
+
+      for (const collection of collections) {
+        // Check if any of the added items belong to this collection
+        const collectionMediaIds = new Set(
+          collection.collectionMedia.map((cm) => cm.mediaServerId),
+        );
+        const hasAddedItems = payload.mediaItems.some((item) =>
+          collectionMediaIds.has(String(item.mediaServerId)),
+        );
+
+        if (hasAddedItems) {
+          this.logger.log(
+            `Processing overlays for "${collection.title}" (media added event)`,
+          );
+          await this.processor.processCollection(collection);
+        }
+      }
+    } catch (err) {
+      this.logger.warn('Error handling CollectionMedia_Added for overlays');
+      this.logger.debug(err);
+    }
+  }
+}

@@ -1,36 +1,36 @@
 import { faker } from '@faker-js/faker';
 import {
-  ArrDiskspaceResource,
-  MediaItem,
-  MediaItemType,
-  MediaItemWithParent,
-  MediaLibrary,
-  MediaServerType,
+    ArrDiskspaceResource,
+    MediaItem,
+    MediaItemType,
+    MediaItemWithParent,
+    MediaLibrary,
+    MediaServerType,
 } from '@maintainerr/contracts';
 import { PlexCollection } from '../../src/modules/api/plex-api/interfaces/collection.interface';
 import {
-  PlexLibrary,
-  PlexLibraryItem,
-  PlexSeenBy,
-  PlexUserAccount,
+    PlexLibrary,
+    PlexLibraryItem,
+    PlexSeenBy,
+    PlexUserAccount,
 } from '../../src/modules/api/plex-api/interfaces/library.interfaces';
 import { PlexMetadata } from '../../src/modules/api/plex-api/interfaces/media.interface';
 import {
-  RadarrMovie,
-  RadarrMovieFile,
-  RadarrQuality,
+    RadarrMovie,
+    RadarrMovieFile,
+    RadarrQuality,
 } from '../../src/modules/api/servarr-api/interfaces/radarr.interface';
 import {
-  SonarrEpisode,
-  SonarrEpisodeFile,
-  SonarrSeries,
-  SonarrSeriesStatusTypes,
-  SonarrSeriesTypes,
+    SonarrEpisode,
+    SonarrEpisodeFile,
+    SonarrSeries,
+    SonarrSeriesStatusTypes,
+    SonarrSeriesTypes,
 } from '../../src/modules/api/servarr-api/interfaces/sonarr.interface';
 import { Collection } from '../../src/modules/collections/entities/collection.entities';
 import {
-  CollectionMedia,
-  CollectionMediaWithMetadata,
+    CollectionMedia,
+    CollectionMediaWithMetadata,
 } from '../../src/modules/collections/entities/collection_media.entities';
 import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../../src/modules/logging/logs.service';
@@ -80,6 +80,7 @@ export const createCollection = (
     ruleGroup: undefined,
     visibleOnHome: false,
     visibleOnRecommended: false,
+    overlayEnabled: false,
     tautulliWatchedPercentOverride: undefined,
     sortTitle: undefined,
     totalSizeBytes: null,

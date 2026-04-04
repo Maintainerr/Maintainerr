@@ -3,9 +3,9 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { Notification } from '../entities/notification.entities';
 import {
-  NotificationAgentGotify,
-  NotificationAgentKey,
-  NotificationType,
+    NotificationAgentGotify,
+    NotificationAgentKey,
+    NotificationType,
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
@@ -88,16 +88,17 @@ class GotifyAgent implements NotificationAgent {
 
       return 'Success';
     } catch (error) {
+      const err = error as Error & { response?: { data?: unknown } };
       this.logger.error(
         `Error sending Gotify notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: error.response?.data,
+          response: err.response?.data,
         })}`,
         error,
       );
 
-      return `Failure: ${error.message}`;
+      return `Failure: ${err.message}`;
     }
   }
 }

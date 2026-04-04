@@ -1,23 +1,23 @@
 import type { ArrDiskspaceResource } from '@maintainerr/contracts'
 import {
-  BasicResponseDto,
-  MediaItemType,
-  RuleExecuteStatusDto,
+    BasicResponseDto,
+    MediaItemType,
+    RuleExecuteStatusDto,
 } from '@maintainerr/contracts'
 import {
-  useMutation,
-  UseMutationOptions,
-  useQuery,
-  useQueryClient,
-  UseQueryOptions,
+    useMutation,
+    UseMutationOptions,
+    useQuery,
+    useQueryClient,
+    UseQueryOptions,
 } from '@tanstack/react-query'
 import type { IRule } from '../components/Rules/Rule/RuleCreator'
 import type { IRuleGroup } from '../components/Rules/RuleGroup'
 import type { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
 import { IConstants } from '../contexts/constants-context'
 import GetApiHandler, {
-  PostApiHandler,
-  PutApiHandler,
+    PostApiHandler,
+    PutApiHandler,
 } from '../utils/ApiHandler'
 
 type UseRuleGroupForCollectionQueryKey = ['rules', 'collection', string]
@@ -68,6 +68,7 @@ export type UseRuleGroupForCollectionResult = ReturnType<
 export interface RuleGroupCollectionPayload {
   visibleOnRecommended: boolean
   visibleOnHome: boolean
+  overlayEnabled?: boolean
   deleteAfterDays?: number
   manualCollection?: boolean
   manualCollectionName?: string
