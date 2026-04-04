@@ -3,6 +3,7 @@ import { ClipboardCopyIcon } from '@heroicons/react/solid'
 import { useRef } from 'react'
 import { toast } from 'react-toastify'
 import Alert from '../Alert'
+import Button from '../Button'
 import LazyMonacoEditor from '../LazyMonacoEditor'
 import Modal from '../Modal'
 
@@ -95,16 +96,21 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
         loading={false}
         backgroundClickable={false}
         onCancel={() => props.onCancel()}
-        okDisabled={false}
-        onOk={
-          props.yaml
-            ? () => download()
-            : () => props.onImport((editorRef.current as any).getValue())
-        }
-        okText={props.yaml ? 'Download' : 'Import'}
-        okButtonType={'primary'}
         title={'Yaml Rule Editor'}
         iconSvg={''}
+        footerActions={
+          <Button
+            buttonType="primary"
+            className="ml-3"
+            onClick={() =>
+              props.yaml
+                ? void download()
+                : props.onImport((editorRef.current as any).getValue())
+            }
+          >
+            {props.yaml ? 'Download' : 'Import'}
+          </Button>
+        }
       >
         <input
           type="file"

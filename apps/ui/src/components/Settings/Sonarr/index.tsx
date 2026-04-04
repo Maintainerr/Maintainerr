@@ -13,7 +13,7 @@ import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
-import SonarrSettingsModal from './SettingsModal'
+import ServarrSettingsModal from '../Servarr/ServarrSettingsModal'
 
 type DeleteSonarrSettingResponseDto =
   | {
@@ -172,7 +172,12 @@ const SonarrSettings = () => {
         </ul>
       </div>
       {settingsModalActive && (
-        <SonarrSettingsModal
+        <ServarrSettingsModal
+          title="Sonarr Settings"
+          docsPage="Configuration/#sonarr"
+          settingsPath="/settings/sonarr"
+          testPath="/settings/test/sonarr"
+          serviceName="Sonarr"
           settings={
             typeof settingsModalActive === 'boolean'
               ? undefined
@@ -189,7 +194,15 @@ const SonarrSettings = () => {
         <Modal
           title="Server in-use"
           size="sm"
-          onOk={() => setCollectionsInUseWarning(undefined)}
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => setCollectionsInUseWarning(undefined)}
+            >
+              Ok
+            </Button>
+          }
         >
           <p className="mb-4">
             This server is currently being used by the following rules:

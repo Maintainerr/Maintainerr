@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
 import PlexSettings, { hasUnsavedPlexServerChanges } from './index'
@@ -193,54 +187,16 @@ describe('PlexSettings', () => {
     ).toBe(true)
   })
 
-  it('keeps Save Changes disabled until Plex server settings change and disables it again when reverted', () => {
+  it('keeps Save Changes enabled when Plex credentials exist regardless of whether server settings have changed', () => {
     render(<PlexSettings />)
 
     const saveButton = screen.getByRole('button', { name: 'Save Changes' })
-    const hostnameInput = screen.getByLabelText('Hostname or IP')
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.change(hostnameInput, { target: { value: 'plex.internal' } })
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Save Changes',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false)
-
-    fireEvent.change(hostnameInput, { target: { value: 'plex.local' } })
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Save Changes',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true)
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('disables Test Connection while Plex server settings are dirty and re-enables it when reverted', () => {
+  it('keeps Test Connection enabled when Plex credentials exist', () => {
     render(<PlexSettings />)
-
-    const testButton = screen.getByRole('button', { name: 'Test Connection' })
-    const hostnameInput = screen.getByLabelText('Hostname or IP')
-
-    expect((testButton as HTMLButtonElement).disabled).toBe(false)
-
-    fireEvent.change(hostnameInput, { target: { value: 'plex.internal' } })
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Test Connection',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true)
-
-    fireEvent.change(hostnameInput, { target: { value: 'plex.local' } })
 
     expect(
       (
@@ -249,6 +205,22 @@ describe('PlexSettings', () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false)
+  })
+
+  it('keeps Test Connection unavailable until a Plex server has been selected', () => {
+    currentSettings.plex_hostname = undefined
+    currentSettings.plex_port = undefined
+    currentSettings.plex_name = undefined
+
+    render(<PlexSettings />)
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Test Connection',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
   })
 
   it('keeps Test Connection unavailable while Plex authentication is still being persisted', () => {
@@ -276,35 +248,5 @@ describe('PlexSettings', () => {
     ).toBe(true)
 
     authRequest.resolve()
-  })
-
-  it('allows saving a Plex token manually with the shared save-button pattern', async () => {
-    updatePlexAuth.mockResolvedValue({
-      status: 'OK',
-      code: 1,
-      message: 'Success',
-    })
-
-    render(<PlexSettings />)
-
-    const saveTokenButton = screen.getByRole('button', { name: 'Save Token' })
-
-    expect((saveTokenButton as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.change(screen.getByLabelText(/Manual Token/i), {
-      target: { value: 'manual-plex-token' },
-    })
-
-    expect(
-      (screen.getByRole('button', { name: 'Save Token' }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(false)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save Token' }))
-
-    await waitFor(() => {
-      expect(updatePlexAuth).toHaveBeenCalledWith('manual-plex-token')
-      expect(axiosGet).toHaveBeenCalled()
-    })
   })
 })

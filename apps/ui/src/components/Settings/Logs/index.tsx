@@ -9,7 +9,7 @@ import {
   LogSettingSchemaOutput,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import GetApiHandler, {
   API_BASE_PATH,
@@ -46,21 +46,15 @@ const LogSettingsForm = () => {
   const {
     register,
     handleSubmit,
-    control,
     reset,
-    formState: { errors, isSubmitting, isLoading, defaultValues },
+    formState: { errors, isSubmitting, isLoading },
   } = useForm<LogSettingSchemaInput, unknown, LogSettingSchemaOutput>({
     resolver: zodResolver(logSettingSchema),
     defaultValues: async () =>
       await GetApiHandler<LogSetting>('/logs/settings'),
   })
 
-  const values = useWatch({ control })
-  const hasChanges =
-    values.level !== defaultValues?.level ||
-    values.max_size !== defaultValues?.max_size ||
-    values.max_files !== defaultValues?.max_files
-  const canSave = hasChanges && !isLoading && !isSubmitting
+  const canSave = !isLoading && !isSubmitting
 
   const onSubmit = async (data: LogSettingSchemaOutput) => {
     clearError()

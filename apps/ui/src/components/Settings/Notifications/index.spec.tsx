@@ -92,7 +92,9 @@ describe('NotificationSettings', () => {
     ).toBeTruthy()
 
     expect(
-      screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled'),
+      screen
+        .getByRole('button', { name: 'Save Changes' })
+        .hasAttribute('disabled'),
     ).toBe(true)
     expect(
       screen
@@ -141,7 +143,7 @@ describe('NotificationSettings', () => {
     fireEvent.change(screen.getByLabelText('Agent *'), {
       target: { value: '1' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
 
     expect(await screen.findByText('Notification agent saved')).toBeTruthy()
   })

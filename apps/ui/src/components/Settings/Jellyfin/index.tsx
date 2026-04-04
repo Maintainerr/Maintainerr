@@ -100,19 +100,12 @@ const JellyfinSettings = () => {
   }, [jellyfinData, reset])
 
   const isGoingToRemoveSettings = jellyfinUrl === '' && jellyfinApiKey === ''
-  const hasChanges =
-    jellyfinUrl !== (jellyfinData?.jellyfin_url ?? '') ||
-    jellyfinApiKey !== (jellyfinData?.jellyfin_api_key ?? '')
   const enteredSettingsHaveBeenTested =
     jellyfinUrl === testedSettings?.url &&
     jellyfinApiKey === testedSettings?.apiKey &&
     testResult?.status
   const canSaveSettings =
-    hasChanges &&
-    !isJellyfinLoading &&
-    !isTestPending &&
-    !isSavePending &&
-    !isDeletePending
+    !isJellyfinLoading && !isTestPending && !isSavePending && !isDeletePending
 
   const clearTransientState = () => {
     clearError()

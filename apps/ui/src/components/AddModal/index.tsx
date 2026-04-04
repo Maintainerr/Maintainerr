@@ -2,6 +2,7 @@ import { MediaItemType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import Alert from '../Common/Alert'
+import Button from '../Common/Button'
 import FormItem from '../Common/FormItem'
 import Modal from '../Common/Modal'
 import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
@@ -201,23 +202,13 @@ const AddModal = (props: IAddModal) => {
         loading={loading}
         backgroundClickable={false}
         onCancel={handleCancel}
-        onOk={handleOk}
-        okDisabled={false}
         title={
           props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'
         }
-        okText={'Submit'}
-        okButtonType={'primary'}
-        onSecondary={() => {}}
-        specialButtonType="warning"
-        specialDisabled={props.modalType !== 'add'}
-        specialText={'Remove from all collections'}
-        onSpecial={
-          props.modalType === 'add'
-            ? () => {
-                setForceRemovalCheck(true)
-              }
-            : undefined
+        footerActions={
+          <Button buttonType="primary" className="ml-3" onClick={handleOk}>
+            Submit
+          </Button>
         }
         iconSvg={''}
       >
@@ -226,10 +217,16 @@ const AddModal = (props: IAddModal) => {
             loading={loading}
             backgroundClickable={false}
             onCancel={() => setForceRemovalCheck(false)}
-            onOk={handleForceRemoval}
-            okDisabled={false}
             title={'Confirmation Required'}
-            okText={'Submit'}
+            footerActions={
+              <Button
+                buttonType="primary"
+                className="ml-3"
+                onClick={handleForceRemoval}
+              >
+                Submit
+              </Button>
+            }
           >
             Are you certain you want to proceed? This action will remove the{' '}
             {props.modalType === 'add' ? 'media ' : 'exclusion '}
@@ -331,6 +328,18 @@ const AddModal = (props: IAddModal) => {
             </select>
           </FormItem>
         </div>
+
+        {props.modalType === 'add' ? (
+          <div className="mt-4 flex justify-center sm:justify-end">
+            <Button
+              buttonType="warning"
+              className="ml-3"
+              onClick={() => setForceRemovalCheck(true)}
+            >
+              Remove from all collections
+            </Button>
+          </div>
+        ) : null}
       </Modal>
     </>
   )

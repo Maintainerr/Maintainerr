@@ -1,13 +1,10 @@
-import { lazy, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
-import LazyBoundary from '../../../Common/LazyBoundary'
-import LoadingSpinner from '../../../Common/LoadingSpinner'
+import { SmallLoadingSpinner } from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
-
-// Dynamic import for markdown
-const ReactMarkdown = lazy(() => import('react-markdown'))
 
 const messages = {
   releases: 'Releases',
@@ -70,15 +67,18 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
             onCancel={() => setModalOpen(false)}
             title={messages.versionChangelog.replace('{version}', release.name)}
             cancelText={messages.close}
-            okText={messages.viewongithub}
-            onOk={() => {
-              window.open(release.html_url, '_blank')
-            }}
+            footerActions={
+              <Button
+                buttonType="primary"
+                className="ml-3"
+                onClick={() => window.open(release.html_url, '_blank')}
+              >
+                {messages.viewongithub}
+              </Button>
+            }
           >
             <div className="prose:sm prose">
-              <LazyBoundary>
-                <ReactMarkdown>{release.body}</ReactMarkdown>
-              </LazyBoundary>
+              <ReactMarkdown>{release.body}</ReactMarkdown>
             </div>
           </Modal>
         </div>
@@ -129,27 +129,25 @@ const Releases = ({ currentVersion }: ReleasesProps) => {
     fetchReleases()
   }, [])
 
-  if (!data && !error) {
-    return <LoadingSpinner />
-  }
-
-  if (error) {
-    return <div className="text-gray-300">{messages.releasedataMissing}</div>
-  }
-
   return (
     <div>
       <h3 className="heading">{messages.releases}</h3>
       <div className="section space-y-3">
-        {data?.map((release, index) => (
-          <div key={`release-${release.id}`}>
-            <Release
-              release={release}
-              currentVersion={currentVersion}
-              isLatest={index === 0}
-            />
-          </div>
-        ))}
+        {!data && !error ? (
+          <SmallLoadingSpinner />
+        ) : error ? (
+          <div className="text-gray-300">{messages.releasedataMissing}</div>
+        ) : (
+          data?.map((release, index) => (
+            <div key={`release-${release.id}`}>
+              <Release
+                release={release}
+                currentVersion={currentVersion}
+                isLatest={index === 0}
+              />
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

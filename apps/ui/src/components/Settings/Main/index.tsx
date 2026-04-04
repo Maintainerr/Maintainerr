@@ -1,6 +1,6 @@
 import { DownloadIcon, RefreshIcon } from '@heroicons/react/solid'
 import { useMemo, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
@@ -89,29 +89,20 @@ const MainSettingsForm = ({
   onUpdated: () => void
   onUpdateError: () => void
 }) => {
-  const [savedValues, setSavedValues] =
-    useState<GeneralSettingsFormValues>(initialValues)
   const { mutateAsync: updateSettings, isPending } = usePatchSettings()
 
-  const { register, handleSubmit, reset, getValues, control } =
+  const { register, handleSubmit, reset, getValues } =
     useForm<GeneralSettingsFormValues>({
       defaultValues: initialValues,
     })
 
-  const applicationUrl = useWatch({ control, name: 'applicationUrl' }) ?? ''
-  const apiKey = useWatch({ control, name: 'apikey' }) ?? ''
-
-  const hasChanges =
-    applicationUrl !== savedValues.applicationUrl ||
-    apiKey !== savedValues.apikey
-  const canSave = hasChanges && !isPending
+  const canSave = !isPending
 
   const submit = async (data: GeneralSettingsFormValues) => {
     onClearError()
 
     try {
       await updateSettings(data)
-      setSavedValues(data)
       reset(data)
       onUpdated()
     } catch {
@@ -129,10 +120,6 @@ const MainSettingsForm = ({
         apikey: key,
       })
 
-      setSavedValues((currentSavedValues) => ({
-        ...currentSavedValues,
-        apikey: key,
-      }))
       reset(
         {
           applicationUrl: getValues('applicationUrl'),

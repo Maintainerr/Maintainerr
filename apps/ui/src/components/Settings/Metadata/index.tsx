@@ -235,7 +235,7 @@ function useProviderForm(config: ProviderConfig) {
     hasChanges,
     isConfigured,
   })
-  const canSave = hasChanges && !isSubmitting && !isLoading && !loadError
+  const canSave = !isSubmitting && !isLoading && !loadError
 
   const registerApiKey = register('api_key', {
     onChange: () => {

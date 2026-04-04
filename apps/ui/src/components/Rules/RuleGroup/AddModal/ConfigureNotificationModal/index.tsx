@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
+import Button from '../../../../Common/Button'
 import Modal from '../../../../Common/Modal'
 import ToggleItem from '../../../../Common/ToggleButton'
 import type { AgentConfiguration } from '../../../../Settings/Notifications/CreateNotificationModal'
@@ -33,12 +34,17 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
       loading={isLoading}
       backgroundClickable={false}
       onCancel={() => props.onCancel()}
-      okDisabled={false}
-      onOk={() => props.onSuccess(activatedNotifications)}
-      okText={'OK'}
-      okButtonType={'primary'}
       title={'Notification Agents'}
       iconSvg={''}
+      footerActions={
+        <Button
+          buttonType="primary"
+          className="ml-3"
+          onClick={() => props.onSuccess(activatedNotifications)}
+        >
+          OK
+        </Button>
+      }
     >
       <div>
         <form className="space-y-4">
