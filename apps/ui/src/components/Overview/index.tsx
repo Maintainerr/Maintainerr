@@ -16,7 +16,7 @@ import useLibrarySelection from '../../hooks/useLibrarySelection'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
-import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
+import LoadingSpinner from '../Common/LoadingSpinner'
 import {
   getMediaLibrarySortConfig,
   MediaLibrarySortControl,
@@ -445,27 +445,19 @@ const Overview = () => {
               />
             </div>
             <div className="w-full sm:w-1/2">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <MediaLibrarySortControl
-                    ariaLabel="Sort overview items"
-                    options={sortConfig.options}
-                    value={sortValue}
-                    onSortChange={handleSortChange}
-                  />
-                </div>
-                <div className="flex min-h-6 min-w-6 items-center justify-end">
-                  {showRefreshing ? (
-                    <SmallLoadingSpinner className="h-6 w-6" />
-                  ) : undefined}
-                </div>
-              </div>
+              <MediaLibrarySortControl
+                ariaLabel="Sort overview items"
+                options={sortConfig.options}
+                value={sortValue}
+                onSortChange={handleSortChange}
+                isLoading={showRefreshing}
+              />
             </div>
           </div>
         ) : undefined}
         {showBootstrapLoading ? (
-          <div className="flex min-h-[20rem] items-center justify-center">
-            <SmallLoadingSpinner className="h-16 w-16" />
+          <div className="min-h-[20rem]">
+            <LoadingSpinner />
           </div>
         ) : selectedLibrary ? (
           <OverviewContent

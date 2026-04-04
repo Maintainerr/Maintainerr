@@ -127,18 +127,12 @@ export class MediaServerController {
     @Query('sortOrder', new ZodValidationPipe(mediaSortOrderQuerySchema))
     sortOrder?: MediaSortOrder,
   ): Promise<OverviewBootstrapResult> {
-    const startedAt = Date.now();
     const mediaServer = await this.mediaServerFactory.getService();
     const libraries = await mediaServer.getLibraries();
-    const librariesFetchedAt = Date.now();
     const selectedLibrary = libraries[0];
     const size = limit ?? 50;
 
     if (!selectedLibrary) {
-      console.info(
-        `[OverviewBootstrapTiming] librariesMs=${librariesFetchedAt - startedAt} contentMs=0 enrichMs=0 totalMs=${librariesFetchedAt - startedAt} libraryCount=${libraries.length} selectedLibraryId=none itemCount=0`,
-      );
-
       return {
         libraries,
         selectedLibraryId: undefined,
@@ -158,13 +152,7 @@ export class MediaServerController {
       sort,
       sortOrder,
     });
-    const contentFetchedAt = Date.now();
     const enrichedItems = await this.enrichItems(content.items);
-    const enrichedAt = Date.now();
-
-    console.info(
-      `[OverviewBootstrapTiming] librariesMs=${librariesFetchedAt - startedAt} contentMs=${contentFetchedAt - librariesFetchedAt} enrichMs=${enrichedAt - contentFetchedAt} totalMs=${enrichedAt - startedAt} libraryCount=${libraries.length} selectedLibraryId=${selectedLibrary.id} itemCount=${content.items.length}`,
-    );
 
     return {
       libraries,

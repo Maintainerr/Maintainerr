@@ -114,7 +114,7 @@ const OverviewContent = (props: IOverviewContent) => {
 
   const hasData = data && data.length > 0
   const showInitialLoading = loading && !hasData
-  const showBackgroundLoading = hasData && (loading || Boolean(extrasLoading))
+  const showAppendLoading = hasData && Boolean(extrasLoading)
 
   return (
     <>
@@ -123,7 +123,7 @@ const OverviewContent = (props: IOverviewContent) => {
           <LoadingSpinner />
         </div>
       ) : hasData ? (
-        <ul className="cards-vertical" aria-busy={loading}>
+        <ul className="cards-vertical" aria-busy={loading || Boolean(extrasLoading)}>
           {data.map((el) => (
             <li key={el.id}>
               <MediaCard
@@ -184,19 +184,23 @@ const OverviewContent = (props: IOverviewContent) => {
               />
             </li>
           ))}
+          {showAppendLoading ? (
+            <li>
+              <div
+                role="status"
+                aria-label="Loading more items"
+                className="flex min-h-[17rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30"
+              >
+                <SmallLoadingSpinner className="h-10 w-10" />
+              </div>
+            </li>
+          ) : null}
         </ul>
       ) : (
         <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
           No items found.
         </div>
       )}
-      <div className="mt-4 min-h-24" aria-live="polite">
-        {showBackgroundLoading ? (
-          <div className="flex h-24 items-center justify-center">
-            <SmallLoadingSpinner className="h-10 w-10" />
-          </div>
-        ) : null}
-      </div>
     </>
   )
 }

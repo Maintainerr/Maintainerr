@@ -78,11 +78,14 @@ describe('OverviewContent', () => {
     )
 
     expect(screen.getByText('Item One')).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Loading more items' }),
+    ).toBeTruthy()
     expect(screen.getByTestId('small-loading-spinner')).toBeTruthy()
     expect(screen.queryByTestId('loading-spinner')).toBeNull()
   })
 
-  it('shows the small spinner while a sort or refresh request is replacing visible data', () => {
+  it('does not render a second grid spinner while a sort or refresh request is replacing visible data', () => {
     render(
       <OverviewContent
         data={[
@@ -100,7 +103,10 @@ describe('OverviewContent', () => {
       />,
     )
 
-    expect(screen.getByTestId('small-loading-spinner')).toBeTruthy()
+    expect(screen.queryByTestId('small-loading-spinner')).toBeNull()
+    expect(
+      screen.queryByRole('status', { name: 'Loading more items' }),
+    ).toBeNull()
   })
 
   it('passes included and excluded overview state through to media cards', () => {

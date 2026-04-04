@@ -93,6 +93,8 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     })
   }
 
+  const showRefreshing = isLoading && data.length > 0
+
   return (
     <div className="w-full">
       <div className="mb-5 w-full sm:max-w-sm">
@@ -101,6 +103,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
           options={sortConfig.options}
           value={sortValue}
           onSortChange={handleSortChange}
+          isLoading={showRefreshing}
         />
       </div>
 

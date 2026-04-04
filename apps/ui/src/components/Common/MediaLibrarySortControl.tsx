@@ -8,6 +8,7 @@ import {
   type MediaSortOrder,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
+import { SmallLoadingSpinner } from './LoadingSpinner'
 import { Select } from '../Forms/Select'
 
 const defaultSortValue = ''
@@ -194,6 +195,7 @@ interface MediaLibrarySortControlProps {
   options: ReadonlyArray<{ value: string; label: string }>
   value: string
   onSortChange: (value: string) => void
+  isLoading?: boolean
 }
 
 export const useMediaLibrarySort = <TSortParams extends SortParams>(
@@ -233,19 +235,31 @@ export const MediaLibrarySortControl = ({
   options,
   value,
   onSortChange,
+  isLoading = false,
 }: MediaLibrarySortControlProps) => {
   return (
-    <Select
-      aria-label={ariaLabel}
-      name="sort"
-      value={value}
-      onChange={(event) => onSortChange(event.target.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
+    <div className="flex items-center gap-3">
+      <div className="flex-1">
+        <Select
+          aria-label={ariaLabel}
+          name="sort"
+          value={value}
+          onChange={(event) => onSortChange(event.target.value)}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex min-h-6 min-w-6 items-center justify-end">
+        {isLoading ? (
+          <div role="status" aria-label="Loading sorted items">
+            <SmallLoadingSpinner className="h-6 w-6" />
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }

@@ -24,6 +24,7 @@ vi.mock('../Common/LibrarySwitcher', () => ({
 }))
 
 vi.mock('../Common/LoadingSpinner', () => ({
+  default: () => <div data-testid="overview-bootstrap-spinner" />,
   SmallLoadingSpinner: () => <div data-testid="overview-refresh-spinner" />,
 }))
 
