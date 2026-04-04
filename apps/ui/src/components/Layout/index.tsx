@@ -10,7 +10,7 @@ import {
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
+import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiBehavior'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
@@ -182,17 +182,17 @@ export const LayoutErrorBoundary: React.FC = () => {
     <LayoutShell>
       <div
         role="alert"
-        className="rounded border border-red-500/60 bg-red-500/10 p-6 text-red-100 shadow-lg"
+        className="rounded border border-error-500/60 bg-error-500/10 p-6 text-error-100 shadow-lg"
       >
-        <h2 className="text-lg font-semibold text-red-200">{title}</h2>
-        <p className="mt-2 text-sm text-red-100">{message}</p>
-        <p className="mt-4 text-xs text-red-200/80">
+        <h2 className="text-lg font-semibold text-error-200">{title}</h2>
+        <p className="mt-2 text-sm text-error-100">{message}</p>
+        <p className="mt-4 text-xs text-error-200/80">
           You can try going back or reloading the page. If the problem persists,
           please check the browser console for more details.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
-            className="rounded bg-red-500/30 px-4 py-2 text-sm font-medium text-red-50 transition hover:bg-red-500/40 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+            className="rounded bg-error-500/30 px-4 py-2 text-sm font-medium text-error-50 transition hover:bg-error-500/40 focus:outline-none focus:ring-2 focus:ring-error-300/60"
             onClick={() => navigate(-1)}
           >
             Go Back

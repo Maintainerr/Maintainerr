@@ -62,11 +62,29 @@ export function getBaseUrl(url: string): string | undefined {
   }
 }
 
+export function stripTrailingSlashes(value: string): string {
+  let endIndex = value.length
+
+  while (endIndex > 0 && value[endIndex - 1] === '/') {
+    endIndex -= 1
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex)
+}
+
 export function camelCaseToPrettyText(camelCaseStr: string): string {
-  return camelCaseStr
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/^./, (char) => char.toUpperCase())
-    .trim()
+  let spaced = ''
+  for (let i = 0; i < camelCaseStr.length; i++) {
+    const code = camelCaseStr.charCodeAt(i)
+    const prevCode = camelCaseStr.charCodeAt(i - 1)
+    const isUpper = code >= 65 && code <= 90
+    const prevIsLower = i > 0 && prevCode >= 97 && prevCode <= 122
+    if (isUpper && prevIsLower) {
+      spaced += ' '
+    }
+    spaced += camelCaseStr[i]
+  }
+  return (spaced.charAt(0).toUpperCase() + spaced.slice(1)).trim()
 }
 
 export const handleSettingsInputChange = (

@@ -1,4 +1,4 @@
-import { DownloadIcon, SaveIcon } from '@heroicons/react/solid'
+import { DownloadIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   LogEvent,
@@ -9,7 +9,7 @@ import {
   LogSettingSchemaOutput,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import GetApiHandler, {
   API_BASE_PATH,
@@ -17,7 +17,7 @@ import GetApiHandler, {
 } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import Button from '../../Common/Button'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import Table from '../../Common/Table'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
@@ -46,18 +46,28 @@ const LogSettingsForm = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, isLoading },
+    control,
+    reset,
+    formState: { errors, isSubmitting, isLoading, defaultValues },
   } = useForm<LogSettingSchemaInput, unknown, LogSettingSchemaOutput>({
     resolver: zodResolver(logSettingSchema),
     defaultValues: async () =>
       await GetApiHandler<LogSetting>('/logs/settings'),
   })
 
+  const values = useWatch({ control })
+  const hasChanges =
+    values.level !== defaultValues?.level ||
+    values.max_size !== defaultValues?.max_size ||
+    values.max_files !== defaultValues?.max_files
+  const canSave = hasChanges && !isLoading && !isSubmitting
+
   const onSubmit = async (data: LogSettingSchemaOutput) => {
     clearError()
 
     try {
       await PostApiHandler('/logs/settings', data)
+      reset(data)
       showUpdated()
     } catch {
       showUpdateError()
@@ -110,15 +120,10 @@ const LogSettingsForm = () => {
           />
 
           <div className="actions mt-5 flex w-full justify-end">
-            <PendingButton
-              buttonType="primary"
+            <SaveButton
               type="submit"
-              disabled={isLoading || isSubmitting}
-              idleLabel="Save Changes"
-              pendingLabel="Saving..."
+              disabled={!canSave}
               isPending={isLoading || isSubmitting}
-              idleIcon={<SaveIcon />}
-              reserveLabel="Save Changes"
             />
           </div>
         </form>
@@ -239,7 +244,7 @@ const Logs = () => {
           {filteredLogLines.map((row, index: number) => {
             const levelColor =
               row.level === 'ERROR'
-                ? 'text-red-400'
+                ? 'text-error-400'
                 : row.level === 'WARN'
                   ? 'text-yellow-400'
                   : row.level === 'INFO'

@@ -53,7 +53,7 @@ const NotificationSettings = () => {
     <>
       <title>Notification settings - Maintainerr</title>
       <div className="h-full w-full">
-        <div className="mb-5 mt-6 h-full w-full text-white">
+        <div className="section h-full w-full">
           <h3 className="heading flex items-center gap-2">
             Notification Settings
             <img
@@ -69,8 +69,8 @@ const NotificationSettings = () => {
 
         <SettingsFeedbackAlert feedback={feedback} />
 
-        <div>
-          <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="max-w-6xl">
+          <ul className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {configurations?.map((config) => (
               <li
                 key={config.id}

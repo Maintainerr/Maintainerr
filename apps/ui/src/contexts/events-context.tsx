@@ -15,18 +15,19 @@ const EventsContext = createContext<EventSource | undefined>(undefined)
 
 export const EventsProvider = (props: any) => {
   const hasWarnedStreamError = useRef(false)
-
+  const hasConnectedOnce = useRef(false)
   const eventSource = useMemo(() => {
     const source = new ReconnectingEventSource(
       `${API_BASE_PATH}/api/events/stream`,
     )
 
     source.onopen = () => {
+      hasConnectedOnce.current = true
       hasWarnedStreamError.current = false
     }
 
     source.onerror = (error) => {
-      if (hasWarnedStreamError.current) {
+      if (!hasConnectedOnce.current || hasWarnedStreamError.current) {
         return
       }
 

@@ -60,6 +60,7 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
       <form className={`w-full ${formClassName ?? 'max-w-xs'}`}>
         <Select
           className="h-11 px-3"
+          name="library"
           onChange={onSwitchLibrary}
           value={selectValue}
         >

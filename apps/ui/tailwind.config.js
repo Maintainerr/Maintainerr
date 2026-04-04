@@ -1,11 +1,48 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+const colors = require('tailwindcss/colors')
 const defaultTheme = require('tailwindcss/defaultTheme')
+
+const errorPalette = {
+  50: '#fff4f2',
+  100: '#f8d7d1',
+  200: '#ebb2a8',
+  300: '#d88b7e',
+  400: '#bd6051',
+  500: '#9d3a2d',
+  600: '#7d2117',
+  700: '#67160f',
+  800: '#4b100c',
+  900: '#310907',
+  950: '#1e0403',
+  DEFAULT: '#7d2117',
+}
+
+const successPalette = {
+  50: '#f3fbf6',
+  100: '#d9efe0',
+  200: '#b7dcc4',
+  300: '#8fc2a2',
+  400: '#66977b',
+  500: '#47745c',
+  600: '#315b46',
+  700: '#254637',
+  800: '#193127',
+  900: '#0f1f19',
+  950: '#07110d',
+  DEFAULT: '#315b46',
+}
 
 module.exports = {
   mode: 'jit',
   content: ['./src/pages/**/*.{ts,tsx}', './src/components/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      colors: {
+        error: errorPalette,
+        success: successPalette,
+        warning: colors.amber,
+        info: colors.sky,
+      },
       transitionProperty: {
         'max-height': 'max-height',
         width: 'width',

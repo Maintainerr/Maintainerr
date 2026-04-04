@@ -4,17 +4,27 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
+import useLibrarySelection from '../hooks/useLibrarySelection'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
+
+type FetchCollectionsStatus = 'success' | 'error' | 'stale'
 
 const CollectionsListPage = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [collections, setCollections] = useState<ICollection[]>([])
-  const [selectedLibrary, setSelectedLibrary] = useState('all')
+  const {
+    selectedLibrary,
+    selectedLibraryRef,
+    applySelectedLibrary,
+    shouldSkipLibrarySwitch,
+  } = useLibrarySelection({ initialLibraryId: 'all' })
   const { invalidate, guardedFetch } = useRequestGeneration()
 
-  const fetchData = async (libraryId?: string) => {
+  const fetchData = async (
+    libraryId?: string,
+  ): Promise<FetchCollectionsStatus> => {
     try {
       const result = await guardedFetch<ICollection[]>(() =>
         libraryId
@@ -25,9 +35,13 @@ const CollectionsListPage = () => {
       if (result.status === 'success') {
         setCollections(result.data)
         setIsLoading(false)
+        return 'success'
       }
+
+      return 'stale'
     } catch {
       setIsLoading(false)
+      return 'error'
     }
   }
 
@@ -40,11 +54,23 @@ const CollectionsListPage = () => {
   }, [])
 
   const onSwitchLibrary = (id: string) => {
+    if (shouldSkipLibrarySwitch(id)) {
+      return
+    }
+
+    const previousLibrary = selectedLibraryRef.current ?? 'all'
+
     invalidate()
-    setSelectedLibrary(id)
+    applySelectedLibrary(id)
     setIsLoading(true)
-    setCollections([])
-    void fetchData(id !== 'all' ? id : undefined)
+
+    void (async () => {
+      const result = await fetchData(id !== 'all' ? id : undefined)
+
+      if (result === 'error') {
+        applySelectedLibrary(previousLibrary)
+      }
+    })()
   }
 
   const doActions = async () => {
