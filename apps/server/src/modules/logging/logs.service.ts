@@ -133,10 +133,6 @@ export class MaintainerrLogger implements LoggerService {
         meta.errorName = errorWithMeta.name;
       }
 
-      if (typeof errorWithMeta.code === 'string') {
-        meta.errorCode = errorWithMeta.code;
-      }
-
       const status =
         typeof errorWithMeta.response?.status === 'number'
           ? errorWithMeta.response.status
@@ -146,6 +142,13 @@ export class MaintainerrLogger implements LoggerService {
 
       if (status !== undefined) {
         meta.status = status;
+      }
+
+      // Only read error.code for non-HTTP errors (e.g. ECONNREFUSED, ENOTFOUND).
+      // Accessing error.code on @octokit/request-error triggers a deprecation
+      // warning because octokit deprecated that getter in favour of error.status.
+      if (status === undefined && typeof errorWithMeta.code === 'string') {
+        meta.errorCode = errorWithMeta.code;
       }
 
       const statusText =
