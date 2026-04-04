@@ -14,7 +14,7 @@ import {
   toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
-import { SmallLoadingSpinner } from '../../LoadingSpinner'
+import LoadingSpinner from '../../LoadingSpinner'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
@@ -118,6 +118,23 @@ const emptyBackdropResult: BackdropResult = {
   provider: null,
   providerId: null,
 }
+
+const maintainerrStatusStyles = {
+  excluded: {
+    cardClassName: 'border-amber-900 bg-amber-900',
+    titleClassName: 'text-white',
+    contentClassName: 'text-zinc-100',
+    emptyClassName: 'text-zinc-100/80',
+    linkClassName: 'text-white hover:text-zinc-100',
+  },
+  manual: {
+    cardClassName: 'border-amber-600 bg-amber-600',
+    titleClassName: 'text-white',
+    contentClassName: 'text-zinc-100',
+    emptyClassName: 'text-zinc-100/80',
+    linkClassName: 'text-white hover:text-zinc-100',
+  },
+} as const
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
   ({
@@ -327,39 +344,46 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const renderMaintainerrStatusItems = (
       entries: ReadonlyArray<MaintainerrMediaStatusEntry>,
       emptyLabel: string,
+      contentClassName: string,
+      emptyClassName: string,
+      linkClassName: string,
     ) => {
       if (entries.length === 0) {
-        return <p className="text-sm text-zinc-400">{emptyLabel}</p>
+        return <p className={`text-sm ${emptyClassName}`}>{emptyLabel}</p>
       }
 
       return (
-        <ul className="space-y-2 text-sm text-zinc-200">
-          {entries.map((entry) => (
-            <li
-              key={`${entry.label}-${entry.targetPath ?? 'none'}`}
-              className="flex items-start gap-2"
-            >
-              <span className="mt-1 text-xs text-zinc-400">•</span>
-              {entry.targetPath && onStatusLink ? (
-                <button
-                  type="button"
-                  className="text-left text-amber-300 transition hover:text-amber-200 hover:underline"
-                  onClick={() => handleStatusLink(entry.targetPath)}
-                >
-                  {entry.label}
-                </button>
-              ) : entry.targetPath ? (
-                <a
-                  href={entry.targetPath}
-                  className="text-amber-300 transition hover:text-amber-200 hover:underline"
-                >
-                  {entry.label}
-                </a>
-              ) : (
-                <span>{entry.label}</span>
-              )}
-            </li>
-          ))}
+        <ul className={`space-y-2 text-sm ${contentClassName}`}>
+          {entries.map((entry) => {
+            const targetPath = entry.targetPath
+
+            return (
+              <li
+                key={`${entry.label}-${targetPath ?? 'none'}`}
+                className="flex items-start gap-2"
+              >
+                <span className="mt-1 text-xs text-zinc-400">•</span>
+                {targetPath && onStatusLink ? (
+                  <button
+                    type="button"
+                    className={`text-left transition hover:underline ${linkClassName}`}
+                    onClick={() => handleStatusLink(targetPath)}
+                  >
+                    {entry.label}
+                  </button>
+                ) : targetPath ? (
+                  <a
+                    href={targetPath}
+                    className={`transition hover:underline ${linkClassName}`}
+                  >
+                    {entry.label}
+                  </a>
+                ) : (
+                  <span>{entry.label}</span>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )
     }
@@ -383,8 +407,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               }}
             ></div>
             {loading && (
-              <div className="absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black bg-opacity-50">
-                <SmallLoadingSpinner className="h-16 w-16" />
+              <div className="absolute bottom-0 left-0 right-0 top-0 bg-black bg-opacity-50">
+                <LoadingSpinner
+                  className="h-16 w-16"
+                  containerClassName="h-full w-full"
+                />
               </div>
             )}
 
@@ -545,8 +572,12 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
             {showMaintainerrDetails ? (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="min-h-[5.75rem] rounded-xl border border-amber-600/30 bg-zinc-900/50 p-3">
-                  <p className="text-sm font-semibold text-amber-300">
+                <div
+                  className={`min-h-[5.75rem] rounded-xl border p-3 ${maintainerrStatusStyles.excluded.cardClassName}`}
+                >
+                  <p
+                    className={`text-sm font-semibold ${maintainerrStatusStyles.excluded.titleClassName}`}
+                  >
                     Excluded From
                   </p>
                   <div className="mt-2">
@@ -554,16 +585,26 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       ? renderMaintainerrStatusItems(
                           [],
                           'Loading exclusion details...',
+                          maintainerrStatusStyles.excluded.contentClassName,
+                          maintainerrStatusStyles.excluded.emptyClassName,
+                          maintainerrStatusStyles.excluded.linkClassName,
                         )
                       : renderMaintainerrStatusItems(
                           maintainerrDetails?.excludedFrom ??
                             emptyMaintainerrMediaStatusDetails.excludedFrom,
                           'Not excluded from any collection.',
+                          maintainerrStatusStyles.excluded.contentClassName,
+                          maintainerrStatusStyles.excluded.emptyClassName,
+                          maintainerrStatusStyles.excluded.linkClassName,
                         )}
                   </div>
                 </div>
-                <div className="min-h-[5.75rem] rounded-xl border border-emerald-600/30 bg-zinc-900/50 p-3">
-                  <p className="text-sm font-semibold text-emerald-300">
+                <div
+                  className={`min-h-[5.75rem] rounded-xl border p-3 ${maintainerrStatusStyles.manual.cardClassName}`}
+                >
+                  <p
+                    className={`text-sm font-semibold ${maintainerrStatusStyles.manual.titleClassName}`}
+                  >
                     Manually Added To
                   </p>
                   <div className="mt-2">
@@ -571,11 +612,17 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       ? renderMaintainerrStatusItems(
                           [],
                           'Loading manual collection details...',
+                          maintainerrStatusStyles.manual.contentClassName,
+                          maintainerrStatusStyles.manual.emptyClassName,
+                          maintainerrStatusStyles.manual.linkClassName,
                         )
                       : renderMaintainerrStatusItems(
                           maintainerrDetails?.manuallyAddedTo ??
                             emptyMaintainerrMediaStatusDetails.manuallyAddedTo,
                           'Not manually added to any collection.',
+                          maintainerrStatusStyles.manual.contentClassName,
+                          maintainerrStatusStyles.manual.emptyClassName,
+                          maintainerrStatusStyles.manual.linkClassName,
                         )}
                   </div>
                 </div>

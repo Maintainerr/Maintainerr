@@ -222,12 +222,16 @@ describe('MediaModal', () => {
       />,
     )
 
-    expect(await screen.findByText('Manually Added To')).toBeTruthy()
+    const manualHeading = await screen.findByText('Manually Added To')
+    expect(manualHeading).toBeTruthy()
+    expect(manualHeading.className).toContain('text-white')
+    expect(manualHeading.parentElement?.className).toContain('bg-amber-600')
     const manualCollectionEntry = screen.getByRole('link', {
       name: 'Testing (5d left)',
     })
 
     expect(manualCollectionEntry.getAttribute('href')).toBe('/collections/7')
+    expect(manualCollectionEntry.className).toContain('text-white')
   })
 
   it('renders exclusion list entries and follows status links', async () => {
@@ -279,6 +283,10 @@ describe('MediaModal', () => {
     })
 
     expect(screen.getByText('Global')).toBeTruthy()
+    const excludedHeading = screen.getByText('Excluded From')
+    expect(excludedHeading.className).toContain('text-white')
+    expect(excludedHeading.parentElement?.className).toContain('bg-amber-900')
+    expect(testingCollectionEntry.className).toContain('text-white')
 
     fireEvent.click(testingCollectionEntry)
 
