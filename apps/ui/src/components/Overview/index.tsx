@@ -309,7 +309,6 @@ const Overview = () => {
       fetchData,
       guardedFetch,
       invalidateFetches,
-      libraries,
       selectedLibrary,
       selectedLibraryRef,
       sortParams,

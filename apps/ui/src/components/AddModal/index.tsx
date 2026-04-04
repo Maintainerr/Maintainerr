@@ -206,11 +206,7 @@ const AddModal = (props: IAddModal) => {
           props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'
         }
         footerActions={
-          <Button
-            buttonType="primary"
-            className="ml-3"
-            onClick={handleOk}
-          >
+          <Button buttonType="primary" className="ml-3" onClick={handleOk}>
             Submit
           </Button>
         }
