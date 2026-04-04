@@ -141,6 +141,30 @@ export class MetadataService {
       : [requiredProviderKeys];
   }
 
+  private async getHierarchyResolutionItem(
+    item: MediaItem,
+    sourceMediaServerId?: string,
+  ): Promise<MediaItem | undefined> {
+    const hierarchyTargetId = item.grandparentId ?? item.parentId;
+
+    if (!hierarchyTargetId) {
+      return item;
+    }
+
+    const mediaServer = await this.mediaServerFactory.getService();
+    const hierarchyItem = await mediaServer.getMetadata(hierarchyTargetId);
+
+    if (!hierarchyItem) {
+      const itemLabel = sourceMediaServerId ?? item.id;
+      this.logger.warn(
+        `Failed to fetch hierarchy metadata for media server item ${itemLabel} via parent item ${hierarchyTargetId}`,
+      );
+      return undefined;
+    }
+
+    return hierarchyItem;
+  }
+
   async resolveIds(
     mediaServerId: string,
     requiredProviderKeys?: string | string[],
@@ -156,23 +180,36 @@ export class MetadataService {
         return undefined;
       }
 
-      const hierarchyTargetId = mediaItem.grandparentId ?? mediaItem.parentId;
-      if (hierarchyTargetId) {
-        const hierarchyItem = await mediaServer.getMetadata(hierarchyTargetId);
-
-        if (!hierarchyItem) {
-          this.logger.warn(
-            `Failed to fetch hierarchy metadata for media server item ${mediaServerId} via parent item ${hierarchyTargetId}`,
-          );
-          return undefined;
-        }
-
-        mediaItem = hierarchyItem;
-      }
-
-      return this.resolveIdsFromMediaItem(mediaItem, requiredProviderKeys);
+      return this.resolveIdsFromHierarchyMediaItem(
+        mediaItem,
+        requiredProviderKeys,
+        mediaServerId,
+      );
     } catch (error) {
       this.logger.warn(`Failed to resolve IDs for ${mediaServerId}`);
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  async resolveIdsFromHierarchyMediaItem(
+    item: MediaItem,
+    requiredProviderKeys?: string | string[],
+    sourceMediaServerId?: string,
+  ): Promise<ResolvedMediaIds | undefined> {
+    try {
+      const resolutionItem = await this.getHierarchyResolutionItem(
+        item,
+        sourceMediaServerId,
+      );
+
+      if (!resolutionItem) {
+        return undefined;
+      }
+
+      return this.resolveIdsFromMediaItem(resolutionItem, requiredProviderKeys);
+    } catch (error) {
+      this.logger.warn('Failed to resolve IDs from hierarchy media item');
       this.logger.debug(error);
       return undefined;
     }
