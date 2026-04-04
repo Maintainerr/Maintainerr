@@ -6,12 +6,10 @@ import {
   MediaItem,
   MediaItemType,
   MediaLibrary,
-  MediaLibrarySortField,
   MediaPlaylist,
   MediaServerFeature,
   MediaServerStatus,
   MediaServerType,
-  MediaSortOrder,
   MediaUser,
   PagedResult,
   RecentlyAddedOptions,
@@ -20,6 +18,7 @@ import {
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
+import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import {
@@ -31,7 +30,7 @@ import {
   IMediaServerService,
   type MediaWatchState,
 } from '../media-server.interface';
-import { PLEX_BATCH_SIZE, PLEX_PAGE_SIZE, toPlexSort } from './plex.constants';
+import { PLEX_BATCH_SIZE, toPlexSort } from './plex.constants';
 import { PlexMapper } from './plex.mapper';
 
 /**
@@ -298,14 +297,25 @@ export class PlexAdapterService implements IMediaServerService {
       throw new Error(fallbackMessage);
     }
 
-    if (result.status === 'NOK' || result.code === 0) {
+    if (result.status === 'NOK') {
+      throw new Error(result.message || fallbackMessage);
+    }
+
+    if (result.status === 'OK') {
+      return;
+    }
+
+    if (result.code === 0) {
       throw new Error(result.message || fallbackMessage);
     }
   }
 
   async addToCollection(collectionId: string, itemId: string): Promise<void> {
     try {
-      const result = await this.plexApi.addChildToCollection(collectionId, itemId);
+      const result = await this.plexApi.addChildToCollection(
+        collectionId,
+        itemId,
+      );
       this.ensureMutationSucceeded(
         result as { status?: string; code?: number; message?: string },
         `Failed to add item ${itemId} to collection ${collectionId}`,
@@ -389,33 +399,16 @@ export class PlexAdapterService implements IMediaServerService {
   ): Promise<string[]> {
     const failedItemIds: string[] = [];
 
-    for (
-      let index = 0;
-      index < itemIds.length;
-      index += PLEX_BATCH_SIZE.COLLECTION_MUTATION
-    ) {
-      const chunk = itemIds.slice(
-        index,
-        index + PLEX_BATCH_SIZE.COLLECTION_MUTATION,
-      );
-      const results = await Promise.allSettled(
-        chunk.map((itemId) => this.removeFromCollection(collectionId, itemId)),
-      );
-
-      results.forEach((result, resultIndex) => {
-        if (result.status === 'fulfilled') {
-          return;
+    for (const itemId of itemIds) {
+      try {
+        await this.removeFromCollection(collectionId, itemId);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('404')) {
+          continue;
         }
 
-        if (
-          result.reason instanceof Error &&
-          result.reason.message.includes('404')
-        ) {
-          return;
-        }
-
-        failedItemIds.push(chunk[resultIndex]!);
-      });
+        failedItemIds.push(itemId);
+      }
     }
 
     return failedItemIds;
@@ -452,10 +445,10 @@ export class PlexAdapterService implements IMediaServerService {
   ): Promise<void> {
     const result = await this.plexApi.UpdateCollectionSettings({
       libraryId: settings.libraryId,
-      collectionId: parseInt(settings.collectionId, 10),
-      recommended: settings.recommended,
-      ownHome: settings.ownHome,
-      sharedHome: settings.sharedHome,
+      collectionId: settings.collectionId,
+      recommended: settings.recommended ?? false,
+      ownHome: settings.ownHome ?? false,
+      sharedHome: settings.sharedHome ?? false,
     });
 
     if (!result) {

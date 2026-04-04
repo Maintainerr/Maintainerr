@@ -20,7 +20,6 @@ import { SettingsService } from '../../settings/settings.service';
 import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
 import {
-  PLEX_CONTAINER_HEADER,
   PLEX_LIBRARY_SECTION_TYPES,
   PLEX_PAGE_SIZE,
 } from './plex-api.constants';
@@ -279,12 +278,14 @@ export class PlexApiService {
       });
 
       return (
-        response.MediaContainer.Directory?.filter(
-          (x) => PLEX_LIBRARY_SECTION_TYPES.has(x.type),
+        response.MediaContainer.Directory?.filter((x) =>
+          PLEX_LIBRARY_SECTION_TYPES.has(x.type),
         ) ?? []
       );
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return undefined;
     }
@@ -299,14 +300,16 @@ export class PlexApiService {
       const response = await this.plexClient.query<PlexLibrariesResponse>({
         uri: `/library/sections/${id}/all${type}`,
         extraHeaders: {
-          'X-Plex-Container-Start': PLEX_CONTAINER_HEADER.ZERO,
-          'X-Plex-Container-Size': PLEX_CONTAINER_HEADER.ZERO,
+          'X-Plex-Container-Start': '0',
+          'X-Plex-Container-Size': '0',
         },
       });
 
       return response.MediaContainer.totalSize;
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return undefined;
     }
@@ -341,7 +344,9 @@ export class PlexApiService {
         items: (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [],
       };
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return undefined;
     }
@@ -365,7 +370,9 @@ export class PlexApiService {
 
       return response.MediaContainer.Metadata as PlexLibraryItem[];
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return undefined;
     }
@@ -400,7 +407,9 @@ export class PlexApiService {
         return undefined;
       }
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return undefined;
     }
@@ -762,7 +771,9 @@ export class PlexApiService {
       });
       return response.MediaContainer.Metadata[0] as PlexCollection;
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return {
         status: 'NOK',
@@ -802,7 +813,9 @@ export class PlexApiService {
         } as BasicResponseDto)
       );
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return {
         status: 'NOK',
@@ -829,7 +842,9 @@ export class PlexApiService {
         message: `successfully deleted child with id ${childId}`,
       } as BasicResponseDto;
     } catch (error) {
-      this.logger.error('Plex api communication failure.. Is the application running?');
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
       this.logger.debug(error);
       return {
         status: 'NOK',

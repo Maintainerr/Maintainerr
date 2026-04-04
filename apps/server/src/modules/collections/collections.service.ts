@@ -721,7 +721,7 @@ export class CollectionsService {
       previewMediaByCollection.set(collectionId, previewMedia);
     }
 
-    return await this.enrichCollectionPreviewMedia(previewMediaByCollection);
+    return this.enrichCollectionPreviewMedia(previewMediaByCollection);
   }
 
   async getCollections(libraryId?: string, typeId?: MediaItemType) {

@@ -348,8 +348,21 @@ describe('PlexAdapterService', () => {
       );
     });
 
+    it('should prefer explicit OK status over a zero code', async () => {
+      plexApi.addChildToCollection.mockResolvedValue({
+        status: 'OK',
+        code: 0,
+      } as any);
+
+      await expect(
+        service.addToCollection('col123', 'good'),
+      ).resolves.toBeUndefined();
+    });
+
     it('should add a batch of items in a single Plex request when possible', async () => {
-      plexApi.addChildrenToCollection.mockResolvedValue({ status: 'OK' } as any);
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'OK',
+      } as any);
 
       await expect(
         service.addBatchToCollection('col123', ['good', 'good-2']),
@@ -368,13 +381,15 @@ describe('PlexAdapterService', () => {
         code: 0,
         message: 'batch failed',
       } as any);
-      plexApi.addChildToCollection.mockImplementation(async (_collectionId, itemId) => {
-        if (itemId === 'bad') {
-          throw new Error('boom');
-        }
+      plexApi.addChildToCollection.mockImplementation(
+        async (_collectionId, itemId) => {
+          if (itemId === 'bad') {
+            throw new Error('boom');
+          }
 
-        return { status: 'OK' } as any;
-      });
+          return { status: 'OK' } as any;
+        },
+      );
 
       await expect(
         service.addBatchToCollection('col123', ['good', 'bad', 'good-2']),
@@ -406,6 +421,23 @@ describe('PlexAdapterService', () => {
       await expect(
         service.removeBatchFromCollection('col123', ['good', 'missing', 'bad']),
       ).resolves.toEqual(['bad']);
+    });
+
+    it('should default optional visibility flags to false', async () => {
+      plexApi.UpdateCollectionSettings.mockResolvedValue({} as any);
+
+      await service.updateCollectionVisibility({
+        libraryId: 'lib1',
+        collectionId: 'col123',
+      });
+
+      expect(plexApi.UpdateCollectionSettings).toHaveBeenCalledWith({
+        libraryId: 'lib1',
+        collectionId: 'col123',
+        recommended: false,
+        ownHome: false,
+        sharedHome: false,
+      });
     });
   });
 });
