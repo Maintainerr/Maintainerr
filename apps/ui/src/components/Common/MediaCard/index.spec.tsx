@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MediaCard from './index'
 
@@ -32,40 +32,7 @@ describe('MediaCard', () => {
     cleanup()
   })
 
-  it('prioritizes the included badge over the exclusion badge on overview cards', () => {
-    render(
-      <MediaCard
-        id="movie-1"
-        title="Movie"
-        mediaType="movie"
-        collectionPage={false}
-        isIncluded={true}
-        inclusionTone="danger"
-        exclusionId={5}
-      />,
-    )
-
-    expect(screen.getByText('INCL')).toBeTruthy()
-    expect(screen.queryByText('EXCL')).toBeNull()
-  })
-
-  it('keeps the collection page manual badge instead of the overview included badge', () => {
-    render(
-      <MediaCard
-        id="movie-1"
-        title="Movie"
-        mediaType="movie"
-        collectionPage={true}
-        isIncluded={true}
-        isManual={true}
-      />,
-    )
-
-    expect(screen.getByText('MANUAL')).toBeTruthy()
-    expect(screen.queryByText('INCL')).toBeNull()
-  })
-
-  it('shows the exclusion badge when the item is excluded but not currently included', () => {
+  it('shows the exclusion badge on overview cards', () => {
     render(
       <MediaCard
         id="movie-1"
@@ -77,6 +44,21 @@ describe('MediaCard', () => {
     )
 
     expect(screen.getByText('EXCL')).toBeTruthy()
+    expect(screen.queryByText('INCL')).toBeNull()
+  })
+
+  it('keeps the collection page manual badge without an overview include badge', () => {
+    render(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={true}
+        isManual={true}
+      />,
+    )
+
+    expect(screen.getByText('MANUAL')).toBeTruthy()
     expect(screen.queryByText('INCL')).toBeNull()
   })
 })

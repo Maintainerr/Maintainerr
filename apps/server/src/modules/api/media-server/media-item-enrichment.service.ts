@@ -3,18 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
-import { ServarrAction } from '../../collections/interfaces/collection.interface';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 
 interface ExclusionState {
   id: number;
   type: 'global' | 'specific';
-}
-
-interface InclusionState {
-  isIncluded: boolean;
-  isManual: boolean;
-  tone: 'info' | 'danger';
 }
 
 @Injectable()
@@ -46,9 +39,9 @@ export class MediaItemEnrichmentService {
       return items;
     }
 
-    const [exclusionMap, inclusionMap] = await Promise.all([
+    const [exclusionMap, manualItemIds] = await Promise.all([
       this.fetchExclusionMap(relationIds),
-      this.fetchInclusionMap(directIds),
+      this.fetchManualItemIds(directIds),
     ]);
 
     return items.map((item) => {
@@ -60,9 +53,9 @@ export class MediaItemEnrichmentService {
       const exclusion = itemRelationIds
         .map((id) => exclusionMap.get(id))
         .find((value): value is ExclusionState => value !== undefined);
-      const inclusion = inclusionMap.get(item.id);
+      const isManual = manualItemIds.has(item.id);
 
-      if (!exclusion && !inclusion) {
+      if (!exclusion && !isManual) {
         return item;
       }
 
@@ -74,11 +67,9 @@ export class MediaItemEnrichmentService {
               maintainerrExclusionType: exclusion.type,
             }
           : {}),
-        ...(inclusion
+        ...(isManual
           ? {
-              maintainerrIsIncluded: inclusion.isIncluded,
-              maintainerrInclusionTone: inclusion.tone,
-              maintainerrIsManual: inclusion.isManual,
+              maintainerrIsManual: true,
             }
           : {}),
       };
@@ -112,35 +103,17 @@ export class MediaItemEnrichmentService {
     return map;
   }
 
-  private async fetchInclusionMap(
-    ids: string[],
-  ): Promise<Map<string, InclusionState>> {
+  private async fetchManualItemIds(ids: string[]): Promise<Set<string>> {
     const collectionMedia = await this.collectionMediaRepo.find({
-      where: { mediaServerId: In(ids) },
-      relations: { collection: true },
-    });
-    const map = new Map<string, InclusionState>();
-
-    collectionMedia.forEach((item) => {
-      if (!item.mediaServerId) {
-        return;
-      }
-
-      const existingState = map.get(item.mediaServerId);
-      const isDestructiveCollection =
-        item.collection?.arrAction !== undefined &&
-        item.collection.arrAction !== ServarrAction.DO_NOTHING;
-
-      map.set(item.mediaServerId, {
-        isIncluded: true,
-        isManual: (existingState?.isManual ?? false) || item.isManual === true,
-        tone:
-          existingState?.tone === 'danger' || isDestructiveCollection
-            ? 'danger'
-            : 'info',
-      });
+      where: { mediaServerId: In(ids), isManual: true },
     });
 
-    return map;
+    return new Set(
+      collectionMedia
+        .map((item) => item.mediaServerId)
+        .filter((mediaServerId): mediaServerId is string =>
+          Boolean(mediaServerId),
+        ),
+    );
   }
 }

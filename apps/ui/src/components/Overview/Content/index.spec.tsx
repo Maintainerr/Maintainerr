@@ -17,20 +17,13 @@ vi.mock('../../Common/LoadingSpinner', () => ({
 vi.mock('../../Common/MediaCard', () => ({
   default: ({
     title,
-    isIncluded,
-    inclusionTone,
     exclusionId,
   }: {
     title: string
-    isIncluded?: boolean
-    inclusionTone?: 'info' | 'danger'
     exclusionId?: number
   }) => (
     <div>
       <span>{title}</span>
-      {isIncluded ? (
-        <span data-testid={`included-${title}`}>{inclusionTone}</span>
-      ) : null}
       {exclusionId ? (
         <span data-testid={`excluded-${title}`}>excluded</span>
       ) : null}
@@ -109,7 +102,7 @@ describe('OverviewContent', () => {
     ).toBeNull()
   })
 
-  it('passes included and excluded overview state through to media cards', () => {
+  it('passes excluded overview state through to media cards', () => {
     render(
       <OverviewContent
         data={[
@@ -117,8 +110,6 @@ describe('OverviewContent', () => {
             id: '1',
             title: 'Item One',
             type: 'movie',
-            maintainerrIsIncluded: true,
-            maintainerrInclusionTone: 'danger',
             maintainerrExclusionId: 42,
           } as any,
         ]}
@@ -130,7 +121,6 @@ describe('OverviewContent', () => {
       />,
     )
 
-    expect(screen.getByTestId('included-Item One').textContent).toBe('danger')
     expect(screen.getByTestId('excluded-Item One')).toBeTruthy()
   })
 })

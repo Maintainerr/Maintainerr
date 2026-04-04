@@ -1,7 +1,6 @@
 import { type MediaItem } from '@maintainerr/contracts';
 import { Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
-import { ServarrAction } from '../../collections/interfaces/collection.interface';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 
@@ -25,7 +24,7 @@ describe('MediaItemEnrichmentService', () => {
     );
   });
 
-  it('enriches items with exclusion and inclusion state from direct and parent relations', async () => {
+  it('enriches items with exclusion and manual state from direct and parent relations', async () => {
     const movie = {
       id: 'movie-1',
       title: 'Movie',
@@ -63,18 +62,8 @@ describe('MediaItemEnrichmentService', () => {
     ] as Exclusion[]);
     collectionMediaRepo.find.mockResolvedValue([
       {
-        mediaServerId: 'movie-1',
-        isManual: false,
-        collection: {
-          arrAction: ServarrAction.DELETE,
-        },
-      },
-      {
         mediaServerId: 'episode-1',
         isManual: true,
-        collection: {
-          arrAction: ServarrAction.DO_NOTHING,
-        },
       },
     ] as CollectionMedia[]);
 
@@ -85,22 +74,17 @@ describe('MediaItemEnrichmentService', () => {
         ...movie,
         maintainerrExclusionId: 11,
         maintainerrExclusionType: 'global',
-        maintainerrIsIncluded: true,
-        maintainerrInclusionTone: 'danger',
-        maintainerrIsManual: false,
       },
       {
         ...episode,
         maintainerrExclusionId: 22,
         maintainerrExclusionType: 'specific',
-        maintainerrIsIncluded: true,
-        maintainerrInclusionTone: 'info',
         maintainerrIsManual: true,
       },
     ]);
   });
 
-  it('keeps the destructive inclusion tone when an item exists in multiple collections', async () => {
+  it('marks an item as manual when any direct collection relation is manual', async () => {
     const movie = {
       id: 'movie-1',
       title: 'Movie',
@@ -117,25 +101,17 @@ describe('MediaItemEnrichmentService', () => {
       {
         mediaServerId: 'movie-1',
         isManual: false,
-        collection: {
-          arrAction: ServarrAction.DO_NOTHING,
-        },
       },
       {
         mediaServerId: 'movie-1',
-        isManual: false,
-        collection: {
-          arrAction: ServarrAction.UNMONITOR,
-        },
+        isManual: true,
       },
     ] as CollectionMedia[]);
 
     await expect(service.enrichItems([movie])).resolves.toEqual([
       {
         ...movie,
-        maintainerrIsIncluded: true,
-        maintainerrInclusionTone: 'danger',
-        maintainerrIsManual: false,
+        maintainerrIsManual: true,
       },
     ]);
   });
@@ -158,7 +134,7 @@ describe('MediaItemEnrichmentService', () => {
     await expect(service.enrichItems([movie])).resolves.toEqual([movie]);
   });
 
-  it('does not inherit included state from parent or grandparent relations', async () => {
+  it('does not inherit manual state from parent or grandparent relations', async () => {
     const episode = {
       id: 'episode-1',
       parentId: 'season-1',

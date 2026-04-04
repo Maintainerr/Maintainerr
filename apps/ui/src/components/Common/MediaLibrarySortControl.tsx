@@ -8,12 +8,20 @@ import {
   type MediaSortOrder,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
-import { SmallLoadingSpinner } from './LoadingSpinner'
 import { Select } from '../Forms/Select'
+import { SmallLoadingSpinner } from './LoadingSpinner'
 
 const defaultSortValue = ''
 const defaultOverviewSortValue: MediaLibrarySortKey = 'title.asc'
 const titleAscendingSortLabel = 'Title (A-Z) Ascending'
+
+export const overviewCustomSortValues = {
+  manualFirst: 'maintainerr.manual',
+  excludedFirst: 'maintainerr.excluded',
+} as const
+
+export type OverviewCustomSortValue =
+  (typeof overviewCustomSortValues)[keyof typeof overviewCustomSortValues]
 
 type SortParams = {
   sort: string
@@ -29,6 +37,14 @@ interface SortOption<TSortParams extends SortParams = MediaLibrarySortParams> {
 interface SortConfig<TSortParams extends SortParams = MediaLibrarySortParams> {
   defaultValue: string
   options: SortOption<TSortParams>[]
+}
+
+export const isOverviewCustomSortValue = (
+  value: string,
+): value is OverviewCustomSortValue => {
+  return Object.values(overviewCustomSortValues).includes(
+    value as OverviewCustomSortValue,
+  )
 }
 
 const createMediaLibrarySortOption = (
@@ -111,6 +127,14 @@ export const getMediaLibrarySortConfig = (
         defaultOverviewSortValue,
         titleAscendingSortLabel,
       ),
+      {
+        value: overviewCustomSortValues.manualFirst,
+        label: 'Manual Added First',
+      },
+      {
+        value: overviewCustomSortValues.excludedFirst,
+        label: 'Excluded First',
+      },
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
       }),

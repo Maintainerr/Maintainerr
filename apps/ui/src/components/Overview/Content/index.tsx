@@ -5,12 +5,12 @@ import {
 } from '@maintainerr/contracts'
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
+import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../utils/uiBehavior'
 import { ICollectionMedia } from '../../Collection'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
 import MediaCard from '../../Common/MediaCard'
-import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../utils/uiBehavior'
 
 interface IOverviewContent {
   data: MediaItem[]
@@ -123,7 +123,10 @@ const OverviewContent = (props: IOverviewContent) => {
           <LoadingSpinner />
         </div>
       ) : hasData ? (
-        <ul className="cards-vertical" aria-busy={loading || Boolean(extrasLoading)}>
+        <ul
+          className="cards-vertical"
+          aria-busy={loading || Boolean(extrasLoading)}
+        >
           {data.map((el) => (
             <li key={el.id}>
               <MediaCard
@@ -159,10 +162,6 @@ const OverviewContent = (props: IOverviewContent) => {
                     ? el.maintainerrExclusionId
                     : undefined
                 }
-                isIncluded={
-                  el.maintainerrIsIncluded ?? el.maintainerrIsManual ?? false
-                }
-                inclusionTone={el.maintainerrInclusionTone}
                 providerIds={extractProviderIds(el)}
                 collectionPage={
                   props.collectionPage ? props.collectionPage : false

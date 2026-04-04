@@ -46,8 +46,6 @@ interface IMediaCard {
   daysLeft?: number
   exclusionId?: number
   exclusionType?: 'global' | 'specific' | undefined
-  isIncluded?: boolean
-  inclusionTone?: 'info' | 'danger'
   collectionId?: number
   isManual?: boolean
   onRemove?: (id: string) => void
@@ -67,8 +65,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   providerIds = undefined,
   collectionPage = false,
   exclusionType = undefined,
-  isIncluded = false,
-  inclusionTone = 'info',
   isManual = false,
   onRemove = () => {},
 }) => {
@@ -77,13 +73,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
   const hasExclusion = exclusionId !== undefined || exclusionType !== undefined
-  const overviewStatusBadge = !collectionPage
-    ? isIncluded
-      ? { label: 'INCL', tone: inclusionTone }
-      : hasExclusion
-        ? { label: 'EXCL', tone: mediaType }
-        : undefined
-    : undefined
 
   if (year && mediaType !== 'episode') {
     year = year.slice(0, 4)
@@ -136,14 +125,10 @@ const MediaCard: React.FC<IMediaCard> = ({
           <>
             <div className="absolute left-0 right-0 flex items-center justify-between p-2">
               {renderBadge(mediaType, mediaType)}
+              {!collectionPage && hasExclusion
+                ? renderBadge('EXCL', mediaType)
+                : undefined}
             </div>
-            {!showDetail && overviewStatusBadge
-              ? renderBadge(
-                  overviewStatusBadge.label,
-                  overviewStatusBadge.tone,
-                  'absolute bottom-0 right-0 flex items-center p-2',
-                )
-              : undefined}
 
             {collectionPage && isManual && !showDetail
               ? renderBadge(

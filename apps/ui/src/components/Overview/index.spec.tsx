@@ -38,9 +38,11 @@ vi.mock('./Content', () => ({
   }) => (
     <div>
       {loading ? <span data-testid="overview-content-loading" /> : null}
-      {data.map((item) => (
-        <span key={item.id}>{item.title}</span>
-      ))}
+      <div data-testid="overview-items">
+        {data.map((item) => (
+          <span key={item.id}>{item.title}</span>
+        ))}
+      </div>
     </div>
   ),
 }))
@@ -88,6 +90,14 @@ describe('Overview', () => {
     expect(sortConfig.options[0]?.sortParams).toEqual({
       sort: 'title',
       sortOrder: 'asc',
+    })
+    expect(sortConfig.options[1]).toEqual({
+      value: 'maintainerr.manual',
+      label: 'Manual Added First',
+    })
+    expect(sortConfig.options[2]).toEqual({
+      value: 'maintainerr.excluded',
+      label: 'Excluded First',
     })
   })
 
@@ -348,5 +358,100 @@ describe('Overview', () => {
     await waitFor(() => {
       expect(screen.getByText('Next Item')).toBeTruthy()
     })
+  })
+
+  it('loads the full library and sorts excluded items first for the custom overview sort option', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
+          },
+        }
+      }
+
+      if (!path.startsWith('/media-server/library/shows-library/content?')) {
+        throw new Error(`Unexpected API request: ${path}`)
+      }
+
+      const url = new URL(path, 'http://localhost')
+      const page = url.searchParams.get('page')
+
+      if (page === '1') {
+        return {
+          totalSize: 3,
+          items: [
+            { id: '1', title: 'Alpha', type: 'show' },
+            {
+              id: '2',
+              title: 'Bravo',
+              type: 'show',
+              maintainerrExclusionId: 42,
+            },
+          ],
+        }
+      }
+
+      if (page === '2') {
+        return {
+          totalSize: 3,
+          items: [
+            {
+              id: '3',
+              title: 'Charlie',
+              type: 'show',
+              maintainerrExclusionId: 84,
+            },
+          ],
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'maintainerr.excluded' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(3)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Alpha')).toBeTruthy()
+      expect(screen.getByText('Bravo')).toBeTruthy()
+      expect(screen.getByText('Charlie')).toBeTruthy()
+    })
+
+    const contentText = screen.getByTestId('overview-items').textContent ?? ''
+
+    expect(contentText).toContain('Bravo')
+    expect(contentText.indexOf('Bravo')).toBeLessThan(
+      contentText.indexOf('Alpha'),
+    )
+    expect(contentText.indexOf('Charlie')).toBeLessThan(
+      contentText.indexOf('Alpha'),
+    )
   })
 })
