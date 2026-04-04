@@ -15,14 +15,6 @@ const defaultSortValue = ''
 const defaultOverviewSortValue: MediaLibrarySortKey = 'title.asc'
 const titleAscendingSortLabel = 'Title (A-Z) Ascending'
 
-export const overviewCustomSortValues = {
-  manualFirst: 'maintainerr.manual',
-  excludedFirst: 'maintainerr.excluded',
-} as const
-
-export type OverviewCustomSortValue =
-  (typeof overviewCustomSortValues)[keyof typeof overviewCustomSortValues]
-
 type SortParams = {
   sort: string
   sortOrder: MediaSortOrder
@@ -37,14 +29,6 @@ interface SortOption<TSortParams extends SortParams = MediaLibrarySortParams> {
 interface SortConfig<TSortParams extends SortParams = MediaLibrarySortParams> {
   defaultValue: string
   options: SortOption<TSortParams>[]
-}
-
-export const isOverviewCustomSortValue = (
-  value: string,
-): value is OverviewCustomSortValue => {
-  return Object.values(overviewCustomSortValues).includes(
-    value as OverviewCustomSortValue,
-  )
 }
 
 const createMediaLibrarySortOption = (
@@ -127,14 +111,8 @@ export const getMediaLibrarySortConfig = (
         defaultOverviewSortValue,
         titleAscendingSortLabel,
       ),
-      {
-        value: overviewCustomSortValues.manualFirst,
-        label: 'Manual Added First',
-      },
-      {
-        value: overviewCustomSortValues.excludedFirst,
-        label: 'Excluded First',
-      },
+      createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
+      createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
       }),

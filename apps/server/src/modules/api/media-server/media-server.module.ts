@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
+import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { SettingsModule } from '../../settings/settings.module';
 import { PlexApiModule } from '../plex-api/plex-api.module';
@@ -34,7 +35,7 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Exclusion, CollectionMedia]),
+    TypeOrmModule.forFeature([Exclusion, CollectionMedia, RuleGroup]),
     forwardRef(() => PlexApiModule),
     forwardRef(() => SettingsModule),
     JellyfinModule,

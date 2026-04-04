@@ -22,6 +22,22 @@ const getWatchCount = (item: MediaItem): number => {
   return item.viewCount ?? 0
 }
 
+const compareMaintainerrState = (
+  leftItem: MediaItem,
+  rightItem: MediaItem,
+  sortOrder: MediaSortOrder,
+  getValue: (item: MediaItem) => boolean,
+): number => {
+  const leftValue = getValue(leftItem) ? 1 : 0
+  const rightValue = getValue(rightItem) ? 1 : 0
+  const direction = sortOrder === 'desc' ? -1 : 1
+
+  return (
+    (leftValue - rightValue) * direction ||
+    leftItem.title.localeCompare(rightItem.title)
+  )
+}
+
 export const compareMediaItemsBySort = (
   leftItem: MediaItem,
   rightItem: MediaItem,
@@ -44,6 +60,20 @@ export const compareMediaItemsBySort = (
       )
     case 'watchCount':
       return (getWatchCount(leftItem) - getWatchCount(rightItem)) * direction
+    case 'manual':
+      return compareMaintainerrState(
+        leftItem,
+        rightItem,
+        sortOrder,
+        (item) => item.maintainerrIsManual === true,
+      )
+    case 'excluded':
+      return compareMaintainerrState(
+        leftItem,
+        rightItem,
+        sortOrder,
+        (item) => item.maintainerrExclusionId != null,
+      )
     default:
       return 0
   }

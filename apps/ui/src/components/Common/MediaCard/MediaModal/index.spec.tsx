@@ -1,9 +1,16 @@
 import type { MediaItem } from '@maintainerr/contracts'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import { createDeferred } from '../../../../test-utils/createDeferred'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import { clearMaintainerrStatusDetailsCache } from '../maintainerrStatus'
 import MediaModal from './index'
 
 vi.mock('../../../../hooks/useMediaServerType', () => ({
@@ -25,6 +32,7 @@ describe('MediaModal', () => {
   beforeEach(() => {
     useMediaServerTypeMock.mockReset()
     getApiHandlerMock.mockReset()
+    clearMaintainerrStatusDetailsCache()
 
     useMediaServerTypeMock.mockReturnValue({
       mediaServerType: null,
@@ -172,5 +180,155 @@ describe('MediaModal', () => {
       'https://thetvdb.com/dereferrer/series/202',
     )
     expect(await screen.findByText('tvdb://202')).toBeTruthy()
+  })
+
+  it('shows maintainerr status for manually added items', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/9') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/9/maintainerr-status') {
+        return Promise.resolve({
+          excludedFrom: [],
+          manuallyAddedTo: [
+            {
+              label: 'Testing (5d left)',
+              targetPath: '/collections/7',
+            },
+          ],
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={9}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        isManual={true}
+      />,
+    )
+
+    expect(await screen.findByText('Manually Added To')).toBeTruthy()
+    const manualCollectionEntry = screen.getByRole('link', {
+      name: 'Testing (5d left)',
+    })
+
+    expect(manualCollectionEntry.getAttribute('href')).toBe('/collections/7')
+  })
+
+  it('renders exclusion list entries and follows status links', async () => {
+    const onStatusLink = vi.fn()
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/1') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/1/maintainerr-status') {
+        return Promise.resolve({
+          excludedFrom: [
+            { label: 'Global' },
+            {
+              label: 'Testing1',
+              targetPath: '/collections/42/exclusions',
+            },
+          ],
+          manuallyAddedTo: [],
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={1}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        exclusionType="specific"
+        onStatusLink={onStatusLink}
+      />,
+    )
+
+    const testingCollectionEntry = await screen.findByRole('button', {
+      name: 'Testing1',
+    })
+
+    expect(screen.getByText('Global')).toBeTruthy()
+
+    fireEvent.click(testingCollectionEntry)
+
+    expect(onStatusLink).toHaveBeenCalledWith('/collections/42/exclusions')
+  })
+
+  it('renders fallback links when status navigation callback is not provided', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/5') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/5/maintainerr-status') {
+        return Promise.resolve({
+          excludedFrom: [
+            {
+              label: 'Testing2',
+              targetPath: '/collections/99/exclusions',
+            },
+          ],
+          manuallyAddedTo: [],
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={5}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        exclusionType="specific"
+      />,
+    )
+
+    const fallbackLink = await screen.findByRole('link', {
+      name: 'Testing2',
+    })
+
+    expect(fallbackLink.getAttribute('href')).toBe('/collections/99/exclusions')
   })
 })

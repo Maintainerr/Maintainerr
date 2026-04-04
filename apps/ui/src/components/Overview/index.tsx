@@ -3,7 +3,6 @@ import type {
   MediaLibrary,
   MediaLibrarySortParams,
 } from '@maintainerr/contracts'
-import { compareMediaItemsBySort } from '@maintainerr/contracts'
 import {
   useCallback,
   useContext,
@@ -20,57 +19,11 @@ import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import {
   getMediaLibrarySortConfig,
-  isOverviewCustomSortValue,
   MediaLibrarySortControl,
-  overviewCustomSortValues,
   sortMediaItems,
   useMediaLibrarySort,
 } from '../Common/MediaLibrarySortControl'
 import OverviewContent from './Content'
-
-const defaultCustomSortParams: MediaLibrarySortParams = {
-  sort: 'title',
-  sortOrder: 'asc',
-}
-
-const sortOverviewItems = (
-  items: MediaItem[],
-  sortValue: string,
-  sortParams?: MediaLibrarySortParams,
-) => {
-  if (!isOverviewCustomSortValue(sortValue)) {
-    return sortMediaItems(items, sortParams)
-  }
-
-  return [...items].sort((leftItem, rightItem) => {
-    const leftRank =
-      sortValue === overviewCustomSortValues.manualFirst
-        ? leftItem.maintainerrIsManual === true
-          ? 0
-          : 1
-        : leftItem.maintainerrExclusionId != null
-          ? 0
-          : 1
-    const rightRank =
-      sortValue === overviewCustomSortValues.manualFirst
-        ? rightItem.maintainerrIsManual === true
-          ? 0
-          : 1
-        : rightItem.maintainerrExclusionId != null
-          ? 0
-          : 1
-
-    return (
-      leftRank - rightRank ||
-      compareMediaItemsBySort(
-        leftItem,
-        rightItem,
-        defaultCustomSortParams.sort,
-        defaultCustomSortParams.sortOrder,
-      )
-    )
-  })
-}
 
 interface OverviewBootstrapResult {
   libraries: MediaLibrary[]
@@ -161,65 +114,8 @@ const Overview = () => {
     setFetching(false)
   }, [invalidate])
 
-  const fetchAllDataForCustomSort = useCallback(
-    async ({
-      libraryId,
-      libraryType,
-      requestSortValue,
-    }: {
-      libraryId: string
-      libraryType?: MediaLibrary['type']
-      requestSortValue: string
-    }) => {
-      const allItems: MediaItem[] = []
-      let totalItems = 0
-      let currentPage = 1
-
-      while (currentPage === 1 || allItems.length < totalItems) {
-        const query = buildLibraryContentQuery({
-          page: currentPage,
-          limit: fetchAmount,
-          libraryType,
-          sortParams: defaultCustomSortParams,
-        })
-
-        const result = await guardedFetch<{
-          totalSize: number
-          items: MediaItem[]
-        }>(() =>
-          GetApiHandler(
-            `/media-server/library/${libraryId}/content?${query.toString()}`,
-          ),
-        )
-
-        if (result.status !== 'success') {
-          throw new Error('Failed to fetch overview items')
-        }
-
-        totalItems = result.data.totalSize
-
-        if (!result.data.items?.length) {
-          break
-        }
-
-        allItems.push(...result.data.items)
-        currentPage += 1
-      }
-
-      return {
-        totalSize: totalItems,
-        items: sortOverviewItems(
-          allItems,
-          requestSortValue,
-          defaultCustomSortParams,
-        ),
-      }
-    },
-    [fetchAmount, guardedFetch],
-  )
-
   const fetchBootstrapData = useCallback(
-    async (requestSortValue = sortValue, requestSortParams = sortParams) => {
+    async (requestSortParams = sortParams) => {
       invalidateFetches()
       bootstrapRequestedRef.current = true
       setFetching(true)
@@ -241,20 +137,10 @@ const Overview = () => {
         if (result.status === 'success') {
           const nextLibraries = result.data.libraries ?? []
           const nextLibraryId = result.data.selectedLibraryId
-          const nextLibraryType = nextLibraries.find(
-            (library) => library.id === nextLibraryId,
-          )?.type
-          const nextContent =
-            nextLibraryId && isOverviewCustomSortValue(requestSortValue)
-              ? await fetchAllDataForCustomSort({
-                  libraryId: nextLibraryId,
-                  libraryType: nextLibraryType,
-                  requestSortValue,
-                })
-              : {
-                  totalSize: result.data.content.totalSize,
-                  items: result.data.content.items ?? [],
-                }
+          const nextContent = {
+            totalSize: result.data.content.totalSize,
+            items: result.data.content.items ?? [],
+          }
 
           setLibraries(nextLibraries)
           setLibrariesError(false)
@@ -281,12 +167,10 @@ const Overview = () => {
     },
     [
       applySelectedLibrary,
-      fetchAllDataForCustomSort,
       fetchAmount,
       guardedFetch,
       invalidateFetches,
       sortParams,
-      sortValue,
     ],
   )
 
@@ -362,11 +246,7 @@ const Overview = () => {
   )
 
   const performOverviewSync = useCallback(
-    async (
-      libraryId?: string,
-      nextSortValue = sortValue,
-      nextSortParams = sortParams,
-    ) => {
+    async (libraryId?: string, nextSortParams = sortParams) => {
       invalidateFetches()
 
       if (SearchCtx.search.text !== '') {
@@ -386,9 +266,7 @@ const Overview = () => {
               setSearchUsed(true)
               setTotalSize(result.data.length)
               pageData.current = result.data.length * 50
-              setData(
-                sortOverviewItems(result.data, nextSortValue, nextSortParams),
-              )
+              setData(sortMediaItems(result.data, nextSortParams))
               setLoading(false)
             }
           } catch {
@@ -423,41 +301,11 @@ const Overview = () => {
 
       applySelectedLibrary(nextLibraryId)
 
-      if (isOverviewCustomSortValue(nextSortValue)) {
-        try {
-          const nextLibraryType = libraries?.find(
-            (library) => library.id === nextLibraryId,
-          )?.type
-          const result = await fetchAllDataForCustomSort({
-            libraryId: nextLibraryId,
-            libraryType: nextLibraryType,
-            requestSortValue: nextSortValue,
-          })
-
-          setTotalSize(result.totalSize)
-          totalSizeRef.current = result.totalSize
-          pageData.current = Math.ceil(result.totalSize / fetchAmount)
-          dataRef.current = result.items
-          setData(result.items)
-          setLoading(false)
-          setLoadingExtra(false)
-          setFetching(false)
-        } catch {
-          setLoading(false)
-          setLoadingExtra(false)
-          setFetching(false)
-        }
-
-        return
-      }
-
       await fetchData(nextLibraryId, nextSortParams, { replaceExisting: true })
     },
     [
       SearchCtx.search.text,
       applySelectedLibrary,
-      fetchAllDataForCustomSort,
-      fetchAmount,
       fetchData,
       guardedFetch,
       invalidateFetches,
@@ -465,7 +313,6 @@ const Overview = () => {
       selectedLibrary,
       selectedLibraryRef,
       sortParams,
-      sortValue,
     ],
   )
 
@@ -491,13 +338,12 @@ const Overview = () => {
     }
 
     if (!selectedLibraryRef.current && !defaultLibraryId) {
-      void fetchBootstrapData(nextSortState.value, nextSortState.sortParams)
+      void fetchBootstrapData(nextSortState.sortParams)
       return
     }
 
     void performOverviewSync(
       selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId,
-      nextSortState.value,
       nextSortState.sortParams,
     )
   }

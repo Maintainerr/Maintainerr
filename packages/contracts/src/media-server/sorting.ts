@@ -3,9 +3,16 @@ export const mediaLibrarySortFields = [
   'airDate',
   'rating',
   'watchCount',
+  'manual',
+  'excluded',
 ] as const
 
 export type MediaLibrarySortField = (typeof mediaLibrarySortFields)[number]
+
+export const mediaLibraryStatusSortFields = ['manual', 'excluded'] as const
+
+export type MediaLibraryStatusSortField =
+  (typeof mediaLibraryStatusSortFields)[number]
 
 export const mediaSortOrders = ['asc', 'desc'] as const
 
