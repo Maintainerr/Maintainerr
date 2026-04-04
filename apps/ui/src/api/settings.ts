@@ -113,6 +113,8 @@ export const usePatchSettings = (options?: UsePatchSettingsOptions) => {
 
 export type UsePatchSettingsResult = ReturnType<typeof usePatchSettings>
 
+type UsePlexServersQueryKey = ['settings', 'plexServers']
+
 type UseDeletePlexAuthOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, void>,
   'mutationFn' | 'mutationKey' | 'onSuccess'
@@ -129,6 +131,9 @@ export const useDeletePlexAuth = (options?: UseDeletePlexAuthOptions) => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+      queryClient.removeQueries({
+        queryKey: ['settings', 'plexServers'] satisfies UsePlexServersQueryKey,
       })
     },
     ...options,
@@ -186,12 +191,69 @@ export const useUpdatePlexAuth = (options?: UseUpdatePlexAuthOptions) => {
       queryClient.invalidateQueries({
         queryKey: ['settings'] satisfies UseSettingsQueryKey,
       })
+      queryClient.removeQueries({
+        queryKey: ['settings', 'plexServers'] satisfies UsePlexServersQueryKey,
+      })
     },
     ...options,
   })
 }
 
 export type UseUpdatePlexAuthResult = ReturnType<typeof useUpdatePlexAuth>
+
+export interface PlexConnection {
+  protocol: string
+  address: string
+  port: number
+  uri: string
+  local: boolean
+  relay?: boolean
+  IPv6?: boolean
+  status?: number
+  latency?: number
+}
+
+export interface PlexDevice {
+  name: string
+  product: string
+  productVersion: string
+  platform: string
+  platformVersion: string
+  device: string
+  clientIdentifier: string
+  createdAt: Date
+  lastSeenAt: Date
+  provides: string[]
+  owned: boolean
+  accessToken?: string
+  publicAddress?: string
+  httpsRequired?: boolean
+  synced?: boolean
+  relay?: boolean
+  dnsRebindingProtection?: boolean
+  natLoopbackSupported?: boolean
+  publicAddressMatches?: boolean
+  presence?: boolean
+  ownerID?: string
+  home?: boolean
+  sourceTitle?: string
+  connection: PlexConnection[]
+}
+
+type UsePlexServersOptions = Omit<
+  UseQueryOptions<PlexDevice[], Error, PlexDevice[], UsePlexServersQueryKey>,
+  'queryKey' | 'queryFn'
+>
+
+export const usePlexServers = (options?: UsePlexServersOptions) => {
+  return useQuery<PlexDevice[], Error, PlexDevice[], UsePlexServersQueryKey>({
+    queryKey: ['settings', 'plexServers'],
+    queryFn: async () =>
+      GetApiHandler<PlexDevice[]>('/settings/plex/devices/servers'),
+    staleTime: 0,
+    ...options,
+  })
+}
 
 type UseTestJellyfinOptions = Omit<
   UseMutationOptions<JellyfinTestResult, Error, JellyfinSetting>,

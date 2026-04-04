@@ -814,8 +814,14 @@ export class PlexApiService {
                   token: settings.plex_auth_token,
                 });
 
-                // test connection
-                return (await newClient.getStatus()) ? connection : null;
+                const start = Date.now();
+                const ok = await newClient.getStatus();
+                if (!ok) return null;
+                return {
+                  ...connection,
+                  status: 200,
+                  latency: Date.now() - start,
+                };
               },
             );
 
