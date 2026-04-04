@@ -125,14 +125,14 @@ const maintainerrStatusStyles = {
     titleClassName: 'text-white',
     contentClassName: 'text-zinc-100',
     emptyClassName: 'text-zinc-100/80',
-    linkClassName: 'text-amber-300 hover:text-amber-200',
+    linkClassName: 'text-amber-500 underline hover:text-amber-400',
   },
   manual: {
     cardClassName: 'bg-zinc-900/70',
     titleClassName: 'text-white',
     contentClassName: 'text-zinc-100',
     emptyClassName: 'text-zinc-100/80',
-    linkClassName: 'text-amber-400 hover:text-amber-300',
+    linkClassName: 'text-amber-500 underline hover:text-amber-400',
   },
 } as const
 
@@ -366,7 +366,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                 {targetPath && onStatusLink ? (
                   <button
                     type="button"
-                    className={`text-left transition hover:underline ${linkClassName}`}
+                    className={`text-left transition ${linkClassName}`}
                     onClick={() => handleStatusLink(targetPath)}
                   >
                     {entry.label}
@@ -374,7 +374,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                 ) : targetPath ? (
                   <a
                     href={targetPath}
-                    className={`transition hover:underline ${linkClassName}`}
+                    className={`transition ${linkClassName}`}
                   >
                     {entry.label}
                   </a>

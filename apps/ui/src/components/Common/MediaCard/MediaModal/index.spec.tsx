@@ -231,7 +231,9 @@ describe('MediaModal', () => {
     })
 
     expect(manualCollectionEntry.getAttribute('href')).toBe('/collections/7')
-    expect(manualCollectionEntry.className).toContain('text-amber-400')
+    expect(manualCollectionEntry.className).toContain('text-amber-500')
+    expect(manualCollectionEntry.className).toContain('underline')
+    expect(manualCollectionEntry.className).toContain('hover:text-amber-400')
   })
 
   it('renders exclusion list entries and follows status links', async () => {
@@ -286,7 +288,9 @@ describe('MediaModal', () => {
     const excludedHeading = screen.getByText('Excluded From')
     expect(excludedHeading.className).toContain('text-white')
     expect(excludedHeading.parentElement?.className).toContain('bg-zinc-900/70')
-    expect(testingCollectionEntry.className).toContain('text-amber-300')
+    expect(testingCollectionEntry.className).toContain('text-amber-500')
+    expect(testingCollectionEntry.className).toContain('underline')
+    expect(testingCollectionEntry.className).toContain('hover:text-amber-400')
 
     fireEvent.click(testingCollectionEntry)
 
@@ -338,6 +342,8 @@ describe('MediaModal', () => {
     })
 
     expect(fallbackLink.getAttribute('href')).toBe('/collections/99/exclusions')
-    expect(fallbackLink.className).toContain('text-amber-300')
+    expect(fallbackLink.className).toContain('text-amber-500')
+    expect(fallbackLink.className).toContain('underline')
+    expect(fallbackLink.className).toContain('hover:text-amber-400')
   })
 })
