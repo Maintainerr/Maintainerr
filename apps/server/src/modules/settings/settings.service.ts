@@ -843,6 +843,71 @@ export class SettingsService implements SettingDto {
     return this.updateSettings(mergedSettings);
   }
 
+  private stripPlexProtocolPrefix(hostname: string | null | undefined) {
+    if (!hostname) {
+      return hostname;
+    }
+
+    if (hostname.startsWith('https://')) {
+      return hostname.slice('https://'.length);
+    }
+
+    if (hostname.startsWith('http://')) {
+      return hostname.slice('http://'.length);
+    }
+
+    return hostname;
+  }
+
+  private normalizePlexServerConnectionSettings({
+    hostname,
+    port,
+  }: {
+    hostname: string | null | undefined;
+    port: number | null | undefined;
+  }) {
+    const normalizedHostnameInput = hostname?.trim().toLowerCase();
+    const normalizedHostname = this.stripPlexProtocolPrefix(
+      normalizedHostnameInput,
+    );
+    const normalizedSsl =
+      normalizedHostnameInput?.startsWith('https://') || port === 443 ? 1 : 0;
+
+    return {
+      hostname: normalizedHostname,
+      port,
+      ssl: normalizedSsl,
+    };
+  }
+
+  private isPlexServerSettingsUpdate(
+    currentSettings: Settings,
+    nextSettings: Settings,
+  ): boolean {
+    const currentMediaServerType =
+      nextSettings.media_server_type ?? currentSettings.media_server_type;
+
+    if (currentMediaServerType !== MediaServerType.PLEX) {
+      return false;
+    }
+
+    const normalizedCurrent = this.normalizePlexServerConnectionSettings({
+      hostname: currentSettings.plex_hostname,
+      port: currentSettings.plex_port,
+    });
+    const normalizedNext = this.normalizePlexServerConnectionSettings({
+      hostname: nextSettings.plex_hostname,
+      port: nextSettings.plex_port,
+    });
+
+    return (
+      currentSettings.plex_name !== nextSettings.plex_name ||
+      normalizedCurrent.hostname !== normalizedNext.hostname ||
+      normalizedCurrent.port !== normalizedNext.port ||
+      normalizedCurrent.ssl !== normalizedNext.ssl
+    );
+  }
+
   private async saveSettings(settings: Settings): Promise<Settings> {
     const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
@@ -877,17 +942,37 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      settings.plex_hostname = settings.plex_hostname?.toLowerCase();
+      if (!settingsDb) {
+        this.logger.error('Settings could not be loaded for update.');
+        return {
+          status: 'NOK',
+          code: 0,
+          message: 'No settings found to update',
+        };
+      }
+
+      if (
+        this.isPlexServerSettingsUpdate(settingsDb, settings) &&
+        !settingsDb.plex_auth_token
+      ) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: 'Authenticate with Plex before saving Plex server settings.',
+        };
+      }
+
       settings.seerr_url = settings.seerr_url?.toLowerCase();
       settings.tautulli_url = settings.tautulli_url?.toLowerCase();
-      settings.plex_ssl =
-        settings.plex_hostname?.includes('https://') ||
-        settings.plex_port == 443
-          ? 1
-          : 0;
-      settings.plex_hostname = settings.plex_hostname
-        ?.replace('https://', '')
-        ?.replace('http://', '');
+
+      const normalizedPlexServerSettings =
+        this.normalizePlexServerConnectionSettings({
+          hostname: settings.plex_hostname,
+          port: settings.plex_port,
+        });
+
+      settings.plex_hostname = normalizedPlexServerSettings.hostname;
+      settings.plex_ssl = normalizedPlexServerSettings.ssl;
 
       await this.saveSettings({
         ...settingsDb,
@@ -1037,6 +1122,14 @@ export class SettingsService implements SettingDto {
   }
 
   public async testPlex(): Promise<any> {
+    if (!this.plex_auth_token) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: 'Authenticate with Plex before testing the connection.',
+      };
+    }
+
     try {
       const resp = await this.plexApi.getStatus();
       return resp?.version != null

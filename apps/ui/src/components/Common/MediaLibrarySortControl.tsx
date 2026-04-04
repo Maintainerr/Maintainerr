@@ -9,10 +9,19 @@ import {
 } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { Select } from '../Forms/Select'
+import { SmallLoadingSpinner } from './LoadingSpinner'
 
 const defaultSortValue = ''
 const defaultOverviewSortValue: MediaLibrarySortKey = 'title.asc'
 const titleAscendingSortLabel = 'Title (A-Z) Ascending'
+
+export const overviewCustomSortValues = {
+  manualFirst: 'maintainerr.manual',
+  excludedFirst: 'maintainerr.excluded',
+} as const
+
+export type OverviewCustomSortValue =
+  (typeof overviewCustomSortValues)[keyof typeof overviewCustomSortValues]
 
 type SortParams = {
   sort: string
@@ -28,6 +37,14 @@ interface SortOption<TSortParams extends SortParams = MediaLibrarySortParams> {
 interface SortConfig<TSortParams extends SortParams = MediaLibrarySortParams> {
   defaultValue: string
   options: SortOption<TSortParams>[]
+}
+
+export const isOverviewCustomSortValue = (
+  value: string,
+): value is OverviewCustomSortValue => {
+  return Object.values(overviewCustomSortValues).includes(
+    value as OverviewCustomSortValue,
+  )
 }
 
 const createMediaLibrarySortOption = (
@@ -110,6 +127,14 @@ export const getMediaLibrarySortConfig = (
         defaultOverviewSortValue,
         titleAscendingSortLabel,
       ),
+      {
+        value: overviewCustomSortValues.manualFirst,
+        label: 'Manual Added First',
+      },
+      {
+        value: overviewCustomSortValues.excludedFirst,
+        label: 'Excluded First',
+      },
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
       }),
@@ -158,13 +183,15 @@ export const getCollectionMediaSortConfig = (
       : undefined,
   }))
 
-  if (includeDeleteSoonest) {
-    options.push(collectionDeleteSoonestSortOption)
-  }
+  const resolvedOptions = includeDeleteSoonest
+    ? [collectionDeleteSoonestSortOption, ...options]
+    : options
 
   return {
-    defaultValue: defaultSortValue,
-    options,
+    defaultValue: includeDeleteSoonest
+      ? collectionDeleteSoonestSortOption.value
+      : defaultSortValue,
+    options: resolvedOptions,
   }
 }
 
@@ -192,6 +219,7 @@ interface MediaLibrarySortControlProps {
   options: ReadonlyArray<{ value: string; label: string }>
   value: string
   onSortChange: (value: string) => void
+  isLoading?: boolean
 }
 
 export const useMediaLibrarySort = <TSortParams extends SortParams>(
@@ -231,18 +259,31 @@ export const MediaLibrarySortControl = ({
   options,
   value,
   onSortChange,
+  isLoading = false,
 }: MediaLibrarySortControlProps) => {
   return (
-    <Select
-      aria-label={ariaLabel}
-      value={value}
-      onChange={(event) => onSortChange(event.target.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
+    <div className="flex items-center gap-3">
+      <div className="flex-1">
+        <Select
+          aria-label={ariaLabel}
+          name="sort"
+          value={value}
+          onChange={(event) => onSortChange(event.target.value)}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex min-h-6 min-w-6 items-center justify-end">
+        {isLoading ? (
+          <div role="status" aria-label="Loading sorted items">
+            <SmallLoadingSpinner className="h-6 w-6" />
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }

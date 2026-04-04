@@ -1,4 +1,5 @@
 import {
+  CheckCircleIcon,
   ExclamationIcon,
   InformationCircleIcon,
   XCircleIcon,
@@ -7,7 +8,7 @@ import React from 'react'
 
 interface AlertProps {
   title?: React.ReactNode
-  type?: 'warning' | 'info' | 'error'
+  type?: 'warning' | 'info' | 'success' | 'error'
   children?: React.ReactNode
 }
 
@@ -28,11 +29,19 @@ const Alert: React.FC<AlertProps> = ({ title, children, type }) => {
         svg: <InformationCircleIcon className="h-5 w-5" />,
       }
       break
+    case 'success':
+      design = {
+        bgColor: 'bg-success-700',
+        titleColor: 'text-success-100',
+        textColor: 'text-success-300',
+        svg: <CheckCircleIcon className="h-5 w-5" />,
+      }
+      break
     case 'error':
       design = {
-        bgColor: 'bg-red-600',
-        titleColor: 'text-red-100',
-        textColor: 'text-red-300',
+        bgColor: 'bg-error-700',
+        titleColor: 'text-error-100',
+        textColor: 'text-error-300',
         svg: <XCircleIcon className="h-5 w-5" />,
       }
       break

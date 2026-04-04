@@ -27,8 +27,11 @@ describe('MediaModal', () => {
     getApiHandlerMock.mockReset()
 
     useMediaServerTypeMock.mockReturnValue({
+      mediaServerType: null,
+      isLoading: false,
       isPlex: false,
       isJellyfin: false,
+      isNotConfigured: true,
     })
   })
 
@@ -120,5 +123,54 @@ describe('MediaModal', () => {
     expect(tvdbLogo.closest('a')?.getAttribute('href')).toBe(
       'https://thetvdb.com/dereferrer/series/202',
     )
+  })
+
+  it('merges fetched provider ids with incoming ids so a TVDB primary backdrop can resolve later', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/2') {
+        return Promise.resolve({
+          providerIds: {
+            tmdb: ['101'],
+            tvdb: ['202'],
+          },
+        } as MediaItem)
+      }
+
+      if (path.startsWith('/metadata/backdrop/show?')) {
+        return Promise.resolve({
+          url: 'https://image.example/show.jpg',
+          provider: 'TVDB',
+          id: 202,
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={2}
+        mediaType="show"
+        title="Show"
+        summary="Show summary"
+        providerIds={{ tmdb: ['101'] }}
+      />,
+    )
+
+    const tvdbLogo = await screen.findByRole('img', { name: 'TheTVDB Logo' })
+
+    expect(tvdbLogo.closest('a')?.getAttribute('href')).toBe(
+      'https://thetvdb.com/dereferrer/series/202',
+    )
+    expect(await screen.findByText('tvdb://202')).toBeTruthy()
   })
 })

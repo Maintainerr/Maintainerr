@@ -7,7 +7,6 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useMediaServerLibraries } from '../../api/media-server'
 import { SearchContextProvider } from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import {
@@ -15,10 +14,6 @@ import {
   getMediaLibrarySortConfig,
 } from '../Common/MediaLibrarySortControl'
 import Overview, { buildLibraryContentQuery } from './index'
-
-vi.mock('../../api/media-server', () => ({
-  useMediaServerLibraries: vi.fn(),
-}))
 
 vi.mock('../../utils/ApiHandler', () => ({
   default: vi.fn(),
@@ -28,29 +23,50 @@ vi.mock('../Common/LibrarySwitcher', () => ({
   default: () => null,
 }))
 
+vi.mock('../Common/LoadingSpinner', () => ({
+  default: () => <div data-testid="overview-bootstrap-spinner" />,
+  SmallLoadingSpinner: () => <div data-testid="overview-refresh-spinner" />,
+}))
+
 vi.mock('./Content', () => ({
-  default: () => null,
+  default: ({
+    data,
+    loading,
+  }: {
+    data: Array<{ id: string; title: string }>
+    loading: boolean
+  }) => (
+    <div>
+      {loading ? <span data-testid="overview-content-loading" /> : null}
+      <div data-testid="overview-items">
+        {data.map((item) => (
+          <span key={item.id}>{item.title}</span>
+        ))}
+      </div>
+    </div>
+  ),
 }))
 
 describe('Overview', () => {
-  const librariesHookMock = vi.mocked(useMediaServerLibraries)
   const getApiHandlerMock = vi.mocked(GetApiHandler)
   let libraries: MediaLibrary[] | undefined
-  const getLibrariesResult = (): ReturnType<typeof useMediaServerLibraries> =>
-    ({
-      data: libraries,
-      error: undefined,
-      isLoading: false,
-    }) as unknown as ReturnType<typeof useMediaServerLibraries>
 
   beforeEach(() => {
     libraries = undefined
-    librariesHookMock.mockReset()
     getApiHandlerMock.mockReset()
 
-    librariesHookMock.mockImplementation(getLibrariesResult)
-
     getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries: libraries ?? [],
+          selectedLibraryId: libraries?.[0]?.id,
+          content: {
+            totalSize: 0,
+            items: [],
+          },
+        }
+      }
+
       if (path.startsWith('/media-server/library/')) {
         return {
           totalSize: 0,
@@ -75,6 +91,70 @@ describe('Overview', () => {
       sort: 'title',
       sortOrder: 'asc',
     })
+    expect(sortConfig.options[1]).toEqual({
+      value: 'maintainerr.manual',
+      label: 'Manual Added First',
+    })
+    expect(sortConfig.options[2]).toEqual({
+      value: 'maintainerr.excluded',
+      label: 'Excluded First',
+    })
+  })
+
+  it('bootstraps overview data in a single request before rendering the first page', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
+          },
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item')).toBeTruthy()
+    })
+
+    expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    expect(getApiHandlerMock).toHaveBeenCalledWith(
+      expect.stringContaining('/media-server/overview/bootstrap?'),
+    )
+  })
+
+  it('exits the bootstrap spinner when no overview libraries are available', async () => {
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('overview-bootstrap-spinner')).toBeNull()
+    })
   })
 
   it('only exposes the reachable delete soonest collection sort option', () => {
@@ -83,6 +163,8 @@ describe('Overview', () => {
       (option) => option.sortParams?.sort === 'deleteSoonest',
     )
 
+    expect(sortConfig.defaultValue).toBe('deleteSoonest.asc')
+    expect(sortConfig.options[0]?.value).toBe('deleteSoonest.asc')
     expect(
       sortConfig.options.some((option) => option.value === 'deleteSoonest.asc'),
     ).toBe(true)
@@ -203,6 +285,173 @@ describe('Overview', () => {
 
     expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain(
       'sort=title&sortOrder=asc',
+    )
+  })
+
+  it('keeps existing overview items visible while a refreshed request is in flight', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    let resolveSecondRequest:
+      | ((value: { totalSize: number; items: any[] }) => void)
+      | undefined
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return Promise.resolve({
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [
+              { id: 'existing-item', title: 'Existing Item', type: 'show' },
+            ],
+          },
+        })
+      }
+
+      if (!path.startsWith('/media-server/library/')) {
+        return Promise.reject(new Error(`Unexpected API request: ${path}`))
+      }
+
+      if (path.includes('sort=title&sortOrder=desc')) {
+        return new Promise((resolve) => {
+          resolveSecondRequest = resolve
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected API request: ${path}`))
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Existing Item')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(screen.getByText('Existing Item')).toBeTruthy()
+    expect(screen.getByTestId('overview-refresh-spinner')).toBeTruthy()
+    expect(screen.getByTestId('overview-content-loading')).toBeTruthy()
+
+    resolveSecondRequest?.({
+      totalSize: 1,
+      items: [{ id: 'next-item', title: 'Next Item', type: 'show' }],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Next Item')).toBeTruthy()
+    })
+  })
+
+  it('loads the full library and sorts excluded items first for the custom overview sort option', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
+          },
+        }
+      }
+
+      if (!path.startsWith('/media-server/library/shows-library/content?')) {
+        throw new Error(`Unexpected API request: ${path}`)
+      }
+
+      const url = new URL(path, 'http://localhost')
+      const page = url.searchParams.get('page')
+
+      if (page === '1') {
+        return {
+          totalSize: 3,
+          items: [
+            { id: '1', title: 'Alpha', type: 'show' },
+            {
+              id: '2',
+              title: 'Bravo',
+              type: 'show',
+              maintainerrExclusionId: 42,
+            },
+          ],
+        }
+      }
+
+      if (page === '2') {
+        return {
+          totalSize: 3,
+          items: [
+            {
+              id: '3',
+              title: 'Charlie',
+              type: 'show',
+              maintainerrExclusionId: 84,
+            },
+          ],
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'maintainerr.excluded' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(3)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Alpha')).toBeTruthy()
+      expect(screen.getByText('Bravo')).toBeTruthy()
+      expect(screen.getByText('Charlie')).toBeTruthy()
+    })
+
+    const contentText = screen.getByTestId('overview-items').textContent ?? ''
+
+    expect(contentText).toContain('Bravo')
+    expect(contentText.indexOf('Bravo')).toBeLessThan(
+      contentText.indexOf('Alpha'),
+    )
+    expect(contentText.indexOf('Charlie')).toBeLessThan(
+      contentText.indexOf('Alpha'),
     )
   })
 })

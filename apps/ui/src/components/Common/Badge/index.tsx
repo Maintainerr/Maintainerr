@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
 import React from 'react'
+import { Link } from 'react-router-dom'
 
 interface BadgeProps {
   badgeType?:
@@ -32,10 +32,10 @@ const Badge = (
   switch (badgeType) {
     case 'danger':
       badgeStyle.push(
-        'bg-red-600 bg-opacity-80 border-red-500 border !text-red-100',
+        'bg-error-600 bg-opacity-80 border-error-500 border !text-error-100',
       )
       if (href) {
-        badgeStyle.push('hover:bg-red-500 bg-opacity-100')
+        badgeStyle.push('hover:bg-error-500 bg-opacity-100')
       }
       break
     case 'warning':
@@ -48,10 +48,10 @@ const Badge = (
       break
     case 'success':
       badgeStyle.push(
-        'bg-green-500 bg-opacity-80 border border-green-500 !text-green-100',
+        'bg-success-500 bg-opacity-80 border border-success-500 !text-success-100',
       )
       if (href) {
-        badgeStyle.push('hover:bg-green-500 hover:bg-opacity-100')
+        badgeStyle.push('hover:bg-success-500 hover:bg-opacity-100')
       }
       break
     case 'dark':

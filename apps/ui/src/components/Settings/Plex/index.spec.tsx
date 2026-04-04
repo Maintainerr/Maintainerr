@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
 import PlexSettings, { hasUnsavedPlexServerChanges } from './index'
@@ -11,6 +17,7 @@ const updatePlexAuth = vi.fn()
 let updateSettingsPending = false
 let deletePlexAuthPending = false
 let updatePlexAuthPending = false
+const axiosGet = vi.fn()
 let currentSettings: {
   plex_hostname?: string
   plex_port?: number
@@ -44,6 +51,12 @@ vi.mock('../../../utils/ApiHandler', () => ({
   default: (url: string) => getApiHandler(url),
 }))
 
+vi.mock('axios', () => ({
+  default: {
+    get: (...args: unknown[]) => axiosGet(...args),
+  },
+}))
+
 vi.mock('react-toastify', () => ({
   toast: {
     promise: (promise: Promise<unknown>) => promise,
@@ -70,7 +83,7 @@ beforeEach(() => {
     plex_port: 32400,
     plex_name: 'Plex',
     plex_ssl: 0,
-    plex_auth_token: undefined,
+    plex_auth_token: 'masked-plex-token',
   }
 
   updateSettingsPending = false
@@ -81,6 +94,20 @@ beforeEach(() => {
   updateSettings.mockReset()
   deletePlexAuth.mockReset()
   updatePlexAuth.mockReset()
+  axiosGet.mockReset()
+  axiosGet.mockResolvedValue({ status: 200 })
+
+  getApiHandler.mockImplementation((url: string) => {
+    if (url === '/settings/test/plex') {
+      return Promise.resolve({
+        status: 'OK',
+        code: 1,
+        message: '1.0.0',
+      })
+    }
+
+    throw new Error(`Unexpected request: ${url}`)
+  })
 })
 
 afterEach(() => {
@@ -145,6 +172,56 @@ describe('hasUnsavedPlexServerChanges', () => {
 })
 
 describe('PlexSettings', () => {
+  it('keeps save and test actions unavailable until Plex credentials exist', () => {
+    currentSettings.plex_auth_token = undefined
+
+    render(<PlexSettings />)
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Test Connection',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save Changes',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+  })
+
+  it('keeps Save Changes disabled until Plex server settings change and disables it again when reverted', () => {
+    render(<PlexSettings />)
+
+    const saveButton = screen.getByRole('button', { name: 'Save Changes' })
+    const hostnameInput = screen.getByLabelText('Hostname or IP')
+
+    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.change(hostnameInput, { target: { value: 'plex.internal' } })
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save Changes',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false)
+
+    fireEvent.change(hostnameInput, { target: { value: 'plex.local' } })
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save Changes',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+  })
+
   it('disables Test Connection while Plex server settings are dirty and re-enables it when reverted', () => {
     render(<PlexSettings />)
 
@@ -199,5 +276,35 @@ describe('PlexSettings', () => {
     ).toBe(true)
 
     authRequest.resolve()
+  })
+
+  it('allows saving a Plex token manually with the shared save-button pattern', async () => {
+    updatePlexAuth.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    })
+
+    render(<PlexSettings />)
+
+    const saveTokenButton = screen.getByRole('button', { name: 'Save Token' })
+
+    expect((saveTokenButton as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.change(screen.getByLabelText(/Manual Token/i), {
+      target: { value: 'manual-plex-token' },
+    })
+
+    expect(
+      (screen.getByRole('button', { name: 'Save Token' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Token' }))
+
+    await waitFor(() => {
+      expect(updatePlexAuth).toHaveBeenCalledWith('manual-plex-token')
+      expect(axiosGet).toHaveBeenCalled()
+    })
   })
 })

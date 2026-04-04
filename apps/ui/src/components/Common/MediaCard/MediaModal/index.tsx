@@ -1,5 +1,6 @@
 import { MediaItem, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
+import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import { logClientError } from '../../../../utils/ClientLogger'
@@ -7,27 +8,56 @@ import {
   buildMetadataImagePath,
   toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
+import Button from '../../Button'
+import { SmallLoadingSpinner } from '../../LoadingSpinner'
 
 interface ModalContentProps {
   onClose: () => void
   id: number | string
-  image?: string
-  userScore?: number
-  backdrop?: string
   summary?: string
   year?: string
   mediaType: 'movie' | 'show' | 'season' | 'episode'
   title: string
-  canExpand?: boolean
-  inProgress?: boolean
   providerIds?: MediaProviderIds
-  libraryId?: string
-  type?: 1 | 2 | 3 | 4
-  daysLeft?: number
-  exclusionId?: number
-  exclusionType?: 'global' | 'specific' | undefined
-  collectionId?: number
-  isManual?: boolean
+}
+
+const mergeProviderIds = (
+  preferred?: MediaProviderIds,
+  fallback?: MediaProviderIds,
+): MediaProviderIds | undefined => {
+  const mergedEntries = new Map<string, string[]>()
+
+  for (const source of [preferred, fallback]) {
+    if (!source) {
+      continue
+    }
+
+    for (const [key, values] of Object.entries(source) as [
+      string,
+      string[] | undefined,
+    ][]) {
+      if (!values?.length) {
+        continue
+      }
+
+      const existingValues = mergedEntries.get(key) ?? []
+      const nextValues = [...existingValues]
+
+      values.forEach((value) => {
+        if (!nextValues.includes(value)) {
+          nextValues.push(value)
+        }
+      })
+
+      mergedEntries.set(key, nextValues)
+    }
+  }
+
+  if (mergedEntries.size === 0) {
+    return undefined
+  }
+
+  return Object.fromEntries(mergedEntries) as MediaProviderIds
 }
 
 const basePath = import.meta.env.VITE_BASE_PATH ?? ''
@@ -75,7 +105,17 @@ const emptyBackdropResult: BackdropResult = {
 }
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
-  ({ onClose, mediaType, id, summary, year, title, providerIds }) => {
+  ({
+    onClose,
+    mediaType,
+    id,
+    summary,
+    year,
+    title,
+    providerIds: fallbackProviderIds,
+  }) => {
+    useLockBodyScroll(true)
+
     const { isPlex, isJellyfin } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdropResult, setBackdropResult] =
@@ -88,11 +128,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
 
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
-    const effectiveProviderIds = providerIds ?? metadata?.providerIds
+    const providerIds = useMemo(
+      () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
+      [metadata?.providerIds, fallbackProviderIds],
+    )
     const backdropRequestPath = buildMetadataImagePath(
       'backdrop',
       mediaType,
-      effectiveProviderIds,
+      providerIds,
     )
     const isCurrentBackdrop = backdropResult.requestKey === backdropRequestPath
     const resolvedBackdrop = isCurrentBackdrop ? backdropResult.url : null
@@ -103,12 +146,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       if (!cfg) return null
       const linkId =
         backdropResult.providerId?.toString() ??
-        effectiveProviderIds?.[cfg.providerIdKey]?.[0]
+        providerIds?.[cfg.providerIdKey]?.[0]
       if (!linkId) return null
       return { ...cfg, linkId }
-    }, [isCurrentBackdrop, backdropResult, effectiveProviderIds])
-
-    const basePath = import.meta.env.VITE_BASE_PATH ?? ''
+    }, [isCurrentBackdrop, backdropResult, providerIds])
 
     useEffect(() => {
       GetApiHandler('/media-server').then((resp) => {
@@ -170,23 +211,15 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
     }, [backdropRequestPath])
 
-    useEffect(() => {
-      document.body.style.overflow = 'hidden'
-
-      return () => {
-        document.body.style.overflow = ''
-      }
-    }, [])
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 px-3"
-        onClick={onClose} // Close modal when clicking outside
+        onClick={onClose}
       >
         <div
           className="relative max-h-[90vh] w-full max-w-4xl overflow-auto rounded-xl bg-zinc-800 shadow-lg"
-          onClick={(e) => e.stopPropagation()} // Prevent modal close on content click
+          onClick={(event) => event.stopPropagation()}
         >
-          {/* Top Half with Background Image */}
           <div className="relative h-72 w-full overflow-hidden p-2 xl:h-96">
             <div
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
@@ -198,7 +231,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             ></div>
             {loading && (
               <div className="absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black bg-opacity-50">
-                <div className="h-16 w-16 animate-spin rounded-full border-4 border-t-4 border-sky-600 border-t-sky-200"></div>
+                <SmallLoadingSpinner className="h-16 w-16" />
               </div>
             )}
 
@@ -251,9 +284,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       )
                     })}
                   </div>
-                ) : (
-                  ''
-                )}
+                ) : undefined}
               </div>
               <div className="flex flex-col items-end">
                 <div className="max-w-fit grow">
@@ -341,9 +372,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </span>
                     ))}
                   </div>
-                ) : (
-                  ''
-                )}
+                ) : undefined}
               </div>
             </div>
           </div>
@@ -362,13 +391,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
 
             <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
-              {metadata?.providerIds &&
+              {providerIds &&
                 ['movie', 'show'].includes(mediaType) &&
-                (metadata.providerIds.tmdb?.length ||
-                  metadata.providerIds.imdb?.length ||
-                  metadata.providerIds.tvdb?.length) && (
+                (providerIds.tmdb?.length ||
+                  providerIds.imdb?.length ||
+                  providerIds.tvdb?.length) && (
                   <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                    {metadata.providerIds.tmdb?.map((id) => (
+                    {providerIds.tmdb?.map((id) => (
                       <span
                         key={`tmdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
@@ -376,7 +405,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         tmdb://{id}
                       </span>
                     ))}
-                    {metadata.providerIds.imdb?.map((id) => (
+                    {providerIds.imdb?.map((id) => (
                       <span
                         key={`imdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
@@ -384,7 +413,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         imdb://{id}
                       </span>
                     ))}
-                    {metadata.providerIds.tvdb?.map((id) => (
+                    {providerIds.tvdb?.map((id) => (
                       <span
                         key={`tvdb-${id}`}
                         className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
@@ -401,7 +430,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                             ?.providerIdKey
                         if (
                           !key ||
-                          metadata.providerIds[key]?.includes(
+                          providerIds[key]?.includes(
                             String(backdropResult.providerId),
                           )
                         ) {
@@ -419,12 +448,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
-                <button
-                  onClick={onClose}
-                  className="rounded bg-amber-600 px-4 py-2 hover:bg-amber-500 focus:outline-none"
-                >
+                <Button buttonType="default" onClick={onClose}>
                   Close
-                </button>
+                </Button>
               </div>
             </div>
           </div>

@@ -26,6 +26,7 @@ export interface ICollection {
   sonarrSettingsId?: number
   sortTitle?: string
   totalSizeBytes?: number | null
+  mediaCount?: number
 }
 
 export interface ICollectionMedia {

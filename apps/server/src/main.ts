@@ -18,9 +18,15 @@ async function bootstrap() {
 
   const basePathEnv = process.env.BASE_PATH?.trim();
   if (basePathEnv && basePathEnv !== '/') {
-    const normalizedBasePath = basePathEnv
-      .replace(/\/+$/, '')
-      .replace(/^\/+/, '');
+    let bpStart = 0;
+    while (bpStart < basePathEnv.length && basePathEnv[bpStart] === '/') {
+      bpStart += 1;
+    }
+    let bpEnd = basePathEnv.length;
+    while (bpEnd > bpStart && basePathEnv[bpEnd - 1] === '/') {
+      bpEnd -= 1;
+    }
+    const normalizedBasePath = basePathEnv.slice(bpStart, bpEnd);
 
     if (normalizedBasePath.length > 0) {
       app.setGlobalPrefix(normalizedBasePath);

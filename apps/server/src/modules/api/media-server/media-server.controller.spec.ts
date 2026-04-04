@@ -1,6 +1,7 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { BadRequestException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
 import { IMediaServerService } from './media-server.interface';
@@ -20,9 +21,11 @@ describe('MediaServerController', () => {
   let mockMediaServerFactory: jest.Mocked<MediaServerFactory>;
   let mockMediaServerService: jest.Mocked<IMediaServerService>;
   let logger: jest.Mocked<MaintainerrLogger>;
+  let mediaItemEnrichmentService: jest.Mocked<MediaItemEnrichmentService>;
 
   beforeEach(() => {
     mockMediaServerService = {
+      getLibraries: jest.fn().mockResolvedValue([]),
       getLibraryContents: jest.fn().mockResolvedValue({
         items: [],
         totalSize: 0,
@@ -43,7 +46,15 @@ describe('MediaServerController', () => {
       setContext: jest.fn(),
     } as unknown as jest.Mocked<MaintainerrLogger>;
 
-    controller = new MediaServerController(mockMediaServerFactory, logger);
+    mediaItemEnrichmentService = {
+      enrichItems: jest.fn().mockImplementation(async (items) => items),
+    } as unknown as jest.Mocked<MediaItemEnrichmentService>;
+
+    controller = new MediaServerController(
+      mockMediaServerFactory,
+      logger,
+      mediaItemEnrichmentService,
+    );
   });
 
   describe('getLibraryContent - Pagination Logic', () => {
@@ -54,6 +65,7 @@ describe('MediaServerController', () => {
         'lib1',
         { offset: 0, limit: 50, type: undefined },
       );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([]);
     });
 
     it('should calculate offset correctly for page 2 with limit 50', async () => {
@@ -93,6 +105,79 @@ describe('MediaServerController', () => {
         'lib1',
         { offset: 0, limit: 50, type: 'movie' },
       );
+    });
+  });
+
+  describe('getOverviewBootstrap', () => {
+    it('should return libraries with the first library content in one response', async () => {
+      const library = {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      };
+      const item = {
+        id: 'show-1',
+        title: 'Show 1',
+        guid: 'guid-show-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['1'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [item],
+        totalSize: 1,
+        offset: 0,
+        limit: 30,
+      });
+
+      const result = await controller.getOverviewBootstrap(30);
+
+      expect(mockMediaServerService.getLibraries).toHaveBeenCalledTimes(1);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
+        'shows-library',
+        {
+          offset: 0,
+          limit: 30,
+          type: 'show',
+          sort: undefined,
+          sortOrder: undefined,
+        },
+      );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        item,
+      ]);
+      expect(result).toEqual({
+        libraries: [library],
+        selectedLibraryId: 'shows-library',
+        content: {
+          items: [item],
+          totalSize: 1,
+          offset: 0,
+          limit: 30,
+        },
+      });
+    });
+
+    it('should return an empty bootstrap payload when there are no libraries', async () => {
+      mockMediaServerService.getLibraries.mockResolvedValue([]);
+
+      const result = await controller.getOverviewBootstrap(30);
+
+      expect(mockMediaServerService.getLibraryContents).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        libraries: [],
+        selectedLibraryId: undefined,
+        content: {
+          items: [],
+          totalSize: 0,
+          offset: 0,
+          limit: 30,
+        },
+      });
     });
   });
 
@@ -203,6 +288,9 @@ describe('MediaServerController', () => {
       const result = await controller.searchContent('test');
 
       expect(mockMediaServerService.searchContent).toHaveBeenCalledWith('test');
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        episode,
+      ]);
       expect(mockMediaServerService.getMetadata).toHaveBeenCalledWith('show-1');
       expect(result).toEqual([{ ...episode, parentItem: show }]);
     });

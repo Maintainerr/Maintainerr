@@ -1,7 +1,7 @@
 import { MediaServerType } from '@maintainerr/contracts'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiTiming'
+import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiBehavior'
 import SettingsWrapper from './index'
 
 const navigate = vi.fn()
