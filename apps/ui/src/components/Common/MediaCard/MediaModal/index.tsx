@@ -121,18 +121,18 @@ const emptyBackdropResult: BackdropResult = {
 
 const maintainerrStatusStyles = {
   excluded: {
-    cardClassName: 'border-2 border-amber-800/70 bg-zinc-900/70',
+    cardClassName: 'bg-zinc-900/70',
     titleClassName: 'text-white',
     contentClassName: 'text-zinc-100',
     emptyClassName: 'text-zinc-100/80',
-    linkClassName: 'text-white hover:text-zinc-100',
+    linkClassName: 'text-amber-300 hover:text-amber-200',
   },
   manual: {
-    cardClassName: 'border-2 border-amber-500/80 bg-zinc-900/70',
+    cardClassName: 'bg-zinc-900/70',
     titleClassName: 'text-white',
     contentClassName: 'text-zinc-100',
     emptyClassName: 'text-zinc-100/80',
-    linkClassName: 'text-white hover:text-zinc-100',
+    linkClassName: 'text-amber-400 hover:text-amber-300',
   },
 } as const
 
@@ -573,7 +573,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             {showMaintainerrDetails ? (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div
-                  className={`min-h-[5.75rem] rounded-xl border p-3 ${maintainerrStatusStyles.excluded.cardClassName}`}
+                  className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusStyles.excluded.cardClassName}`}
                 >
                   <p
                     className={`text-sm font-semibold ${maintainerrStatusStyles.excluded.titleClassName}`}
@@ -600,7 +600,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   </div>
                 </div>
                 <div
-                  className={`min-h-[5.75rem] rounded-xl border p-3 ${maintainerrStatusStyles.manual.cardClassName}`}
+                  className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusStyles.manual.cardClassName}`}
                 >
                   <p
                     className={`text-sm font-semibold ${maintainerrStatusStyles.manual.titleClassName}`}
