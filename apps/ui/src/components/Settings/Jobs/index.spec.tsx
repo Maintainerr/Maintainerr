@@ -37,15 +37,11 @@ describe('JobSettings', () => {
     cleanup()
   })
 
-  it('enables Save Changes only while cron settings are dirty and valid', () => {
+  it('keeps Save Changes enabled when cron settings are valid and disables it on invalid input', () => {
     render(<JobSettings />)
 
     const saveButton = screen.getByRole('button', { name: 'Save Changes' })
     const ruleHandlerInput = screen.getByLabelText(/Rule Handler/i)
-
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.change(ruleHandlerInput, { target: { value: '0 2 * * *' } })
 
     expect((saveButton as HTMLButtonElement).disabled).toBe(false)
 
@@ -55,6 +51,6 @@ describe('JobSettings', () => {
 
     fireEvent.change(ruleHandlerInput, { target: { value: '0 0 * * *' } })
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
   })
 })

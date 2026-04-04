@@ -6,6 +6,7 @@ import LazyBoundary from '../../../Common/LazyBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 
+
 // Dynamic import for markdown
 const ReactMarkdown = lazy(() => import('react-markdown'))
 
@@ -70,10 +71,15 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
             onCancel={() => setModalOpen(false)}
             title={messages.versionChangelog.replace('{version}', release.name)}
             cancelText={messages.close}
-            okText={messages.viewongithub}
-            onOk={() => {
-              window.open(release.html_url, '_blank')
-            }}
+            footerActions={
+              <Button
+                buttonType="primary"
+                className="ml-3"
+                onClick={() => window.open(release.html_url, '_blank')}
+              >
+                {messages.viewongithub}
+              </Button>
+            }
           >
             <div className="prose:sm prose">
               <LazyBoundary>

@@ -13,7 +13,7 @@ import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
-import RadarrSettingsModal from './SettingsModal'
+import ServarrSettingsModal from '../Servarr/ServarrSettingsModal'
 
 type DeleteRadarrSettingResponseDto =
   | {
@@ -172,7 +172,12 @@ const RadarrSettings = () => {
         </ul>
       </div>
       {settingsModalActive && (
-        <RadarrSettingsModal
+        <ServarrSettingsModal
+          title="Radarr Settings"
+          docsPage="Configuration/#radarr"
+          settingsPath="/settings/radarr"
+          testPath="/settings/test/radarr"
+          serviceName="Radarr"
           settings={
             typeof settingsModalActive === 'boolean'
               ? undefined
@@ -189,7 +194,15 @@ const RadarrSettings = () => {
         <Modal
           title="Server in-use"
           size="sm"
-          onOk={() => setCollectionsInUseWarning(undefined)}
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => setCollectionsInUseWarning(undefined)}
+            >
+              Ok
+            </Button>
+          }
         >
           <p className="mb-4">
             This server is currently being used by the following rules:

@@ -3,6 +3,7 @@ import { IRule } from '..'
 import { PostApiHandler } from '../../../../../utils/ApiHandler'
 import { detectRequiredServices } from '../../../../../utils/CommunityRuleMaps'
 import Alert from '../../../../Common/Alert'
+import Button from '../../../../Common/Button'
 import Modal from '../../../../Common/Modal'
 interface ICommunityRuleUpload {
   rules: IRule[]
@@ -55,12 +56,17 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
         backgroundClickable={false}
         onCancel={props.onCancel}
         cancelText={'Cancel'}
-        okDisabled={false}
-        onOk={handleUpload}
-        okText={'Upload'}
-        okButtonType={'primary'}
         title={'Upload Community Rule'}
         iconSvg={''}
+        footerActions={
+          <Button
+            buttonType="primary"
+            className="ml-3"
+            onClick={() => void handleUpload()}
+          >
+            Upload
+          </Button>
+        }
       >
         <div className="mt-6">
           <Alert

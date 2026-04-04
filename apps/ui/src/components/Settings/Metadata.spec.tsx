@@ -277,10 +277,10 @@ describe('MetadataSettings', () => {
     ).toBeTruthy()
   })
 
-  it('enables Save Changes as soon as the API key changes without requiring a prior test', async () => {
+  it('keeps Save Changes enabled regardless of whether the API key has changed', async () => {
     render(<MetadataSettings />)
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+    await screen.findAllByLabelText('API Key')
 
     expect(
       (
@@ -288,19 +288,7 @@ describe('MetadataSettings', () => {
           name: 'Save Changes',
         })[0] as HTMLButtonElement
       ).disabled,
-    ).toBe(true)
-
-    fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
-
-    await waitFor(() => {
-      expect(
-        (
-          screen.getAllByRole('button', {
-            name: 'Save Changes',
-          })[0] as HTMLButtonElement
-        ).disabled,
-      ).toBe(false)
-    })
+    ).toBe(false)
   })
 
   it('allows clearing a saved API key and saving the empty value', async () => {

@@ -36,12 +36,6 @@ const JobSettingsForm = ({
   const [collectionHandlerCron, setCollectionHandlerCron] = useState(
     initialCollectionHandlerCron,
   )
-  const [savedRuleHandlerCron, setSavedRuleHandlerCron] = useState(
-    initialRuleHandlerCron,
-  )
-  const [savedCollectionHandlerCron, setSavedCollectionHandlerCron] = useState(
-    initialCollectionHandlerCron,
-  )
   const [secondCronValid, setSecondCronValid] = useState(
     initialCollectionHandlerCron === '' ||
       isValidCron(initialCollectionHandlerCron),
@@ -54,11 +48,7 @@ const JobSettingsForm = ({
   const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
     usePatchSettings()
 
-  const hasChanges =
-    ruleHandlerCron !== savedRuleHandlerCron ||
-    collectionHandlerCron !== savedCollectionHandlerCron
   const canSave =
-    hasChanges &&
     ruleHandlerCron !== '' &&
     collectionHandlerCron !== '' &&
     firstCronValid &&
@@ -82,8 +72,6 @@ const JobSettingsForm = ({
 
       try {
         await updateSettings(payload)
-        setSavedRuleHandlerCron(ruleHandlerCron)
-        setSavedCollectionHandlerCron(collectionHandlerCron)
         showUpdated()
       } catch {
         showUpdateError()

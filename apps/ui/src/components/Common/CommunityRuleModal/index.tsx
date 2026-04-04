@@ -7,6 +7,7 @@ import { IRule } from '../../Rules/Rule/RuleCreator'
 import CommunityRuleUpload from '../../Rules/Rule/RuleCreator/CommunityRuleUpload'
 import Alert from '../Alert'
 import CommunityRuleTableRow from '../CommunityRowTableRow'
+import Button from '../Button'
 import InfoButton from '../InfoButton'
 import LoadingSpinner from '../LoadingSpinner'
 import Modal from '../Modal'
@@ -225,12 +226,18 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
         backgroundClickable={false}
         onCancel={props.onCancel}
         size="5xl"
-        okDisabled={selectedRule == null}
-        onOk={handleSubmit}
-        okText="Import"
-        okButtonType="primary"
         title="Community Rules"
         iconSvg=""
+        footerActions={
+          <Button
+            buttonType="primary"
+            className="ml-3"
+            disabled={selectedRule == null}
+            onClick={handleSubmit}
+          >
+            Import
+          </Button>
+        }
       >
         <div>
           <Alert type="info">

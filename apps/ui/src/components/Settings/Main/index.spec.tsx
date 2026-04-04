@@ -66,25 +66,12 @@ describe('MainSettings', () => {
     cleanup()
   })
 
-  it('enables Save Changes only while general settings are dirty', () => {
+  it('keeps Save Changes enabled regardless of whether general settings have changed', () => {
     render(<MainSettings />)
 
     const saveButton = screen.getByRole('button', { name: 'Save Changes' })
-    const hostnameInput = screen.getByLabelText('Hostname')
-
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.change(hostnameInput, {
-      target: { value: 'http://maintainerr.internal' },
-    })
 
     expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-
-    fireEvent.change(hostnameInput, {
-      target: { value: 'http://maintainerr.local' },
-    })
-
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('keeps Save Changes enabled when clearing saved fields so the user can reset them', () => {

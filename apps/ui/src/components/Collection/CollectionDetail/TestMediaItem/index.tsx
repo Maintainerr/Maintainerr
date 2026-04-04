@@ -5,6 +5,7 @@ import YAML from 'yaml'
 import { useRuleGroupForCollection } from '../../../../api/rules'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
+import Button from '../../../Common/Button'
 import FormItem from '../../../Common/FormItem'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import Modal from '../../../Common/Modal'
@@ -196,12 +197,18 @@ const TestMediaItem = (props: ITestMediaItem) => {
         backgroundClickable={false}
         onCancel={props.onCancel}
         cancelText="Close"
-        okDisabled={!testable}
-        onOk={onSubmit}
-        okText={'Test'}
-        okButtonType={'primary'}
         title={'Test Media'}
         iconSvg={''}
+        footerActions={
+          <Button
+            buttonType="primary"
+            className="ml-3"
+            disabled={!testable}
+            onClick={() => void onSubmit()}
+          >
+            Test
+          </Button>
+        }
       >
         <div className="h-[80vh] overflow-hidden">
           <div className="mt-1">

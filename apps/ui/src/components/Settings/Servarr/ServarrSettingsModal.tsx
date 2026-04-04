@@ -14,11 +14,9 @@ import {
 import Alert from '../../Common/Alert'
 import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
-import { SaveButtonContent } from '../../Common/SaveButton'
-import {
-  getTestingButtonType,
-  TestingButtonContent,
-} from '../../Common/TestingButton'
+import SaveButton from '../../Common/SaveButton'
+import TestingButton from '../../Common/TestingButton'
+import { getTestingButtonType } from '../../Common/TestingButton'
 import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface ServarrSettingShape {
@@ -105,32 +103,6 @@ const buildInitialState = <TSetting extends ServarrSettingShape>(
   apiKey: settings?.apiKey ?? '',
 })
 
-const areMatchingStates = (
-  left: ServarrFormState,
-  right?: ServarrFormState,
-) => {
-  if (!right) {
-    return false
-  }
-
-  return (
-    left.serverName === right.serverName &&
-    left.hostname === right.hostname &&
-    left.port === right.port &&
-    left.baseUrl === right.baseUrl &&
-    left.apiKey === right.apiKey
-  )
-}
-
-const toConnectionState = (
-  state: ServarrFormState,
-): ServarrConnectionState => ({
-  hostname: state.hostname,
-  port: state.port,
-  baseUrl: state.baseUrl,
-  apiKey: state.apiKey,
-})
-
 const areMatchingConnectionStates = (
   left: ServarrConnectionState,
   right?: ServarrConnectionState,
@@ -146,6 +118,15 @@ const areMatchingConnectionStates = (
     left.apiKey === right.apiKey
   )
 }
+
+const toConnectionState = (
+  state: ServarrFormState,
+): ServarrConnectionState => ({
+  hostname: state.hostname,
+  port: state.port,
+  baseUrl: state.baseUrl,
+  apiKey: state.apiKey,
+})
 
 const buildServarrPayload = <TSetting extends ServarrSettingShape>(
   state: ServarrFormState,
@@ -219,11 +200,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     () => toConnectionState(currentState),
     [currentState],
   )
-  const initialConnectionState = useMemo(
-    () => toConnectionState(initialState),
-    [initialState],
-  )
-
   useEffect(() => {
     reset(initialState)
     setTestedConnectionState(
@@ -231,28 +207,14 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     )
   }, [initialState, reset, settings])
 
-  const hasChanges = !areMatchingStates(currentState, initialState)
-  const hasConnectionChanges = !areMatchingConnectionStates(
-    currentConnectionState,
-    initialConnectionState,
-  )
   const isClearingExistingSetting =
     settings?.id != null && isEmptyServarrState(currentState)
   const hasCompleteRequiredFields =
     currentState.hostname !== '' &&
     currentState.apiKey !== '' &&
     currentState.serverName !== ''
-  const requiresRetest = hasConnectionChanges && !isClearingExistingSetting
-  const isConnectionTested =
-    areMatchingConnectionStates(
-      currentConnectionState,
-      testedConnectionState,
-    ) && testResult?.status === true
   const canSave =
-    hasChanges &&
-    !saving &&
-    (isClearingExistingSetting ||
-      (hasCompleteRequiredFields && (!requiresRetest || isConnectionTested)))
+    !saving && (isClearingExistingSetting || hasCompleteRequiredFields)
   const testFeedbackStatus = areMatchingConnectionStates(
     currentConnectionState,
     testedConnectionState,
@@ -369,32 +331,33 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       loading={false}
       backgroundClickable={false}
       onCancel={onCancel}
-      onOk={() => {
-        void handleSubmit(saveSettings)()
-      }}
-      okContent={<SaveButtonContent isPending={saving} />}
-      okButtonType="primary"
-      okDisabled={!canSave}
-      okTitle={
-        requiresRetest && !isConnectionTested
-          ? `Test the ${serviceName} connection before saving changes.`
-          : undefined
-      }
-      secondaryButtonType={getTestingButtonType(
-        'success',
-        testFeedbackStatus,
-        testing,
-      )}
-      secondaryDisabled={testing || isClearingExistingSetting}
-      secondaryContent={
-        <TestingButtonContent
-          isPending={testing}
-          feedbackStatus={testFeedbackStatus}
-        />
-      }
-      onSecondary={performTest}
       title={title}
       iconSvg=""
+      footerActions={
+        <>
+          <SaveButton
+            className="ml-3"
+            type="button"
+            disabled={!canSave}
+            isPending={saving}
+            onClick={() => void handleSubmit(saveSettings)()}
+          />
+          <TestingButton
+            buttonType={getTestingButtonType(
+              'success',
+              testFeedbackStatus,
+              testing,
+            )}
+            className="ml-3"
+            type="button"
+            onClick={() => void performTest()}
+            disabled={testing || isClearingExistingSetting}
+            label="Test Connection"
+            isPending={testing}
+            feedbackStatus={testFeedbackStatus}
+          />
+        </>
+      }
     >
       <SettingsAlertSlot>
         {errorMessage || testResult ? (
