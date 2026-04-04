@@ -148,4 +148,108 @@ describe('ServarrSettingsModal', () => {
     expect(postApiHandler).not.toHaveBeenCalled()
     expect(putApiHandler).not.toHaveBeenCalled()
   })
+
+  it('requires a successful connection test before saving changed server details', async () => {
+    const onDelete = vi.fn().mockResolvedValue(true)
+    const onUpdate = vi.fn()
+
+    postApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/test/radarr') {
+        return Promise.resolve({
+          status: 'OK',
+          code: 1,
+          message: '5.0.0',
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${url}`))
+    })
+
+    render(
+      <ServarrSettingsModal
+        title="Radarr Settings"
+        docsPage="Configuration/#radarr"
+        settingsPath="/settings/radarr"
+        testPath="/settings/test/radarr"
+        serviceName="Radarr"
+        settings={{
+          id: 42,
+          serverName: 'Radarr',
+          url: 'http://radarr.local:7878/api',
+          apiKey: 'secret',
+        }}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onCancel={() => undefined}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
+      target: { value: 'radarr.internal' },
+    })
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: /Save Changes/i,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /Test Connection/i }))
+
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledWith('/settings/test/radarr', {
+        apiKey: 'secret',
+        serverName: 'Radarr',
+        url: 'http://radarr.internal:7878/api',
+      })
+    })
+
+    await waitFor(() => {
+      expect(
+        (
+          screen.getByRole('button', {
+            name: /Save Changes/i,
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
+    })
+  })
+
+  it('does not require a connection retest when only the server name changes', () => {
+    const onDelete = vi.fn().mockResolvedValue(true)
+    const onUpdate = vi.fn()
+
+    render(
+      <ServarrSettingsModal
+        title="Radarr Settings"
+        docsPage="Configuration/#radarr"
+        settingsPath="/settings/radarr"
+        testPath="/settings/test/radarr"
+        serviceName="Radarr"
+        settings={{
+          id: 42,
+          serverName: 'Radarr',
+          url: 'http://radarr.local:7878/api',
+          apiKey: 'secret',
+        }}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onCancel={() => undefined}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Server Name'), {
+      target: { value: 'Radarr Backup' },
+    })
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: /Save Changes/i,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false)
+  })
 })

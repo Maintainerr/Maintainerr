@@ -418,6 +418,8 @@ const Overview = () => {
   }, [totalSize])
 
   const hasData = data.length > 0
+  const resolvedLibraryId = selectedLibrary ?? defaultLibraryId
+  const canRequestLibraryContent = Boolean(resolvedLibraryId)
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
   const showBootstrapLoading =
@@ -425,7 +427,9 @@ const Overview = () => {
     !hasData &&
     (librariesLoading ||
       isLoading ||
-      (!selectedLibrary && (!librariesError || Boolean(defaultLibraryId))))
+      (!selectedLibrary &&
+        libraries === undefined &&
+        (!librariesError || Boolean(defaultLibraryId))))
 
   return (
     <>
@@ -461,12 +465,21 @@ const Overview = () => {
           </div>
         ) : selectedLibrary ? (
           <OverviewContent
-            dataFinished={!hasMoreData}
+            dataFinished={!canRequestLibraryContent || !hasMoreData}
             fetchData={fetchData}
             loading={isLoading}
             extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
             data={data}
-            libraryId={selectedLibrary!}
+            libraryId={resolvedLibraryId ?? ''}
+          />
+        ) : !searchUsed ? (
+          <OverviewContent
+            dataFinished={true}
+            fetchData={fetchData}
+            loading={false}
+            extrasLoading={false}
+            data={data}
+            libraryId=""
           />
         ) : undefined}
       </div>

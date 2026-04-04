@@ -131,6 +131,22 @@ describe('Overview', () => {
     )
   })
 
+  it('exits the bootstrap spinner when no overview libraries are available', async () => {
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('overview-bootstrap-spinner')).toBeNull()
+    })
+  })
+
   it('only exposes the reachable delete soonest collection sort option', () => {
     const sortConfig = getCollectionMediaSortConfig('show', true)
     const deleteSoonestOptions = sortConfig.options.filter(

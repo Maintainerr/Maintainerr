@@ -36,6 +36,13 @@ interface ServarrFormState {
   apiKey: string
 }
 
+interface ServarrConnectionState {
+  hostname: string
+  port: string
+  baseUrl: string
+  apiKey: string
+}
+
 interface TestStatus {
   status: boolean
   version: string
@@ -115,6 +122,31 @@ const areMatchingStates = (
   )
 }
 
+const toConnectionState = (
+  state: ServarrFormState,
+): ServarrConnectionState => ({
+  hostname: state.hostname,
+  port: state.port,
+  baseUrl: state.baseUrl,
+  apiKey: state.apiKey,
+})
+
+const areMatchingConnectionStates = (
+  left: ServarrConnectionState,
+  right?: ServarrConnectionState,
+) => {
+  if (!right) {
+    return false
+  }
+
+  return (
+    left.hostname === right.hostname &&
+    left.port === right.port &&
+    left.baseUrl === right.baseUrl &&
+    left.apiKey === right.apiKey
+  )
+}
+
 const buildServarrPayload = <TSetting extends ServarrSettingShape>(
   state: ServarrFormState,
   settings?: TSetting,
@@ -155,9 +187,9 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 }: ServarrSettingsModalProps<TSetting>) => {
   const initialState = useMemo(() => buildInitialState(settings), [settings])
   const [errorMessage, setErrorMessage] = useState<string>()
-  const [testedState, setTestedState] = useState<ServarrFormState | undefined>(
-    settings ? initialState : undefined,
-  )
+  const [testedConnectionState, setTestedConnectionState] = useState<
+    ServarrConnectionState | undefined
+  >(settings ? toConnectionState(initialState) : undefined)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
@@ -183,23 +215,48 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     }),
     [apiKey, baseUrl, hostname, port, serverName],
   )
+  const currentConnectionState = useMemo(
+    () => toConnectionState(currentState),
+    [currentState],
+  )
+  const initialConnectionState = useMemo(
+    () => toConnectionState(initialState),
+    [initialState],
+  )
 
   useEffect(() => {
     reset(initialState)
-    setTestedState(settings ? initialState : undefined)
+    setTestedConnectionState(
+      settings ? toConnectionState(initialState) : undefined,
+    )
   }, [initialState, reset, settings])
 
   const hasChanges = !areMatchingStates(currentState, initialState)
+  const hasConnectionChanges = !areMatchingConnectionStates(
+    currentConnectionState,
+    initialConnectionState,
+  )
   const isClearingExistingSetting =
     settings?.id != null && isEmptyServarrState(currentState)
+  const hasCompleteRequiredFields =
+    currentState.hostname !== '' &&
+    currentState.apiKey !== '' &&
+    currentState.serverName !== ''
+  const requiresRetest = hasConnectionChanges && !isClearingExistingSetting
+  const isConnectionTested =
+    areMatchingConnectionStates(
+      currentConnectionState,
+      testedConnectionState,
+    ) && testResult?.status === true
   const canSave =
     hasChanges &&
     !saving &&
     (isClearingExistingSetting ||
-      (currentState.hostname !== '' &&
-        currentState.apiKey !== '' &&
-        currentState.serverName !== ''))
-  const testFeedbackStatus = areMatchingStates(currentState, testedState)
+      (hasCompleteRequiredFields && (!requiresRetest || isConnectionTested)))
+  const testFeedbackStatus = areMatchingConnectionStates(
+    currentConnectionState,
+    testedConnectionState,
+  )
     ? testResult?.status
     : undefined
 
@@ -275,10 +332,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
     const values = getValues()
     const { payload, port } = buildServarrPayload(values, settings)
+    const { id: _ignoredId, ...testPayload } = payload
 
     setTesting(true)
 
-    await PostApiHandler<ServarrTestResponse>(testPath, payload)
+    await PostApiHandler<ServarrTestResponse>(testPath, testPayload)
       .then((response: ServarrTestResponse) => {
         setTestResult({
           status: response.code === 1,
@@ -289,7 +347,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         })
 
         if (response.code === 1) {
-          setTestedState({ ...values, port })
+          setTestedConnectionState(toConnectionState({ ...values, port }))
         }
       })
       .catch((error: unknown) => {
@@ -317,6 +375,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       okContent={<SaveButtonContent isPending={saving} />}
       okButtonType="primary"
       okDisabled={!canSave}
+      okTitle={
+        requiresRetest && !isConnectionTested
+          ? `Test the ${serviceName} connection before saving changes.`
+          : undefined
+      }
       secondaryButtonType={getTestingButtonType(
         'success',
         testFeedbackStatus,

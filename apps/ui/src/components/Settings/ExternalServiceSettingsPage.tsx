@@ -100,11 +100,16 @@ const ExternalServiceSettingsPage = ({
   const isGoingToRemove = url === '' && apiKey === ''
   const hasChanges =
     url !== defaultValues?.url || apiKey !== defaultValues?.api_key
+  const requiresRetest = hasChanges && !isGoingToRemove
   const testFeedbackStatus =
     url === testedSettings?.url && apiKey === testedSettings?.api_key
       ? testResult?.status
       : undefined
-  const canSave = hasChanges && !isSubmitting && !isLoading
+  const canSave =
+    hasChanges &&
+    !isSubmitting &&
+    !isLoading &&
+    (isGoingToRemove || testFeedbackStatus === true)
 
   const clearTransientState = () => {
     clearError()
@@ -300,6 +305,11 @@ const ExternalServiceSettingsPage = ({
                       type="submit"
                       disabled={!canSave}
                       isPending={isSubmitting}
+                      title={
+                        requiresRetest && testFeedbackStatus !== true
+                          ? 'Test the connection before saving changes.'
+                          : undefined
+                      }
                     />
                   </span>
                 </div>

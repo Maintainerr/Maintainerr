@@ -1,5 +1,12 @@
 import { MaintainerrEvent } from '@maintainerr/contracts'
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import { API_BASE_PATH } from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
@@ -9,9 +16,7 @@ const EventsContext = createContext<EventSource | undefined>(undefined)
 export const EventsProvider = (props: any) => {
   const hasWarnedStreamError = useRef(false)
   const hasConnectedOnce = useRef(false)
-  const [eventSource, setEventSource] = useState<EventSource | null>(null)
-
-  useEffect(() => {
+  const eventSource = useMemo(() => {
     const source = new ReconnectingEventSource(
       `${API_BASE_PATH}/api/events/stream`,
     )
@@ -33,14 +38,16 @@ export const EventsProvider = (props: any) => {
       )
     }
 
-    setEventSource(source)
-
-    return () => {
-      source.close()
-    }
+    return source
   }, [])
 
-  return <EventsContext.Provider value={eventSource ?? undefined} {...props} />
+  useEffect(() => {
+    return () => {
+      eventSource.close()
+    }
+  }, [eventSource])
+
+  return <EventsContext.Provider value={eventSource} {...props} />
 }
 
 export const useEvent = <T,>(

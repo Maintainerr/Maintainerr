@@ -465,7 +465,7 @@ export class NotificationService {
   // Helper function to convert enum keys to human-readable titles
   private humanizeTitle(key: string): string {
     return key
-      .replace(/_/g, ' ')
+      .split('_').join(' ')
       .toLowerCase()
       .replace(/\b\w/g, (char) => char.toUpperCase());
   }
