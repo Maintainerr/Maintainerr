@@ -131,4 +131,43 @@ describe('maintainerrStatus', () => {
 
     expect(getApiHandler).toHaveBeenCalledTimes(1)
   })
+
+  it('expires cached details after the ttl elapses', async () => {
+    clearMaintainerrStatusDetailsCache()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-04T00:00:00.000Z'))
+
+    const response: MaintainerrMediaStatusDetails = {
+      excludedFrom: [{ label: 'Global' }],
+      manuallyAddedTo: [],
+    }
+
+    const getApiHandler = asApiHandler(
+      vi.fn(async (path: string) => {
+        if (path === '/media-server/meta/1/maintainerr-status') {
+          return response
+        }
+
+        throw new Error(`Unexpected request: ${path}`)
+      }),
+    )
+
+    await loadMaintainerrStatusDetails({
+      cacheKey: '1',
+      id: 1,
+      getApiHandler,
+    })
+
+    vi.setSystemTime(new Date('2026-04-04T00:05:01.000Z'))
+
+    await loadMaintainerrStatusDetails({
+      cacheKey: '1',
+      id: 1,
+      getApiHandler,
+    })
+
+    expect(getApiHandler).toHaveBeenCalledTimes(2)
+
+    vi.useRealTimers()
+  })
 })

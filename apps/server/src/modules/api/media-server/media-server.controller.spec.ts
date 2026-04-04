@@ -210,6 +210,48 @@ describe('MediaServerController', () => {
         limit: 2,
       });
     });
+
+    it('should warn when status sorting requires a large pre-pagination fetch', async () => {
+      const alpha = {
+        id: '1',
+        title: 'Alpha',
+        guid: 'guid-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [alpha],
+          totalSize: 5001,
+          offset: 0,
+          limit: 250,
+        })
+        .mockResolvedValueOnce({
+          items: [],
+          totalSize: 5001,
+          offset: 1,
+          limit: 250,
+        });
+
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([alpha]);
+
+      await controller.getLibraryContent(
+        'lib1',
+        1,
+        1,
+        'show',
+        'manual',
+        'desc',
+      );
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Status-sorted library request for lib1 (manual.desc) requires fetching 5001 items before paging.',
+      );
+    });
   });
 
   describe('getOverviewBootstrap', () => {

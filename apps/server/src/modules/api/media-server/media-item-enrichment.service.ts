@@ -7,8 +7,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
-import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
+import { RuleGroup } from '../../rules/entities/rule-group.entities';
 
 interface ExclusionState {
   id: number;
@@ -184,6 +184,7 @@ export class MediaItemEnrichmentService {
 
     const ruleGroups = await this.ruleGroupRepo.find({
       where: { id: In(ruleGroupIds) },
+      relations: { collection: true },
     });
     const ruleGroupMap = new Map(
       ruleGroups.map((ruleGroup) => [ruleGroup.id, ruleGroup]),

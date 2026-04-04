@@ -236,6 +236,59 @@ describe('MediaModal', () => {
     expect(manualCollectionEntry.className).toContain('hover:text-amber-400')
   })
 
+  it('shows only the relevant status card while manual details are loading', async () => {
+    const maintainerrStatus = createDeferred<{
+      excludedFrom: Array<{ label: string; targetPath?: string }>
+      manuallyAddedTo: Array<{ label: string; targetPath?: string }>
+    }>()
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/9') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/9/maintainerr-status') {
+        return maintainerrStatus.promise
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={9}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        isManual={true}
+      />,
+    )
+
+    expect(await screen.findByText('Manually Added To')).toBeTruthy()
+    expect(screen.queryByText('Excluded From')).toBeNull()
+
+    maintainerrStatus.resolve({
+      excludedFrom: [],
+      manuallyAddedTo: [
+        {
+          label: 'Testing (5d left)',
+          targetPath: '/collections/7',
+        },
+      ],
+    })
+
+    await screen.findByRole('link', { name: 'Testing (5d left)' })
+  })
+
   it('renders exclusion list entries and follows status links', async () => {
     const onStatusLink = vi.fn()
 

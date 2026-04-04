@@ -6,9 +6,14 @@ export const emptyMaintainerrMediaStatusDetails: MaintainerrMediaStatusDetails =
     manuallyAddedTo: [],
   }
 
+const maintainerrStatusDetailsTtlMs = 5 * 60 * 1000
+
 const maintainerrStatusDetailsCache = new Map<
   string,
-  MaintainerrMediaStatusDetails
+  {
+    details: MaintainerrMediaStatusDetails
+    cachedAt: number
+  }
 >()
 
 const normalizeMaintainerrStatusDetails = (
@@ -38,15 +43,30 @@ export const clearMaintainerrStatusDetailsCache = () => {
   maintainerrStatusDetailsCache.clear()
 }
 
-export const getCachedMaintainerrStatusDetails = (cacheKey: string) =>
-  maintainerrStatusDetailsCache.get(cacheKey)
+export const getCachedMaintainerrStatusDetails = (cacheKey: string) => {
+  const cachedEntry = maintainerrStatusDetailsCache.get(cacheKey)
+
+  if (!cachedEntry) {
+    return undefined
+  }
+
+  if (cachedEntry.cachedAt + maintainerrStatusDetailsTtlMs <= Date.now()) {
+    maintainerrStatusDetailsCache.delete(cacheKey)
+    return undefined
+  }
+
+  return cachedEntry.details
+}
 
 export const rememberMaintainerrStatusDetails = (
   cacheKey: string,
   details?: MaintainerrMediaStatusDetails,
 ) => {
   const normalizedDetails = normalizeMaintainerrStatusDetails(details)
-  maintainerrStatusDetailsCache.set(cacheKey, normalizedDetails)
+  maintainerrStatusDetailsCache.set(cacheKey, {
+    details: normalizedDetails,
+    cachedAt: Date.now(),
+  })
   return normalizedDetails
 }
 

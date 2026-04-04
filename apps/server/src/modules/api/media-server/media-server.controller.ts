@@ -1,6 +1,6 @@
 import {
-  compareMediaItemsBySort,
   CollectionVisibilitySettings,
+  compareMediaItemsBySort,
   CreateCollectionParams,
   MaintainerrMediaStatusDetails,
   MediaCollection,
@@ -9,7 +9,6 @@ import {
   MediaItemWithParent,
   MediaLibrary,
   MediaLibrarySortField,
-  type MediaLibraryStatusSortField,
   mediaLibrarySortFields,
   mediaLibraryStatusSortFields,
   MediaServerStatus,
@@ -19,6 +18,7 @@ import {
   PagedResult,
   UpdateCollectionParams,
   WatchRecord,
+  type MediaLibraryStatusSortField,
 } from '@maintainerr/contracts';
 import {
   BadRequestException,
@@ -44,6 +44,7 @@ import { IMediaServerService } from './media-server.interface';
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 const maintainerrServerSortBatchSize = 250;
+const maintainerrServerSortWarnThreshold = 5000;
 
 interface OverviewBootstrapResult {
   libraries: MediaLibrary[];
@@ -160,6 +161,12 @@ export class MediaServerController {
       });
 
       totalSize = result.totalSize;
+
+      if (nextOffset === 0 && totalSize > maintainerrServerSortWarnThreshold) {
+        this.logger.warn(
+          `Status-sorted library request for ${libraryId} (${sort}.${sortOrder ?? 'asc'}) requires fetching ${totalSize} items before paging.`,
+        );
+      }
 
       if (!result.items.length) {
         break;

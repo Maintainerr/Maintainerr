@@ -1,8 +1,8 @@
 import { type MediaItem } from '@maintainerr/contracts';
 import { Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
-import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
+import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 
 describe('MediaItemEnrichmentService', () => {
@@ -226,6 +226,12 @@ describe('MediaItemEnrichmentService', () => {
         },
       ],
     });
+
+    expect(ruleGroupRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        relations: { collection: true },
+      }),
+    );
 
     jest.useRealTimers();
   });

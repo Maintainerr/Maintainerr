@@ -18,7 +18,6 @@ import LoadingSpinner from '../../LoadingSpinner'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
-  hasMaintainerrStatusDetails,
   loadMaintainerrStatusDetails,
   rememberMaintainerrStatusDetails,
 } from '../maintainerrStatus'
@@ -119,21 +118,12 @@ const emptyBackdropResult: BackdropResult = {
   providerId: null,
 }
 
-const maintainerrStatusStyles = {
-  excluded: {
-    cardClassName: 'bg-zinc-900/70',
-    titleClassName: 'text-white',
-    contentClassName: 'text-zinc-100',
-    emptyClassName: 'text-zinc-100/80',
-    linkClassName: 'text-amber-500 underline hover:text-amber-400',
-  },
-  manual: {
-    cardClassName: 'bg-zinc-900/70',
-    titleClassName: 'text-white',
-    contentClassName: 'text-zinc-100',
-    emptyClassName: 'text-zinc-100/80',
-    linkClassName: 'text-amber-500 underline hover:text-amber-400',
-  },
+const maintainerrStatusCardStyles = {
+  cardClassName: 'bg-zinc-900/70',
+  titleClassName: 'text-white',
+  contentClassName: 'text-zinc-100',
+  emptyClassName: 'text-zinc-100/80',
+  linkClassName: 'text-amber-500 underline hover:text-amber-400',
 } as const
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
@@ -188,9 +178,20 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
       return maintainerrDetailsState.details
     }, [maintainerrDetailsKey, maintainerrDetailsState])
+    const excludedFromEntries =
+      maintainerrDetails?.excludedFrom ??
+      emptyMaintainerrMediaStatusDetails.excludedFrom
+    const manuallyAddedToEntries =
+      maintainerrDetails?.manuallyAddedTo ??
+      emptyMaintainerrMediaStatusDetails.manuallyAddedTo
+    const shouldShowExcludedDetails = maintainerrDetailsLoading
+      ? exclusionType != null
+      : excludedFromEntries.length > 0
+    const shouldShowManualDetails = maintainerrDetailsLoading
+      ? isManual
+      : manuallyAddedToEntries.length > 0
     const showMaintainerrDetails =
-      maintainerrDetailsLoading ||
-      hasMaintainerrStatusDetails(maintainerrDetails)
+      shouldShowExcludedDetails || shouldShowManualDetails
     const providerIds = useMemo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
       [metadata?.providerIds, fallbackProviderIds],
@@ -333,14 +334,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
     }, [backdropRequestPath])
 
-    const handleStatusLink = (targetPath: string) => {
-      if (!onStatusLink) {
-        return
-      }
-
-      onStatusLink(targetPath)
-    }
-
     const renderMaintainerrStatusItems = (
       entries: ReadonlyArray<MaintainerrMediaStatusEntry>,
       emptyLabel: string,
@@ -367,7 +360,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   <button
                     type="button"
                     className={`text-left transition ${linkClassName}`}
-                    onClick={() => handleStatusLink(targetPath)}
+                    onClick={() => onStatusLink(targetPath)}
                   >
                     {entry.label}
                   </button>
@@ -571,61 +564,65 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
 
             {showMaintainerrDetails ? (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div
-                  className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusStyles.excluded.cardClassName}`}
-                >
-                  <p
-                    className={`text-sm font-semibold ${maintainerrStatusStyles.excluded.titleClassName}`}
+              <div
+                className={`mt-4 grid gap-4 ${shouldShowExcludedDetails && shouldShowManualDetails ? 'md:grid-cols-2' : ''}`}
+              >
+                {shouldShowExcludedDetails ? (
+                  <div
+                    className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
                   >
-                    Excluded From
-                  </p>
-                  <div className="mt-2">
-                    {maintainerrDetailsLoading
-                      ? renderMaintainerrStatusItems(
-                          [],
-                          'Loading exclusion details...',
-                          maintainerrStatusStyles.excluded.contentClassName,
-                          maintainerrStatusStyles.excluded.emptyClassName,
-                          maintainerrStatusStyles.excluded.linkClassName,
-                        )
-                      : renderMaintainerrStatusItems(
-                          maintainerrDetails?.excludedFrom ??
-                            emptyMaintainerrMediaStatusDetails.excludedFrom,
-                          'Not excluded from any collection.',
-                          maintainerrStatusStyles.excluded.contentClassName,
-                          maintainerrStatusStyles.excluded.emptyClassName,
-                          maintainerrStatusStyles.excluded.linkClassName,
-                        )}
+                    <p
+                      className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
+                    >
+                      Excluded From
+                    </p>
+                    <div className="mt-2">
+                      {maintainerrDetailsLoading
+                        ? renderMaintainerrStatusItems(
+                            [],
+                            'Loading exclusion details...',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )
+                        : renderMaintainerrStatusItems(
+                            excludedFromEntries,
+                            'Not excluded from any collection.',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )}
+                    </div>
                   </div>
-                </div>
-                <div
-                  className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusStyles.manual.cardClassName}`}
-                >
-                  <p
-                    className={`text-sm font-semibold ${maintainerrStatusStyles.manual.titleClassName}`}
+                ) : null}
+                {shouldShowManualDetails ? (
+                  <div
+                    className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
                   >
-                    Manually Added To
-                  </p>
-                  <div className="mt-2">
-                    {maintainerrDetailsLoading
-                      ? renderMaintainerrStatusItems(
-                          [],
-                          'Loading manual collection details...',
-                          maintainerrStatusStyles.manual.contentClassName,
-                          maintainerrStatusStyles.manual.emptyClassName,
-                          maintainerrStatusStyles.manual.linkClassName,
-                        )
-                      : renderMaintainerrStatusItems(
-                          maintainerrDetails?.manuallyAddedTo ??
-                            emptyMaintainerrMediaStatusDetails.manuallyAddedTo,
-                          'Not manually added to any collection.',
-                          maintainerrStatusStyles.manual.contentClassName,
-                          maintainerrStatusStyles.manual.emptyClassName,
-                          maintainerrStatusStyles.manual.linkClassName,
-                        )}
+                    <p
+                      className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
+                    >
+                      Manually Added To
+                    </p>
+                    <div className="mt-2">
+                      {maintainerrDetailsLoading
+                        ? renderMaintainerrStatusItems(
+                            [],
+                            'Loading manual collection details...',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )
+                        : renderMaintainerrStatusItems(
+                            manuallyAddedToEntries,
+                            'Not manually added to any collection.',
+                            maintainerrStatusCardStyles.contentClassName,
+                            maintainerrStatusCardStyles.emptyClassName,
+                            maintainerrStatusCardStyles.linkClassName,
+                          )}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             ) : undefined}
 
