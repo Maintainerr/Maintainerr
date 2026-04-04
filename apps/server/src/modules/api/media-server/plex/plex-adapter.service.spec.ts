@@ -336,20 +336,56 @@ describe('PlexAdapterService', () => {
       expect(plexApi.deleteCollection).toHaveBeenCalledWith('col123');
     });
 
-    it('should return failed ids from batch add', async () => {
-      plexApi.addChildToCollection.mockImplementation(
-        async (_collectionId, itemId) => {
-          if (itemId === 'bad') {
-            throw new Error('boom');
-          }
+    it('should treat NOK add responses as failures', async () => {
+      plexApi.addChildToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'boom',
+      } as any);
 
-          return { status: 'OK' } as any;
-        },
+      await expect(service.addToCollection('col123', 'bad')).rejects.toThrow(
+        'boom',
       );
+    });
+
+    it('should add a batch of items in a single Plex request when possible', async () => {
+      plexApi.addChildrenToCollection.mockResolvedValue({ status: 'OK' } as any);
+
+      await expect(
+        service.addBatchToCollection('col123', ['good', 'good-2']),
+      ).resolves.toEqual([]);
+
+      expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
+        'good',
+        'good-2',
+      ]);
+      expect(plexApi.addChildToCollection).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to per-item adds when a Plex batch add fails', async () => {
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'batch failed',
+      } as any);
+      plexApi.addChildToCollection.mockImplementation(async (_collectionId, itemId) => {
+        if (itemId === 'bad') {
+          throw new Error('boom');
+        }
+
+        return { status: 'OK' } as any;
+      });
 
       await expect(
         service.addBatchToCollection('col123', ['good', 'bad', 'good-2']),
       ).resolves.toEqual(['bad']);
+
+      expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
+        'good',
+        'bad',
+        'good-2',
+      ]);
+      expect(plexApi.addChildToCollection).toHaveBeenCalledTimes(3);
     });
 
     it('should treat 404 removes as successful in batch remove', async () => {
