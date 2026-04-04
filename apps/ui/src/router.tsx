@@ -61,7 +61,6 @@ const collectionInfoRoute = createLazyRoute(
 )
 const rulesListRoute = createLazyRoute(() => import('./pages/RulesListPage'))
 const ruleFormRoute = createLazyRoute(() => import('./pages/RuleFormPage'))
-const docsRoute = createLazyRoute(() => import('./pages/DocsPage'))
 const settingsMainRoute = createLazyRoute(
   () => import('./components/Settings/Main'),
 )
@@ -178,11 +177,6 @@ const appRoutes: AppRoute[] = [
             preload: ruleFormRoute.preload,
           },
         ],
-      },
-      {
-        path: 'docs',
-        lazy: docsRoute.lazy,
-        preload: docsRoute.preload,
       },
     ],
   },
