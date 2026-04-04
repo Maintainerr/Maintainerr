@@ -32,10 +32,8 @@ const compareMaintainerrState = (
   const rightValue = getValue(rightItem) ? 1 : 0
   const direction = sortOrder === 'desc' ? -1 : 1
 
-  return (
-    (leftValue - rightValue) * direction ||
-    leftItem.title.localeCompare(rightItem.title)
-  )
+  // Preserve the incoming order for ties so status sorts only partition items.
+  return (leftValue - rightValue) * direction
 }
 
 export const compareMediaItemsBySort = (

@@ -202,8 +202,8 @@ describe('MediaServerController', () => {
       ]);
       expect(result).toEqual({
         items: [
-          { ...bravo, maintainerrExclusionId: 84 },
           { ...zulu, maintainerrExclusionId: 42 },
+          { ...bravo, maintainerrExclusionId: 84 },
         ],
         totalSize: 3,
         offset: 0,
@@ -343,6 +343,54 @@ describe('MediaServerController', () => {
         { ...alpha, maintainerrIsManual: true },
         bravo,
       ]);
+    });
+
+    it('should preserve the existing order when manual sorting has no manual items', async () => {
+      const library = {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      };
+      const bravo = {
+        id: 'show-2',
+        title: 'Bravo',
+        guid: 'guid-show-2',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['2'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+      const alpha = {
+        id: 'show-1',
+        title: 'Alpha',
+        guid: 'guid-show-1',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: { tmdb: ['1'] },
+        mediaSources: [],
+        library: { id: 'shows-library', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [bravo, alpha],
+        totalSize: 2,
+        offset: 0,
+        limit: 250,
+      });
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
+        bravo,
+        alpha,
+      ]);
+
+      const result = await controller.getOverviewBootstrap(
+        30,
+        'manual',
+        'desc',
+      );
+
+      expect(result.content.items).toEqual([bravo, alpha]);
     });
   });
 
