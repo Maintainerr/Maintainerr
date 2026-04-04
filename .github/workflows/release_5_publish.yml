@@ -283,7 +283,7 @@ jobs:
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
 
-      - name: Mkdocs Deploy
+      - name: Docusaurus Deploy
         continue-on-error: true
         if: ${{ steps.package-version.outputs.current-version != '' }}
         uses: peter-evans/repository-dispatch@v4
