@@ -1,9 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
 import PlexSettings, { hasUnsavedPlexServerChanges } from './index'
@@ -212,6 +207,22 @@ describe('PlexSettings', () => {
     ).toBe(false)
   })
 
+  it('keeps Test Connection unavailable until a Plex server has been selected', () => {
+    currentSettings.plex_hostname = undefined
+    currentSettings.plex_port = undefined
+    currentSettings.plex_name = undefined
+
+    render(<PlexSettings />)
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Test Connection',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+  })
+
   it('keeps Test Connection unavailable while Plex authentication is still being persisted', () => {
     const authRequest = createDeferred<void>()
 
@@ -238,5 +249,4 @@ describe('PlexSettings', () => {
 
     authRequest.resolve()
   })
-
 })

@@ -146,6 +146,17 @@ const PlexSettings = () => {
   const hasStoredPlexCredentials =
     tokenValid || Boolean(settings?.plex_auth_token)
 
+  const savedServer: PlexServerFormState = {
+    hostname: normalizePlexHostname(settings?.plex_hostname),
+    port: settings?.plex_port != null ? String(settings.plex_port) : '',
+    name: settings?.plex_name ?? '',
+    ssl: Boolean(settings?.plex_ssl),
+  }
+  const testWouldTestWrongServer =
+    selectedServer != null &&
+    hasUnsavedPlexServerChanges(selectedServer, savedServer)
+  const hasSelectedServer = selectedServer != null
+
   useEffect(() => {
     if (
       settings?.plex_name &&
@@ -493,7 +504,8 @@ const PlexSettings = () => {
                         defaultValue=""
                         disabled={isRefreshingPresets}
                         onChange={(e) => {
-                          const preset = availablePresets[Number(e.target.value)]
+                          const preset =
+                            availablePresets[Number(e.target.value)]
                           if (preset) {
                             setSelectedServer({
                               name: preset.name,
@@ -520,8 +532,8 @@ const PlexSettings = () => {
                             value={index}
                             disabled={!server.status}
                           >
-                            {server.name} ({server.address}:{server.port}){' '}
-                            [{server.local ? 'local' : 'remote'}]
+                            {server.name} ({server.address}:{server.port}) [
+                            {server.local ? 'local' : 'remote'}]
                             {server.ssl ? ' [secure]' : ''}
                             {!server.status ? ' (unavailable)' : ''}
                           </option>
@@ -558,7 +570,9 @@ const PlexSettings = () => {
                     disabled={
                       testing ||
                       !hasStoredPlexCredentials ||
-                      updatePlexAuthPending
+                      !hasSelectedServer ||
+                      updatePlexAuthPending ||
+                      testWouldTestWrongServer
                     }
                     isPending={testing}
                     feedbackStatus={
@@ -569,7 +583,11 @@ const PlexSettings = () => {
                         ? 'Wait for Plex authentication to finish before testing.'
                         : !hasStoredPlexCredentials
                           ? 'Authenticate with Plex before testing the connection.'
-                          : undefined
+                          : !hasSelectedServer
+                            ? 'Select a Plex server before testing.'
+                            : testWouldTestWrongServer
+                              ? 'Save your server selection before testing.'
+                              : undefined
                     }
                   />
                   <span className="ml-3 inline-flex rounded-md shadow-sm">

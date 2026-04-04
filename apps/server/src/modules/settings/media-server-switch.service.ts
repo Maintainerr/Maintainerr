@@ -95,7 +95,11 @@ export class MediaServerSwitchService {
         radarrSettings: await this.settingsService.getRadarrSettingsCount(),
         sonarrSettings: await this.settingsService.getSonarrSettingsCount(),
         seerrSettings: this.settingsService.seerrConfigured(),
-        tautulliSettings: this.settingsService.tautulliConfigured(),
+        // Tautulli is Plex-specific and gets cleared when switching away from Plex
+        tautulliSettings:
+          currentServerType === MediaServerType.PLEX
+            ? false
+            : this.settingsService.tautulliConfigured(),
         notificationSettings: true,
       },
       ruleMigration: ruleMigrationPreview,
