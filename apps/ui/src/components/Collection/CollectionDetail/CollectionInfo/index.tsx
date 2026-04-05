@@ -26,6 +26,7 @@ import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../../Common/LoadingSpinner'
+import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
 import Table from '../../../Common/Table'
 
@@ -474,10 +475,12 @@ const LogMetaModal = (props: LogMetaModalProps) => {
       <Modal
         loading={false}
         backgroundClickable={false}
-        onOk={props.onClose}
-        okText={'Close'}
-        okButtonType={'primary'}
         title={'Metadata'}
+        footerActions={
+          <Button buttonType="primary" className="ml-3" onClick={props.onClose}>
+            Close
+          </Button>
+        }
       >
         <div className="h-[80vh] overflow-hidden">
           <div className="mt-1">

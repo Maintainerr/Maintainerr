@@ -583,7 +583,7 @@ const AddModal = (props: AddModal) => {
               as="a"
               target="_blank"
               rel="noopener noreferrer"
-              href="https://docs.maintainerr.info/latest/Rules"
+              href="https://docs.maintainerr.info/rules"
             >
               <QuestionMarkCircleIcon />
               <span>Help</span>

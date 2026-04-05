@@ -1,6 +1,8 @@
 import axios from 'axios'
 import Bowser from 'bowser'
 
+const PIN_POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes — matches Plex PIN expiry
+
 interface PlexHeaders extends Record<string, string> {
   Accept: string
   'X-Plex-Product': string
@@ -28,7 +30,13 @@ class PlexOAuth {
 
   private authToken?: string
 
-  public initializeHeaders(): void {
+  public initializeHeaders(clientIdentifier: string): void {
+    if (!clientIdentifier) {
+      throw new Error(
+        'Missing Plex client identifier. Refresh the page and try again.',
+      )
+    }
+
     if (!window) {
       throw new Error(
         'Window is not defined. Are you calling this in the browser?',
@@ -39,7 +47,7 @@ class PlexOAuth {
       Accept: 'application/json',
       'X-Plex-Product': 'Maintainerr',
       'X-Plex-Version': '2.0',
-      'X-Plex-Client-Identifier': '695b47f5-3c61-4cbd-8eb3-bcc3d6d06ac5',
+      'X-Plex-Client-Identifier': clientIdentifier,
       'X-Plex-Model': 'Plex OAuth',
       'X-Plex-Platform': browser.getOSName() ?? 'Unknown',
       'X-Plex-Platform-Version': browser.getOSVersion() ?? 'Unknown',
@@ -76,8 +84,8 @@ class PlexOAuth {
     return !!this.popup && !this.popup.closed
   }
 
-  public async login(): Promise<string> {
-    this.initializeHeaders()
+  public async login(clientIdentifier: string): Promise<string> {
+    this.initializeHeaders(clientIdentifier)
     await this.getPin()
 
     if (!this.plexHeaders || !this.pin) {
@@ -108,6 +116,8 @@ class PlexOAuth {
   }
 
   private async pinPoll(): Promise<string> {
+    const deadline = Date.now() + PIN_POLL_TIMEOUT_MS
+
     const executePoll = async (
       resolve: (authToken: string) => void,
       reject: (e: unknown) => void,
@@ -115,6 +125,12 @@ class PlexOAuth {
       try {
         if (!this.pin) {
           throw new Error('Unable to poll when pin is not initialized.')
+        }
+
+        if (Date.now() >= deadline) {
+          this.closePopup()
+          reject(new Error('Authentication timed out. Please try again.'))
+          return
         }
 
         const response = await axios.get(
@@ -126,7 +142,19 @@ class PlexOAuth {
           this.authToken = response.data.authToken as string
           this.closePopup()
           resolve(this.authToken)
-        } else if (!response.data?.authToken && !this.popup?.closed) {
+        } else if (response.data?.expiresAt) {
+          const expiresAt = new Date(response.data.expiresAt).getTime()
+          if (expiresAt <= Date.now()) {
+            this.closePopup()
+            reject(new Error('Authentication PIN expired. Please try again.'))
+            return
+          }
+          if (!this.popup?.closed) {
+            setTimeout(executePoll, 1000, resolve, reject)
+          } else {
+            reject(new Error('Popup closed without completing login'))
+          }
+        } else if (!this.popup?.closed) {
           setTimeout(executePoll, 1000, resolve, reject)
         } else {
           reject(new Error('Popup closed without completing login'))

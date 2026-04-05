@@ -1,4 +1,5 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts';
+import { createMediaItem } from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { IMetadataProvider } from './interfaces/metadata-provider.interface';
 import { MetadataService } from './metadata.service';
@@ -7,6 +8,9 @@ describe('MetadataService', () => {
   const createService = ({
     tmdbDetails,
     tvdbMovieId = 202,
+    mediaServer = {
+      getMetadata: jest.fn(),
+    },
   }: {
     tmdbDetails?: {
       externalIds?: {
@@ -15,6 +19,9 @@ describe('MetadataService', () => {
         tvdb?: number;
         type: 'movie' | 'tv';
       };
+    };
+    mediaServer?: {
+      getMetadata: jest.Mock;
     };
     tvdbMovieId?: number;
   }) => {
@@ -68,10 +75,13 @@ describe('MetadataService', () => {
       warn: jest.fn(),
       debug: jest.fn(),
     } as unknown as MaintainerrLogger;
+    const mediaServerFactory = {
+      getService: jest.fn().mockResolvedValue(mediaServer),
+    };
 
     const service = new MetadataService(
       [tmdbProvider, tvdbProvider],
-      {} as never,
+      mediaServerFactory as never,
       {
         metadata_provider_preference: MetadataProviderPreference.TVDB_PRIMARY,
       } as never,
@@ -79,7 +89,13 @@ describe('MetadataService', () => {
     );
     service.onApplicationBootstrap();
 
-    return { service, tmdbProvider, tvdbProvider };
+    return {
+      service,
+      tmdbProvider,
+      tvdbProvider,
+      mediaServer,
+      mediaServerFactory,
+    };
   };
 
   it('resolves a missing TVDB movie id from imdb before selecting the preferred poster provider', async () => {
@@ -119,5 +135,48 @@ describe('MetadataService', () => {
       'w500',
     );
     expect(tmdbProvider.getPosterUrl).not.toHaveBeenCalled();
+  });
+
+  it('resolves ids from hierarchy metadata when a child media item is provided', async () => {
+    const episodeItem = createMediaItem({
+      id: 'episode-1',
+      type: 'episode',
+      parentId: 'season-1',
+      grandparentId: 'show-1',
+      providerIds: {},
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      title: 'Home Alone',
+      providerIds: { tmdb: ['771'] },
+    });
+    const mediaServer = {
+      getMetadata: jest.fn().mockImplementation(async (id: string) => {
+        if (id === 'show-1') {
+          return showItem;
+        }
+
+        return undefined;
+      }),
+    };
+    const { service } = createService({
+      mediaServer,
+      tmdbDetails: {
+        externalIds: {
+          tmdb: 771,
+          imdb: 'tt0099785',
+          type: 'tv',
+        },
+      },
+    });
+
+    const result = await service.resolveIdsFromHierarchyMediaItem(episodeItem);
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toMatchObject({
+      tmdb: 771,
+      type: 'tv',
+    });
   });
 });

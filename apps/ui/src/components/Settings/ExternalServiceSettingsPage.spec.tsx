@@ -40,19 +40,7 @@ describe('ExternalServiceSettingsPage', () => {
     cleanup()
   })
 
-  it('requires a successful test before saving changed connection values', async () => {
-    postApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/test/seerr') {
-        return Promise.resolve({
-          status: 'OK',
-          code: 1,
-          message: 'Connected',
-        })
-      }
-
-      return Promise.reject(new Error(`Unexpected request: ${url}`))
-    })
-
+  it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {
     render(
       <ExternalServiceSettingsPage
         scope="Seerr settings"
@@ -76,24 +64,13 @@ describe('ExternalServiceSettingsPage', () => {
       name: 'Save Changes',
     })
 
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
+
     fireEvent.change(screen.getByLabelText(/URL/), {
       target: { value: 'http://seerr.internal' },
     })
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }))
-
-    await waitFor(() => {
-      expect(postApiHandler).toHaveBeenCalledWith('/settings/test/seerr', {
-        api_key: 'saved-key',
-        url: 'http://seerr.internal',
-      })
-    })
-
-    await waitFor(() => {
-      expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-    })
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('still allows clearing a saved integration without running a connection test', async () => {

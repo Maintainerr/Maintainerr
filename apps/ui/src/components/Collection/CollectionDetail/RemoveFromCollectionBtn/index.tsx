@@ -72,7 +72,15 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
       )}
 
       {popup ? (
-        <Modal title="Warning" onOk={handle} onCancel={handlePopup}>
+        <Modal
+          title="Warning"
+          onCancel={handlePopup}
+          footerActions={
+            <Button buttonType="primary" className="ml-3" onClick={handle}>
+              Ok
+            </Button>
+          }
+        >
           <p>
             This item is excluded <b>globally</b>. Removing this exclusion will
             apply the change to all collections

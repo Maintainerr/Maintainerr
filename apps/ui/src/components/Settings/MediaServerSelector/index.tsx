@@ -15,6 +15,7 @@ import {
   useSwitchMediaServer,
 } from '../../../api/settings'
 import { logClientError } from '../../../utils/ClientLogger'
+import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
 
 interface MediaServerSelectorProps {
@@ -244,18 +245,24 @@ const MediaServerSelector = ({
       {showConfirmModal && (
         <Modal
           onCancel={isSwitchComplete ? undefined : handleCancelSwitch}
-          onOk={isSwitchComplete ? handleFinish : handleConfirmSwitch}
-          okText={
-            isSwitchComplete
-              ? 'Done'
-              : isSwitchPending
-                ? 'Switching...'
-                : 'Switch'
-          }
-          okButtonType={isSwitchComplete ? 'primary' : 'danger'}
-          okDisabled={isSwitchPending && !isSwitchComplete}
           cancelText={isSwitchComplete ? undefined : 'Cancel'}
           loading={isSwitchPending}
+          footerActions={
+            <Button
+              buttonType={isSwitchComplete ? 'primary' : 'danger'}
+              className="ml-3"
+              onClick={() =>
+                void (isSwitchComplete ? handleFinish() : handleConfirmSwitch())
+              }
+              disabled={isSwitchPending && !isSwitchComplete}
+            >
+              {isSwitchComplete
+                ? 'Done'
+                : isSwitchPending
+                  ? 'Switching...'
+                  : 'Switch'}
+            </Button>
+          }
         >
           <div className="text-zinc-100">
             <div className="mb-6 flex items-start justify-center space-x-8">

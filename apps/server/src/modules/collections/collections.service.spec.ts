@@ -384,4 +384,134 @@ describe('CollectionsService', () => {
     );
     expect(result).toEqual(new Map());
   });
+
+  it('enriches collection previews with fallback artwork when stored poster data is missing', async () => {
+    const previewQueryBuilder = {
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        {
+          id: '10',
+          collectionId: '1',
+          mediaServerId: 'item-1',
+          tmdbId: null,
+          tvdbId: null,
+          addDate: new Date().toISOString(),
+          image_path: null,
+          isManual: 0,
+          rowNumber: 1,
+        },
+      ]),
+    };
+
+    dataSource.createQueryBuilder.mockReturnValue(previewQueryBuilder as any);
+    mediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({
+        id: 'item-1',
+        type: 'movie',
+        providerIds: { tmdb: ['123'] },
+      }),
+    );
+    metadataService.resolveIdsFromHierarchyMediaItem.mockResolvedValue({
+      tmdb: 123,
+      type: 'movie',
+    } as any);
+    metadataService.getDetails.mockResolvedValue({
+      externalIds: { tmdb: 123 },
+      posterUrl: 'https://image.example/poster.jpg',
+    } as any);
+
+    const result = await (service as any).getCollectionPreviewMedia([1]);
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('item-1');
+    expect(
+      metadataService.resolveIdsFromHierarchyMediaItem,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item-1' }),
+      undefined,
+      'item-1',
+    );
+    expect(result.get(1)).toEqual([
+      expect.objectContaining({
+        mediaServerId: 'item-1',
+        tmdbId: 123,
+        image_path: 'https://image.example/poster.jpg',
+      }),
+    ]);
+  });
+
+  it('resolves fallback artwork from hierarchy metadata for child media items', async () => {
+    const previewQueryBuilder = {
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        {
+          id: '11',
+          collectionId: '1',
+          mediaServerId: 'episode-1',
+          tmdbId: null,
+          tvdbId: null,
+          addDate: new Date().toISOString(),
+          image_path: null,
+          isManual: 0,
+          rowNumber: 1,
+        },
+      ]),
+    };
+
+    const episodeItem = createMediaItem({
+      id: 'episode-1',
+      type: 'episode',
+      parentId: 'season-1',
+      grandparentId: 'show-1',
+      providerIds: {},
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      providerIds: { tmdb: ['456'] },
+    });
+
+    dataSource.createQueryBuilder.mockReturnValue(previewQueryBuilder as any);
+    mediaServer.getMetadata.mockImplementation(async (id: string) => {
+      if (id === 'episode-1') {
+        return episodeItem;
+      }
+
+      if (id === 'show-1') {
+        return showItem;
+      }
+
+      return undefined;
+    });
+    metadataService.resolveIdsFromHierarchyMediaItem.mockResolvedValue({
+      tmdb: 456,
+      type: 'tv',
+    } as any);
+    metadataService.getDetails.mockResolvedValue({
+      externalIds: { tmdb: 456 },
+      posterUrl: 'https://image.example/show-poster.jpg',
+    } as any);
+
+    const result = await (service as any).getCollectionPreviewMedia([1]);
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledTimes(1);
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('episode-1');
+    expect(
+      metadataService.resolveIdsFromHierarchyMediaItem,
+    ).toHaveBeenCalledWith(episodeItem, undefined, 'episode-1');
+    expect(result.get(1)).toEqual([
+      expect.objectContaining({
+        mediaServerId: 'episode-1',
+        tmdbId: 456,
+        image_path: 'https://image.example/show-poster.jpg',
+      }),
+    ]);
+  });
 });

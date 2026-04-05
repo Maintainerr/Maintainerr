@@ -580,6 +580,94 @@ export class CollectionsService {
     );
   }
 
+  private async resolveCollectionMediaArtwork(
+    mediaServerId: string,
+    mediaItem?: MediaItem,
+  ): Promise<{
+    tmdbId?: number;
+    tvdbId?: number;
+    imagePath?: string;
+  }> {
+    const resolvedIds = mediaItem
+      ? await this.metadataService.resolveIdsFromHierarchyMediaItem(
+          mediaItem,
+          undefined,
+          mediaServerId,
+        )
+      : await this.metadataService.resolveIds(mediaServerId);
+    const details = resolvedIds
+      ? await this.metadataService.getDetails(resolvedIds, resolvedIds.type)
+      : undefined;
+
+    return {
+      tmdbId:
+        (resolvedIds?.tmdb as number | undefined) ??
+        (details?.externalIds?.tmdb as number | undefined),
+      tvdbId:
+        (resolvedIds?.tvdb as number | undefined) ??
+        (details?.externalIds?.tvdb as number | undefined),
+      imagePath: details?.posterUrl,
+    };
+  }
+
+  private async enrichCollectionPreviewMedia(
+    previewMediaByCollection: Map<number, CollectionMedia[]>,
+  ): Promise<Map<number, CollectionMedia[]>> {
+    const previewMedia = [...previewMediaByCollection.values()].flat();
+    const mediaNeedingArtwork = previewMedia.filter(
+      (media) =>
+        !media.image_path && media.tmdbId == null && media.tvdbId == null,
+    );
+
+    if (mediaNeedingArtwork.length === 0) {
+      return previewMediaByCollection;
+    }
+
+    const mediaServer = await this.getMediaServer();
+    const artworkResults = await Promise.allSettled(
+      mediaNeedingArtwork.map(async (media) => {
+        const mediaItem = await mediaServer.getMetadata(media.mediaServerId);
+
+        if (!mediaItem) {
+          return undefined;
+        }
+
+        const artwork = await this.resolveCollectionMediaArtwork(
+          media.mediaServerId,
+          mediaItem,
+        );
+
+        return {
+          media,
+          artwork,
+        };
+      }),
+    );
+
+    artworkResults.forEach((result, index) => {
+      if (result.status !== 'fulfilled' || !result.value) {
+        const failedMedia = mediaNeedingArtwork[index];
+        this.logger.debug(
+          `Failed to enrich preview artwork for collection media ${failedMedia?.mediaServerId}`,
+        );
+
+        if (result.status === 'rejected') {
+          this.logger.debug(result.reason);
+        }
+
+        return;
+      }
+
+      const { media, artwork } = result.value;
+
+      media.tmdbId ??= artwork.tmdbId;
+      media.tvdbId ??= artwork.tvdbId;
+      media.image_path ??= artwork.imagePath;
+    });
+
+    return previewMediaByCollection;
+  }
+
   private async getCollectionPreviewMedia(collectionIds: number[]) {
     if (collectionIds.length === 0) {
       return new Map<number, CollectionMedia[]>();
@@ -633,7 +721,7 @@ export class CollectionsService {
       previewMediaByCollection.set(collectionId, previewMedia);
     }
 
-    return previewMediaByCollection;
+    return this.enrichCollectionPreviewMedia(previewMediaByCollection);
   }
 
   async getCollections(libraryId?: string, typeId?: MediaItemType) {
@@ -1497,12 +1585,9 @@ export class CollectionsService {
       }
 
       try {
-        const ids = await this.metadataService.resolveIds(
+        const artwork = await this.resolveCollectionMediaArtwork(
           childMedia.mediaServerId,
         );
-        const details = ids
-          ? await this.metadataService.getDetails(ids, ids.type)
-          : undefined;
 
         await this.connection
           .createQueryBuilder()
@@ -1513,13 +1598,9 @@ export class CollectionsService {
               collectionId: collectionIds.dbId,
               mediaServerId: childMedia.mediaServerId,
               addDate: new Date().toDateString(),
-              tmdbId:
-                (ids?.tmdb as number | undefined) ??
-                (details?.externalIds?.tmdb as number | undefined),
-              tvdbId:
-                (ids?.tvdb as number | undefined) ??
-                (details?.externalIds?.tvdb as number | undefined),
-              image_path: details?.posterUrl,
+              tmdbId: artwork.tmdbId,
+              tvdbId: artwork.tvdbId,
+              image_path: artwork.imagePath,
               isManual: manual,
             },
           ])

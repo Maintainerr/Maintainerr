@@ -26,41 +26,18 @@ vi.mock('../../Common/Modal', () => ({
   default: ({
     title,
     children,
-    onOk,
-    onSecondary,
+    footerActions,
     onCancel,
-    okContent,
-    secondaryContent,
-    okDisabled,
-    secondaryDisabled,
   }: {
     title: string
     children: React.ReactNode
-    onOk?: () => void
-    onSecondary?: () => void
+    footerActions?: React.ReactNode
     onCancel?: () => void
-    okContent?: React.ReactNode
-    secondaryContent?: React.ReactNode
-    okDisabled?: boolean
-    secondaryDisabled?: boolean
   }) => (
     <div>
       <h1>{title}</h1>
       <div>{children}</div>
-      {onOk ? (
-        <button type="button" onClick={onOk} disabled={okDisabled}>
-          {okContent}
-        </button>
-      ) : null}
-      {onSecondary ? (
-        <button
-          type="button"
-          onClick={onSecondary}
-          disabled={secondaryDisabled}
-        >
-          {secondaryContent}
-        </button>
-      ) : null}
+      {footerActions}
       {onCancel ? (
         <button type="button" onClick={onCancel}>
           Cancel
@@ -105,7 +82,7 @@ describe('ServarrSettingsModal', () => {
 
     const saveButton = screen.getByRole('button', { name: /Save Changes/i })
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
 
     fireEvent.change(screen.getByLabelText('Server Name'), {
       target: { value: '' },
@@ -149,21 +126,9 @@ describe('ServarrSettingsModal', () => {
     expect(putApiHandler).not.toHaveBeenCalled()
   })
 
-  it('requires a successful connection test before saving changed server details', async () => {
+  it('keeps Save Changes enabled when editing an existing server connection', async () => {
     const onDelete = vi.fn().mockResolvedValue(true)
     const onUpdate = vi.fn()
-
-    postApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/test/radarr') {
-        return Promise.resolve({
-          status: 'OK',
-          code: 1,
-          message: '5.0.0',
-        })
-      }
-
-      return Promise.reject(new Error(`Unexpected request: ${url}`))
-    })
 
     render(
       <ServarrSettingsModal
@@ -194,27 +159,51 @@ describe('ServarrSettingsModal', () => {
           name: /Save Changes/i,
         }) as HTMLButtonElement
       ).disabled,
+    ).toBe(false)
+  })
+
+  it('allows saving a new server without a prior connection test once required fields are filled', () => {
+    const onDelete = vi.fn().mockResolvedValue(true)
+    const onUpdate = vi.fn()
+
+    render(
+      <ServarrSettingsModal
+        title="Radarr Settings"
+        docsPage="Configuration/#radarr"
+        settingsPath="/settings/radarr"
+        testPath="/settings/test/radarr"
+        serviceName="Radarr"
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onCancel={() => undefined}
+      />,
+    )
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: /Save Changes/i,
+        }) as HTMLButtonElement
+      ).disabled,
     ).toBe(true)
 
-    fireEvent.click(screen.getByRole('button', { name: /Test Connection/i }))
-
-    await waitFor(() => {
-      expect(postApiHandler).toHaveBeenCalledWith('/settings/test/radarr', {
-        apiKey: 'secret',
-        serverName: 'Radarr',
-        url: 'http://radarr.internal:7878/api',
-      })
+    fireEvent.change(screen.getByLabelText('Server Name'), {
+      target: { value: 'Radarr' },
+    })
+    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
+      target: { value: 'radarr.local' },
+    })
+    fireEvent.change(screen.getByLabelText('API key'), {
+      target: { value: 'secret' },
     })
 
-    await waitFor(() => {
-      expect(
-        (
-          screen.getByRole('button', {
-            name: /Save Changes/i,
-          }) as HTMLButtonElement
-        ).disabled,
-      ).toBe(false)
-    })
+    expect(
+      (
+        screen.getByRole('button', {
+          name: /Save Changes/i,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false)
   })
 
   it('does not require a connection retest when only the server name changes', () => {

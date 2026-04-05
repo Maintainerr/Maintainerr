@@ -7,6 +7,8 @@ interface IDocsButton {
 }
 
 const DocsButton = (props: IDocsButton) => {
+  const page = props.page?.toLowerCase() ?? ''
+
   return (
     <span className="inline-flex h-full w-full">
       <Button
@@ -14,7 +16,7 @@ const DocsButton = (props: IDocsButton) => {
         type="button"
         as="a"
         target="_blank"
-        href={`https://docs.maintainerr.info/latest/${props.page ? props.page : ''}`}
+        href={`https://docs.maintainerr.info/${page}`}
         rel="noopener noreferrer"
       >
         <DocumentTextIcon />

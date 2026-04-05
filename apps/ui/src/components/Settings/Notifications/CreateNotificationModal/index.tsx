@@ -6,11 +6,9 @@ import Alert from '../../../Common/Alert'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
-import { SaveButtonContent } from '../../../Common/SaveButton'
-import {
-  getTestingButtonType,
-  TestingButtonContent,
-} from '../../../Common/TestingButton'
+import SaveButton from '../../../Common/SaveButton'
+import TestingButton from '../../../Common/TestingButton'
+import { getTestingButtonType } from '../../../Common/TestingButton'
 import ToggleItem from '../../../Common/ToggleButton'
 import SettingsAlertSlot from '../../SettingsAlertSlot'
 
@@ -52,8 +50,6 @@ interface TestStatus {
   message: string
 }
 
-const stringifyValue = (value: unknown) => JSON.stringify(value ?? null)
-
 const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
@@ -71,38 +67,15 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
 
-  const initialAgentName = props.selected?.agent ?? '-'
-  const initialName = props.selected?.name ?? ''
-  const initialEnabled = props.selected?.enabled ?? false
-  const initialAboutScale = props.selected?.aboutScale ?? 3
-  const initialTypeIds = [...(props.selected?.types ?? [])].sort(
-    (a, b) => a - b,
-  )
-  const initialOptions = props.selected?.options ?? {}
-
   const selectedAgentIndex = targetAgent
     ? (availableAgents?.findIndex((agent) => agent.name === targetAgent.name) ??
       0)
     : 0
 
   const hasValidTargetAgent = Boolean(targetAgent && targetAgent.name !== '-')
-  const selectedTypeIds = [...targetTypes.map((type) => type.id)].sort(
-    (left, right) => left - right,
-  )
-  const hasChanges =
-    name !== initialName ||
-    enabled !== initialEnabled ||
-    aboutScale !== initialAboutScale ||
-    (targetAgent?.name ?? '-') !== initialAgentName ||
-    stringifyValue(selectedTypeIds) !== stringifyValue(initialTypeIds) ||
-    stringifyValue(formValues) !== stringifyValue(initialOptions)
   const isLoading = !availableAgents || !availableTypes
   const canSave =
-    !isLoading &&
-    hasValidTargetAgent &&
-    name.trim() !== '' &&
-    hasChanges &&
-    !saving
+    !isLoading && hasValidTargetAgent && name.trim() !== '' && !saving
 
   const clearFeedback = () => {
     setError(undefined)
@@ -239,25 +212,32 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       loading={false}
       backgroundClickable={false}
       onCancel={() => props.onCancel()}
-      okDisabled={!canSave}
-      okContent={<SaveButtonContent isPending={saving} label="Save" />}
-      okButtonType={'primary'}
       title={modalTitle}
       iconSvg={''}
-      onOk={handleSubmit}
-      secondaryButtonType={getTestingButtonType(
-        'success',
-        testResult?.status,
-        testing,
-      )}
-      secondaryDisabled={isLoading || testing}
-      secondaryContent={
-        <TestingButtonContent
-          isPending={testing}
-          feedbackStatus={testResult?.status}
-        />
+      footerActions={
+        <>
+          <SaveButton
+            className="ml-3"
+            type="button"
+            disabled={!canSave}
+            isPending={saving}
+            onClick={() => void handleSubmit()}
+          />
+          <TestingButton
+            buttonType={getTestingButtonType(
+              'success',
+              testResult?.status,
+              testing,
+            )}
+            className="ml-3"
+            type="button"
+            disabled={isLoading || testing}
+            isPending={testing}
+            feedbackStatus={testResult?.status}
+            onClick={() => void doTest()}
+          />
+        </>
       }
-      onSecondary={doTest}
     >
       <div className="min-h-[16rem]">
         {isLoading ? (

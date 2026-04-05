@@ -14,6 +14,24 @@ import {
 import { PlexMapper } from './plex.mapper';
 
 describe('PlexMapper', () => {
+  describe('isSupportedLibrary', () => {
+    it.each([
+      [
+        { type: 'movie', key: '1', title: 'Movies', agent: 'movie-agent' },
+        true,
+      ],
+      [{ type: 'show', key: '2', title: 'Shows', agent: 'show-agent' }, true],
+      [
+        { type: 'artist', key: '3', title: 'Music', agent: 'music-agent' },
+        false,
+      ],
+    ] as const)('returns %s for %j', (plexLibrary, expected) => {
+      expect(PlexMapper.isSupportedLibrary(plexLibrary as PlexLibrary)).toBe(
+        expected,
+      );
+    });
+  });
+
   describe('toMediaItemType', () => {
     it.each([
       ['movie', 'movie'],
@@ -249,7 +267,7 @@ describe('PlexMapper', () => {
 
   describe('toMediaLibrary', () => {
     it('should convert movie library correctly', () => {
-      const plexLibrary: PlexLibrary = {
+      const plexLibrary: PlexLibrary & { type: 'movie' } = {
         type: 'movie',
         key: '1',
         title: 'Movies',
@@ -265,7 +283,7 @@ describe('PlexMapper', () => {
     });
 
     it('should convert show library correctly', () => {
-      const plexLibrary: PlexLibrary = {
+      const plexLibrary: PlexLibrary & { type: 'show' } = {
         type: 'show',
         key: '2',
         title: 'TV Shows',

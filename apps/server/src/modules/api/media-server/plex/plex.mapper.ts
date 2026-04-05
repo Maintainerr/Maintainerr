@@ -41,6 +41,12 @@ import { Media, PlexMetadata } from '../../plex-api/interfaces/media.interface';
  * - Media[] → mediaSources
  */
 export class PlexMapper {
+  static isSupportedLibrary(
+    plex: PlexLibrary,
+  ): plex is PlexLibrary & { type: MediaLibrary['type'] } {
+    return plex.type === 'movie' || plex.type === 'show';
+  }
+
   /**
    * Convert Plex type string to MediaItemType string.
    * This is what the API returns to the frontend.
@@ -247,11 +253,13 @@ export class PlexMapper {
   /**
    * Convert Plex library to MediaLibrary.
    */
-  static toMediaLibrary(plex: PlexLibrary): MediaLibrary {
+  static toMediaLibrary(
+    plex: PlexLibrary & { type: MediaLibrary['type'] },
+  ): MediaLibrary {
     return {
       id: plex.key,
       title: plex.title,
-      type: plex.type === 'movie' ? 'movie' : 'show',
+      type: plex.type,
       agent: plex.agent,
     };
   }
