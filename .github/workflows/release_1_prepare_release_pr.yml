@@ -6,7 +6,7 @@ on:
       build_main:
         type: boolean
         description: After the PR is approved and merged, run Release 4 - Build Main to publish the main container without creating a release
-        default: false
+        default: true
 
 concurrency:
   group: release-prepare-pr-${{ github.ref_name || github.run_id }}

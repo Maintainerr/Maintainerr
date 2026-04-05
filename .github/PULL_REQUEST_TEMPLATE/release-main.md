@@ -8,7 +8,7 @@ Promotes the current `development` branch state to `main` for release.
 - `main` is the stable release branch.
 - This PR should be squash-merged.
 - Create or update this PR with `./release.sh prepare-pr`.
-- To also request the post-merge `main` container build, run `BUILD_MAIN=true ./release.sh prepare-pr` or enable the Release 1 workflow input in GitHub.
+- Release 1 enables the post-merge `main` container build by default; disable the workflow input or run `BUILD_MAIN=false ./release.sh prepare-pr` to skip it.
 - When the PR is approved, release automation continues automatically.
 - Approval triggers `Release 2 - Queue Push PR To Main`.
 - `Release 2.5 - Execute Push PR To Main` reloads the PR state, confirms the approving CODEOWNER still has an active approval, waits for non-release checks to finish, then continues the remaining release steps.

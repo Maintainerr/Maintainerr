@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REF="${REF:-development}"
-BUILD_MAIN="${BUILD_MAIN:-false}"
+BUILD_MAIN="${BUILD_MAIN:-true}"
 
 usage() {
   cat <<'EOF'
@@ -14,7 +14,7 @@ Usage:
 
 Environment:
   REF=development   Branch ref to use for workflow dispatch
-  BUILD_MAIN=false  When true, request Release 4 - Build Main after the release PR merges
+  BUILD_MAIN=true   When true, request Release 4 - Build Main after the release PR merges
 EOF
 }
 

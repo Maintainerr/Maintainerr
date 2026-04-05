@@ -172,8 +172,9 @@ Maintainers should promote `development` to `main` through the release PR workfl
 
 ```bash
 ./release.sh prepare-pr
-# Or request the post-merge main container build without creating a release:
-BUILD_MAIN=true ./release.sh prepare-pr
+# Release 1 enables the post-merge main container build by default.
+# To skip it, use:
+BUILD_MAIN=false ./release.sh prepare-pr
 # Approve the release PR to trigger Release 2 and Release 2.5
 # Wait for the PR summary comment confirming merge, sync-back, and any requested Build Main run
 REF=main ./release.sh release
