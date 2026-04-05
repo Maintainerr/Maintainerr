@@ -19,7 +19,7 @@ const NotificationSettings = () => {
   const [addModalActive, setAddModalActive] = useState(false)
   const [configurations, setConfigurations] = useState<AgentConfiguration[]>()
   const [editConfig, setEditConfig] = useState<AgentConfiguration>()
-  const { feedback, showInfo } = useSettingsFeedback('Notification settings')
+  const { feedback, showSuccess } = useSettingsFeedback('Notification settings')
 
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
