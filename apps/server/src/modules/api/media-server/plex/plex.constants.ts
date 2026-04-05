@@ -5,7 +5,7 @@ import {
 import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 
 export const PLEX_BATCH_SIZE = {
-  COLLECTION_MUTATION: 25,
+  COLLECTION_MUTATION: 10,
 } as const;
 
 export const PLEX_SORT_FIELDS: Partial<Record<MediaLibrarySortField, string>> =

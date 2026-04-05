@@ -285,10 +285,58 @@ export class PlexAdapterService implements IMediaServerService {
     }
   }
 
+  private hasUsableProviderIds(mediaItem: MediaItem | undefined): boolean {
+    if (!mediaItem) {
+      return false;
+    }
+
+    return Object.values(mediaItem.providerIds ?? {}).some((values) =>
+      Array.isArray(values) ? values.length > 0 : false,
+    );
+  }
+
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
     const children = await this.plexApi.getCollectionChildren(collectionId);
     if (!children) return [];
-    return children.map(PlexMapper.toMediaItem);
+
+    const mappedChildren = children.map(PlexMapper.toMediaItem);
+    const incompleteChildren = mappedChildren.filter(
+      (child) => !this.hasUsableProviderIds(child),
+    );
+
+    if (incompleteChildren.length === 0) {
+      return mappedChildren;
+    }
+
+    const refreshedMetadataResults = await Promise.allSettled(
+      incompleteChildren.map(async (child) => ({
+        id: child.id,
+        mediaItem: await this.getMetadata(child.id),
+      })),
+    );
+
+    const refreshedMetadataById = new Map<string, MediaItem>();
+
+    refreshedMetadataResults.forEach((result, index) => {
+      const child = incompleteChildren[index];
+
+      if (result.status === 'fulfilled' && result.value.mediaItem) {
+        refreshedMetadataById.set(result.value.id, result.value.mediaItem);
+        return;
+      }
+
+      this.logger.debug(
+        `Failed to refresh complete metadata for Plex collection child ${child?.id}`,
+      );
+
+      if (result.status === 'rejected') {
+        this.logger.debug(result.reason);
+      }
+    });
+
+    return mappedChildren.map(
+      (child) => refreshedMetadataById.get(child.id) ?? child,
+    );
   }
 
   private ensureMutationSucceeded(

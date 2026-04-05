@@ -16,9 +16,15 @@ import { PlexMapper } from './plex.mapper';
 describe('PlexMapper', () => {
   describe('isSupportedLibrary', () => {
     it.each([
-      [{ type: 'movie', key: '1', title: 'Movies', agent: 'movie-agent' }, true],
+      [
+        { type: 'movie', key: '1', title: 'Movies', agent: 'movie-agent' },
+        true,
+      ],
       [{ type: 'show', key: '2', title: 'Shows', agent: 'show-agent' }, true],
-      [{ type: 'artist', key: '3', title: 'Music', agent: 'music-agent' }, false],
+      [
+        { type: 'artist', key: '3', title: 'Music', agent: 'music-agent' },
+        false,
+      ],
     ] as const)('returns %s for %j', (plexLibrary, expected) => {
       expect(PlexMapper.isSupportedLibrary(plexLibrary as PlexLibrary)).toBe(
         expected,

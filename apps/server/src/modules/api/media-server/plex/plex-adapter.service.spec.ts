@@ -3,6 +3,8 @@ import { Mocked, TestBed } from '@suites/unit';
 import {
   createPlexCollection,
   createPlexLibrary,
+  createPlexLibraryItem,
+  createPlexMetadata,
   createPlexSeenBy,
   createPlexUserAccount,
 } from '../../../../../test/utils/data';
@@ -286,6 +288,47 @@ describe('PlexAdapterService', () => {
       plexApi.getCollections.mockResolvedValue(undefined);
       const collections = await service.getCollections('lib123');
       expect(collections).toEqual([]);
+    });
+  });
+
+  describe('getCollectionChildren', () => {
+    it('refreshes incomplete Plex collection children via full metadata lookups', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', {
+          ratingKey: 'movie-1',
+          Guid: undefined,
+        }),
+      ]);
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          Guid: [{ id: 'tmdb://321' }],
+        }),
+      );
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('col123');
+      expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1');
+      expect(children[0].providerIds.tmdb).toEqual(['321']);
+    });
+
+    it('keeps the original collection child when the metadata refresh is unavailable', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', {
+          ratingKey: 'movie-1',
+          Guid: undefined,
+        }),
+      ]);
+      plexApi.getMetadata.mockResolvedValue(undefined);
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(children[0].id).toBe('movie-1');
+      expect(children[0].providerIds.tmdb).toEqual([]);
+      expect(children[0].providerIds.tvdb).toEqual([]);
+      expect(children[0].providerIds.imdb).toEqual([]);
     });
   });
 
