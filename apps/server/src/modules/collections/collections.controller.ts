@@ -2,6 +2,7 @@ import {
   CollectionMediaSortField,
   ECollectionLogType,
   MediaItemType,
+  MediaItemTypes,
   MediaLibrarySortField,
   MediaSortOrder,
   collectionMediaSortFields,
@@ -143,7 +144,7 @@ export class CollectionsController {
   @ApiQuery({
     name: 'typeId',
     required: false,
-    enum: MediaItemType,
+    enum: MediaItemTypes,
     description: 'Filter collections by media item type.',
   })
   @ApiResponse({
