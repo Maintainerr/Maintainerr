@@ -1201,11 +1201,27 @@ export class CollectionsService {
     return this.addToCollectionInternal(collection.id, media, manual, true);
   }
 
+  async syncMediaServerChildrenToCollection(
+    collection: Collection,
+    media: AddRemoveCollectionMedia[],
+    manual = false,
+  ): Promise<Collection> {
+    if (!collection) return undefined;
+    return this.addToCollectionInternal(
+      collection.id,
+      media,
+      manual,
+      true,
+      true,
+    );
+  }
+
   private async addToCollectionInternal(
     collectionDbId: number,
     media: AddRemoveCollectionMedia[],
     manual = false,
     skipAutomaticLinkCheck = false,
+    skipMediaServerAdd = false,
   ): Promise<Collection> {
     try {
       const mediaServer = await this.getMediaServer();
@@ -1317,6 +1333,7 @@ export class CollectionsService {
             { mediaServerId: collection.mediaServerId, dbId: collection.id },
             newMedia,
             manual,
+            skipMediaServerAdd,
           );
         }
 
@@ -1578,7 +1595,9 @@ export class CollectionsService {
     const mediaServer = await this.getMediaServer();
 
     this.logger.log(
-      `Adding ${childrenMedia.length} media items to collection..`,
+      skipMediaServerAdd
+        ? `Syncing ${childrenMedia.length} existing media items from media server to collection DB..`
+        : `Adding ${childrenMedia.length} media items to collection..`,
     );
 
     let failedItemIds = new Set<string>();

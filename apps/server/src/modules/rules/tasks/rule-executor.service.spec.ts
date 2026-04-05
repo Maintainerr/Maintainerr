@@ -58,6 +58,16 @@ describe('RuleExecutorService', () => {
             addedCount: items?.length ?? 0,
           };
         }),
+      syncMediaServerChildrenToCollection: jest
+        .fn()
+        .mockImplementation(async (_collection, items) => {
+          return {
+            id: 1,
+            mediaServerId: 'coll-1',
+            title: 'Test Collection',
+            addedCount: items?.length ?? 0,
+          };
+        }),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       removeFromCollectionWithResolvedLink: jest
         .fn()
@@ -181,6 +191,50 @@ describe('RuleExecutorService', () => {
     );
   });
 
+  it('does not import existing children as manual after auto-linking an automatic collection', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: null,
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-existing' }]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping manual child import for newly linked automatic collection 'Test Collection' to avoid marking existing collection contents as manual.",
+    );
+  });
+
   it('removes collection items on Plex when children are empty', async () => {
     const { service, collectionService } = createService(MediaServerType.PLEX);
 
@@ -216,7 +270,8 @@ describe('RuleExecutorService', () => {
 
     mediaServer.getCollectionChildren.mockResolvedValue([
       { id: 'm-excluded' },
-      { id: 'm-allowed' },
+      { id: 'm-allowed-1' },
+      { id: 'm-allowed-2' },
     ]);
     collectionService.getCollectionMedia.mockResolvedValue([]);
     rulesService.getExclusions.mockResolvedValue([
@@ -238,12 +293,66 @@ describe('RuleExecutorService', () => {
       new Set(),
     );
 
-    expect(collectionService.addToCollection).toHaveBeenCalledTimes(1);
-    expect(collectionService.addToCollection).toHaveBeenCalledWith(
-      1,
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaServerId: 'coll-1' }),
       [
         {
-          mediaServerId: 'm-allowed',
+          mediaServerId: 'm-allowed-1',
+          reason: { type: 'media_added_manually' },
+        },
+        {
+          mediaServerId: 'm-allowed-2',
+          reason: { type: 'media_added_manually' },
+        },
+      ],
+      true,
+    );
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+  });
+
+  it('only syncs media server children that are missing from the DB', async () => {
+    const { service, mediaServer, rulesService, collectionService } =
+      createService(MediaServerType.JELLYFIN);
+
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'm-existing' },
+      { id: 'm-missing' },
+    ]);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm-existing' },
+    ] as any);
+    rulesService.getExclusions.mockResolvedValue([] as any);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaServerId: 'coll-1' }),
+      [
+        {
+          mediaServerId: 'm-missing',
           reason: { type: 'media_added_manually' },
         },
       ],

@@ -39,6 +39,11 @@ interface MediaDataPage {
   data: MediaItem[];
 }
 
+interface MediaServerSyncContext {
+  collection?: Collection;
+  skipManualChildImport?: boolean;
+}
+
 @Injectable()
 export class RuleExecutorService {
   ruleConstants: RuleConstants;
@@ -222,7 +227,8 @@ export class RuleExecutorService {
     touchedMediaServerIds: Set<string>,
   ) {
     if (rulegroup && rulegroup.collectionId) {
-      const collection = await this.getCollectionForMediaServerSync(rulegroup);
+      const syncContext = await this.getCollectionForMediaServerSync(rulegroup);
+      const collection = syncContext.collection;
 
       if (collection) {
         const collectionMedia = await this.collectionService.getCollectionMedia(
@@ -236,10 +242,21 @@ export class RuleExecutorService {
         }
 
         // Handle manually added
-        if (children && children.length > 0) {
+        if (syncContext.skipManualChildImport) {
+          this.logger.debug(
+            `Skipping manual child import for newly linked automatic collection '${collection.title}' to avoid marking existing collection contents as manual.`,
+          );
+        } else if (children && children.length > 0) {
           // Fetch exclusions to avoid re-adding excluded items as manual
           const exclusions = await this.rulesService.getExclusions(
             rulegroup.id,
+          );
+          const collectionMediaIds = new Set(
+            collectionMedia
+              .map((item) => item?.mediaServerId)
+              .filter((mediaServerId): mediaServerId is string =>
+                Boolean(mediaServerId),
+              ),
           );
           const excludedMediaServerIds = new Set<string>(
             exclusions.map((e) => e.mediaServerId),
@@ -247,6 +264,7 @@ export class RuleExecutorService {
           const excludedParentIds = new Set<string>(
             exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
           );
+          const missingManualChildren: AddRemoveCollectionMedia[] = [];
 
           for (const child of children) {
             if (child && child.id) {
@@ -269,25 +287,24 @@ export class RuleExecutorService {
                 continue;
               }
 
-              if (
-                !collectionMedia.find((e) => {
-                  return e.mediaServerId === childId;
-                })
-              ) {
-                await this.collectionService.addToCollection(
-                  collection.id,
-                  [
-                    {
-                      mediaServerId: childId,
-                      reason: {
-                        type: 'media_added_manually',
-                      },
-                    },
-                  ],
-                  true,
-                );
+              if (!collectionMediaIds.has(childId)) {
+                collectionMediaIds.add(childId);
+                missingManualChildren.push({
+                  mediaServerId: childId,
+                  reason: {
+                    type: 'media_added_manually',
+                  },
+                });
               }
             }
+          }
+
+          if (missingManualChildren.length > 0) {
+            await this.collectionService.syncMediaServerChildrenToCollection(
+              collection,
+              missingManualChildren,
+              true,
+            );
           }
         }
 
@@ -346,21 +363,25 @@ export class RuleExecutorService {
 
   private async getCollectionForMediaServerSync(
     rulegroup: RuleGroup,
-  ): Promise<Collection | undefined> {
+  ): Promise<MediaServerSyncContext> {
     const collection = await this.collectionService.getCollection(
       rulegroup.collectionId,
     );
 
     if (!collection) {
-      return undefined;
+      return {};
     }
 
     if (collection.manualCollection) {
       const relinkedCollection =
         await this.collectionService.relinkManualCollection(collection);
 
-      return relinkedCollection.mediaServerId ? relinkedCollection : undefined;
+      return relinkedCollection.mediaServerId
+        ? { collection: relinkedCollection }
+        : {};
     }
+
+    const wasLinkedBeforeSync = Boolean(collection.mediaServerId);
 
     const linkedCollection =
       await this.collectionService.checkAutomaticMediaServerLink(collection);
@@ -369,10 +390,13 @@ export class RuleExecutorService {
       this.logger.debug(
         `Skipping media server sync for '${linkedCollection.title}' — no media server collection exists because no items currently match the rule.`,
       );
-      return undefined;
+      return {};
     }
 
-    return linkedCollection;
+    return {
+      collection: linkedCollection,
+      skipManualChildImport: !wasLinkedBeforeSync,
+    };
   }
 
   private async getCollectionChildrenForSync(
