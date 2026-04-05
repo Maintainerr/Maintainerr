@@ -164,12 +164,22 @@ describe('PlexAdapterService', () => {
           type: 'show',
           agent: 'com.plexapp.agents.imdb',
         }),
+        createPlexLibrary({
+          key: '3',
+          title: 'Music',
+          type: 'artist',
+          agent: 'tv.plex.agents.music',
+        }),
       ]);
 
       const libraries = await service.getLibraries();
       expect(libraries).toHaveLength(2);
       expect(libraries[0].id).toBe('1');
       expect(libraries[0].title).toBe('Movies');
+      expect(libraries.map((library) => library.type)).toEqual([
+        'movie',
+        'show',
+      ]);
     });
   });
 

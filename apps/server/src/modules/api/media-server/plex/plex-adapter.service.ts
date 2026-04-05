@@ -91,7 +91,9 @@ export class PlexAdapterService implements IMediaServerService {
   async getLibraries(): Promise<MediaLibrary[]> {
     const libraries = await this.plexApi.getLibraries();
     if (!libraries) return [];
-    return libraries.map(PlexMapper.toMediaLibrary);
+    return libraries
+      .filter(PlexMapper.isSupportedLibrary)
+      .map(PlexMapper.toMediaLibrary);
   }
 
   async getLibraryContents(

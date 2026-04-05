@@ -19,10 +19,7 @@ import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsService } from '../../settings/settings.service';
 import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
-import {
-  PLEX_LIBRARY_SECTION_TYPES,
-  PLEX_PAGE_SIZE,
-} from './plex-api.constants';
+import { PLEX_PAGE_SIZE } from './plex-api.constants';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
@@ -277,11 +274,7 @@ export class PlexApiService {
         uri: '/library/sections',
       });
 
-      return (
-        response.MediaContainer.Directory?.filter((x) =>
-          PLEX_LIBRARY_SECTION_TYPES.has(x.type),
-        ) ?? []
-      );
+      return response.MediaContainer.Directory ?? [];
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
