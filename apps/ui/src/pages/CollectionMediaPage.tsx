@@ -19,7 +19,7 @@ const CollectionMediaPage = () => {
   const { collection } = useOutletContext<CollectionContextType>()
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
-  const fetchAmount = 25
+  const fetchAmount = 30
   const mediaRef = useRef<ICollectionMedia[]>([])
   const libraryType = collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionMediaSortConfig(

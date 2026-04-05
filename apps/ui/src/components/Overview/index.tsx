@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useEffectEvent,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -89,7 +90,10 @@ const Overview = () => {
       library.id ===
       (selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId),
   )?.type
-  const sortConfig = getMediaLibrarySortConfig(currentLibraryType)
+  const sortConfig = useMemo(
+    () => getMediaLibrarySortConfig(currentLibraryType),
+    [currentLibraryType],
+  )
   const { sortValue, sortParams, onSortChange } =
     useMediaLibrarySort(sortConfig)
 
@@ -176,7 +180,10 @@ const Overview = () => {
     async (
       libraryId = selectedLibraryRef.current,
       requestSortParams = sortParams,
-      options?: { replaceExisting?: boolean },
+      options?: {
+        replaceExisting?: boolean
+        preservedPageCount?: number
+      },
     ) => {
       if (
         fetchingRef.current ||
@@ -197,9 +204,14 @@ const Overview = () => {
         const libraryType = libraries?.find(
           (library) => library.id === libraryId,
         )?.type
+        const preservedPageCount = options?.replaceExisting
+          ? Math.max(1, options.preservedPageCount ?? 1)
+          : undefined
         const query = buildLibraryContentQuery({
-          page: pageData.current + 1,
-          limit: fetchAmount,
+          page: options?.replaceExisting ? 1 : pageData.current + 1,
+          limit: preservedPageCount
+            ? preservedPageCount * fetchAmount
+            : fetchAmount,
           libraryType,
           sortParams: requestSortParams,
         })
@@ -221,7 +233,7 @@ const Overview = () => {
 
           setTotalSize(result.data.totalSize)
           totalSizeRef.current = result.data.totalSize
-          pageData.current = options?.replaceExisting ? 1 : pageData.current + 1
+          pageData.current = preservedPageCount ?? pageData.current + 1
           dataRef.current = mergedItems
           setData(mergedItems)
           setLoadingExtra(false)
@@ -279,6 +291,8 @@ const Overview = () => {
       const nextLibraryId =
         libraryId ?? selectedLibraryRef.current ?? selectedLibrary
       const hasExistingData = dataRef.current.length > 0
+      const preservedPageCount =
+        !searchUsed && hasExistingData ? Math.max(pageData.current, 1) : 1
 
       setSearchUsed(false)
       pageData.current = 0
@@ -299,7 +313,10 @@ const Overview = () => {
 
       applySelectedLibrary(nextLibraryId)
 
-      await fetchData(nextLibraryId, nextSortParams, { replaceExisting: true })
+      await fetchData(nextLibraryId, nextSortParams, {
+        replaceExisting: true,
+        preservedPageCount,
+      })
     },
     [
       SearchCtx.search.text,
@@ -307,6 +324,7 @@ const Overview = () => {
       fetchData,
       guardedFetch,
       invalidateFetches,
+      searchUsed,
       selectedLibrary,
       selectedLibraryRef,
       sortParams,

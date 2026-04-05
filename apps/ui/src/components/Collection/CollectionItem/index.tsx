@@ -156,7 +156,7 @@ const CollectionItem = (props: ICollectionItem) => {
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Library
             </p>
-            <p className="text-maintainerr truncate" title={libraryTitle}>
+            <p className="truncate text-maintainerr" title={libraryTitle}>
               {libraryTitle}
             </p>
           </div>
@@ -203,7 +203,7 @@ const CollectionItem = (props: ICollectionItem) => {
               Delete
             </p>
             <p
-              className="text-maintainerr truncate whitespace-nowrap"
+              className="truncate whitespace-nowrap text-maintainerr"
               title={deleteAfterLabel}
             >
               {deleteAfterLabel}

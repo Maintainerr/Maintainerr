@@ -435,6 +435,121 @@ describe('Overview', () => {
     })
   })
 
+  it('preserves the loaded page count when refreshing sorted overview content', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 91,
+            items: Array.from({ length: 30 }, (_, index) => ({
+              id: `boot-${index + 1}`,
+              title: `Boot Item ${index + 1}`,
+              type: 'show',
+            })),
+          },
+        }
+      }
+
+      if (
+        path.includes('sort=title&sortOrder=desc') &&
+        path.startsWith('/media-server/library/shows-library/content?')
+      ) {
+        if (path.includes('page=1')) {
+          expect(path).toContain('limit=60')
+
+          return {
+            totalSize: 91,
+            items: Array.from({ length: 60 }, (_, index) => ({
+              id: `sorted-${index + 1}`,
+              title: `Sorted Item ${index + 1}`,
+              type: 'show',
+            })),
+          }
+        }
+
+        expect(path).toContain('page=3')
+        expect(path).toContain('limit=30')
+
+        return {
+          totalSize: 91,
+          items: [{ id: 'sorted-tail', title: 'Sorted Tail', type: 'show' }],
+        }
+      }
+
+      if (path.startsWith('/media-server/library/shows-library/content?')) {
+        expect(path).toContain('page=2')
+
+        return {
+          totalSize: 91,
+          items: Array.from({ length: 30 }, (_, index) => ({
+            id: `page-2-${index + 1}`,
+            title: `Page 2 Item ${index + 1}`,
+            type: 'show',
+          })),
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item 1')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('overview-fetch-more'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Page 2 Item 1')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(3)
+    })
+
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain('page=1')
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain('limit=60')
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain(
+      'sort=title&sortOrder=desc',
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Sorted Item 60')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('overview-fetch-more'))
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(4)
+    })
+
+    expect(getApiHandlerMock.mock.calls[3]?.[0]).toContain('page=3')
+    expect(getApiHandlerMock.mock.calls[3]?.[0]).toContain('limit=30')
+
+    await waitFor(() => {
+      expect(screen.getByText('Sorted Tail')).toBeTruthy()
+    })
+  })
+
   it('requests excluded sorting from the server for the overview sort option', async () => {
     libraries = [
       {

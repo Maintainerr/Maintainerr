@@ -1,5 +1,11 @@
 import { type MediaLibrary } from '@maintainerr/contracts';
-import { BadRequestException, Controller, Get, Param, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { MetadataService } from './metadata.service';
 
 @Controller('api/metadata')
@@ -24,9 +30,7 @@ export class MetadataController {
     return Object.keys(ids).length > 0 ? ids : undefined;
   }
 
-  private resolveMetadataType(
-    type: string,
-  ): 'movie' | 'tv' {
+  private resolveMetadataType(type: string): 'movie' | 'tv' {
     if (type === 'show') return 'tv';
     if (type === 'movie') return 'movie';
 

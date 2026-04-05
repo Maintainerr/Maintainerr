@@ -298,7 +298,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
                 title="Copy to clipboard"
                 aria-label="Copy to clipboard"
               >
-                <ClipboardCopyIcon className="text-maintainerr-600 hover:text-maintainerr h-5 w-5" />
+                <ClipboardCopyIcon className="h-5 w-5 text-maintainerr-600 hover:text-maintainerr" />
               </button>
             )}
           </div>

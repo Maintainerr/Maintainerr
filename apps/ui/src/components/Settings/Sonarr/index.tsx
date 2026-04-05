@@ -161,7 +161,7 @@ const SonarrSettings = () => {
             <li className="flex h-full min-h-[9.75rem] items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
               <button
                 type="button"
-                className="add-button bg-maintainerr-600 hover:bg-maintainerr m-auto flex h-9 rounded px-4 text-zinc-200 shadow-md"
+                className="add-button m-auto flex h-9 rounded bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={showAddModal}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}

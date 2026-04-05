@@ -113,7 +113,7 @@ const RuleHandlerMessages = () => {
         {event && isRuleHandlerProgressedEvent(event) && (
           <div className="ml-8 mt-2 bg-zinc-800">
             <div
-              className="bg-maintainerrdark-700 h-1.5 transition-width duration-150 ease-in-out"
+              className="h-1.5 bg-maintainerrdark-700 transition-width duration-150 ease-in-out"
               style={{
                 width: `${(event.processedEvaluations / event.totalEvaluations) * 100}%`,
               }}
@@ -189,14 +189,14 @@ const CollectionHandlerMessages = () => {
         <div className="ml-8 mt-2 bg-zinc-800">
           {event.totalCollections > 1 && (
             <div
-              className={`bg-maintainerr h-1.5 transition-width ease-in-out ${event.processingCollection?.processedMedias === 0 ? 'duration-0' : 'duration-150'}`}
+              className={`h-1.5 bg-maintainerr transition-width ease-in-out ${event.processingCollection?.processedMedias === 0 ? 'duration-0' : 'duration-150'}`}
               style={{
                 width: `${(event.processingCollection ? event.processingCollection?.processedMedias / event.processingCollection?.totalMedias : 0) * 100}%`,
               }}
             />
           )}
           <div
-            className="bg-maintainerrdark-700 h-1.5 transition-width duration-150 ease-in-out"
+            className="h-1.5 bg-maintainerrdark-700 transition-width duration-150 ease-in-out"
             style={{
               width: `${(event.processedMedias / event.totalMediaToHandle) * 100}%`,
             }}

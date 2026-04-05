@@ -146,7 +146,7 @@ const providers: ProviderConfig[] = [
           href="https://www.themoviedb.org/settings/api"
           target="_blank"
           rel="noreferrer"
-          className="text-maintainerr hover:text-maintainerr-400 underline"
+          className="text-maintainerr underline hover:text-maintainerr-400"
         >
           themoviedb.org
         </a>
@@ -169,7 +169,7 @@ const providers: ProviderConfig[] = [
           href="https://thetvdb.com/dashboard/account/apikey"
           target="_blank"
           rel="noreferrer"
-          className="text-maintainerr hover:text-maintainerr-400 underline"
+          className="text-maintainerr underline hover:text-maintainerr-400"
         >
           thetvdb.com
         </a>

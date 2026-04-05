@@ -32,6 +32,7 @@ interface ModalContentProps {
   providerIds?: MediaProviderIds
   exclusionType?: 'global' | 'specific'
   isManual?: boolean
+  forceStatusLoad?: boolean
   onStatusLink?: (targetPath: string) => void
 }
 
@@ -137,6 +138,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     providerIds: fallbackProviderIds,
     exclusionType,
     isManual = false,
+    forceStatusLoad = false,
     onStatusLink,
   }) => {
     useLockBodyScroll(true)
@@ -161,12 +163,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
     const maintainerrDetailsKey = useMemo(
       () =>
-        getMaintainerrStatusDetailsKey({
-          id,
-          exclusionType,
-          isManual,
-        }),
-      [exclusionType, id, isManual],
+        forceStatusLoad
+          ? String(id)
+          : getMaintainerrStatusDetailsKey({
+              id,
+              exclusionType,
+              isManual,
+            }),
+      [exclusionType, forceStatusLoad, id, isManual],
     )
     const maintainerrDetails = useMemo(() => {
       if (

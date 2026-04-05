@@ -205,10 +205,6 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
     }
   }, [loadNextPageIfNeeded])
 
-  useEffect(() => {
-    loadNextPageIfNeeded()
-  }, [data, loadNextPageIfNeeded])
-
   return {
     data,
     hasMoreData: data.length < totalSize,

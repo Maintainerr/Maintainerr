@@ -403,4 +403,50 @@ describe('MediaModal', () => {
     expect(fallbackLink.className).toContain('underline')
     expect(fallbackLink.className).toContain('hover:text-maintainerr-400')
   })
+
+  it('fetches and shows status when forceStatusLoad is true even for items with no exclusionType or isManual', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/77') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/77/maintainerr-status') {
+        return Promise.resolve({
+          excludedFrom: [],
+          manuallyAddedTo: [
+            {
+              label: 'Fresh Collection',
+              targetPath: '/collections/20',
+            },
+          ],
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={77}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        forceStatusLoad={true}
+      />,
+    )
+
+    const manualHeading = await screen.findByText('Manually Added To')
+    expect(manualHeading).toBeTruthy()
+    const link = screen.getByRole('link', { name: 'Fresh Collection' })
+    expect(link.getAttribute('href')).toBe('/collections/20')
+  })
 })

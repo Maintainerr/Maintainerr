@@ -8,6 +8,7 @@ import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFro
 import Button from '../Button'
 import PosterCard from '../Poster/PosterCard'
 import MediaModalContent from './MediaModal'
+import { invalidateMaintainerrStatusDetails } from './maintainerrStatus'
 
 const mediaBadgeClasses = {
   movie: 'bg-zinc-900',
@@ -74,6 +75,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [excludeModal, setExcludeModal] = useState(false)
   const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
+  const [statusShouldRefetch, setStatusShouldRefetch] = useState(false)
 
   if (year && mediaType !== 'episode') {
     year = year.slice(0, 4)
@@ -96,6 +98,8 @@ const MediaCard: React.FC<IMediaCard> = ({
           {...(libraryId ? { libraryId: libraryId } : {})}
           {...(type ? { type: type } : {})}
           onSubmit={() => {
+            invalidateMaintainerrStatusDetails(id)
+            setStatusShouldRefetch(true)
             setExcludeModal(false)
           }}
           onCancel={() => setExcludeModal(false)}
@@ -109,6 +113,8 @@ const MediaCard: React.FC<IMediaCard> = ({
           {...(libraryId ? { libraryId: libraryId } : {})}
           {...(type ? { type: type } : {})}
           onSubmit={() => {
+            invalidateMaintainerrStatusDetails(id)
+            setStatusShouldRefetch(true)
             setAddModal(false)
           }}
           onCancel={() => setAddModal(false)}
@@ -271,6 +277,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           year={year}
           exclusionType={exclusionType}
           isManual={isManual}
+          forceStatusLoad={statusShouldRefetch}
           onStatusLink={handleStatusLink}
         />
       )}

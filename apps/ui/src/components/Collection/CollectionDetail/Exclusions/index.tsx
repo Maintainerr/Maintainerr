@@ -26,7 +26,7 @@ export interface IExclusionMedia {
 }
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
-  const fetchAmount = 25
+  const fetchAmount = 30
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(libraryType)
   const { sortValue, sortParams, onSortChange } =

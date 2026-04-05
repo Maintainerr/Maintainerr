@@ -9,7 +9,7 @@ interface IEditButton {
 const EditButton = (props: IEditButton) => {
   return (
     <button
-      className="bg-maintainerr-600 hover:bg-maintainerr right-5 m-auto flex h-8 w-full rounded-t text-zinc-200 shadow-md xl:rounded-l xl:rounded-r-none"
+      className="right-5 m-auto flex h-8 w-full rounded-t bg-maintainerr-600 text-zinc-200 shadow-md hover:bg-maintainerr xl:rounded-l xl:rounded-r-none"
       onClick={props.onClick}
     >
       <div className="m-auto ml-auto flex">

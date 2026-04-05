@@ -135,7 +135,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
               title="Copy YAML"
               aria-label="Copy YAML"
             >
-              <ClipboardCopyIcon className="text-maintainerr-600 hover:text-maintainerr h-5 w-5" />
+              <ClipboardCopyIcon className="h-5 w-5 text-maintainerr-600 hover:text-maintainerr" />
             </button>
           ) : (
             <button
@@ -143,7 +143,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
               title="Upload YAML"
               aria-label="Upload YAML"
             >
-              <span className="text-maintainerr-600 hover:text-maintainerr flex justify-center font-semibold">
+              <span className="flex justify-center font-semibold text-maintainerr-600 hover:text-maintainerr">
                 <UploadIcon className="h-5 w-5" />
               </span>
             </button>

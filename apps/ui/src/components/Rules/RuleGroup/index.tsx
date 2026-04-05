@@ -168,7 +168,7 @@ const RuleGroup = (props: {
                   Not set
                 </p>
               ) : (
-                <p className="text-maintainerr truncate">
+                <p className="truncate text-maintainerr">
                   {libraries?.find((lib) => lib.id === props.group.libraryId)
                     ?.title ?? '-'}
                 </p>

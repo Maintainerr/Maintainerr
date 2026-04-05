@@ -555,7 +555,7 @@ const RuleInput = (props: IRuleInput) => {
     >
       {/* Header Section */}
       <div className="flex items-center justify-between">
-        <h3 className="text-maintainerr-600 text-lg font-semibold">
+        <h3 className="text-lg font-semibold text-maintainerr-600">
           {props.tagId
             ? `Rule #${props.tagId}`
             : props.id
@@ -621,7 +621,7 @@ const RuleInput = (props: IRuleInput) => {
             id="first_val"
             onChange={updateFirstValue}
             value={firstval}
-            className="focus:border-maintainerr focus:ring-maintainerr w-full rounded-lg p-2 text-zinc-100"
+            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select First Value...
@@ -671,7 +671,7 @@ const RuleInput = (props: IRuleInput) => {
             id="action"
             onChange={updateAction}
             value={action}
-            className="focus:border-maintainerr focus:ring-maintainerr w-full rounded-lg p-2 text-zinc-100"
+            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select Action...
@@ -697,7 +697,7 @@ const RuleInput = (props: IRuleInput) => {
             id="second_val"
             onChange={updateSecondValue}
             value={secondVal}
-            className="focus:border-maintainerr focus:ring-maintainerr w-full rounded-lg p-2 text-zinc-100"
+            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select Second Value...
@@ -785,7 +785,7 @@ const RuleInput = (props: IRuleInput) => {
               id="arr_disk_path"
               onChange={updateArrDiskPath}
               value={arrDiskPath}
-              className="focus:border-maintainerr focus:ring-maintainerr w-full rounded-lg p-2 text-zinc-100"
+              className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
             >
               <option value="">Aggregate (all paths)</option>
               {preservedArrDiskPathOption ? (

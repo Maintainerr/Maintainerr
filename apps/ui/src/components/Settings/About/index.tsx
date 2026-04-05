@@ -68,7 +68,7 @@ const AboutSettings = () => {
     <>
       <title>About - Maintainerr</title>
       <div className="h-full w-full">
-        <div className="border-maintainerr-600 bg-maintainerr mt-6 rounded-md border bg-opacity-20 p-4 backdrop-blur">
+        <div className="mt-6 rounded-md border border-maintainerr-600 bg-maintainerr bg-opacity-20 p-4 backdrop-blur">
           <div className="flex">
             <div className="flex-shrink-0">
               <InformationCircleIcon className="h-5 w-5 text-gray-100" />
@@ -186,7 +186,7 @@ const AboutSettings = () => {
           <div className="form-row my-2">
             <label className="text-label"> Documentation </label>
             <div className="form-input">
-              <div className="form-input-field text-maintainerr-600 font-bold underline">
+              <div className="form-input-field font-bold text-maintainerr-600 underline">
                 <a
                   className="hover:text-maintainerrdark-800"
                   href="https://docs.maintainerr.info"
@@ -204,7 +204,7 @@ const AboutSettings = () => {
           <div className="form-row my-2">
             <label className="text-label"> Discord </label>
             <div className="form-input">
-              <div className="form-input-field text-maintainerr-600 font-bold underline">
+              <div className="form-input-field font-bold text-maintainerr-600 underline">
                 <a
                   className="hover:text-maintainerrdark-800"
                   href="https://discord.gg/WP4ZW2QYwk"
@@ -222,7 +222,7 @@ const AboutSettings = () => {
           <div className="form-row my-2">
             <label className="text-label"> Feature Requests </label>
             <div className="form-input">
-              <div className="form-input-field text-maintainerr-600 font-bold underline">
+              <div className="form-input-field font-bold text-maintainerr-600 underline">
                 <a
                   className="hover:text-maintainerrdark-800"
                   href="https://features.maintainerr.info"
@@ -240,7 +240,7 @@ const AboutSettings = () => {
           <div className="form-row my-2">
             <label className="text-label"> Services Status </label>
             <div className="form-input">
-              <div className="form-input-field text-maintainerr-600 font-bold underline">
+              <div className="form-input-field font-bold text-maintainerr-600 underline">
                 <a
                   className="hover:text-maintainerrdark-800"
                   href="https://status.maintainerr.info"
@@ -262,9 +262,9 @@ const AboutSettings = () => {
           <div className="form-row my-2">
             <label className="text-label">Donations Welcome</label>
             <div className="form-input">
-              <div className="form-input-field text-maintainerr-600 font-bold">
+              <div className="form-input-field font-bold text-maintainerr-600">
                 <a
-                  className="hover:text-maintainerrdark-800 pr-2 underline"
+                  className="pr-2 underline hover:text-maintainerrdark-800"
                   href="https://opencollective.com/maintainerr"
                   target="_blank"
                   rel="noreferrer"

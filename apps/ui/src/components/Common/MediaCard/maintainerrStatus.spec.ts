@@ -6,6 +6,7 @@ import {
   fetchMaintainerrStatusDetails,
   getMaintainerrStatusDetailsKey,
   hasMaintainerrStatusDetails,
+  invalidateMaintainerrStatusDetails,
   loadMaintainerrStatusDetails,
 } from './maintainerrStatus'
 
@@ -169,5 +170,38 @@ describe('maintainerrStatus', () => {
     expect(getApiHandler).toHaveBeenCalledTimes(2)
 
     vi.useRealTimers()
+  })
+
+  it('invalidates only the targeted key, leaving other cached entries intact', async () => {
+    clearMaintainerrStatusDetailsCache()
+
+    const response1: MaintainerrMediaStatusDetails = {
+      excludedFrom: [{ label: 'Global' }],
+      manuallyAddedTo: [],
+    }
+    const response2: MaintainerrMediaStatusDetails = {
+      excludedFrom: [],
+      manuallyAddedTo: [{ label: 'Other Collection' }],
+    }
+
+    const getApiHandler = asApiHandler(
+      vi.fn(async (path: string) => {
+        if (path === '/media-server/meta/1/maintainerr-status') return response1
+        if (path === '/media-server/meta/2/maintainerr-status') return response2
+        throw new Error(`Unexpected request: ${path}`)
+      }),
+    )
+
+    await loadMaintainerrStatusDetails({ cacheKey: '1', id: 1, getApiHandler })
+    await loadMaintainerrStatusDetails({ cacheKey: '2', id: 2, getApiHandler })
+
+    invalidateMaintainerrStatusDetails(1)
+
+    // item 1: cache was invalidated — must refetch
+    await loadMaintainerrStatusDetails({ cacheKey: '1', id: 1, getApiHandler })
+    // item 2: cache is still valid — no extra fetch
+    await loadMaintainerrStatusDetails({ cacheKey: '2', id: 2, getApiHandler })
+
+    expect(getApiHandler).toHaveBeenCalledTimes(3)
   })
 })

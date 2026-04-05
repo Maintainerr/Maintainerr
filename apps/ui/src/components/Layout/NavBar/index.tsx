@@ -183,7 +183,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                           aria-disabled={isDisabled}
                           className={`flex items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out ${
                             linkIsActive(link)
-                              ? 'from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700 bg-gradient-to-br'
+                              ? 'bg-gradient-to-br from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700'
                               : isDisabled
                                 ? 'cursor-not-allowed opacity-50'
                                 : 'hover:bg-zinc-700'
@@ -232,7 +232,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                       aria-disabled={isDisabled}
                       className={`group flex items-center rounded-md px-2 py-2 text-lg font-medium leading-6 text-white transition duration-150 ease-in-out ${
                         linkIsActive(navBarLink)
-                          ? 'from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700 bg-gradient-to-br'
+                          ? 'bg-gradient-to-br from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700'
                           : isDisabled
                             ? 'cursor-not-allowed opacity-50'
                             : 'hover:bg-zinc-700'
