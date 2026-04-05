@@ -1,0 +1,6 @@
+---
+description: Project overview and coding standards
+alwaysApply: true
+---
+
+At the start of every conversation, read `.github/copilot-instructions.md` for the full project overview, technology stack, coding standards, and contribution guidelines.

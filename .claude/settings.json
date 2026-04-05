@@ -1,0 +1,18 @@
+{
+  "attribution": {
+    "commit": ""
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat .github/copilot-instructions.md"
+          }
+        ]
+      }
+    ]
+  }
+}
