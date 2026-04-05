@@ -8,12 +8,13 @@ Promotes the current `development` branch state to `main` for release.
 - `main` is the stable release branch.
 - This PR should be squash-merged.
 - Create or update this PR with `./release.sh prepare-pr`.
+- To also request the post-merge `main` container build, run `BUILD_MAIN=true ./release.sh prepare-pr` or enable the Release 1 workflow input in GitHub.
 - When the PR is approved, release automation continues automatically.
 - Approval triggers `Release 2 - Queue Push PR To Main`.
 - `Release 2.5 - Execute Push PR To Main` reloads the PR state, confirms the approving CODEOWNER still has an active approval, waits for non-release checks to finish, then continues the remaining release steps.
-- The remaining release steps are: squash-merge into `main`, sync back branches, and run `Release 4 - Build Main`.
+- The remaining release steps are: squash-merge into `main`, sync back branches, and optionally run `Release 4 - Build Main` when requested during Release 1.
 - If checks or branch protection still block the merge, release automation comments on this PR with the blocker.
-- If the flow succeeds, release automation posts a final summary comment with the merge, sync-back, and build results.
+- If the flow succeeds, release automation posts a final summary comment with the merge, sync-back, and optional build results.
 - The manual release workflow starts only after the post-merge sync-back is complete.
 - `Release 5 - Publish` finishes with a second sync-back so the semantic-release commit on `main` is merged back into `development`.
 - Trigger the final release from `main` with `REF=main ./release.sh release`.
@@ -23,6 +24,6 @@ Promotes the current `development` branch state to `main` for release.
 - [ ] Run `./release.sh prepare-pr`
 - [ ] Review the changed files and commit list in this PR
 - [ ] Approve this PR to trigger `Release 2 - Queue Push PR To Main` and `Release 2.5 - Execute Push PR To Main`
-- [ ] Confirm the PR was squash-merged into `main`, sync-back completed, and `Release 4 - Build Main` finished
+- [ ] Confirm the PR was squash-merged into `main`, sync-back completed, and `Release 4 - Build Main` either finished or was skipped as requested
 - [ ] Run `REF=main ./release.sh release`
 - [ ] Confirm `Release 5 - Publish` synced the release commit from `main` back into `development`

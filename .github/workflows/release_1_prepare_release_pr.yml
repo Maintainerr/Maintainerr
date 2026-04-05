@@ -2,6 +2,11 @@ name: "Release 1 - Prepare PR"
 
 on:
   workflow_dispatch:
+    inputs:
+      build_main:
+        type: boolean
+        description: After the PR is approved and merged, run Release 4 - Build Main to publish the main container without creating a release
+        default: false
 
 concurrency:
   group: release-prepare-pr-${{ github.ref_name || github.run_id }}
@@ -9,6 +14,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
   pull-requests: write
 
 env:
@@ -16,6 +22,7 @@ env:
   DEVELOPMENT_BRANCH: development
   RELEASE_PR_TITLE: "chore: sync development to main"
   RELEASE_PR_TEMPLATE: .github/PULL_REQUEST_TEMPLATE/release-main.md
+  BUILD_MAIN_LABEL: release:build-main
 
 jobs:
   guard_manual_run:
@@ -46,6 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      issues: write
       pull-requests: write
     steps:
       - name: Create GitHub App token
@@ -95,6 +103,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create or update release PR
+        id: upsert-pr
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -105,6 +114,7 @@ jobs:
               --title "$RELEASE_PR_TITLE" \
               --body-file "$RELEASE_PR_TEMPLATE"
 
+            pr_number="$existing_number"
             pr_url="$(gh pr view "$existing_number" --json url --jq '.url')"
             echo "Updated release PR: $pr_url"
             {
@@ -112,18 +122,86 @@ jobs:
               echo
               echo "Updated existing PR: $pr_url"
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+          else
+            gh pr create \
+              --base "$MAIN_BRANCH" \
+              --head "$DEVELOPMENT_BRANCH" \
+              --title "$RELEASE_PR_TITLE" \
+              --body-file "$RELEASE_PR_TEMPLATE" >/dev/null
+
+            pr_number="$(gh pr list --base "$MAIN_BRANCH" --head "$DEVELOPMENT_BRANCH" --state open --json number --jq '.[0].number // empty')"
+            pr_url="$(gh pr view "$pr_number" --json url --jq '.url')"
+
+            echo "Created release PR: $pr_url"
+            {
+              echo "## Release PR"
+              echo
+              echo "Created PR: $pr_url"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          pr_url="$(gh pr create \
-            --base "$MAIN_BRANCH" \
-            --head "$DEVELOPMENT_BRANCH" \
-            --title "$RELEASE_PR_TITLE" \
-            --body-file "$RELEASE_PR_TEMPLATE")"
+          echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
 
-          echo "Created release PR: $pr_url"
-          {
-            echo "## Release PR"
-            echo
-            echo "Created PR: $pr_url"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Sync optional build label
+        uses: actions/github-script@v8
+        env:
+          BUILD_MAIN_LABEL: ${{ env.BUILD_MAIN_LABEL }}
+          BUILD_MAIN_REQUESTED: ${{ inputs.build_main && 'true' || 'false' }}
+          PR_NUMBER: ${{ steps.upsert-pr.outputs.pr_number }}
+        with:
+          script: |
+            const pullNumber = Number(process.env.PR_NUMBER);
+            const labelName = process.env.BUILD_MAIN_LABEL;
+            const buildMainRequested = process.env.BUILD_MAIN_REQUESTED === 'true';
+
+            if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
+              core.setFailed(`Invalid PR number: ${process.env.PR_NUMBER}`);
+              return;
+            }
+
+            if (buildMainRequested) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: labelName,
+                });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: labelName,
+                  color: '1d76db',
+                  description: 'Run Release 4 - Build Main automatically after the release PR merges',
+                });
+              }
+
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullNumber,
+                labels: [labelName],
+              });
+
+              await core.summary.addRaw(`Optional post-merge main container build enabled for PR #${pullNumber}.`).write();
+              return;
+            }
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullNumber,
+                name: labelName,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            await core.summary.addRaw(`Optional post-merge main container build disabled for PR #${pullNumber}.`).write();

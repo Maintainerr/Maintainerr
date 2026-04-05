@@ -168,12 +168,14 @@ When adding new UI text, please try to adhere to the following guidelines:
 | `development` | Default branch. All PRs target here. Granular commit history.           |
 | `main`        | Stable release branch. Updated via squash-merge PRs from `development`. |
 
-Maintainers should promote `development` to `main` through the release PR workflow. After the release PR is approved, automation will squash-merge it into `main`, sync the branches, and run `Release 4 - Build Main`. After `Release 5 - Publish` creates the release commit on `main`, automation runs a second sync-back so `development` does not stay behind `main`.
+Maintainers should promote `development` to `main` through the release PR workflow. After the release PR is approved, automation will squash-merge it into `main`, sync the branches, and optionally run `Release 4 - Build Main` when that was requested during Release 1. After `Release 5 - Publish` creates the release commit on `main`, automation runs a second sync-back so `development` does not stay behind `main`.
 
 ```bash
 ./release.sh prepare-pr
+# Or request the post-merge main container build without creating a release:
+BUILD_MAIN=true ./release.sh prepare-pr
 # Approve the release PR to trigger Release 2 and Release 2.5
-# Wait for the PR summary comment confirming merge, sync-back, and Build Main
+# Wait for the PR summary comment confirming merge, sync-back, and any requested Build Main run
 REF=main ./release.sh release
 # Release 5 finishes with a post-publish sync-back into development
 ```

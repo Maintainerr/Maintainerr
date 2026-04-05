@@ -49,6 +49,7 @@ jobs:
       pr_number: ${{ steps.pr.outputs.pr_number }}
       head_repo: ${{ steps.pr.outputs.head_repo }}
       review_actor: ${{ steps.pr.outputs.review_actor }}
+      build_main: ${{ steps.pr.outputs.build_main }}
     steps:
       - name: Gather PR metadata
         id: pr
@@ -66,6 +67,7 @@ jobs:
             const baseRef = pr.base.ref;
             const headRef = pr.head.ref;
             const reviewState = context.payload.review?.state ?? '';
+            const buildMain = (pr.labels ?? []).some((label) => label.name === 'release:build-main');
 
             const shouldRun =
               reviewState.toLowerCase() === 'approved' &&
@@ -78,6 +80,7 @@ jobs:
             core.setOutput('pr_number', String(pr.number));
             core.setOutput('head_repo', headRepo);
             core.setOutput('review_actor', context.actor);
+            core.setOutput('build_main', buildMain ? 'true' : 'false');
 
             if (!shouldRun) {
               core.warning(
@@ -96,12 +99,14 @@ jobs:
         env:
           PR_NUMBER: ${{ needs.resolve_pr.outputs.pr_number }}
           REVIEW_ACTOR: ${{ needs.resolve_pr.outputs.review_actor }}
+          BUILD_MAIN: ${{ needs.resolve_pr.outputs.build_main }}
         run: |
           mkdir -p release-context
           cat <<EOF > release-context/context.json
           {
             "pr_number": ${PR_NUMBER},
-            "review_actor": "${REVIEW_ACTOR}"
+            "review_actor": "${REVIEW_ACTOR}",
+            "build_main": ${BUILD_MAIN}
           }
           EOF
 

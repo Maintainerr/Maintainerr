@@ -3,6 +3,7 @@
 set -euo pipefail
 
 REF="${REF:-development}"
+BUILD_MAIN="${BUILD_MAIN:-false}"
 
 usage() {
   cat <<'EOF'
@@ -13,6 +14,7 @@ Usage:
 
 Environment:
   REF=development   Branch ref to use for workflow dispatch
+  BUILD_MAIN=false  When true, request Release 4 - Build Main after the release PR merges
 EOF
 }
 
@@ -24,7 +26,7 @@ require_gh() {
 }
 
 run_prepare_pr() {
-  gh workflow run release_1_prepare_release_pr.yml --ref "$REF"
+  gh workflow run release_1_prepare_release_pr.yml --ref "$REF" -f build_main="$BUILD_MAIN"
 }
 
 run_sync_back() {

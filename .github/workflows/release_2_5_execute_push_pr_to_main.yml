@@ -28,6 +28,7 @@ jobs:
       should_run: ${{ steps.context.outputs.should_run }}
       pr_number: ${{ steps.context.outputs.pr_number }}
       review_actor: ${{ steps.context.outputs.review_actor }}
+      build_main: ${{ steps.context.outputs.build_main }}
     steps:
       - name: Download release context artifact
         env:
@@ -46,6 +47,7 @@ jobs:
 
           pr_number=$(jq -r '.pr_number // 0' "$context_file")
           review_actor=$(jq -r '.review_actor // ""' "$context_file")
+          build_main=$(jq -r '.build_main // false' "$context_file")
 
           if [[ "$pr_number" -eq 0 || -z "$review_actor" ]]; then
             echo "::error::Invalid release context: $(cat "$context_file")"
@@ -56,6 +58,7 @@ jobs:
             echo "should_run=true"
             echo "pr_number=${pr_number}"
             echo "review_actor=${review_actor}"
+            echo "build_main=${build_main}"
           } >> "$GITHUB_OUTPUT"
 
   guard_review_actor:
@@ -82,6 +85,7 @@ jobs:
       pr_number: ${{ steps.pr.outputs.pr_number }}
       head_repo: ${{ steps.pr.outputs.head_repo }}
       review_actor: ${{ steps.pr.outputs.review_actor }}
+      build_main: ${{ steps.pr.outputs.build_main }}
     steps:
       - name: Gather PR metadata
         id: pr
@@ -129,6 +133,7 @@ jobs:
             core.setOutput('pr_number', String(pr.number));
             core.setOutput('head_repo', headRepo);
             core.setOutput('review_actor', reviewActor);
+            core.setOutput('build_main', '${{ needs.load_context.outputs.build_main }}');
 
             if (!shouldRun) {
               core.warning(
@@ -537,7 +542,7 @@ jobs:
       - resolve_pr
       - merge_pr
       - sync_back
-    if: ${{ needs.resolve_pr.outputs.should_run == 'true' && needs.merge_pr.result == 'success' && needs.sync_back.result == 'success' }}
+    if: ${{ needs.resolve_pr.outputs.should_run == 'true' && needs.resolve_pr.outputs.build_main == 'true' && needs.merge_pr.result == 'success' && needs.sync_back.result == 'success' }}
     uses: ./.github/workflows/release_4_build_main.yml
     permissions:
       contents: read
@@ -569,7 +574,13 @@ jobs:
           MERGE_RESULT: ${{ needs.merge_pr.result }}
           SYNC_RESULT: ${{ needs.sync_back.result }}
           BUILD_RESULT: ${{ needs.build_main.result }}
+          BUILD_REQUESTED: ${{ needs.resolve_pr.outputs.build_main }}
         run: |
+          build_result_display="$BUILD_RESULT"
+          if [[ "$BUILD_REQUESTED" != "true" ]]; then
+            build_result_display="skipped (not requested)"
+          fi
+
           if [[ "$VERIFY_RESULT" != "success" ]]; then
             body=":bangbang: \`Release 2.5 - Execute Push PR To Main\` stopped before merge because non-release checks did not finish cleanly.
 
@@ -589,7 +600,7 @@ jobs:
 
           - PR squash-merged into \`main\`
           - Sync back: ${SYNC_RESULT}
-          - Build Main: ${BUILD_RESULT}"
+          - Build Main: ${build_result_display}"
           fi
 
           gh pr comment "$PR_NUMBER" --body "$body"
