@@ -45,6 +45,8 @@ const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 const maintainerrServerSortBatchSize = 250;
 const maintainerrServerSortWarnThreshold = 5000;
+// ~2KB per MediaItem in V8 heap. 15,000 items ≈ 60MB with sort copy overhead.
+const maintainerrServerSortHardCap = 15000;
 
 interface OverviewBootstrapResult {
   libraries: MediaLibrary[];
@@ -174,6 +176,13 @@ export class MediaServerController {
 
       allItems.push(...result.items);
       nextOffset += result.items.length;
+
+      if (allItems.length >= maintainerrServerSortHardCap) {
+        this.logger.warn(
+          `Status-sorted library request for ${libraryId} hit the ${maintainerrServerSortHardCap} item cap (library has ${totalSize} items). Results will be partial.`,
+        );
+        break;
+      }
     }
 
     const enrichedItems = await this.enrichItems(allItems);

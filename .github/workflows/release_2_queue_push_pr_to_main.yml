@@ -103,16 +103,15 @@ jobs:
           BUILD_DOCKER_IMAGE: ${{ needs.resolve_pr.outputs.build_release_candidate_image }}
         run: |
           mkdir -p release-context
-          cat <<EOF > release-context/context.json
-          {
-            "pr_number": ${PR_NUMBER},
-            "review_actor": "${REVIEW_ACTOR}",
-            "build_release_candidate_image": ${BUILD_DOCKER_IMAGE}
-          }
-          EOF
+          jq -n \
+            --argjson pr_number "$PR_NUMBER" \
+            --arg review_actor "$REVIEW_ACTOR" \
+            --argjson build_release_candidate_image "$BUILD_DOCKER_IMAGE" \
+            '{pr_number: $pr_number, review_actor: $review_actor, build_release_candidate_image: $build_release_candidate_image}' \
+            > release-context/context.json
 
       - name: Upload release context
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-push-to-main-context
           path: release-context/context.json

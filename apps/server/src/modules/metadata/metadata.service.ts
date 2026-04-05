@@ -50,8 +50,17 @@ export class MetadataService {
     }
   }
 
+  private static readonly preferenceToProviderName: Record<
+    MetadataProviderPreference,
+    string
+  > = {
+    [MetadataProviderPreference.TMDB_PRIMARY]: 'TMDB',
+    [MetadataProviderPreference.TVDB_PRIMARY]: 'TVDB',
+  };
+
   private getOrderedProviders(): IMetadataProvider[] {
-    const primaryName = this.preference.replace('_primary', '').toUpperCase();
+    const primaryName =
+      MetadataService.preferenceToProviderName[this.preference];
     const preferred = this.providers.find(
       (provider) => provider.name === primaryName,
     );
@@ -407,7 +416,7 @@ export class MetadataService {
         const provider = this.providers.find(
           (itemProvider) => itemProvider.idKey === key,
         );
-        if (numericId && provider) {
+        if (Number.isFinite(numericId) && provider) {
           provider.assignId(ids, numericId);
         }
         continue;
@@ -436,7 +445,14 @@ export class MetadataService {
       return normalized;
     };
 
-    return normalize(left) === normalize(right);
+    const normalizedLeft = normalize(left);
+    const normalizedRight = normalize(right);
+
+    if (normalizedLeft.length === 0 || normalizedRight.length === 0) {
+      return left.trim().toLowerCase() === right.trim().toLowerCase();
+    }
+
+    return normalizedLeft === normalizedRight;
   }
 
   private async resolveAllIds(

@@ -24,9 +24,13 @@ export async function findServarrLookupMatch<T>(
       continue;
     }
 
-    const result = await lookup(candidate.id);
-    if (result !== undefined) {
-      return { candidate, result };
+    try {
+      const result = await lookup(candidate.id);
+      if (result !== undefined) {
+        return { candidate, result };
+      }
+    } catch {
+      continue;
     }
   }
 

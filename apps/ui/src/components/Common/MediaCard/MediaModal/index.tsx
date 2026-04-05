@@ -275,20 +275,37 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     }, [id, maintainerrDetailsKey, maintainerrDetailsState?.key])
 
     useEffect(() => {
-      GetApiHandler('/media-server').then((resp) => {
-        setMachineId(resp?.machineId)
-        // For Jellyfin, we need the server URL to construct links
-        if (resp?.url) {
-          setServerUrl(resp.url)
-        }
-      })
-      GetApiHandler('/settings').then((resp) =>
-        setTautulliModalUrl(resp?.tautulli_url || null),
-      )
-      GetApiHandler<MediaItem>(`/media-server/meta/${id}`).then((data) => {
-        setMetadata(data)
-        setLoading(false)
-      })
+      let active = true
+
+      GetApiHandler('/media-server')
+        .then((resp) => {
+          if (!active) return
+          setMachineId(resp?.machineId)
+          // For Jellyfin, we need the server URL to construct links
+          if (resp?.url) {
+            setServerUrl(resp.url)
+          }
+        })
+        .catch(() => {})
+      GetApiHandler('/settings')
+        .then((resp) => {
+          if (!active) return
+          setTautulliModalUrl(resp?.tautulli_url || null)
+        })
+        .catch(() => {})
+      GetApiHandler<MediaItem>(`/media-server/meta/${id}`)
+        .then((data) => {
+          if (!active) return
+          setMetadata(data)
+          setLoading(false)
+        })
+        .catch(() => {
+          if (active) setLoading(false)
+        })
+
+      return () => {
+        active = false
+      }
     }, [id])
 
     useEffect(() => {

@@ -27,6 +27,7 @@ import { MetadataProvider } from './metadata-provider';
 @Injectable()
 export class MetadataSettingsService {
   private activeMetadataRefreshProvider: MetadataProvider | null = null;
+  private refreshLockAcquired = false;
 
   constructor(
     @InjectRepository(Settings)
@@ -146,14 +147,15 @@ export class MetadataSettingsService {
   public async refreshMetadataCache(
     provider: MetadataProvider,
   ): Promise<BasicResponseDto> {
-    if (this.activeMetadataRefreshProvider) {
+    if (this.refreshLockAcquired) {
       return {
         status: 'OK',
         code: 1,
-        message: `${this.activeMetadataRefreshProvider.toUpperCase()} metadata refresh is already in progress`,
+        message: `${(this.activeMetadataRefreshProvider ?? provider).toUpperCase()} metadata refresh is already in progress`,
       };
     }
 
+    this.refreshLockAcquired = true;
     this.activeMetadataRefreshProvider = provider;
 
     try {
@@ -164,6 +166,7 @@ export class MetadataSettingsService {
 
       if (connection.code !== 1) {
         this.activeMetadataRefreshProvider = null;
+        this.refreshLockAcquired = false;
         return { status: 'NOK', code: 0, message: connection.message };
       }
 
@@ -173,9 +176,8 @@ export class MetadataSettingsService {
       void this.refreshMediaServerItems(provider, {
         retryFailedItemsWithMetadataLookup: true,
       }).finally(() => {
-        if (this.activeMetadataRefreshProvider === provider) {
-          this.activeMetadataRefreshProvider = null;
-        }
+        this.activeMetadataRefreshProvider = null;
+        this.refreshLockAcquired = false;
       });
 
       return {
@@ -185,6 +187,7 @@ export class MetadataSettingsService {
       };
     } catch (error) {
       this.activeMetadataRefreshProvider = null;
+      this.refreshLockAcquired = false;
       this.logger.error(
         `Error refreshing ${provider.toUpperCase()} metadata cache`,
       );

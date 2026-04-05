@@ -11,6 +11,8 @@ concurrency:
   group: release-push-to-main-run-${{ github.event.workflow_run.id || github.run_id }}
   cancel-in-progress: false
 
+# Write operations use the GitHub App token, not github.token.
+# Keep top-level contents at read to enforce least privilege on the default token.
 permissions:
   actions: read
   checks: read

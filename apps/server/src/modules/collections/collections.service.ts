@@ -315,32 +315,35 @@ export class CollectionsService {
     entities: Exclusion[],
     mediaServer: IMediaServerService,
   ): Promise<Exclusion[]> {
-    return (
-      await Promise.all(
-        entities.map(async (el) => {
-          const mediaItem = await mediaServer.getMetadata(
-            el.mediaServerId.toString(),
-          );
+    const results = await Promise.allSettled(
+      entities.map(async (el) => {
+        const mediaItem = await mediaServer.getMetadata(
+          el.mediaServerId.toString(),
+        );
 
-          if (!mediaItem) {
-            return { ...el, mediaData: undefined };
-          }
+        if (!mediaItem) {
+          return { ...el, mediaData: undefined };
+        }
 
-          let parentItem: MediaItem | undefined;
-          if (mediaItem.grandparentId) {
-            parentItem = await mediaServer.getMetadata(mediaItem.grandparentId);
-          } else if (mediaItem.parentId) {
-            parentItem = await mediaServer.getMetadata(mediaItem.parentId);
-          }
+        const parentId = mediaItem.grandparentId ?? mediaItem.parentId;
+        const parentItem = parentId
+          ? await mediaServer.getMetadata(parentId)
+          : undefined;
 
-          el.mediaData = {
-            ...mediaItem,
-            parentItem,
-          };
-          return el;
-        }),
+        el.mediaData = {
+          ...mediaItem,
+          parentItem,
+        };
+        return el;
+      }),
+    );
+
+    return results
+      .filter(
+        (result): result is PromiseFulfilledResult<Exclusion> =>
+          result.status === 'fulfilled' && result.value.mediaData !== undefined,
       )
-    ).filter((el) => el.mediaData !== undefined);
+      .map((result) => result.value);
   }
 
   public async getCollectionMediaWithServerDataAndPaging(
@@ -406,8 +409,11 @@ export class CollectionsService {
         mediaServer,
       );
 
-      const sortedPageEntities = entities
-        .filter((entity) => metadataByMediaServerId.has(entity.mediaServerId))
+      const sortableEntities = entities.filter((entity) =>
+        metadataByMediaServerId.has(entity.mediaServerId),
+      );
+
+      const sortedPageEntities = sortableEntities
         .sort((leftItem, rightItem) =>
           compareMediaItemsBySort(
             metadataByMediaServerId.get(leftItem.mediaServerId)!,
@@ -419,7 +425,7 @@ export class CollectionsService {
         .slice(offset, offset + size);
 
       return {
-        totalSize: itemCount,
+        totalSize: sortableEntities.length,
         items: await this.hydrateCollectionMediaWithMetadata(
           sortedPageEntities,
           mediaServer,
@@ -549,7 +555,7 @@ export class CollectionsService {
         .slice(offset, offset + size);
 
       return {
-        totalSize: itemCount,
+        totalSize: entitiesWithMediaData.length,
         items: sortedItems ?? [],
       };
     } catch (error) {
@@ -659,10 +665,20 @@ export class CollectionsService {
       }
 
       const { media, artwork } = result.value;
+      const collectionId = media.collectionId;
+      const previewMedia = previewMediaByCollection.get(collectionId);
 
-      media.tmdbId ??= artwork.tmdbId;
-      media.tvdbId ??= artwork.tvdbId;
-      media.image_path ??= artwork.imagePath;
+      if (previewMedia) {
+        const index = previewMedia.indexOf(media);
+        if (index !== -1) {
+          previewMedia[index] = {
+            ...media,
+            tmdbId: media.tmdbId ?? artwork.tmdbId,
+            tvdbId: media.tvdbId ?? artwork.tvdbId,
+            image_path: media.image_path ?? artwork.imagePath,
+          } as CollectionMedia;
+        }
+      }
     });
 
     return previewMediaByCollection;

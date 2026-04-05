@@ -80,12 +80,13 @@ jobs:
       - name: Release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DRY_RUN: ${{ github.event.inputs.dry-run-semantic-release }}
         run: |
-          if [ "${{ github.event.inputs.dry-run-semantic-release }}" == "true" ]; then
-          echo "Dry run enabled."
-          npx semantic-release --dry-run
+          if [ "$DRY_RUN" == "true" ]; then
+            echo "Dry run enabled."
+            npx semantic-release --dry-run
           else
-          npx semantic-release
+            npx semantic-release
           fi
 
   sync_back_release_commit:

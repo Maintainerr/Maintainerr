@@ -148,9 +148,7 @@ const Overview = () => {
           lastAutoSyncKeyRef.current = nextLibraryId
             ? `library:${nextLibraryId}`
             : undefined
-          pageData.current = nextLibraryId
-            ? Math.ceil(nextContent.totalSize / fetchAmount)
-            : 0
+          pageData.current = nextLibraryId ? 1 : 0
           setTotalSize(nextContent.totalSize)
           totalSizeRef.current = nextContent.totalSize
           dataRef.current = nextContent.items

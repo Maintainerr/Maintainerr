@@ -7,6 +7,9 @@ import {
   isAbsoluteUrl,
 } from '../../../utils/mediaTypeUtils'
 
+// Each entry is a request path key + resolved URL string (~200 bytes).
+// 500 entries ≈ 100KB — covers several pages of browsing before eviction.
+const POSTER_CACHE_MAX_SIZE = 500
 const resolvedPosterImageCache = new Map<string, string>()
 const pendingPosterImageRequests = new Map<string, Promise<string | null>>()
 
@@ -39,6 +42,12 @@ async function resolvePosterImage(requestPath: string): Promise<string | null> {
       const nextPath = response?.url ?? null
 
       if (nextPath) {
+        if (resolvedPosterImageCache.size >= POSTER_CACHE_MAX_SIZE) {
+          const firstKey = resolvedPosterImageCache.keys().next().value
+          if (firstKey !== undefined) {
+            resolvedPosterImageCache.delete(firstKey)
+          }
+        }
         resolvedPosterImageCache.set(requestPath, nextPath)
       }
 

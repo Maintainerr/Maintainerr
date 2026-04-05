@@ -70,13 +70,12 @@ const CollectionOverview = (props: ICollectionOverview) => {
             aria-busy={props.isLoading}
             className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] xs:gap-4"
           >
-            {props.collections?.map((col) => (
+            {props.collections?.map((col, index) => (
               <li
-                key={+col.id!}
+                key={col.id ?? index}
                 className="collection relative mb-5 flex h-fit transform-gpu flex-col overflow-hidden rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
               >
                 <CollectionItem
-                  key={col.id}
                   collection={col}
                   onClick={() => props.openDetail(col)}
                 />

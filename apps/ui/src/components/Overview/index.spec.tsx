@@ -31,13 +31,18 @@ vi.mock('../Common/LoadingSpinner', () => ({
 vi.mock('./Content', () => ({
   default: ({
     data,
+    fetchData,
     loading,
   }: {
     data: Array<{ id: string; title: string }>
+    fetchData: () => void
     loading: boolean
   }) => (
     <div>
       {loading ? <span data-testid="overview-content-loading" /> : null}
+      <button data-testid="overview-fetch-more" onClick={() => fetchData()}>
+        Fetch more
+      </button>
       <div data-testid="overview-items">
         {data.map((item) => (
           <span key={item.id}>{item.title}</span>
@@ -149,6 +154,66 @@ describe('Overview', () => {
     expect(getApiHandlerMock).toHaveBeenCalledWith(
       expect.stringContaining('/media-server/overview/bootstrap?'),
     )
+  })
+
+  it('requests the second page after bootstrap when loading more overview items', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 31,
+            items: Array.from({ length: 30 }, (_, index) => ({
+              id: `boot-${index + 1}`,
+              title: `Boot Item ${index + 1}`,
+              type: 'show',
+            })),
+          },
+        }
+      }
+
+      if (path.startsWith('/media-server/library/shows-library/content?')) {
+        expect(path).toContain('page=2')
+
+        return {
+          totalSize: 31,
+          items: [{ id: 'tail-item', title: 'Tail Item', type: 'show' }],
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item 1')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('overview-fetch-more'))
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain('page=2')
+
+    await waitFor(() => {
+      expect(screen.getByText('Tail Item')).toBeTruthy()
+    })
   })
 
   it('exits the bootstrap spinner when no overview libraries are available', async () => {
