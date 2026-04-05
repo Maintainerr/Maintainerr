@@ -1,6 +1,5 @@
 ---
 applyTo: "**"
-alwaysApply: true
 ---
 
 ## Implementation direction
@@ -26,3 +25,4 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 7. Contracts package: any new DTOs or request/response shapes should be deliberate and minimal.
 8. Database/migrations: if persistence changes are needed, keep migrations safe, reversible, and edge-case aware. All migrations must be generated and run via TypeORM — never manually crafted SQL. See `typeorm_instructions.txt` for commands and workflow.
 9. Rules/metadata systems: make sure any cache invalidation approach stays consistent with existing getter/provider patterns.
+10. Rule naming standards: preserve established rule `name` and `humanName` conventions for equivalent concepts across media servers. Do not rename user-facing rule labels to encode backend caveats; keep naming stable and document server-specific semantics in code comments and focused tests instead.
