@@ -9,11 +9,11 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MetadataService } from '../metadata/metadata.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
-import { Exclusion } from '../rules/entities/exclusion.entities';
-import { RuleGroup } from '../rules/entities/rule-group.entities';
 
 describe('CollectionsService', () => {
   let service: CollectionsService;
@@ -519,6 +519,53 @@ describe('CollectionsService', () => {
       { previewLimit: 2 },
     );
     expect(result).toEqual(new Map());
+  });
+
+  it('returns full collection media for the explicit overlay data endpoint', async () => {
+    const firstCollection = createCollection({ id: 1, title: 'First' });
+    const secondCollection = createCollection({ id: 2, title: 'Second' });
+    const firstCollectionMedia = [
+      createCollectionMedia(firstCollection, { mediaServerId: 'item-1' }),
+      createCollectionMedia(firstCollection, { mediaServerId: 'item-2' }),
+    ];
+    const secondCollectionMedia = [
+      createCollectionMedia(secondCollection, { mediaServerId: 'item-3' }),
+    ];
+
+    collectionRepo.find.mockResolvedValue([
+      firstCollection as Collection,
+      secondCollection as Collection,
+    ]);
+    collectionMediaRepo.find.mockResolvedValue([
+      ...firstCollectionMedia,
+      ...secondCollectionMedia,
+    ]);
+
+    const result = await service.getCollectionsForOverlayData(
+      undefined,
+      undefined,
+    );
+
+    expect(collectionMediaRepo.find).toHaveBeenCalledWith({
+      where: { collectionId: expect.anything() },
+      order: {
+        collectionId: 'ASC',
+        addDate: 'DESC',
+        id: 'DESC',
+      },
+    });
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: firstCollection.id,
+        media: firstCollectionMedia,
+        mediaCount: firstCollectionMedia.length,
+      }),
+      expect.objectContaining({
+        id: secondCollection.id,
+        media: secondCollectionMedia,
+        mediaCount: secondCollectionMedia.length,
+      }),
+    ]);
   });
 
   it('enriches collection previews with fallback artwork when stored poster data is missing', async () => {

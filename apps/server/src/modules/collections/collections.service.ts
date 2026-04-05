@@ -18,7 +18,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, LessThan, Repository } from 'typeorm';
+import { Brackets, DataSource, In, LessThan, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -740,17 +740,48 @@ export class CollectionsService {
     return this.enrichCollectionPreviewMedia(previewMediaByCollection);
   }
 
+  private async getCollectionMediaByCollection(collectionIds: number[]) {
+    if (collectionIds.length === 0) {
+      return new Map<number, CollectionMedia[]>();
+    }
+
+    const collectionMedia = await this.CollectionMediaRepo.find({
+      where: { collectionId: In(collectionIds) },
+      order: {
+        collectionId: 'ASC',
+        addDate: 'DESC',
+        id: 'DESC',
+      },
+    });
+
+    const mediaByCollection = new Map<number, CollectionMedia[]>();
+
+    for (const media of collectionMedia) {
+      const mediaItems = mediaByCollection.get(media.collectionId) ?? [];
+
+      mediaItems.push(media);
+      mediaByCollection.set(media.collectionId, mediaItems);
+    }
+
+    return mediaByCollection;
+  }
+
+  private async findCollections(libraryId?: string, typeId?: MediaItemType) {
+    return await this.collectionRepo.find(
+      libraryId
+        ? { where: { libraryId: libraryId } }
+        : typeId
+          ? { where: { type: typeId } }
+          : undefined,
+    );
+  }
+
   async getCollections(libraryId?: string, typeId?: MediaItemType) {
     try {
-      const collections = await this.collectionRepo.find(
-        libraryId
-          ? { where: { libraryId: libraryId } }
-          : typeId
-            ? { where: { type: typeId } }
-            : undefined,
-      );
+      const collections = await this.findCollections(libraryId, typeId);
 
       const collectionIds = collections.map((collection) => collection.id);
+
       const [mediaCountsByCollection, previewMediaByCollection] =
         await Promise.all([
           this.getCollectionMediaCounts(collectionIds),
@@ -762,6 +793,35 @@ export class CollectionsService {
         media: previewMediaByCollection.get(Number(collection.id)) ?? [],
         mediaCount: mediaCountsByCollection.get(Number(collection.id)) ?? 0,
       }));
+    } catch (error) {
+      this.logger.warn(
+        'An error occurred while performing collection actions.',
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  async getCollectionsForOverlayData(
+    libraryId?: string,
+    typeId?: MediaItemType,
+  ) {
+    try {
+      const collections = await this.findCollections(libraryId, typeId);
+
+      const collectionIds = collections.map((collection) => collection.id);
+      const mediaByCollection =
+        await this.getCollectionMediaByCollection(collectionIds);
+
+      return collections.map((collection) => {
+        const media = mediaByCollection.get(Number(collection.id)) ?? [];
+
+        return {
+          ...collection,
+          media,
+          mediaCount: media.length,
+        };
+      });
     } catch (error) {
       this.logger.warn(
         'An error occurred while performing collection actions.',
