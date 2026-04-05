@@ -8,7 +8,7 @@ interface IAddButton {
 const AddButton = (props: IAddButton) => {
   return (
     <button
-      className="add-button m-auto flex h-9 rounded bg-amber-600 text-zinc-200 shadow-md hover:bg-amber-500"
+      className="add-button bg-maintainerr-600 hover:bg-maintainerr m-auto flex h-9 rounded text-zinc-200 shadow-md"
       onClick={props.onClick}
     >
       {<PlusCircleIcon className="m-auto ml-4 h-5" />}

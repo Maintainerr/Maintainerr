@@ -115,7 +115,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
       tabIndex={0}
       className={`${containerClassName} ${
         updateAvailable
-          ? 'bg-amber-800 text-white hover:bg-amber-600'
+          ? 'bg-maintainerrdark-800 hover:bg-maintainerr-600 text-white'
           : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
       }`}
     >

@@ -48,7 +48,7 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
               <span className="text-lg font-medium">{item.title}</span>
               <button
                 onClick={() => onEdit(item.id)}
-                className="self-start font-bold text-zinc-400 underline transition-all hover:text-amber-600"
+                className="hover:text-maintainerr-600 self-start font-bold text-zinc-400 underline transition-all"
               >
                 Edit
               </button>
@@ -82,7 +82,7 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
       <div className="mt-6 flex justify-center">
         <button
           onClick={onAdd}
-          className="focus:ring-amber button-md inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-amber-600 border-transparent bg-amber-600 px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:border-amber-500 hover:bg-amber-500 focus:border-amber-700 focus:outline-none active:border-amber-700 active:bg-amber-700 disabled:opacity-50"
+          className="focus:ring-maintainerr button-md border-maintainerr-600 bg-maintainerr-600 hover:border-maintainerr hover:bg-maintainerr focus:border-maintainerr-700 active:border-maintainerr-700 active:bg-maintainerr-700 inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out focus:outline-none disabled:opacity-50"
         >
           {addName ? addName : 'Add'}
         </button>

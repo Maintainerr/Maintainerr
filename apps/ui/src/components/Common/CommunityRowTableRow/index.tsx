@@ -66,7 +66,7 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
               props.thumbsActive &&
               props.rule.karma !== undefined &&
               props.rule.karma < 990
-                ? 'w-6 cursor-pointer hover:text-amber-700'
+                ? 'hover:text-maintainerrdark-700 w-6 cursor-pointer'
                 : 'w-6 text-zinc-700'
             }
           />
@@ -75,7 +75,7 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
             onClick={props.thumbsActive ? onThumbsDown : undefined}
             className={
               props.thumbsActive
-                ? 'w-6 cursor-pointer hover:text-amber-700'
+                ? 'hover:text-maintainerrdark-700 w-6 cursor-pointer'
                 : 'w-6 text-zinc-700'
             }
           />

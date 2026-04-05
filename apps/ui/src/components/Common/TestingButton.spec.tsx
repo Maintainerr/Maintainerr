@@ -12,7 +12,7 @@ describe('TestingButton', () => {
       <TestingButton type="button" isPending={false} feedbackStatus={true} />,
     )
 
-    expect(screen.getByRole('button').className).toContain('bg-amber-900')
+    expect(screen.getByRole('button').className).toContain('bg-maintainerrdark')
   })
 
   it('uses a danger button type after a failed test for standard buttons', () => {

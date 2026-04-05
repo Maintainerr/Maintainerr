@@ -183,11 +183,11 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                           aria-disabled={isDisabled}
                           className={`flex items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out ${
                             linkIsActive(link)
-                              ? 'bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700'
+                              ? 'from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700 bg-gradient-to-br'
                               : isDisabled
                                 ? 'cursor-not-allowed opacity-50'
                                 : 'hover:bg-zinc-700'
-                          } focus:bg-amber-800 focus:outline-none`}
+                          } focus:bg-maintainerrdark-800 focus:outline-none`}
                         >
                           {link.svgIcon}
                           {link.name}
@@ -232,11 +232,11 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                       aria-disabled={isDisabled}
                       className={`group flex items-center rounded-md px-2 py-2 text-lg font-medium leading-6 text-white transition duration-150 ease-in-out ${
                         linkIsActive(navBarLink)
-                          ? 'bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700'
+                          ? 'from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700 bg-gradient-to-br'
                           : isDisabled
                             ? 'cursor-not-allowed opacity-50'
                             : 'hover:bg-zinc-700'
-                      } focus:bg-amber-800 focus:outline-none`}
+                      } focus:bg-maintainerrdark-800 focus:outline-none`}
                     >
                       {navBarLink.svgIcon}
                       {navBarLink.name}

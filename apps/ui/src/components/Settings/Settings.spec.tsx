@@ -150,7 +150,7 @@ describe('SettingsWrapper', () => {
 
     const desktopLinks = Array.from(container.querySelectorAll('nav.flex a'))
     const activeLinks = desktopLinks.filter((link) =>
-      link.className.includes('text-amber-500'),
+      link.className.includes('text-maintainerr'),
     )
 
     expect(activeLinks).toHaveLength(1)

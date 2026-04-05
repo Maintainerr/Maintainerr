@@ -81,7 +81,7 @@ const NotificationSettings = () => {
                     {config.name}
                   </div>
                   {!config.enabled && (
-                    <div className="rounded bg-amber-600 px-2 py-0.5 text-xs text-zinc-200 shadow-md">
+                    <div className="bg-maintainerr-600 rounded px-2 py-0.5 text-xs text-zinc-200 shadow-md">
                       Disabled
                     </div>
                   )}
@@ -114,7 +114,7 @@ const NotificationSettings = () => {
             <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded bg-amber-600 px-4 text-zinc-200 shadow-md hover:bg-amber-500"
+                className="add-button bg-maintainerr-600 hover:bg-maintainerr m-auto flex h-9 rounded px-4 text-zinc-200 shadow-md"
                 onClick={() => updateAddModalActive(!addModalActive)}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}

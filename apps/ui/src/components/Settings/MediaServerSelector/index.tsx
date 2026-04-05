@@ -204,9 +204,9 @@ const MediaServerSelector = ({
                 type="button"
                 onClick={() => handleServerClick(option.value)}
                 disabled={isPreviewPending || isSwitchPending}
-                className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                className={`focus:ring-maintainerr relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 ${
                   isSelected
-                    ? 'border-amber-500 bg-amber-500/10'
+                    ? 'border-maintainerr bg-maintainerr/10'
                     : 'border-zinc-700 bg-zinc-800 hover:border-zinc-600'
                 } ${(isPreviewPending || isSwitchPending) && !isPending ? 'opacity-50' : ''}`}
               >
@@ -225,13 +225,13 @@ const MediaServerSelector = ({
                     </div>
                   </div>
                   {isSelected && (
-                    <div className="shrink-0 text-amber-500">
+                    <div className="text-maintainerr shrink-0">
                       <CheckCircleIcon className="h-6 w-6" />
                     </div>
                   )}
                   {isPending && (
                     <div className="shrink-0">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-500 border-t-amber-500" />
+                      <div className="border-t-maintainerr h-5 w-5 animate-spin rounded-full border-2 border-zinc-500" />
                     </div>
                   )}
                 </div>
@@ -416,7 +416,7 @@ const MediaServerSelector = ({
                     checked={migrateRules}
                     onChange={(e) => setMigrateRules(e.target.checked)}
                     disabled={isSwitchPending || isSwitchComplete}
-                    className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-amber-500 focus:ring-amber-500"
+                    className="text-maintainerr focus:ring-maintainerr mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-700"
                   />
                   <label htmlFor="migrateRules" className="ml-3 cursor-pointer">
                     <span className="block font-medium text-zinc-100">
@@ -430,7 +430,7 @@ const MediaServerSelector = ({
                       {previewData!.ruleMigration!.totalRules} rules can be
                       migrated.
                       {previewData!.ruleMigration!.skippedRules > 0 && (
-                        <span className="text-amber-400">
+                        <span className="text-maintainerr-400">
                           {' '}
                           {previewData!.ruleMigration!.skippedRules} rule(s) use
                           properties not available in{' '}
@@ -480,7 +480,7 @@ const MediaServerSelector = ({
               </div>
             )}
 
-            <p className="mb-4 text-amber-400">
+            <p className="text-maintainerr-400 mb-4">
               <span className="font-bold">Important:</span>{' '}
               <span className="text-zinc-100">
                 After migration, you must manually assign a library to each rule

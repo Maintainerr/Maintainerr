@@ -123,7 +123,7 @@ const maintainerrStatusCardStyles = {
   titleClassName: 'text-white',
   contentClassName: 'text-zinc-100',
   emptyClassName: 'text-zinc-100/80',
-  linkClassName: 'text-amber-500 underline hover:text-amber-400',
+  linkClassName: 'text-maintainerr underline hover:text-maintainerr-400',
 } as const
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
@@ -433,7 +433,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       mediaType === 'movie'
                         ? 'bg-black'
                         : mediaType === 'show'
-                          ? 'bg-amber-900'
+                          ? 'bg-maintainerrdark'
                           : mediaType === 'season'
                             ? 'bg-yellow-700'
                             : 'bg-rose-900'

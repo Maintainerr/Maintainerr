@@ -32,6 +32,36 @@ const successPalette = {
   DEFAULT: '#315b46',
 }
 
+const maintainerrPalette = {
+  50: '#fffbeb',
+  100: '#fef3c7',
+  200: '#fde68a',
+  300: '#fcd34d',
+  400: '#fbbf24',
+  500: '#f59e0b',
+  600: '#d97706',
+  700: '#b45309',
+  800: '#92400e',
+  900: '#78350f',
+  950: '#451a03',
+  DEFAULT: '#f59e0b',
+}
+
+const maintainerrDarkPalette = {
+  50: '#fffbeb',
+  100: '#fef3c7',
+  200: '#fde68a',
+  300: '#fcd34d',
+  400: '#fbbf24',
+  500: '#f59e0b',
+  600: '#d97706',
+  700: '#b45309',
+  800: '#92400e',
+  900: '#78350f',
+  950: '#451a03',
+  DEFAULT: '#78350f',
+}
+
 module.exports = {
   mode: 'jit',
   content: ['./src/pages/**/*.{ts,tsx}', './src/components/**/*.{ts,tsx}'],
@@ -40,8 +70,10 @@ module.exports = {
       colors: {
         error: errorPalette,
         success: successPalette,
+        maintainerr: maintainerrPalette,
+        maintainerrdark: maintainerrDarkPalette,
         warning: colors.amber,
-        info: colors.sky,
+        sky: colors.sky,
       },
       transitionProperty: {
         'max-height': 'max-height',

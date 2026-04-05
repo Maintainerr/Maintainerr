@@ -320,7 +320,7 @@ const LogFiles = () => {
                     className="flex items-center gap-x-2"
                   >
                     {row.name}
-                    <DownloadIcon className="h-5 w-5 text-amber-500" />
+                    <DownloadIcon className="text-maintainerr h-5 w-5" />
                   </a>
                 </Table.TD>
                 <Table.TD>{Math.ceil(row.size / 1024)} KB</Table.TD>

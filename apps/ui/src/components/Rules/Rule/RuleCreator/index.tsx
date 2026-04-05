@@ -299,7 +299,7 @@ const RuleCreator = (props: iRuleCreator) => {
                 <div className="mb-2 flex w-full justify-end">
                   <button
                     type="button"
-                    className="flex h-8 rounded bg-amber-600 text-zinc-200 shadow-md hover:bg-amber-500"
+                    className="bg-maintainerr-600 hover:bg-maintainerr flex h-8 rounded text-zinc-200 shadow-md"
                     onClick={() => RuleAdded(sid)}
                     title={`Add a new rule to Section ${sid}`}
                   >
@@ -320,7 +320,7 @@ const RuleCreator = (props: iRuleCreator) => {
           <div className="m-auto xl:m-0">
             <button
               type="button"
-              className="flex h-8 rounded bg-amber-600 text-zinc-200 shadow-md hover:bg-amber-500"
+              className="bg-maintainerr-600 hover:bg-maintainerr flex h-8 rounded text-zinc-200 shadow-md"
               onClick={addSection}
               title={`Add a new section`}
             >

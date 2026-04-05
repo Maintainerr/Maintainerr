@@ -146,7 +146,7 @@ const providers: ProviderConfig[] = [
           href="https://www.themoviedb.org/settings/api"
           target="_blank"
           rel="noreferrer"
-          className="text-amber-500 underline hover:text-amber-400"
+          className="text-maintainerr hover:text-maintainerr-400 underline"
         >
           themoviedb.org
         </a>
@@ -169,7 +169,7 @@ const providers: ProviderConfig[] = [
           href="https://thetvdb.com/dashboard/account/apikey"
           target="_blank"
           rel="noreferrer"
-          className="text-amber-500 underline hover:text-amber-400"
+          className="text-maintainerr hover:text-maintainerr-400 underline"
         >
           thetvdb.com
         </a>
@@ -392,7 +392,7 @@ function PrimarySwitch({
       onClick={onToggle}
       className={[
         'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
-        checked ? 'bg-amber-600' : 'bg-zinc-600',
+        checked ? 'bg-maintainerr-600' : 'bg-zinc-600',
         disabled ? 'cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >

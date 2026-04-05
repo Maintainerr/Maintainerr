@@ -168,7 +168,7 @@ const RuleGroup = (props: {
                   Not set
                 </p>
               ) : (
-                <p className="truncate text-amber-500">
+                <p className="text-maintainerr truncate">
                   {libraries?.find((lib) => lib.id === props.group.libraryId)
                     ?.title ?? '-'}
                 </p>
@@ -178,7 +178,7 @@ const RuleGroup = (props: {
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 Rules
               </p>
-              <p className="text-amber-500">{props.group.rules.length}</p>
+              <p className="text-maintainerr">{props.group.rules.length}</p>
             </div>
           </div>
         </div>

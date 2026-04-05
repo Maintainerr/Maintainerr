@@ -10,7 +10,7 @@ const InfoButton = (props: IInfoButton) => {
   return (
     <button
       disabled={props.enabled !== undefined ? !props.enabled : false}
-      className="mb-2 flex h-9 w-24 rounded bg-zinc-900 text-zinc-200 shadow-md hover:bg-zinc-800 disabled:opacity-50 md:ml-2"
+      className="bg-maintainerr-600 hover:bg-maintainerr mb-2 flex h-9 w-24 rounded text-zinc-200 shadow-md disabled:opacity-50 md:ml-2"
       onClick={props.onClick}
     >
       {<InformationCircleIcon className="m-auto ml-5 h-5" />}{' '}

@@ -11,10 +11,10 @@ import MediaModalContent from './MediaModal'
 
 const mediaBadgeClasses = {
   movie: 'bg-zinc-900',
-  show: 'bg-amber-900',
+  show: 'bg-maintainerrdark',
   season: 'bg-yellow-700',
   episode: 'bg-rose-900',
-  info: 'bg-zinc-800',
+  info: 'bg-maintainerrdark',
   success: 'bg-emerald-700',
 } as const
 

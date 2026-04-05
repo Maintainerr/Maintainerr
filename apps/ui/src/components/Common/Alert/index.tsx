@@ -23,9 +23,9 @@ const Alert: React.FC<AlertProps> = ({ title, children, type }) => {
   switch (type) {
     case 'info':
       design = {
-        bgColor: 'bg-zinc-800',
-        titleColor: 'text-zinc-100',
-        textColor: 'text-zinc-300',
+        bgColor: 'bg-maintainerrdark',
+        titleColor: 'text-maintainerr-100',
+        textColor: 'text-maintainerr-300',
         svg: <InformationCircleIcon className="h-5 w-5" />,
       }
       break
