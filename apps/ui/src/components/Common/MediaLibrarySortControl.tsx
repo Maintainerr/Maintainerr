@@ -9,6 +9,7 @@ import {
 } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { Select } from '../Forms/Select'
+import { SmallLoadingSpinner } from './LoadingSpinner'
 
 const defaultSortValue = ''
 const defaultOverviewSortValue: MediaLibrarySortKey = 'title.asc'
@@ -113,6 +114,8 @@ export const getMediaLibrarySortConfig = (
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
       }),
+      createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
+      createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
     ],
   }
 }
@@ -158,13 +161,15 @@ export const getCollectionMediaSortConfig = (
       : undefined,
   }))
 
-  if (includeDeleteSoonest) {
-    options.push(collectionDeleteSoonestSortOption)
-  }
+  const resolvedOptions = includeDeleteSoonest
+    ? [collectionDeleteSoonestSortOption, ...options]
+    : options
 
   return {
-    defaultValue: defaultSortValue,
-    options,
+    defaultValue: includeDeleteSoonest
+      ? collectionDeleteSoonestSortOption.value
+      : defaultSortValue,
+    options: resolvedOptions,
   }
 }
 
@@ -192,6 +197,7 @@ interface MediaLibrarySortControlProps {
   options: ReadonlyArray<{ value: string; label: string }>
   value: string
   onSortChange: (value: string) => void
+  isLoading?: boolean
 }
 
 export const useMediaLibrarySort = <TSortParams extends SortParams>(
@@ -231,18 +237,31 @@ export const MediaLibrarySortControl = ({
   options,
   value,
   onSortChange,
+  isLoading = false,
 }: MediaLibrarySortControlProps) => {
   return (
-    <Select
-      aria-label={ariaLabel}
-      value={value}
-      onChange={(event) => onSortChange(event.target.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
+    <div className="flex items-center gap-3">
+      <div className="flex-1">
+        <Select
+          aria-label={ariaLabel}
+          name="sort"
+          value={value}
+          onChange={(event) => onSortChange(event.target.value)}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex min-h-6 min-w-6 items-center justify-end">
+        {isLoading ? (
+          <div role="status" aria-label="Loading sorted items">
+            <SmallLoadingSpinner className="h-6 w-6" />
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }

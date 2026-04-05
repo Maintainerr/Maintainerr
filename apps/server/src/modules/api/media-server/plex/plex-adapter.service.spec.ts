@@ -3,6 +3,8 @@ import { Mocked, TestBed } from '@suites/unit';
 import {
   createPlexCollection,
   createPlexLibrary,
+  createPlexLibraryItem,
+  createPlexMetadata,
   createPlexSeenBy,
   createPlexUserAccount,
 } from '../../../../../test/utils/data';
@@ -164,12 +166,22 @@ describe('PlexAdapterService', () => {
           type: 'show',
           agent: 'com.plexapp.agents.imdb',
         }),
+        createPlexLibrary({
+          key: '3',
+          title: 'Music',
+          type: 'artist',
+          agent: 'tv.plex.agents.music',
+        }),
       ]);
 
       const libraries = await service.getLibraries();
       expect(libraries).toHaveLength(2);
       expect(libraries[0].id).toBe('1');
       expect(libraries[0].title).toBe('Movies');
+      expect(libraries.map((library) => library.type)).toEqual([
+        'movie',
+        'show',
+      ]);
     });
   });
 
@@ -279,6 +291,47 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('getCollectionChildren', () => {
+    it('refreshes incomplete Plex collection children via full metadata lookups', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', {
+          ratingKey: 'movie-1',
+          Guid: undefined,
+        }),
+      ]);
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          Guid: [{ id: 'tmdb://321' }],
+        }),
+      );
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('col123');
+      expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1');
+      expect(children[0].providerIds.tmdb).toEqual(['321']);
+    });
+
+    it('keeps the original collection child when the metadata refresh is unavailable', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', {
+          ratingKey: 'movie-1',
+          Guid: undefined,
+        }),
+      ]);
+      plexApi.getMetadata.mockResolvedValue(undefined);
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(children[0].id).toBe('movie-1');
+      expect(children[0].providerIds.tmdb).toEqual([]);
+      expect(children[0].providerIds.tvdb).toEqual([]);
+      expect(children[0].providerIds.imdb).toEqual([]);
+    });
+  });
+
   describe('searchContent', () => {
     it('should return empty array when PlexApiService returns undefined', async () => {
       plexApi.searchContent.mockResolvedValue(undefined);
@@ -336,7 +389,51 @@ describe('PlexAdapterService', () => {
       expect(plexApi.deleteCollection).toHaveBeenCalledWith('col123');
     });
 
-    it('should return failed ids from batch add', async () => {
+    it('should treat NOK add responses as failures', async () => {
+      plexApi.addChildToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'boom',
+      } as any);
+
+      await expect(service.addToCollection('col123', 'bad')).rejects.toThrow(
+        'boom',
+      );
+    });
+
+    it('should prefer explicit OK status over a zero code', async () => {
+      plexApi.addChildToCollection.mockResolvedValue({
+        status: 'OK',
+        code: 0,
+      } as any);
+
+      await expect(
+        service.addToCollection('col123', 'good'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('should add a batch of items in a single Plex request when possible', async () => {
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'OK',
+      } as any);
+
+      await expect(
+        service.addBatchToCollection('col123', ['good', 'good-2']),
+      ).resolves.toEqual([]);
+
+      expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
+        'good',
+        'good-2',
+      ]);
+      expect(plexApi.addChildToCollection).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to per-item adds when a Plex batch add fails', async () => {
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'batch failed',
+      } as any);
       plexApi.addChildToCollection.mockImplementation(
         async (_collectionId, itemId) => {
           if (itemId === 'bad') {
@@ -350,6 +447,13 @@ describe('PlexAdapterService', () => {
       await expect(
         service.addBatchToCollection('col123', ['good', 'bad', 'good-2']),
       ).resolves.toEqual(['bad']);
+
+      expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
+        'good',
+        'bad',
+        'good-2',
+      ]);
+      expect(plexApi.addChildToCollection).toHaveBeenCalledTimes(3);
     });
 
     it('should treat 404 removes as successful in batch remove', async () => {
@@ -370,6 +474,23 @@ describe('PlexAdapterService', () => {
       await expect(
         service.removeBatchFromCollection('col123', ['good', 'missing', 'bad']),
       ).resolves.toEqual(['bad']);
+    });
+
+    it('should default optional visibility flags to false', async () => {
+      plexApi.UpdateCollectionSettings.mockResolvedValue({} as any);
+
+      await service.updateCollectionVisibility({
+        libraryId: 'lib1',
+        collectionId: 'col123',
+      });
+
+      expect(plexApi.UpdateCollectionSettings).toHaveBeenCalledWith({
+        libraryId: 'lib1',
+        collectionId: 'col123',
+        recommended: false,
+        ownHome: false,
+        sharedHome: false,
+      });
     });
   });
 });

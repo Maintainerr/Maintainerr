@@ -26,7 +26,7 @@ export interface IExclusionMedia {
 }
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
-  const fetchAmount = 25
+  const fetchAmount = 30
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(libraryType)
   const { sortValue, sortParams, onSortChange } =
@@ -93,6 +93,8 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     })
   }
 
+  const showRefreshing = isLoading && data.length > 0
+
   return (
     <div className="w-full">
       <div className="mb-5 w-full sm:max-w-sm">
@@ -101,6 +103,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
           options={sortConfig.options}
           value={sortValue}
           onSortChange={handleSortChange}
+          isLoading={showRefreshing}
         />
       </div>
 

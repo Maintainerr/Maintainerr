@@ -4,13 +4,16 @@ import {
   TrashIcon,
 } from '@heroicons/react/solid'
 import { useEffect, useState } from 'react'
-import { toast } from 'react-toastify'
 import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
-import RadarrSettingsModal from './SettingsModal'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
+import ServarrSettingsModal from '../Servarr/ServarrSettingsModal'
 
 type DeleteRadarrSettingResponseDto =
   | {
@@ -44,6 +47,8 @@ const RadarrSettings = () => {
   const [collectionsInUseWarning, setCollectionsInUseWarning] = useState<
     ICollection[] | undefined
   >()
+  const { feedback, clear, showError, showInfo } =
+    useSettingsFeedback('Radarr settings')
 
   const handleSettingsSaved = (setting: IRadarrSetting) => {
     const newSettings = [...settings]
@@ -58,23 +63,36 @@ const RadarrSettings = () => {
     setSettingsModalActive(undefined)
   }
 
-  const confirmedDelete = (id: number) => {
-    DeleteApiHandler<DeleteRadarrSettingResponseDto>(`/settings/radarr/${id}`)
-      .then((resp) => {
-        if (resp.code === 1) {
-          setSettings(settings.filter((s) => s.id !== id))
-        } else if (resp.data?.collectionsInUse) {
-          setCollectionsInUseWarning(resp.data.collectionsInUse)
-        }
-      })
-      .catch((error: unknown) => {
-        void logClientError(
-          'Failed to delete Radarr setting',
-          error,
-          'Settings.Radarr.confirmedDelete',
+  const confirmedDelete = async (id: number) => {
+    try {
+      const resp = await DeleteApiHandler<DeleteRadarrSettingResponseDto>(
+        `/settings/radarr/${id}`,
+      )
+
+      if (resp.code === 1) {
+        setSettings((currentSettings) =>
+          currentSettings.filter((setting) => setting.id !== id),
         )
-        toast.error('Failed to delete Radarr setting. Check logs for details.')
-      })
+        setSettingsModalActive(undefined)
+        showInfo('Radarr server removed')
+        return true
+      }
+
+      if (resp.data?.collectionsInUse) {
+        setCollectionsInUseWarning(resp.data.collectionsInUse)
+      } else {
+        showError('Failed to delete Radarr setting.')
+      }
+    } catch (error: unknown) {
+      void logClientError(
+        'Failed to delete Radarr setting',
+        error,
+        'Settings.Radarr.confirmedDelete',
+      )
+      showError('Failed to delete Radarr setting. Check logs for details.')
+    }
+
+    return false
   }
 
   useEffect(() => {
@@ -85,6 +103,7 @@ const RadarrSettings = () => {
   }, [])
 
   const showAddModal = () => {
+    clear()
     setSettingsModalActive(true)
   }
 
@@ -96,6 +115,8 @@ const RadarrSettings = () => {
           <h3 className="heading">Radarr Settings</h3>
           <p className="description">Radarr configuration</p>
         </div>
+
+        <SettingsFeedbackAlert feedback={feedback} />
 
         <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {loaded
@@ -119,6 +140,7 @@ const RadarrSettings = () => {
                       buttonSize="md"
                       className="h-10 w-1/2"
                       onClick={() => {
+                        clear()
                         setSettingsModalActive(setting)
                       }}
                     >
@@ -126,7 +148,9 @@ const RadarrSettings = () => {
                       <p className="m-auto font-semibold">Edit</p>
                     </Button>
                     <DeleteButton
-                      onDeleteRequested={() => confirmedDelete(setting.id)}
+                      onDeleteRequested={() => {
+                        void confirmedDelete(setting.id)
+                      }}
                     />
                   </div>
                 </li>
@@ -137,7 +161,7 @@ const RadarrSettings = () => {
             <li className="flex h-full min-h-[9.75rem] items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded bg-amber-600 px-4 text-zinc-200 shadow-md hover:bg-amber-500"
+                className="add-button m-auto flex h-9 rounded bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={showAddModal}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}
@@ -148,13 +172,19 @@ const RadarrSettings = () => {
         </ul>
       </div>
       {settingsModalActive && (
-        <RadarrSettingsModal
+        <ServarrSettingsModal
+          title="Radarr Settings"
+          docsPage="Configuration/#radarr"
+          settingsPath="/settings/radarr"
+          testPath="/settings/test/radarr"
+          serviceName="Radarr"
           settings={
             typeof settingsModalActive === 'boolean'
               ? undefined
               : settingsModalActive
           }
           onUpdate={handleSettingsSaved}
+          onDelete={confirmedDelete}
           onCancel={() => {
             setSettingsModalActive(undefined)
           }}
@@ -164,7 +194,15 @@ const RadarrSettings = () => {
         <Modal
           title="Server in-use"
           size="sm"
-          onOk={() => setCollectionsInUseWarning(undefined)}
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => setCollectionsInUseWarning(undefined)}
+            >
+              Ok
+            </Button>
+          }
         >
           <p className="mb-4">
             This server is currently being used by the following rules:

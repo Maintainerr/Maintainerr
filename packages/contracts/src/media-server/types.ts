@@ -101,6 +101,16 @@ export interface MediaItem {
   maintainerrIsManual?: boolean
 }
 
+export interface MaintainerrMediaStatusEntry {
+  label: string
+  targetPath?: string
+}
+
+export interface MaintainerrMediaStatusDetails {
+  excludedFrom: MaintainerrMediaStatusEntry[]
+  manuallyAddedTo: MaintainerrMediaStatusEntry[]
+}
+
 /**
  * MediaItem extended with parent metadata.
  * Used when child items need their parent's metadata (e.g., for provider IDs).

@@ -19,7 +19,7 @@ const CollectionMediaPage = () => {
   const { collection } = useOutletContext<CollectionContextType>()
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
-  const fetchAmount = 25
+  const fetchAmount = 30
   const mediaRef = useRef<ICollectionMedia[]>([])
   const libraryType = collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionMediaSortConfig(
@@ -108,6 +108,8 @@ const CollectionMediaPage = () => {
     })
   }
 
+  const showRefreshing = isLoading && data.length > 0
+
   return (
     <div className="w-full">
       <div className="mb-5 w-full sm:max-w-sm">
@@ -116,6 +118,7 @@ const CollectionMediaPage = () => {
           options={sortConfig.options}
           value={sortValue}
           onSortChange={handleSortChange}
+          isLoading={showRefreshing}
         />
       </div>
 

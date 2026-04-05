@@ -95,7 +95,11 @@ export class MediaServerSwitchService {
         radarrSettings: await this.settingsService.getRadarrSettingsCount(),
         sonarrSettings: await this.settingsService.getSonarrSettingsCount(),
         seerrSettings: this.settingsService.seerrConfigured(),
-        tautulliSettings: this.settingsService.tautulliConfigured(),
+        // Tautulli is Plex-specific and gets cleared when switching away from Plex
+        tautulliSettings:
+          currentServerType === MediaServerType.PLEX
+            ? false
+            : this.settingsService.tautulliConfigured(),
         notificationSettings: true,
       },
       ruleMigration: ruleMigrationPreview,
@@ -365,6 +369,8 @@ export class MediaServerSwitchService {
       updatedSettings.plex_port = null;
       updatedSettings.plex_ssl = null;
       updatedSettings.plex_auth_token = null;
+      updatedSettings.tautulli_url = null;
+      updatedSettings.tautulli_api_key = null;
     } else if (currentServerType === MediaServerType.JELLYFIN) {
       updatedSettings.jellyfin_url = null;
       updatedSettings.jellyfin_api_key = null;

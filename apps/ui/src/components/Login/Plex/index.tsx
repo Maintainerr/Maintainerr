@@ -1,12 +1,12 @@
 import { LoginIcon } from '@heroicons/react/outline'
 import React, { useState } from 'react'
-import { toast } from 'react-toastify'
 import PlexOAuth from '../../../utils/PlexAuth'
 
 const plexOAuth = new PlexOAuth()
 
 interface PlexLoginButtonProps {
   onAuthToken: (authToken: string) => void
+  clientIdentifier: string
   isProcessing?: boolean
   onError?: (message: string) => void
 }
@@ -15,12 +15,13 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
   onAuthToken,
   onError,
   isProcessing,
+  clientIdentifier,
 }) => {
   const [loading, setLoading] = useState(false)
 
   const getPlexLogin = async () => {
     try {
-      const authToken = await plexOAuth.login()
+      const authToken = await plexOAuth.login(clientIdentifier)
       onAuthToken(authToken)
     } catch (error) {
       onError?.(error instanceof Error ? error.message : 'Unknown error')
@@ -39,7 +40,6 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
       const message =
         'Plex login popup was blocked. Please allow popups for this site.'
       onError?.(message)
-      toast.error(message)
       setLoading(false)
       return
     }

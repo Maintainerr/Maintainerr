@@ -1256,7 +1256,7 @@ export class RuleConstants {
           showType: ['episode'],
         },
         // Rating properties — sourced from Jellyfin's CommunityRating and CriticRating.
-        // CommunityRating is typically from TMDb (or IMDb when OMDb provider is enabled).
+        // CommunityRating is provider-dependent, commonly TMDb and sometimes IMDb.
         // CriticRating is typically the Rotten Tomatoes Tomatometer via OMDb.
         // IDs match Plex so rules migrate without property ID remapping.
         {
@@ -1279,6 +1279,14 @@ export class RuleConstants {
           id: 34,
           name: 'rating_tmdb',
           humanName: 'The Movie Database rating (scale 1-10)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['episode', 'show'],
+        },
+        {
+          id: 44,
+          name: 'rating_imdb',
+          humanName: 'IMDb rating (scale 1-10)',
           mediaType: MediaType.BOTH,
           type: RuleType.NUMBER,
           showType: ['episode', 'show'],

@@ -9,31 +9,15 @@ import LoadingSpinner from '../LoadingSpinner'
 interface ModalProps {
   title?: string
   onCancel?: (e?: MouseEvent<HTMLElement>) => void
-  onOk?: (e?: MouseEvent<HTMLButtonElement>) => void
-  onSecondary?: (e?: MouseEvent<HTMLButtonElement>) => void
-  onTertiary?: (e?: MouseEvent<HTMLButtonElement>) => void
-  onSpecial?: (e?: MouseEvent<HTMLButtonElement>) => void
   cancelText?: string
-  okText?: string
-  secondaryText?: string
-  secondaryContent?: ReactNode
-  tertiaryText?: string
-  specialText?: string
-  okDisabled?: boolean
   cancelButtonType?: ButtonType
-  okButtonType?: ButtonType
-  secondaryButtonType?: ButtonType
-  secondaryDisabled?: boolean
-  tertiaryDisabled?: boolean
-  specialDisabled?: boolean
-  tertiaryButtonType?: ButtonType
-  specialButtonType?: ButtonType
   disableScrollLock?: boolean
   backgroundClickable?: boolean
   iconSvg?: ReactNode
   loading?: boolean
   backdrop?: string
   children: React.ReactNode
+  footerActions?: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
 }
 
@@ -54,29 +38,14 @@ const maxWidthMap = {
 const Modal: React.FC<ModalProps> = ({
   title,
   onCancel,
-  onOk,
   cancelText,
-  okText,
-  okDisabled = false,
   cancelButtonType = 'default',
-  okButtonType = 'primary',
   children,
   disableScrollLock,
   backgroundClickable = true,
   iconSvg,
   loading = false,
-  secondaryButtonType = 'default',
-  secondaryDisabled = false,
-  onSecondary,
-  secondaryText,
-  secondaryContent,
-  tertiaryButtonType = 'default',
-  tertiaryDisabled = false,
-  tertiaryText,
-  onTertiary,
-  specialButtonType = 'default',
-  specialText,
-  onSpecial,
+  footerActions,
   size = '3xl',
 }) => {
   const modalRef = useRef<HTMLDivElement>(null)
@@ -150,52 +119,9 @@ const Modal: React.FC<ModalProps> = ({
             {children}
           </div>
         )}
-        {typeof onSpecial === 'function' && (
-          <div className="mt-4 flex justify-center sm:justify-end">
-            <Button
-              buttonType={specialButtonType}
-              onClick={onSpecial}
-              className="ml-3"
-            >
-              {specialText ? specialText : 'Special'}
-            </Button>
-          </div>
-        )}
-        {(onCancel || onOk || onSecondary || onTertiary) && (
+        {(onCancel || footerActions) && (
           <div className="relative mt-5 flex flex-row-reverse justify-center sm:mt-4 sm:justify-start">
-            {typeof onOk === 'function' && (
-              <Button
-                buttonType={okButtonType}
-                onClick={onOk}
-                className="ml-3"
-                disabled={okDisabled}
-                type="button"
-              >
-                {okText ? okText : 'Ok'}
-              </Button>
-            )}
-            {typeof onSecondary === 'function' &&
-              (secondaryText || secondaryContent) && (
-                <Button
-                  buttonType={secondaryButtonType}
-                  onClick={onSecondary}
-                  className="ml-3"
-                  disabled={secondaryDisabled}
-                  type="button"
-                >
-                  {secondaryContent ?? secondaryText}
-                </Button>
-              )}
-            {typeof onTertiary === 'function' && tertiaryText && (
-              <Button
-                buttonType={tertiaryButtonType}
-                onClick={onTertiary}
-                className="ml-3"
-                disabled={tertiaryDisabled}
-              >
-                {tertiaryText}
-              </Button>
-            )}
+            {footerActions}
             {typeof onCancel === 'function' && (
               <Button
                 buttonType={cancelButtonType}

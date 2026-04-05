@@ -1,15 +1,14 @@
 import { BasicResponseDto } from '@maintainerr/contracts'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import { camelCaseToPrettyText } from '../../../../utils/SettingsUtils'
 import Alert from '../../../Common/Alert'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
-import {
-  getTestingButtonType,
-  TestingButtonContent,
-} from '../../../Common/TestingButton'
+import SaveButton from '../../../Common/SaveButton'
+import TestingButton from '../../../Common/TestingButton'
+import { getTestingButtonType } from '../../../Common/TestingButton'
 import ToggleItem from '../../../Common/ToggleButton'
 import SettingsAlertSlot from '../../SettingsAlertSlot'
 
@@ -54,9 +53,9 @@ interface TestStatus {
 const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
-  const nameRef = useRef<string>(props.selected?.name ?? '')
-  const aboutScaleRef = useRef<number>(props.selected?.aboutScale ?? 3)
-  const enabledRef = useRef<boolean>(props.selected?.enabled ?? false)
+  const [name, setName] = useState(props.selected?.name ?? '')
+  const [aboutScale, setAboutScale] = useState(props.selected?.aboutScale ?? 3)
+  const [enabled, setEnabled] = useState(props.selected?.enabled ?? false)
   const [formValues, setFormValues] = useState<any>(
     props.selected?.options ?? {},
   )
@@ -64,6 +63,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const [targetAgent, setTargetAgent] = useState<agentSpec>()
   const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
   const [error, setError] = useState<string>()
+  const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
 
@@ -73,6 +73,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     : 0
 
   const hasValidTargetAgent = Boolean(targetAgent && targetAgent.name !== '-')
+  const isLoading = !availableAgents || !availableTypes
+  const canSave =
+    !isLoading && hasValidTargetAgent && name.trim() !== '' && !saving
 
   const clearFeedback = () => {
     setError(undefined)
@@ -82,14 +85,14 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const handleSubmit = async () => {
     const types = targetTypes ? targetTypes.map((t) => t.id) : []
 
-    if (hasValidTargetAgent && nameRef.current !== '') {
+    if (hasValidTargetAgent && name.trim() !== '') {
       const payload: AgentConfiguration = {
         id: props.selected?.id,
-        name: nameRef.current,
+        name,
         agent: targetAgent!.name,
-        enabled: enabledRef.current,
+        enabled,
         types: types,
-        aboutScale: aboutScaleRef.current,
+        aboutScale,
         options: formValues,
       }
       clearFeedback()
@@ -102,18 +105,18 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   const doTest = async () => {
     if (testing) return
 
-    if (hasValidTargetAgent && nameRef.current !== '') {
+    if (hasValidTargetAgent && name.trim() !== '') {
       const types = targetTypes ? targetTypes.map((t) => t.id) : []
       clearFeedback()
       setTesting(true)
 
       await PostApiHandler<string>(`/notifications/test`, {
         id: props.selected?.id,
-        name: nameRef.current,
+        name,
         agent: targetAgent!.name,
-        enabled: enabledRef.current,
+        enabled,
         types: types,
-        aboutScale: aboutScaleRef.current,
+        aboutScale,
         options: formValues,
       })
         .then((resp) => {
@@ -171,17 +174,25 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   }, [props.selected])
 
   const postNotificationConfig = async (payload: AgentConfiguration) => {
-    const status = await PostApiHandler<BasicResponseDto>(
-      '/notifications/configuration/add',
-      payload,
-    )
+    setSaving(true)
 
-    if (status.status === 'OK') {
-      props.onSave()
-      return
+    try {
+      const status = await PostApiHandler<BasicResponseDto>(
+        '/notifications/configuration/add',
+        payload,
+      )
+
+      if (status.status === 'OK') {
+        props.onSave()
+        return
+      }
+
+      setError(status.message)
+    } catch {
+      setError('Failed to save notification agent')
+    } finally {
+      setSaving(false)
     }
-
-    setError(status.message)
   }
 
   const handleInputChange = (fieldName: string, value: any) => {
@@ -192,8 +203,6 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     clearFeedback()
   }
 
-  const isLoading = !availableAgents || !availableTypes
-
   const modalTitle = props.selected?.id
     ? 'Edit Notification Agent'
     : 'New Notification Agent'
@@ -203,48 +212,58 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       loading={false}
       backgroundClickable={false}
       onCancel={() => props.onCancel()}
-      okDisabled={isLoading}
-      okText="Save"
-      okButtonType={'primary'}
       title={modalTitle}
       iconSvg={''}
-      onOk={handleSubmit}
-      secondaryButtonType={getTestingButtonType(
-        'success',
-        testResult?.status,
-        testing,
-      )}
-      secondaryDisabled={isLoading || testing}
-      secondaryContent={
-        <TestingButtonContent
-          isPending={testing}
-          feedbackStatus={testResult?.status}
-        />
+      footerActions={
+        <>
+          <SaveButton
+            className="ml-3"
+            type="button"
+            disabled={!canSave}
+            isPending={saving}
+            onClick={() => void handleSubmit()}
+          />
+          <TestingButton
+            buttonType={getTestingButtonType(
+              'success',
+              testResult?.status,
+              testing,
+            )}
+            className="ml-3"
+            type="button"
+            disabled={isLoading || testing}
+            isPending={testing}
+            feedbackStatus={testResult?.status}
+            onClick={() => void doTest()}
+          />
+        </>
       }
-      onSecondary={doTest}
     >
       <div className="min-h-[16rem]">
         {isLoading ? (
           <LoadingSpinner />
         ) : (
           <form className="space-y-4">
-            {error ? (
-              <Alert
-                type={
-                  error === 'Not all fields contain values'
-                    ? 'warning'
-                    : 'error'
-                }
-                title={error}
-              />
-            ) : null}
-
             <SettingsAlertSlot>
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'info' : 'error'}
-                  title={testResult.message}
-                />
+              {error || testResult ? (
+                <div className="space-y-4">
+                  {error ? (
+                    <Alert
+                      type={
+                        error === 'Not all fields contain values'
+                          ? 'warning'
+                          : 'error'
+                      }
+                      title={error}
+                    />
+                  ) : null}
+                  {testResult ? (
+                    <Alert
+                      type={testResult.status ? 'success' : 'error'}
+                      title={testResult.message}
+                    />
+                  ) : null}
+                </div>
               ) : null}
             </SettingsAlertSlot>
 
@@ -259,9 +278,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     type="text"
                     id="name"
                     name="name"
-                    defaultValue={props.selected?.name}
+                    value={name}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                      nameRef.current = event.target.value
+                      setName(event.target.value)
                       clearFeedback()
                     }}
                   ></input>
@@ -279,9 +298,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     type="checkbox"
                     name="enabled"
                     id="enabled"
-                    defaultChecked={props.selected?.enabled}
+                    checked={enabled}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                      enabledRef.current = event.target.checked
+                      setEnabled(event.target.checked)
                       clearFeedback()
                     }}
                   ></input>
@@ -433,11 +452,11 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                               <input
                                 type="number"
                                 name="about-scale"
-                                defaultValue={props.selected?.aboutScale ?? 3}
+                                value={aboutScale}
                                 onChange={(
                                   event: React.ChangeEvent<HTMLInputElement>,
                                 ) => {
-                                  aboutScaleRef.current = +event.target.value
+                                  setAboutScale(+event.target.value)
                                   clearFeedback()
                                 }}
                               />

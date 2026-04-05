@@ -1,4 +1,4 @@
-import { DownloadIcon, SaveIcon } from '@heroicons/react/solid'
+import { DownloadIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   LogEvent,
@@ -17,7 +17,7 @@ import GetApiHandler, {
 } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import Button from '../../Common/Button'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import Table from '../../Common/Table'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
@@ -46,6 +46,7 @@ const LogSettingsForm = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting, isLoading },
   } = useForm<LogSettingSchemaInput, unknown, LogSettingSchemaOutput>({
     resolver: zodResolver(logSettingSchema),
@@ -53,11 +54,14 @@ const LogSettingsForm = () => {
       await GetApiHandler<LogSetting>('/logs/settings'),
   })
 
+  const canSave = !isLoading && !isSubmitting
+
   const onSubmit = async (data: LogSettingSchemaOutput) => {
     clearError()
 
     try {
       await PostApiHandler('/logs/settings', data)
+      reset(data)
       showUpdated()
     } catch {
       showUpdateError()
@@ -110,15 +114,10 @@ const LogSettingsForm = () => {
           />
 
           <div className="actions mt-5 flex w-full justify-end">
-            <PendingButton
-              buttonType="primary"
+            <SaveButton
               type="submit"
-              disabled={isLoading || isSubmitting}
-              idleLabel="Save Changes"
-              pendingLabel="Saving..."
+              disabled={!canSave}
               isPending={isLoading || isSubmitting}
-              idleIcon={<SaveIcon />}
-              reserveLabel="Save Changes"
             />
           </div>
         </form>
@@ -239,7 +238,7 @@ const Logs = () => {
           {filteredLogLines.map((row, index: number) => {
             const levelColor =
               row.level === 'ERROR'
-                ? 'text-red-400'
+                ? 'text-error-400'
                 : row.level === 'WARN'
                   ? 'text-yellow-400'
                   : row.level === 'INFO'
@@ -321,7 +320,7 @@ const LogFiles = () => {
                     className="flex items-center gap-x-2"
                   >
                     {row.name}
-                    <DownloadIcon className="h-5 w-5 text-amber-500" />
+                    <DownloadIcon className="h-5 w-5 text-maintainerr" />
                   </a>
                 </Table.TD>
                 <Table.TD>{Math.ceil(row.size / 1024)} KB</Table.TD>

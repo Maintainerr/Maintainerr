@@ -150,9 +150,9 @@ const RuleGroup = (props: {
               </p>
               <p>
                 {props.group.isActive ? (
-                  <span className="text-green-500">Active</span>
+                  <span className="text-success-500">Active</span>
                 ) : (
-                  <span className="text-red-500">Inactive</span>
+                  <span className="text-error-500">Inactive</span>
                 )}
               </p>
             </div>
@@ -162,13 +162,13 @@ const RuleGroup = (props: {
               </p>
               {hasNoLibrary ? (
                 <p
-                  className="truncate text-red-500"
+                  className="truncate text-error-500"
                   title="Please edit this rule and select a library"
                 >
                   Not set
                 </p>
               ) : (
-                <p className="truncate text-amber-500">
+                <p className="truncate text-maintainerr">
                   {libraries?.find((lib) => lib.id === props.group.libraryId)
                     ?.title ?? '-'}
                 </p>
@@ -178,7 +178,7 @@ const RuleGroup = (props: {
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 Rules
               </p>
-              <p className="text-amber-500">{props.group.rules.length}</p>
+              <p className="text-maintainerr">{props.group.rules.length}</p>
             </div>
           </div>
         </div>

@@ -1,42 +1,113 @@
-import { SaveIcon } from '@heroicons/react/solid'
 import { isValidCron } from 'cron-validator'
-import { useRef, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
 
+const normalizeCronExpression = (value: string) =>
+  value
+    .split(' ')
+    .filter((segment) => segment !== '')
+    .join(' ')
+
+const isValidCronExpression = (value: string) => {
+  const normalizedValue = normalizeCronExpression(value)
+
+  return normalizedValue !== '' && isValidCron(normalizedValue)
+}
+
+interface JobSettingsFormValues {
+  rules_handler_job_cron: string
+  collection_handler_job_cron: string
+}
+
 const JobSettings = () => {
-  const rulehanderRef = useRef<HTMLInputElement>(null)
-  const collectionHandlerRef = useRef<HTMLInputElement>(null)
-  const [secondCronValid, setSecondCronValid] = useState(true)
-  const [firstCronValid, setFirstCronValid] = useState(true)
+  const { settings } = useSettingsOutletContext()
   const { feedback, showError, showUpdated, showUpdateError, clearError } =
     useSettingsFeedback('Job settings')
   const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
     usePatchSettings()
-  const { settings } = useSettingsOutletContext()
+  const { register, handleSubmit, setValue, reset, control } =
+    useForm<JobSettingsFormValues>({
+      defaultValues: {
+        rules_handler_job_cron: settings.rules_handler_job_cron ?? '',
+        collection_handler_job_cron: settings.collection_handler_job_cron ?? '',
+      },
+    })
 
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const ruleHandlerCron =
+    useWatch({ control, name: 'rules_handler_job_cron' }) ?? ''
+  const collectionHandlerCron =
+    useWatch({ control, name: 'collection_handler_job_cron' }) ?? ''
+  const firstCronValid =
+    ruleHandlerCron === '' || isValidCronExpression(ruleHandlerCron)
+  const secondCronValid =
+    collectionHandlerCron === '' || isValidCronExpression(collectionHandlerCron)
+
+  const canSave =
+    ruleHandlerCron !== '' &&
+    collectionHandlerCron !== '' &&
+    firstCronValid &&
+    secondCronValid &&
+    !updateSettingsPending
+
+  const handleRuleHandlerChange = (nextValue: string) => {
+    clearError()
+    setValue('rules_handler_job_cron', nextValue, {
+      shouldDirty: true,
+    })
+  }
+
+  const handleCollectionHandlerChange = (nextValue: string) => {
+    clearError()
+    setValue('collection_handler_job_cron', nextValue, {
+      shouldDirty: true,
+    })
+  }
+
+  const normalizeRuleHandler = () => {
+    const normalizedValue = normalizeCronExpression(ruleHandlerCron)
+    setValue('rules_handler_job_cron', normalizedValue, {
+      shouldDirty: true,
+    })
+  }
+
+  const normalizeCollectionHandler = () => {
+    const normalizedValue = normalizeCronExpression(collectionHandlerCron)
+    setValue('collection_handler_job_cron', normalizedValue, {
+      shouldDirty: true,
+    })
+  }
+
+  const submit = async (data: JobSettingsFormValues) => {
     clearError()
 
-    if (
-      rulehanderRef.current?.value &&
-      collectionHandlerRef.current?.value &&
-      isValidCron(rulehanderRef.current.value) &&
-      isValidCron(collectionHandlerRef.current.value)
-    ) {
-      const payload = {
-        collection_handler_job_cron: collectionHandlerRef.current.value,
-        rules_handler_job_cron: rulehanderRef.current.value,
-      }
+    const normalizedRuleHandlerCron = normalizeCronExpression(
+      data.rules_handler_job_cron,
+    )
+    const normalizedCollectionHandlerCron = normalizeCronExpression(
+      data.collection_handler_job_cron,
+    )
 
+    if (
+      normalizedRuleHandlerCron !== '' &&
+      normalizedCollectionHandlerCron !== '' &&
+      isValidCronExpression(normalizedRuleHandlerCron) &&
+      isValidCronExpression(normalizedCollectionHandlerCron)
+    ) {
       try {
-        await updateSettings(payload)
+        await updateSettings({
+          collection_handler_job_cron: normalizedCollectionHandlerCron,
+          rules_handler_job_cron: normalizedRuleHandlerCron,
+        })
+        reset({
+          collection_handler_job_cron: normalizedCollectionHandlerCron,
+          rules_handler_job_cron: normalizedRuleHandlerCron,
+        })
         showUpdated()
       } catch {
         showUpdateError()
@@ -58,9 +129,9 @@ const JobSettings = () => {
         <SettingsFeedbackAlert feedback={feedback} />
 
         <div className="section">
-          <form onSubmit={submit}>
+          <form onSubmit={handleSubmit(submit)}>
             <div className="form-row">
-              <label htmlFor="ruleHandler" className="text-label">
+              <label htmlFor="rules_handler_job_cron" className="text-label">
                 Rule Handler
                 <p className="text-xs font-normal">
                   Supports all standard{' '}
@@ -75,31 +146,31 @@ const JobSettings = () => {
                 </p>
               </label>
               <div className="form-input">
-                <div
-                  className={`form-input-field' ${
-                    !firstCronValid ? 'border-2 border-red-700' : ''
-                  }`}
-                >
+                <div className="form-input-field">
                   <input
-                    name="ruleHandler"
-                    id="ruleHandler"
+                    {...register('rules_handler_job_cron')}
+                    id="rules_handler_job_cron"
                     type="text"
-                    onChange={() => {
-                      setFirstCronValid(
-                        rulehanderRef.current?.value
-                          ? isValidCron(rulehanderRef.current.value)
-                          : false,
-                      )
+                    value={ruleHandlerCron}
+                    className={
+                      !firstCronValid
+                        ? '!border-error-700 focus:!border-error-700 focus:outline-none focus:!ring-0'
+                        : undefined
+                    }
+                    onBlur={normalizeRuleHandler}
+                    onChange={(event) => {
+                      handleRuleHandlerChange(event.target.value)
                     }}
-                    ref={rulehanderRef}
-                    defaultValue={settings.rules_handler_job_cron}
                   ></input>
                 </div>
               </div>
             </div>
 
             <div className="form-row">
-              <label htmlFor="collectionHanlder" className="text-label">
+              <label
+                htmlFor="collection_handler_job_cron"
+                className="text-label"
+              >
                 Collection Handler
                 <p className="text-xs font-normal">
                   Supports all standard{' '}
@@ -115,24 +186,21 @@ const JobSettings = () => {
               </label>
 
               <div className="form-input">
-                <div
-                  className={`form-input-field' ${
-                    !secondCronValid ? 'border-2 border-red-700' : ''
-                  }`}
-                >
+                <div className="form-input-field">
                   <input
-                    name="collectionHanlder"
-                    id="collectionHanlder"
+                    {...register('collection_handler_job_cron')}
+                    id="collection_handler_job_cron"
                     type="text"
-                    onChange={() => {
-                      setSecondCronValid(
-                        collectionHandlerRef.current?.value
-                          ? isValidCron(collectionHandlerRef.current.value)
-                          : false,
-                      )
+                    value={collectionHandlerCron}
+                    className={
+                      !secondCronValid
+                        ? '!border-error-700 focus:!border-error-700 focus:outline-none focus:!ring-0'
+                        : undefined
+                    }
+                    onBlur={normalizeCollectionHandler}
+                    onChange={(event) => {
+                      handleCollectionHandlerChange(event.target.value)
                     }}
-                    ref={collectionHandlerRef}
-                    defaultValue={settings.collection_handler_job_cron}
                   ></input>
                 </div>
               </div>
@@ -141,15 +209,10 @@ const JobSettings = () => {
             <div className="actions mt-5 w-full">
               <div className="flex justify-end">
                 <span className="ml-3 inline-flex rounded-md shadow-sm">
-                  <PendingButton
-                    buttonType="primary"
+                  <SaveButton
                     type="submit"
-                    disabled={updateSettingsPending}
-                    idleLabel="Save Changes"
-                    pendingLabel="Saving..."
+                    disabled={!canSave}
                     isPending={updateSettingsPending}
-                    idleIcon={<SaveIcon />}
-                    reserveLabel="Save Changes"
                   />
                 </span>
               </div>
@@ -160,4 +223,5 @@ const JobSettings = () => {
     </>
   )
 }
+
 export default JobSettings

@@ -22,6 +22,20 @@ const getWatchCount = (item: MediaItem): number => {
   return item.viewCount ?? 0
 }
 
+const compareMaintainerrState = (
+  leftItem: MediaItem,
+  rightItem: MediaItem,
+  sortOrder: MediaSortOrder,
+  getValue: (item: MediaItem) => boolean,
+): number => {
+  const leftValue = getValue(leftItem) ? 1 : 0
+  const rightValue = getValue(rightItem) ? 1 : 0
+  const direction = sortOrder === 'desc' ? -1 : 1
+
+  // Preserve the incoming order for ties so status sorts only partition items.
+  return (leftValue - rightValue) * direction
+}
+
 export const compareMediaItemsBySort = (
   leftItem: MediaItem,
   rightItem: MediaItem,
@@ -44,6 +58,28 @@ export const compareMediaItemsBySort = (
       )
     case 'watchCount':
       return (getWatchCount(leftItem) - getWatchCount(rightItem)) * direction
+    case 'manual':
+      return compareMaintainerrState(
+        leftItem,
+        rightItem,
+        sortOrder,
+        (item) => item.maintainerrIsManual === true,
+      )
+    case 'excluded':
+      return compareMaintainerrState(
+        leftItem,
+        rightItem,
+        sortOrder,
+        (item) => item.maintainerrExclusionId != null,
+      )
+    case 'deleteSoonest':
+      // deleteSoonest is equivalent to addDate sorting because
+      // deleteAfterDays is constant per collection.
+      return (
+        (new Date(leftItem.addedAt).getTime() -
+          new Date(rightItem.addedAt).getTime()) *
+        direction
+      )
     default:
       return 0
   }

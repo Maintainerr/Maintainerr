@@ -1,6 +1,6 @@
 import { debounce } from 'lodash-es'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { defaultInfiniteScrollThreshold } from '../utils/infiniteScroll'
+import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../utils/uiBehavior'
 
 interface PaginatedResponse<TPageItem> {
   totalSize: number
@@ -31,7 +31,7 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
   mapPageItems,
   onAppendPageItems,
   onReset,
-  scrollThreshold = defaultInfiniteScrollThreshold,
+  scrollThreshold = DEFAULT_INFINITE_SCROLL_THRESHOLD,
 }: UseInfinitePaginatedListOptions<TPageItem, TItem>) => {
   const [data, setData] = useState<TItem[]>([])
   const dataRef = useRef<TItem[]>([])
@@ -204,10 +204,6 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
       debouncedScroll.cancel()
     }
   }, [loadNextPageIfNeeded])
-
-  useEffect(() => {
-    loadNextPageIfNeeded()
-  }, [data, loadNextPageIfNeeded])
 
   return {
     data,

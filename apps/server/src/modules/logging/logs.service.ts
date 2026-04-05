@@ -133,10 +133,6 @@ export class MaintainerrLogger implements LoggerService {
         meta.errorName = errorWithMeta.name;
       }
 
-      if (typeof errorWithMeta.code === 'string') {
-        meta.errorCode = errorWithMeta.code;
-      }
-
       const status =
         typeof errorWithMeta.response?.status === 'number'
           ? errorWithMeta.response.status
@@ -146,6 +142,26 @@ export class MaintainerrLogger implements LoggerService {
 
       if (status !== undefined) {
         meta.status = status;
+      }
+
+      const ownCodeDescriptor = Object.getOwnPropertyDescriptor(
+        errorWithMeta,
+        'code',
+      );
+
+      if (typeof ownCodeDescriptor?.value === 'string') {
+        meta.errorCode = ownCodeDescriptor.value;
+      }
+
+      // Only read error.code via property access for non-HTTP errors.
+      // Accessing error.code on @octokit/request-error triggers a deprecation
+      // warning because octokit deprecated that getter in favour of error.status.
+      if (
+        meta.errorCode === undefined &&
+        status === undefined &&
+        typeof errorWithMeta.code === 'string'
+      ) {
+        meta.errorCode = errorWithMeta.code;
       }
 
       const statusText =

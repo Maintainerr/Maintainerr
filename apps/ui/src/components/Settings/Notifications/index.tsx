@@ -19,7 +19,7 @@ const NotificationSettings = () => {
   const [addModalActive, setAddModalActive] = useState(false)
   const [configurations, setConfigurations] = useState<AgentConfiguration[]>()
   const [editConfig, setEditConfig] = useState<AgentConfiguration>()
-  const { feedback, showInfo } = useSettingsFeedback('Notification settings')
+  const { feedback, showSuccess } = useSettingsFeedback('Notification settings')
 
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 
@@ -53,7 +53,7 @@ const NotificationSettings = () => {
     <>
       <title>Notification settings - Maintainerr</title>
       <div className="h-full w-full">
-        <div className="mb-5 mt-6 h-full w-full text-white">
+        <div className="section h-full w-full">
           <h3 className="heading flex items-center gap-2">
             Notification Settings
             <img
@@ -69,8 +69,8 @@ const NotificationSettings = () => {
 
         <SettingsFeedbackAlert feedback={feedback} />
 
-        <div>
-          <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="max-w-6xl">
+          <ul className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {configurations?.map((config) => (
               <li
                 key={config.id}
@@ -81,7 +81,7 @@ const NotificationSettings = () => {
                     {config.name}
                   </div>
                   {!config.enabled && (
-                    <div className="rounded bg-amber-600 px-2 py-0.5 text-xs text-zinc-200 shadow-md">
+                    <div className="rounded bg-maintainerr-600 px-2 py-0.5 text-xs text-zinc-200 shadow-md">
                       Disabled
                     </div>
                   )}
@@ -114,7 +114,7 @@ const NotificationSettings = () => {
             <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded bg-amber-600 px-4 text-zinc-200 shadow-md hover:bg-amber-500"
+                className="add-button m-auto flex h-9 rounded bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={() => updateAddModalActive(!addModalActive)}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}
@@ -133,7 +133,7 @@ const NotificationSettings = () => {
             onSave={() => {
               updateAddModalActive(!addModalActive)
               setEditConfig(undefined)
-              showInfo('Notification agent saved')
+              showSuccess('Notification agent saved')
             }}
             onTest={() => {}}
             {...(editConfig

@@ -171,7 +171,7 @@ export class SeerrApiService {
 
     this.api = new SeerrApi(
       {
-        url: `${this.settings.seerr_url.replace(/\/$/, '')}/api/v1`,
+        url: `${this.settings.seerr_url.endsWith('/') ? this.settings.seerr_url.slice(0, -1) : this.settings.seerr_url}/api/v1`,
         apiKey: `${this.settings.seerr_api_key}`,
       },
       this.loggerFactory.createLogger(),
@@ -392,7 +392,7 @@ export class SeerrApiService {
       ? new SeerrApi(
           {
             apiKey: params.apiKey,
-            url: `${params.url?.replace(/\/$/, '')}/api/v1`,
+            url: `${params.url?.endsWith('/') ? params.url.slice(0, -1) : params.url}/api/v1`,
           },
           this.loggerFactory.createLogger(),
         )

@@ -132,7 +132,7 @@ If you prefer to set up your development environment manually (specific to a Win
 
 ## Use of AI Tools
 
-We allow the use of AI tools (e.g. ChatGPT, GitHub Copilot, Claude) as development aids, but not as a substitute for understanding.
+We allow the use of AI tools as development aids, but not as a substitute for understanding. If using AI assistance, prefer **GPT-5.4+ (High)** or **Claude Opus 4.6 (High)** for best results.
 
 By submitting a pull request, you confirm that:
 
@@ -168,7 +168,7 @@ When adding new UI text, please try to adhere to the following guidelines:
 | `development` | Default branch. All PRs target here. Granular commit history.           |
 | `main`        | Stable release branch. Updated via squash-merge PRs from `development`. |
 
-Maintainers should promote `development` to `main` through the release PR workflow. After the release PR is approved, automation will squash-merge it into `main`, sync the branches, and run `Release 4 - Build Main`. After `Release 5 - Publish` creates the release commit on `main`, automation runs a second sync-back so `development` does not stay behind `main`.
+Maintainers should promote `development` to `main` through the release PR workflow. Automation handles the merge, branch sync, image build, and publish steps.
 
 ```bash
 ./release.sh prepare-pr
@@ -186,8 +186,6 @@ If branch sync needs to be rerun manually, use:
 ./release.sh sync-back --post-release --dry-run
 ./release.sh sync-back --post-release
 ```
-
-The workflow-only fallback is [release_3_sync_back.yml](.github/workflows/release_3_sync_back.yml).
 
 ## Attribution
 

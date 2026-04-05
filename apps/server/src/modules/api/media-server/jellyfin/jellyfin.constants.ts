@@ -16,6 +16,19 @@ export const JELLYFIN_BATCH_SIZE = {
   MAX_PAGE_SIZE: 500,
 } as const;
 
+export const JELLYFIN_LIBRARY_RETRY_DELAY_MS = 300;
+
+export const JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES = new Set([
+  'EAI_AGAIN',
+  'ENOTFOUND',
+  'ECONNRESET',
+  'ECONNABORTED',
+  'ETIMEDOUT',
+  'EPIPE',
+]);
+
+export const JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES = new Set([502, 503, 504]);
+
 export const JELLYFIN_CACHE_KEYS = {
   WATCH_HISTORY: 'jellyfin:watch',
   FAVORITED_BY: 'jellyfin:favorited-by',

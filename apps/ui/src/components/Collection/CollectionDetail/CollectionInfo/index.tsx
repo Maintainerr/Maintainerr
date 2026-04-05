@@ -19,13 +19,14 @@ import { ICollection } from '../..'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
 import { useRequestGeneration } from '../../../../hooks/useRequestGeneration'
 import GetApiHandler from '../../../../utils/ApiHandler'
-import { defaultInfiniteScrollThreshold } from '../../../../utils/infiniteScroll'
+import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../../utils/uiBehavior'
 import Alert from '../../../Common/Alert'
 import Badge from '../../../Common/Badge'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../../Common/LoadingSpinner'
+import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
 import Table from '../../../Common/Table'
 
@@ -146,7 +147,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
     if (
       window.innerHeight + document.documentElement.scrollTop >=
         document.documentElement.scrollHeight *
-          defaultInfiniteScrollThreshold &&
+          DEFAULT_INFINITE_SCROLL_THRESHOLD &&
       !loadingRef.current &&
       !loadingExtraRef.current &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
@@ -161,7 +162,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
       !loadingExtraRef.current &&
       window.innerHeight + document.documentElement.scrollTop >=
         document.documentElement.scrollHeight *
-          defaultInfiniteScrollThreshold &&
+          DEFAULT_INFINITE_SCROLL_THRESHOLD &&
       !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
     ) {
       setPage((currentPage) => currentPage + 1)
@@ -391,7 +392,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                             isMetaActionedByRule(row.meta) && (
                               <button
                                 type="button"
-                                className="rounded bg-amber-600 px-2 py-1 text-white shadow-md hover:bg-amber-500"
+                                className="rounded bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
                                 title="View Metadata"
                                 onClick={() => {
                                   if (!isMetaActionedByRule(row.meta)) return
@@ -474,10 +475,12 @@ const LogMetaModal = (props: LogMetaModalProps) => {
       <Modal
         loading={false}
         backgroundClickable={false}
-        onOk={props.onClose}
-        okText={'Close'}
-        okButtonType={'primary'}
         title={'Metadata'}
+        footerActions={
+          <Button buttonType="primary" className="ml-3" onClick={props.onClose}>
+            Close
+          </Button>
+        }
       >
         <div className="h-[80vh] overflow-hidden">
           <div className="mt-1">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { downloadDatabase } from '../../../api/settings'
 import Alert from '../../Common/Alert'
+import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
 import {
   createDateStampedFilename,
@@ -46,11 +47,17 @@ const DatabaseBackupModal = ({ onClose }: DatabaseBackupModalProps) => {
     <Modal
       title="Backup Database"
       onCancel={onClose}
-      onOk={onDownload}
-      okText="Backup"
-      okButtonType="primary"
       backgroundClickable={false}
       size="md"
+      footerActions={
+        <Button
+          buttonType="primary"
+          className="ml-3"
+          onClick={() => void onDownload()}
+        >
+          Backup
+        </Button>
+      }
     >
       <div className="space-y-2">
         <p>Choose the filename for your database backup.</p>

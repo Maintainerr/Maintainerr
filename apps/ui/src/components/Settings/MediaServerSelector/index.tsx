@@ -10,17 +10,20 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import {
   usePreviewMediaServerSwitch,
   useSwitchMediaServer,
 } from '../../../api/settings'
 import { logClientError } from '../../../utils/ClientLogger'
+import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
 
 interface MediaServerSelectorProps {
   currentType: MediaServerType | null
   onSwitch?: () => void
+  onClearFeedback?: () => void
+  onInfo?: (message: string) => void
+  onError?: (message: string) => void
 }
 
 const basePath = import.meta.env.VITE_BASE_PATH ?? ''
@@ -48,6 +51,9 @@ const serverOptions: {
 const MediaServerSelector = ({
   currentType,
   onSwitch,
+  onClearFeedback,
+  onInfo,
+  onError,
 }: MediaServerSelectorProps) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -68,6 +74,7 @@ const MediaServerSelector = ({
   const handleServerClick = async (type: MediaServerType) => {
     if (type === currentType) return
 
+    onClearFeedback?.()
     setPendingType(type)
 
     // If no current type is set (initial setup), skip preview and just set the type
@@ -76,7 +83,7 @@ const MediaServerSelector = ({
         await switchServer({
           targetServerType: type,
         })
-        toast.success(
+        onInfo?.(
           `Selected ${type === MediaServerType.PLEX ? 'Plex' : 'Jellyfin'} as your media server`,
         )
 
@@ -95,7 +102,7 @@ const MediaServerSelector = ({
           error,
           'Settings.MediaServerSelector.handleServerChange',
         )
-        toast.error('Failed to set media server. Check logs for details.')
+        onError?.('Failed to set media server. Check logs for details.')
         setPendingType(null)
       }
       return
@@ -107,7 +114,7 @@ const MediaServerSelector = ({
       setPreviewData(preview)
       setShowConfirmModal(true)
     } catch (error) {
-      toast.error('Failed to preview switch')
+      onError?.('Failed to preview switch')
       setPendingType(null)
     }
   }
@@ -197,9 +204,9 @@ const MediaServerSelector = ({
                 type="button"
                 onClick={() => handleServerClick(option.value)}
                 disabled={isPreviewPending || isSwitchPending}
-                className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-maintainerr ${
                   isSelected
-                    ? 'border-amber-500 bg-amber-500/10'
+                    ? 'border-maintainerr bg-maintainerr/10'
                     : 'border-zinc-700 bg-zinc-800 hover:border-zinc-600'
                 } ${(isPreviewPending || isSwitchPending) && !isPending ? 'opacity-50' : ''}`}
               >
@@ -218,13 +225,13 @@ const MediaServerSelector = ({
                     </div>
                   </div>
                   {isSelected && (
-                    <div className="shrink-0 text-amber-500">
+                    <div className="shrink-0 text-maintainerr">
                       <CheckCircleIcon className="h-6 w-6" />
                     </div>
                   )}
                   {isPending && (
                     <div className="shrink-0">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-500 border-t-amber-500" />
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-500 border-t-maintainerr" />
                     </div>
                   )}
                 </div>
@@ -238,18 +245,24 @@ const MediaServerSelector = ({
       {showConfirmModal && (
         <Modal
           onCancel={isSwitchComplete ? undefined : handleCancelSwitch}
-          onOk={isSwitchComplete ? handleFinish : handleConfirmSwitch}
-          okText={
-            isSwitchComplete
-              ? 'Done'
-              : isSwitchPending
-                ? 'Switching...'
-                : 'Switch'
-          }
-          okButtonType={isSwitchComplete ? 'primary' : 'danger'}
-          okDisabled={isSwitchPending && !isSwitchComplete}
           cancelText={isSwitchComplete ? undefined : 'Cancel'}
           loading={isSwitchPending}
+          footerActions={
+            <Button
+              buttonType={isSwitchComplete ? 'primary' : 'danger'}
+              className="ml-3"
+              onClick={() =>
+                void (isSwitchComplete ? handleFinish() : handleConfirmSwitch())
+              }
+              disabled={isSwitchPending && !isSwitchComplete}
+            >
+              {isSwitchComplete
+                ? 'Done'
+                : isSwitchPending
+                  ? 'Switching...'
+                  : 'Switch'}
+            </Button>
+          }
         >
           <div className="text-zinc-100">
             <div className="mb-6 flex items-start justify-center space-x-8">
@@ -374,20 +387,20 @@ const MediaServerSelector = ({
 
             {/* Result indicator */}
             {isSwitchComplete && (
-              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-green-900/30 p-3 text-green-400">
+              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-success-900/30 p-3 text-success-400">
                 <CheckCircleIcon className="h-5 w-5" />
                 <span className="text-sm font-medium">Success</span>
               </div>
             )}
             {switchError && (
-              <div className="mb-4 rounded bg-red-900/30 p-3 text-red-400">
+              <div className="mb-4 rounded bg-error-900/30 p-3 text-error-400">
                 <div className="flex items-center space-x-2">
                   <XCircleIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium">
                     Media server switch could not be completed: {switchError}
                   </span>
                 </div>
-                <p className="mt-1 pl-7 text-xs text-red-400/70">
+                <p className="mt-1 pl-7 text-xs text-error-400/70">
                   Close this dialog and try again.
                 </p>
               </div>
@@ -403,7 +416,7 @@ const MediaServerSelector = ({
                     checked={migrateRules}
                     onChange={(e) => setMigrateRules(e.target.checked)}
                     disabled={isSwitchPending || isSwitchComplete}
-                    className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-amber-500 focus:ring-amber-500"
+                    className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-maintainerr focus:ring-maintainerr"
                   />
                   <label htmlFor="migrateRules" className="ml-3 cursor-pointer">
                     <span className="block font-medium text-zinc-100">
@@ -417,7 +430,7 @@ const MediaServerSelector = ({
                       {previewData!.ruleMigration!.totalRules} rules can be
                       migrated.
                       {previewData!.ruleMigration!.skippedRules > 0 && (
-                        <span className="text-amber-400">
+                        <span className="text-maintainerr-400">
                           {' '}
                           {previewData!.ruleMigration!.skippedRules} rule(s) use
                           properties not available in{' '}
@@ -467,7 +480,7 @@ const MediaServerSelector = ({
               </div>
             )}
 
-            <p className="mb-4 text-amber-400">
+            <p className="mb-4 text-maintainerr-400">
               <span className="font-bold">Important:</span>{' '}
               <span className="text-zinc-100">
                 After migration, you must manually assign a library to each rule

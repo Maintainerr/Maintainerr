@@ -1,4 +1,3 @@
-import { SaveIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
@@ -21,7 +20,7 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { Input } from '../../Forms/Input'
 import {
@@ -147,7 +146,7 @@ const providers: ProviderConfig[] = [
           href="https://www.themoviedb.org/settings/api"
           target="_blank"
           rel="noreferrer"
-          className="text-amber-500 underline hover:text-amber-400"
+          className="text-maintainerr underline hover:text-maintainerr-400"
         >
           themoviedb.org
         </a>
@@ -170,7 +169,7 @@ const providers: ProviderConfig[] = [
           href="https://thetvdb.com/dashboard/account/apikey"
           target="_blank"
           rel="noreferrer"
-          className="text-amber-500 underline hover:text-amber-400"
+          className="text-maintainerr underline hover:text-maintainerr-400"
         >
           thetvdb.com
         </a>
@@ -184,15 +183,18 @@ const providers: ProviderConfig[] = [
 ]
 
 function useProviderForm(config: ProviderConfig) {
-  const [testedSettings, setTestedSettings] = useState<
-    { api_key: string } | undefined
-  >()
   const [testStatus, setTestStatus] = useState<boolean | undefined>()
   const [testing, setTesting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
-  const { feedback, clear, showError, showInfo, showUpdated, showUpdateError } =
-    useSettingsFeedback(`${config.title} settings`)
+  const {
+    feedback,
+    clear,
+    showError,
+    showSuccess,
+    showUpdated,
+    showUpdateError,
+  } = useSettingsFeedback(`${config.title} settings`)
 
   const {
     register,
@@ -222,7 +224,6 @@ function useProviderForm(config: ProviderConfig) {
   const savedApiKey = defaultValues?.api_key ?? ''
   const hasChanges = apiKey !== savedApiKey
   const isGoingToRemove = apiKey === ''
-  const hasBeenTested = apiKey === testedSettings?.api_key
   const isConfigured = savedApiKey !== ''
   const refreshAction = getRefreshActionState({
     providerKey: config.key,
@@ -233,17 +234,11 @@ function useProviderForm(config: ProviderConfig) {
     hasChanges,
     isConfigured,
   })
-  const canSave =
-    hasChanges &&
-    (hasBeenTested || isGoingToRemove) &&
-    !isSubmitting &&
-    !isLoading &&
-    !loadError
+  const canSave = !isSubmitting && !isLoading && !loadError
 
   const registerApiKey = register('api_key', {
     onChange: () => {
       clear()
-      setTestedSettings(undefined)
       setTestStatus(undefined)
     },
   })
@@ -258,9 +253,6 @@ function useProviderForm(config: ProviderConfig) {
 
       if (response.code) {
         reset({ api_key: data.api_key })
-        setTestedSettings(
-          data.api_key === '' ? undefined : { api_key: data.api_key },
-        )
         if (data.api_key === '') {
           setTestStatus(undefined)
         }
@@ -289,9 +281,8 @@ function useProviderForm(config: ProviderConfig) {
         )
 
         if (response.code === 1) {
-          setTestedSettings({ api_key: apiKey })
           setTestStatus(true)
-          showInfo(`Successfully connected to ${config.title}`)
+          showSuccess(`Successfully connected to ${config.title}`)
         } else {
           setTestStatus(false)
           showError(message)
@@ -318,7 +309,7 @@ function useProviderForm(config: ProviderConfig) {
     )
       .then((response) => {
         if (response.code === 1) {
-          showInfo(
+          showSuccess(
             response.message ?? `${config.title} metadata refresh started`,
           )
         } else {
@@ -347,6 +338,7 @@ function useProviderForm(config: ProviderConfig) {
     refreshing,
     refreshAction,
     feedback,
+    clearFeedback: clear,
     loadError,
     isGoingToRemove,
     canSave,
@@ -354,6 +346,24 @@ function useProviderForm(config: ProviderConfig) {
     performTest,
     performRefresh,
   }
+}
+
+function getProviderAlertFeedback(
+  provider: ReturnType<typeof useProviderForm>,
+  config: ProviderConfig,
+): SettingsFeedback {
+  if (provider.feedback) {
+    return provider.feedback
+  }
+
+  if (provider.loadError) {
+    return {
+      type: 'warning',
+      title: `Failed to load ${config.title} settings`,
+    }
+  }
+
+  return null
 }
 
 function PrimarySwitch({
@@ -381,7 +391,7 @@ function PrimarySwitch({
       onClick={onToggle}
       className={[
         'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
-        checked ? 'bg-amber-600' : 'bg-zinc-600',
+        checked ? 'bg-maintainerr-600' : 'bg-zinc-600',
         disabled ? 'cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
     >
@@ -400,7 +410,6 @@ function ProviderSection({
   isPrimary,
   canBePrimary,
   isPreferencePending,
-  feedback,
   isConfigured,
   isLoading,
   isSubmitting,
@@ -422,7 +431,6 @@ function ProviderSection({
   isPrimary: boolean
   canBePrimary: boolean
   isPreferencePending: boolean
-  feedback: SettingsFeedback
   isConfigured: boolean
   isLoading: boolean
   isSubmitting: boolean
@@ -441,14 +449,6 @@ function ProviderSection({
   onTogglePrimary: () => void
 }) {
   const apiKeyStatus = isConfigured ? 'Configured' : config.emptyStateLabel
-  const alertFeedback: SettingsFeedback =
-    feedback ??
-    (loadError
-      ? {
-          type: 'warning',
-          title: `Failed to load ${config.title} settings`,
-        }
-      : null)
 
   return (
     <div className="flex h-full flex-col rounded-xl bg-zinc-800 px-4 pb-4 pt-5 text-zinc-400 shadow ring-1 ring-zinc-700">
@@ -505,34 +505,29 @@ function ProviderSection({
           </div>
         </div>
 
-        <div className="mt-2.5">
-          <SettingsFeedbackAlert feedback={alertFeedback} />
-        </div>
-
-        <div className="mt-auto w-full pt-2.5">
-          <TestingButton
-            buttonType="twin-secondary-l"
-            className="h-10 w-1/2"
-            type="button"
-            onClick={performTest}
-            disabled={testing || isGoingToRemove || loadError || isLoading}
-            label="Test Connection"
-            isPending={testing}
-            feedbackStatus={testStatus}
-            contentSize="compact"
-          />
-          <PendingButton
-            buttonType="twin-primary-r"
-            className="h-10 w-1/2"
-            type="submit"
-            disabled={!canSave}
-            idleLabel="Save"
-            pendingLabel="Saving"
-            isPending={isSubmitting}
-            idleIcon={<SaveIcon />}
-            reserveLabel="Saving"
-            contentSize="compact"
-          />
+        <div className="mt-auto pt-4">
+          <div className="flex w-full justify-end gap-3">
+            <span className="inline-flex rounded-md shadow-sm">
+              <TestingButton
+                buttonType="success"
+                className="h-10"
+                type="button"
+                onClick={performTest}
+                disabled={testing || isGoingToRemove || loadError || isLoading}
+                label="Test Connection"
+                isPending={testing}
+                feedbackStatus={testStatus}
+              />
+            </span>
+            <span className="inline-flex rounded-md shadow-sm">
+              <SaveButton
+                className="h-10"
+                type="submit"
+                disabled={!canSave}
+                isPending={isSubmitting}
+              />
+            </span>
+          </div>
         </div>
       </form>
     </div>
@@ -540,15 +535,14 @@ function ProviderSection({
 }
 
 const MetadataSettings = () => {
+  const { feedback, clear, showUpdated, showUpdateError, showWarning } =
+    useSettingsFeedback('Metadata provider preference')
   const {
     data: preference = MetadataProviderPreference.TMDB_PRIMARY,
     isLoading: preferenceLoading,
   } = useMetadataProviderPreference()
   const tmdbProvider = useProviderForm(providers[0])
   const tvdbProvider = useProviderForm(providers[1])
-
-  const { feedback, clear, showUpdated, showUpdateError, showWarning } =
-    useSettingsFeedback('Metadata provider preference')
   const { mutateAsync: savePreference, isPending: preferenceSaving } =
     useUpdateMetadataProviderPreference()
 
@@ -556,6 +550,10 @@ const MetadataSettings = () => {
     tmdb: tmdbProvider,
     tvdb: tvdbProvider,
   }
+  const pageFeedback =
+    feedback ??
+    getProviderAlertFeedback(tmdbProvider, providers[0]) ??
+    getProviderAlertFeedback(tvdbProvider, providers[1])
 
   const tvdbCanBePrimary = tvdbProvider.isConfigured
   const resolvedPreference = resolveMetadataPreference(
@@ -564,6 +562,12 @@ const MetadataSettings = () => {
   )
   const { effectivePreference, setPendingPreference } =
     useOptimisticMetadataPreference(resolvedPreference)
+
+  const clearAllFeedback = () => {
+    clear()
+    tmdbProvider.clearFeedback()
+    tvdbProvider.clearFeedback()
+  }
 
   const handlePreferenceChange = async (value: MetadataProviderPreference) => {
     if (
@@ -578,11 +582,12 @@ const MetadataSettings = () => {
       value === MetadataProviderPreference.TVDB_PRIMARY &&
       !tvdbCanBePrimary
     ) {
+      clearAllFeedback()
       showWarning('TVDB must be configured before it can be primary')
       return
     }
 
-    clear()
+    clearAllFeedback()
     setPendingPreference(value)
 
     try {
@@ -606,15 +611,30 @@ const MetadataSettings = () => {
           </p>
         </div>
 
-        <div className="max-w-6xl">
-          <div className="mt-4">
-            <SettingsFeedbackAlert feedback={feedback} />
-          </div>
+        <div className="mt-4 max-w-6xl">
+          <SettingsFeedbackAlert feedback={pageFeedback} />
         </div>
 
         <ul className="mt-4 grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-2">
           {providers.map((config) => {
             const provider = providerControllers[config.key]
+            const clearProviderPageFeedback = () => {
+              clearAllFeedback()
+            }
+
+            const registerApiKey = provider.registerApiKey
+            const onSubmit = async (data: ApiKeyFormResult) => {
+              clearProviderPageFeedback()
+              await provider.onSubmit(data)
+            }
+            const performTest = async () => {
+              clearProviderPageFeedback()
+              await provider.performTest()
+            }
+            const performRefresh = async () => {
+              clearProviderPageFeedback()
+              await provider.performRefresh()
+            }
 
             return (
               <li key={config.key} className="h-full">
@@ -628,7 +648,6 @@ const MetadataSettings = () => {
                       : tvdbCanBePrimary
                   }
                   isPreferencePending={preferenceLoading || preferenceSaving}
-                  feedback={provider.feedback}
                   isConfigured={provider.isConfigured}
                   isLoading={provider.isLoading}
                   isSubmitting={provider.isSubmitting}
@@ -637,13 +656,19 @@ const MetadataSettings = () => {
                   testing={provider.testing}
                   refreshAction={provider.refreshAction}
                   loadError={provider.loadError}
-                  registerApiKey={provider.registerApiKey}
+                  registerApiKey={{
+                    ...registerApiKey,
+                    onChange: (event) => {
+                      clearProviderPageFeedback()
+                      return registerApiKey.onChange(event)
+                    },
+                  }}
                   handleSubmit={provider.handleSubmit}
                   errors={provider.errors}
                   canSave={provider.canSave}
-                  onSubmit={provider.onSubmit}
-                  performTest={provider.performTest}
-                  performRefresh={provider.performRefresh}
+                  onSubmit={onSubmit}
+                  performTest={performTest}
+                  performRefresh={performRefresh}
                   onTogglePrimary={() => {
                     void handlePreferenceChange(config.preference)
                   }}

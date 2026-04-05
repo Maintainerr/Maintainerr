@@ -7,7 +7,6 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useMediaServerLibraries } from '../../api/media-server'
 import { SearchContextProvider } from '../../contexts/search-context'
 import GetApiHandler from '../../utils/ApiHandler'
 import {
@@ -15,10 +14,6 @@ import {
   getMediaLibrarySortConfig,
 } from '../Common/MediaLibrarySortControl'
 import Overview, { buildLibraryContentQuery } from './index'
-
-vi.mock('../../api/media-server', () => ({
-  useMediaServerLibraries: vi.fn(),
-}))
 
 vi.mock('../../utils/ApiHandler', () => ({
   default: vi.fn(),
@@ -28,29 +23,55 @@ vi.mock('../Common/LibrarySwitcher', () => ({
   default: () => null,
 }))
 
+vi.mock('../Common/LoadingSpinner', () => ({
+  default: () => <div data-testid="overview-bootstrap-spinner" />,
+  SmallLoadingSpinner: () => <div data-testid="overview-refresh-spinner" />,
+}))
+
 vi.mock('./Content', () => ({
-  default: () => null,
+  default: ({
+    data,
+    fetchData,
+    loading,
+  }: {
+    data: Array<{ id: string; title: string }>
+    fetchData: () => void
+    loading: boolean
+  }) => (
+    <div>
+      {loading ? <span data-testid="overview-content-loading" /> : null}
+      <button data-testid="overview-fetch-more" onClick={() => fetchData()}>
+        Fetch more
+      </button>
+      <div data-testid="overview-items">
+        {data.map((item) => (
+          <span key={item.id}>{item.title}</span>
+        ))}
+      </div>
+    </div>
+  ),
 }))
 
 describe('Overview', () => {
-  const librariesHookMock = vi.mocked(useMediaServerLibraries)
   const getApiHandlerMock = vi.mocked(GetApiHandler)
   let libraries: MediaLibrary[] | undefined
-  const getLibrariesResult = (): ReturnType<typeof useMediaServerLibraries> =>
-    ({
-      data: libraries,
-      error: undefined,
-      isLoading: false,
-    }) as unknown as ReturnType<typeof useMediaServerLibraries>
 
   beforeEach(() => {
     libraries = undefined
-    librariesHookMock.mockReset()
     getApiHandlerMock.mockReset()
 
-    librariesHookMock.mockImplementation(getLibrariesResult)
-
     getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries: libraries ?? [],
+          selectedLibraryId: libraries?.[0]?.id,
+          content: {
+            totalSize: 0,
+            items: [],
+          },
+        }
+      }
+
       if (path.startsWith('/media-server/library/')) {
         return {
           totalSize: 0,
@@ -75,6 +96,140 @@ describe('Overview', () => {
       sort: 'title',
       sortOrder: 'asc',
     })
+
+    expect(sortConfig.options.at(-2)).toEqual({
+      value: 'manual.desc',
+      label: 'Manual Added First',
+      sortParams: {
+        sort: 'manual',
+        sortOrder: 'desc',
+      },
+    })
+
+    expect(sortConfig.options.at(-1)).toEqual({
+      value: 'excluded.desc',
+      label: 'Excluded First',
+      sortParams: {
+        sort: 'excluded',
+        sortOrder: 'desc',
+      },
+    })
+  })
+
+  it('bootstraps overview data in a single request before rendering the first page', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
+          },
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item')).toBeTruthy()
+    })
+
+    expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    expect(getApiHandlerMock).toHaveBeenCalledWith(
+      expect.stringContaining('/media-server/overview/bootstrap?'),
+    )
+  })
+
+  it('requests the second page after bootstrap when loading more overview items', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 31,
+            items: Array.from({ length: 30 }, (_, index) => ({
+              id: `boot-${index + 1}`,
+              title: `Boot Item ${index + 1}`,
+              type: 'show',
+            })),
+          },
+        }
+      }
+
+      if (path.startsWith('/media-server/library/shows-library/content?')) {
+        expect(path).toContain('page=2')
+
+        return {
+          totalSize: 31,
+          items: [{ id: 'tail-item', title: 'Tail Item', type: 'show' }],
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item 1')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('overview-fetch-more'))
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain('page=2')
+
+    await waitFor(() => {
+      expect(screen.getByText('Tail Item')).toBeTruthy()
+    })
+  })
+
+  it('exits the bootstrap spinner when no overview libraries are available', async () => {
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('overview-bootstrap-spinner')).toBeNull()
+    })
   })
 
   it('only exposes the reachable delete soonest collection sort option', () => {
@@ -83,6 +238,8 @@ describe('Overview', () => {
       (option) => option.sortParams?.sort === 'deleteSoonest',
     )
 
+    expect(sortConfig.defaultValue).toBe('deleteSoonest.asc')
+    expect(sortConfig.options[0]?.value).toBe('deleteSoonest.asc')
     expect(
       sortConfig.options.some((option) => option.value === 'deleteSoonest.asc'),
     ).toBe(true)
@@ -203,6 +360,277 @@ describe('Overview', () => {
 
     expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain(
       'sort=title&sortOrder=asc',
+    )
+  })
+
+  it('keeps existing overview items visible while a refreshed request is in flight', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    let resolveSecondRequest:
+      | ((value: { totalSize: number; items: any[] }) => void)
+      | undefined
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return Promise.resolve({
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [
+              { id: 'existing-item', title: 'Existing Item', type: 'show' },
+            ],
+          },
+        })
+      }
+
+      if (!path.startsWith('/media-server/library/')) {
+        return Promise.reject(new Error(`Unexpected API request: ${path}`))
+      }
+
+      if (path.includes('sort=title&sortOrder=desc')) {
+        return new Promise((resolve) => {
+          resolveSecondRequest = resolve
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected API request: ${path}`))
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Existing Item')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(screen.getByText('Existing Item')).toBeTruthy()
+    expect(screen.getByTestId('overview-refresh-spinner')).toBeTruthy()
+    expect(screen.getByTestId('overview-content-loading')).toBeTruthy()
+
+    resolveSecondRequest?.({
+      totalSize: 1,
+      items: [{ id: 'next-item', title: 'Next Item', type: 'show' }],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Next Item')).toBeTruthy()
+    })
+  })
+
+  it('preserves the loaded page count when refreshing sorted overview content', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 91,
+            items: Array.from({ length: 30 }, (_, index) => ({
+              id: `boot-${index + 1}`,
+              title: `Boot Item ${index + 1}`,
+              type: 'show',
+            })),
+          },
+        }
+      }
+
+      if (
+        path.includes('sort=title&sortOrder=desc') &&
+        path.startsWith('/media-server/library/shows-library/content?')
+      ) {
+        if (path.includes('page=1')) {
+          expect(path).toContain('limit=60')
+
+          return {
+            totalSize: 91,
+            items: Array.from({ length: 60 }, (_, index) => ({
+              id: `sorted-${index + 1}`,
+              title: `Sorted Item ${index + 1}`,
+              type: 'show',
+            })),
+          }
+        }
+
+        expect(path).toContain('page=3')
+        expect(path).toContain('limit=30')
+
+        return {
+          totalSize: 91,
+          items: [{ id: 'sorted-tail', title: 'Sorted Tail', type: 'show' }],
+        }
+      }
+
+      if (path.startsWith('/media-server/library/shows-library/content?')) {
+        expect(path).toContain('page=2')
+
+        return {
+          totalSize: 91,
+          items: Array.from({ length: 30 }, (_, index) => ({
+            id: `page-2-${index + 1}`,
+            title: `Page 2 Item ${index + 1}`,
+            type: 'show',
+          })),
+        }
+      }
+
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item 1')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('overview-fetch-more'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Page 2 Item 1')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'title.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(3)
+    })
+
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain('page=1')
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain('limit=60')
+    expect(getApiHandlerMock.mock.calls[2]?.[0]).toContain(
+      'sort=title&sortOrder=desc',
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Sorted Item 60')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('overview-fetch-more'))
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(4)
+    })
+
+    expect(getApiHandlerMock.mock.calls[3]?.[0]).toContain('page=3')
+    expect(getApiHandlerMock.mock.calls[3]?.[0]).toContain('limit=30')
+
+    await waitFor(() => {
+      expect(screen.getByText('Sorted Tail')).toBeTruthy()
+    })
+  })
+
+  it('requests excluded sorting from the server for the overview sort option', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
+          },
+        }
+      }
+
+      if (!path.startsWith('/media-server/library/shows-library/content?')) {
+        throw new Error(`Unexpected API request: ${path}`)
+      }
+
+      return {
+        totalSize: 3,
+        items: [
+          {
+            id: '2',
+            title: 'Bravo',
+            type: 'show',
+            maintainerrExclusionId: 42,
+          },
+          {
+            id: '3',
+            title: 'Charlie',
+            type: 'show',
+            maintainerrExclusionId: 84,
+          },
+          { id: '1', title: 'Alpha', type: 'show' },
+        ],
+      }
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Boot Item')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('Sort overview items'), {
+      target: { value: 'excluded.desc' },
+    })
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain(
+      'sort=excluded&sortOrder=desc',
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Alpha')).toBeTruthy()
+      expect(screen.getByText('Bravo')).toBeTruthy()
+      expect(screen.getByText('Charlie')).toBeTruthy()
+    })
+
+    const contentText = screen.getByTestId('overview-items').textContent ?? ''
+
+    expect(contentText).toContain('Bravo')
+    expect(contentText.indexOf('Bravo')).toBeLessThan(
+      contentText.indexOf('Alpha'),
+    )
+    expect(contentText.indexOf('Charlie')).toBeLessThan(
+      contentText.indexOf('Alpha'),
     )
   })
 })

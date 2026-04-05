@@ -92,6 +92,7 @@ describe('EventsProvider', () => {
       </EventsProvider>,
     )
 
+    latestEventSource?.onopen?.()
     latestEventSource?.onerror?.(new Error('stream unavailable'))
     latestEventSource?.onerror?.(new Error('stream unavailable'))
 

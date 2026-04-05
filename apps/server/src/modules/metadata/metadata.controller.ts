@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { type MediaLibrary } from '@maintainerr/contracts';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { MetadataService } from './metadata.service';
 
 @Controller('api/metadata')
@@ -23,9 +30,18 @@ export class MetadataController {
     return Object.keys(ids).length > 0 ? ids : undefined;
   }
 
+  private resolveMetadataType(type: string): 'movie' | 'tv' {
+    if (type === 'show') return 'tv';
+    if (type === 'movie') return 'movie';
+
+    throw new BadRequestException(
+      `Invalid media type "${type}". Must be "movie" or "show".`,
+    );
+  }
+
   @Get('/backdrop/:type')
   async getBackdropImage(
-    @Param('type') type: 'movie' | 'show',
+    @Param('type') type: MediaLibrary['type'],
     @Query() query: Record<string, string>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
     const ids = this.parseIds(query);
@@ -33,12 +49,12 @@ export class MetadataController {
       return undefined;
     }
 
-    return this.metadata.getBackdropUrl(ids, type === 'show' ? 'tv' : 'movie');
+    return this.metadata.getBackdropUrl(ids, this.resolveMetadataType(type));
   }
 
   @Get('/image/:type')
   async getImage(
-    @Param('type') type: 'movie' | 'show',
+    @Param('type') type: MediaLibrary['type'],
     @Query() query: Record<string, string>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
     const ids = this.parseIds(query);
@@ -48,7 +64,7 @@ export class MetadataController {
 
     return this.metadata.getPosterUrl(
       ids,
-      type === 'show' ? 'tv' : 'movie',
+      this.resolveMetadataType(type),
       'w300_and_h450_face',
     );
   }

@@ -583,7 +583,7 @@ const AddModal = (props: AddModal) => {
               as="a"
               target="_blank"
               rel="noopener noreferrer"
-              href="https://docs.maintainerr.info/latest/Rules"
+              href="https://docs.maintainerr.info/rules"
             >
               <QuestionMarkCircleIcon />
               <span>Help</span>
@@ -636,7 +636,7 @@ const AddModal = (props: AddModal) => {
                         ></input>
                       </div>
                       {errors.name && (
-                        <p className="mt-1 text-xs text-red-400">
+                        <p className="mt-1 text-xs text-error-400">
                           {errors.name.message}
                         </p>
                       )}
@@ -690,7 +690,7 @@ const AddModal = (props: AddModal) => {
                         })()}
                       </div>
                       {errors.libraryId && (
-                        <p className="mt-1 text-xs text-red-400">
+                        <p className="mt-1 text-xs text-error-400">
                           {errors.libraryId.message}
                         </p>
                       )}
@@ -765,7 +765,7 @@ const AddModal = (props: AddModal) => {
                             })()}
                           </div>
                           {errors.dataType && (
-                            <p className="mt-1 text-xs text-red-400">
+                            <p className="mt-1 text-xs text-error-400">
                               {errors.dataType.message}
                             </p>
                           )}
@@ -841,7 +841,7 @@ const AddModal = (props: AddModal) => {
                         }
                       />
                       {errors.sonarrSettingsId && (
-                        <p className="mt-1 text-xs text-red-400">
+                        <p className="mt-1 text-xs text-error-400">
                           {errors.sonarrSettingsId.message}
                         </p>
                       )}
@@ -869,7 +869,7 @@ const AddModal = (props: AddModal) => {
                           />
                         </div>
                         {errors.deleteAfterDays && (
-                          <p className="mt-1 text-xs text-red-400">
+                          <p className="mt-1 text-xs text-error-400">
                             {errors.deleteAfterDays.message}
                           </p>
                         )}
@@ -1073,7 +1073,7 @@ const AddModal = (props: AddModal) => {
                           />
                         </div>
                         {errors.manualCollectionName && (
-                          <p className="mt-1 text-xs text-red-400">
+                          <p className="mt-1 text-xs text-error-400">
                             {errors.manualCollectionName.message}
                           </p>
                         )}
@@ -1089,7 +1089,7 @@ const AddModal = (props: AddModal) => {
                         className="text-label flex flex-wrap gap-1"
                       >
                         Notifications
-                        <span className="ml-1.5 rounded-full bg-amber-600 px-3 text-white">
+                        <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-white">
                           BETA
                         </span>
                       </label>
@@ -1099,7 +1099,7 @@ const AddModal = (props: AddModal) => {
                             buttonType="default"
                             type="button"
                             name="notifications"
-                            className="w-full !bg-amber-600 hover:!bg-amber-500"
+                            className="w-full !bg-maintainerr-600 hover:!bg-maintainerr"
                             onClick={() => {
                               setConfigureNotificationModal(
                                 !configureNotificionModal,
@@ -1132,7 +1132,7 @@ const AddModal = (props: AddModal) => {
                             {...register('keepLogsForMonths')}
                           />
                           {errors.keepLogsForMonths && (
-                            <p className="mt-1 text-xs text-red-400">
+                            <p className="mt-1 text-xs text-error-400">
                               {errors.keepLogsForMonths.message}
                             </p>
                           )}
@@ -1186,7 +1186,7 @@ const AddModal = (props: AddModal) => {
                               {...register('tautulliWatchedPercentOverride')}
                             />
                             {errors.tautulliWatchedPercentOverride && (
-                              <p className="mt-1 text-xs text-red-400">
+                              <p className="mt-1 text-xs text-error-400">
                                 {errors.tautulliWatchedPercentOverride.message}
                               </p>
                             )}
@@ -1221,7 +1221,7 @@ const AddModal = (props: AddModal) => {
                             {...register('ruleHandlerCronSchedule')}
                           />
                           {errors.ruleHandlerCronSchedule && (
-                            <p className="mt-1 text-xs text-red-400">
+                            <p className="mt-1 text-xs text-error-400">
                               {errors.ruleHandlerCronSchedule.message}
                             </p>
                           )}
@@ -1249,7 +1249,7 @@ const AddModal = (props: AddModal) => {
                     </div>
                     <div className="ml-auto">
                       <button
-                        className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-sm text-zinc-900 shadow-md hover:bg-amber-800 md:h-10 md:text-base"
+                        className="ml-3 flex h-fit rounded bg-maintainerrdark p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
                         onClick={toggleCommunityRuleModal}
                         type="button"
                       >
@@ -1264,7 +1264,7 @@ const AddModal = (props: AddModal) => {
                   </div>
                   <div className="mt-4 flex items-center justify-center sm:justify-end">
                     <button
-                      className="ml-3 flex h-fit rounded bg-amber-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-amber-500 md:h-10 md:text-base"
+                      className="ml-3 flex h-fit rounded bg-maintainerr-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerr md:h-10 md:text-base"
                       onClick={toggleYamlImporter}
                       type="button"
                     >
@@ -1277,7 +1277,7 @@ const AddModal = (props: AddModal) => {
                     </button>
 
                     <button
-                      className="ml-3 flex h-fit rounded bg-amber-900 p-1 text-sm shadow-md hover:bg-amber-800 md:h-10 md:text-base"
+                      className="ml-3 flex h-fit rounded bg-maintainerrdark p-1 text-sm shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
                       onClick={toggleYamlExporter}
                       type="button"
                     >
@@ -1361,7 +1361,7 @@ const AddModal = (props: AddModal) => {
           <div className="mt-5 hidden h-full w-full md:flex">
             <div className="m-auto flex xl:m-0">
               <button
-                className="ml-auto mr-3 flex h-10 rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500"
+                className="ml-auto mr-3 flex h-10 rounded bg-maintainerr-600 text-zinc-900 shadow-md hover:bg-maintainerr"
                 type="submit"
                 disabled={isCreatePending || isUpdatePending}
               >
@@ -1371,7 +1371,7 @@ const AddModal = (props: AddModal) => {
                 </p>
               </button>
               <button
-                className="ml-auto flex h-10 rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800"
+                className="ml-auto flex h-10 rounded bg-maintainerrdark text-zinc-900 shadow-md hover:bg-maintainerrdark-800"
                 onClick={cancel}
                 type="button"
                 disabled={isCreatePending || isUpdatePending}
@@ -1386,7 +1386,7 @@ const AddModal = (props: AddModal) => {
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
             <div className="flex justify-center gap-3">
               <button
-                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-amber-600 text-zinc-900 shadow-md hover:bg-amber-500 disabled:opacity-60"
+                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-maintainerr-600 text-zinc-900 shadow-md hover:bg-maintainerr disabled:opacity-60"
                 type="submit"
                 disabled={isCreatePending || isUpdatePending}
               >
@@ -1395,7 +1395,7 @@ const AddModal = (props: AddModal) => {
               </button>
 
               <button
-                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-amber-900 text-zinc-900 shadow-md hover:bg-amber-800 disabled:opacity-60"
+                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-maintainerrdark text-zinc-900 shadow-md hover:bg-maintainerrdark-800 disabled:opacity-60"
                 type="button"
                 onClick={cancel}
                 disabled={isCreatePending || isUpdatePending}
@@ -1421,7 +1421,7 @@ const AddModal = (props: AddModal) => {
                   })
                 }
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-600 shadow-lg transition-colors hover:bg-amber-500 focus:outline-none"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-maintainerr-600 shadow-lg transition-colors hover:bg-maintainerr focus:outline-none"
             >
               {atBottom ? (
                 <ChevronUpIcon className="h-5 w-5 text-zinc-900" />

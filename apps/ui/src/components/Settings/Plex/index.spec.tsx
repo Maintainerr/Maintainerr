@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
 import PlexSettings, { hasUnsavedPlexServerChanges } from './index'
@@ -7,11 +13,22 @@ const getApiHandler = vi.fn()
 const updateSettings = vi.fn()
 const deletePlexAuth = vi.fn()
 const updatePlexAuth = vi.fn()
+const refetchServers = vi.fn()
+const usePlexServersMock = vi.fn()
 
 let updateSettingsPending = false
 let deletePlexAuthPending = false
 let updatePlexAuthPending = false
+const axiosGet = vi.fn()
+let loginErrorMessage: string | null = null
+let plexServersResponse: {
+  data: Array<unknown> | undefined
+  isFetching: boolean
+  isError: boolean
+  refetch: typeof refetchServers
+}
 let currentSettings: {
+  clientId?: string
   plex_hostname?: string
   plex_port?: number
   plex_name?: string
@@ -32,6 +49,10 @@ vi.mock('../../../api/settings', () => ({
     mutateAsync: updatePlexAuth,
     isPending: updatePlexAuthPending,
   }),
+  usePlexServers: (options: unknown) => {
+    usePlexServersMock(options)
+    return plexServersResponse
+  },
 }))
 
 vi.mock('..', () => ({
@@ -44,6 +65,12 @@ vi.mock('../../../utils/ApiHandler', () => ({
   default: (url: string) => getApiHandler(url),
 }))
 
+vi.mock('axios', () => ({
+  default: {
+    get: (...args: unknown[]) => axiosGet(...args),
+  },
+}))
+
 vi.mock('react-toastify', () => ({
   toast: {
     promise: (promise: Promise<unknown>) => promise,
@@ -53,12 +80,24 @@ vi.mock('react-toastify', () => ({
 vi.mock('../../Login/Plex', () => ({
   default: ({
     onAuthToken,
+    onError,
     isProcessing,
   }: {
     onAuthToken: (token: string) => void | Promise<void>
+    onError?: (message: string) => void
     isProcessing?: boolean
   }) => (
-    <button type="button" onClick={() => onAuthToken('plex-token')}>
+    <button
+      type="button"
+      onClick={() => {
+        if (loginErrorMessage) {
+          onError?.(loginErrorMessage)
+          return
+        }
+
+        void onAuthToken('plex-token')
+      }}
+    >
       {isProcessing ? 'Authenticating…' : 'Authenticate with Plex'}
     </button>
   ),
@@ -66,21 +105,45 @@ vi.mock('../../Login/Plex', () => ({
 
 beforeEach(() => {
   currentSettings = {
+    clientId: 'client-id',
     plex_hostname: 'plex.local',
     plex_port: 32400,
     plex_name: 'Plex',
     plex_ssl: 0,
-    plex_auth_token: undefined,
+    plex_auth_token: 'masked-plex-token',
   }
 
   updateSettingsPending = false
   deletePlexAuthPending = false
   updatePlexAuthPending = false
+  loginErrorMessage = null
+  plexServersResponse = {
+    data: undefined,
+    isFetching: false,
+    isError: false,
+    refetch: refetchServers,
+  }
 
   getApiHandler.mockReset()
   updateSettings.mockReset()
   deletePlexAuth.mockReset()
   updatePlexAuth.mockReset()
+  axiosGet.mockReset()
+  refetchServers.mockReset()
+  usePlexServersMock.mockReset()
+  axiosGet.mockResolvedValue({ status: 200 })
+
+  getApiHandler.mockImplementation((url: string) => {
+    if (url === '/settings/test/plex') {
+      return Promise.resolve({
+        status: 'OK',
+        code: 1,
+        message: '1.0.0',
+      })
+    }
+
+    throw new Error(`Unexpected request: ${url}`)
+  })
 })
 
 afterEach(() => {
@@ -145,15 +208,10 @@ describe('hasUnsavedPlexServerChanges', () => {
 })
 
 describe('PlexSettings', () => {
-  it('disables Test Connection while Plex server settings are dirty and re-enables it when reverted', () => {
+  it('keeps save and test actions unavailable until Plex credentials exist', () => {
+    currentSettings.plex_auth_token = undefined
+
     render(<PlexSettings />)
-
-    const testButton = screen.getByRole('button', { name: 'Test Connection' })
-    const hostnameInput = screen.getByLabelText('Hostname or IP')
-
-    expect((testButton as HTMLButtonElement).disabled).toBe(false)
-
-    fireEvent.change(hostnameInput, { target: { value: 'plex.internal' } })
 
     expect(
       (
@@ -162,8 +220,45 @@ describe('PlexSettings', () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true)
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save Changes',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+  })
 
-    fireEvent.change(hostnameInput, { target: { value: 'plex.local' } })
+  it('keeps Save Changes enabled when Plex credentials exist regardless of whether server settings have changed', () => {
+    render(<PlexSettings />)
+
+    const saveButton = screen.getByRole('button', { name: 'Save Changes' })
+
+    return waitFor(() => {
+      expect((saveButton as HTMLButtonElement).disabled).toBe(false)
+    })
+  })
+
+  it('keeps Test Connection enabled when Plex credentials exist', async () => {
+    render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Test Connection',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
+    })
+  })
+
+  it('keeps Test Connection unavailable until a Plex server has been selected', () => {
+    currentSettings.plex_hostname = undefined
+    currentSettings.plex_port = undefined
+    currentSettings.plex_name = undefined
+
+    render(<PlexSettings />)
 
     expect(
       (
@@ -171,11 +266,13 @@ describe('PlexSettings', () => {
           name: 'Test Connection',
         }) as HTMLButtonElement
       ).disabled,
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('keeps Test Connection unavailable while Plex authentication is still being persisted', () => {
     const authRequest = createDeferred<void>()
+
+    currentSettings.plex_auth_token = undefined
 
     updatePlexAuth.mockImplementation(() => {
       updatePlexAuthPending = true
@@ -199,5 +296,60 @@ describe('PlexSettings', () => {
     ).toBe(true)
 
     authRequest.resolve()
+  })
+
+  it('keeps server discovery disabled until Plex authentication has been validated', async () => {
+    currentSettings.plex_hostname = undefined
+    currentSettings.plex_port = undefined
+    currentSettings.plex_name = undefined
+
+    const validationRequest = createDeferred<{
+      status: string
+      code: number
+      message: string
+    }>()
+
+    getApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/test/plex') {
+        return validationRequest.promise
+      }
+
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    render(<PlexSettings />)
+
+    expect(usePlexServersMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false }),
+    )
+
+    validationRequest.resolve({
+      status: 'OK',
+      code: 1,
+      message: '1.0.0',
+    })
+
+    await waitFor(() => {
+      expect(usePlexServersMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ enabled: true }),
+      )
+    })
+  })
+
+  it('surfaces specific Plex authentication errors to the user', async () => {
+    currentSettings.plex_auth_token = undefined
+    loginErrorMessage = 'Authentication timed out. Please try again.'
+
+    render(<PlexSettings />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Authenticate with Plex' }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Authentication timed out. Please try again.'),
+      ).toBeTruthy()
+    })
   })
 })

@@ -50,8 +50,17 @@ export class MetadataService {
     }
   }
 
+  private static readonly preferenceToProviderName: Record<
+    MetadataProviderPreference,
+    string
+  > = {
+    [MetadataProviderPreference.TMDB_PRIMARY]: 'TMDB',
+    [MetadataProviderPreference.TVDB_PRIMARY]: 'TVDB',
+  };
+
   private getOrderedProviders(): IMetadataProvider[] {
-    const primaryName = this.preference.replace('_primary', '').toUpperCase();
+    const primaryName =
+      MetadataService.preferenceToProviderName[this.preference];
     const preferred = this.providers.find(
       (provider) => provider.name === primaryName,
     );
@@ -141,13 +150,37 @@ export class MetadataService {
       : [requiredProviderKeys];
   }
 
+  private async getHierarchyResolutionItem(
+    item: MediaItem,
+    sourceMediaServerId?: string,
+  ): Promise<MediaItem | undefined> {
+    const hierarchyTargetId = item.grandparentId ?? item.parentId;
+
+    if (!hierarchyTargetId) {
+      return item;
+    }
+
+    const mediaServer = await this.mediaServerFactory.getService();
+    const hierarchyItem = await mediaServer.getMetadata(hierarchyTargetId);
+
+    if (!hierarchyItem) {
+      const itemLabel = sourceMediaServerId ?? item.id;
+      this.logger.warn(
+        `Failed to fetch hierarchy metadata for media server item ${itemLabel} via parent item ${hierarchyTargetId}`,
+      );
+      return undefined;
+    }
+
+    return hierarchyItem;
+  }
+
   async resolveIds(
     mediaServerId: string,
     requiredProviderKeys?: string | string[],
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const mediaServer = await this.mediaServerFactory.getService();
-      let mediaItem = await mediaServer.getMetadata(mediaServerId);
+      const mediaItem = await mediaServer.getMetadata(mediaServerId);
 
       if (!mediaItem) {
         this.logger.warn(
@@ -156,23 +189,36 @@ export class MetadataService {
         return undefined;
       }
 
-      const hierarchyTargetId = mediaItem.grandparentId ?? mediaItem.parentId;
-      if (hierarchyTargetId) {
-        const hierarchyItem = await mediaServer.getMetadata(hierarchyTargetId);
-
-        if (!hierarchyItem) {
-          this.logger.warn(
-            `Failed to fetch hierarchy metadata for media server item ${mediaServerId} via parent item ${hierarchyTargetId}`,
-          );
-          return undefined;
-        }
-
-        mediaItem = hierarchyItem;
-      }
-
-      return this.resolveIdsFromMediaItem(mediaItem, requiredProviderKeys);
+      return this.resolveIdsFromHierarchyMediaItem(
+        mediaItem,
+        requiredProviderKeys,
+        mediaServerId,
+      );
     } catch (error) {
       this.logger.warn(`Failed to resolve IDs for ${mediaServerId}`);
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  async resolveIdsFromHierarchyMediaItem(
+    item: MediaItem,
+    requiredProviderKeys?: string | string[],
+    sourceMediaServerId?: string,
+  ): Promise<ResolvedMediaIds | undefined> {
+    try {
+      const resolutionItem = await this.getHierarchyResolutionItem(
+        item,
+        sourceMediaServerId,
+      );
+
+      if (!resolutionItem) {
+        return undefined;
+      }
+
+      return this.resolveIdsFromMediaItem(resolutionItem, requiredProviderKeys);
+    } catch (error) {
+      this.logger.warn('Failed to resolve IDs from hierarchy media item');
       this.logger.debug(error);
       return undefined;
     }
@@ -330,7 +376,7 @@ export class MetadataService {
     ) => Promise<string | undefined>,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
     const bag: ResolvedMediaIds = { ...ids, type };
-    await this.resolveAllIds(bag);
+    await this.resolveAllIds(bag, this.getOrderedProviderKeys());
 
     for (const [key, value] of Object.entries(bag)) {
       if (value !== undefined && key !== 'type') {
@@ -370,7 +416,7 @@ export class MetadataService {
         const provider = this.providers.find(
           (itemProvider) => itemProvider.idKey === key,
         );
-        if (numericId && provider) {
+        if (Number.isFinite(numericId) && provider) {
           provider.assignId(ids, numericId);
         }
         continue;
@@ -399,7 +445,14 @@ export class MetadataService {
       return normalized;
     };
 
-    return normalize(left) === normalize(right);
+    const normalizedLeft = normalize(left);
+    const normalizedRight = normalize(right);
+
+    if (normalizedLeft.length === 0 || normalizedRight.length === 0) {
+      return left.trim().toLowerCase() === right.trim().toLowerCase();
+    }
+
+    return normalizedLeft === normalizedRight;
   }
 
   private async resolveAllIds(

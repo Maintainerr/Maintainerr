@@ -41,9 +41,11 @@ jobs:
       - name: Compute image tag
         id: vars
         shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            raw="${{ github.event.inputs.tag }}"
+          if [ -n "$INPUT_TAG" ]; then
+            raw="$INPUT_TAG"
           else
             raw="${GITHUB_REF_NAME}"
           fi
@@ -143,8 +145,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         shell: bash
+        env:
+          TAG: ${{ needs.build-docker-image.outputs.tag }}
         run: |
-          TAG="${{ needs.build-docker-image.outputs.tag }}"
           echo "Pushing multi-arch dev tag: $TAG"
 
           docker buildx imagetools create \

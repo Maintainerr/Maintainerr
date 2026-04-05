@@ -54,12 +54,12 @@ function Button<P extends ElementTypes = 'button'>(
   switch (buttonType) {
     case 'primary':
       buttonStyle.push(
-        'text-white bg-amber-600 border-amber-600 hover:bg-amber-500 hover:border-amber-500 rounded-md focus:border-amber-700 focus:ring-amber active:bg-amber-700 active:border-amber-700',
+        'text-white bg-maintainerr-600 border-maintainerr-600 hover:bg-maintainerr hover:border-maintainerr rounded-md focus:border-maintainerr-700 focus:ring-maintainerr active:bg-maintainerr-700 active:border-maintainerr-700',
       )
       break
     case 'danger':
       buttonStyle.push(
-        'text-white bg-red-600 border-red-600 hover:bg-red-500 hover:border-red-500 focus:border-red-700 rounded-md focus:ring-red active:bg-red-700 active:border-red-700',
+        'text-white bg-error-600 border-error-600 hover:bg-error-500 hover:border-error-500 focus:border-error-700 rounded-md focus:ring-error active:bg-error-700 active:border-error-700',
       )
       break
     case 'warning':
@@ -69,7 +69,7 @@ function Button<P extends ElementTypes = 'button'>(
       break
     case 'success':
       buttonStyle.push(
-        'text-white bg-amber-900 border-amber-900 hover:bg-amber-700 hover:border-amber-700 focus:border-amber-700 rounded-md focus:ring-amber active:bg-amber-700 active:border-amber-700',
+        'text-white bg-maintainerrdark border-maintainerrdark hover:bg-maintainerrdark-700 hover:border-maintainerrdark-700 focus:border-maintainerrdark-700 rounded-md focus:ring-maintainerr active:bg-maintainerrdark-700 active:border-maintainerrdark-700',
       )
       break
     case 'ghost':
@@ -79,27 +79,27 @@ function Button<P extends ElementTypes = 'button'>(
       break
     case 'twin-primary-l':
       buttonStyle.push(
-        'text-white bg-amber-600 border-amber-600 hover:bg-amber-500 hover:border-amber-500 focus:border-amber-700 focus:ring-amber active:bg-amber-700 active:border-amber-700 rounded-l',
+        'text-white bg-maintainerr-600 border-maintainerr-600 hover:bg-maintainerr hover:border-maintainerr focus:border-maintainerr-700 focus:ring-maintainerr active:bg-maintainerr-700 active:border-maintainerr-700 rounded-l',
       )
       break
     case 'twin-primary-r':
       buttonStyle.push(
-        'text-white bg-amber-600 border-amber-600 hover:bg-amber-500 hover:border-amber-500 focus:border-amber-700 focus:ring-amber active:bg-amber-700 active:border-amber-700 rounded-r',
+        'text-white bg-maintainerr-600 border-maintainerr-600 hover:bg-maintainerr hover:border-maintainerr focus:border-maintainerr-700 focus:ring-maintainerr active:bg-maintainerr-700 active:border-maintainerr-700 rounded-r',
       )
       break
     case 'twin-secondary-l':
       buttonStyle.push(
-        'text-white bg-amber-900 border-amber-900 hover:bg-amber-700 hover:border-amber-700 focus:border-amber-700 focus:ring-amber active:bg-amber-700 active:border-amber-700 rounded-l',
+        'text-white bg-maintainerrdark border-maintainerrdark hover:bg-maintainerrdark-700 hover:border-maintainerrdark-700 focus:border-maintainerrdark-700 focus:ring-maintainerr active:bg-maintainerrdark-700 active:border-maintainerrdark-700 rounded-l',
       )
       break
     case 'twin-secondary-r':
       buttonStyle.push(
-        'text-white bg-amber-900 border-amber-900 hover:bg-amber-700 hover:border-amber-700 focus:border-amber-700 focus:ring-amber active:bg-amber-700 active:border-amber-700 rounded-r',
+        'text-white bg-maintainerrdark border-maintainerrdark hover:bg-maintainerrdark-700 hover:border-maintainerrdark-700 focus:border-maintainerrdark-700 focus:ring-maintainerr active:bg-maintainerrdark-700 active:border-maintainerrdark-700 rounded-r',
       )
       break
     default:
       buttonStyle.push(
-        'text-zinc-200 bg-zinc-600 border-zinc-600 hover:text-white hover:bg-zinc-500 hover:border-zinc-500 group-hover:text-white rounded-md group-hover:bg-zinc-500 group-hover:border-zinc-500 focus:border-amber-600 focus:ring-amber active:text-zinc-200 active:bg-zinc-500 active:border-zinc-500',
+        'text-zinc-200 bg-zinc-600 border-zinc-600 hover:text-white hover:bg-zinc-500 hover:border-zinc-500 group-hover:text-white rounded-md group-hover:bg-zinc-500 group-hover:border-zinc-500 focus:border-maintainerr-600 focus:ring-maintainerr active:text-zinc-200 active:bg-zinc-500 active:border-zinc-500',
       )
   }
 

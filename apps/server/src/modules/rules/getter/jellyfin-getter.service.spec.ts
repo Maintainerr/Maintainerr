@@ -221,6 +221,29 @@ describe('JellyfinGetterService', () => {
     );
   });
 
+  describe('IMDb rating semantics', () => {
+    it('falls back to Jellyfin CommunityRating for rating_imdb', async () => {
+      const mediaItem = createMediaItem({
+        type: 'movie',
+        ratings: [
+          { source: 'community', value: 6.9, type: 'audience' },
+          { source: 'audience', value: 8.8, type: 'audience' },
+        ],
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+
+      const response = await jellyfinGetterService.get(
+        44,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBe(6.9);
+    });
+  });
+
   describe('seenBy (id: 1)', () => {
     it('should return list of usernames who watched the item', async () => {
       const mediaItem = createMediaItem();
@@ -520,6 +543,55 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toEqual(new Date('2026-03-06'));
+    });
+
+    it('should aggregate the latest watched episode date for a season', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+      });
+      const episode1 = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+      });
+      const episode2 = createMediaItem({
+        id: 'ep-2',
+        type: 'episode' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [episode1, episode2];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
+            ];
+          }
+          if (itemId === 'ep-2') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-04') }),
+            ];
+          }
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        7,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-04'));
     });
   });
 

@@ -1,11 +1,12 @@
-import { DownloadIcon, RefreshIcon, SaveIcon } from '@heroicons/react/solid'
-import React, { useRef, useState } from 'react'
+import { DownloadIcon, RefreshIcon } from '@heroicons/react/solid'
+import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
-import PendingButton from '../../Common/PendingButton'
+import SaveButton from '../../Common/SaveButton'
 import MediaServerSelector from '../MediaServerSelector'
 import {
   SettingsFeedbackAlert,
@@ -13,51 +14,31 @@ import {
 } from '../useSettingsFeedback'
 import DatabaseBackupModal from './DatabaseBackupModal'
 
+interface GeneralSettingsFormValues {
+  applicationUrl: string
+  apikey: string
+}
+
 const MainSettings = () => {
-  const hostnameRef = useRef<HTMLInputElement>(null)
-  const apiKeyRef = useRef<HTMLInputElement>(null)
   const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const { feedback, showError, showUpdated, showUpdateError, clearError } =
-    useSettingsFeedback('General settings')
+  const {
+    feedback,
+    showUpdated,
+    showUpdateError,
+    showInfo,
+    showError,
+    clear,
+    clearError,
+  } = useSettingsFeedback('General settings')
   const { settings } = useSettingsOutletContext()
-  const { mutateAsync: updateSettings, isPending } = usePatchSettings()
 
-  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    clearError()
-
-    if (hostnameRef.current?.value && apiKeyRef.current?.value) {
-      const payload = {
-        applicationUrl: hostnameRef.current.value,
-        apikey: apiKeyRef.current.value,
-      }
-
-      try {
-        await updateSettings(payload)
-        showUpdated()
-      } catch {
-        showUpdateError()
-      }
-    } else {
-      showError('Not all fields contain values')
-    }
-  }
-
-  const regenerateApi = async () => {
-    clearError()
-
-    try {
-      const key = await GetApiHandler('/settings/api/generate')
-
-      await updateSettings({
-        apikey: key,
-      })
-
-      showUpdated()
-    } catch {
-      showUpdateError()
-    }
-  }
+  const initialValues = useMemo<GeneralSettingsFormValues>(
+    () => ({
+      applicationUrl: settings.applicationUrl ?? '',
+      apikey: settings.apikey ?? '',
+    }),
+    [settings.apikey, settings.applicationUrl],
+  )
 
   return (
     <>
@@ -74,88 +55,153 @@ const MainSettings = () => {
         )}
 
         <div className="section">
-          <form onSubmit={submit}>
-            <div className="form-row">
-              <label htmlFor="hostname" className="text-label">
-                Hostname
-              </label>
-              <div className="form-input">
-                <div className="form-input-field">
-                  <input
-                    name="hostname"
-                    id="hostname"
-                    type="text"
-                    ref={hostnameRef}
-                    defaultValue={settings.applicationUrl}
-                  ></input>
-                </div>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <label htmlFor="api-key" className="text-label">
-                API key
-              </label>
-              <div className="form-input">
-                <div className="form-input-field">
-                  <input
-                    className="!rounded-r-none"
-                    name="api-key"
-                    id="api-key"
-                    type="text"
-                    ref={apiKeyRef}
-                    defaultValue={settings.apikey}
-                  ></input>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      regenerateApi()
-                    }}
-                    className="input-action ml-3"
-                  >
-                    <RefreshIcon />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex rounded-md shadow-sm">
-                    <DocsButton />
-                  </span>
-                  <span className="flex rounded-md shadow-sm">
-                    <Button
-                      buttonType="default"
-                      type="button"
-                      onClick={() => setShowDownloadModal(true)}
-                    >
-                      <DownloadIcon />
-                      <span>Backup Database</span>
-                    </Button>
-                  </span>
-                </div>
-                <span className="flex rounded-md shadow-sm sm:ml-auto">
-                  <PendingButton
-                    buttonType="primary"
-                    type="submit"
-                    disabled={isPending}
-                    idleLabel="Save Changes"
-                    pendingLabel="Saving..."
-                    isPending={isPending}
-                    idleIcon={<SaveIcon />}
-                    reserveLabel="Save Changes"
-                  />
-                </span>
-              </div>
-            </div>
-          </form>
+          <MainSettingsForm
+            key={`${initialValues.applicationUrl}:${initialValues.apikey}`}
+            initialValues={initialValues}
+            onOpenBackup={() => setShowDownloadModal(true)}
+            onClearError={clearError}
+            onUpdated={showUpdated}
+            onUpdateError={showUpdateError}
+          />
         </div>
 
-        {/* Media Server Selector */}
-        <MediaServerSelector currentType={settings.media_server_type ?? null} />
+        <MediaServerSelector
+          currentType={settings.media_server_type ?? null}
+          onClearFeedback={clear}
+          onInfo={showInfo}
+          onError={showError}
+        />
       </div>
     </>
   )
 }
+
+const MainSettingsForm = ({
+  initialValues,
+  onOpenBackup,
+  onClearError,
+  onUpdated,
+  onUpdateError,
+}: {
+  initialValues: GeneralSettingsFormValues
+  onOpenBackup: () => void
+  onClearError: () => void
+  onUpdated: () => void
+  onUpdateError: () => void
+}) => {
+  const { mutateAsync: updateSettings, isPending } = usePatchSettings()
+
+  const { register, handleSubmit, reset, getValues } =
+    useForm<GeneralSettingsFormValues>({
+      defaultValues: initialValues,
+    })
+
+  const canSave = !isPending
+
+  const submit = async (data: GeneralSettingsFormValues) => {
+    onClearError()
+
+    try {
+      await updateSettings(data)
+      reset(data)
+      onUpdated()
+    } catch {
+      onUpdateError()
+    }
+  }
+
+  const regenerateApi = async () => {
+    onClearError()
+
+    try {
+      const key = await GetApiHandler<string>('/settings/api/generate')
+
+      await updateSettings({
+        apikey: key,
+      })
+
+      reset(
+        {
+          applicationUrl: getValues('applicationUrl'),
+          apikey: key,
+        },
+        {
+          keepValues: true,
+        },
+      )
+
+      onUpdated()
+    } catch {
+      onUpdateError()
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(submit)}>
+      <div className="form-row">
+        <label htmlFor="hostname" className="text-label">
+          Hostname
+        </label>
+        <div className="form-input">
+          <div className="form-input-field">
+            <input
+              id="hostname"
+              type="text"
+              {...register('applicationUrl', { onChange: onClearError })}
+            ></input>
+          </div>
+        </div>
+      </div>
+
+      <div className="form-row">
+        <label htmlFor="api-key" className="text-label">
+          API key
+        </label>
+        <div className="form-input">
+          <div className="form-input-field">
+            <input
+              className="!rounded-r-none"
+              id="api-key"
+              type="text"
+              {...register('apikey', { onChange: onClearError })}
+            ></input>
+            <button
+              aria-label="Regenerate API key"
+              onClick={(e) => {
+                e.preventDefault()
+                void regenerateApi()
+              }}
+              className="input-action ml-3"
+            >
+              <RefreshIcon />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="actions mt-5 w-full">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex rounded-md shadow-sm">
+              <DocsButton />
+            </span>
+            <span className="flex rounded-md shadow-sm">
+              <Button buttonType="default" type="button" onClick={onOpenBackup}>
+                <DownloadIcon />
+                <span>Backup Database</span>
+              </Button>
+            </span>
+          </div>
+          <span className="flex rounded-md shadow-sm sm:ml-auto">
+            <SaveButton
+              type="submit"
+              disabled={!canSave}
+              isPending={isPending}
+            />
+          </span>
+        </div>
+      </div>
+    </form>
+  )
+}
+
 export default MainSettings
