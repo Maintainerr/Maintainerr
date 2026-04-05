@@ -38,8 +38,8 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import { AxiosError } from 'axios';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
@@ -1019,37 +1019,45 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       // For BoxSets in Jellyfin, we need to use the Items endpoint
       // with the collection's ID as parentId AND a userId
-      const response = await getItemsApi(this.api).getItems({
-        userId,
-        parentId: collectionId,
-        fields: [
-          ItemFields.ProviderIds,
-          ItemFields.Path,
-          ItemFields.DateCreated,
-        ],
-        enableUserData: true,
-        recursive: false,
-      });
+      const response = await this.retryLibraryRequestOnce(
+        `get Jellyfin collection children for ${collectionId}`,
+        async () =>
+          await getItemsApi(this.api!).getItems({
+            userId,
+            parentId: collectionId,
+            fields: [
+              ItemFields.ProviderIds,
+              ItemFields.Path,
+              ItemFields.DateCreated,
+            ],
+            enableUserData: true,
+            recursive: false,
+          }),
+      );
 
       // If parentId approach returns nothing, try recursive search
       if (!response.data.Items?.length) {
-        const itemsResponse = await getItemsApi(this.api).getItems({
-          userId,
-          parentId: collectionId,
-          recursive: true,
-          includeItemTypes: [
-            BaseItemKind.Movie,
-            BaseItemKind.Series,
-            BaseItemKind.Season,
-            BaseItemKind.Episode,
-          ],
-          fields: [
-            ItemFields.ProviderIds,
-            ItemFields.Path,
-            ItemFields.DateCreated,
-          ],
-          enableUserData: true,
-        });
+        const itemsResponse = await this.retryLibraryRequestOnce(
+          `get Jellyfin collection children recursively for ${collectionId}`,
+          async () =>
+            await getItemsApi(this.api!).getItems({
+              userId,
+              parentId: collectionId,
+              recursive: true,
+              includeItemTypes: [
+                BaseItemKind.Movie,
+                BaseItemKind.Series,
+                BaseItemKind.Season,
+                BaseItemKind.Episode,
+              ],
+              fields: [
+                ItemFields.ProviderIds,
+                ItemFields.Path,
+                ItemFields.DateCreated,
+              ],
+              enableUserData: true,
+            }),
+        );
 
         if (itemsResponse.data.Items?.length) {
           return (itemsResponse.data.Items || []).map(

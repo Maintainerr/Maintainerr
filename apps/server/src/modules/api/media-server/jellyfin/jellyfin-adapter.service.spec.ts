@@ -1,10 +1,10 @@
-import { AxiosError } from 'axios';
 import { getCollectionApi } from '@jellyfin/sdk/lib/utils/api/index.js';
 import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
+import { AxiosError } from 'axios';
+import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
-import { delay } from '../../../../utils/delay';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
 import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 
@@ -880,6 +880,73 @@ describe('JellyfinAdapterService', () => {
         >,
       );
       await service.initialize();
+    });
+
+    it('retries once after a transient collection-children failure', async () => {
+      jellyfinApiMocks.getItems
+        .mockRejectedValueOnce(createRetryableError('ETIMEDOUT'))
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              {
+                Id: 'item-1',
+                Name: 'Movie One',
+                Type: 'Movie',
+                UserData: {},
+              },
+            ],
+          },
+        });
+
+      const result = await service.getCollectionChildren('collection-1');
+
+      expect(delay).toHaveBeenCalledWith(300);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Transient Jellyfin failure during get Jellyfin collection children for collection-1; retrying once in 300ms',
+      );
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: 'item-1',
+          title: 'Movie One',
+        }),
+      ]);
+    });
+
+    it('retries once after a transient recursive collection-children failure', async () => {
+      jellyfinApiMocks.getItems
+        .mockResolvedValueOnce({
+          data: {
+            Items: [],
+          },
+        })
+        .mockRejectedValueOnce(createRetryableError('ECONNRESET'))
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              {
+                Id: 'item-2',
+                Name: 'Series One',
+                Type: 'Series',
+                UserData: {},
+              },
+            ],
+          },
+        });
+
+      const result = await service.getCollectionChildren('collection-1');
+
+      expect(delay).toHaveBeenCalledWith(300);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(3);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Transient Jellyfin failure during get Jellyfin collection children recursively for collection-1; retrying once in 300ms',
+      );
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: 'item-2',
+          title: 'Series One',
+        }),
+      ]);
     });
 
     it('should create a collection without initial item ids', async () => {
