@@ -32,6 +32,21 @@ const successPalette = {
   DEFAULT: '#315b46',
 }
 
+const infoPalette = {
+  50: colors.zinc[50],
+  100: colors.zinc[100],
+  200: colors.zinc[200],
+  300: colors.zinc[300],
+  400: colors.zinc[400],
+  500: colors.zinc[500],
+  600: colors.zinc[600],
+  700: colors.zinc[700],
+  800: colors.zinc[800],
+  900: colors.zinc[900],
+  950: colors.zinc[950],
+  DEFAULT: colors.zinc[700],
+}
+
 const maintainerrPalette = {
   50: '#fffbeb',
   100: '#fef3c7',
@@ -69,6 +84,7 @@ module.exports = {
     extend: {
       colors: {
         error: errorPalette,
+        info: infoPalette,
         success: successPalette,
         maintainerr: maintainerrPalette,
         maintainerrdark: maintainerrDarkPalette,

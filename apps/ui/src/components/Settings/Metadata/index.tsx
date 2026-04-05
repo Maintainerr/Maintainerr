@@ -310,7 +310,7 @@ function useProviderForm(config: ProviderConfig) {
     )
       .then((response) => {
         if (response.code === 1) {
-          showInfo(
+          showSuccess(
             response.message ?? `${config.title} metadata refresh started`,
           )
         } else {

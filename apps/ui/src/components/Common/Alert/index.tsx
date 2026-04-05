@@ -14,18 +14,18 @@ interface AlertProps {
 
 const Alert: React.FC<AlertProps> = ({ title, children, type }) => {
   let design = {
-    bgColor: 'bg-zinc-800',
-    titleColor: 'text-zinc-100',
-    textColor: 'text-zinc-300',
+    bgColor: 'bg-warning-900',
+    titleColor: 'text-warning-100',
+    textColor: 'text-warning-300',
     svg: <ExclamationIcon className="h-5 w-5" />,
   }
 
   switch (type) {
     case 'info':
       design = {
-        bgColor: 'bg-maintainerrdark',
-        titleColor: 'text-maintainerr-100',
-        textColor: 'text-maintainerr-300',
+        bgColor: 'bg-info-700',
+        titleColor: 'text-info-100',
+        textColor: 'text-info-300',
         svg: <InformationCircleIcon className="h-5 w-5" />,
       }
       break

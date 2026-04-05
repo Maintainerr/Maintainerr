@@ -133,7 +133,7 @@ const NotificationSettings = () => {
             onSave={() => {
               updateAddModalActive(!addModalActive)
               setEditConfig(undefined)
-              showInfo('Notification agent saved')
+              showSuccess('Notification agent saved')
             }}
             onTest={() => {}}
             {...(editConfig

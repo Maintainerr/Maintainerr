@@ -500,16 +500,16 @@ const Overview = () => {
             data={data}
             libraryId={resolvedLibraryId ?? ''}
           />
-        ) : !searchUsed ? (
+        ) : (
           <OverviewContent
             dataFinished={true}
             fetchData={fetchData}
-            loading={false}
+            loading={isLoading}
             extrasLoading={false}
             data={data}
             libraryId=""
           />
-        ) : undefined}
+        )}
       </div>
     </>
   )

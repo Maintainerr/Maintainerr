@@ -5,7 +5,8 @@
 :root {
   --toastify-color-success: theme('colors.success.DEFAULT');
   --toastify-color-error: theme('colors.error.DEFAULT');
-  --toastify-color-info: theme('colors.maintainerr.500');
+  --toastify-color-info: theme('colors.info.DEFAULT');
+  --toastify-color-warning: theme('colors.warning.700');
 }
 
 @layer base {
