@@ -81,7 +81,7 @@ const ExternalServiceSettingsPage = ({
     getValues,
     reset,
     setError,
-    formState: { errors, isSubmitting, isLoading, defaultValues },
+    formState: { errors, isSubmitting, isLoading },
   } = useForm<UrlApiKeySettingsValues>({
     defaultValues: async () => {
       const response =

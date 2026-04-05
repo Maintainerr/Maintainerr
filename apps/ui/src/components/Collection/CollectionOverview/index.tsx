@@ -11,7 +11,7 @@ import CollectionItem from '../CollectionItem'
 interface ICollectionOverview {
   collections: ICollection[] | undefined
   onSwitchLibrary: (id: string) => void
-  selectedLibraryId: string
+  selectedLibraryId?: string
   isLoading: boolean
   doActions: () => void
   openDetail: (collection: ICollection) => void

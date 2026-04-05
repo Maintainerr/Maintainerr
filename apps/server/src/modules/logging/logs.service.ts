@@ -144,10 +144,23 @@ export class MaintainerrLogger implements LoggerService {
         meta.status = status;
       }
 
-      // Only read error.code for non-HTTP errors (e.g. ECONNREFUSED, ENOTFOUND).
+      const ownCodeDescriptor = Object.getOwnPropertyDescriptor(
+        errorWithMeta,
+        'code',
+      );
+
+      if (typeof ownCodeDescriptor?.value === 'string') {
+        meta.errorCode = ownCodeDescriptor.value;
+      }
+
+      // Only read error.code via property access for non-HTTP errors.
       // Accessing error.code on @octokit/request-error triggers a deprecation
       // warning because octokit deprecated that getter in favour of error.status.
-      if (status === undefined && typeof errorWithMeta.code === 'string') {
+      if (
+        meta.errorCode === undefined &&
+        status === undefined &&
+        typeof errorWithMeta.code === 'string'
+      ) {
         meta.errorCode = errorWithMeta.code;
       }
 

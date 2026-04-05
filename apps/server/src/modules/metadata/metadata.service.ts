@@ -171,7 +171,7 @@ export class MetadataService {
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const mediaServer = await this.mediaServerFactory.getService();
-      let mediaItem = await mediaServer.getMetadata(mediaServerId);
+      const mediaItem = await mediaServer.getMetadata(mediaServerId);
 
       if (!mediaItem) {
         this.logger.warn(
