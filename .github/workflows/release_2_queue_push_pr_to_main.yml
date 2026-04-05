@@ -49,6 +49,7 @@ jobs:
       pr_number: ${{ steps.pr.outputs.pr_number }}
       head_repo: ${{ steps.pr.outputs.head_repo }}
       review_actor: ${{ steps.pr.outputs.review_actor }}
+      build_release_candidate_image: ${{ steps.pr.outputs.build_release_candidate_image }}
     steps:
       - name: Gather PR metadata
         id: pr
@@ -74,10 +75,13 @@ jobs:
               baseRef === 'main' &&
               headRef === 'development';
 
+            const buildDockerImage = pr.labels.some(l => l.name === 'release:docker-build');
+
             core.setOutput('should_run', shouldRun ? 'true' : 'false');
             core.setOutput('pr_number', String(pr.number));
             core.setOutput('head_repo', headRepo);
             core.setOutput('review_actor', context.actor);
+            core.setOutput('build_release_candidate_image', buildDockerImage ? 'true' : 'false');
 
             if (!shouldRun) {
               core.warning(
@@ -96,12 +100,14 @@ jobs:
         env:
           PR_NUMBER: ${{ needs.resolve_pr.outputs.pr_number }}
           REVIEW_ACTOR: ${{ needs.resolve_pr.outputs.review_actor }}
+          BUILD_DOCKER_IMAGE: ${{ needs.resolve_pr.outputs.build_release_candidate_image }}
         run: |
           mkdir -p release-context
           cat <<EOF > release-context/context.json
           {
             "pr_number": ${PR_NUMBER},
-            "review_actor": "${REVIEW_ACTOR}"
+            "review_actor": "${REVIEW_ACTOR}",
+            "build_release_candidate_image": ${BUILD_DOCKER_IMAGE}
           }
           EOF
 
