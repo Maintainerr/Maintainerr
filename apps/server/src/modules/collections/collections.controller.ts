@@ -29,8 +29,8 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
 import {
-  AddRemoveCollectionMedia,
-  IAlterableMediaDto,
+  AlterableMediaContext,
+  CollectionMediaChange,
 } from './interfaces/collection-media.interface';
 
 const collectionMediaSortQuerySchema = z
@@ -60,7 +60,7 @@ export class CollectionsController {
     @Body()
     request: {
       collectionId: number;
-      media: AddRemoveCollectionMedia[];
+      media: CollectionMediaChange[];
       manual?: boolean;
     },
   ) {
@@ -172,7 +172,7 @@ export class CollectionsController {
     @Body()
     request: {
       mediaId: string;
-      context: IAlterableMediaDto;
+      context: AlterableMediaContext;
       collectionId: number;
       action: 0 | 1;
     },

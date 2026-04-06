@@ -14,7 +14,11 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { CollectionsService } from '../../collections/collections.service';
 import { Collection } from '../../collections/entities/collection.entities';
-import { AddRemoveCollectionMedia } from '../../collections/interfaces/collection-media.interface';
+import {
+  CollectionMediaManualMembershipSource,
+  hasCollectionMediaManualMembership,
+} from '../../collections/entities/collection_media.entities';
+import { CollectionMediaChange } from '../../collections/interfaces/collection-media.interface';
 import {
   CollectionMediaAddedDto,
   CollectionMediaRemovedDto,
@@ -42,6 +46,8 @@ interface MediaDataPage {
 interface MediaServerSyncContext {
   collection?: Collection;
   skipManualChildImport?: boolean;
+  skipManualChildImportReason?: 'newly-linked-automatic-collection';
+  sharedManualCollection?: boolean;
 }
 
 export type RuleExecutionResult =
@@ -294,6 +300,20 @@ export class RuleExecutorService {
       const collection = syncContext.collection;
 
       if (collection) {
+        if (syncContext.sharedManualCollection) {
+          await this.collectionService.reconcileSharedManualCollectionState(
+            collection,
+            {
+              touchedMediaServerIds,
+            },
+          );
+
+          this.logger.log(
+            `Synced collection '${collection.manualCollectionName}' with media server`,
+          );
+          return;
+        }
+
         const collectionMedia = await this.collectionService.getCollectionMedia(
           rulegroup.collectionId,
         );
@@ -327,7 +347,7 @@ export class RuleExecutorService {
           const excludedParentIds = new Set<string>(
             exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
           );
-          const missingManualChildren: AddRemoveCollectionMedia[] = [];
+          const missingManualChildren: CollectionMediaChange[] = [];
 
           for (const child of children) {
             if (child && child.id) {
@@ -366,7 +386,7 @@ export class RuleExecutorService {
             await this.collectionService.syncMediaServerChildrenToCollection(
               collection,
               missingManualChildren,
-              true,
+              CollectionMediaManualMembershipSource.LOCAL,
             );
           }
         }
@@ -401,14 +421,18 @@ export class RuleExecutorService {
               !children ||
               !children.find((e) => mediaItem.mediaServerId === e.id.toString())
             ) {
-              await this.collectionService.removeFromCollection(collection.id, [
-                {
-                  mediaServerId: mediaItem.mediaServerId,
-                  reason: {
-                    type: 'media_removed_manually',
+              await this.collectionService.removeFromCollection(
+                collection.id,
+                [
+                  {
+                    mediaServerId: mediaItem.mediaServerId,
+                    reason: {
+                      type: 'media_removed_manually',
+                    },
                   },
-                },
-              ] satisfies AddRemoveCollectionMedia[]);
+                ] satisfies CollectionMediaChange[],
+                'manual',
+              );
             }
           }
         }
@@ -439,9 +463,21 @@ export class RuleExecutorService {
       const relinkedCollection =
         await this.collectionService.relinkManualCollection(collection);
 
-      return relinkedCollection.mediaServerId
-        ? { collection: relinkedCollection }
-        : {};
+      if (!relinkedCollection.mediaServerId) {
+        return {};
+      }
+
+      const isSharedMediaServerCollection =
+        await this.collectionService.isMediaServerCollectionShared(
+          relinkedCollection,
+        );
+
+      return isSharedMediaServerCollection
+        ? {
+            collection: relinkedCollection,
+            sharedManualCollection: true,
+          }
+        : { collection: relinkedCollection };
     }
 
     const wasLinkedBeforeSync = Boolean(collection.mediaServerId);
@@ -459,6 +495,9 @@ export class RuleExecutorService {
     return {
       collection: linkedCollection,
       skipManualChildImport: !wasLinkedBeforeSync,
+      skipManualChildImportReason: !wasLinkedBeforeSync
+        ? 'newly-linked-automatic-collection'
+        : undefined,
     };
   }
 
@@ -571,7 +610,7 @@ export class RuleExecutorService {
 
         // Ensure manually added media always remains included
         for (const mediaItem of collMediaData) {
-          if (mediaItem?.isManual === true) {
+          if (hasCollectionMediaManualMembership(mediaItem)) {
             desiredMediaServerIds.add(mediaItem.mediaServerId);
           }
         }
@@ -589,7 +628,7 @@ export class RuleExecutorService {
           }
         }
 
-        const dataToAdd: AddRemoveCollectionMedia[] = this.prepareDataAmendment(
+        const dataToAdd: CollectionMediaChange[] = this.prepareDataAmendment(
           mediaToAdd.map((el) => {
             return {
               mediaServerId: el,
@@ -597,7 +636,7 @@ export class RuleExecutorService {
                 type: 'media_added_by_rule',
                 data: statsByMediaServerId.get(el),
               },
-            } satisfies AddRemoveCollectionMedia;
+            } satisfies CollectionMediaChange;
           }),
         );
 
@@ -608,18 +647,17 @@ export class RuleExecutorService {
           }
         }
 
-        const dataToRemove: AddRemoveCollectionMedia[] =
-          this.prepareDataAmendment(
-            mediaToRemove.map((el) => {
-              return {
-                mediaServerId: el,
-                reason: {
-                  type: 'media_removed_by_rule',
-                  data: statsByMediaServerId.get(el),
-                },
-              } satisfies AddRemoveCollectionMedia;
-            }),
-          );
+        const dataToRemove: CollectionMediaChange[] = this.prepareDataAmendment(
+          mediaToRemove.map((el) => {
+            return {
+              mediaServerId: el,
+              reason: {
+                type: 'media_removed_by_rule',
+                data: statsByMediaServerId.get(el),
+              },
+            } satisfies CollectionMediaChange;
+          }),
+        );
 
         if (dataToRemove.length > 0) {
           this.logger.log(
@@ -665,10 +703,12 @@ export class RuleExecutorService {
               ? await this.collectionService.removeFromCollectionWithResolvedLink(
                   collection,
                   dataToRemove,
+                  'rule',
                 )
               : await this.collectionService.removeFromCollection(
                   collection.id,
                   dataToRemove,
+                  'rule',
                 );
         }
 
@@ -761,9 +801,9 @@ export class RuleExecutorService {
   }
 
   private prepareDataAmendment(
-    arr: AddRemoveCollectionMedia[],
-  ): AddRemoveCollectionMedia[] {
-    const uniqueArr: AddRemoveCollectionMedia[] = [];
+    arr: CollectionMediaChange[],
+  ): CollectionMediaChange[] {
+    const uniqueArr: CollectionMediaChange[] = [];
     arr.filter(
       (item) =>
         !uniqueArr.find((el) => el.mediaServerId === item.mediaServerId) &&

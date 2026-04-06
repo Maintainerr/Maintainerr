@@ -1,7 +1,7 @@
+import { MediaServerType } from '@maintainerr/contracts';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { DataSource, Repository } from 'typeorm';
-import { MediaServerType } from '@maintainerr/contracts';
 import {
   createCollection,
   createCollectionMedia,
@@ -15,7 +15,10 @@ import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
-import { CollectionMedia } from './entities/collection_media.entities';
+import {
+  CollectionMedia,
+  CollectionMediaManualMembershipSource,
+} from './entities/collection_media.entities';
 
 describe('CollectionsService', () => {
   let service: CollectionsService;
@@ -79,6 +82,10 @@ describe('CollectionsService', () => {
       deleteCollection: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<IMediaServerService>;
 
+    collectionMediaRepo.create.mockImplementation((entityLike) =>
+      Object.assign(new CollectionMedia(), entityLike),
+    );
+
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
     settingsService.media_server_type = MediaServerType.PLEX;
     jest
@@ -112,6 +119,27 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('treats a media server collection link as shared when another local collection points to it', async () => {
+    collectionRepo.count.mockResolvedValue(1);
+
+    await expect(
+      service.isMediaServerCollectionShared(
+        createCollection({
+          id: 9,
+          mediaServerId: 'remote-collection',
+        }),
+      ),
+    ).resolves.toBe(true);
+
+    expect(collectionRepo.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          mediaServerId: 'remote-collection',
+        }),
+      }),
+    );
   });
 
   it('trusts Plex metadata childCount before stale child enumeration when checking automatic links', async () => {
@@ -231,6 +259,156 @@ describe('CollectionsService', () => {
     expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
       'remote-existing',
       ['item-1'],
+    );
+  });
+
+  it('marks an existing manual item as rule-included without re-adding it to the media server', async () => {
+    const collection = createCollection({
+      id: 8,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    const existingManualItem = createCollectionMedia(collection, {
+      id: 81,
+      mediaServerId: 'item-1',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([existingManualItem]);
+    collectionMediaRepo.save.mockImplementation(async (value) => value as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(collectionMediaRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 81,
+        mediaServerId: 'item-1',
+        includedByRule: true,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    );
+  });
+
+  it('removes only the rule membership when an item is also manually included', async () => {
+    const collection = createCollection({
+      id: 10,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    const manualAndRuleItem = createCollectionMedia(collection, {
+      id: 101,
+      mediaServerId: 'item-1',
+      includedByRule: true,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([manualAndRuleItem]);
+    collectionMediaRepo.save.mockImplementation(async (value) => value as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    const removeChildrenFromCollectionSpy = jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue([]);
+
+    await service.removeFromCollection(
+      collection.id,
+      [
+        {
+          mediaServerId: 'item-1',
+          reason: {
+            type: 'media_removed_by_rule',
+            data: undefined as any,
+          },
+        },
+      ],
+      'rule',
+    );
+
+    expect(removeChildrenFromCollectionSpy).not.toHaveBeenCalled();
+    expect(collectionMediaRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 101,
+        mediaServerId: 'item-1',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    );
+  });
+
+  it('reconciles shared manual collections by removing bleed rows and importing true shared manual items', async () => {
+    const firstCollection = createCollection({
+      id: 20,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const secondCollection = createCollection({
+      id: 21,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const bleedRow = createCollectionMedia(firstCollection, {
+      id: 201,
+      mediaServerId: 'item-owned-by-second',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LEGACY,
+    });
+    const secondRuleRow = createCollectionMedia(secondCollection, {
+      id: 202,
+      mediaServerId: 'item-owned-by-second',
+      includedByRule: true,
+      manualMembershipSource: null,
+    });
+
+    collectionRepo.find.mockResolvedValue([firstCollection, secondCollection]);
+    collectionMediaRepo.find.mockResolvedValue([bleedRow, secondRuleRow]);
+    ruleGroupRepo.find.mockResolvedValue([
+      { id: 301, collectionId: 20 },
+      { id: 302, collectionId: 21 },
+    ] as any);
+    exclusionRepo.find.mockResolvedValue([]);
+    collectionMediaRepo.save.mockImplementation(async (value) => value as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      createMediaItem({ id: 'item-owned-by-second', type: 'movie' }),
+      createMediaItem({ id: 'item-manual-shared', type: 'movie' }),
+    ]);
+    const insertCollectionMediaMembershipSpy = jest
+      .spyOn(service as any, 'insertCollectionMediaMembership')
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(service as any, 'resolveCollectionMediaArtwork')
+      .mockResolvedValue({});
+
+    await service.reconcileSharedManualCollectionState(firstCollection);
+
+    expect(collectionMediaRepo.delete).toHaveBeenCalledWith({ id: 201 });
+    expect(insertCollectionMediaMembershipSpy).toHaveBeenCalledTimes(2);
+    expect(insertCollectionMediaMembershipSpy).toHaveBeenCalledWith(
+      20,
+      'item-manual-shared',
+      {
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.SHARED,
+      },
+      { type: 'media_added_manually' },
+    );
+    expect(insertCollectionMediaMembershipSpy).toHaveBeenCalledWith(
+      21,
+      'item-manual-shared',
+      {
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.SHARED,
+      },
+      { type: 'media_added_manually' },
     );
   });
 
@@ -612,7 +790,8 @@ describe('CollectionsService', () => {
           tvdbId: null,
           addDate: new Date().toISOString(),
           image_path: null,
-          isManual: 0,
+          includedByRule: 1,
+          manualMembershipSource: null,
           rowNumber: 1,
         },
       ]),
@@ -670,7 +849,8 @@ describe('CollectionsService', () => {
           tvdbId: null,
           addDate: new Date().toISOString(),
           image_path: null,
-          isManual: 0,
+          includedByRule: 1,
+          manualMembershipSource: null,
           rowNumber: 1,
         },
       ]),

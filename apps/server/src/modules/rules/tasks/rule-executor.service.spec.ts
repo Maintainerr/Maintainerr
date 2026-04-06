@@ -38,6 +38,10 @@ describe('RuleExecutorService', () => {
         mediaServerId: 'coll-1',
         manualCollection: false,
       }),
+      isMediaServerCollectionShared: jest.fn().mockResolvedValue(false),
+      reconcileSharedManualCollectionState: jest
+        .fn()
+        .mockResolvedValue(undefined),
       relinkManualCollection: jest.fn().mockImplementation(async (c) => c),
       getCollectionMedia: jest.fn().mockResolvedValue([
         {
@@ -322,6 +326,75 @@ describe('RuleExecutorService', () => {
     );
   });
 
+  it('reconciles shared manual collections through the collection service', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Foreign Movies',
+      mediaServerId: 'coll-1',
+      manualCollection: true,
+      manualCollectionName: 'Leaving Media',
+    } as any);
+    collectionService.relinkManualCollection.mockResolvedValue({
+      id: 1,
+      title: 'Foreign Movies',
+      mediaServerId: 'coll-1',
+      manualCollection: true,
+      manualCollectionName: 'Leaving Media',
+    } as any);
+    collectionService.isMediaServerCollectionShared.mockResolvedValue(true);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-shared' }]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
+
+    expect(
+      collectionService.isMediaServerCollectionShared,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        mediaServerId: 'coll-1',
+        manualCollection: true,
+      }),
+    );
+    expect(
+      collectionService.reconcileSharedManualCollectionState,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        mediaServerId: 'coll-1',
+        manualCollection: true,
+      }),
+      {
+        touchedMediaServerIds: new Set(),
+      },
+    );
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      "Synced collection 'Leaving Media' with media server",
+    );
+  });
+
   it('removes collection items on Plex when children are empty', async () => {
     const { service, collectionService } = createService(MediaServerType.PLEX);
 
@@ -348,6 +421,7 @@ describe('RuleExecutorService', () => {
           reason: { type: 'media_removed_manually' },
         }),
       ]),
+      'manual',
     );
   });
 
@@ -397,7 +471,7 @@ describe('RuleExecutorService', () => {
           reason: { type: 'media_added_manually' },
         },
       ],
-      true,
+      'local',
     );
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
   });
@@ -443,7 +517,7 @@ describe('RuleExecutorService', () => {
           reason: { type: 'media_added_manually' },
         },
       ],
-      true,
+      'local',
     );
   });
 
@@ -591,6 +665,7 @@ describe('RuleExecutorService', () => {
           },
         },
       ],
+      'rule',
     );
   });
 

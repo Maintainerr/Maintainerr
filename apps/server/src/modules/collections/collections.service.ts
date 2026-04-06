@@ -18,7 +18,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, In, LessThan, Repository } from 'typeorm';
+import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -30,11 +30,14 @@ import { SettingsService } from '../settings/settings.service';
 import { Collection } from './entities/collection.entities';
 import {
   CollectionMedia,
+  CollectionMediaManualMembershipSource,
   CollectionMediaWithMetadata,
+  hasCollectionMediaManualMembership,
+  hasCollectionMediaRuleMembership,
 } from './entities/collection_media.entities';
 import {
-  AddRemoveCollectionMedia,
-  IAlterableMediaDto,
+  AlterableMediaContext,
+  CollectionMediaChange,
 } from './interfaces/collection-media.interface';
 import { ICollection } from './interfaces/collection.interface';
 
@@ -61,8 +64,16 @@ interface CollectionPreviewMediaRow {
   tvdbId?: number;
   addDate: Date;
   image_path?: string;
-  isManual: boolean;
+  isManual?: boolean;
+  includedByRule?: boolean | null;
+  manualMembershipSource?: CollectionMediaManualMembershipSource | null;
   rowNumber: number;
+}
+
+type CollectionMediaRemovalScope = 'all' | 'rule' | 'manual';
+
+interface SharedManualCollectionReconciliationOptions {
+  touchedMediaServerIds?: Set<string>;
 }
 
 @Injectable()
@@ -125,6 +136,276 @@ export class CollectionsService {
       this.logger.warn('An error occurred while performing collection actions');
       this.logger.debug(error);
       return undefined;
+    }
+  }
+
+  public async getCollectionsByMediaServerId(
+    mediaServerId: string,
+  ): Promise<Collection[]> {
+    return this.collectionRepo.find({
+      where: { mediaServerId },
+      order: { id: 'ASC' },
+    });
+  }
+
+  public async isMediaServerCollectionShared(
+    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+  ): Promise<boolean> {
+    if (!collection.mediaServerId) {
+      return false;
+    }
+
+    try {
+      const linkedCollectionCount = await this.collectionRepo.count({
+        where: {
+          mediaServerId: collection.mediaServerId,
+          ...(collection.id !== undefined ? { id: Not(collection.id) } : {}),
+        },
+      });
+
+      return linkedCollectionCount > 0;
+    } catch (error) {
+      this.logger.warn(
+        'Failed to determine whether a media server collection is shared',
+      );
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
+  public async reconcileSharedManualCollectionState(
+    collection: Collection,
+    options: SharedManualCollectionReconciliationOptions = {},
+  ): Promise<void> {
+    if (!collection.manualCollection || !collection.mediaServerId) {
+      return;
+    }
+
+    const linkedCollections = (
+      await this.getCollectionsByMediaServerId(collection.mediaServerId)
+    ).filter((linkedCollection) => linkedCollection.manualCollection);
+
+    if (linkedCollections.length <= 1) {
+      return;
+    }
+
+    const mediaServer = await this.getMediaServer();
+    const serverChildren =
+      (await mediaServer.getCollectionChildren(collection.mediaServerId)) ?? [];
+    const serverChildIds = new Set(
+      serverChildren
+        .map((child) => child?.id?.toString())
+        .filter((childId): childId is string => Boolean(childId)),
+    );
+
+    const linkedCollectionIds = linkedCollections.map(
+      (linkedCollection) => linkedCollection.id,
+    );
+
+    const [collectionMediaRows, linkedRuleGroups] = await Promise.all([
+      this.CollectionMediaRepo.find({
+        where: { collectionId: In(linkedCollectionIds) },
+        order: { collectionId: 'ASC', id: 'ASC' },
+      }),
+      this.ruleGroupRepo.find({
+        where: { collectionId: In(linkedCollectionIds) },
+      }),
+    ]);
+
+    const desiredServerIds = new Set(
+      collectionMediaRows
+        .filter(
+          (collectionMedia) =>
+            hasCollectionMediaManualMembership(collectionMedia) ||
+            hasCollectionMediaRuleMembership(collectionMedia),
+        )
+        .map((collectionMedia) => collectionMedia.mediaServerId),
+    );
+    const missingServerIds = Array.from(desiredServerIds).filter(
+      (mediaServerId) => !serverChildIds.has(mediaServerId),
+    );
+
+    if (missingServerIds.length > 0) {
+      const failedItemIds = new Set(
+        await mediaServer.addBatchToCollection(
+          collection.mediaServerId,
+          missingServerIds,
+        ),
+      );
+
+      for (const mediaServerId of missingServerIds) {
+        if (failedItemIds.has(mediaServerId)) {
+          this.logger.warn(
+            `Failed to re-sync shared manual collection item ${mediaServerId} to ${collection.mediaServerId}`,
+          );
+          continue;
+        }
+
+        serverChildIds.add(mediaServerId);
+      }
+    }
+
+    const ruleOwnedIds = new Set(
+      collectionMediaRows
+        .filter((collectionMedia) =>
+          hasCollectionMediaRuleMembership(collectionMedia),
+        )
+        .map((collectionMedia) => collectionMedia.mediaServerId),
+    );
+    const touchedMediaServerIds =
+      options.touchedMediaServerIds ?? new Set<string>();
+    const sharedManualCandidateIds = new Set(
+      Array.from(serverChildIds).filter(
+        (mediaServerId) =>
+          !ruleOwnedIds.has(mediaServerId) &&
+          !touchedMediaServerIds.has(mediaServerId),
+      ),
+    );
+    const childById = new Map(
+      serverChildren
+        .filter((child): child is MediaItem => Boolean(child?.id))
+        .map((child) => [child.id.toString(), child]),
+    );
+    const collectionMediaByCollectionId = new Map<number, CollectionMedia[]>();
+
+    for (const collectionMedia of collectionMediaRows) {
+      const rows =
+        collectionMediaByCollectionId.get(collectionMedia.collectionId) ?? [];
+      rows.push(collectionMedia);
+      collectionMediaByCollectionId.set(collectionMedia.collectionId, rows);
+    }
+
+    const ruleGroupByCollectionId = new Map(
+      linkedRuleGroups
+        .filter((ruleGroup) => ruleGroup.collectionId != null)
+        .map((ruleGroup) => [ruleGroup.collectionId, ruleGroup]),
+    );
+    const exclusionRuleGroupIds = linkedRuleGroups.map(
+      (ruleGroup) => ruleGroup.id,
+    );
+    const exclusions =
+      exclusionRuleGroupIds.length > 0
+        ? await this.exclusionRepo.find({
+            where: { ruleGroupId: In(exclusionRuleGroupIds) },
+          })
+        : [];
+    const exclusionsByRuleGroupId = new Map<number, Exclusion[]>();
+
+    for (const exclusion of exclusions) {
+      if (exclusion.ruleGroupId == null) {
+        continue;
+      }
+
+      const rows = exclusionsByRuleGroupId.get(exclusion.ruleGroupId) ?? [];
+      rows.push(exclusion);
+      exclusionsByRuleGroupId.set(exclusion.ruleGroupId, rows);
+    }
+
+    for (const linkedCollection of linkedCollections) {
+      const currentCollectionMedia =
+        collectionMediaByCollectionId.get(linkedCollection.id) ?? [];
+      const currentCollectionMediaById = new Map(
+        currentCollectionMedia.map((collectionMedia) => [
+          collectionMedia.mediaServerId,
+          collectionMedia,
+        ]),
+      );
+      const linkedRuleGroup = ruleGroupByCollectionId.get(linkedCollection.id);
+      const collectionExclusions = linkedRuleGroup
+        ? (exclusionsByRuleGroupId.get(linkedRuleGroup.id) ?? [])
+        : [];
+      const excludedMediaServerIds = new Set(
+        collectionExclusions.map((exclusion) => exclusion.mediaServerId),
+      );
+      const excludedParentIds = new Set(
+        collectionExclusions
+          .filter((exclusion) => exclusion.parent)
+          .map((exclusion) => String(exclusion.parent)),
+      );
+      const allowedSharedManualIds = new Set<string>();
+
+      for (const mediaServerId of sharedManualCandidateIds) {
+        const child = childById.get(mediaServerId);
+
+        if (
+          excludedMediaServerIds.has(mediaServerId) ||
+          (child?.parentId &&
+            excludedParentIds.has(child.parentId.toString())) ||
+          (child?.grandparentId &&
+            excludedParentIds.has(child.grandparentId.toString()))
+        ) {
+          continue;
+        }
+
+        allowedSharedManualIds.add(mediaServerId);
+      }
+
+      for (const mediaServerId of allowedSharedManualIds) {
+        const existingCollectionMedia =
+          currentCollectionMediaById.get(mediaServerId);
+
+        if (existingCollectionMedia) {
+          await this.updateCollectionMediaMembership(existingCollectionMedia, {
+            manualMembershipSource:
+              CollectionMediaManualMembershipSource.SHARED,
+          });
+          continue;
+        }
+
+        await this.insertCollectionMediaMembership(
+          linkedCollection.id,
+          mediaServerId,
+          {
+            includedByRule: false,
+            manualMembershipSource:
+              CollectionMediaManualMembershipSource.SHARED,
+          },
+          {
+            type: 'media_added_manually',
+          },
+        );
+      }
+
+      for (const existingCollectionMedia of currentCollectionMedia) {
+        const manualMembershipSource =
+          existingCollectionMedia.manualMembershipSource;
+
+        if (manualMembershipSource == null) {
+          continue;
+        }
+
+        if (allowedSharedManualIds.has(existingCollectionMedia.mediaServerId)) {
+          if (
+            manualMembershipSource !==
+            CollectionMediaManualMembershipSource.SHARED
+          ) {
+            await this.updateCollectionMediaMembership(
+              existingCollectionMedia,
+              {
+                manualMembershipSource:
+                  CollectionMediaManualMembershipSource.SHARED,
+              },
+            );
+          }
+          continue;
+        }
+
+        const updatedCollectionMedia =
+          await this.updateCollectionMediaMembership(existingCollectionMedia, {
+            manualMembershipSource: null,
+          });
+
+        if (updatedCollectionMedia === undefined) {
+          await this.CollectionLogRecordForChild(
+            existingCollectionMedia.mediaServerId,
+            linkedCollection.id,
+            'remove',
+            {
+              type: 'media_removed_manually',
+            },
+          );
+        }
+      }
     }
   }
 
@@ -704,6 +985,8 @@ export class CollectionsService {
               'collection_media.addDate AS addDate',
               'collection_media.image_path AS image_path',
               'collection_media.isManual AS isManual',
+              'collection_media.includedByRule AS includedByRule',
+              'collection_media.manualMembershipSource AS manualMembershipSource',
               'ROW_NUMBER() OVER (PARTITION BY collection_media.collectionId ORDER BY collection_media.addDate DESC, collection_media.id DESC) AS rowNumber',
             ])
             .from(CollectionMedia, 'collection_media')
@@ -731,7 +1014,15 @@ export class CollectionsService {
         tvdbId: row.tvdbId ? Number(row.tvdbId) : undefined,
         addDate: row.addDate,
         image_path: row.image_path,
-        isManual: Boolean(row.isManual),
+        isManual: hasCollectionMediaManualMembership({
+          isManual: Boolean(row.isManual),
+          manualMembershipSource: row.manualMembershipSource ?? null,
+        }),
+        includedByRule:
+          row.includedByRule === null || row.includedByRule === undefined
+            ? null
+            : Boolean(row.includedByRule),
+        manualMembershipSource: row.manualMembershipSource ?? null,
       } as CollectionMedia);
 
       previewMediaByCollection.set(collectionId, previewMedia);
@@ -929,7 +1220,7 @@ export class CollectionsService {
 
   async createCollectionWithChildren(
     collection: ICollection,
-    media?: AddRemoveCollectionMedia[],
+    media?: CollectionMediaChange[],
   ): Promise<{
     dbCollection: addCollectionDbResponse;
   }> {
@@ -1217,8 +1508,8 @@ export class CollectionsService {
 
   async MediaCollectionActionWithContext(
     collectionDbId: number,
-    context: IAlterableMediaDto,
-    media: AddRemoveCollectionMedia,
+    context: AlterableMediaContext,
+    media: CollectionMediaChange,
     action: 'add' | 'remove',
   ): Promise<Collection> {
     const mediaServer = await this.getMediaServer();
@@ -1235,7 +1526,7 @@ export class CollectionsService {
       { type: context.type, id: String(context.id) },
       media.mediaServerId,
     );
-    const handleMedia: AddRemoveCollectionMedia[] = ids.map((id) => ({
+    const handleMedia: CollectionMediaChange[] = ids.map((id) => ({
       mediaServerId: id,
     }));
 
@@ -1254,25 +1545,25 @@ export class CollectionsService {
 
   async addToCollection(
     collectionDbId: number,
-    media: AddRemoveCollectionMedia[],
+    media: CollectionMediaChange[],
     manual = false,
+    manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ): Promise<Collection> {
-    return this.addToCollectionInternal(collectionDbId, media, manual, false);
+    return this.addToCollectionInternal(
+      collectionDbId,
+      media,
+      manual,
+      false,
+      false,
+      manualMembershipSource,
+    );
   }
 
   async addToCollectionWithResolvedLink(
     collection: Collection,
-    media: AddRemoveCollectionMedia[],
+    media: CollectionMediaChange[],
     manual = false,
-  ): Promise<Collection> {
-    if (!collection) return undefined;
-    return this.addToCollectionInternal(collection.id, media, manual, true);
-  }
-
-  async syncMediaServerChildrenToCollection(
-    collection: Collection,
-    media: AddRemoveCollectionMedia[],
-    manual = false,
+    manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ): Promise<Collection> {
     if (!collection) return undefined;
     return this.addToCollectionInternal(
@@ -1280,16 +1571,34 @@ export class CollectionsService {
       media,
       manual,
       true,
+      false,
+      manualMembershipSource,
+    );
+  }
+
+  async syncMediaServerChildrenToCollection(
+    collection: Collection,
+    media: CollectionMediaChange[],
+    manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
+  ): Promise<Collection> {
+    if (!collection) return undefined;
+    return this.addToCollectionInternal(
+      collection.id,
+      media,
       true,
+      true,
+      true,
+      manualMembershipSource,
     );
   }
 
   private async addToCollectionInternal(
     collectionDbId: number,
-    media: AddRemoveCollectionMedia[],
+    media: CollectionMediaChange[],
     manual = false,
     skipAutomaticLinkCheck = false,
     skipMediaServerAdd = false,
+    manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ): Promise<Collection> {
     try {
       const mediaServer = await this.getMediaServer();
@@ -1299,9 +1608,18 @@ export class CollectionsService {
       const collectionMedia = await this.CollectionMediaRepo.find({
         where: { collectionId: collectionDbId },
       });
+      const existingCollectionMediaById = new Map(
+        collectionMedia.map((existingCollectionMedia) => [
+          existingCollectionMedia.mediaServerId,
+          existingCollectionMedia,
+        ]),
+      );
+      const existingMedia = media.filter((collectionMediaItem) =>
+        existingCollectionMediaById.has(collectionMediaItem.mediaServerId),
+      );
 
       // filter already existing out
-      const newMedia = media.filter(
+      let newMedia = media.filter(
         (m) =>
           !collectionMedia.find((el) => el.mediaServerId === m.mediaServerId),
       );
@@ -1395,6 +1713,57 @@ export class CollectionsService {
           }
         }
 
+        if (existingMedia.length > 0) {
+          await this.updateExistingCollectionMediaForAdd(
+            collection.id,
+            existingMedia,
+            existingCollectionMediaById,
+            manual,
+            manualMembershipSource,
+          );
+        }
+
+        const isSharedManualCollection =
+          collection.manualCollection &&
+          collection.mediaServerId &&
+          (await this.isMediaServerCollectionShared(collection));
+
+        if (isSharedManualCollection && newMedia.length > 0) {
+          const sharedCollectionChildren =
+            (await mediaServer.getCollectionChildren(
+              collection.mediaServerId,
+            )) ?? [];
+          const sharedCollectionChildIds = new Set(
+            sharedCollectionChildren
+              .map((child) => child?.id?.toString())
+              .filter((childId): childId is string => Boolean(childId)),
+          );
+          const existingServerMedia = newMedia.filter((collectionMediaItem) =>
+            sharedCollectionChildIds.has(collectionMediaItem.mediaServerId),
+          );
+
+          if (existingServerMedia.length > 0) {
+            for (const existingServerMediaItem of existingServerMedia) {
+              await this.insertCollectionMediaMembership(
+                collection.id,
+                existingServerMediaItem.mediaServerId,
+                {
+                  includedByRule: manual ? false : true,
+                  manualMembershipSource: manual
+                    ? manualMembershipSource
+                    : null,
+                },
+                existingServerMediaItem.reason,
+              );
+            }
+          }
+
+          newMedia = newMedia.filter(
+            (collectionMediaItem) =>
+              !sharedCollectionChildIds.has(collectionMediaItem.mediaServerId),
+          );
+        }
+
         // add new children to collection
         if (newMedia.length > 0 && collection.mediaServerId) {
           await this.addChildrenToCollection(
@@ -1402,7 +1771,12 @@ export class CollectionsService {
             newMedia,
             manual,
             skipMediaServerAdd,
+            manualMembershipSource,
           );
+        }
+
+        if (collection.manualCollection) {
+          await this.reconcileSharedManualCollectionState(collection);
         }
 
         // Update cached total size (non-blocking)
@@ -1423,23 +1797,36 @@ export class CollectionsService {
 
   async removeFromCollection(
     collectionDbId: number,
-    media: AddRemoveCollectionMedia[],
+    media: CollectionMediaChange[],
+    removalScope: CollectionMediaRemovalScope = 'all',
   ) {
-    return this.removeFromCollectionInternal(collectionDbId, media, false);
+    return this.removeFromCollectionInternal(
+      collectionDbId,
+      media,
+      false,
+      removalScope,
+    );
   }
 
   async removeFromCollectionWithResolvedLink(
     collection: Collection,
-    media: AddRemoveCollectionMedia[],
+    media: CollectionMediaChange[],
+    removalScope: CollectionMediaRemovalScope = 'all',
   ) {
     if (!collection) return undefined;
-    return this.removeFromCollectionInternal(collection.id, media, true);
+    return this.removeFromCollectionInternal(
+      collection.id,
+      media,
+      true,
+      removalScope,
+    );
   }
 
   private async removeFromCollectionInternal(
     collectionDbId: number,
-    media: AddRemoveCollectionMedia[],
+    media: CollectionMediaChange[],
     skipAutomaticLinkCheck = false,
+    removalScope: CollectionMediaRemovalScope = 'all',
   ) {
     try {
       const mediaServer = await this.getMediaServer();
@@ -1463,23 +1850,57 @@ export class CollectionsService {
           collectionId: collectionDbId,
         },
       });
+
       if (collectionMedia.length > 0) {
-        const childrenMedia = media.filter((mediaItem) =>
-          collectionMedia.some(
-            (el) => el.mediaServerId === mediaItem.mediaServerId,
+        const existingCollectionMediaById = new Map(
+          collectionMedia.map((existingCollectionMedia) => [
+            existingCollectionMedia.mediaServerId,
+            existingCollectionMedia,
+          ]),
+        );
+        const locallyHandledRemovals = new Set(
+          await this.updateExistingCollectionMediaForRemoval(
+            collection.id,
+            media,
+            existingCollectionMediaById,
+            removalScope,
           ),
+        );
+        const childrenMedia = media.filter(
+          (mediaItem) =>
+            !locallyHandledRemovals.has(mediaItem.mediaServerId) &&
+            collectionMedia.some(
+              (existingMedia) =>
+                existingMedia.mediaServerId === mediaItem.mediaServerId,
+            ),
         );
 
-        const removedItemIds = new Set(
-          await this.removeChildrenFromCollection(
-            { mediaServerId: collection.mediaServerId, dbId: collection.id },
-            childrenMedia,
-          ),
-        );
+        const removedItemIds =
+          childrenMedia.length > 0
+            ? new Set(
+                await this.removeChildrenFromCollection(
+                  {
+                    mediaServerId: collection.mediaServerId,
+                    dbId: collection.id,
+                  },
+                  childrenMedia,
+                ),
+              )
+            : new Set<string>();
 
         collectionMedia = collectionMedia.filter(
           (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
         );
+
+        if (collection.manualCollection) {
+          await this.reconcileSharedManualCollectionState(collection);
+        }
+
+        collectionMedia = await this.CollectionMediaRepo.find({
+          where: {
+            collectionId: collectionDbId,
+          },
+        });
 
         if (
           collectionMedia.length <= 0 &&
@@ -1511,7 +1932,211 @@ export class CollectionsService {
     }
   }
 
-  async removeFromAllCollections(media: AddRemoveCollectionMedia[]) {
+  private async updateExistingCollectionMediaForAdd(
+    collectionId: number,
+    media: CollectionMediaChange[],
+    existingCollectionMediaById: Map<string, CollectionMedia>,
+    manual: boolean,
+    manualMembershipSource: CollectionMediaManualMembershipSource,
+  ): Promise<void> {
+    for (const mediaItem of media) {
+      const existingCollectionMedia = existingCollectionMediaById.get(
+        mediaItem.mediaServerId,
+      );
+
+      if (!existingCollectionMedia) {
+        continue;
+      }
+
+      const updatedCollectionMedia = await this.updateCollectionMediaMembership(
+        existingCollectionMedia,
+        manual
+          ? {
+              manualMembershipSource,
+            }
+          : {
+              includedByRule: true,
+            },
+      );
+
+      if (updatedCollectionMedia) {
+        existingCollectionMediaById.set(
+          updatedCollectionMedia.mediaServerId,
+          updatedCollectionMedia,
+        );
+      }
+
+      await this.CollectionLogRecordForChild(
+        mediaItem.mediaServerId,
+        collectionId,
+        'add',
+        mediaItem.reason,
+      );
+    }
+  }
+
+  private async updateExistingCollectionMediaForRemoval(
+    collectionId: number,
+    media: CollectionMediaChange[],
+    existingCollectionMediaById: Map<string, CollectionMedia>,
+    removalScope: CollectionMediaRemovalScope,
+  ): Promise<string[]> {
+    if (removalScope === 'all') {
+      return [];
+    }
+
+    const locallyHandledRemovals: string[] = [];
+
+    for (const mediaItem of media) {
+      const existingCollectionMedia = existingCollectionMediaById.get(
+        mediaItem.mediaServerId,
+      );
+
+      if (!existingCollectionMedia) {
+        continue;
+      }
+
+      if (removalScope === 'rule') {
+        if (!hasCollectionMediaRuleMembership(existingCollectionMedia)) {
+          locallyHandledRemovals.push(mediaItem.mediaServerId);
+          continue;
+        }
+
+        if (!hasCollectionMediaManualMembership(existingCollectionMedia)) {
+          continue;
+        }
+
+        const updatedCollectionMedia =
+          await this.updateCollectionMediaMembership(existingCollectionMedia, {
+            includedByRule: false,
+          });
+
+        if (updatedCollectionMedia) {
+          existingCollectionMediaById.set(
+            updatedCollectionMedia.mediaServerId,
+            updatedCollectionMedia,
+          );
+        } else {
+          existingCollectionMediaById.delete(mediaItem.mediaServerId);
+        }
+
+        await this.CollectionLogRecordForChild(
+          mediaItem.mediaServerId,
+          collectionId,
+          'remove',
+          mediaItem.reason,
+        );
+        locallyHandledRemovals.push(mediaItem.mediaServerId);
+        continue;
+      }
+
+      if (!hasCollectionMediaManualMembership(existingCollectionMedia)) {
+        locallyHandledRemovals.push(mediaItem.mediaServerId);
+        continue;
+      }
+
+      if (!hasCollectionMediaRuleMembership(existingCollectionMedia)) {
+        continue;
+      }
+
+      const updatedCollectionMedia = await this.updateCollectionMediaMembership(
+        existingCollectionMedia,
+        {
+          manualMembershipSource: null,
+        },
+      );
+
+      if (updatedCollectionMedia) {
+        existingCollectionMediaById.set(
+          updatedCollectionMedia.mediaServerId,
+          updatedCollectionMedia,
+        );
+      } else {
+        existingCollectionMediaById.delete(mediaItem.mediaServerId);
+      }
+
+      await this.CollectionLogRecordForChild(
+        mediaItem.mediaServerId,
+        collectionId,
+        'remove',
+        mediaItem.reason,
+      );
+      locallyHandledRemovals.push(mediaItem.mediaServerId);
+    }
+
+    return locallyHandledRemovals;
+  }
+
+  private async updateCollectionMediaMembership(
+    collectionMedia: CollectionMedia,
+    membership: {
+      includedByRule?: boolean;
+      manualMembershipSource?: CollectionMediaManualMembershipSource | null;
+    },
+  ): Promise<CollectionMedia | undefined> {
+    const nextIncludedByRule =
+      membership.includedByRule ??
+      hasCollectionMediaRuleMembership(collectionMedia);
+    const nextManualMembershipSource =
+      membership.manualMembershipSource !== undefined
+        ? membership.manualMembershipSource
+        : collectionMedia.manualMembershipSource;
+
+    if (!nextIncludedByRule && nextManualMembershipSource == null) {
+      await this.CollectionMediaRepo.delete({ id: collectionMedia.id });
+      return undefined;
+    }
+
+    if (
+      (collectionMedia.includedByRule ?? null) === nextIncludedByRule &&
+      (collectionMedia.manualMembershipSource ?? null) ===
+        (nextManualMembershipSource ?? null)
+    ) {
+      return collectionMedia;
+    }
+
+    return this.CollectionMediaRepo.save(
+      this.CollectionMediaRepo.create({
+        ...collectionMedia,
+        includedByRule: nextIncludedByRule,
+        manualMembershipSource: nextManualMembershipSource,
+      }),
+    );
+  }
+
+  private async insertCollectionMediaMembership(
+    collectionId: number,
+    mediaServerId: string,
+    membership: {
+      includedByRule: boolean;
+      manualMembershipSource: CollectionMediaManualMembershipSource | null;
+    },
+    reason?: CollectionLogMeta,
+  ): Promise<void> {
+    const artwork = await this.resolveCollectionMediaArtwork(mediaServerId);
+
+    await this.CollectionMediaRepo.save(
+      this.CollectionMediaRepo.create({
+        collectionId,
+        mediaServerId,
+        addDate: new Date().toDateString(),
+        tmdbId: artwork.tmdbId,
+        tvdbId: artwork.tvdbId,
+        image_path: artwork.imagePath,
+        includedByRule: membership.includedByRule,
+        manualMembershipSource: membership.manualMembershipSource,
+      }),
+    );
+
+    await this.CollectionLogRecordForChild(
+      mediaServerId,
+      collectionId,
+      'add',
+      reason,
+    );
+  }
+
+  async removeFromAllCollections(media: CollectionMediaChange[]) {
     try {
       const collections = await this.collectionRepo.find();
       for (const collection of collections) {
@@ -1654,9 +2279,10 @@ export class CollectionsService {
 
   private async addChildrenToCollection(
     collectionIds: { mediaServerId: string; dbId: number },
-    childrenMedia: AddRemoveCollectionMedia[],
+    childrenMedia: CollectionMediaChange[],
     manual = false,
     skipMediaServerAdd = false,
+    manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ) {
     if (childrenMedia.length === 0) return;
 
@@ -1688,31 +2314,13 @@ export class CollectionsService {
       }
 
       try {
-        const artwork = await this.resolveCollectionMediaArtwork(
-          childMedia.mediaServerId,
-        );
-
-        await this.connection
-          .createQueryBuilder()
-          .insert()
-          .into(CollectionMedia)
-          .values([
-            {
-              collectionId: collectionIds.dbId,
-              mediaServerId: childMedia.mediaServerId,
-              addDate: new Date().toDateString(),
-              tmdbId: artwork.tmdbId,
-              tvdbId: artwork.tvdbId,
-              image_path: artwork.imagePath,
-              isManual: manual,
-            },
-          ])
-          .execute();
-
-        await this.CollectionLogRecordForChild(
-          childMedia.mediaServerId,
+        await this.insertCollectionMediaMembership(
           collectionIds.dbId,
-          'add',
+          childMedia.mediaServerId,
+          {
+            includedByRule: manual ? false : true,
+            manualMembershipSource: manual ? manualMembershipSource : null,
+          },
           childMedia.reason,
         );
       } catch (error) {
@@ -1762,7 +2370,7 @@ export class CollectionsService {
 
   private async removeChildrenFromCollection(
     collectionIds: { mediaServerId: string | null; dbId: number },
-    childrenMedia: AddRemoveCollectionMedia[],
+    childrenMedia: CollectionMediaChange[],
   ): Promise<string[]> {
     if (childrenMedia.length === 0) return [];
 

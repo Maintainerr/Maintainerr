@@ -37,7 +37,7 @@ export interface ICollectionMedia {
   tvdbId?: number
   addDate: Date
   image_path?: string
-  isManual: boolean
+  isManual?: boolean
   collection: ICollection
   /** Server-agnostic media metadata */
   mediaData?: MediaItem
