@@ -405,7 +405,22 @@ export class PlexAdapterService implements IMediaServerService {
           `Failed to add ${chunk.length} items to collection ${collectionId}`,
         );
         continue;
-      } catch {
+      } catch (error) {
+        const chunkNumber =
+          Math.floor(index / PLEX_BATCH_SIZE.COLLECTION_MUTATION) + 1;
+
+        this.logger.warn(
+          `Plex batch add failed for collection ${collectionId} on chunk ${chunkNumber} (${chunk.length} items starting at index ${index}). Falling back to per-item adds.${error instanceof Error ? ` ${error.message}` : ''}`,
+        );
+        this.logger.debug({
+          collectionId,
+          chunkNumber,
+          chunkStart: index,
+          chunkSize: chunk.length,
+          itemIds: chunk,
+        });
+        this.logger.debug(error);
+
         // Fall back to per-item mutations to preserve precise failed item reporting.
       }
 
