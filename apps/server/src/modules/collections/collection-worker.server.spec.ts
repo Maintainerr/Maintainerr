@@ -8,6 +8,7 @@ import {
   createCollectionMedia,
 } from '../../../test/utils/data';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -29,6 +30,7 @@ describe('CollectionWorkerService', () => {
   let collectionHandler: Mocked<CollectionHandler>;
   let executionLock: Mocked<ExecutionLockService>;
   let eventEmitter: Mocked<EventEmitter2>;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
@@ -48,6 +50,7 @@ describe('CollectionWorkerService', () => {
     collectionHandler = unitRef.get(CollectionHandler);
     executionLock = unitRef.get(ExecutionLockService);
     eventEmitter = unitRef.get(EventEmitter2);
+    logger = unitRef.get(MaintainerrLogger);
 
     executionLock.acquire.mockResolvedValue(jest.fn());
     eventEmitter.emit.mockImplementation();
@@ -153,6 +156,15 @@ describe('CollectionWorkerService', () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.CollectionHandler_Finished,
       expect.anything(),
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      "Skipping collection 'Sonarr + Seerr' because no media is due for handling",
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      "Skipping collection 'Radarr + Seerr' because no media is due for handling",
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'Collection handler summary: 2 active, 0 skipped (Do Nothing), 2 skipped (no due media), 0 queued for handling',
     );
   });
 });

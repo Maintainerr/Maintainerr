@@ -75,6 +75,8 @@ export class CollectionWorkerService extends TaskBase {
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
+      let doNothingCollectionCount = 0;
+      let noDueMediaCollectionCount = 0;
 
       // loop over all active collections
       const collections = await this.collectionRepo.find({
@@ -83,6 +85,7 @@ export class CollectionWorkerService extends TaskBase {
 
       const collectionsToHandle = collections.filter((collection) => {
         if (collection.arrAction === ServarrAction.DO_NOTHING) {
+          doNothingCollectionCount++;
           this.logger.log(
             `Skipping collection '${collection.title}' as its action is 'Do Nothing'`,
           );
@@ -110,6 +113,10 @@ export class CollectionWorkerService extends TaskBase {
         });
 
         if (mediaToHandle.length === 0) {
+          noDueMediaCollectionCount++;
+          this.logger.log(
+            `Skipping collection '${collection.title}' because no media is due for handling`,
+          );
           continue;
         }
 
@@ -118,6 +125,10 @@ export class CollectionWorkerService extends TaskBase {
           mediaToHandle,
         });
       }
+
+      this.logger.log(
+        `Collection handler summary: ${collections.length} active, ${doNothingCollectionCount} skipped (Do Nothing), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
+      );
 
       const totalMediaToHandle = collectionHandleMediaGroup.reduce(
         (acc, curr) => acc + curr.mediaToHandle.length,
