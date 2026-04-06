@@ -74,6 +74,7 @@ type CollectionMediaRemovalScope = 'all' | 'rule' | 'manual';
 
 interface SharedManualCollectionReconciliationOptions {
   touchedMediaServerIds?: Set<string>;
+  serverChildren?: MediaItem[];
 }
 
 @Injectable()
@@ -191,7 +192,8 @@ export class CollectionsService {
 
     const mediaServer = await this.getMediaServer();
     const serverChildren =
-      (await mediaServer.getCollectionChildren(collection.mediaServerId)) ?? [];
+      options.serverChildren ??
+      ((await mediaServer.getCollectionChildren(collection.mediaServerId)) ?? []);
     const serverChildIds = new Set(
       serverChildren
         .map((child) => child?.id?.toString())
@@ -1727,9 +1729,10 @@ export class CollectionsService {
           collection.manualCollection &&
           collection.mediaServerId &&
           (await this.isMediaServerCollectionShared(collection));
+        let sharedCollectionChildren: MediaItem[] | undefined;
 
         if (isSharedManualCollection && newMedia.length > 0) {
-          const sharedCollectionChildren =
+          sharedCollectionChildren =
             (await mediaServer.getCollectionChildren(
               collection.mediaServerId,
             )) ?? [];
@@ -1775,8 +1778,10 @@ export class CollectionsService {
           );
         }
 
-        if (collection.manualCollection) {
-          await this.reconcileSharedManualCollectionState(collection);
+        if (isSharedManualCollection) {
+          await this.reconcileSharedManualCollectionState(collection, {
+            serverChildren: sharedCollectionChildren,
+          });
         }
 
         // Update cached total size (non-blocking)
@@ -1892,7 +1897,12 @@ export class CollectionsService {
           (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
         );
 
-        if (collection.manualCollection) {
+        const isSharedManualCollection =
+          collection.manualCollection &&
+          collection.mediaServerId &&
+          (await this.isMediaServerCollectionShared(collection));
+
+        if (isSharedManualCollection) {
           await this.reconcileSharedManualCollectionState(collection);
         }
 
