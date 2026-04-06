@@ -164,7 +164,7 @@ describe('CollectionWorkerService', () => {
       "Skipping collection 'Radarr + Seerr' because no media is due for handling",
     );
     expect(logger.log).toHaveBeenCalledWith(
-      'Collection handler summary: 2 active, 0 skipped (Do Nothing), 2 skipped (no due media), 0 queued for handling',
+      'Collection handler summary: 2 total (isActive), 0 skipped (Do Nothing), 2 skipped (no due media), 0 queued for handling',
     );
   });
 });

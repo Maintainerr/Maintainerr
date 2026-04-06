@@ -127,7 +127,7 @@ export class CollectionWorkerService extends TaskBase {
       }
 
       this.logger.log(
-        `Collection handler summary: ${collections.length} active, ${doNothingCollectionCount} skipped (Do Nothing), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
+        `Collection handler summary: ${collections.length} total (isActive), ${doNothingCollectionCount} skipped (Do Nothing), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
       );
 
       const totalMediaToHandle = collectionHandleMediaGroup.reduce(
