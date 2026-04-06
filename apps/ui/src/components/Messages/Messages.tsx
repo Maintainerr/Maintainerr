@@ -13,6 +13,25 @@ import { useRef, useState } from 'react'
 import { useEvent } from '../../contexts/events-context'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 
+const toProgressWidth = (
+  processed: number | undefined,
+  total: number | undefined,
+) => {
+  if (
+    processed == null ||
+    total == null ||
+    !Number.isFinite(processed) ||
+    !Number.isFinite(total) ||
+    total <= 0
+  ) {
+    return '0%'
+  }
+
+  const ratio = Math.min(Math.max(processed / total, 0), 1)
+
+  return `${ratio * 100}%`
+}
+
 const isStartedOrFinishedEvent = (
   event: BaseEventDto,
 ): event is
@@ -113,9 +132,13 @@ const RuleHandlerMessages = () => {
         {event && isRuleHandlerProgressedEvent(event) && (
           <div className="ml-8 mt-2 bg-zinc-800">
             <div
+              data-testid="rule-handler-total-progress"
               className="h-1.5 bg-maintainerrdark-700 transition-width duration-150 ease-in-out"
               style={{
-                width: `${(event.processedEvaluations / event.totalEvaluations) * 100}%`,
+                width: toProgressWidth(
+                  event.processedEvaluations,
+                  event.totalEvaluations,
+                ),
               }}
             />
           </div>
@@ -162,6 +185,11 @@ const CollectionHandlerMessages = () => {
     },
   )
 
+  const showCollectionProgressBars =
+    !!event &&
+    isCollectionHandlerProgressedEvent(event) &&
+    event.totalMediaToHandle > 0
+
   return (
     <Transition
       as="div"
@@ -185,20 +213,28 @@ const CollectionHandlerMessages = () => {
             <div>Processing: {event.processingCollection.name}</div>
           )}
       </div>
-      {event && isCollectionHandlerProgressedEvent(event) && (
+      {showCollectionProgressBars && (
         <div className="ml-8 mt-2 bg-zinc-800">
           {event.totalCollections > 1 && (
             <div
+              data-testid="collection-handler-current-progress"
               className={`h-1.5 bg-maintainerr transition-width ease-in-out ${event.processingCollection?.processedMedias === 0 ? 'duration-0' : 'duration-150'}`}
               style={{
-                width: `${(event.processingCollection ? event.processingCollection?.processedMedias / event.processingCollection?.totalMedias : 0) * 100}%`,
+                width: toProgressWidth(
+                  event.processingCollection?.processedMedias,
+                  event.processingCollection?.totalMedias,
+                ),
               }}
             />
           )}
           <div
+            data-testid="collection-handler-total-progress"
             className="h-1.5 bg-maintainerrdark-700 transition-width duration-150 ease-in-out"
             style={{
-              width: `${(event.processedMedias / event.totalMediaToHandle) * 100}%`,
+              width: toProgressWidth(
+                event.processedMedias,
+                event.totalMediaToHandle,
+              ),
             }}
           />
         </div>

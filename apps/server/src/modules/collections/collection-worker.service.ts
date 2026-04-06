@@ -113,37 +113,53 @@ export class CollectionWorkerService extends TaskBase {
           },
         });
 
+        if (mediaToHandle.length === 0) {
+          continue;
+        }
+
         collectionHandleMediaGroup.push({
           collection,
           mediaToHandle,
         });
       }
 
-      const progressedEvent = new CollectionHandlerProgressedEventDto();
+      const totalMediaToHandle = collectionHandleMediaGroup.reduce(
+        (acc, curr) => acc + curr.mediaToHandle.length,
+        0,
+      );
+
+      const progressedEvent =
+        totalMediaToHandle > 0
+          ? new CollectionHandlerProgressedEventDto()
+          : null;
+
       const emitProgressedEvent = () => {
+        if (!progressedEvent) return;
         progressedEvent.time = new Date();
         this.eventEmitter.emit(
           MaintainerrEvent.CollectionHandler_Progressed,
           progressedEvent,
         );
       };
-      progressedEvent.totalCollections = collectionsToHandle.length;
-      progressedEvent.totalMediaToHandle = collectionHandleMediaGroup.reduce(
-        (acc, curr) => acc + curr.mediaToHandle.length,
-        0,
-      );
-      emitProgressedEvent();
+
+      if (progressedEvent) {
+        progressedEvent.totalCollections = collectionHandleMediaGroup.length;
+        progressedEvent.totalMediaToHandle = totalMediaToHandle;
+        emitProgressedEvent();
+      }
 
       for (const collectionGroup of collectionHandleMediaGroup) {
         const collection = collectionGroup.collection;
         const collectionMedia = collectionGroup.mediaToHandle;
 
-        progressedEvent.processingCollection = {
-          name: collection.title,
-          processedMedias: 0,
-          totalMedias: collectionMedia.length,
-        };
-        emitProgressedEvent();
+        if (progressedEvent) {
+          progressedEvent.processingCollection = {
+            name: collection.title,
+            processedMedias: 0,
+            totalMedias: collectionMedia.length,
+          };
+          emitProgressedEvent();
+        }
 
         this.logger.log(`Handling collection '${collection.title}'`);
         const handledMediaForNotification = [];
@@ -151,8 +167,10 @@ export class CollectionWorkerService extends TaskBase {
         for (const media of collectionMedia) {
           await this.collectionHandler.handleMedia(collection, media);
           handledCollectionMedia++;
-          progressedEvent.processingCollection.processedMedias++;
-          progressedEvent.processedMedias++;
+          if (progressedEvent) {
+            progressedEvent.processingCollection!.processedMedias++;
+            progressedEvent.processedMedias++;
+          }
           handledMediaForNotification.push({
             mediaServerId: media.mediaServerId,
           });
@@ -171,7 +189,9 @@ export class CollectionWorkerService extends TaskBase {
           );
         }
 
-        progressedEvent.processedCollections++;
+        if (progressedEvent) {
+          progressedEvent.processedCollections++;
+        }
         emitProgressedEvent();
 
         this.logger.log(`Handling collection '${collection.title}' finished`);
