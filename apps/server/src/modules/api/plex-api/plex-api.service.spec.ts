@@ -161,4 +161,12 @@ describe('PlexApiService.getMetadata', () => {
       },
     ]);
   });
+
+  it('throws when auth validation is attempted without a token', async () => {
+    settingsService.plex_auth_token = null as any;
+
+    await expect(service.validateAuthToken()).rejects.toThrow(
+      'Plex auth token is required for validation',
+    );
+  });
 });

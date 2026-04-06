@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TestBed, type Mocked } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
@@ -16,6 +17,7 @@ import { SettingsService } from './settings.service';
 describe('SettingsService', () => {
   let service: SettingsService;
   let settingsRepo: Mocked<Repository<Settings>>;
+  let mediaServerFactory: Mocked<MediaServerFactory>;
   let plexApi: Mocked<PlexApiService>;
   let seerr: Mocked<SeerrApiService>;
   let tautulli: Mocked<TautulliApiService>;
@@ -52,6 +54,7 @@ describe('SettingsService', () => {
     settingsRepo = unitRef.get('SettingsRepository');
     unitRef.get<Mocked<Repository<RadarrSettings>>>('RadarrSettingsRepository');
     unitRef.get<Mocked<Repository<SonarrSettings>>>('SonarrSettingsRepository');
+    mediaServerFactory = unitRef.get(MediaServerFactory);
     plexApi = unitRef.get(PlexApiService);
     unitRef.get(ServarrService);
     seerr = unitRef.get(SeerrApiService);
@@ -64,7 +67,9 @@ describe('SettingsService', () => {
     settingsRepo.save.mockImplementation(
       async (settings) => settings as Settings,
     );
+    mediaServerFactory.initialize.mockResolvedValue(undefined);
     plexApi.initialize.mockResolvedValue(undefined);
+    plexApi.validateAuthToken.mockResolvedValue(true);
     plexApi.getStatus.mockResolvedValue({ version: '1.0.0' } as never);
     seerr.init.mockImplementation();
     tautulli.init.mockImplementation();
@@ -99,6 +104,44 @@ describe('SettingsService', () => {
 
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
     expect(settingsRepo.save).toHaveBeenCalledTimes(1);
+    expect(mediaServerFactory.initialize).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not initialize Plex directly when Jellyfin is configured', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jellyfin-key',
+        jellyfin_user_id: 'user-id',
+        jellyfin_server_name: 'Jellyfin',
+        plex_name: null,
+        plex_hostname: null,
+        plex_port: null,
+        plex_ssl: null,
+        plex_auth_token: null,
+      }),
+    );
+
+    const response = await service.updateSettings(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jellyfin-key',
+        jellyfin_user_id: 'user-id',
+        jellyfin_server_name: 'Jellyfin',
+        plex_name: null,
+        plex_hostname: null,
+        plex_port: null,
+        plex_ssl: null,
+        plex_auth_token: null,
+        applicationTitle: 'Maintainerr Dev',
+      }),
+    );
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(mediaServerFactory.initialize).toHaveBeenCalledTimes(1);
+    expect(plexApi.initialize).not.toHaveBeenCalled();
   });
 
   it('treats equivalent Plex host representations as unchanged for auth enforcement', async () => {
@@ -154,5 +197,28 @@ describe('SettingsService', () => {
       message: 'Authenticate with Plex before testing the connection.',
     });
     expect(plexApi.getStatus).not.toHaveBeenCalled();
+  });
+
+  it('validates stored Plex auth tokens without requiring server settings', async () => {
+    service.plex_auth_token = 'masked-plex-token';
+
+    const response = await service.testPlexAuthToken();
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(plexApi.validateAuthToken).toHaveBeenCalledTimes(1);
+    expect(plexApi.getStatus).not.toHaveBeenCalled();
+  });
+
+  it('returns a clear message when no Plex auth token exists for auth validation', async () => {
+    service.plex_auth_token = null;
+
+    const response = await service.testPlexAuthToken();
+
+    expect(response).toEqual({
+      status: 'NOK',
+      code: 0,
+      message: 'Authenticate with Plex before validating the connection.',
+    });
+    expect(plexApi.validateAuthToken).not.toHaveBeenCalled();
   });
 });

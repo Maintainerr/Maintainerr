@@ -1,5 +1,5 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Navigate,
   Outlet,
@@ -7,11 +7,17 @@ import {
   useOutletContext,
 } from 'react-router-dom'
 import { useSettings, type UseSettingsResult } from '../../api/settings'
-import { hasCompletedMediaServerSetup } from '../../hooks/useMediaServerType'
+import {
+  hasCompletedMediaServerSetup,
+  hasSelectedMediaServerType,
+} from '../../hooks/useMediaServerType'
 import Alert from '../Common/Alert'
+import Button from '../Common/Button'
 import LoadingSpinner from '../Common/LoadingSpinner'
+import Modal from '../Common/Modal'
 import {
   bypassMediaServerSetupGuard,
+  getMediaServerSetupRoute,
   isAllowedDuringMediaServerSetup,
   showMediaServerSetupRequiredToast,
 } from '../Layout/MediaServerSetupGuard'
@@ -93,6 +99,8 @@ export const useSettingsOutletContext = () =>
 const SettingsWrapper = () => {
   const location = useLocation()
   const { data: settings, isLoading, error } = useSettings()
+  const [hasDismissedSetupWelcome, setHasDismissedSetupWelcome] =
+    useState(false)
 
   // Determine which media server tab to show based on settings
   const mediaServerType =
@@ -173,9 +181,19 @@ const SettingsWrapper = () => {
   }, [isLoading, mediaServerType])
 
   const isMediaServerSetupComplete = hasCompletedMediaServerSetup(settings)
+  const hasSelectedMediaServer = hasSelectedMediaServerType(settings)
   const isSetupRestrictedRoute =
     !bypassMediaServerSetupGuard && !isLoading && !isMediaServerSetupComplete
-  const isAllowedRoute = isAllowedDuringMediaServerSetup(location.pathname)
+  const setupRoute = getMediaServerSetupRoute(mediaServerType)
+  const isAllowedRoute = isAllowedDuringMediaServerSetup(
+    location.pathname,
+    mediaServerType,
+  )
+  const shouldShowSetupWelcome =
+    isSetupRestrictedRoute &&
+    !hasSelectedMediaServer &&
+    isAllowedRoute &&
+    !hasDismissedSetupWelcome
 
   useEffect(() => {
     if (isSetupRestrictedRoute && !isAllowedRoute) {
@@ -208,7 +226,7 @@ const SettingsWrapper = () => {
   }
 
   if (isSetupRestrictedRoute && !isAllowedRoute) {
-    return <Navigate to="/settings/main" replace />
+    return <Navigate to={setupRoute} replace />
   }
 
   if (settings) {
@@ -216,12 +234,44 @@ const SettingsWrapper = () => {
       return (
         !bypassMediaServerSetupGuard &&
         !isMediaServerSetupComplete &&
-        !isAllowedDuringMediaServerSetup(route.route)
+        !isAllowedDuringMediaServerSetup(route.route, mediaServerType)
       )
     }
 
     return (
       <>
+        {shouldShowSetupWelcome ? (
+          <Modal
+            title="Welcome to Maintainerr!"
+            backgroundClickable={false}
+            size="md"
+            footerActions={
+              <Button
+                buttonType="primary"
+                className="ml-3"
+                onClick={() => setHasDismissedSetupWelcome(true)}
+              >
+                Let&apos;s get started
+              </Button>
+            }
+          >
+            <div className="space-y-4 text-zinc-100">
+              <div className="rounded-md border border-info-500/40 bg-info-900/30 p-4 backdrop-blur">
+                <p className="text-base font-medium text-info-100">
+                  Connect your media server to finish setup.
+                </p>
+                <p className="mt-2 leading-6 text-info-200">
+                  Choose Plex or Jellyfin, confirm the connection, and then you
+                  can continue configuring the rest of Maintainerr.
+                </p>
+              </div>
+              <p className="text-sm leading-6 text-zinc-400">
+                The Logs page stays available during setup if you need to
+                troubleshoot your connection.
+              </p>
+            </div>
+          </Modal>
+        ) : null}
         <div className="mt-6">
           <SettingsTabs
             settingsRoutes={settingsRoutes}

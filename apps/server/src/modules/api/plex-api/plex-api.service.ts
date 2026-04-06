@@ -202,6 +202,28 @@ export class PlexApiService {
     }
   }
 
+  public async validateAuthToken(token?: string): Promise<boolean> {
+    const authToken = token ?? this.settings.plex_auth_token;
+
+    if (!authToken) {
+      throw new Error('Plex auth token is required for validation');
+    }
+
+    try {
+      const plexTvClient = new PlexTvApi(
+        authToken,
+        this.loggerFactory.createLogger(),
+      );
+
+      await plexTvClient.getUser();
+      return true;
+    } catch (error) {
+      this.logger.debug('Plex auth token validation failed');
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
   public async searchContent(input: string) {
     try {
       const response: PlexMetadataResponse = await this.plexClient.query(
