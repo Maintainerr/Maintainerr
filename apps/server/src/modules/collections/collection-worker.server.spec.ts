@@ -68,6 +68,17 @@ describe('CollectionWorkerService', () => {
 
     expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionRepository.find).not.toHaveBeenCalled();
+
+    const failedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === MaintainerrEvent.CollectionHandler_Failed,
+    );
+    const finishedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) =>
+        eventName === MaintainerrEvent.CollectionHandler_Finished,
+    );
+
+    expect(failedEvents).toHaveLength(1);
+    expect(finishedEvents).toHaveLength(1);
   });
 
   it('should not handle media for Do Nothing collections', async () => {

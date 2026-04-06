@@ -21,6 +21,10 @@ describe('RuleExecutorService', () => {
     const mediaServer = {
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getLibraryContentCount: jest.fn().mockResolvedValue(0),
+      getLibraryContents: jest.fn().mockResolvedValue({
+        items: [],
+        totalSize: 0,
+      }),
     };
 
     const mediaServerFactory = {
@@ -71,7 +75,7 @@ describe('RuleExecutorService', () => {
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       removeFromCollectionWithResolvedLink: jest
         .fn()
-        .mockResolvedValue(undefined),
+        .mockImplementation(async (collection) => collection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
       checkAutomaticMediaServerLink: jest
         .fn()
@@ -153,6 +157,79 @@ describe('RuleExecutorService', () => {
     );
 
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+  });
+
+  it('does not emit a failed rule notification when a rule group finishes successfully', async () => {
+    const { service, rulesService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    const ruleGroup = {
+      id: 10,
+      name: 'Filmer',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Test Collection' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+
+    await service.executeForRuleGroups(10, new AbortController().signal);
+
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Failed,
+      expect.anything(),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Finished,
+      expect.objectContaining({
+        message: "Finished execution of rule 'Filmer'",
+      }),
+    );
+  });
+
+  it('emits a single failed rule notification when collection handling fails', async () => {
+    const { service, rulesService, collectionService, eventEmitter } =
+      createService(MediaServerType.JELLYFIN);
+
+    const ruleGroup = {
+      id: 11,
+      name: 'Serier SEASON',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Missing Collection' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+    collectionService.getCollection.mockResolvedValue(undefined as any);
+
+    await service.executeForRuleGroups(11, new AbortController().signal);
+
+    const failedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === MaintainerrEvent.RuleHandler_Failed,
+    );
+
+    expect(failedEvents).toHaveLength(1);
+    expect(failedEvents[0][1]).toEqual(
+      expect.objectContaining({
+        collectionName: 'Missing Collection',
+        identifier: { type: 'rulegroup', value: 11 },
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Finished,
+      expect.objectContaining({
+        message: "Finished execution of rule 'Serier SEASON' with errors.",
+      }),
+    );
   });
 
   it('skips media server sync when an automatic collection link is stale', async () => {
@@ -587,8 +664,12 @@ describe('RuleExecutorService', () => {
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.RuleHandler_Failed,
+      expect.objectContaining({
+        collectionName: 'No Library Group',
+        identifier: { type: 'rulegroup', value: 77 },
+      }),
     );
-    expect(progressManager.reset).not.toHaveBeenCalled();
+    expect(progressManager.reset).toHaveBeenCalled();
   });
 
   it('does not emit started and still cleans up when execution was already aborted before starting', async () => {
@@ -669,7 +750,7 @@ describe('RuleExecutorService', () => {
   });
 
   it('fails cleanly when collection sync returns undefined', async () => {
-    const { service, collectionService, eventEmitter } = createService(
+    const { service, collectionService } = createService(
       MediaServerType.JELLYFIN,
     );
 
@@ -690,19 +771,10 @@ describe('RuleExecutorService', () => {
           }) => Promise<Set<string>>;
         }
       ).handleCollection({ id: 10, collectionId: 1 }),
-    ).resolves.toEqual(new Set());
+    ).rejects.toMatchObject({ name: 'RuleExecutionFailure' });
 
     expect(
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
-    expect(eventEmitter.emit).toHaveBeenCalledWith(
-      MaintainerrEvent.RuleHandler_Failed,
-      expect.objectContaining({
-        identifier: {
-          type: 'rulegroup',
-          value: 10,
-        },
-      }),
-    );
   });
 });

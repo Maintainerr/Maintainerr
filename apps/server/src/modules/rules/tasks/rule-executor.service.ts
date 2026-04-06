@@ -44,6 +44,16 @@ interface MediaServerSyncContext {
   skipManualChildImport?: boolean;
 }
 
+class RuleExecutionFailure extends Error {
+  constructor(
+    public readonly payload: RuleHandlerFailedDto,
+    message?: string,
+  ) {
+    super(message ?? 'Rule execution failed');
+    this.name = RuleExecutionFailure.name;
+  }
+}
+
 @Injectable()
 export class RuleExecutorService {
   ruleConstants: RuleConstants;
@@ -75,6 +85,28 @@ export class RuleExecutorService {
     return this.mediaServerFactory.getService();
   }
 
+  private buildRuleHandlerFailedDto(
+    rulegroup?: Partial<Pick<RuleGroup, 'id' | 'name' | 'collectionId'>> & {
+      collection?: { title?: string } | null;
+    },
+    collectionName?: string,
+  ): RuleHandlerFailedDto {
+    return new RuleHandlerFailedDto(
+      collectionName ??
+        rulegroup?.collection?.title ??
+        rulegroup?.name ??
+        (rulegroup?.collectionId
+          ? `Unknown (collectionId: ${rulegroup.collectionId})`
+          : undefined),
+      rulegroup?.id
+        ? {
+            type: 'rulegroup',
+            value: rulegroup.id,
+          }
+        : undefined,
+    );
+  }
+
   public async executeForRuleGroups(
     ruleGroupId: number,
     abortSignal: AbortSignal,
@@ -95,6 +127,8 @@ export class RuleExecutorService {
       return;
     }
 
+    let failedPayload: RuleHandlerFailedDto | undefined;
+
     try {
       abortSignal.throwIfAborted();
 
@@ -113,8 +147,9 @@ export class RuleExecutorService {
           `Rule group '${ruleGroup.name}' has no library assigned. ` +
             `Please edit the rule group and select a library before running.`,
         );
-        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
-        return;
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(ruleGroup, ruleGroup.name),
+        );
       }
 
       const appStatus = await this.settings.testConnections();
@@ -198,28 +233,44 @@ export class RuleExecutorService {
           'Not all applications are reachable.. Skipped rule execution.',
         );
 
-        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(ruleGroup),
+        );
       }
     } catch (error) {
       const executionBeingAborted =
         error instanceof DOMException && error.name === 'AbortError';
 
       if (!executionBeingAborted) {
-        this.logger.error('Error running rules executor.');
-        this.logger.debug(error);
-        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
+        if (error instanceof RuleExecutionFailure) {
+          failedPayload = error.payload;
+        } else {
+          this.logger.error('Error running rules executor.');
+          this.logger.debug(error);
+          failedPayload = this.buildRuleHandlerFailedDto(ruleGroup);
+        }
       } else {
         this.logger.log(`Execution of rule '${ruleGroup.name}' was aborted.`);
       }
-    }
+    } finally {
+      this.progressManager.reset();
 
-    this.progressManager.reset();
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandler_Finished,
-      new RuleHandlerFinishedEventDto(
-        `Finished execution of rule '${ruleGroup.name}'`,
-      ),
-    );
+      if (failedPayload) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.RuleHandler_Failed,
+          failedPayload,
+        );
+      }
+
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandler_Finished,
+        new RuleHandlerFinishedEventDto(
+          failedPayload
+            ? `Finished execution of rule '${ruleGroup.name}' with errors.`
+            : `Finished execution of rule '${ruleGroup.name}'`,
+        ),
+      );
+    }
   }
 
   private async syncManualMediaServerToCollectionDB(
@@ -673,36 +724,23 @@ export class RuleExecutorService {
           `collection not found with id ${rulegroup?.collectionId}`,
         );
 
-        this.eventEmitter.emit(
-          MaintainerrEvent.RuleHandler_Failed,
-          new RuleHandlerFailedDto(
-            `Unknown (collectionId: ${rulegroup?.collectionId})`,
-            {
-              type: 'rulegroup',
-              value: rulegroup?.id,
-            },
-          ),
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(rulegroup),
         );
-
-        return new Set<string>();
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
       }
 
+      if (error instanceof RuleExecutionFailure) {
+        throw error;
+      }
+
       this.logger.warn('Exception occurred while handling rule');
       this.logger.debug(error);
 
-      this.eventEmitter.emit(
-        MaintainerrEvent.RuleHandler_Failed,
-        new RuleHandlerFailedDto(rulegroup?.collection?.title, {
-          type: 'rulegroup',
-          value: rulegroup?.id,
-        }),
-      );
-
-      return new Set<string>();
+      throw new RuleExecutionFailure(this.buildRuleHandlerFailedDto(rulegroup));
     }
   }
 

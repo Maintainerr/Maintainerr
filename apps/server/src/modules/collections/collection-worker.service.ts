@@ -59,21 +59,17 @@ export class CollectionWorkerService extends TaskBase {
 
     // Acquire shared lock to avoid overlap with rule execution
     const release = await this.executionLock.acquire('rules-collections-lock');
+    let failed = false;
 
     try {
       // Start actual task
       const appStatus = await this.settings.testConnections();
 
       if (!appStatus) {
+        failed = true;
         this.logger.log(
           'Not all applications are reachable.. Skipping collection handling',
         );
-        this.eventEmitter.emit(
-          MaintainerrEvent.CollectionHandler_Finished,
-          new CollectionHandlerFinishedEventDto('Finished collection handling'),
-        );
-
-        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
         return;
       }
 
@@ -234,12 +230,24 @@ export class CollectionWorkerService extends TaskBase {
         }
       }
       this.logger.log('Collection size cache updated');
+    } catch (error) {
+      failed = true;
+      this.logger.error('Collection handling failed');
+      this.logger.debug(error);
     } finally {
+      if (failed) {
+        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
+      }
+
       release();
 
       this.eventEmitter.emit(
         MaintainerrEvent.CollectionHandler_Finished,
-        new CollectionHandlerFinishedEventDto('Finished collection handling'),
+        new CollectionHandlerFinishedEventDto(
+          failed
+            ? 'Finished collection handling with errors'
+            : 'Finished collection handling',
+        ),
       );
     }
   }
