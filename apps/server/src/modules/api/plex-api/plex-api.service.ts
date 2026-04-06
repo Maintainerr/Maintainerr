@@ -766,7 +766,11 @@ export class PlexApiService {
     } catch (error) {
       const failure = this.buildCollectionMutationFailure(error);
 
-      this.logger[failure.logLevel](failure.message);
+      if (failure.logLevel === 'warn') {
+        this.logger.warn(failure.message);
+      } else {
+        this.logger.error(failure.message);
+      }
       this.logger.debug(error);
       return {
         status: 'NOK',
@@ -805,7 +809,11 @@ export class PlexApiService {
     } catch (error) {
       const failure = this.buildCollectionMutationFailure(error);
 
-      this.logger[failure.logLevel](failure.message);
+      if (failure.logLevel === 'warn') {
+        this.logger.warn(failure.message);
+      } else {
+        this.logger.error(failure.message);
+      }
       this.logger.debug(error);
       return {
         status: 'NOK',
