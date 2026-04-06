@@ -193,7 +193,8 @@ export class CollectionsService {
     const mediaServer = await this.getMediaServer();
     const serverChildren =
       options.serverChildren ??
-      ((await mediaServer.getCollectionChildren(collection.mediaServerId)) ?? []);
+      (await mediaServer.getCollectionChildren(collection.mediaServerId)) ??
+      [];
     const serverChildIds = new Set(
       serverChildren
         .map((child) => child?.id?.toString())

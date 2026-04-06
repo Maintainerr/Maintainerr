@@ -427,7 +427,9 @@ describe('CollectionsService', () => {
     collectionMediaRepo.find.mockResolvedValue([]);
     collectionRepo.count.mockResolvedValue(1);
     collectionMediaRepo.save.mockImplementation(async (value) => value as any);
-    mediaServer.getCollectionChildren.mockResolvedValue(sharedCollectionChildren);
+    mediaServer.getCollectionChildren.mockResolvedValue(
+      sharedCollectionChildren,
+    );
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
@@ -477,7 +479,9 @@ describe('CollectionsService', () => {
       .spyOn(service, 'reconcileSharedManualCollectionState')
       .mockResolvedValue(undefined);
 
-    await service.removeFromCollection(collection.id, [{ mediaServerId: 'item-1' }]);
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+    ]);
 
     expect(reconcileSharedManualCollectionStateSpy).not.toHaveBeenCalled();
   });
