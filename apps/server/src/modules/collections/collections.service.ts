@@ -1178,18 +1178,26 @@ export class CollectionsService {
         collection.mediaServerId !== null &&
         originalMediaServerId !== null
       ) {
-        const children = await mediaServer.getCollectionChildren(serverColl.id);
-        const actualChildCount = children?.length ?? 0;
+        const metadataChildCount = Number.isFinite(serverColl.childCount)
+          ? serverColl.childCount
+          : undefined;
+
+        const actualChildCount =
+          metadataChildCount ??
+          (await mediaServer.getCollectionChildren(serverColl.id))?.length ??
+          0;
 
         if (actualChildCount <= 0) {
           this.logger.debug(
-            `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (actualChildCount=${actualChildCount})`,
+            `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
           );
           await mediaServer.deleteCollection(serverColl.id);
           serverColl = undefined;
         } else {
           this.logger.debug(
-            `[checkAutomaticMediaServerLink] Collection ${serverColl.id} has ${actualChildCount} children, keeping it`,
+            metadataChildCount !== undefined
+              ? `[checkAutomaticMediaServerLink] Trusting Plex metadata childCount=${metadataChildCount} for collection ${serverColl.id}, keeping it`
+              : `[checkAutomaticMediaServerLink] Collection ${serverColl.id} has ${actualChildCount} children, keeping it`,
           );
         }
       }

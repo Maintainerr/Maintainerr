@@ -1,6 +1,7 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { DataSource, Repository } from 'typeorm';
+import { MediaServerType } from '@maintainerr/contracts';
 import {
   createCollection,
   createCollectionMedia,
@@ -11,6 +12,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
+import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
@@ -25,6 +27,7 @@ describe('CollectionsService', () => {
   let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
+  let settingsService: Mocked<SettingsService>;
   let tmdbIdService: {
     getTmdbIdFromMediaServerId: jest.Mock;
   };
@@ -43,6 +46,7 @@ describe('CollectionsService', () => {
     ruleGroupRepo = unitRef.get(getRepositoryToken(RuleGroup) as string);
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
+    settingsService = unitRef.get(SettingsService);
     tmdbIdService = {
       getTmdbIdFromMediaServerId: jest.fn(),
     };
@@ -68,6 +72,7 @@ describe('CollectionsService', () => {
         .fn()
         .mockResolvedValue({ id: 'remote-collection' }),
       addBatchToCollection: jest.fn().mockResolvedValue([]),
+      getCollection: jest.fn().mockResolvedValue(undefined),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
@@ -75,6 +80,7 @@ describe('CollectionsService', () => {
     } as unknown as Mocked<IMediaServerService>;
 
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
+    settingsService.media_server_type = MediaServerType.PLEX;
     jest
       .spyOn(service, 'updateCollectionTotalSize')
       .mockResolvedValue(undefined);
@@ -106,6 +112,28 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('trusts Plex metadata childCount before stale child enumeration when checking automatic links', async () => {
+    const collection = createCollection({
+      id: 9,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Plex Collection',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Plex Collection',
+      childCount: 311,
+    } as any);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
   });
 
   it('rolls back a remote add when local bookkeeping fails', async () => {
