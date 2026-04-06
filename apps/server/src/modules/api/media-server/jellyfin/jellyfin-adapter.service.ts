@@ -953,6 +953,13 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaCollection(response.data)
         : undefined;
     } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        this.logger.debug(
+          `Jellyfin collection ${collectionId} not found; treating it as missing`,
+        );
+        return undefined;
+      }
+
       this.logger.warn(`Failed to get collection ${collectionId}`);
       this.logger.debug(error);
       return undefined;
