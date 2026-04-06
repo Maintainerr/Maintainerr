@@ -178,7 +178,9 @@ describe('RuleExecutorService', () => {
     rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
     rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
 
-    await service.executeForRuleGroups(10, new AbortController().signal);
+    await expect(
+      service.executeForRuleGroups(10, new AbortController().signal),
+    ).resolves.toEqual({ status: 'success' });
 
     expect(eventEmitter.emit).not.toHaveBeenCalledWith(
       MaintainerrEvent.RuleHandler_Failed,
@@ -211,7 +213,15 @@ describe('RuleExecutorService', () => {
     rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
     collectionService.getCollection.mockResolvedValue(undefined as any);
 
-    await service.executeForRuleGroups(11, new AbortController().signal);
+    await expect(
+      service.executeForRuleGroups(11, new AbortController().signal),
+    ).resolves.toEqual({
+      status: 'failed',
+      failedPayload: expect.objectContaining({
+        collectionName: 'Missing Collection',
+        identifier: { type: 'rulegroup', value: 11 },
+      }),
+    });
 
     const failedEvents = eventEmitter.emit.mock.calls.filter(
       ([eventName]) => eventName === MaintainerrEvent.RuleHandler_Failed,
@@ -660,7 +670,15 @@ describe('RuleExecutorService', () => {
 
     const abortController = new AbortController();
 
-    await service.executeForRuleGroups(77, abortController.signal);
+    await expect(
+      service.executeForRuleGroups(77, abortController.signal),
+    ).resolves.toEqual({
+      status: 'failed',
+      failedPayload: expect.objectContaining({
+        collectionName: 'No Library Group',
+        identifier: { type: 'rulegroup', value: 77 },
+      }),
+    });
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.RuleHandler_Failed,
@@ -694,7 +712,9 @@ describe('RuleExecutorService', () => {
     const abortController = new AbortController();
     abortController.abort();
 
-    await service.executeForRuleGroups(77, abortController.signal);
+    await expect(
+      service.executeForRuleGroups(77, abortController.signal),
+    ).resolves.toEqual({ status: 'aborted' });
 
     expect(eventEmitter.emit).not.toHaveBeenCalledWith(
       MaintainerrEvent.RuleHandler_Started,
@@ -709,6 +729,38 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.RuleHandler_Finished,
       expect.anything(),
     );
+  });
+
+  it('returns skipped when the rule group does not exist', async () => {
+    const { service, rulesService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    rulesService.getRuleGroup.mockResolvedValue(undefined as any);
+
+    await expect(
+      service.executeForRuleGroups(404, new AbortController().signal),
+    ).resolves.toEqual({ status: 'skipped', reason: 'not-found' });
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('returns skipped when the rule group is inactive', async () => {
+    const { service, rulesService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    rulesService.getRuleGroup.mockResolvedValue({
+      id: 12,
+      name: 'Inactive Group',
+      isActive: false,
+    } as any);
+
+    await expect(
+      service.executeForRuleGroups(12, new AbortController().signal),
+    ).resolves.toEqual({ status: 'skipped', reason: 'inactive' });
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
   it('aborts between collection add and remove phases', async () => {

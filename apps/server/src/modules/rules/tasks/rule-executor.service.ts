@@ -44,6 +44,12 @@ interface MediaServerSyncContext {
   skipManualChildImport?: boolean;
 }
 
+export type RuleExecutionResult =
+  | { status: 'success' }
+  | { status: 'failed'; failedPayload: RuleHandlerFailedDto }
+  | { status: 'aborted' }
+  | { status: 'skipped'; reason: 'not-found' | 'inactive' };
+
 class RuleExecutionFailure extends Error {
   constructor(
     public readonly payload: RuleHandlerFailedDto,
@@ -110,24 +116,25 @@ export class RuleExecutorService {
   public async executeForRuleGroups(
     ruleGroupId: number,
     abortSignal: AbortSignal,
-  ) {
+  ): Promise<RuleExecutionResult> {
     const ruleGroup = await this.rulesService.getRuleGroup(ruleGroupId);
 
     if (!ruleGroup) {
       this.logger.warn(
         `Rule group ${ruleGroupId} not found. Skipping rule execution.`,
       );
-      return;
+      return { status: 'skipped', reason: 'not-found' };
     }
 
     if (!ruleGroup.isActive) {
       this.logger.log(
         `Rule group '${ruleGroup.name}' is not active. Skipping rule execution.`,
       );
-      return;
+      return { status: 'skipped', reason: 'inactive' };
     }
 
     let failedPayload: RuleHandlerFailedDto | undefined;
+    let result: RuleExecutionResult = { status: 'success' };
 
     try {
       abortSignal.throwIfAborted();
@@ -244,13 +251,16 @@ export class RuleExecutorService {
       if (!executionBeingAborted) {
         if (error instanceof RuleExecutionFailure) {
           failedPayload = error.payload;
+          result = { status: 'failed', failedPayload: error.payload };
         } else {
           this.logger.error('Error running rules executor.');
           this.logger.debug(error);
           failedPayload = this.buildRuleHandlerFailedDto(ruleGroup);
+          result = { status: 'failed', failedPayload };
         }
       } else {
         this.logger.log(`Execution of rule '${ruleGroup.name}' was aborted.`);
+        result = { status: 'aborted' };
       }
     } finally {
       this.progressManager.reset();
@@ -271,6 +281,8 @@ export class RuleExecutorService {
         ),
       );
     }
+
+    return result;
   }
 
   private async syncManualMediaServerToCollectionDB(

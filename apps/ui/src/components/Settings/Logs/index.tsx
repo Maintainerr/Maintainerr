@@ -26,6 +26,9 @@ import {
   useSettingsFeedback,
 } from '../useSettingsFeedback'
 
+const MAX_LOG_LINES = 1000
+export const LOG_STREAM_ERROR_DELAY_MS = 5000
+
 const LogSettings = () => {
   return (
     <>
@@ -126,17 +129,51 @@ const LogSettingsForm = () => {
   )
 }
 
-const Logs = () => {
+export const Logs = () => {
   const [logLines, setLogLines] = useState<LogEvent[]>([])
   const [logFilter, setLogFilter] = useState<string>('')
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
   const logsRef = useRef<HTMLDivElement>(null)
   const hasLoggedStreamError = useRef(false)
   const isClosingStream = useRef(false)
-  const streamErrorTimeout = useRef<ReturnType<typeof setTimeout>>()
+  const streamErrorTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+  const pendingStreamError = useRef<unknown>(undefined)
+
+  const clearPendingStreamErrorReport = () => {
+    if (streamErrorTimeout.current) {
+      clearTimeout(streamErrorTimeout.current)
+      streamErrorTimeout.current = undefined
+    }
+
+    pendingStreamError.current = undefined
+  }
+
+  const reportPendingStreamError = () => {
+    streamErrorTimeout.current = undefined
+
+    if (
+      isClosingStream.current ||
+      hasLoggedStreamError.current ||
+      pendingStreamError.current === undefined
+    ) {
+      pendingStreamError.current = undefined
+      return
+    }
+
+    hasLoggedStreamError.current = true
+    const error = pendingStreamError.current
+    pendingStreamError.current = undefined
+
+    void logClientError(
+      'Log stream connection failed',
+      error,
+      'Settings.Logs.stream',
+    )
+  }
 
   useEffect(() => {
-    const MAX_LOG_LINES = 1000
     const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/logs/stream`)
     isClosingStream.current = false
 
@@ -159,11 +196,7 @@ const Logs = () => {
     es.addEventListener('log', handleLog)
 
     es.onopen = () => {
-      if (streamErrorTimeout.current) {
-        clearTimeout(streamErrorTimeout.current)
-        streamErrorTimeout.current = undefined
-      }
-
+      clearPendingStreamErrorReport()
       hasLoggedStreamError.current = false
     }
 
@@ -172,32 +205,21 @@ const Logs = () => {
         return
       }
 
+      pendingStreamError.current = error
+
       if (streamErrorTimeout.current) {
         return
       }
 
-      streamErrorTimeout.current = setTimeout(() => {
-        streamErrorTimeout.current = undefined
-
-        if (isClosingStream.current || hasLoggedStreamError.current) {
-          return
-        }
-
-        hasLoggedStreamError.current = true
-        void logClientError(
-          'Log stream connection failed',
-          error,
-          'Settings.Logs.stream',
-        )
-      }, 5000)
+      streamErrorTimeout.current = setTimeout(
+        reportPendingStreamError,
+        LOG_STREAM_ERROR_DELAY_MS,
+      )
     }
 
     return () => {
       isClosingStream.current = true
-      if (streamErrorTimeout.current) {
-        clearTimeout(streamErrorTimeout.current)
-        streamErrorTimeout.current = undefined
-      }
+      clearPendingStreamErrorReport()
       es.removeEventListener('log', handleLog)
       es.close()
       setLogLines([])
