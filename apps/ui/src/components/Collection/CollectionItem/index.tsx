@@ -156,7 +156,7 @@ const CollectionItem = (props: ICollectionItem) => {
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Library
             </p>
-            <p className="truncate text-amber-500" title={libraryTitle}>
+            <p className="truncate text-maintainerr" title={libraryTitle}>
               {libraryTitle}
             </p>
           </div>
@@ -166,7 +166,7 @@ const CollectionItem = (props: ICollectionItem) => {
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 Media Type
               </p>
-              <p className="text-amber-500">
+              <p className="text-maintainerr">
                 {MediaItemTypeLabels[props.collection.type]}
               </p>
             </div>
@@ -186,14 +186,14 @@ const CollectionItem = (props: ICollectionItem) => {
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Items
             </p>
-            <p className="text-amber-500">{`${mediaCount}`}</p>
+            <p className="text-maintainerr">{`${mediaCount}`}</p>
           </div>
 
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Size
             </p>
-            <p className="text-amber-500">
+            <p className="text-maintainerr">
               {formatSize(props.collection.totalSizeBytes)}
             </p>
           </div>
@@ -203,7 +203,7 @@ const CollectionItem = (props: ICollectionItem) => {
               Delete
             </p>
             <p
-              className="truncate whitespace-nowrap text-amber-500"
+              className="truncate whitespace-nowrap text-maintainerr"
               title={deleteAfterLabel}
             >
               {deleteAfterLabel}

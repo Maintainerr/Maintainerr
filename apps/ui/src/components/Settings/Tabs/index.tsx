@@ -36,14 +36,14 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
   let linkClasses =
     (props.disabled ? 'cursor-not-allowed opacity-50 ' : '') +
     'px-1 py-4 ml-8 text-sm font-medium leading-5 transition duration-300 border-b-2  whitespace-nowrap first:ml-0'
-  let activeLinkColor = 'text-amber-500 border-amber-600 border-b'
+  let activeLinkColor = 'text-maintainerr border-maintainerr-600 border-b'
   let inactiveLinkColor =
     'text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-400 focus:text-zinc-300 focus:border-zinc-400'
 
   if (props.tabType === 'button') {
     linkClasses =
       'px-3 py-2 text-sm font-medium transition duration-300 rounded-md whitespace-nowrap mx-2 my-1'
-    activeLinkColor = 'bg-amber-700'
+    activeLinkColor = 'bg-maintainerrdark-700'
     inactiveLinkColor = 'bg-zinc-800 hover:bg-zinc-700 focus:bg-zinc-700'
   }
 

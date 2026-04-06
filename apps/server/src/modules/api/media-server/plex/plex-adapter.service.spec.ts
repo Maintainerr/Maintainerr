@@ -8,6 +8,7 @@ import {
   createPlexSeenBy,
   createPlexUserAccount,
 } from '../../../../../test/utils/data';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import type { PlexStatusResponse } from '../../plex-api/interfaces/server.interface';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { PlexAdapterService } from './plex-adapter.service';
@@ -15,6 +16,7 @@ import { PlexAdapterService } from './plex-adapter.service';
 describe('PlexAdapterService', () => {
   let service: PlexAdapterService;
   let plexApi: Mocked<PlexApiService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -22,6 +24,7 @@ describe('PlexAdapterService', () => {
 
     service = unit;
     plexApi = unitRef.get(PlexApiService);
+    logger = unitRef.get(MaintainerrLogger);
   });
 
   describe('lifecycle', () => {
@@ -454,6 +457,9 @@ describe('PlexAdapterService', () => {
         'good-2',
       ]);
       expect(plexApi.addChildToCollection).toHaveBeenCalledTimes(3);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Plex batch add fell back to per-item adds for collection col123 on 1 chunk(s) (3 item(s) total). 1 item(s) failed after fallback.',
+      );
     });
 
     it('should treat 404 removes as successful in batch remove', async () => {

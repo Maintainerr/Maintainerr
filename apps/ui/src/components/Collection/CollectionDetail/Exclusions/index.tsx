@@ -26,7 +26,7 @@ export interface IExclusionMedia {
 }
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
-  const fetchAmount = 25
+  const fetchAmount = 30
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(libraryType)
   const { sortValue, sortParams, onSortChange } =
@@ -117,11 +117,9 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
         collectionId={props.collection.id}
         extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
         onRemove={(id: string) =>
-          setTimeout(() => {
-            updateData((currentData) =>
-              currentData.filter((item) => item.id !== id),
-            )
-          }, 500)
+          updateData((currentData) =>
+            currentData.filter((item) => item.id !== id),
+          )
         }
       />
     </div>

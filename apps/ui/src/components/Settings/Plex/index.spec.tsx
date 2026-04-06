@@ -134,7 +134,7 @@ beforeEach(() => {
   axiosGet.mockResolvedValue({ status: 200 })
 
   getApiHandler.mockImplementation((url: string) => {
-    if (url === '/settings/test/plex') {
+    if (url === '/settings/test/plex' || url === '/settings/test/plex/auth') {
       return Promise.resolve({
         status: 'OK',
         code: 1,
@@ -310,7 +310,7 @@ describe('PlexSettings', () => {
     }>()
 
     getApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/test/plex') {
+      if (url === '/settings/test/plex/auth') {
         return validationRequest.promise
       }
 
@@ -334,6 +334,70 @@ describe('PlexSettings', () => {
         expect.objectContaining({ enabled: true }),
       )
     })
+  })
+
+  it('re-validates stored Plex tokens through the auth-only endpoint', async () => {
+    render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(getApiHandler).toHaveBeenCalledWith('/settings/test/plex/auth')
+    })
+  })
+
+  it('does not flash stored-token validation errors immediately after fresh Plex auth succeeds', async () => {
+    currentSettings.plex_auth_token = undefined
+    currentSettings.plex_hostname = undefined
+    currentSettings.plex_port = undefined
+    currentSettings.plex_name = undefined
+
+    const authValidationRequest = createDeferred<{
+      status: string
+      code: number
+      message: string
+    }>()
+
+    getApiHandler.mockImplementation((url: string) => {
+      if (url === '/settings/test/plex/auth') {
+        return authValidationRequest.promise
+      }
+
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    const { rerender } = render(<PlexSettings />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Authenticate with Plex' }),
+    )
+
+    currentSettings.plex_auth_token = 'masked-plex-token'
+    rerender(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
+    })
+
+    expect(
+      screen.queryByText(
+        'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+      ),
+    ).toBeNull()
+
+    authValidationRequest.resolve({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    })
+
+    await waitFor(() => {
+      expect(getApiHandler).toHaveBeenCalledWith('/settings/test/plex/auth')
+    })
+
+    expect(
+      screen.queryByText(
+        'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+      ),
+    ).toBeNull()
   })
 
   it('surfaces specific Plex authentication errors to the user', async () => {

@@ -59,26 +59,24 @@ export class CollectionWorkerService extends TaskBase {
 
     // Acquire shared lock to avoid overlap with rule execution
     const release = await this.executionLock.acquire('rules-collections-lock');
+    let failed = false;
 
     try {
       // Start actual task
       const appStatus = await this.settings.testConnections();
 
       if (!appStatus) {
+        failed = true;
         this.logger.log(
           'Not all applications are reachable.. Skipping collection handling',
         );
-        this.eventEmitter.emit(
-          MaintainerrEvent.CollectionHandler_Finished,
-          new CollectionHandlerFinishedEventDto('Finished collection handling'),
-        );
-
-        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
         return;
       }
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
+      let doNothingCollectionCount = 0;
+      let noDueMediaCollectionCount = 0;
 
       // loop over all active collections
       const collections = await this.collectionRepo.find({
@@ -87,6 +85,7 @@ export class CollectionWorkerService extends TaskBase {
 
       const collectionsToHandle = collections.filter((collection) => {
         if (collection.arrAction === ServarrAction.DO_NOTHING) {
+          doNothingCollectionCount++;
           this.logger.log(
             `Skipping collection '${collection.title}' as its action is 'Do Nothing'`,
           );
@@ -113,37 +112,61 @@ export class CollectionWorkerService extends TaskBase {
           },
         });
 
+        if (mediaToHandle.length === 0) {
+          noDueMediaCollectionCount++;
+          this.logger.debug(
+            `Skipping collection '${collection.title}' because no media is due for handling`,
+          );
+          continue;
+        }
+
         collectionHandleMediaGroup.push({
           collection,
           mediaToHandle,
         });
       }
 
-      const progressedEvent = new CollectionHandlerProgressedEventDto();
+      this.logger.log(
+        `Collection handler summary: ${collections.length} total (isActive), ${doNothingCollectionCount} skipped (Do Nothing), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
+      );
+
+      const totalMediaToHandle = collectionHandleMediaGroup.reduce(
+        (acc, curr) => acc + curr.mediaToHandle.length,
+        0,
+      );
+
+      const progressedEvent =
+        totalMediaToHandle > 0
+          ? new CollectionHandlerProgressedEventDto()
+          : null;
+
       const emitProgressedEvent = () => {
+        if (!progressedEvent) return;
         progressedEvent.time = new Date();
         this.eventEmitter.emit(
           MaintainerrEvent.CollectionHandler_Progressed,
           progressedEvent,
         );
       };
-      progressedEvent.totalCollections = collectionsToHandle.length;
-      progressedEvent.totalMediaToHandle = collectionHandleMediaGroup.reduce(
-        (acc, curr) => acc + curr.mediaToHandle.length,
-        0,
-      );
-      emitProgressedEvent();
+
+      if (progressedEvent) {
+        progressedEvent.totalCollections = collectionHandleMediaGroup.length;
+        progressedEvent.totalMediaToHandle = totalMediaToHandle;
+        emitProgressedEvent();
+      }
 
       for (const collectionGroup of collectionHandleMediaGroup) {
         const collection = collectionGroup.collection;
         const collectionMedia = collectionGroup.mediaToHandle;
 
-        progressedEvent.processingCollection = {
-          name: collection.title,
-          processedMedias: 0,
-          totalMedias: collectionMedia.length,
-        };
-        emitProgressedEvent();
+        if (progressedEvent) {
+          progressedEvent.processingCollection = {
+            name: collection.title,
+            processedMedias: 0,
+            totalMedias: collectionMedia.length,
+          };
+          emitProgressedEvent();
+        }
 
         this.logger.log(`Handling collection '${collection.title}'`);
         const handledMediaForNotification = [];
@@ -151,8 +174,10 @@ export class CollectionWorkerService extends TaskBase {
         for (const media of collectionMedia) {
           await this.collectionHandler.handleMedia(collection, media);
           handledCollectionMedia++;
-          progressedEvent.processingCollection.processedMedias++;
-          progressedEvent.processedMedias++;
+          if (progressedEvent) {
+            progressedEvent.processingCollection!.processedMedias++;
+            progressedEvent.processedMedias++;
+          }
           handledMediaForNotification.push({
             mediaServerId: media.mediaServerId,
           });
@@ -171,7 +196,9 @@ export class CollectionWorkerService extends TaskBase {
           );
         }
 
-        progressedEvent.processedCollections++;
+        if (progressedEvent) {
+          progressedEvent.processedCollections++;
+        }
         emitProgressedEvent();
 
         this.logger.log(`Handling collection '${collection.title}' finished`);
@@ -214,12 +241,24 @@ export class CollectionWorkerService extends TaskBase {
         }
       }
       this.logger.log('Collection size cache updated');
+    } catch (error) {
+      failed = true;
+      this.logger.error('Collection handling failed');
+      this.logger.debug(error);
     } finally {
+      if (failed) {
+        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
+      }
+
       release();
 
       this.eventEmitter.emit(
         MaintainerrEvent.CollectionHandler_Finished,
-        new CollectionHandlerFinishedEventDto('Finished collection handling'),
+        new CollectionHandlerFinishedEventDto(
+          failed
+            ? 'Finished collection handling with errors'
+            : 'Finished collection handling',
+        ),
       );
     }
   }

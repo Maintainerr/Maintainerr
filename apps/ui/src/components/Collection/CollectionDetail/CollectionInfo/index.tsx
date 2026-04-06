@@ -392,7 +392,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                             isMetaActionedByRule(row.meta) && (
                               <button
                                 type="button"
-                                className="rounded bg-amber-600 px-2 py-1 text-white shadow-md hover:bg-amber-500"
+                                className="rounded bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
                                 title="View Metadata"
                                 onClick={() => {
                                   if (!isMetaActionedByRule(row.meta)) return

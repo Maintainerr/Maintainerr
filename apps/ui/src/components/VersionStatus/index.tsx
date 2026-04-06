@@ -7,8 +7,10 @@ import {
 import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { prefetchRoute } from '../../router'
 import GetApiHandler from '../../utils/ApiHandler'
 import { startsWithDigit } from '../../utils/version'
+import { useMediaServerSetupNavigationGuard } from '../Layout/MediaServerSetupGuard'
 
 enum messages {
   LOCAL = 'Keep it up! 👍',
@@ -22,14 +24,50 @@ interface VersionStatusProps {
 }
 
 const VersionStatus = ({ onClick }: VersionStatusProps) => {
+  const { isRouteBlocked, showBlockedNavigationToast } =
+    useMediaServerSetupNavigationGuard()
   const [version, setVersion] = useState<string>('0.0.1')
   const [commitTag, setCommitTag] = useState<string>('')
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
   const [loadFailed, setLoadFailed] = useState<boolean>(false)
+  const aboutRoute = '/settings/about'
+  const isBlocked = isRouteBlocked(aboutRoute)
 
   const containerClassName =
     'mx-2 flex min-h-[56px] items-center rounded-lg p-2 text-xs ring-1 ring-zinc-700 transition duration-300'
+
+  const handlePrefetch = () => {
+    if (!isBlocked) {
+      void prefetchRoute(aboutRoute)
+    }
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isBlocked) {
+      event.preventDefault()
+      showBlockedNavigationToast()
+      return
+    }
+
+    onClick?.()
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLAnchorElement>) => {
+    if (event.key !== 'Enter') {
+      return
+    }
+
+    if (isBlocked) {
+      event.preventDefault()
+      showBlockedNavigationToast()
+      return
+    }
+
+    onClick?.()
+  }
+
+  const blockedClassName = isBlocked ? 'cursor-not-allowed opacity-50' : ''
 
   useEffect(() => {
     GetApiHandler('/app/status')
@@ -82,16 +120,18 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
   if (loadFailed) {
     return (
       <Link
-        to="/settings/about"
-        onClick={onClick}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && onClick) {
-            onClick()
-          }
-        }}
+        to={aboutRoute}
+        onMouseEnter={handlePrefetch}
+        onFocus={handlePrefetch}
+        onTouchStart={handlePrefetch}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
-        className={`${containerClassName} bg-zinc-900 text-zinc-300 hover:bg-zinc-800`}
+        aria-disabled={isBlocked}
+        className={`${containerClassName} bg-zinc-900 text-zinc-300 ${
+          isBlocked ? blockedClassName : 'hover:bg-zinc-800'
+        }`}
       >
         <ServerIcon className="h-6 w-6" />
         <div className="flex min-w-0 flex-1 flex-col truncate px-2 last:pr-0">
@@ -104,19 +144,21 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
 
   return (
     <Link
-      to="/settings/about"
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && onClick) {
-          onClick()
-        }
-      }}
+      to={aboutRoute}
+      onMouseEnter={handlePrefetch}
+      onFocus={handlePrefetch}
+      onTouchStart={handlePrefetch}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-disabled={isBlocked}
       className={`${containerClassName} ${
-        updateAvailable
-          ? 'bg-amber-800 text-white hover:bg-amber-600'
-          : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+        isBlocked
+          ? `text-zinc-300 ${blockedClassName} bg-zinc-900`
+          : updateAvailable
+            ? 'bg-maintainerrdark-800 text-white hover:bg-maintainerr-600'
+            : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
       }`}
     >
       {commitTag === 'local' ? (

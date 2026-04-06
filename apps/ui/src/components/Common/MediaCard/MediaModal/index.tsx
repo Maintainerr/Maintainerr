@@ -32,6 +32,7 @@ interface ModalContentProps {
   providerIds?: MediaProviderIds
   exclusionType?: 'global' | 'specific'
   isManual?: boolean
+  forceStatusLoad?: boolean
   onStatusLink?: (targetPath: string) => void
 }
 
@@ -123,7 +124,7 @@ const maintainerrStatusCardStyles = {
   titleClassName: 'text-white',
   contentClassName: 'text-zinc-100',
   emptyClassName: 'text-zinc-100/80',
-  linkClassName: 'text-amber-500 underline hover:text-amber-400',
+  linkClassName: 'text-maintainerr underline hover:text-maintainerr-400',
 } as const
 
 const MediaModalContent: React.FC<ModalContentProps> = memo(
@@ -137,6 +138,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     providerIds: fallbackProviderIds,
     exclusionType,
     isManual = false,
+    forceStatusLoad = false,
     onStatusLink,
   }) => {
     useLockBodyScroll(true)
@@ -161,12 +163,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
     const maintainerrDetailsKey = useMemo(
       () =>
-        getMaintainerrStatusDetailsKey({
-          id,
-          exclusionType,
-          isManual,
-        }),
-      [exclusionType, id, isManual],
+        forceStatusLoad
+          ? String(id)
+          : getMaintainerrStatusDetailsKey({
+              id,
+              exclusionType,
+              isManual,
+            }),
+      [exclusionType, forceStatusLoad, id, isManual],
     )
     const maintainerrDetails = useMemo(() => {
       if (
@@ -275,20 +279,37 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     }, [id, maintainerrDetailsKey, maintainerrDetailsState?.key])
 
     useEffect(() => {
-      GetApiHandler('/media-server').then((resp) => {
-        setMachineId(resp?.machineId)
-        // For Jellyfin, we need the server URL to construct links
-        if (resp?.url) {
-          setServerUrl(resp.url)
-        }
-      })
-      GetApiHandler('/settings').then((resp) =>
-        setTautulliModalUrl(resp?.tautulli_url || null),
-      )
-      GetApiHandler<MediaItem>(`/media-server/meta/${id}`).then((data) => {
-        setMetadata(data)
-        setLoading(false)
-      })
+      let active = true
+
+      GetApiHandler('/media-server')
+        .then((resp) => {
+          if (!active) return
+          setMachineId(resp?.machineId)
+          // For Jellyfin, we need the server URL to construct links
+          if (resp?.url) {
+            setServerUrl(resp.url)
+          }
+        })
+        .catch(() => {})
+      GetApiHandler('/settings')
+        .then((resp) => {
+          if (!active) return
+          setTautulliModalUrl(resp?.tautulli_url || null)
+        })
+        .catch(() => {})
+      GetApiHandler<MediaItem>(`/media-server/meta/${id}`)
+        .then((data) => {
+          if (!active) return
+          setMetadata(data)
+          setLoading(false)
+        })
+        .catch(() => {
+          if (active) setLoading(false)
+        })
+
+      return () => {
+        active = false
+      }
     }, [id])
 
     useEffect(() => {
@@ -416,7 +437,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       mediaType === 'movie'
                         ? 'bg-black'
                         : mediaType === 'show'
-                          ? 'bg-amber-900'
+                          ? 'bg-maintainerrdark'
                           : mediaType === 'season'
                             ? 'bg-yellow-700'
                             : 'bg-rose-900'

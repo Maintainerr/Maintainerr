@@ -202,6 +202,28 @@ export class PlexApiService {
     }
   }
 
+  public async validateAuthToken(token?: string): Promise<boolean> {
+    const authToken = token ?? this.settings.plex_auth_token;
+
+    if (!authToken) {
+      throw new Error('Plex auth token is required for validation');
+    }
+
+    try {
+      const plexTvClient = new PlexTvApi(
+        authToken,
+        this.loggerFactory.createLogger(),
+      );
+
+      await plexTvClient.getUser();
+      return true;
+    } catch (error) {
+      this.logger.debug('Plex auth token validation failed');
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
   public async searchContent(input: string) {
     try {
       const response: PlexMetadataResponse = await this.plexClient.query(
@@ -764,17 +786,18 @@ export class PlexApiService {
       });
       return response.MediaContainer.Metadata[0] as PlexCollection;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
+      const failure = this.buildCollectionMutationFailure(error);
+
+      if (failure.logLevel === 'warn') {
+        this.logger.warn(failure.message);
+      } else {
+        this.logger.error(failure.message);
+      }
       this.logger.debug(error);
       return {
         status: 'NOK',
-        code: 0,
-        message: getErrorMessage(
-          error,
-          'Plex api communication failure.. Is the application running?',
-        ),
+        code: failure.code,
+        message: failure.message,
       } as BasicResponseDto;
     }
   }
@@ -806,18 +829,66 @@ export class PlexApiService {
         } as BasicResponseDto)
       );
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
+      const failure = this.buildCollectionMutationFailure(error);
+
+      if (failure.logLevel === 'warn') {
+        this.logger.warn(failure.message);
+      } else {
+        this.logger.error(failure.message);
+      }
       this.logger.debug(error);
       return {
         status: 'NOK',
-        code: 0,
-        message: getErrorMessage(
-          error,
-          'Plex api communication failure.. Is the application running?',
-        ),
+        code: failure.code,
+        message: failure.message,
       } as BasicResponseDto;
+    }
+  }
+
+  private buildCollectionMutationFailure(error: unknown): {
+    code: number;
+    logLevel: 'warn' | 'error';
+    message: string;
+  } {
+    if (axios.isAxiosError(error) && error.response?.status) {
+      const responseBody = this.stringifyResponseBody(error.response.data);
+      const statusMessage = `Plex request failed with ${error.response.status}${error.response.statusText ? ` ${error.response.statusText}` : ''}`;
+
+      return {
+        code: error.response.status,
+        logLevel:
+          error.response.status >= 400 && error.response.status < 500
+            ? 'warn'
+            : 'error',
+        message: responseBody
+          ? `${statusMessage}. Response body: ${responseBody}`
+          : `${statusMessage}.`,
+      };
+    }
+
+    return {
+      code: 0,
+      logLevel: 'error',
+      message: getErrorMessage(
+        error,
+        'Plex api communication failure.. Is the application running?',
+      ),
+    };
+  }
+
+  private stringifyResponseBody(body: unknown): string | undefined {
+    if (body == null) {
+      return undefined;
+    }
+
+    if (typeof body === 'string') {
+      return body;
+    }
+
+    try {
+      return JSON.stringify(body);
+    } catch {
+      return undefined;
     }
   }
 

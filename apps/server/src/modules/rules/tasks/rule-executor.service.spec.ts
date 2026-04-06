@@ -21,6 +21,10 @@ describe('RuleExecutorService', () => {
     const mediaServer = {
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getLibraryContentCount: jest.fn().mockResolvedValue(0),
+      getLibraryContents: jest.fn().mockResolvedValue({
+        items: [],
+        totalSize: 0,
+      }),
     };
 
     const mediaServerFactory = {
@@ -58,10 +62,20 @@ describe('RuleExecutorService', () => {
             addedCount: items?.length ?? 0,
           };
         }),
+      syncMediaServerChildrenToCollection: jest
+        .fn()
+        .mockImplementation(async (_collection, items) => {
+          return {
+            id: 1,
+            mediaServerId: 'coll-1',
+            title: 'Test Collection',
+            addedCount: items?.length ?? 0,
+          };
+        }),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       removeFromCollectionWithResolvedLink: jest
         .fn()
-        .mockResolvedValue(undefined),
+        .mockImplementation(async (collection) => collection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
       checkAutomaticMediaServerLink: jest
         .fn()
@@ -145,6 +159,89 @@ describe('RuleExecutorService', () => {
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
   });
 
+  it('does not emit a failed rule notification when a rule group finishes successfully', async () => {
+    const { service, rulesService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    const ruleGroup = {
+      id: 10,
+      name: 'Filmer',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Test Collection' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+
+    await expect(
+      service.executeForRuleGroups(10, new AbortController().signal),
+    ).resolves.toEqual({ status: 'success' });
+
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Failed,
+      expect.anything(),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Finished,
+      expect.objectContaining({
+        message: "Finished execution of rule 'Filmer'",
+      }),
+    );
+  });
+
+  it('emits a single failed rule notification when collection handling fails', async () => {
+    const { service, rulesService, collectionService, eventEmitter } =
+      createService(MediaServerType.JELLYFIN);
+
+    const ruleGroup = {
+      id: 11,
+      name: 'Serier SEASON',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Missing Collection' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+    collectionService.getCollection.mockResolvedValue(undefined as any);
+
+    await expect(
+      service.executeForRuleGroups(11, new AbortController().signal),
+    ).resolves.toEqual({
+      status: 'failed',
+      failedPayload: expect.objectContaining({
+        collectionName: 'Missing Collection',
+        identifier: { type: 'rulegroup', value: 11 },
+      }),
+    });
+
+    const failedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === MaintainerrEvent.RuleHandler_Failed,
+    );
+
+    expect(failedEvents).toHaveLength(1);
+    expect(failedEvents[0][1]).toEqual(
+      expect.objectContaining({
+        collectionName: 'Missing Collection',
+        identifier: { type: 'rulegroup', value: 11 },
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Finished,
+      expect.objectContaining({
+        message: "Finished execution of rule 'Serier SEASON' with errors.",
+      }),
+    );
+  });
+
   it('skips media server sync when an automatic collection link is stale', async () => {
     const { service, mediaServer, collectionService, logger } = createService(
       MediaServerType.JELLYFIN,
@@ -178,6 +275,50 @@ describe('RuleExecutorService', () => {
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(
       "Skipping media server sync for 'Test Collection' — no media server collection exists because no items currently match the rule.",
+    );
+  });
+
+  it('does not import existing children as manual after auto-linking an automatic collection', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: null,
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-existing' }]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping manual child import for newly linked automatic collection 'Test Collection' to avoid marking existing collection contents as manual.",
     );
   });
 
@@ -216,7 +357,8 @@ describe('RuleExecutorService', () => {
 
     mediaServer.getCollectionChildren.mockResolvedValue([
       { id: 'm-excluded' },
-      { id: 'm-allowed' },
+      { id: 'm-allowed-1' },
+      { id: 'm-allowed-2' },
     ]);
     collectionService.getCollectionMedia.mockResolvedValue([]);
     rulesService.getExclusions.mockResolvedValue([
@@ -238,12 +380,66 @@ describe('RuleExecutorService', () => {
       new Set(),
     );
 
-    expect(collectionService.addToCollection).toHaveBeenCalledTimes(1);
-    expect(collectionService.addToCollection).toHaveBeenCalledWith(
-      1,
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaServerId: 'coll-1' }),
       [
         {
-          mediaServerId: 'm-allowed',
+          mediaServerId: 'm-allowed-1',
+          reason: { type: 'media_added_manually' },
+        },
+        {
+          mediaServerId: 'm-allowed-2',
+          reason: { type: 'media_added_manually' },
+        },
+      ],
+      true,
+    );
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+  });
+
+  it('only syncs media server children that are missing from the DB', async () => {
+    const { service, mediaServer, rulesService, collectionService } =
+      createService(MediaServerType.JELLYFIN);
+
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'm-existing' },
+      { id: 'm-missing' },
+    ]);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm-existing' },
+    ] as any);
+    rulesService.getExclusions.mockResolvedValue([] as any);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          touchedMediaServerIds: Set<string>,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      new Set(),
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaServerId: 'coll-1' }),
+      [
+        {
+          mediaServerId: 'm-missing',
           reason: { type: 'media_added_manually' },
         },
       ],
@@ -474,12 +670,24 @@ describe('RuleExecutorService', () => {
 
     const abortController = new AbortController();
 
-    await service.executeForRuleGroups(77, abortController.signal);
+    await expect(
+      service.executeForRuleGroups(77, abortController.signal),
+    ).resolves.toEqual({
+      status: 'failed',
+      failedPayload: expect.objectContaining({
+        collectionName: 'No Library Group',
+        identifier: { type: 'rulegroup', value: 77 },
+      }),
+    });
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.RuleHandler_Failed,
+      expect.objectContaining({
+        collectionName: 'No Library Group',
+        identifier: { type: 'rulegroup', value: 77 },
+      }),
     );
-    expect(progressManager.reset).not.toHaveBeenCalled();
+    expect(progressManager.reset).toHaveBeenCalled();
   });
 
   it('does not emit started and still cleans up when execution was already aborted before starting', async () => {
@@ -504,7 +712,9 @@ describe('RuleExecutorService', () => {
     const abortController = new AbortController();
     abortController.abort();
 
-    await service.executeForRuleGroups(77, abortController.signal);
+    await expect(
+      service.executeForRuleGroups(77, abortController.signal),
+    ).resolves.toEqual({ status: 'aborted' });
 
     expect(eventEmitter.emit).not.toHaveBeenCalledWith(
       MaintainerrEvent.RuleHandler_Started,
@@ -519,6 +729,38 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.RuleHandler_Finished,
       expect.anything(),
     );
+  });
+
+  it('returns skipped when the rule group does not exist', async () => {
+    const { service, rulesService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    rulesService.getRuleGroup.mockResolvedValue(undefined as any);
+
+    await expect(
+      service.executeForRuleGroups(404, new AbortController().signal),
+    ).resolves.toEqual({ status: 'skipped', reason: 'not-found' });
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('returns skipped when the rule group is inactive', async () => {
+    const { service, rulesService, eventEmitter } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    rulesService.getRuleGroup.mockResolvedValue({
+      id: 12,
+      name: 'Inactive Group',
+      isActive: false,
+    } as any);
+
+    await expect(
+      service.executeForRuleGroups(12, new AbortController().signal),
+    ).resolves.toEqual({ status: 'skipped', reason: 'inactive' });
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
   it('aborts between collection add and remove phases', async () => {
@@ -560,7 +802,7 @@ describe('RuleExecutorService', () => {
   });
 
   it('fails cleanly when collection sync returns undefined', async () => {
-    const { service, collectionService, eventEmitter } = createService(
+    const { service, collectionService } = createService(
       MediaServerType.JELLYFIN,
     );
 
@@ -581,19 +823,10 @@ describe('RuleExecutorService', () => {
           }) => Promise<Set<string>>;
         }
       ).handleCollection({ id: 10, collectionId: 1 }),
-    ).resolves.toEqual(new Set());
+    ).rejects.toMatchObject({ name: 'RuleExecutionFailure' });
 
     expect(
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
-    expect(eventEmitter.emit).toHaveBeenCalledWith(
-      MaintainerrEvent.RuleHandler_Failed,
-      expect.objectContaining({
-        identifier: {
-          type: 'rulegroup',
-          value: 10,
-        },
-      }),
-    );
   });
 });

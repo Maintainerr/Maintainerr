@@ -11,6 +11,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:fresh-setup": "VITE_BYPASS_MEDIA_SERVER_SETUP_GUARD=false turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
     "format:changed": "node tools/format-changed.mjs",

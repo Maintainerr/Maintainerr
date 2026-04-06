@@ -2,7 +2,7 @@ import { type MediaProviderIds } from '@maintainerr/contracts'
 
 const mediaTypeBadgeColors: Record<string, string> = {
   movie: 'bg-zinc-900',
-  show: 'bg-amber-900',
+  show: 'bg-maintainerrdark',
   season: 'bg-yellow-700',
   episode: 'bg-rose-900',
 }

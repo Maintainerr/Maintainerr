@@ -227,3 +227,156 @@ describe('RulesService.deleteRuleGroup', () => {
     });
   });
 });
+
+describe('RulesService.removeExclusion', () => {
+  const logger = createMockLogger();
+
+  const createServiceForRemoveExclusion = (options?: {
+    exclusion?: any;
+    ruleGroup?: any;
+  }) => {
+    const { exclusion = undefined, ruleGroup = undefined } = options ?? {};
+
+    const exclusionRepo = {
+      findOne: jest.fn().mockResolvedValue(exclusion),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(ruleGroup),
+    };
+
+    const collectionService = {
+      CollectionLogRecordForChild: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new RulesService(
+      {} as any, // rulesRepository
+      ruleGroupRepository as any,
+      {} as any, // collectionMediaRepository
+      {} as any, // communityRuleKarmaRepository
+      exclusionRepo as any,
+      {} as any, // settingsRepo
+      {} as any, // radarrSettingsRepo
+      {} as any, // sonarrSettingsRepo
+      collectionService as any,
+      {} as any, // mediaServerFactory
+      {} as any, // connection
+      {} as any, // ruleYamlService
+      {} as any, // ruleComparatorServiceFactory
+      {} as any, // ruleMigrationService
+      {} as any, // eventEmitter
+      logger as any,
+    );
+
+    return {
+      service,
+      exclusionRepo,
+      ruleGroupRepository,
+      collectionService,
+    };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns success without crashing when exclusion is already deleted', async () => {
+    const { service, exclusionRepo } = createServiceForRemoveExclusion({
+      exclusion: null,
+    });
+
+    // Before the fix, this would throw:
+    // TypeError: Cannot read properties of null (reading 'ruleGroupId')
+    const result = await service.removeExclusion(99);
+
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+    expect(exclusionRepo.delete).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('not found, already removed'),
+    );
+  });
+
+  it('deletes exclusion and logs collection record when rulegroup exists', async () => {
+    const exclusion = {
+      id: 10,
+      mediaServerId: 'abc123',
+      ruleGroupId: 5,
+    };
+    const ruleGroup = { id: 5, collectionId: 42 };
+
+    const { service, exclusionRepo, collectionService } =
+      createServiceForRemoveExclusion({
+        exclusion,
+        ruleGroup,
+      });
+
+    const result = await service.removeExclusion(10);
+
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+    expect(exclusionRepo.delete).toHaveBeenCalledWith(10);
+    expect(collectionService.CollectionLogRecordForChild).toHaveBeenCalledWith(
+      'abc123',
+      42,
+      'include',
+    );
+  });
+
+  it('skips collection log when rulegroup is already deleted', async () => {
+    const exclusion = {
+      id: 10,
+      mediaServerId: 'abc123',
+      ruleGroupId: 5,
+    };
+
+    const { service, exclusionRepo, collectionService } =
+      createServiceForRemoveExclusion({
+        exclusion,
+        ruleGroup: null,
+      });
+
+    const result = await service.removeExclusion(10);
+
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+    expect(exclusionRepo.delete).toHaveBeenCalledWith(10);
+    expect(
+      collectionService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('deletes exclusion without logging when it is a global exclusion', async () => {
+    const exclusion = {
+      id: 10,
+      mediaServerId: 'abc123',
+      ruleGroupId: undefined,
+    };
+
+    const { service, exclusionRepo, ruleGroupRepository, collectionService } =
+      createServiceForRemoveExclusion({ exclusion });
+
+    const result = await service.removeExclusion(10);
+
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+    expect(exclusionRepo.delete).toHaveBeenCalledWith(10);
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+    expect(
+      collectionService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
+  });
+});

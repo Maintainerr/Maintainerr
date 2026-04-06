@@ -72,6 +72,14 @@ export const compareMediaItemsBySort = (
         sortOrder,
         (item) => item.maintainerrExclusionId != null,
       )
+    case 'deleteSoonest':
+      // deleteSoonest is equivalent to addDate sorting because
+      // deleteAfterDays is constant per collection.
+      return (
+        (new Date(leftItem.addedAt).getTime() -
+          new Date(rightItem.addedAt).getTime()) *
+        direction
+      )
     default:
       return 0
   }

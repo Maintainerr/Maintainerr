@@ -297,12 +297,12 @@ const PlexSettings = () => {
         }
 
         if (settings?.plex_auth_token) {
-          // Existing token (masked in settings) — verify via server-side test endpoint
+          // Existing token (masked in settings) — verify via server-side auth endpoint
           const result = await GetApiHandler<{
             status: string
             code: number
             message: string
-          }>('/settings/test/plex')
+          }>('/settings/test/plex/auth')
 
           const valid = result.status === 'OK'
           setTokenValid(valid)
@@ -312,6 +312,7 @@ const PlexSettings = () => {
             : {
                 valid: false as const,
                 errorMessage:
+                  result.message ||
                   'Stored Plex credentials are invalid. Re-authenticate with Plex.',
               }
         }
@@ -321,13 +322,16 @@ const PlexSettings = () => {
           valid: false as const,
           errorMessage: 'Authenticate with Plex to continue.',
         }
-      } catch {
+      } catch (error) {
         setTokenValid(false)
         return {
           valid: false as const,
-          errorMessage: token
-            ? 'Plex authentication could not be verified. Please try again.'
-            : 'Stored Plex credentials could not be validated. Re-authenticate with Plex.',
+          errorMessage: getApiErrorMessage(
+            error,
+            token
+              ? 'Plex authentication could not be verified. Please try again.'
+              : 'Stored Plex credentials could not be validated. Re-authenticate with Plex.',
+          ),
         }
       } finally {
         setTokenValidationPending(false)

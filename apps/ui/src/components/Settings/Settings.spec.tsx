@@ -150,7 +150,7 @@ describe('SettingsWrapper', () => {
 
     const desktopLinks = Array.from(container.querySelectorAll('nav.flex a'))
     const activeLinks = desktopLinks.filter((link) =>
-      link.className.includes('text-amber-500'),
+      link.className.includes('text-maintainerr'),
     )
 
     expect(activeLinks).toHaveLength(1)
@@ -197,6 +197,66 @@ describe('SettingsWrapper', () => {
       (screen.getByRole('option', { name: 'Sonarr' }) as HTMLOptionElement)
         .disabled,
     ).toBe(true)
+  })
+
+  it('shows a welcome modal during first setup on allowed settings routes', () => {
+    currentPath = '/settings/main'
+    currentSettingsResult = {
+      data: {
+        media_server_type: null,
+        plex_auth_token: null,
+      },
+      isLoading: false,
+      error: undefined,
+    }
+
+    render(<SettingsWrapper />)
+
+    expect(screen.getByText('Welcome to Maintainerr!')).toBeTruthy()
+    expect(
+      screen.getByText('Connect your media server to finish setup.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: "Let's get started" }),
+    ).toBeTruthy()
+    expect(screen.queryByTestId('navigate')).toBeNull()
+  })
+
+  it('does not show the welcome modal when a media server type is already selected', () => {
+    currentPath = '/settings/main'
+    currentSettingsResult = {
+      data: {
+        media_server_type: MediaServerType.JELLYFIN,
+        plex_auth_token: null,
+      },
+      isLoading: false,
+      error: undefined,
+    }
+
+    render(<SettingsWrapper />)
+
+    expect(screen.queryByText('Welcome to Maintainerr!')).toBeNull()
+  })
+
+  it('keeps the selected media server tab enabled during incomplete setup', () => {
+    currentPath = '/settings/jellyfin'
+    currentSettingsResult = {
+      data: {
+        media_server_type: MediaServerType.JELLYFIN,
+        plex_auth_token: null,
+      },
+      isLoading: false,
+      error: undefined,
+    }
+
+    render(<SettingsWrapper />)
+
+    expect(screen.queryByTestId('navigate')).toBeNull()
+    expect(
+      screen
+        .getByRole('link', { name: 'Jellyfin' })
+        .getAttribute('aria-disabled'),
+    ).not.toBe('true')
   })
 
   it('shows an error toast when a blocked settings tab is clicked during first setup', () => {

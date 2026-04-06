@@ -39,7 +39,9 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
+import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
@@ -58,6 +60,9 @@ import {
   JELLYFIN_CACHE_TTL,
   JELLYFIN_CLIENT_INFO,
   JELLYFIN_DEVICE_INFO,
+  JELLYFIN_LIBRARY_RETRY_DELAY_MS,
+  JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES,
+  JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES,
 } from './jellyfin.constants';
 import { JellyfinMapper } from './jellyfin.mapper';
 
@@ -251,7 +256,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     const result = await this.verifyConnection(api);
 
     if (result.success) {
-      this.logger.log(
+      this.logger.debug(
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {
@@ -420,7 +425,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         );
       }
 
-      const response = await getLibraryApi(this.api).getMediaFolders();
+      const response = await this.retryLibraryRequestOnce(
+        'get Jellyfin libraries',
+        async () => await getLibraryApi(this.api!).getMediaFolders(),
+      );
       const libraries = (response.data.Items || [])
         .filter(
           (item) =>
@@ -454,25 +462,29 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getItemsApi(this.api).getItems({
-        userId,
-        parentId: libraryId,
-        recursive: true,
-        startIndex: options?.offset || 0,
-        limit: options?.limit || JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE,
-        // Keep library listings lean. Full metadata is fetched lazily via /meta/:id.
-        fields: [...JELLYFIN_LIBRARY_LIST_FIELDS],
-        includeItemTypes: options?.type
-          ? JellyfinMapper.toBaseItemKinds([options.type])
-          : [BaseItemKind.Movie, BaseItemKind.Series],
-        enableUserData: true,
-        sortBy: [toJellyfinSortBy(options?.sort)],
-        sortOrder: [
-          options?.sortOrder === 'desc'
-            ? SortOrder.Descending
-            : SortOrder.Ascending,
-        ],
-      });
+      const response = await this.retryLibraryRequestOnce(
+        `get Jellyfin library contents for ${libraryId}`,
+        async () =>
+          await getItemsApi(this.api!).getItems({
+            userId,
+            parentId: libraryId,
+            recursive: true,
+            startIndex: options?.offset || 0,
+            limit: options?.limit || JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE,
+            // Keep library listings lean. Full metadata is fetched lazily via /meta/:id.
+            fields: [...JELLYFIN_LIBRARY_LIST_FIELDS],
+            includeItemTypes: options?.type
+              ? JellyfinMapper.toBaseItemKinds([options.type])
+              : [BaseItemKind.Movie, BaseItemKind.Series],
+            enableUserData: true,
+            sortBy: [toJellyfinSortBy(options?.sort)],
+            sortOrder: [
+              options?.sortOrder === 'desc'
+                ? SortOrder.Descending
+                : SortOrder.Ascending,
+            ],
+          }),
+      );
 
       const items = (response.data.Items || []).map(JellyfinMapper.toMediaItem);
 
@@ -941,6 +953,13 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaCollection(response.data)
         : undefined;
     } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        this.logger.debug(
+          `Jellyfin collection ${collectionId} not found; treating it as missing`,
+        );
+        return undefined;
+      }
+
       this.logger.warn(`Failed to get collection ${collectionId}`);
       this.logger.debug(error);
       return undefined;
@@ -1007,37 +1026,45 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       // For BoxSets in Jellyfin, we need to use the Items endpoint
       // with the collection's ID as parentId AND a userId
-      const response = await getItemsApi(this.api).getItems({
-        userId,
-        parentId: collectionId,
-        fields: [
-          ItemFields.ProviderIds,
-          ItemFields.Path,
-          ItemFields.DateCreated,
-        ],
-        enableUserData: true,
-        recursive: false,
-      });
+      const response = await this.retryLibraryRequestOnce(
+        `get Jellyfin collection children for ${collectionId}`,
+        async () =>
+          await getItemsApi(this.api!).getItems({
+            userId,
+            parentId: collectionId,
+            fields: [
+              ItemFields.ProviderIds,
+              ItemFields.Path,
+              ItemFields.DateCreated,
+            ],
+            enableUserData: true,
+            recursive: false,
+          }),
+      );
 
       // If parentId approach returns nothing, try recursive search
       if (!response.data.Items?.length) {
-        const itemsResponse = await getItemsApi(this.api).getItems({
-          userId,
-          parentId: collectionId,
-          recursive: true,
-          includeItemTypes: [
-            BaseItemKind.Movie,
-            BaseItemKind.Series,
-            BaseItemKind.Season,
-            BaseItemKind.Episode,
-          ],
-          fields: [
-            ItemFields.ProviderIds,
-            ItemFields.Path,
-            ItemFields.DateCreated,
-          ],
-          enableUserData: true,
-        });
+        const itemsResponse = await this.retryLibraryRequestOnce(
+          `get Jellyfin collection children recursively for ${collectionId}`,
+          async () =>
+            await getItemsApi(this.api!).getItems({
+              userId,
+              parentId: collectionId,
+              recursive: true,
+              includeItemTypes: [
+                BaseItemKind.Movie,
+                BaseItemKind.Series,
+                BaseItemKind.Season,
+                BaseItemKind.Episode,
+              ],
+              fields: [
+                ItemFields.ProviderIds,
+                ItemFields.Path,
+                ItemFields.DateCreated,
+              ],
+              enableUserData: true,
+            }),
+        );
 
         if (itemsResponse.data.Items?.length) {
           return (itemsResponse.data.Items || []).map(
@@ -1486,5 +1513,56 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.logger.error(`Failed to ${operation} for ${libraryId}`);
       this.logger.debug(error);
     }
+  }
+
+  private async retryLibraryRequestOnce<T>(
+    operation: string,
+    request: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await request();
+    } catch (error) {
+      if (!this.isRetryableLibraryError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Transient Jellyfin failure during ${operation}; retrying once in ${JELLYFIN_LIBRARY_RETRY_DELAY_MS}ms`,
+      );
+      this.logger.debug(error);
+
+      await delay(JELLYFIN_LIBRARY_RETRY_DELAY_MS);
+      return await request();
+    }
+  }
+
+  private isRetryableLibraryError(error: unknown): boolean {
+    const errorCode =
+      error instanceof AxiosError
+        ? error.code
+        : error && typeof error === 'object' && 'code' in error
+          ? typeof error.code === 'string'
+            ? error.code
+            : undefined
+          : undefined;
+
+    if (
+      errorCode &&
+      JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES.has(errorCode.toUpperCase())
+    ) {
+      return true;
+    }
+
+    const statusCode =
+      error instanceof AxiosError ? error.response?.status : undefined;
+
+    if (
+      statusCode !== undefined &&
+      JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES.has(statusCode)
+    ) {
+      return true;
+    }
+
+    return false;
   }
 }

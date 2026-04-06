@@ -184,12 +184,11 @@ const OverviewContent = (props: IOverviewContent) => {
             </li>
           ))}
           {showAppendLoading ? (
-            <li>
-              <div
-                role="status"
-                aria-label="Loading more items"
-                className="flex min-h-[17rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30"
-              >
+            <li
+              className="flex min-h-10 items-center justify-center"
+              style={{ overflowAnchor: 'none' }}
+            >
+              <div role="status" aria-label="Loading more items">
                 <SmallLoadingSpinner className="h-10 w-10" />
               </div>
             </li>

@@ -273,7 +273,7 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
                         <tr>
                           <td
                             colSpan={4}
-                            className="px-4 py-4 text-center font-semibold text-amber-500"
+                            className="px-4 py-4 text-center font-semibold text-maintainerr"
                           >
                             An error occurred fetching community rules. Please
                             try again later.

@@ -10,9 +10,13 @@ import {
 
 interface DatabaseBackupModalProps {
   onClose: () => void
+  onDownloaded: () => void
 }
 
-const DatabaseBackupModal = ({ onClose }: DatabaseBackupModalProps) => {
+const DatabaseBackupModal = ({
+  onClose,
+  onDownloaded,
+}: DatabaseBackupModalProps) => {
   const filenameRef = useRef<HTMLInputElement>(null)
   const [filename, setFilename] = useState(createDateStampedFilename())
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +41,7 @@ const DatabaseBackupModal = ({ onClose }: DatabaseBackupModalProps) => {
     try {
       setError(null)
       await downloadDatabase(normalizedFilename)
+      onDownloaded()
       onClose()
     } catch {
       setError('Could not backup the database')

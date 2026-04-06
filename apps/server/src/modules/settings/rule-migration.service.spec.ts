@@ -225,11 +225,11 @@ describe('RuleMigrationService', () => {
           ruleJson: JSON.stringify({
             operator: null,
             action: RulePossibility.EQUALS,
-            firstVal: [Application.PLEX, 31], // rating_imdb - Plex only
+            firstVal: [Application.PLEX, 30], // watchlist_isWatchlisted - Plex only
             customVal: { ruleTypeId: 0, value: '7' },
             section: 0,
           }),
-          ruleGroup: { id: 1, name: 'IMDB Group' } as RuleGroup,
+          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
         },
       ];
 
@@ -242,6 +242,38 @@ describe('RuleMigrationService', () => {
           false, // Don't skip - throw on incompatible
         ),
       ).rejects.toThrow(/cannot be migrated/);
+    });
+
+    it('should remap Plex rating_imdb rules to Jellyfin rating_imdb', async () => {
+      const originalRule: Partial<Rules> = {
+        id: 1,
+        ruleGroupId: 1,
+        ruleJson: JSON.stringify({
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 31], // rating_imdb
+          customVal: { ruleTypeId: 0, value: '7' },
+          section: 0,
+        }),
+        ruleGroup: { id: 1, name: 'IMDb Group' } as RuleGroup,
+      };
+
+      rulesRepo.find.mockResolvedValue([originalRule as Rules]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+
+      const updateCall = rulesRepo.update.mock.calls[0];
+      const updatedJson = JSON.parse(updateCall[1].ruleJson as string);
+      expect(updatedJson.firstVal[0]).toBe(Application.JELLYFIN);
+      expect(updatedJson.firstVal[1]).toBe(44);
     });
 
     it('should also migrate lastVal if present', async () => {
@@ -398,6 +430,34 @@ describe('RuleMigrationService', () => {
             section: 0,
           }),
           ruleGroup: { id: 1, name: 'Rating Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      ruleGroupRepo.count.mockResolvedValue(1);
+
+      const preview = await service.previewMigration(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(preview.migratableRules).toBe(1);
+      expect(preview.skippedRules).toBe(0);
+    });
+
+    it('should preview rating_imdb as migratable for Jellyfin', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 31], // rating_imdb
+            customVal: { ruleTypeId: 0, value: '6' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'IMDb Group' } as RuleGroup,
         },
       ];
 

@@ -43,6 +43,12 @@ export const clearMaintainerrStatusDetailsCache = () => {
   maintainerrStatusDetailsCache.clear()
 }
 
+export const invalidateMaintainerrStatusDetails = (
+  id: string | number,
+): void => {
+  maintainerrStatusDetailsCache.delete(String(id))
+}
+
 export const getCachedMaintainerrStatusDetails = (cacheKey: string) => {
   const cachedEntry = maintainerrStatusDetailsCache.get(cacheKey)
 

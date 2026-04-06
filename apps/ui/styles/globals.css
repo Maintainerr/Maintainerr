@@ -2,11 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --toastify-color-success: theme('colors.success.DEFAULT');
+  --toastify-color-error: theme('colors.error.DEFAULT');
+  --toastify-color-info: theme('colors.info.DEFAULT');
+  --toastify-color-warning: theme('colors.warning.700');
+}
+
 @layer base {
   html {
     min-height: calc(100% + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -147,11 +155,11 @@
   }
 
   .edit-button {
-    @apply /* background-color: #3f3f46; */ bg-amber-900;
+    @apply /* background-color: #3f3f46; */ bg-maintainerrdark;
   }
 
   .edit-button:hover {
-    @apply /* background: #3a3a42; */ bg-amber-800;
+    @apply /* background: #3a3a42; */ bg-maintainerrdark-800;
   }
 
   .delete-button {
@@ -163,7 +171,7 @@
   }
 
   .plex-button {
-    @apply flex w-full justify-center rounded-md border border-transparent bg-amber-600 px-4 py-2 text-center text-sm font-medium text-white transition duration-150 ease-in-out disabled:opacity-50;
+    @apply flex w-full justify-center rounded-md border border-transparent bg-maintainerr-600 px-4 py-2 text-center text-sm font-medium text-white transition duration-150 ease-in-out disabled:opacity-50;
     background-color: #cc7b19;
   }
 
@@ -398,7 +406,7 @@
   }
 
   input[type='checkbox'] {
-    @apply h-6 w-6 rounded-md text-amber-600 transition duration-150 ease-in-out default:ring-amber-600 checked:ring-amber-800;
+    @apply h-6 w-6 rounded-md text-maintainerr-600 transition duration-150 ease-in-out default:ring-maintainerr-600 checked:ring-maintainerrdark-800;
   }
 
   input[type='text'],
@@ -435,7 +443,7 @@
   }
 
   button.input-action {
-    @apply relative -ml-px inline-flex items-center border border-zinc-500 bg-amber-600 px-3 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out last:rounded-r-md hover:bg-amber-500 active:bg-zinc-100 active:text-zinc-700 sm:px-3.5;
+    @apply relative -ml-px inline-flex items-center border border-zinc-500 bg-maintainerr-600 px-3 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out last:rounded-r-md hover:bg-maintainerr active:bg-zinc-100 active:text-zinc-700 sm:px-3.5;
   }
 
   .button-md svg,

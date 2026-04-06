@@ -19,7 +19,7 @@ const CollectionMediaPage = () => {
   const { collection } = useOutletContext<CollectionContextType>()
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
-  const fetchAmount = 25
+  const fetchAmount = 30
   const mediaRef = useRef<ICollectionMedia[]>([])
   const libraryType = collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionMediaSortConfig(
@@ -130,16 +130,14 @@ const CollectionMediaPage = () => {
         libraryId={collection.libraryId}
         collectionPage={true}
         extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
-        onRemove={(id: string) =>
-          setTimeout(() => {
-            updateData((currentData) =>
-              currentData.filter((item) => item.id !== id),
-            )
-            updateMedia((currentMedia) =>
-              currentMedia.filter((item) => item.mediaServerId !== id),
-            )
-          }, 500)
-        }
+        onRemove={(id: string) => {
+          updateData((currentData) =>
+            currentData.filter((item) => item.id !== id),
+          )
+          updateMedia((currentMedia) =>
+            currentMedia.filter((item) => item.mediaServerId !== id),
+          )
+        }}
         collectionInfo={media.map((item) => ({
           ...item,
           collection: {

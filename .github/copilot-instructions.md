@@ -36,16 +36,16 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 ### Backend (`apps/server/`)
 
-- **Framework**: Nest.js with TypeScript
+- **Framework**: Nest.js v11+ with TypeScript
 - **Database**: TypeORM with SQLite
 - **Testing**: Jest with @suites for dependency mocking and unit testing
 - **API Documentation**: Swagger/OpenAPI
-- **Validation**: Zod schemas with nestjs-zod
+- **Validation**: Zod v4+ schemas with nestjs-zod
 - **Architecture**: Event-driven with schedulers, graceful shutdown support
 
 ### Frontend (`apps/ui/`)
 
-- **Build System**: Vite 7+ for fast development and production builds
+- **Build System**: Vite 8+ for fast development and production builds
 - **Framework**: React 19+ with React Router 7+ for client-side routing
 - **Styling**: TailwindCSS with Headless UI components
 - **State Management**: TanStack Query (React Query)
@@ -105,7 +105,11 @@ yarn workspace @maintainerr/contracts build
 
 - **ESLint**: Strict TypeScript rules across all packages
 - **Prettier**: Consistent formatting (run `yarn format`)
-- **Commits**: Follow [Conventional Commits](https://conventionalcommits.org/) specification
+- **Commits**: Follow [Conventional Commits](https://conventionalcommits.org/) specification. Commit types map to releases via semantic-release:
+  - `feat:` → minor release
+  - `fix:`, `perf:` → patch release
+  - `refactor:`, `chore:`, `docs:`, `style:`, `test:` → no release
+  - `BREAKING CHANGE` footer or `!` (e.g. `feat!:`) → major release
 - **Import Organization**: Prefer absolute imports, group by type (external, internal, relative)
 - **String Handling**: Avoid regex for simple prefix/suffix/substring checks or single-character trimming. Prefer string primitives such as `endsWith`, `startsWith`, `slice`, `substring`, or direct character inspection to reduce unnecessary regex risk; see [OWASP ReDoS guidance](https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS). Example: `fix: avoid regex backtracking in disk path normalization (#2526)`.
 
@@ -237,15 +241,15 @@ These specifications provide comprehensive type definitions and endpoint documen
 
 ### Frontend Testing
 
-- Testing infrastructure exists but keep tests focused on critical user flows
-- Use React Testing Library patterns when adding tests
+- **Test Runner**: Vitest with React Testing Library
+- Keep tests focused on critical user flows
 
 ## Development Notes
 
 ### Environment Setup
 
 - **Node.js**: Version 20.19.0+ or 22.12.0+
-- **Package Manager**: Yarn 4.5.1 (managed via corepack)
+- **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 
 ### Key Configuration Files
@@ -275,10 +279,4 @@ Before contributing:
 5. Format code: `yarn format`
 6. Use conventional commit messages
 
-When suggesting code changes:
-
-- Maintain consistency with existing patterns
-- Consider performance and maintainability
-- Update relevant documentation
-- Add appropriate error handling
-- Follow TypeScript best practices
+**Before suggesting or writing any code, you must read and follow `.github/instructions/implementation.instructions.md`.**

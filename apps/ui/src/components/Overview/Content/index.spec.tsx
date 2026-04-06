@@ -71,11 +71,42 @@ describe('OverviewContent', () => {
     )
 
     expect(screen.getByText('Item One')).toBeTruthy()
-    expect(
-      screen.getByRole('status', { name: 'Loading more items' }),
-    ).toBeTruthy()
+    const loadingMoreStatus = screen.getByRole('status', {
+      name: 'Loading more items',
+    })
+
+    expect(loadingMoreStatus).toBeTruthy()
+    expect(loadingMoreStatus.parentElement?.style.overflowAnchor).toBe('none')
     expect(screen.getByTestId('small-loading-spinner')).toBeTruthy()
     expect(screen.queryByTestId('loading-spinner')).toBeNull()
+  })
+
+  it('renders the append spinner as the next grid item', () => {
+    const { container } = render(
+      <OverviewContent
+        data={[
+          {
+            id: '1',
+            title: 'Item One',
+            type: 'movie',
+          } as any,
+        ]}
+        dataFinished={false}
+        loading={false}
+        extrasLoading={true}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    const grid = container.querySelector('ul.cards-vertical')
+    const loadingMoreStatus = screen.getByRole('status', {
+      name: 'Loading more items',
+    })
+
+    expect(grid).toBeTruthy()
+    expect(loadingMoreStatus.closest('ul')).toBe(grid)
+    expect(loadingMoreStatus.parentElement?.tagName).toBe('LI')
   })
 
   it('does not render a second grid spinner while a sort or refresh request is replacing visible data', () => {

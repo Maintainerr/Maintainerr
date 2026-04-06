@@ -73,6 +73,50 @@ describe('PlexApiService.getMetadata', () => {
     });
   });
 
+  it('returns an HTTP request failure for 400 batch add responses', async () => {
+    const putQuery = jest.fn().mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 400,
+        statusText: 'Bad Request',
+        data: { error: 'duplicate items' },
+      },
+    });
+
+    (service as any).machineId = 'machine123';
+    (service as any).plexClient = { putQuery };
+
+    const result = await service.addChildrenToCollection('55', ['1', '2']);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'NOK',
+        code: 400,
+        message:
+          'Plex request failed with 400 Bad Request. Response body: {"error":"duplicate items"}',
+      }),
+    );
+  });
+
+  it('keeps network failures distinct from HTTP request failures', async () => {
+    const putQuery = jest
+      .fn()
+      .mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:32400'));
+
+    (service as any).machineId = 'machine123';
+    (service as any).plexClient = { putQuery };
+
+    const result = await service.addChildrenToCollection('55', ['1']);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'NOK',
+        code: 0,
+        message: 'connect ECONNREFUSED 127.0.0.1:32400',
+      }),
+    );
+  });
+
   it('extracts plex avatar uuids without regex when correcting users', async () => {
     jest.spyOn(service, 'getUsers').mockResolvedValue([
       {
@@ -116,5 +160,13 @@ describe('PlexApiService.getMetadata', () => {
         username: 'owner',
       },
     ]);
+  });
+
+  it('throws when auth validation is attempted without a token', async () => {
+    settingsService.plex_auth_token = null as any;
+
+    await expect(service.validateAuthToken()).rejects.toThrow(
+      'Plex auth token is required for validation',
+    );
   });
 });

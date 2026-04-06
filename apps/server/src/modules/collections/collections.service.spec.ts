@@ -1,6 +1,7 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { DataSource, Repository } from 'typeorm';
+import { MediaServerType } from '@maintainerr/contracts';
 import {
   createCollection,
   createCollectionMedia,
@@ -9,6 +10,9 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MetadataService } from '../metadata/metadata.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
+import { SettingsService } from '../settings/settings.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
@@ -20,7 +24,10 @@ describe('CollectionsService', () => {
   let dataSource: Mocked<DataSource>;
   let collectionRepo: Mocked<Repository<Collection>>;
   let collectionMediaRepo: Mocked<Repository<CollectionMedia>>;
+  let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
+  let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
+  let settingsService: Mocked<SettingsService>;
   let tmdbIdService: {
     getTmdbIdFromMediaServerId: jest.Mock;
   };
@@ -36,7 +43,10 @@ describe('CollectionsService', () => {
     collectionMediaRepo = unitRef.get(
       getRepositoryToken(CollectionMedia) as string,
     );
+    ruleGroupRepo = unitRef.get(getRepositoryToken(RuleGroup) as string);
+    exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
+    settingsService = unitRef.get(SettingsService);
     tmdbIdService = {
       getTmdbIdFromMediaServerId: jest.fn(),
     };
@@ -62,6 +72,7 @@ describe('CollectionsService', () => {
         .fn()
         .mockResolvedValue({ id: 'remote-collection' }),
       addBatchToCollection: jest.fn().mockResolvedValue([]),
+      getCollection: jest.fn().mockResolvedValue(undefined),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
@@ -69,6 +80,7 @@ describe('CollectionsService', () => {
     } as unknown as Mocked<IMediaServerService>;
 
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
+    settingsService.media_server_type = MediaServerType.PLEX;
     jest
       .spyOn(service, 'updateCollectionTotalSize')
       .mockResolvedValue(undefined);
@@ -100,6 +112,28 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('trusts Plex metadata childCount before stale child enumeration when checking automatic links', async () => {
+    const collection = createCollection({
+      id: 9,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Plex Collection',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Plex Collection',
+      childCount: 311,
+    } as any);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
   });
 
   it('rolls back a remote add when local bookkeeping fails', async () => {
@@ -364,6 +398,136 @@ describe('CollectionsService', () => {
     });
   });
 
+  it('uses the sortable entity count for sorted collection media totals', async () => {
+    const collection = createCollection({
+      id: 8,
+      mediaServerId: 'remote-collection',
+      type: 'episode',
+    });
+    const firstEntity = createCollectionMedia(collection, {
+      mediaServerId: 'episode-1',
+    });
+    const secondEntity = createCollectionMedia(collection, {
+      mediaServerId: 'episode-2',
+    });
+    const missingEntity = createCollectionMedia(collection, {
+      mediaServerId: 'episode-missing',
+    });
+    const entities = [firstEntity, secondEntity, missingEntity];
+    const metadataByMediaServerId = new Map([
+      ['episode-1', createMediaItem({ id: 'episode-1', title: 'Zulu' })],
+      ['episode-2', createMediaItem({ id: 'episode-2', title: 'Alpha' })],
+    ]);
+    const hydratedPage = [
+      {
+        ...secondEntity,
+        mediaData: metadataByMediaServerId.get('episode-2')!,
+      },
+      {
+        ...firstEntity,
+        mediaData: metadataByMediaServerId.get('episode-1')!,
+      },
+    ];
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(entities.length),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+    };
+
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+
+    jest
+      .spyOn(service as any, 'getCollectionMediaMetadata')
+      .mockResolvedValue(metadataByMediaServerId);
+    jest
+      .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+      .mockResolvedValue(hydratedPage);
+
+    const result = await (
+      service as any
+    ).getCollectionMediaWithServerDataAndPaging(collection.id, {
+      size: 2,
+      sort: 'title',
+      sortOrder: 'asc',
+    });
+
+    expect(result).toEqual({
+      totalSize: 2,
+      items: hydratedPage,
+    });
+  });
+
+  it('uses hydrated exclusion count for sorted exclusion totals', async () => {
+    const exclusions = [
+      {
+        id: 1,
+        mediaServerId: 'show-1',
+        ruleGroupId: 10,
+        type: 'show',
+        mediaData: createMediaItem({ id: 'show-1', title: 'Zulu' }),
+      },
+      {
+        id: 2,
+        mediaServerId: 'show-2',
+        ruleGroupId: null,
+        type: 'show',
+        mediaData: createMediaItem({ id: 'show-2', title: 'Alpha' }),
+      },
+    ] as Exclusion[];
+    const allEntities = [
+      { id: 1, mediaServerId: 'show-1', ruleGroupId: 10, type: 'show' },
+      { id: 2, mediaServerId: 'show-2', ruleGroupId: null, type: 'show' },
+      {
+        id: 3,
+        mediaServerId: 'show-missing',
+        ruleGroupId: 10,
+        type: 'show',
+      },
+    ] as Exclusion[];
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(allEntities.length),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities: allEntities }),
+    };
+
+    ruleGroupRepo.findOne.mockResolvedValue({
+      id: 10,
+      dataType: 'show',
+    } as RuleGroup);
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    exclusionRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+    jest
+      .spyOn(service as any, 'hydrateExclusionsWithMetadata')
+      .mockResolvedValue(exclusions);
+
+    const result = await service.getCollectionExclusionsWithServerDataAndPaging(
+      22,
+      {
+        size: 2,
+        sort: 'title',
+        sortOrder: 'asc',
+      },
+    );
+
+    expect(result?.totalSize).toBe(exclusions.length);
+    expect(result?.items.map((item) => item.mediaServerId)).toEqual([
+      'show-2',
+      'show-1',
+    ]);
+  });
+
   it('limits collection previews to two rows per collection for the list payload', async () => {
     const previewQueryBuilder = {
       select: jest.fn().mockReturnThis(),
@@ -383,6 +547,53 @@ describe('CollectionsService', () => {
       { previewLimit: 2 },
     );
     expect(result).toEqual(new Map());
+  });
+
+  it('returns full collection media for the explicit overlay data endpoint', async () => {
+    const firstCollection = createCollection({ id: 1, title: 'First' });
+    const secondCollection = createCollection({ id: 2, title: 'Second' });
+    const firstCollectionMedia = [
+      createCollectionMedia(firstCollection, { mediaServerId: 'item-1' }),
+      createCollectionMedia(firstCollection, { mediaServerId: 'item-2' }),
+    ];
+    const secondCollectionMedia = [
+      createCollectionMedia(secondCollection, { mediaServerId: 'item-3' }),
+    ];
+
+    collectionRepo.find.mockResolvedValue([
+      firstCollection as Collection,
+      secondCollection as Collection,
+    ]);
+    collectionMediaRepo.find.mockResolvedValue([
+      ...firstCollectionMedia,
+      ...secondCollectionMedia,
+    ]);
+
+    const result = await service.getCollectionsForOverlayData(
+      undefined,
+      undefined,
+    );
+
+    expect(collectionMediaRepo.find).toHaveBeenCalledWith({
+      where: { collectionId: expect.anything() },
+      order: {
+        collectionId: 'ASC',
+        addDate: 'DESC',
+        id: 'DESC',
+      },
+    });
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: firstCollection.id,
+        media: firstCollectionMedia,
+        mediaCount: firstCollectionMedia.length,
+      }),
+      expect.objectContaining({
+        id: secondCollection.id,
+        media: secondCollectionMedia,
+        mediaCount: secondCollectionMedia.length,
+      }),
+    ]);
   });
 
   it('enriches collection previews with fallback artwork when stored poster data is missing', async () => {

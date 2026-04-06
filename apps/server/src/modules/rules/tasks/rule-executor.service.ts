@@ -39,6 +39,27 @@ interface MediaDataPage {
   data: MediaItem[];
 }
 
+interface MediaServerSyncContext {
+  collection?: Collection;
+  skipManualChildImport?: boolean;
+}
+
+export type RuleExecutionResult =
+  | { status: 'success' }
+  | { status: 'failed'; failedPayload: RuleHandlerFailedDto }
+  | { status: 'aborted' }
+  | { status: 'skipped'; reason: 'not-found' | 'inactive' };
+
+class RuleExecutionFailure extends Error {
+  constructor(
+    public readonly payload: RuleHandlerFailedDto,
+    message?: string,
+  ) {
+    super(message ?? 'Rule execution failed');
+    this.name = RuleExecutionFailure.name;
+  }
+}
+
 @Injectable()
 export class RuleExecutorService {
   ruleConstants: RuleConstants;
@@ -70,25 +91,50 @@ export class RuleExecutorService {
     return this.mediaServerFactory.getService();
   }
 
+  private buildRuleHandlerFailedDto(
+    rulegroup?: Partial<Pick<RuleGroup, 'id' | 'name' | 'collectionId'>> & {
+      collection?: { title?: string } | null;
+    },
+    collectionName?: string,
+  ): RuleHandlerFailedDto {
+    return new RuleHandlerFailedDto(
+      collectionName ??
+        rulegroup?.collection?.title ??
+        rulegroup?.name ??
+        (rulegroup?.collectionId
+          ? `Unknown (collectionId: ${rulegroup.collectionId})`
+          : undefined),
+      rulegroup?.id
+        ? {
+            type: 'rulegroup',
+            value: rulegroup.id,
+          }
+        : undefined,
+    );
+  }
+
   public async executeForRuleGroups(
     ruleGroupId: number,
     abortSignal: AbortSignal,
-  ) {
+  ): Promise<RuleExecutionResult> {
     const ruleGroup = await this.rulesService.getRuleGroup(ruleGroupId);
 
     if (!ruleGroup) {
       this.logger.warn(
         `Rule group ${ruleGroupId} not found. Skipping rule execution.`,
       );
-      return;
+      return { status: 'skipped', reason: 'not-found' };
     }
 
     if (!ruleGroup.isActive) {
       this.logger.log(
         `Rule group '${ruleGroup.name}' is not active. Skipping rule execution.`,
       );
-      return;
+      return { status: 'skipped', reason: 'inactive' };
     }
+
+    let failedPayload: RuleHandlerFailedDto | undefined;
+    let result: RuleExecutionResult = { status: 'success' };
 
     try {
       abortSignal.throwIfAborted();
@@ -108,8 +154,9 @@ export class RuleExecutorService {
           `Rule group '${ruleGroup.name}' has no library assigned. ` +
             `Please edit the rule group and select a library before running.`,
         );
-        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
-        return;
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(ruleGroup, ruleGroup.name),
+        );
       }
 
       const appStatus = await this.settings.testConnections();
@@ -193,28 +240,49 @@ export class RuleExecutorService {
           'Not all applications are reachable.. Skipped rule execution.',
         );
 
-        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(ruleGroup),
+        );
       }
     } catch (error) {
       const executionBeingAborted =
         error instanceof DOMException && error.name === 'AbortError';
 
       if (!executionBeingAborted) {
-        this.logger.error('Error running rules executor.');
-        this.logger.debug(error);
-        this.eventEmitter.emit(MaintainerrEvent.RuleHandler_Failed);
+        if (error instanceof RuleExecutionFailure) {
+          failedPayload = error.payload;
+          result = { status: 'failed', failedPayload: error.payload };
+        } else {
+          this.logger.error('Error running rules executor.');
+          this.logger.debug(error);
+          failedPayload = this.buildRuleHandlerFailedDto(ruleGroup);
+          result = { status: 'failed', failedPayload };
+        }
       } else {
         this.logger.log(`Execution of rule '${ruleGroup.name}' was aborted.`);
+        result = { status: 'aborted' };
       }
+    } finally {
+      this.progressManager.reset();
+
+      if (failedPayload) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.RuleHandler_Failed,
+          failedPayload,
+        );
+      }
+
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandler_Finished,
+        new RuleHandlerFinishedEventDto(
+          failedPayload
+            ? `Finished execution of rule '${ruleGroup.name}' with errors.`
+            : `Finished execution of rule '${ruleGroup.name}'`,
+        ),
+      );
     }
 
-    this.progressManager.reset();
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandler_Finished,
-      new RuleHandlerFinishedEventDto(
-        `Finished execution of rule '${ruleGroup.name}'`,
-      ),
-    );
+    return result;
   }
 
   private async syncManualMediaServerToCollectionDB(
@@ -222,7 +290,8 @@ export class RuleExecutorService {
     touchedMediaServerIds: Set<string>,
   ) {
     if (rulegroup && rulegroup.collectionId) {
-      const collection = await this.getCollectionForMediaServerSync(rulegroup);
+      const syncContext = await this.getCollectionForMediaServerSync(rulegroup);
+      const collection = syncContext.collection;
 
       if (collection) {
         const collectionMedia = await this.collectionService.getCollectionMedia(
@@ -236,10 +305,21 @@ export class RuleExecutorService {
         }
 
         // Handle manually added
-        if (children && children.length > 0) {
+        if (syncContext.skipManualChildImport) {
+          this.logger.debug(
+            `Skipping manual child import for newly linked automatic collection '${collection.title}' to avoid marking existing collection contents as manual.`,
+          );
+        } else if (children && children.length > 0) {
           // Fetch exclusions to avoid re-adding excluded items as manual
           const exclusions = await this.rulesService.getExclusions(
             rulegroup.id,
+          );
+          const collectionMediaIds = new Set(
+            collectionMedia
+              .map((item) => item?.mediaServerId)
+              .filter((mediaServerId): mediaServerId is string =>
+                Boolean(mediaServerId),
+              ),
           );
           const excludedMediaServerIds = new Set<string>(
             exclusions.map((e) => e.mediaServerId),
@@ -247,6 +327,7 @@ export class RuleExecutorService {
           const excludedParentIds = new Set<string>(
             exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
           );
+          const missingManualChildren: AddRemoveCollectionMedia[] = [];
 
           for (const child of children) {
             if (child && child.id) {
@@ -269,25 +350,24 @@ export class RuleExecutorService {
                 continue;
               }
 
-              if (
-                !collectionMedia.find((e) => {
-                  return e.mediaServerId === childId;
-                })
-              ) {
-                await this.collectionService.addToCollection(
-                  collection.id,
-                  [
-                    {
-                      mediaServerId: childId,
-                      reason: {
-                        type: 'media_added_manually',
-                      },
-                    },
-                  ],
-                  true,
-                );
+              if (!collectionMediaIds.has(childId)) {
+                collectionMediaIds.add(childId);
+                missingManualChildren.push({
+                  mediaServerId: childId,
+                  reason: {
+                    type: 'media_added_manually',
+                  },
+                });
               }
             }
+          }
+
+          if (missingManualChildren.length > 0) {
+            await this.collectionService.syncMediaServerChildrenToCollection(
+              collection,
+              missingManualChildren,
+              true,
+            );
           }
         }
 
@@ -346,21 +426,25 @@ export class RuleExecutorService {
 
   private async getCollectionForMediaServerSync(
     rulegroup: RuleGroup,
-  ): Promise<Collection | undefined> {
+  ): Promise<MediaServerSyncContext> {
     const collection = await this.collectionService.getCollection(
       rulegroup.collectionId,
     );
 
     if (!collection) {
-      return undefined;
+      return {};
     }
 
     if (collection.manualCollection) {
       const relinkedCollection =
         await this.collectionService.relinkManualCollection(collection);
 
-      return relinkedCollection.mediaServerId ? relinkedCollection : undefined;
+      return relinkedCollection.mediaServerId
+        ? { collection: relinkedCollection }
+        : {};
     }
+
+    const wasLinkedBeforeSync = Boolean(collection.mediaServerId);
 
     const linkedCollection =
       await this.collectionService.checkAutomaticMediaServerLink(collection);
@@ -369,10 +453,13 @@ export class RuleExecutorService {
       this.logger.debug(
         `Skipping media server sync for '${linkedCollection.title}' — no media server collection exists because no items currently match the rule.`,
       );
-      return undefined;
+      return {};
     }
 
-    return linkedCollection;
+    return {
+      collection: linkedCollection,
+      skipManualChildImport: !wasLinkedBeforeSync,
+    };
   }
 
   private async getCollectionChildrenForSync(
@@ -649,36 +736,23 @@ export class RuleExecutorService {
           `collection not found with id ${rulegroup?.collectionId}`,
         );
 
-        this.eventEmitter.emit(
-          MaintainerrEvent.RuleHandler_Failed,
-          new RuleHandlerFailedDto(
-            `Unknown (collectionId: ${rulegroup?.collectionId})`,
-            {
-              type: 'rulegroup',
-              value: rulegroup?.id,
-            },
-          ),
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(rulegroup),
         );
-
-        return new Set<string>();
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
       }
 
+      if (error instanceof RuleExecutionFailure) {
+        throw error;
+      }
+
       this.logger.warn('Exception occurred while handling rule');
       this.logger.debug(error);
 
-      this.eventEmitter.emit(
-        MaintainerrEvent.RuleHandler_Failed,
-        new RuleHandlerFailedDto(rulegroup?.collection?.title, {
-          type: 'rulegroup',
-          value: rulegroup?.id,
-        }),
-      );
-
-      return new Set<string>();
+      throw new RuleExecutionFailure(this.buildRuleHandlerFailedDto(rulegroup));
     }
   }
 

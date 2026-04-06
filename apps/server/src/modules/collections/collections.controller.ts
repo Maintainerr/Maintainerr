@@ -2,11 +2,12 @@ import {
   CollectionMediaSortField,
   ECollectionLogType,
   MediaItemType,
+  MediaItemTypes,
   MediaLibrarySortField,
+  MediaSortOrder,
   collectionMediaSortFields,
   mediaLibrarySortFields,
   mediaSortOrders,
-  MediaSortOrder,
 } from '@maintainerr/contracts';
 import {
   Body,
@@ -21,6 +22,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -124,14 +126,42 @@ export class CollectionsController {
     @Query('libraryId') libraryId: string,
     @Query('typeId') typeId: MediaItemType,
   ) {
-    if (libraryId) {
-      return this.collectionService.getCollections(libraryId, undefined);
-    } else if (typeId) {
-      return this.collectionService.getCollections(undefined, typeId);
-    } else {
-      return this.collectionService.getCollections(undefined, undefined);
-    }
+    return this.collectionService.getCollections(
+      libraryId || undefined,
+      typeId || undefined,
+    );
   }
+
+  @Get('/overlay-data')
+  @ApiOperation({
+    summary: 'Get collections with full media membership for overlay consumers',
+  })
+  @ApiQuery({
+    name: 'libraryId',
+    required: false,
+    description: 'Filter collections by library id.',
+  })
+  @ApiQuery({
+    name: 'typeId',
+    required: false,
+    enum: MediaItemTypes,
+    description: 'Filter collections by media item type.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns collections with full media arrays for overlay and helper integrations.',
+  })
+  getCollectionsForOverlayData(
+    @Query('libraryId') libraryId: string,
+    @Query('typeId') typeId: MediaItemType,
+  ) {
+    return this.collectionService.getCollectionsForOverlayData(
+      libraryId || undefined,
+      typeId || undefined,
+    );
+  }
+
   @Get('/collection/:id')
   getCollection(@Param('id', ParseIntPipe) collectionId: number) {
     return this.collectionService.getCollection(collectionId);

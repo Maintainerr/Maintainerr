@@ -14,6 +14,7 @@ const AddModal = (props: IAddModal) => {
   const [loading, setLoading] = useState(true)
   const [alert, setAlert] = useState(false)
   const [forceRemovalcheck, setForceRemovalCheck] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [selectedAction, setSelectedAction] = useState<number>(0)
   // For show only
   const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
@@ -72,47 +73,59 @@ const AddModal = (props: IAddModal) => {
     props.onCancel()
   }
 
-  const handleOk = () => {
+  const handleOk = async () => {
+    if (submitting) return
     if (currentCollectionId !== undefined) {
+      setSubmitting(true)
       const mediaDto: IAlterableMediaDto = {
         id: selectedMediaId,
         type: selectedContext,
       }
 
-      if (props.modalType === 'add') {
-        PostApiHandler(`/collections/media/add`, {
-          mediaId: props.mediaServerId,
-          context: mediaDto,
-          collectionId: currentCollectionId,
-          action: selectedAction,
-        })
-      } else {
-        PostApiHandler('/rules/exclusion', {
-          mediaId: props.mediaServerId,
-          context: mediaDto,
-          collectionId:
-            currentCollectionId !== -1 ? currentCollectionId : undefined,
-          action: selectedAction,
-        })
-      }
+      try {
+        if (props.modalType === 'add') {
+          await PostApiHandler(`/collections/media/add`, {
+            mediaId: props.mediaServerId,
+            context: mediaDto,
+            collectionId: currentCollectionId,
+            action: selectedAction,
+          })
+        } else {
+          await PostApiHandler('/rules/exclusion', {
+            mediaId: props.mediaServerId,
+            context: mediaDto,
+            collectionId:
+              currentCollectionId !== -1 ? currentCollectionId : undefined,
+            action: selectedAction,
+          })
+        }
 
-      props.onSubmit()
+        props.onSubmit()
+      } catch {
+        setSubmitting(false)
+      }
     } else {
       setAlert(true)
     }
   }
 
-  const handleForceRemoval = () => {
+  const handleForceRemoval = async () => {
+    if (submitting) return
+    setSubmitting(true)
     setForceRemovalCheck(false)
-    if (props.modalType === 'add') {
-      PostApiHandler(`/collections/media/add`, {
-        mediaId: props.mediaServerId,
-        context: { id: -1, type: props.type },
-        collectionId: undefined,
-        action: 1,
-      })
+    try {
+      if (props.modalType === 'add') {
+        await PostApiHandler(`/collections/media/add`, {
+          mediaId: props.mediaServerId,
+          context: { id: -1, type: props.type },
+          collectionId: undefined,
+          action: 1,
+        })
+      }
+      props.onSubmit()
+    } catch {
+      setSubmitting(false)
     }
-    props.onSubmit()
   }
 
   useEffect(() => {
@@ -206,8 +219,13 @@ const AddModal = (props: IAddModal) => {
           props.modalType === 'add' ? 'Add / Remove Media' : 'Exclude Media'
         }
         footerActions={
-          <Button buttonType="primary" className="ml-3" onClick={handleOk}>
-            Submit
+          <Button
+            buttonType="primary"
+            className="ml-3"
+            disabled={submitting}
+            onClick={handleOk}
+          >
+            {submitting ? 'Submitting...' : 'Submit'}
           </Button>
         }
         iconSvg={''}

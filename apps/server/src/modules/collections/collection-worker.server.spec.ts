@@ -1,11 +1,14 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Mocked, TestBed } from '@suites/unit';
 import { Repository } from 'typeorm';
+import { MaintainerrEvent } from '@maintainerr/contracts';
 import {
   createCollection,
   createCollectionMedia,
 } from '../../../test/utils/data';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -26,6 +29,8 @@ describe('CollectionWorkerService', () => {
   let seerrApi: Mocked<SeerrApiService>;
   let collectionHandler: Mocked<CollectionHandler>;
   let executionLock: Mocked<ExecutionLockService>;
+  let eventEmitter: Mocked<EventEmitter2>;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
@@ -44,8 +49,11 @@ describe('CollectionWorkerService', () => {
     seerrApi = unitRef.get(SeerrApiService);
     collectionHandler = unitRef.get(CollectionHandler);
     executionLock = unitRef.get(ExecutionLockService);
+    eventEmitter = unitRef.get(EventEmitter2);
+    logger = unitRef.get(MaintainerrLogger);
 
     executionLock.acquire.mockResolvedValue(jest.fn());
+    eventEmitter.emit.mockImplementation();
   });
 
   it('should abort if another instance is running', async () => {
@@ -63,6 +71,17 @@ describe('CollectionWorkerService', () => {
 
     expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionRepository.find).not.toHaveBeenCalled();
+
+    const failedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === MaintainerrEvent.CollectionHandler_Failed,
+    );
+    const finishedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) =>
+        eventName === MaintainerrEvent.CollectionHandler_Finished,
+    );
+
+    expect(failedEvents).toHaveLength(1);
+    expect(finishedEvents).toHaveLength(1);
   });
 
   it('should not handle media for Do Nothing collections', async () => {
@@ -100,5 +119,52 @@ describe('CollectionWorkerService', () => {
     expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
+  });
+
+  it('should not emit collection progress when no media exceeds the delete threshold', async () => {
+    settings.testConnections.mockResolvedValue(true);
+
+    const firstCollection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+      title: 'Sonarr + Seerr',
+    });
+    const secondCollection = createCollection({
+      id: 2,
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+      title: 'Radarr + Seerr',
+    });
+
+    collectionRepository.find.mockResolvedValue([
+      firstCollection,
+      secondCollection,
+    ]);
+    collectionMediaRepository.find.mockResolvedValue([]);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Progressed,
+      expect.anything(),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Started,
+      expect.anything(),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Finished,
+      expect.anything(),
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping collection 'Sonarr + Seerr' because no media is due for handling",
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping collection 'Radarr + Seerr' because no media is due for handling",
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'Collection handler summary: 2 total (isActive), 0 skipped (Do Nothing), 2 skipped (no due media), 0 queued for handling',
+    );
   });
 });

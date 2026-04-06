@@ -323,13 +323,13 @@ export class JellyfinGetterService {
           return prop.name === 'watchlist_isWatchlisted' ? false : [];
         }
 
-        // Rating properties - Jellyfin provides CommunityRating and CriticRating
-        // CommunityRating is typically from TMDB (0-10 scale)
-        // CriticRating is typically from Rotten Tomatoes (0-100 scale, stored as 0-10 after mapping)
+        // Rating properties - Jellyfin provides CommunityRating and CriticRating.
+        // CommunityRating is provider-dependent and is not guaranteed to be IMDb-specific.
+        // CriticRating is typically from Rotten Tomatoes (0-100 scale, stored as 0-10 after mapping).
         case 'rating_imdb':
         case 'rating_tmdb': {
-          // Both IMDb and TMDB typically use similar community ratings
-          // Jellyfin's CommunityRating is usually sourced from TMDB
+          // Both rules fall back to Jellyfin CommunityRating because the API does not
+          // expose a dedicated IMDb numeric rating field in the published SDK/OpenAPI model.
           const communityRating = metadata.ratings?.find(
             (r) => r.source === 'community',
           );

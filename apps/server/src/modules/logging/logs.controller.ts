@@ -314,7 +314,7 @@ export class LogsController implements BeforeApplicationShutdown {
     const message = payload?.message || 'Client error';
     const context = payload?.context || 'UI';
     const logClientEvent =
-      context === 'EventsProvider.stream'
+      context === 'EventsProvider.stream' || context === 'Settings.Logs.stream'
         ? this.logger.debug.bind(this.logger)
         : this.logger.error.bind(this.logger);
 

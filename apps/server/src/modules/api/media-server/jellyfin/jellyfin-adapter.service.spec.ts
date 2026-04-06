@@ -1,16 +1,21 @@
 import { getCollectionApi } from '@jellyfin/sdk/lib/utils/api/index.js';
 import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
+import { AxiosError } from 'axios';
+import { delay } from '../../../../utils/delay';
+import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
 import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 
 const jellyfinApiMocks = {
   getPublicSystemInfo: jest.fn(),
+  getMediaFolders: jest.fn(),
   getUsers: jest.fn(),
   getUserById: jest.fn(),
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
+  getItem: jest.fn(),
   getItemUserData: jest.fn(),
   refreshItem: jest.fn(),
 };
@@ -92,10 +97,16 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getItemUserData: (...args: unknown[]) =>
       jellyfinApiMocks.getItemUserData(...args),
   })),
-  getLibraryApi: jest.fn(),
+  getLibraryApi: jest.fn().mockImplementation(() => ({
+    getMediaFolders: (...args: unknown[]) =>
+      jellyfinApiMocks.getMediaFolders(...args),
+  })),
   getUserApi: jest.fn().mockImplementation(() => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
     getUserById: (...args: unknown[]) => jellyfinApiMocks.getUserById(...args),
+  })),
+  getUserLibraryApi: jest.fn().mockImplementation(() => ({
+    getItem: (...args: unknown[]) => jellyfinApiMocks.getItem(...args),
   })),
   getCollectionApi: jest.fn().mockImplementation(() => ({
     createCollection: (...args: unknown[]) =>
@@ -111,6 +122,11 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getSearchApi: jest.fn(),
   getPlaylistsApi: jest.fn(),
   getUserViewsApi: jest.fn(),
+}));
+
+jest.mock('../../../../utils/delay', () => ({
+  __esModule: true,
+  delay: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Mock the cacheManager module
@@ -135,6 +151,7 @@ jest.mock('../../lib/cache', () => ({
 describe('JellyfinAdapterService', () => {
   let service: JellyfinAdapterService;
   let settingsService: Mocked<SettingsService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   const mockSettings = {
     jellyfin_url: 'http://jellyfin.test:8096',
@@ -153,12 +170,14 @@ describe('JellyfinAdapterService', () => {
         OperatingSystem: 'Linux',
       },
     });
+    jellyfinApiMocks.getMediaFolders.mockResolvedValue({ data: { Items: [] } });
     jellyfinApiMocks.getUsers.mockResolvedValue({ data: [] });
     jellyfinApiMocks.getUserById.mockResolvedValue({ data: undefined });
     jellyfinApiMocks.getConfiguration.mockResolvedValue({
       data: { MaxResumePct: 90 },
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+    jellyfinApiMocks.getItem.mockResolvedValue({ data: undefined });
     jellyfinApiMocks.refreshItem.mockResolvedValue(undefined);
     collectionApiMocks.createCollection.mockResolvedValue({
       data: { Id: 'collection-1' },
@@ -176,7 +195,28 @@ describe('JellyfinAdapterService', () => {
 
     service = unit;
     settingsService = unitRef.get(SettingsService);
+    logger = unitRef.get(MaintainerrLogger);
   });
+
+  const createRetryableError = (code: string): AxiosError => {
+    const error = new AxiosError(`temporary failure (${code})`);
+    error.code = code;
+    return error;
+  };
+
+  const createResponseError = (status: number): AxiosError => {
+    const error = new AxiosError(`request failed with status ${status}`);
+    Object.assign(error, {
+      response: {
+        status,
+        statusText: status === 401 ? 'Unauthorized' : 'Bad Gateway',
+        data: {},
+        headers: {},
+        config: {},
+      },
+    });
+    return error;
+  };
 
   describe('lifecycle', () => {
     it('should not be setup initially', () => {
@@ -195,6 +235,23 @@ describe('JellyfinAdapterService', () => {
       );
       await service.initialize();
       expect(service.isSetup()).toBe(true);
+    });
+
+    it('logs successful test connections at debug level', async () => {
+      await expect(
+        service.testConnection('http://jellyfin.test:8096', 'test-api-key'),
+      ).resolves.toMatchObject({
+        success: true,
+        serverName: 'Test Server',
+        version: '10.11.0',
+      });
+
+      expect(logger.debug).toHaveBeenCalledWith(
+        'Jellyfin connection test successful: Test Server (10.11.0)',
+      );
+      expect(logger.log).not.toHaveBeenCalledWith(
+        'Jellyfin connection test successful: Test Server (10.11.0)',
+      );
     });
 
     it('should throw error when settings are missing', async () => {
@@ -356,6 +413,91 @@ describe('JellyfinAdapterService', () => {
         2,
         expect.objectContaining({ userId: undefined, startIndex: 10 }),
       );
+    });
+
+    it('retries once after a transient library-content failure', async () => {
+      jellyfinApiMocks.getItems
+        .mockRejectedValueOnce(createRetryableError('EAI_AGAIN'))
+        .mockResolvedValueOnce({
+          data: {
+            Items: [],
+            TotalRecordCount: 0,
+          },
+        });
+
+      const result = await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+      });
+
+      expect(delay).toHaveBeenCalledWith(300);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Transient Jellyfin failure during get Jellyfin library contents for library-1; retrying once in 300ms',
+      );
+      expect(result).toEqual({
+        items: [],
+        totalSize: 0,
+        offset: 0,
+        limit: 30,
+      });
+    });
+
+    it('does not retry non-transient library-content failures', async () => {
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(createResponseError(401));
+
+      const result = await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+      });
+
+      expect(delay).not.toHaveBeenCalled();
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ items: [], totalSize: 0, offset: 0, limit: 50 });
+    });
+  });
+
+  describe('getLibraries', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('retries once after a transient libraries failure', async () => {
+      jellyfinApiMocks.getMediaFolders
+        .mockRejectedValueOnce(createRetryableError('ECONNRESET'))
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              {
+                Id: 'library-1',
+                Name: 'Movies',
+                CollectionType: 'movies',
+              },
+            ],
+          },
+        });
+
+      const result = await service.getLibraries();
+
+      expect(delay).toHaveBeenCalledWith(300);
+      expect(jellyfinApiMocks.getMediaFolders).toHaveBeenCalledTimes(2);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Transient Jellyfin failure during get Jellyfin libraries; retrying once in 300ms',
+      );
+      expect(result).toEqual([
+        {
+          id: 'library-1',
+          title: 'Movies',
+          type: 'movie',
+        },
+      ]);
     });
   });
 
@@ -760,6 +902,107 @@ describe('JellyfinAdapterService', () => {
         >,
       );
       await service.initialize();
+      logger.warn.mockClear();
+      logger.debug.mockClear();
+    });
+
+    it('treats missing Jellyfin collections as absent without warning noise', async () => {
+      const notFoundError = createResponseError(404);
+      notFoundError.message = 'Request failed with status code 404';
+      jellyfinApiMocks.getItem.mockRejectedValueOnce(notFoundError);
+
+      await expect(
+        service.getCollection('collection-1'),
+      ).resolves.toBeUndefined();
+
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'Failed to get collection collection-1',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(
+        'Jellyfin collection collection-1 not found; treating it as missing',
+      );
+      expect(logger.debug).not.toHaveBeenCalledWith(notFoundError);
+    });
+
+    it('still warns for unexpected Jellyfin collection lookup failures', async () => {
+      const serverError = createResponseError(502);
+      jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
+
+      await expect(
+        service.getCollection('collection-1'),
+      ).resolves.toBeUndefined();
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to get collection collection-1',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(serverError);
+    });
+
+    it('retries once after a transient collection-children failure', async () => {
+      jellyfinApiMocks.getItems
+        .mockRejectedValueOnce(createRetryableError('ETIMEDOUT'))
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              {
+                Id: 'item-1',
+                Name: 'Movie One',
+                Type: 'Movie',
+                UserData: {},
+              },
+            ],
+          },
+        });
+
+      const result = await service.getCollectionChildren('collection-1');
+
+      expect(delay).toHaveBeenCalledWith(300);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Transient Jellyfin failure during get Jellyfin collection children for collection-1; retrying once in 300ms',
+      );
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: 'item-1',
+          title: 'Movie One',
+        }),
+      ]);
+    });
+
+    it('retries once after a transient recursive collection-children failure', async () => {
+      jellyfinApiMocks.getItems
+        .mockResolvedValueOnce({
+          data: {
+            Items: [],
+          },
+        })
+        .mockRejectedValueOnce(createRetryableError('ECONNRESET'))
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              {
+                Id: 'item-2',
+                Name: 'Series One',
+                Type: 'Series',
+                UserData: {},
+              },
+            ],
+          },
+        });
+
+      const result = await service.getCollectionChildren('collection-1');
+
+      expect(delay).toHaveBeenCalledWith(300);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(3);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Transient Jellyfin failure during get Jellyfin collection children recursively for collection-1; retrying once in 300ms',
+      );
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: 'item-2',
+          title: 'Series One',
+        }),
+      ]);
     });
 
     it('should create a collection without initial item ids', async () => {

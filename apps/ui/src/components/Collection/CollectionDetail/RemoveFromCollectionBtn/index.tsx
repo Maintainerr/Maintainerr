@@ -14,6 +14,7 @@ interface IRemoveFromCollectionBtn {
 const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setppopup] = useState<boolean>(false)
+  const [removing, setRemoving] = useState<boolean>(false)
 
   const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {
     e?.stopPropagation()
@@ -22,21 +23,31 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
     }
   }
 
-  const handle = (e?: React.MouseEvent<HTMLElement>) => {
+  const handle = async (e?: React.MouseEvent<HTMLElement>) => {
     e?.stopPropagation()
-    if (!props.exclusionId) {
-      DeleteApiHandler(
-        `/collections/media?mediaId=${props.mediaServerId}&collectionId=${props.collectionId}`,
-      )
-      PostApiHandler('/rules/exclusion', {
-        collectionId: props.collectionId,
-        mediaId: props.mediaServerId,
-        action: 0,
-      })
-    } else {
-      DeleteApiHandler(`/rules/exclusion/${props.exclusionId}`)
+    if (removing) return
+    setRemoving(true)
+
+    try {
+      if (!props.exclusionId) {
+        await Promise.all([
+          DeleteApiHandler(
+            `/collections/media?mediaId=${props.mediaServerId}&collectionId=${props.collectionId}`,
+          ),
+          PostApiHandler('/rules/exclusion', {
+            collectionId: props.collectionId,
+            mediaId: props.mediaServerId,
+            action: 0,
+          }),
+        ])
+      } else {
+        await DeleteApiHandler(`/rules/exclusion/${props.exclusionId}`)
+      }
+      props.onRemove()
+    } catch {
+      setRemoving(false)
+      setSure(false)
     }
-    props.onRemove()
   }
 
   return (
@@ -59,6 +70,7 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
           buttonType="primary"
           buttonSize="md"
           className="mb-1 mt-2 h-6 w-full text-zinc-200 shadow-md"
+          disabled={removing}
           onClick={(e) => {
             if (props.popup) {
               handlePopup(e)
@@ -67,7 +79,9 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
             }
           }}
         >
-          <p className="rules-button-text m-auto mr-2">{'Are you sure?'}</p>
+          <p className="rules-button-text m-auto mr-2">
+            {removing ? 'Removing...' : 'Are you sure?'}
+          </p>
         </Button>
       )}
 
@@ -76,8 +90,13 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
           title="Warning"
           onCancel={handlePopup}
           footerActions={
-            <Button buttonType="primary" className="ml-3" onClick={handle}>
-              Ok
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              disabled={removing}
+              onClick={handle}
+            >
+              {removing ? 'Removing...' : 'Ok'}
             </Button>
           }
         >

@@ -33,8 +33,10 @@ jobs:
         id: allowed
         if: inputs.enabled
         shell: bash
+        env:
+          EXPLICIT_ALLOWED: ${{ inputs.allowed }}
         run: |
-          explicit_allowed='${{ inputs.allowed }}'
+          explicit_allowed="$EXPLICIT_ALLOWED"
 
           if [ "$explicit_allowed" != '__CODEOWNERS__' ]; then
             echo "allowed_raw=$explicit_allowed" >> "$GITHUB_OUTPUT"
@@ -69,11 +71,12 @@ jobs:
       - name: Check actor
         if: inputs.enabled
         shell: bash
+        env:
+          ALLOWED_RAW: ${{ steps.allowed.outputs.allowed_raw }}
+          ACTOR: ${{ inputs.actor }}
+          SOURCE: ${{ inputs.source }}
         run: |
-          ALLOWED_RAW="${{ steps.allowed.outputs.allowed_raw }}"
           IFS=',' read -r -a ALLOWED <<< "$ALLOWED_RAW"
-          ACTOR="${{ inputs.actor }}"
-          SOURCE="${{ inputs.source }}"
 
           for user in "${ALLOWED[@]}"; do
             if [ "$ACTOR" == "$user" ]; then
