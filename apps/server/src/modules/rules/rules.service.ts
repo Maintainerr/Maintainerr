@@ -684,6 +684,11 @@ export class RulesService {
         },
       });
 
+      if (!exclcusion) {
+        this.logger.debug(`Exclusion with id ${id} not found, already removed`);
+        return this.createReturnStatus(true, 'Success');
+      }
+
       // add collection log record if needed
       if (exclcusion.ruleGroupId !== undefined) {
         const rulegroup = await this.ruleGroupRepository.findOne({
@@ -692,11 +697,13 @@ export class RulesService {
           },
         });
         // add collection log record
-        await this.collectionService.CollectionLogRecordForChild(
-          exclcusion.mediaServerId,
-          rulegroup.collectionId,
-          'include',
-        );
+        if (rulegroup) {
+          await this.collectionService.CollectionLogRecordForChild(
+            exclcusion.mediaServerId,
+            rulegroup.collectionId,
+            'include',
+          );
+        }
       }
 
       // do delete

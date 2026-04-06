@@ -117,11 +117,9 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
         collectionId={props.collection.id}
         extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
         onRemove={(id: string) =>
-          setTimeout(() => {
-            updateData((currentData) =>
-              currentData.filter((item) => item.id !== id),
-            )
-          }, 500)
+          updateData((currentData) =>
+            currentData.filter((item) => item.id !== id),
+          )
         }
       />
     </div>
