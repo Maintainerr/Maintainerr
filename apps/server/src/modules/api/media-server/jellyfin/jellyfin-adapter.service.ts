@@ -256,7 +256,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     const result = await this.verifyConnection(api);
 
     if (result.success) {
-      this.logger.log(
+      this.logger.debug(
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {
@@ -953,6 +953,13 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaCollection(response.data)
         : undefined;
     } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        this.logger.debug(
+          `Jellyfin collection ${collectionId} not found; treating it as missing`,
+        );
+        return undefined;
+      }
+
       this.logger.warn(`Failed to get collection ${collectionId}`);
       this.logger.debug(error);
       return undefined;

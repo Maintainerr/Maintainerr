@@ -15,6 +15,7 @@ const jellyfinApiMocks = {
   getUserById: jest.fn(),
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
+  getItem: jest.fn(),
   getItemUserData: jest.fn(),
   refreshItem: jest.fn(),
 };
@@ -104,6 +105,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
     getUserById: (...args: unknown[]) => jellyfinApiMocks.getUserById(...args),
   })),
+  getUserLibraryApi: jest.fn().mockImplementation(() => ({
+    getItem: (...args: unknown[]) => jellyfinApiMocks.getItem(...args),
+  })),
   getCollectionApi: jest.fn().mockImplementation(() => ({
     createCollection: (...args: unknown[]) =>
       collectionApiMocks.createCollection(...args),
@@ -173,6 +177,7 @@ describe('JellyfinAdapterService', () => {
       data: { MaxResumePct: 90 },
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+    jellyfinApiMocks.getItem.mockResolvedValue({ data: undefined });
     jellyfinApiMocks.refreshItem.mockResolvedValue(undefined);
     collectionApiMocks.createCollection.mockResolvedValue({
       data: { Id: 'collection-1' },
@@ -230,6 +235,23 @@ describe('JellyfinAdapterService', () => {
       );
       await service.initialize();
       expect(service.isSetup()).toBe(true);
+    });
+
+    it('logs successful test connections at debug level', async () => {
+      await expect(
+        service.testConnection('http://jellyfin.test:8096', 'test-api-key'),
+      ).resolves.toMatchObject({
+        success: true,
+        serverName: 'Test Server',
+        version: '10.11.0',
+      });
+
+      expect(logger.debug).toHaveBeenCalledWith(
+        'Jellyfin connection test successful: Test Server (10.11.0)',
+      );
+      expect(logger.log).not.toHaveBeenCalledWith(
+        'Jellyfin connection test successful: Test Server (10.11.0)',
+      );
     });
 
     it('should throw error when settings are missing', async () => {
@@ -880,6 +902,40 @@ describe('JellyfinAdapterService', () => {
         >,
       );
       await service.initialize();
+      logger.warn.mockClear();
+      logger.debug.mockClear();
+    });
+
+    it('treats missing Jellyfin collections as absent without warning noise', async () => {
+      const notFoundError = createResponseError(404);
+      notFoundError.message = 'Request failed with status code 404';
+      jellyfinApiMocks.getItem.mockRejectedValueOnce(notFoundError);
+
+      await expect(
+        service.getCollection('collection-1'),
+      ).resolves.toBeUndefined();
+
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'Failed to get collection collection-1',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(
+        'Jellyfin collection collection-1 not found; treating it as missing',
+      );
+      expect(logger.debug).not.toHaveBeenCalledWith(notFoundError);
+    });
+
+    it('still warns for unexpected Jellyfin collection lookup failures', async () => {
+      const serverError = createResponseError(502);
+      jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
+
+      await expect(
+        service.getCollection('collection-1'),
+      ).resolves.toBeUndefined();
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to get collection collection-1',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(serverError);
     });
 
     it('retries once after a transient collection-children failure', async () => {

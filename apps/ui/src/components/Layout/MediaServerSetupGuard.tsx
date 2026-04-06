@@ -1,19 +1,45 @@
-import { useCallback, useEffect } from 'react'
+import { MediaServerType } from '@maintainerr/contracts'
+import { useCallback } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
 import LoadingSpinner from '../Common/LoadingSpinner'
 
 export const bypassMediaServerSetupGuard =
-  import.meta.env.MODE === 'development'
+  import.meta.env.MODE === 'development' &&
+  import.meta.env.VITE_BYPASS_MEDIA_SERVER_SETUP_GUARD !== 'false'
 
 export const mediaServerSetupRequiredToastId = 'media-server-setup-required'
 
 export const mediaServerSetupRequiredMessage =
   'You need to set up the media server first.'
 
-export const isAllowedDuringMediaServerSetup = (pathname: string) => {
-  return pathname === '/settings' || pathname.startsWith('/settings/main')
+export const getMediaServerSetupRoute = (
+  mediaServerType?: MediaServerType | null,
+) => {
+  if (mediaServerType === MediaServerType.JELLYFIN) {
+    return '/settings/jellyfin'
+  }
+
+  if (mediaServerType === MediaServerType.PLEX) {
+    return '/settings/plex'
+  }
+
+  return '/settings/main'
+}
+
+export const isAllowedDuringMediaServerSetup = (
+  pathname: string,
+  mediaServerType?: MediaServerType | null,
+) => {
+  const setupRoute = getMediaServerSetupRoute(mediaServerType)
+
+  return (
+    pathname === '/settings' ||
+    pathname.startsWith('/settings/main') ||
+    pathname.startsWith('/settings/logs') ||
+    (setupRoute !== '/settings/main' && pathname.startsWith(setupRoute))
+  )
 }
 
 export const showMediaServerSetupRequiredToast = () => {
@@ -27,7 +53,7 @@ export const showMediaServerSetupRequiredToast = () => {
 }
 
 export const useMediaServerSetupNavigationGuard = () => {
-  const { isLoading, isNotConfigured } = useMediaServerType()
+  const { isLoading, isNotConfigured, mediaServerType } = useMediaServerType()
 
   const isRouteBlocked = useCallback(
     (pathname: string) => {
@@ -38,33 +64,26 @@ export const useMediaServerSetupNavigationGuard = () => {
       return (
         !isLoading &&
         isNotConfigured &&
-        !isAllowedDuringMediaServerSetup(pathname)
+        !isAllowedDuringMediaServerSetup(pathname, mediaServerType)
       )
     },
-    [isLoading, isNotConfigured],
+    [isLoading, isNotConfigured, mediaServerType],
   )
 
   return {
     isLoading,
     isNotConfigured,
+    mediaServerType,
     isRouteBlocked,
     showBlockedNavigationToast: showMediaServerSetupRequiredToast,
   }
 }
 
 const MediaServerSetupGuard = () => {
-  const { isLoading, isNotConfigured, showBlockedNavigationToast } =
+  const { isLoading, isNotConfigured, mediaServerType } =
     useMediaServerSetupNavigationGuard()
 
-  useEffect(() => {
-    if (bypassMediaServerSetupGuard) {
-      return
-    }
-
-    if (!isLoading && isNotConfigured) {
-      showBlockedNavigationToast()
-    }
-  }, [isLoading, isNotConfigured, showBlockedNavigationToast])
+  const setupRoute = getMediaServerSetupRoute(mediaServerType)
 
   if (bypassMediaServerSetupGuard) {
     return <Outlet />
@@ -75,7 +94,7 @@ const MediaServerSetupGuard = () => {
   }
 
   if (isNotConfigured) {
-    return <Navigate to="/settings/main" replace />
+    return <Navigate to={setupRoute} replace />
   }
 
   return <Outlet />

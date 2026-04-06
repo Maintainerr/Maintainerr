@@ -26,6 +26,7 @@ const MainSettings = () => {
     showUpdated,
     showUpdateError,
     showInfo,
+    showSuccess,
     showError,
     clear,
     clearError,
@@ -51,7 +52,10 @@ const MainSettings = () => {
         <SettingsFeedbackAlert feedback={feedback} />
 
         {showDownloadModal && (
-          <DatabaseBackupModal onClose={() => setShowDownloadModal(false)} />
+          <DatabaseBackupModal
+            onClose={() => setShowDownloadModal(false)}
+            onDownloaded={() => showSuccess('Database backup downloaded')}
+          />
         )}
 
         <div className="section">

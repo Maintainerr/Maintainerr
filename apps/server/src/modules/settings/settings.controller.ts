@@ -41,6 +41,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
@@ -52,6 +53,7 @@ import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsService } from './settings.service';
 
+@ApiTags('settings')
 @Controller('/api/settings')
 export class SettingsController {
   constructor(
@@ -396,8 +398,20 @@ export class SettingsController {
   }
 
   @Get('/test/plex')
+  @ApiOperation({ summary: 'Test Plex server connectivity' })
+  @ApiResponse({ status: 200, description: 'Plex connectivity test result' })
   testPlex() {
     return this.settingsService.testPlex();
+  }
+
+  @Get('/test/plex/auth')
+  @ApiOperation({ summary: 'Validate stored Plex authentication token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Plex auth token validation result',
+  })
+  testPlexAuth() {
+    return this.settingsService.testPlexAuthToken();
   }
 
   @Get('/plex/devices/servers')

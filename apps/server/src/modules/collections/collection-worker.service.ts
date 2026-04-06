@@ -59,26 +59,24 @@ export class CollectionWorkerService extends TaskBase {
 
     // Acquire shared lock to avoid overlap with rule execution
     const release = await this.executionLock.acquire('rules-collections-lock');
+    let failed = false;
 
     try {
       // Start actual task
       const appStatus = await this.settings.testConnections();
 
       if (!appStatus) {
+        failed = true;
         this.logger.log(
           'Not all applications are reachable.. Skipping collection handling',
         );
-        this.eventEmitter.emit(
-          MaintainerrEvent.CollectionHandler_Finished,
-          new CollectionHandlerFinishedEventDto('Finished collection handling'),
-        );
-
-        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
         return;
       }
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
+      let doNothingCollectionCount = 0;
+      let noDueMediaCollectionCount = 0;
 
       // loop over all active collections
       const collections = await this.collectionRepo.find({
@@ -87,6 +85,7 @@ export class CollectionWorkerService extends TaskBase {
 
       const collectionsToHandle = collections.filter((collection) => {
         if (collection.arrAction === ServarrAction.DO_NOTHING) {
+          doNothingCollectionCount++;
           this.logger.log(
             `Skipping collection '${collection.title}' as its action is 'Do Nothing'`,
           );
@@ -114,6 +113,10 @@ export class CollectionWorkerService extends TaskBase {
         });
 
         if (mediaToHandle.length === 0) {
+          noDueMediaCollectionCount++;
+          this.logger.debug(
+            `Skipping collection '${collection.title}' because no media is due for handling`,
+          );
           continue;
         }
 
@@ -122,6 +125,10 @@ export class CollectionWorkerService extends TaskBase {
           mediaToHandle,
         });
       }
+
+      this.logger.log(
+        `Collection handler summary: ${collections.length} total (isActive), ${doNothingCollectionCount} skipped (Do Nothing), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
+      );
 
       const totalMediaToHandle = collectionHandleMediaGroup.reduce(
         (acc, curr) => acc + curr.mediaToHandle.length,
@@ -234,12 +241,24 @@ export class CollectionWorkerService extends TaskBase {
         }
       }
       this.logger.log('Collection size cache updated');
+    } catch (error) {
+      failed = true;
+      this.logger.error('Collection handling failed');
+      this.logger.debug(error);
     } finally {
+      if (failed) {
+        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
+      }
+
       release();
 
       this.eventEmitter.emit(
         MaintainerrEvent.CollectionHandler_Finished,
-        new CollectionHandlerFinishedEventDto('Finished collection handling'),
+        new CollectionHandlerFinishedEventDto(
+          failed
+            ? 'Finished collection handling with errors'
+            : 'Finished collection handling',
+        ),
       );
     }
   }

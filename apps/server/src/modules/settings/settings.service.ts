@@ -981,7 +981,7 @@ export class SettingsService implements SettingDto {
 
       await this.init();
       this.logger.log('Settings updated');
-      await this.plexApi.initialize();
+      await this.mediaServerFactory.initialize();
       this.seerr.init();
       this.tautulli.init();
       this.internalApi.init();
@@ -1121,7 +1121,7 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  public async testPlex(): Promise<any> {
+  public async testPlex(): Promise<BasicResponseDto> {
     if (!this.plex_auth_token) {
       return {
         status: 'NOK',
@@ -1143,6 +1143,39 @@ export class SettingsService implements SettingDto {
         message: formatConnectionFailureMessage(
           error,
           'Failed to connect to Plex. Verify host and credentials.',
+        ),
+      };
+    }
+  }
+
+  public async testPlexAuthToken(): Promise<BasicResponseDto> {
+    if (!this.plex_auth_token) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: 'Authenticate with Plex before validating the connection.',
+      };
+    }
+
+    try {
+      const valid = await this.plexApi.validateAuthToken();
+
+      return valid
+        ? { status: 'OK', code: 1, message: 'Success' }
+        : {
+            status: 'NOK',
+            code: 0,
+            message:
+              'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+          };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Plex auth');
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Stored Plex credentials could not be validated. Re-authenticate with Plex.',
         ),
       };
     }

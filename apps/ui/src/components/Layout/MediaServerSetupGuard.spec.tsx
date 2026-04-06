@@ -59,13 +59,47 @@ describe('MediaServerSetupGuard', () => {
     expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
       '/settings/main',
     )
-    expect(toastError).toHaveBeenCalledWith(
-      'You need to set up the media server first.',
-      expect.any(Object),
-    )
+    expect(toastError).not.toHaveBeenCalled()
   })
 
-  it('skips the guard entirely in development mode', async () => {
+  it('renders the outlet when setup is complete', async () => {
+    vi.stubEnv('MODE', 'test')
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      isNotConfigured: false,
+    })
+
+    const { default: MediaServerSetupGuard } =
+      await import('./MediaServerSetupGuard')
+
+    render(<MediaServerSetupGuard />)
+
+    expect(screen.getByTestId('outlet')).toBeTruthy()
+    expect(screen.queryByTestId('navigate')).toBeNull()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('allows the logs page during setup', async () => {
+    const { isAllowedDuringMediaServerSetup } =
+      await import('./MediaServerSetupGuard')
+
+    expect(isAllowedDuringMediaServerSetup('/settings/logs')).toBe(true)
+    expect(isAllowedDuringMediaServerSetup('/settings/logs/live')).toBe(true)
+  })
+
+  it('allows the selected media server settings route during setup', async () => {
+    const { isAllowedDuringMediaServerSetup } =
+      await import('./MediaServerSetupGuard')
+
+    expect(
+      isAllowedDuringMediaServerSetup('/settings/jellyfin', 'jellyfin' as any),
+    ).toBe(true)
+    expect(
+      isAllowedDuringMediaServerSetup('/settings/plex', 'plex' as any),
+    ).toBe(true)
+  })
+
+  it('skips the guard entirely in development mode by default', async () => {
     vi.stubEnv('MODE', 'development')
     useMediaServerType.mockReturnValue({
       isLoading: false,
@@ -79,6 +113,25 @@ describe('MediaServerSetupGuard', () => {
 
     expect(screen.getByTestId('outlet')).toBeTruthy()
     expect(screen.queryByTestId('navigate')).toBeNull()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('keeps the guard active in development when the bypass env is disabled', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_BYPASS_MEDIA_SERVER_SETUP_GUARD', 'false')
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      isNotConfigured: true,
+    })
+
+    const { default: MediaServerSetupGuard } =
+      await import('./MediaServerSetupGuard')
+
+    render(<MediaServerSetupGuard />)
+
+    expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
+      '/settings/main',
+    )
     expect(toastError).not.toHaveBeenCalled()
   })
 })

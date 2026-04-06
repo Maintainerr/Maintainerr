@@ -21,6 +21,8 @@ describe('SettingsController', () => {
     updateSonarrSetting: jest.fn(),
     saveJellyfinSettings: jest.fn(),
     testJellyfin: jest.fn(),
+    testPlex: jest.fn(),
+    testPlexAuthToken: jest.fn(),
     removeJellyfinSettings: jest.fn(),
   } as unknown as jest.Mocked<SettingsService>;
 
@@ -216,5 +218,37 @@ describe('SettingsController', () => {
         },
       ),
     ).toThrow('Validation failed');
+  });
+
+  it('delegates Plex connectivity testing to the settings service', async () => {
+    settingsService.testPlex.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: '1.0.0',
+    });
+
+    await expect(controller.testPlex()).resolves.toEqual({
+      status: 'OK',
+      code: 1,
+      message: '1.0.0',
+    });
+
+    expect(settingsService.testPlex).toHaveBeenCalledTimes(1);
+  });
+
+  it('delegates Plex auth validation to the settings service', async () => {
+    settingsService.testPlexAuthToken.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    await expect(controller.testPlexAuth()).resolves.toEqual({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    expect(settingsService.testPlexAuthToken).toHaveBeenCalledTimes(1);
   });
 });
