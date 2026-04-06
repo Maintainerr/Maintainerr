@@ -13,7 +13,11 @@ export const mediaServerSetupRequiredMessage =
   'You need to set up the media server first.'
 
 export const isAllowedDuringMediaServerSetup = (pathname: string) => {
-  return pathname === '/settings' || pathname.startsWith('/settings/main')
+  return (
+    pathname === '/settings' ||
+    pathname.startsWith('/settings/main') ||
+    pathname.startsWith('/settings/logs')
+  )
 }
 
 export const showMediaServerSetupRequiredToast = () => {

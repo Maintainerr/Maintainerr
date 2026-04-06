@@ -65,6 +65,31 @@ describe('MediaServerSetupGuard', () => {
     )
   })
 
+  it('renders the outlet when setup is complete', async () => {
+    vi.stubEnv('MODE', 'test')
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      isNotConfigured: false,
+    })
+
+    const { default: MediaServerSetupGuard } =
+      await import('./MediaServerSetupGuard')
+
+    render(<MediaServerSetupGuard />)
+
+    expect(screen.getByTestId('outlet')).toBeTruthy()
+    expect(screen.queryByTestId('navigate')).toBeNull()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('allows the logs page during setup', async () => {
+    const { isAllowedDuringMediaServerSetup } =
+      await import('./MediaServerSetupGuard')
+
+    expect(isAllowedDuringMediaServerSetup('/settings/logs')).toBe(true)
+    expect(isAllowedDuringMediaServerSetup('/settings/logs/live')).toBe(true)
+  })
+
   it('skips the guard entirely in development mode', async () => {
     vi.stubEnv('MODE', 'development')
     useMediaServerType.mockReturnValue({

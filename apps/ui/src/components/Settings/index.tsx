@@ -7,6 +7,7 @@ import {
   useOutletContext,
 } from 'react-router-dom'
 import { useSettings, type UseSettingsResult } from '../../api/settings'
+import { hasCompletedMediaServerSetup } from '../../hooks/useMediaServerType'
 import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import {
@@ -171,9 +172,9 @@ const SettingsWrapper = () => {
     return baseRoutes
   }, [isLoading, mediaServerType])
 
-  const isMediaServerTypeSelected = Boolean(settings?.media_server_type)
+  const isMediaServerSetupComplete = hasCompletedMediaServerSetup(settings)
   const isSetupRestrictedRoute =
-    !bypassMediaServerSetupGuard && !isLoading && !isMediaServerTypeSelected
+    !bypassMediaServerSetupGuard && !isLoading && !isMediaServerSetupComplete
   const isAllowedRoute = isAllowedDuringMediaServerSetup(location.pathname)
 
   useEffect(() => {
@@ -214,7 +215,7 @@ const SettingsWrapper = () => {
     const routeIsDisabled = (route: SettingsRoute) => {
       return (
         !bypassMediaServerSetupGuard &&
-        !isMediaServerTypeSelected &&
+        !isMediaServerSetupComplete &&
         !isAllowedDuringMediaServerSetup(route.route)
       )
     }

@@ -23,7 +23,7 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../utils/ApiHandler'
 
-interface ISettings {
+export interface ISettings {
   id: number
   clientId: string
   applicationTitle: string
