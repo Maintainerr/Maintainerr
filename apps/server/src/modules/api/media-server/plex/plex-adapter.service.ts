@@ -384,6 +384,12 @@ export class PlexAdapterService implements IMediaServerService {
     itemIds: string[],
   ): Promise<string[]> {
     const failedItemIds: string[] = [];
+    const fallbackChunks: Array<{
+      chunkNumber: number;
+      chunkStart: number;
+      chunkSize: number;
+      itemIds: string[];
+    }> = [];
 
     for (
       let index = 0;
@@ -409,9 +415,12 @@ export class PlexAdapterService implements IMediaServerService {
         const chunkNumber =
           Math.floor(index / PLEX_BATCH_SIZE.COLLECTION_MUTATION) + 1;
 
-        this.logger.warn(
-          `Plex batch add failed for collection ${collectionId} on chunk ${chunkNumber} (${chunk.length} items starting at index ${index}). Falling back to per-item adds.${error instanceof Error ? ` ${error.message}` : ''}`,
-        );
+        fallbackChunks.push({
+          chunkNumber,
+          chunkStart: index,
+          chunkSize: chunk.length,
+          itemIds: chunk,
+        });
         this.logger.debug({
           collectionId,
           chunkNumber,
@@ -431,6 +440,17 @@ export class PlexAdapterService implements IMediaServerService {
           failedItemIds.push(itemId);
         }
       }
+    }
+
+    if (fallbackChunks.length > 0) {
+      const fallbackItemCount = fallbackChunks.reduce(
+        (total, chunk) => total + chunk.chunkSize,
+        0,
+      );
+
+      this.logger.warn(
+        `Plex batch add fell back to per-item adds for collection ${collectionId} on ${fallbackChunks.length} chunk(s) (${fallbackItemCount} item(s) total). ${failedItemIds.length} item(s) failed after fallback.`,
+      );
     }
 
     return failedItemIds;

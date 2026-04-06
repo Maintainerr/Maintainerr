@@ -256,7 +256,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     const result = await this.verifyConnection(api);
 
     if (result.success) {
-      this.logger.log(
+      this.logger.debug(
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {

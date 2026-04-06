@@ -232,6 +232,23 @@ describe('JellyfinAdapterService', () => {
       expect(service.isSetup()).toBe(true);
     });
 
+    it('logs successful test connections at debug level', async () => {
+      await expect(
+        service.testConnection('http://jellyfin.test:8096', 'test-api-key'),
+      ).resolves.toMatchObject({
+        success: true,
+        serverName: 'Test Server',
+        version: '10.11.0',
+      });
+
+      expect(logger.debug).toHaveBeenCalledWith(
+        'Jellyfin connection test successful: Test Server (10.11.0)',
+      );
+      expect(logger.log).not.toHaveBeenCalledWith(
+        'Jellyfin connection test successful: Test Server (10.11.0)',
+      );
+    });
+
     it('should throw error when settings are missing', async () => {
       settingsService.getSettings.mockResolvedValue(
         null as unknown as Awaited<ReturnType<SettingsService['getSettings']>>,

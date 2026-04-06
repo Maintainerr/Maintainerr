@@ -114,7 +114,7 @@ export class CollectionWorkerService extends TaskBase {
 
         if (mediaToHandle.length === 0) {
           noDueMediaCollectionCount++;
-          this.logger.log(
+          this.logger.debug(
             `Skipping collection '${collection.title}' because no media is due for handling`,
           );
           continue;

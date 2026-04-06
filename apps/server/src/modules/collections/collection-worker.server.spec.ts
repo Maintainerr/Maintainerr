@@ -157,10 +157,10 @@ describe('CollectionWorkerService', () => {
       MaintainerrEvent.CollectionHandler_Finished,
       expect.anything(),
     );
-    expect(logger.log).toHaveBeenCalledWith(
+    expect(logger.debug).toHaveBeenCalledWith(
       "Skipping collection 'Sonarr + Seerr' because no media is due for handling",
     );
-    expect(logger.log).toHaveBeenCalledWith(
+    expect(logger.debug).toHaveBeenCalledWith(
       "Skipping collection 'Radarr + Seerr' because no media is due for handling",
     );
     expect(logger.log).toHaveBeenCalledWith(
