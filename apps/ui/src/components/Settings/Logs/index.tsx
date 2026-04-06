@@ -132,10 +132,13 @@ const Logs = () => {
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
   const logsRef = useRef<HTMLDivElement>(null)
   const hasLoggedStreamError = useRef(false)
+  const isClosingStream = useRef(false)
+  const streamErrorTimeout = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     const MAX_LOG_LINES = 1000
     const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/logs/stream`)
+    isClosingStream.current = false
 
     const handleLog = (event: MessageEvent) => {
       try {
@@ -156,23 +159,45 @@ const Logs = () => {
     es.addEventListener('log', handleLog)
 
     es.onopen = () => {
+      if (streamErrorTimeout.current) {
+        clearTimeout(streamErrorTimeout.current)
+        streamErrorTimeout.current = undefined
+      }
+
       hasLoggedStreamError.current = false
     }
 
     es.onerror = (error) => {
-      if (hasLoggedStreamError.current) {
+      if (isClosingStream.current || hasLoggedStreamError.current) {
         return
       }
 
-      hasLoggedStreamError.current = true
-      void logClientError(
-        'Log stream connection failed',
-        error,
-        'Settings.Logs.stream',
-      )
+      if (streamErrorTimeout.current) {
+        return
+      }
+
+      streamErrorTimeout.current = setTimeout(() => {
+        streamErrorTimeout.current = undefined
+
+        if (isClosingStream.current || hasLoggedStreamError.current) {
+          return
+        }
+
+        hasLoggedStreamError.current = true
+        void logClientError(
+          'Log stream connection failed',
+          error,
+          'Settings.Logs.stream',
+        )
+      }, 5000)
     }
 
     return () => {
+      isClosingStream.current = true
+      if (streamErrorTimeout.current) {
+        clearTimeout(streamErrorTimeout.current)
+        streamErrorTimeout.current = undefined
+      }
       es.removeEventListener('log', handleLog)
       es.close()
       setLogLines([])
