@@ -911,7 +911,9 @@ describe('JellyfinAdapterService', () => {
       notFoundError.message = 'Request failed with status code 404';
       jellyfinApiMocks.getItem.mockRejectedValueOnce(notFoundError);
 
-      await expect(service.getCollection('collection-1')).resolves.toBeUndefined();
+      await expect(
+        service.getCollection('collection-1'),
+      ).resolves.toBeUndefined();
 
       expect(logger.warn).not.toHaveBeenCalledWith(
         'Failed to get collection collection-1',
@@ -926,7 +928,9 @@ describe('JellyfinAdapterService', () => {
       const serverError = createResponseError(502);
       jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
 
-      await expect(service.getCollection('collection-1')).resolves.toBeUndefined();
+      await expect(
+        service.getCollection('collection-1'),
+      ).resolves.toBeUndefined();
 
       expect(logger.warn).toHaveBeenCalledWith(
         'Failed to get collection collection-1',
