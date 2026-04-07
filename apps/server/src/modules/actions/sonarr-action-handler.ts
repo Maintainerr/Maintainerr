@@ -127,10 +127,10 @@ export class SonarrActionHandler {
           case 'episode':
             if (
               !(await sonarrApiClient.UnmonitorDeleteEpisodes(
-              sonarrMedia.id,
-              mediaData?.parentIndex,
-              [mediaData?.index],
-              true,
+                sonarrMedia.id,
+                mediaData?.parentIndex,
+                [mediaData?.index],
+                true,
               ))
             ) {
               return false;
@@ -142,9 +142,9 @@ export class SonarrActionHandler {
           default:
             if (
               !(await sonarrApiClient.deleteShow(
-              sonarrMedia.id,
-              true,
-              collection.listExclusions,
+                sonarrMedia.id,
+                true,
+                collection.listExclusions,
               ))
             ) {
               return false;
@@ -193,10 +193,10 @@ export class SonarrActionHandler {
           case 'episode':
             if (
               !(await sonarrApiClient.UnmonitorDeleteEpisodes(
-              sonarrMedia.id,
-              mediaData?.parentIndex,
-              [mediaData?.index],
-              false,
+                sonarrMedia.id,
+                mediaData?.parentIndex,
+                [mediaData?.index],
+                false,
               ))
             ) {
               return false;

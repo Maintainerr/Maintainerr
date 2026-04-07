@@ -56,9 +56,9 @@ export class RadarrActionHandler {
           case ServarrAction.UNMONITOR_DELETE_EXISTING:
             if (
               !(await radarrApiClient.deleteMovie(
-              radarrMedia.id,
-              true,
-              collection.listExclusions,
+                radarrMedia.id,
+                true,
+                collection.listExclusions,
               ))
             ) {
               return false;
@@ -70,8 +70,8 @@ export class RadarrActionHandler {
           case ServarrAction.UNMONITOR:
             if (
               !(await radarrApiClient.updateMovie(radarrMedia.id, {
-              monitored: false,
-              addImportExclusion: collection.listExclusions,
+                monitored: false,
+                addImportExclusion: collection.listExclusions,
               }))
             ) {
               return false;
@@ -83,9 +83,9 @@ export class RadarrActionHandler {
           case ServarrAction.UNMONITOR_DELETE_ALL:
             if (
               !(await radarrApiClient.updateMovie(radarrMedia.id, {
-              monitored: false,
-              deleteFiles: true,
-              addImportExclusion: collection.listExclusions,
+                monitored: false,
+                deleteFiles: true,
+                addImportExclusion: collection.listExclusions,
               }))
             ) {
               return false;

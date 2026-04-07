@@ -94,10 +94,7 @@ export class MediaServerFactory {
   ): Promise<IMediaServerService> {
     switch (serverType) {
       case MediaServerType.JELLYFIN:
-        return await this.ensureAdapterReady(
-          serverType,
-          this.jellyfinAdapter,
-        );
+        return await this.ensureAdapterReady(serverType, this.jellyfinAdapter);
 
       case MediaServerType.PLEX:
         return await this.ensureAdapterReady(serverType, this.plexAdapter);

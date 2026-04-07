@@ -176,8 +176,8 @@ export class SonarrApi extends ServarrApi<{
       for (const e of episodes) {
         if (
           !(await this.runPut(
-          `episode/${e.id}`,
-          JSON.stringify({ ...e, monitored: false }),
+            `episode/${e.id}`,
+            JSON.stringify({ ...e, monitored: false }),
           ))
         ) {
           return false;
@@ -248,7 +248,8 @@ export class SonarrApi extends ServarrApi<{
         for (const e of episodes) {
           if (typeof type === 'number') {
             if (e.seasonNumber === type) {
-              success = (await this.runDelete(`episodefile/${e.id}`)) && success;
+              success =
+                (await this.runDelete(`episodefile/${e.id}`)) && success;
             }
           } else {
             success = (await this.runDelete(`episodefile/${e.id}`)) && success;

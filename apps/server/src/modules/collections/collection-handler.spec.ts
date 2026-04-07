@@ -179,7 +179,9 @@ describe('CollectionHandler', () => {
     ).resolves.toBe(false);
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
-    expect(collectionsService.CollectionLogRecordForChild).not.toHaveBeenCalled();
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
     expect(collectionsService.saveCollection).not.toHaveBeenCalled();
   });
 
@@ -204,7 +206,9 @@ describe('CollectionHandler', () => {
     ).resolves.toBe(false);
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
-    expect(collectionsService.CollectionLogRecordForChild).not.toHaveBeenCalled();
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
     expect(collectionsService.saveCollection).not.toHaveBeenCalled();
   });
 
@@ -396,7 +400,9 @@ describe('CollectionHandler', () => {
     ).rejects.toThrow('seerr failed');
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
-    expect(collectionsService.CollectionLogRecordForChild).not.toHaveBeenCalled();
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
     expect(collectionsService.saveCollection).not.toHaveBeenCalled();
   });
 
