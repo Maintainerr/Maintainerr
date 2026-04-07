@@ -1,3 +1,51 @@
+# [3.4.0](https://github.com/maintainerr/Maintainerr/compare/v3.3.0...v3.4.0) (2026-04-07)
+
+
+### Bug Fixes
+
+* address review findings across server, UI, and CI/CD ([5af40ec](https://github.com/maintainerr/Maintainerr/commit/5af40ec1ab4acebfe9edd1489b79fe525263010f))
+* address tester feedback follow-up ([#2610](https://github.com/maintainerr/Maintainerr/issues/2610)) ([2648752](https://github.com/maintainerr/Maintainerr/commit/26487520c549c08f1897a9b1e59aababed0ec976))
+* align jellyfin rule migration semantics ([8e018b9](https://github.com/maintainerr/Maintainerr/commit/8e018b94bf2ed613f36665607b878cfce1838e93))
+* align settings feedback usage ([a10120e](https://github.com/maintainerr/Maintainerr/commit/a10120ef0e0898d60c8b0e4d6614dcb501716994))
+* avoid deprecated octokit error.code getter in error logger ([2c49443](https://github.com/maintainerr/Maintainerr/commit/2c49443b1d66803e95e58696b899b6286b4fb521))
+* batch plex collection mutations ([cade3af](https://github.com/maintainerr/Maintainerr/commit/cade3af7584b2d6a06199829e5ce32e63f68eacf))
+* clean up plex constants ([7562d36](https://github.com/maintainerr/Maintainerr/commit/7562d365f4635cf362645d42f3144a030da352eb))
+* **collections:** suppress empty progress state ([e408aa1](https://github.com/maintainerr/Maintainerr/commit/e408aa1169065243d7c20734e64be36bade9376a))
+* **collections:** use runtime enum in overlay docs ([c41b340](https://github.com/maintainerr/Maintainerr/commit/c41b340303b1b8fcadefe86cd04aac85e8c00328))
+* consolidate UI stability follow-ups ([7d78a86](https://github.com/maintainerr/Maintainerr/commit/7d78a86485520747f5b4e5509dc7b6a7b7d38cb8))
+* delete Tautulli config on media server switch to Jellyfin ([#2597](https://github.com/maintainerr/Maintainerr/issues/2597)) ([0d11fa0](https://github.com/maintainerr/Maintainerr/commit/0d11fa014a0a94c4995b35c8b380d1e8e4fbeddb))
+* **exclusions:** prevent duplicate requests and null crash on remove ([520dce4](https://github.com/maintainerr/Maintainerr/commit/520dce4b87f0b8dfe96e5a909d316d0b8144ba0c))
+* harden plex collection operations ([12a83ce](https://github.com/maintainerr/Maintainerr/commit/12a83ce4a182fe0c39a80fe5e1910bad80f2302f))
+* improve Maintainerr status sorting and modal details ([#2604](https://github.com/maintainerr/Maintainerr/issues/2604)) ([439b19c](https://github.com/maintainerr/Maintainerr/commit/439b19c7d25e964bd264dac2d78beed71f453b28))
+* more nitpicks ([f1c833e](https://github.com/maintainerr/Maintainerr/commit/f1c833e14a960060c05aba019fa7422604e5b188))
+* narrow plex library filtering ([6937155](https://github.com/maintainerr/Maintainerr/commit/693715514691a88d2129a56eb90c4f77e99a9b8c))
+* prevent duplicate manual items and stale pagination in collection sync ([e23361e](https://github.com/maintainerr/Maintainerr/commit/e23361e1ae1eaef13578e48cff7eb96c14dd7afe))
+* register tvdb cache in CacheManager ([823aae8](https://github.com/maintainerr/Maintainerr/commit/823aae8a5af9a0f1e219ea78689b4aefe2e24e31))
+* remove invalid applyTo frontmatter from claude rule ([bc59eec](https://github.com/maintainerr/Maintainerr/commit/bc59eecad19ff6fb68e75a3218c1fae4b0176c10))
+* replace claude rules symlink with file reference ([073b390](https://github.com/maintainerr/Maintainerr/commit/073b3906ca0c26ef2c5d466457ec0734cfe48378))
+* restore collection artwork metadata fallback ([d289322](https://github.com/maintainerr/Maintainerr/commit/d28932261c5258b7a810feeb5161771bcdf6bad9))
+* restore logger metadata and UI typing ([da486da](https://github.com/maintainerr/Maintainerr/commit/da486dac82292b64f8abdcf03bb9124e080c702f))
+* **server:** retry transient jellyfin collection child requests ([713aaa9](https://github.com/maintainerr/Maintainerr/commit/713aaa95646e84589cb0a9d9d5e208cf938a0b26))
+* **server:** retry transient jellyfin library requests ([5a132a5](https://github.com/maintainerr/Maintainerr/commit/5a132a54e22130ef00b7e71e884f3b363bb062bb))
+* **server:** Use shared watch state for isWatched and Plex viewCount ([#2570](https://github.com/maintainerr/Maintainerr/issues/2570)) ([ac7e7eb](https://github.com/maintainerr/Maintainerr/commit/ac7e7eb8527400b1f219c9f01ef4a18abacffb8d))
+* stabilize metadata sourcing and settings feedback flows ([#2595](https://github.com/maintainerr/Maintainerr/issues/2595)) ([31b79c7](https://github.com/maintainerr/Maintainerr/commit/31b79c75485664281a5930855df1fb774ef9e9ea))
+* standardizing docs links to ensure lowercase links are produced by the docsbutton component ([ee9a6d6](https://github.com/maintainerr/Maintainerr/commit/ee9a6d60ec3d1f39dcfbfc92c431fbe597496fe3))
+* tighten plex mutation follow-ups ([971a764](https://github.com/maintainerr/Maintainerr/commit/971a7649940c7ec70e80b54c8d5b778c366e5a7a))
+* **ui:** improve incomplete rules alert styling ([0d78268](https://github.com/maintainerr/Maintainerr/commit/0d78268934c2e1bd459a41b5fe1b2c26ec2f7db7))
+* **ui:** make overview title sort explicit ([#2589](https://github.com/maintainerr/Maintainerr/issues/2589)) ([1c461af](https://github.com/maintainerr/Maintainerr/commit/1c461afe6c06220c14bee7708f15e1fe727a5272))
+* **ui:** smooth settings refresh and stream warnings + tune flickering and loadingspinner ([#2574](https://github.com/maintainerr/Maintainerr/issues/2574)) ([4213ecf](https://github.com/maintainerr/Maintainerr/commit/4213ecf8435073bdd70f9002d1893091cf728903))
+* **ui:** stabilize library switching and add media sorting ([#2586](https://github.com/maintainerr/Maintainerr/issues/2586)) ([196d496](https://github.com/maintainerr/Maintainerr/commit/196d496035fffb719bf7e2853a2143d925d62a07))
+* **ui:** standardize maintainerr color tokens ([da1590b](https://github.com/maintainerr/Maintainerr/commit/da1590bf8e83895e8ed4ea28e9507d5f2d4881dc))
+* update documentation links to remove 'latest' version references ([54336ce](https://github.com/maintainerr/Maintainerr/commit/54336ce3465a6503b42face7dfeb99a3afca93cb))
+* year-aware title matching to prevent false metadata rejections ([#2622](https://github.com/maintainerr/Maintainerr/issues/2622)) ([e0db294](https://github.com/maintainerr/Maintainerr/commit/e0db2943430d8885ddc5f71f5c271cc74a770773))
+
+
+### Features
+
+* **collections:** add overlay data endpoint ([d679adc](https://github.com/maintainerr/Maintainerr/commit/d679adc237bd621e3c00f89f3c6e7180514afa13))
+* **metadata:** add ID validation and retry path for metadata refresh ([#2594](https://github.com/maintainerr/Maintainerr/issues/2594)) ([115fd8e](https://github.com/maintainerr/Maintainerr/commit/115fd8e7a907338c9aed1b86e8b48be1bc238881))
+* **metadata:** add per-provider metadata refresh action ([ea914d2](https://github.com/maintainerr/Maintainerr/commit/ea914d25c4f9fa5bc1e00678e4a9df1fcd87352b))
+
 # [3.3.0](https://github.com/maintainerr/Maintainerr/compare/v3.2.0...v3.3.0) (2026-03-29)
 
 
