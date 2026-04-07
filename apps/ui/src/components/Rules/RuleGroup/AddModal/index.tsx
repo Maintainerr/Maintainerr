@@ -925,7 +925,8 @@ const AddModal = (props: AddModal) => {
                         </p>
                       )}
 
-                      {arrActionValue === ServarrAction.CHANGE_QUALITY_PROFILE && (
+                      {arrActionValue ===
+                        ServarrAction.CHANGE_QUALITY_PROFILE && (
                         <QualityProfileSelector
                           type="Sonarr"
                           settingId={sonarrSettingsId}

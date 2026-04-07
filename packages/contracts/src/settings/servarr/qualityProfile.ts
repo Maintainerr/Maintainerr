@@ -1,4 +1,4 @@
 export interface QualityProfile {
-  id: number;
-  name: string;
+  id: number
+  name: string
 }

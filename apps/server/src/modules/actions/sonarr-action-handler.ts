@@ -330,11 +330,8 @@ export class SonarrActionHandler {
             return false;
         }
         break;
-      case ServarrAction.CHANGE_QUALITY_PROFILE: {
-        if (
-          collection.type === 'season' ||
-          collection.type === 'episode'
-        ) {
+      case ServarrAction.CHANGE_QUALITY_PROFILE:
+        if (collection.type === 'season' || collection.type === 'episode') {
           this.logger.warn(
             `[Sonarr] CHANGE_QUALITY_PROFILE is not supported for type: ${collection.type}. Quality profiles can only be changed for entire shows.`,
           );
@@ -375,7 +372,6 @@ export class SonarrActionHandler {
           );
         }
         break;
-      }
     }
   }
 

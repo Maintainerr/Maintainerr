@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddQualityProfileChangeAction1775537391391 implements MigrationInterface {
-    name = 'AddQualityProfileChangeAction1775537391391'
+  name = 'AddQualityProfileChangeAction1775537391391';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -37,7 +37,7 @@ export class AddQualityProfileChangeAction1775537391391 implements MigrationInte
                 CONSTRAINT "FK_b638046ca16fca4108a7981fd8c" FOREIGN KEY ("sonarrSettingsId") REFERENCES "sonarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection"(
                     "id",
                     "libraryId",
@@ -92,21 +92,21 @@ export class AddQualityProfileChangeAction1775537391391 implements MigrationInte
                 "totalSizeBytes"
             FROM "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection"
                 RENAME TO "collection"
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "collection"
                 RENAME TO "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -137,7 +137,7 @@ export class AddQualityProfileChangeAction1775537391391 implements MigrationInte
                 CONSTRAINT "FK_b638046ca16fca4108a7981fd8c" FOREIGN KEY ("sonarrSettingsId") REFERENCES "sonarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection"(
                     "id",
                     "libraryId",
@@ -192,9 +192,8 @@ export class AddQualityProfileChangeAction1775537391391 implements MigrationInte
                 "totalSizeBytes"
             FROM "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection"
         `);
-    }
-
+  }
 }
