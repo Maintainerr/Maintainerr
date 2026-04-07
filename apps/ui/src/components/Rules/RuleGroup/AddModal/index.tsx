@@ -304,6 +304,7 @@ const AddModal = (props: AddModal) => {
     control,
     setValue,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<RuleGroupFormInput, any, RuleGroupFormOutput>({
     resolver: zodResolver(ruleGroupFormSchema),
