@@ -63,7 +63,8 @@ export class CollectionHandler {
     } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&
-        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+        collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE
       ) {
         this.logger.log(
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
@@ -72,7 +73,7 @@ export class CollectionHandler {
         actionHandled = true;
       } else {
         this.logger.log(
-          `*arr unmonitor action isn't possible, since *arr is not available. Didn't unmonitor media with id ${media.mediaServerId}.}`,
+          `*arr action isn't possible without *arr configured. No action was taken for media with id ${media.mediaServerId}.`,
         );
       }
     }
@@ -85,7 +86,8 @@ export class CollectionHandler {
     if (
       collection.arrAction !== ServarrAction.UNMONITOR &&
       collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
-      collection.arrAction !== ServarrAction.DELETE_SHOW_IF_EMPTY
+      collection.arrAction !== ServarrAction.DELETE_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE
     ) {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
