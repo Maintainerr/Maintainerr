@@ -1487,7 +1487,11 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     try {
-      await getItemRefreshApi(this.api).refreshItem({ itemId });
+      await getItemRefreshApi(this.api).refreshItem({
+        itemId,
+        metadataRefreshMode: 'Default',
+        imageRefreshMode: 'Default',
+      });
     } catch (error) {
       this.logger.warn(
         `Failed to refresh Jellyfin metadata for item ${itemId}`,
