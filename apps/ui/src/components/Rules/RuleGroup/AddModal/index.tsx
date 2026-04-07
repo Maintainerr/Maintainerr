@@ -378,12 +378,6 @@ const AddModal = (props: AddModal) => {
     scrollStore.getServerSnapshot,
   )
 
-  // Clear quality profile IDs when media type changes
-  useEffect(() => {
-    setValue('radarrQualityProfileId', undefined)
-    setValue('sonarrQualityProfileId', undefined)
-  }, [selectedType, setValue])
-
   const tautulliEnabled =
     constants?.applications?.some((x) => x.id == Application.TAUTULLI) ?? false
   const seerrEnabled =
