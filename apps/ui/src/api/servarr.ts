@@ -1,10 +1,6 @@
+import { QualityProfile } from '@maintainerr/contracts'
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import GetApiHandler from '../utils/ApiHandler'
-
-interface QualityProfile {
-  id: number
-  name: string
-}
 
 type UseQualityProfilesQueryKey = [
   'servarr',

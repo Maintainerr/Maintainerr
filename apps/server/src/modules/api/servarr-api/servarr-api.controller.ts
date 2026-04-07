@@ -1,6 +1,5 @@
-import { ArrDiskspaceResource } from '@maintainerr/contracts';
+import { ArrDiskspaceResource, QualityProfile } from '@maintainerr/contracts';
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
-import { QualityProfile } from './interfaces/servarr.interface';
 import { ServarrService } from './servarr.service';
 
 @Controller('api/servarr')
