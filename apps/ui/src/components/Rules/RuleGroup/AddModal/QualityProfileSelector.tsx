@@ -57,7 +57,7 @@ const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
           </select>
         </div>
         {props.error && (
-          <p className="mt-1 text-xs text-red-400">{props.error}</p>
+          <p className="mt-1 text-xs text-error-400">{props.error}</p>
         )}
       </div>
     </div>
