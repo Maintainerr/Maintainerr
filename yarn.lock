@@ -84,25 +84,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@angular-devkit/core@npm:19.2.22":
-  version: 19.2.22
-  resolution: "@angular-devkit/core@npm:19.2.22"
-  dependencies:
-    ajv: "npm:8.18.0"
-    ajv-formats: "npm:3.0.1"
-    jsonc-parser: "npm:3.3.1"
-    picomatch: "npm:4.0.2"
-    rxjs: "npm:7.8.1"
-    source-map: "npm:0.7.4"
-  peerDependencies:
-    chokidar: ^4.0.0
-  peerDependenciesMeta:
-    chokidar:
-      optional: true
-  checksum: 10c0/8f37688b908fe73e85c489094796fe0ea510468860c11cde873af36453a40bcb9d1b612d2773cbc9543b20866a73d9af2c48ec854e79bde43252a27b5da4b989
-  languageName: node
-  linkType: hard
-
 "@angular-devkit/core@npm:19.2.23":
   version: 19.2.23
   resolution: "@angular-devkit/core@npm:19.2.23"
@@ -122,19 +103,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@angular-devkit/schematics-cli@npm:19.2.22":
-  version: 19.2.22
-  resolution: "@angular-devkit/schematics-cli@npm:19.2.22"
+"@angular-devkit/schematics-cli@npm:19.2.23":
+  version: 19.2.23
+  resolution: "@angular-devkit/schematics-cli@npm:19.2.23"
   dependencies:
-    "@angular-devkit/core": "npm:19.2.22"
-    "@angular-devkit/schematics": "npm:19.2.22"
+    "@angular-devkit/core": "npm:19.2.23"
+    "@angular-devkit/schematics": "npm:19.2.23"
     "@inquirer/prompts": "npm:7.3.2"
     ansi-colors: "npm:4.1.3"
     symbol-observable: "npm:4.0.0"
     yargs-parser: "npm:21.1.1"
   bin:
     schematics: bin/schematics.js
-  checksum: 10c0/23fb431291c6c76aea324e5bae2af2be990f4fd7553c9c3e80cf4cf817baabb16b7f373d635152efe14842326a7afb71746d6d44112cf34b9dea84985dd652d5
+  checksum: 10c0/876642206df7a63fc5baefca7425c41058d2ae464a916cedbb5accd6cc5a74d0746a324824b094e1c5f60bebd79f62413d4f01e7cd323d3a47490e24d18104c8
   languageName: node
   linkType: hard
 
@@ -148,19 +129,6 @@ __metadata:
     ora: "npm:5.4.1"
     rxjs: "npm:7.8.1"
   checksum: 10c0/93bc3ef07bc7a5f129a9eb7d19ad6e47253c177c07e217413a85a07729df54deda489b25122b2fcb82a6ce909f2c02bbe8e0e2b58ca0482001d7be73356d69bb
-  languageName: node
-  linkType: hard
-
-"@angular-devkit/schematics@npm:19.2.22":
-  version: 19.2.22
-  resolution: "@angular-devkit/schematics@npm:19.2.22"
-  dependencies:
-    "@angular-devkit/core": "npm:19.2.22"
-    jsonc-parser: "npm:3.3.1"
-    magic-string: "npm:0.30.17"
-    ora: "npm:5.4.1"
-    rxjs: "npm:7.8.1"
-  checksum: 10c0/a7d82d90b1a5a961d8518b4af34704e90f9663f52f3c47a96d64604579271f8b224222c70357220cc1478b17e2a25f841bce5cebb1c0aa7dbe7a26ae39bff1cf
   languageName: node
   linkType: hard
 
@@ -2840,7 +2808,7 @@ __metadata:
     "@faker-js/faker": "npm:^9.9.0"
     "@jellyfin/sdk": "npm:^0.13.0"
     "@maintainerr/contracts": "workspace:^"
-    "@nestjs/cli": "npm:^11.0.17"
+    "@nestjs/cli": "npm:^11.0.18"
     "@nestjs/common": "npm:^11.1.18"
     "@nestjs/core": "npm:^11.1.18"
     "@nestjs/event-emitter": "npm:^3.0.1"
@@ -3056,13 +3024,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/cli@npm:^11.0.17":
-  version: 11.0.17
-  resolution: "@nestjs/cli@npm:11.0.17"
+"@nestjs/cli@npm:^11.0.18":
+  version: 11.0.18
+  resolution: "@nestjs/cli@npm:11.0.18"
   dependencies:
-    "@angular-devkit/core": "npm:19.2.22"
-    "@angular-devkit/schematics": "npm:19.2.22"
-    "@angular-devkit/schematics-cli": "npm:19.2.22"
+    "@angular-devkit/core": "npm:19.2.23"
+    "@angular-devkit/schematics": "npm:19.2.23"
+    "@angular-devkit/schematics-cli": "npm:19.2.23"
     "@inquirer/prompts": "npm:7.10.1"
     "@nestjs/schematics": "npm:^11.0.1"
     ansis: "npm:4.2.0"
@@ -3079,7 +3047,7 @@ __metadata:
     webpack: "npm:5.105.4"
     webpack-node-externals: "npm:3.0.0"
   peerDependencies:
-    "@swc/cli": ^0.1.62 || ^0.3.0 || ^0.4.0 || ^0.5.0 || ^0.6.0 || ^0.7.0
+    "@swc/cli": ^0.1.62 || ^0.3.0 || ^0.4.0 || ^0.5.0 || ^0.6.0 || ^0.7.0 || ^0.8.0
     "@swc/core": ^1.3.62
   peerDependenciesMeta:
     "@swc/cli":
@@ -3088,7 +3056,7 @@ __metadata:
       optional: true
   bin:
     nest: bin/nest.js
-  checksum: 10c0/20e730bceb810bbebe3819e13b1b679feedd2d848637e491f8a10e3c0af1812c871e9822222cb6687006dd164ba32a60467aa14dce5c9f27a866144431596753
+  checksum: 10c0/b5441f811ad103af79e9a16b43c37f817b827ba5f7e2fc82eb4a7526ab5e314cd681139467f0b59c0b1deebfa342f4208bc5659c8d317982a77c86692f182ada
   languageName: node
   linkType: hard
 
