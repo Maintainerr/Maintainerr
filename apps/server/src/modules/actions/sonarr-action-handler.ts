@@ -82,8 +82,30 @@ export class SonarrActionHandler {
     }
 
     switch (collection.arrAction) {
-      case ServarrAction.DELETE:
       case ServarrAction.DELETE_SHOW_IF_EMPTY:
+        if (collection.type !== 'season') {
+          this.logger.warn(
+            `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+          );
+          break;
+        }
+        sonarrMedia = await sonarrApiClient.unmonitorSeasons(
+          sonarrMedia.id,
+          mediaData?.index,
+          true,
+        );
+        this.logger.log(
+          `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+        );
+        await this.deleteShowIfEmpty(
+          sonarrApiClient,
+          matchedResult.candidate,
+          resolvedIds.tmdb,
+          mediaData?.index,
+          collection.listExclusions,
+        );
+        break;
+      case ServarrAction.DELETE:
         switch (collection.type) {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -94,24 +116,8 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-
-            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
-              await this.deleteShowIfEmpty(
-                sonarrApiClient,
-                matchedResult.candidate,
-                resolvedIds.tmdb,
-                mediaData?.index,
-                collection.listExclusions,
-              );
-            }
             break;
           case 'episode':
-            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
-              this.logger.warn(
-                `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
-              );
-              break;
-            }
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               mediaData?.parentIndex,
@@ -123,12 +129,6 @@ export class SonarrActionHandler {
             );
             break;
           default:
-            if (collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY) {
-              this.logger.warn(
-                `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
-              );
-              break;
-            }
             await sonarrApiClient.deleteShow(
               sonarrMedia.id,
               true,
@@ -138,8 +138,27 @@ export class SonarrActionHandler {
             break;
         }
         break;
-      case ServarrAction.UNMONITOR:
       case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
+        if (collection.type !== 'season') {
+          this.logger.warn(
+            `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+          );
+          break;
+        }
+        sonarrMedia = await sonarrApiClient.unmonitorSeasons(
+          sonarrMedia.id,
+          mediaData?.index,
+          false,
+        );
+        this.logger.log(
+          `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+        );
+        await this.unmonitorShowIfEmptyAndEnded(
+          sonarrApiClient,
+          matchedResult.candidate,
+        );
+        break;
+      case ServarrAction.UNMONITOR:
         switch (collection.type) {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -150,25 +169,8 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-
-            if (
-              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
-            ) {
-              await this.unmonitorShowIfEmptyAndEnded(
-                sonarrApiClient,
-                matchedResult.candidate,
-              );
-            }
             break;
           case 'episode':
-            if (
-              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
-            ) {
-              this.logger.warn(
-                `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
-              );
-              break;
-            }
             await sonarrApiClient.UnmonitorDeleteEpisodes(
               sonarrMedia.id,
               mediaData?.parentIndex,
@@ -180,14 +182,6 @@ export class SonarrActionHandler {
             );
             break;
           default:
-            if (
-              collection.arrAction === ServarrAction.UNMONITOR_SHOW_IF_EMPTY
-            ) {
-              this.logger.warn(
-                `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
-              );
-              break;
-            }
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
               'all',
@@ -295,6 +289,7 @@ export class SonarrActionHandler {
           removedSeasonNumber,
         );
 
+      // Bail on true (remaining requests) or undefined (Seerr lookup failed) — only delete on explicit false
       if (hasRemainingRequests !== false) {
         return;
       }
