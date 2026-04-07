@@ -2,6 +2,7 @@ import { Jellyfin, type Api } from '@jellyfin/sdk';
 import {
   BaseItemKind,
   ItemFields,
+  LocationType,
   ItemSortBy,
   SortOrder,
   type UserItemDataDto,
@@ -636,6 +637,8 @@ export class JellyfinAdapterService implements IMediaServerService {
               BaseItemKind.Season,
               BaseItemKind.Episode,
             ],
+        excludeLocationTypes:
+          childType === 'episode' ? [LocationType.Virtual] : undefined,
       });
 
       return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
