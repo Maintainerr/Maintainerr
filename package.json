@@ -37,7 +37,7 @@
     "@types/node": "^22.19.15",
     "knip": "^6.1.1",
     "semantic-release": "^25.0.3",
-    "turbo": "^2.8.20",
+    "turbo": "^2.9.4",
     "typescript": "^5.9.3"
   },
   "release": {
