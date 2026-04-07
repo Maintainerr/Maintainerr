@@ -231,6 +231,9 @@ describe('MetadataService', () => {
       type: 'tv',
     });
     expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Title mismatch resolved by year-aware match for media server item "Fixture Chronicle (2025)" against "Fixture Chronicle".',
+    );
   });
 
   it('still rejects direct provider ids after fetching details when the title suffix year disagrees', async () => {
@@ -328,6 +331,9 @@ describe('MetadataService', () => {
       type: 'tv',
     });
     expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Title mismatch resolved by year-aware match for media server item "Fixture Localized" against "Fixture Chronicle".',
+    );
   });
 
   it('skips the detail lookup when the initial item already passes the year-aware title check', async () => {

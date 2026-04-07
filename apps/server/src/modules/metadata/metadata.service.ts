@@ -569,6 +569,12 @@ export class MetadataService {
     }
   }
 
+  private logYearMatch(itemTitle: string, providerTitle: string): void {
+    this.logger.debug(
+      `Title mismatch resolved by year-aware match for media server item "${itemTitle}" against "${providerTitle}".`,
+    );
+  }
+
   private async matchesProviderDetails(
     item: MediaItem,
     metadataDetails: MetadataDetails,
@@ -578,6 +584,7 @@ export class MetadataService {
     }
 
     if (this.matchesTitleWithYear(item, metadataDetails)) {
+      this.logYearMatch(item.title, metadataDetails.title);
       return true;
     }
 
@@ -590,7 +597,12 @@ export class MetadataService {
       return true;
     }
 
-    return this.matchesTitleWithYear(detailItem, metadataDetails);
+    if (this.matchesTitleWithYear(detailItem, metadataDetails)) {
+      this.logYearMatch(item.title, metadataDetails.title);
+      return true;
+    }
+
+    return false;
   }
 
   private async resolveAllIds(
