@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, renameSync } from 'fs';
 import { writeFile } from 'fs/promises';
+import { join } from 'path';
 import { GitHubApiService } from './github-api.service';
 
 const cacheSet = jest.fn();
@@ -126,8 +127,8 @@ describe('GitHubApiService', () => {
     );
     expect(logger.debug).toHaveBeenCalledWith(expect.any(SyntaxError));
     expect(renameSync).toHaveBeenCalledWith(
-      '/tmp/maintainerr/github-cache.json',
-      '/tmp/maintainerr/github-cache.json.corrupt-1234567',
+      join('/tmp/maintainerr', 'github-cache.json'),
+      join('/tmp/maintainerr', 'github-cache.json.corrupt-1234567'),
     );
   });
 
@@ -154,7 +155,7 @@ describe('GitHubApiService', () => {
 
     expect(readFileSync).not.toHaveBeenCalled();
     expect(writeFile).toHaveBeenCalledWith(
-      '/tmp/maintainerr/github-cache.json',
+      join('/tmp/maintainerr', 'github-cache.json'),
       expect.any(String),
       'utf8',
     );
