@@ -325,13 +325,13 @@ export class OverlayRenderService {
     );
 
     // Pill geometry
-    let padPx = Math.max(
+    const padPx = Math.max(
       2,
       Math.round(Math.max(imgH * padFrac, pointSize * 0.45)),
     );
     let effRad = Math.round(Math.max(imgH * radFrac, pointSize * 0.35));
     let targetW = labelW + 2 * padPx;
-    let targetH = labelH + 2 * padPx;
+    const targetH = labelH + 2 * padPx;
     effRad = Math.min(effRad, Math.floor(Math.min(targetW, targetH) / 2));
 
     // Dock / frame adjustments
@@ -679,7 +679,7 @@ export class OverlayRenderService {
       if (el.enableDaySuffix && (el.language ?? 'en-US').startsWith('en')) {
         const day = deleteDate.getDate();
         const suffix = this.ordinalSuffix(day);
-        label = label.replace(new RegExp(`\\b${day}\\b`), suffix);
+        label = label.replace(String(day), suffix);
       }
       return label;
     } catch {
@@ -710,24 +710,16 @@ export class OverlayRenderService {
   }
 
   private resolveVarLocale(language: string): Locale | undefined {
-    const key = language.replace('-', '') || language.split('-')[0];
+    const normalized = language.replace('-', '');
+    const short = language.split('-')[0];
+    const key = normalized || short;
     const byFull = (dateFnsLocales as Record<string, Locale>)[key];
     if (byFull) return byFull;
-    return (dateFnsLocales as Record<string, Locale>)[language.split('-')[0]];
+    return (dateFnsLocales as Record<string, Locale>)[short];
   }
 
   private convertVarDateFormat(fmt: string): string {
-    return fmt
-      .replace(/MMMM/g, 'MMMM')
-      .replace(/MMM/g, 'MMM')
-      .replace(/MM/g, 'MM')
-      .replace(/\bM\b/g, 'M')
-      .replace(/dddd/g, 'EEEE')
-      .replace(/ddd/g, 'EEE')
-      .replace(/\bdd\b/g, 'dd')
-      .replace(/\bd\b/g, 'd')
-      .replace(/yyyy/g, 'yyyy')
-      .replace(/\byy\b/g, 'yy');
+    return fmt.replace(/dddd/g, 'EEEE').replace(/ddd/g, 'EEE');
   }
 
   private renderShapeElement(
@@ -805,11 +797,6 @@ export class OverlayRenderService {
   }
 
   private async applyOpacity(buf: Buffer, opacity: number): Promise<Buffer> {
-    // Create a single-pixel alpha channel at the desired opacity and tile it
-    const meta = await sharp(buf).metadata();
-    const w = meta.width!;
-    const h = meta.height!;
-
     // Extract alpha, multiply, re-apply
     const { data, info } = await sharp(buf)
       .ensureAlpha()
@@ -821,9 +808,12 @@ export class OverlayRenderService {
       pixels[i] = Math.round(pixels[i] * Math.max(0, Math.min(1, opacity)));
     }
 
-    return sharp(Buffer.from(pixels.buffer), {
-      raw: { width: info.width, height: info.height, channels: 4 },
-    })
+    return sharp(
+      Buffer.from(pixels.buffer, pixels.byteOffset, pixels.byteLength),
+      {
+        raw: { width: info.width, height: info.height, channels: 4 },
+      },
+    )
       .png()
       .toBuffer();
   }

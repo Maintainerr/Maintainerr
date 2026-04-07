@@ -398,7 +398,7 @@ function TemplateCard({
           <div className="flex items-center gap-2">
             <span className="font-medium text-zinc-100">{t.name}</span>
             {t.isDefault && (
-              <span className="rounded bg-amber-700/40 px-1.5 py-0.5 text-xs text-amber-300">
+              <span className="rounded bg-amber-600 px-1.5 py-0.5 text-xs text-white">
                 Default
               </span>
             )}

@@ -12,11 +12,13 @@ import { toast } from 'react-toastify'
 import {
   buildPosterUrl,
   createOverlayTemplate,
+  getOverlayFonts,
   getOverlaySections,
   getOverlayTemplate,
   getRandomEpisode,
   getRandomItem,
   updateOverlayTemplate,
+  uploadFont,
 } from '../api/overlays'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import { ElementToolbox } from '../components/OverlayEditor/ElementToolbox'
@@ -44,6 +46,10 @@ const OverlayTemplateEditorPage = () => {
   >([])
   const [selectedSection, setSelectedSection] = useState('')
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null)
+  const [fonts, setFonts] = useState<{ name: string; path: string }[]>([])
+  const [mobileTab, setMobileTab] = useState<'tools' | 'layers' | 'properties'>(
+    'layers',
+  )
 
   const canvasDefaults = defaults(mode)
   const {
@@ -89,6 +95,28 @@ const OverlayTemplateEditorPage = () => {
     void getOverlaySections().then((s) => {
       if (s) setSections(s)
     })
+  }, [])
+
+  // Load available fonts
+  useEffect(() => {
+    void getOverlayFonts().then((f) => {
+      if (f) setFonts(f)
+    })
+  }, [])
+
+  const handleUploadFont = useCallback(async (file: File) => {
+    try {
+      const result = await uploadFont(file)
+      if (result) {
+        const updated = await getOverlayFonts()
+        if (updated) setFonts(updated)
+        toast.success(`Font "${result.name}" uploaded`)
+        return result
+      }
+    } catch {
+      toast.error('Failed to upload font')
+    }
+    return null
   }, [])
 
   const loadRandomPoster = useCallback(async () => {
@@ -219,10 +247,10 @@ const OverlayTemplateEditorPage = () => {
       <title>
         {isNew ? 'New Template' : name} - Overlay Editor - Maintainerr
       </title>
-      <div className="flex h-full flex-col">
+      <div className="flex h-[calc(100vh-5rem)] flex-col overflow-hidden">
         {/* Top bar */}
-        <div className="flex items-center justify-between border-b border-zinc-700 px-4 py-2">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-700 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="text-sm text-zinc-400 transition hover:text-zinc-200"
@@ -234,7 +262,7 @@ const OverlayTemplateEditorPage = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 focus:border-amber-500 focus:outline-none"
+              className="w-36 rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 focus:border-amber-500 focus:outline-none sm:w-auto"
               disabled={isPreset}
             />
             {isNew && (
@@ -249,8 +277,8 @@ const OverlayTemplateEditorPage = () => {
             )}
 
             {/* Poster background picker */}
-            <div className="flex items-center gap-1.5 border-l border-zinc-600 pl-3">
-              <PhotographIcon className="h-4 w-4 text-zinc-400" />
+            <div className="flex items-center gap-1.5 border-l border-zinc-600 pl-2">
+              <PhotographIcon className="h-4 w-4 shrink-0 text-zinc-400" />
               <select
                 value={selectedSection}
                 onChange={(e) => handleSectionChange(e.target.value)}
@@ -305,10 +333,10 @@ const OverlayTemplateEditorPage = () => {
           </div>
         </div>
 
-        {/* Main editor area */}
-        <div className="flex min-h-0 flex-1">
-          {/* Left: Toolbox */}
-          <div className="w-48 shrink-0 overflow-y-auto border-r border-zinc-700 p-3">
+        {/* Main editor area — desktop: 3 columns, mobile: stacked */}
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          {/* Left: Toolbox — desktop sidebar */}
+          <div className="hidden w-48 shrink-0 overflow-y-auto border-r border-zinc-700 p-3 lg:block">
             <ElementToolbox
               mode={mode}
               onAdd={handleAddElement}
@@ -317,7 +345,7 @@ const OverlayTemplateEditorPage = () => {
           </div>
 
           {/* Center: Canvas */}
-          <div className="flex flex-1 items-center justify-center overflow-auto bg-zinc-900/50 p-4">
+          <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto bg-zinc-900/50 p-4">
             <OverlayCanvas
               elements={elements}
               canvasWidth={canvasDefaults.width}
@@ -329,8 +357,8 @@ const OverlayTemplateEditorPage = () => {
             />
           </div>
 
-          {/* Right: Properties + Layers */}
-          <div className="w-72 shrink-0 overflow-y-auto border-l border-zinc-700">
+          {/* Right: Properties + Layers — desktop sidebar */}
+          <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-zinc-700 lg:block">
             <div className="border-b border-zinc-700 p-3">
               <LayerPanel
                 elements={elements}
@@ -345,12 +373,67 @@ const OverlayTemplateEditorPage = () => {
                 <PropertiesPanel
                   element={selectedElement}
                   onChange={handleUpdateElement}
+                  fonts={fonts}
+                  onUploadFont={handleUploadFont}
                 />
               ) : (
                 <p className="text-center text-xs text-zinc-500">
                   Select an element to edit its properties
                 </p>
               )}
+            </div>
+          </div>
+
+          {/* Mobile bottom panels */}
+          <div className="flex shrink-0 flex-col border-t border-zinc-700 lg:hidden">
+            {/* Tab bar */}
+            <div className="flex">
+              {(['tools', 'layers', 'properties'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition ${
+                    mobileTab === tab
+                      ? 'border-b-2 border-amber-500 text-amber-300'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                  onClick={() => setMobileTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            {/* Tab content */}
+            <div className="max-h-56 overflow-y-auto p-3">
+              {mobileTab === 'tools' && (
+                <ElementToolbox
+                  mode={mode}
+                  onAdd={handleAddElement}
+                  nextLayerOrder={elements.length}
+                />
+              )}
+              {mobileTab === 'layers' && (
+                <LayerPanel
+                  elements={elements}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onReorder={handleReorder}
+                  onDelete={handleDeleteElement}
+                />
+              )}
+              {mobileTab === 'properties' &&
+                (selectedElement ? (
+                  <PropertiesPanel
+                    element={selectedElement}
+                    onChange={handleUpdateElement}
+                    fonts={fonts}
+                    onUploadFont={handleUploadFont}
+                  />
+                ) : (
+                  <p className="text-center text-xs text-zinc-500">
+                    Select an element to edit its properties
+                  </p>
+                ))}
             </div>
           </div>
         </div>

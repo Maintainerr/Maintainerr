@@ -25,27 +25,30 @@ export class OverlayTaskService extends TaskBase {
     this.cronSchedule = '0 0 0 1 1 *'; // Once a year, Jan 1st
   }
 
-  protected override async onBootstrapHook(): Promise<void> {
-    try {
-      const settings = await this.settingsService.getSettings();
-      if (settings.cronSchedule && settings.enabled) {
-        this.cronSchedule = settings.cronSchedule;
-        this.logger.log(
-          `Overlay handler cron configured: ${settings.cronSchedule}`,
-        );
-      }
-    } catch (err) {
-      this.logger.debug(err);
-    }
+  protected override onBootstrapHook(): void {
+    void this.settingsService
+      .getSettings()
+      .then((settings) => {
+        if (settings.cronSchedule && settings.enabled) {
+          this.logger.log(
+            `Overlay handler cron configured: ${settings.cronSchedule}`,
+          );
+          return this.updateJob(settings.cronSchedule);
+        }
+      })
+      .catch((err) => {
+        this.logger.debug(err);
+      });
   }
 
-  protected async executeTask(_abortSignal: AbortSignal): Promise<void> {
+  protected async executeTask(abortSignal: AbortSignal): Promise<void> {
     const settings = await this.settingsService.getSettings();
     if (!settings.enabled) {
       this.logger.debug('Overlay feature is disabled, skipping scheduled run');
       return;
     }
 
+    abortSignal.throwIfAborted();
     await this.processor.processAllCollections();
   }
 
@@ -57,11 +60,11 @@ export class OverlayTaskService extends TaskBase {
     enabled: boolean,
   ): Promise<void> {
     if (cronSchedule && enabled) {
-      this.updateJob(cronSchedule);
+      await this.updateJob(cronSchedule);
       this.logger.log(`Overlay cron updated to: ${cronSchedule}`);
     } else {
       // Set to never-fire cron to effectively disable
-      this.updateJob('0 0 0 1 1 *');
+      await this.updateJob('0 0 0 1 1 *');
       this.logger.log('Overlay cron disabled');
     }
   }
@@ -96,7 +99,7 @@ export class OverlayTaskService extends TaskBase {
           collection.collectionMedia.map((cm) => cm.mediaServerId),
         );
         const hasAddedItems = payload.mediaItems.some((item) =>
-          collectionMediaIds.has(String(item.mediaServerId)),
+          collectionMediaIds.has(item.mediaServerId),
         );
 
         if (hasAddedItems) {

@@ -40,6 +40,15 @@ export const buildPosterUrl = (plexId: string) =>
 export const getOverlayFonts = () =>
   GetApiHandler<{ name: string; path: string }[]>('/overlays/fonts')
 
+export const uploadFont = async (file: File) => {
+  const formData = new FormData()
+  formData.append('font', file)
+  return PostApiHandler<{ name: string; path: string }>(
+    '/overlays/fonts',
+    formData,
+  )
+}
+
 export const processAllOverlays = () =>
   PostApiHandler<{ processed: number; reverted: number; errors: number }>(
     '/overlays/process',

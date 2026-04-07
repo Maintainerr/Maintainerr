@@ -22,6 +22,7 @@ import { Brackets, DataSource, In, LessThan, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { CollectionMediaAddedDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
@@ -1431,6 +1432,16 @@ export class CollectionsService {
             newMedia,
             manual,
             skipMediaServerAdd,
+          );
+
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Added,
+            new CollectionMediaAddedDto(
+              newMedia,
+              collection.title,
+              { type: 'collection', value: collection.id },
+              collection.deleteAfterDays,
+            ),
           );
         }
 

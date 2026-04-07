@@ -1,13 +1,18 @@
 import type { OverlayElement, VariableSegment } from '@maintainerr/contracts'
+import { useRef } from 'react'
 
 interface PropertiesPanelProps {
   element: OverlayElement
   onChange: (el: OverlayElement) => void
+  fonts: { name: string; path: string }[]
+  onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
 }
 
 export function PropertiesPanel({
   element: el,
   onChange,
+  fonts,
+  onUploadFont,
 }: PropertiesPanelProps) {
   const update = <K extends keyof OverlayElement>(
     key: K,
@@ -71,9 +76,21 @@ export function PropertiesPanel({
       </FieldGroup>
 
       {/* Type-specific panels */}
-      {el.type === 'text' && <TextProperties el={el} onChange={onChange} />}
+      {el.type === 'text' && (
+        <TextProperties
+          el={el}
+          onChange={onChange}
+          fonts={fonts}
+          onUploadFont={onUploadFont}
+        />
+      )}
       {el.type === 'variable' && (
-        <VariableProperties el={el} onChange={onChange} />
+        <VariableProperties
+          el={el}
+          onChange={onChange}
+          fonts={fonts}
+          onUploadFont={onUploadFont}
+        />
       )}
       {el.type === 'shape' && <ShapeProperties el={el} onChange={onChange} />}
       {el.type === 'image' && <ImageProperties el={el} onChange={onChange} />}
@@ -86,9 +103,13 @@ export function PropertiesPanel({
 function TextProperties({
   el,
   onChange,
+  fonts,
+  onUploadFont,
 }: {
   el: Extract<OverlayElement, { type: 'text' }>
   onChange: (el: OverlayElement) => void
+  fonts: { name: string; path: string }[]
+  onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
 }) {
   const update = <K extends keyof typeof el>(key: K, value: (typeof el)[K]) =>
     onChange({ ...el, [key]: value })
@@ -103,7 +124,12 @@ function TextProperties({
           onChange={(e) => update('text', e.target.value)}
         />
       </FieldGroup>
-      <FontFields el={el} update={update} />
+      <FontFields
+        el={el}
+        update={update}
+        fonts={fonts}
+        onUploadFont={onUploadFont}
+      />
       <FieldGroup label="Background">
         <ColorField
           label="Color"
@@ -142,9 +168,13 @@ function TextProperties({
 function VariableProperties({
   el,
   onChange,
+  fonts,
+  onUploadFont,
 }: {
   el: Extract<OverlayElement, { type: 'variable' }>
   onChange: (el: OverlayElement) => void
+  fonts: { name: string; path: string }[]
+  onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
 }) {
   const update = <K extends keyof typeof el>(key: K, value: (typeof el)[K]) =>
     onChange({ ...el, [key]: value })
@@ -229,7 +259,12 @@ function VariableProperties({
           </button>
         </div>
       </FieldGroup>
-      <FontFields el={el} update={update} />
+      <FontFields
+        el={el}
+        update={update}
+        fonts={fonts}
+        onUploadFont={onUploadFont}
+      />
       <FieldGroup label="Background">
         <ColorField
           label="Color"
@@ -390,22 +425,75 @@ function FontFields<
 >({
   el,
   update,
+  fonts,
+  onUploadFont,
 }: {
   el: T
   update: <K extends keyof T>(key: K, value: T[K]) => void
+  fonts: { name: string; path: string }[]
+  onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
 }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const currentFont = fonts.find((f) => f.name === el.fontPath)
+  const selectValue = currentFont ? currentFont.name : ''
+
+  const handleFontSelect = (fontName: string) => {
+    const font = fonts.find((f) => f.name === fontName)
+    if (font) {
+      const family = font.name.replace(/\.[^.]+$/, '')
+      update('fontFamily', family as T['fontFamily'])
+      update('fontPath', font.name as T['fontPath'])
+    }
+  }
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const uploaded = await onUploadFont(file)
+    if (uploaded) {
+      const family = uploaded.name.replace(/\.[^.]+$/, '')
+      update('fontFamily', family as T['fontFamily'])
+      update('fontPath', uploaded.name as T['fontPath'])
+    }
+    e.target.value = ''
+  }
+
   return (
     <FieldGroup label="Font">
-      <TextField
-        label="Family"
-        value={el.fontFamily}
-        onChange={(v) => update('fontFamily', v as T['fontFamily'])}
-      />
-      <TextField
-        label="Path"
-        value={el.fontPath}
-        onChange={(v) => update('fontPath', v as T['fontPath'])}
-      />
+      <label className="flex items-center gap-1.5">
+        <span className="w-12 shrink-0 text-zinc-400">Font</span>
+        <select
+          className="w-full rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200"
+          value={selectValue}
+          onChange={(e) => handleFontSelect(e.target.value)}
+        >
+          {!currentFont && (
+            <option value="" disabled>
+              {el.fontPath || 'Select font...'}
+            </option>
+          )}
+          {fonts.map((f) => (
+            <option key={f.path} value={f.name}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="shrink-0 rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-600"
+          onClick={() => fileRef.current?.click()}
+          title="Upload font (.ttf, .otf, .woff)"
+        >
+          Upload
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".ttf,.otf,.woff"
+          className="hidden"
+          onChange={handleUpload}
+        />
+      </label>
       <NumberField
         label="Size"
         value={el.fontSize}
