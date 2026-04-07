@@ -711,19 +711,19 @@ const AddModal = (props: AddModal) => {
                       }}
                       options={[
                         {
-                                  id: ServarrAction.DELETE,
+                          id: ServarrAction.DELETE,
                           name: 'Delete',
                         },
                         {
-                                  id: ServarrAction.UNMONITOR_DELETE_ALL,
+                          id: ServarrAction.UNMONITOR_DELETE_ALL,
                           name: 'Unmonitor and delete files',
                         },
                         {
-                                  id: ServarrAction.UNMONITOR,
+                          id: ServarrAction.UNMONITOR,
                           name: 'Unmonitor and keep files',
                         },
                         {
-                                  id: ServarrAction.DO_NOTHING,
+                          id: ServarrAction.DO_NOTHING,
                           name: 'Do nothing',
                         },
                       ]}
@@ -860,33 +860,34 @@ const AddModal = (props: AddModal) => {
 
                   {arrActionValue !== undefined &&
                     arrActionValue !== ServarrAction.DO_NOTHING && (
-                    <div className="form-row items-center">
-                      <label
-                        htmlFor="collection_deleteDays"
-                        className="text-label"
-                      >
-                        Take action after days*
-                        <p className="text-xs font-normal">
-                          Duration of days media remains in the {collectionTerm}
-                          before deletion/unmonitor
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="number"
-                            id="collection_deleteDays"
-                            {...register('deleteAfterDays')}
-                          />
-                        </div>
-                        {errors.deleteAfterDays && (
-                          <p className="mt-1 text-xs text-error-400">
-                            {errors.deleteAfterDays.message}
+                      <div className="form-row items-center">
+                        <label
+                          htmlFor="collection_deleteDays"
+                          className="text-label"
+                        >
+                          Take action after days*
+                          <p className="text-xs font-normal">
+                            Duration of days media remains in the{' '}
+                            {collectionTerm}
+                            before deletion/unmonitor
                           </p>
-                        )}
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="number"
+                              id="collection_deleteDays"
+                              {...register('deleteAfterDays')}
+                            />
+                          </div>
+                          {errors.deleteAfterDays && (
+                            <p className="mt-1 text-xs text-error-400">
+                              {errors.deleteAfterDays.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             </div>

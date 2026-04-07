@@ -10,7 +10,9 @@ describe('SeerrApiService', () => {
     const { unit, unitRef } = await TestBed.solitary(SeerrApiService).compile();
 
     service = unit;
-    settings = unitRef.get(SettingsService) as unknown as Mocked<SettingsService>;
+    settings = unitRef.get(
+      SettingsService,
+    ) as unknown as Mocked<SettingsService>;
     settings.seerrConfigured.mockReturnValue(true);
   });
 

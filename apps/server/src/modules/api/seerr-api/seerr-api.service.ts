@@ -349,9 +349,7 @@ export class SeerrApiService {
       const requests = media.mediaInfo.requests ?? [];
 
       return requests
-        .filter(
-          (request) => request.status !== SeerrRequestStatus.DECLINED,
-        )
+        .filter((request) => request.status !== SeerrRequestStatus.DECLINED)
         .some((request) =>
           request.seasons.some(
             (season) =>
