@@ -599,7 +599,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -693,7 +693,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -796,7 +796,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
