@@ -21,6 +21,7 @@ export interface PersonDetails {
 export interface MetadataDetails {
   id: number;
   title: string;
+  year?: number;
   overview?: string;
   posterUrl?: string;
   backdropUrl?: string;

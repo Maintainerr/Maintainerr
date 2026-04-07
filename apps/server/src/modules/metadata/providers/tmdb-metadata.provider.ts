@@ -43,6 +43,15 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       : this.tmdbApi.getTvShow({ tvId: tmdbId });
   }
 
+  private parseYear(value?: string): number | undefined {
+    if (!value || value.length < 4) {
+      return undefined;
+    }
+
+    const year = Number.parseInt(value.slice(0, 4), 10);
+    return Number.isFinite(year) ? year : undefined;
+  }
+
   async getDetails(
     tmdbId: number,
     type: 'movie' | 'tv',
@@ -55,6 +64,9 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     return {
       id: record.id,
       title: 'title' in record ? record.title : record.name,
+      year: this.parseYear(
+        'release_date' in record ? record.release_date : record.first_air_date,
+      ),
       overview: record.overview,
       posterUrl: this.buildImageUrl(record.poster_path, 'w500'),
       backdropUrl: this.buildImageUrl(record.backdrop_path, 'w1280'),

@@ -13,6 +13,9 @@ describe('MetadataService', () => {
     },
   }: {
     tmdbDetails?: {
+      title?: string;
+      year?: number;
+      type?: 'movie' | 'tv';
       externalIds?: {
         tmdb?: number;
         imdb?: string;
@@ -37,7 +40,7 @@ describe('MetadataService', () => {
         tmdbDetails
           ? {
               id: 101,
-              title: 'Home Alone',
+              title: 'Fixture Story',
               type: 'movie',
               ...tmdbDetails,
             }
@@ -93,6 +96,7 @@ describe('MetadataService', () => {
       service,
       tmdbProvider,
       tvdbProvider,
+      logger,
       mediaServer,
       mediaServerFactory,
     };
@@ -148,7 +152,7 @@ describe('MetadataService', () => {
     const showItem = createMediaItem({
       id: 'show-1',
       type: 'show',
-      title: 'Home Alone',
+      title: 'Fixture Story',
       providerIds: { tmdb: ['771'] },
     });
     const mediaServer = {
@@ -174,6 +178,217 @@ describe('MetadataService', () => {
     const result = await service.resolveIdsFromHierarchyMediaItem(episodeItem);
 
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toMatchObject({
+      tmdb: 771,
+      type: 'tv',
+    });
+  });
+
+  it('accepts direct provider ids without fetching details when the title suffix already provides the matching year', async () => {
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: undefined,
+      title: 'Fixture Chronicle (2025)',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const detailItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: 2025,
+      title: 'Fixture Chronicle (2025)',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const mediaServer = {
+      getMetadata: jest.fn().mockResolvedValue(detailItem),
+    };
+    const { service, logger } = createService({
+      mediaServer,
+      tmdbDetails: {
+        title: 'Fixture Chronicle',
+        year: 2025,
+        type: 'tv',
+        externalIds: {
+          tmdb: 771,
+          type: 'tv',
+        },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      tmdb: 771,
+      type: 'tv',
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('still rejects direct provider ids after fetching details when the title suffix year disagrees', async () => {
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: undefined,
+      title: 'Fixture Chronicle (2025)',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const detailItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: 2025,
+      title: 'Fixture Chronicle (2025)',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const mediaServer = {
+      getMetadata: jest.fn().mockResolvedValue(detailItem),
+    };
+    const { service, logger } = createService({
+      mediaServer,
+      tmdbDetails: {
+        title: 'Fixture Chronicle',
+        year: 2024,
+        type: 'tv',
+        externalIds: {
+          tmdb: 771,
+          type: 'tv',
+        },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Rejected direct provider IDs for media server item "Fixture Chronicle (2025)" because they resolved to "Fixture Chronicle" instead. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.',
+    );
+  });
+
+  it('fetches detail metadata when the initial item lacks a usable year signal', async () => {
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: undefined,
+      title: 'Fixture Localized',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const detailItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: 2025,
+      title: 'Fixture Chronicle (2025)',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const mediaServer = {
+      getMetadata: jest.fn().mockResolvedValue(detailItem),
+    };
+    const { service, logger } = createService({
+      mediaServer,
+      tmdbDetails: {
+        title: 'Fixture Chronicle',
+        year: 2025,
+        type: 'tv',
+        externalIds: {
+          tmdb: 771,
+          type: 'tv',
+        },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toMatchObject({
+      tmdb: 771,
+      type: 'tv',
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('skips the detail lookup when the initial item already passes the year-aware title check', async () => {
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: 2025,
+      title: 'Fixture Chronicle (2025)',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const { service, logger, mediaServer } = createService({
+      tmdbDetails: {
+        title: 'Fixture Chronicle',
+        year: 2025,
+        type: 'tv',
+        externalIds: {
+          tmdb: 771,
+          type: 'tv',
+        },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      tmdb: 771,
+      type: 'tv',
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('skips the detail lookup when the title already matches', async () => {
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      title: 'Fixture Chronicle',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const { service, mediaServer } = createService({
+      tmdbDetails: {
+        title: 'Fixture Chronicle',
+        type: 'tv',
+        externalIds: {
+          tmdb: 771,
+          type: 'tv',
+        },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       tmdb: 771,
       type: 'tv',
