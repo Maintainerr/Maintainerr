@@ -526,7 +526,11 @@ describe('JellyfinAdapterService', () => {
 
       await service.refreshItemMetadata(itemId);
 
-      expect(jellyfinApiMocks.refreshItem).toHaveBeenCalledWith({ itemId });
+      expect(jellyfinApiMocks.refreshItem).toHaveBeenCalledWith({
+        itemId,
+        metadataRefreshMode: 'Default',
+        imageRefreshMode: 'Default',
+      });
     });
 
     it('rejects blank Jellyfin item ids before calling the API', async () => {
