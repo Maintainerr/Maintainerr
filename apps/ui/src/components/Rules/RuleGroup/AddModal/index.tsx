@@ -428,8 +428,8 @@ const AddModal = (props: AddModal) => {
       setValue('deleteAfterDays', 30)
     }
 
-    // Clear quality profile IDs when switching away from action 5
-    if (value !== 5) {
+    // Clear quality profile IDs when switching away from quality profile change
+    if (value !== ServarrAction.CHANGE_QUALITY_PROFILE) {
       setValue('radarrQualityProfileId', undefined)
       setValue('sonarrQualityProfileId', undefined)
     }
