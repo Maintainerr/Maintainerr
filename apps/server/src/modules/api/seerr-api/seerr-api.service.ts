@@ -62,9 +62,17 @@ interface SeerrEpisode {
   episodeNumber: number;
 }
 
+export enum SeerrRequestStatus {
+  PENDING = 1,
+  APPROVED,
+  DECLINED,
+  FAILED,
+  COMPLETED,
+}
+
 export type SeerrBaseRequest = {
   id: number;
-  status: number;
+  status: SeerrRequestStatus | number;
   createdAt: string;
   updatedAt: string;
   requestedBy: SeerrUser;
@@ -108,6 +116,7 @@ export interface SeerrSeasonRequest {
   id: number;
   name: string;
   seasonNumber: number;
+  status?: SeerrRequestStatus | number;
 }
 
 interface SeerrStatus {
@@ -176,6 +185,10 @@ export class SeerrApiService {
       },
       this.loggerFactory.createLogger(),
     );
+  }
+
+  public isConfigured(): boolean {
+    return this.settings.seerrConfigured();
   }
 
   public async getMovie(id: string | number): Promise<SeerrMovieResponse> {
@@ -294,7 +307,7 @@ export class SeerrApiService {
       const media = await this.getShow(tmdbid);
 
       if (media?.mediaInfo) {
-        const requests = media.mediaInfo.requests.filter((el) =>
+        const requests = (media.mediaInfo.requests ?? []).filter((el) =>
           el.seasons.find((s) => s.seasonNumber === season),
         );
         if (requests.length > 0) {
@@ -314,6 +327,43 @@ export class SeerrApiService {
         'Seerr communication failed. Is the application running?',
         error,
       );
+      return undefined;
+    }
+  }
+
+  public async hasRemainingSeasonRequests(
+    tmdbid: string | number,
+    removedSeasonNumber: number,
+  ): Promise<boolean | undefined> {
+    if (!this.settings.seerrConfigured()) {
+      return undefined;
+    }
+
+    try {
+      const media = await this.getShow(tmdbid);
+
+      if (!media?.mediaInfo) {
+        return undefined;
+      }
+
+      const requests = media.mediaInfo.requests ?? [];
+
+      return requests
+        .filter(
+          (request) => request.status !== SeerrRequestStatus.DECLINED,
+        )
+        .some((request) =>
+          request.seasons.some(
+            (season) =>
+              season.seasonNumber !== removedSeasonNumber &&
+              season.status !== SeerrRequestStatus.COMPLETED,
+          ),
+        );
+    } catch (error) {
+      this.logger.warn(
+        'Seerr communication failed. Is the application running?',
+      );
+      this.logger.debug(error);
       return undefined;
     }
   }

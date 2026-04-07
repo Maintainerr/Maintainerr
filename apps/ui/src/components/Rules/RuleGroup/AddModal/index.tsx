@@ -14,6 +14,7 @@ import {
   Application,
   MediaItemType,
   MediaLibrary,
+  ServarrAction,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
 import { lazy, useState, useSyncExternalStore } from 'react'
@@ -213,7 +214,7 @@ const ruleGroupFormSchema = z
   .refine(
     (data) =>
       data.arrAction === undefined ||
-      data.arrAction === 4 ||
+      data.arrAction === ServarrAction.DO_NOTHING ||
       data.deleteAfterDays !== undefined,
     {
       path: ['deleteAfterDays'],
@@ -364,7 +365,7 @@ const AddModal = (props: AddModal) => {
 
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
-    updateArrOption(0)
+    updateArrOption(ServarrAction.DELETE)
 
     // Clear rules that reference *arr servers since we're resetting them
     const filtered = filterRulesForArrSettings(rules, undefined, undefined)
@@ -377,7 +378,7 @@ const AddModal = (props: AddModal) => {
   function updateArrOption(value: number | undefined) {
     setValue('arrAction', value)
 
-    if (value === undefined || value === 4) {
+    if (value === undefined || value === ServarrAction.DO_NOTHING) {
       setValue('deleteAfterDays', undefined)
     } else if (getValues('deleteAfterDays') === undefined) {
       setValue('deleteAfterDays', 30)
@@ -505,7 +506,7 @@ const AddModal = (props: AddModal) => {
       name: data.name,
       description: data.description ?? '',
       libraryId: data.libraryId,
-      arrAction: data.arrAction ?? 0,
+      arrAction: data.arrAction ?? ServarrAction.DELETE,
       dataType: data.dataType as MediaItemType,
       isActive: data.active,
       useRules: data.useRules,
@@ -518,7 +519,8 @@ const AddModal = (props: AddModal) => {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
         deleteAfterDays:
-          data.arrAction === undefined || data.arrAction === 4
+          data.arrAction === undefined ||
+          data.arrAction === ServarrAction.DO_NOTHING
             ? undefined
             : data.deleteAfterDays,
         manualCollection: data.manualCollection,
@@ -709,19 +711,19 @@ const AddModal = (props: AddModal) => {
                       }}
                       options={[
                         {
-                          id: 0,
+                                  id: ServarrAction.DELETE,
                           name: 'Delete',
                         },
                         {
-                          id: 1,
+                                  id: ServarrAction.UNMONITOR_DELETE_ALL,
                           name: 'Unmonitor and delete files',
                         },
                         {
-                          id: 3,
+                                  id: ServarrAction.UNMONITOR,
                           name: 'Unmonitor and keep files',
                         },
                         {
-                          id: 4,
+                                  id: ServarrAction.DO_NOTHING,
                           name: 'Do nothing',
                         },
                       ]}
@@ -747,7 +749,7 @@ const AddModal = (props: AddModal) => {
                                   {...field}
                                   onChange={(event) => {
                                     field.onChange(event)
-                                    updateArrOption(0)
+                                    updateArrOption(ServarrAction.DELETE)
                                   }}
                                 >
                                   {/* Show TV-related types: show, season, episode */}
@@ -784,57 +786,65 @@ const AddModal = (props: AddModal) => {
                           selectedType === 'show'
                             ? [
                                 {
-                                  id: 0,
+                                  id: ServarrAction.DELETE,
                                   name: 'Delete entire show',
                                 },
                                 {
-                                  id: 1,
+                                  id: ServarrAction.UNMONITOR_DELETE_ALL,
                                   name: 'Unmonitor show + seasons, delete all episodes',
                                 },
                                 {
-                                  id: 2,
+                                  id: ServarrAction.UNMONITOR_DELETE_EXISTING,
                                   name: 'Unmonitor show, delete existing episodes',
                                 },
                                 {
-                                  id: 3,
+                                  id: ServarrAction.UNMONITOR,
                                   name: 'Unmonitor show + seasons, keep files',
                                 },
                                 {
-                                  id: 4,
+                                  id: ServarrAction.DO_NOTHING,
                                   name: 'Do nothing',
                                 },
                               ]
                             : selectedType === 'season'
                               ? [
                                   {
-                                    id: 0,
+                                    id: ServarrAction.DELETE,
                                     name: 'Unmonitor and delete season',
                                   },
                                   {
-                                    id: 2,
+                                    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
+                                    name: 'Unmonitor and delete season + delete show if empty',
+                                  },
+                                  {
+                                    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
                                     name: 'Unmonitor and delete existing episodes',
                                   },
                                   {
-                                    id: 3,
+                                    id: ServarrAction.UNMONITOR,
                                     name: 'Unmonitor season and keep files',
                                   },
                                   {
-                                    id: 4,
+                                    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+                                    name: 'Unmonitor season + unmonitor show if empty',
+                                  },
+                                  {
+                                    id: ServarrAction.DO_NOTHING,
                                     name: 'Do nothing',
                                   },
                                 ]
                               : // episodes
                                 [
                                   {
-                                    id: 0,
+                                    id: ServarrAction.DELETE,
                                     name: 'Unmonitor and delete episode',
                                   },
                                   {
-                                    id: 3,
+                                    id: ServarrAction.UNMONITOR,
                                     name: 'Unmonitor and keep file',
                                   },
                                   {
-                                    id: 4,
+                                    id: ServarrAction.DO_NOTHING,
                                     name: 'Do nothing',
                                   },
                                 ]
@@ -848,7 +858,8 @@ const AddModal = (props: AddModal) => {
                     </>
                   )}
 
-                  {arrActionValue !== undefined && arrActionValue !== 4 && (
+                  {arrActionValue !== undefined &&
+                    arrActionValue !== ServarrAction.DO_NOTHING && (
                     <div className="form-row items-center">
                       <label
                         htmlFor="collection_deleteDays"
@@ -960,8 +971,11 @@ const AddModal = (props: AddModal) => {
 
                     {(radarrSettingsId != null ||
                       (sonarrSettingsId != null &&
-                        arrActionValue === 0 &&
-                        selectedType === 'show')) && (
+                        ((arrActionValue === ServarrAction.DELETE &&
+                          selectedType === 'show') ||
+                          (arrActionValue ===
+                            ServarrAction.DELETE_SHOW_IF_EMPTY &&
+                            selectedType === 'season')))) && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="list_exclusions" className="text-label">
                           Add import list exclusions
@@ -996,8 +1010,12 @@ const AddModal = (props: AddModal) => {
                         <label htmlFor="force_seerr" className="text-label">
                           Force delete Seerr request
                           <p className="text-xs font-normal">
-                            Deletes the Seerr request instead of relying on
-                            media availability sync
+                            For movies and standard delete actions, deletes the
+                            Seerr request immediately instead of relying on
+                            media availability sync. For the season action that
+                            deletes the show if it becomes empty, Maintainerr
+                            only checks whether other Seerr season requests
+                            still exist before deleting the show.
                           </p>
                         </label>
                         <div className="form-input">
