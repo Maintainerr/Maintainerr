@@ -231,7 +231,7 @@ export class PlexMapper {
       viewCount: undefined,
       skipCount: undefined,
       lastViewedAt: undefined,
-      year: undefined,
+      year: plex.year,
       durationMs: plex.media?.[0]?.duration,
       originallyAvailableAt: plex.originallyAvailableAt
         ? new Date(plex.originallyAvailableAt)

@@ -243,7 +243,7 @@ export class MetadataService {
         if (
           item.title &&
           metadataDetails?.title &&
-          !this.titlesMatch(item.title, metadataDetails.title)
+          !(await this.matchesProviderDetails(item, metadataDetails))
         ) {
           this.logger.warn(
             `Rejected direct provider IDs for media server item "${item.title}" because they resolved to "${metadataDetails.title}" instead. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
@@ -431,28 +431,178 @@ export class MetadataService {
   }
 
   private titlesMatch(left: string, right: string): boolean {
-    const normalize = (value: string) => {
-      let normalized = '';
-
-      for (const character of value.toLowerCase()) {
-        const isDigit = character >= '0' && character <= '9';
-        const isLetter = character >= 'a' && character <= 'z';
-        if (isDigit || isLetter) {
-          normalized += character;
-        }
-      }
-
-      return normalized;
-    };
-
-    const normalizedLeft = normalize(left);
-    const normalizedRight = normalize(right);
+    const normalizedLeft = this.normalizeTitle(left);
+    const normalizedRight = this.normalizeTitle(right);
 
     if (normalizedLeft.length === 0 || normalizedRight.length === 0) {
       return left.trim().toLowerCase() === right.trim().toLowerCase();
     }
 
     return normalizedLeft === normalizedRight;
+  }
+
+  private normalizeTitle(value: string): string {
+    let normalized = '';
+
+    for (const character of value.toLowerCase()) {
+      const isDigit = character >= '0' && character <= '9';
+      const isLetter = character >= 'a' && character <= 'z';
+      if (isDigit || isLetter) {
+        normalized += character;
+      }
+    }
+
+    return normalized;
+  }
+
+  private readTitleYear(title: string): number | undefined {
+    const trimmedTitle = title.trim();
+    const parenthesizedSuffixStart = trimmedTitle.length - 6;
+    const parenthesizedYear = trimmedTitle.slice(
+      parenthesizedSuffixStart + 1,
+      trimmedTitle.length - 1,
+    );
+
+    if (
+      parenthesizedSuffixStart >= 0 &&
+      trimmedTitle.endsWith(')') &&
+      trimmedTitle.charAt(parenthesizedSuffixStart) === '(' &&
+      this.isYear(parenthesizedYear)
+    ) {
+      return Number.parseInt(parenthesizedYear, 10);
+    }
+
+    const spaceSeparatedSuffixStart = trimmedTitle.length - 5;
+    const spacedYear = trimmedTitle.slice(spaceSeparatedSuffixStart + 1);
+    if (
+      spaceSeparatedSuffixStart >= 0 &&
+      trimmedTitle.charAt(spaceSeparatedSuffixStart) === ' ' &&
+      this.isYear(spacedYear)
+    ) {
+      return Number.parseInt(spacedYear, 10);
+    }
+
+    return undefined;
+  }
+
+  private isYear(value: string): boolean {
+    return (
+      value.length === 4 &&
+      value.charCodeAt(0) >= 48 &&
+      value.charCodeAt(0) <= 57 &&
+      value.charCodeAt(1) >= 48 &&
+      value.charCodeAt(1) <= 57 &&
+      value.charCodeAt(2) >= 48 &&
+      value.charCodeAt(2) <= 57 &&
+      value.charCodeAt(3) >= 48 &&
+      value.charCodeAt(3) <= 57
+    );
+  }
+
+  private readItemYear(
+    item: Pick<MediaItem, 'year' | 'originallyAvailableAt' | 'title'>,
+  ): number | undefined {
+    if (item.year !== undefined) {
+      return item.year;
+    }
+
+    if (item.originallyAvailableAt) {
+      return item.originallyAvailableAt.getUTCFullYear();
+    }
+
+    return this.readTitleYear(item.title);
+  }
+
+  private stripTitleYear(title: string, year: number): string {
+    const trimmedTitle = title.trim();
+    const parenthesizedSuffix = `(${year})`;
+
+    if (trimmedTitle.endsWith(parenthesizedSuffix)) {
+      return trimmedTitle
+        .slice(0, trimmedTitle.length - parenthesizedSuffix.length)
+        .trimEnd();
+    }
+
+    const spaceSeparatedSuffix = ` ${year}`;
+    if (trimmedTitle.endsWith(spaceSeparatedSuffix)) {
+      return trimmedTitle
+        .slice(0, trimmedTitle.length - spaceSeparatedSuffix.length)
+        .trimEnd();
+    }
+
+    return trimmedTitle;
+  }
+
+  private matchesTitleWithYear(
+    item: Pick<MediaItem, 'title' | 'year' | 'originallyAvailableAt'>,
+    metadataDetails: MetadataDetails,
+  ): boolean {
+    const itemYear = this.readItemYear(item);
+    if (
+      itemYear === undefined ||
+      metadataDetails.year === undefined ||
+      itemYear !== metadataDetails.year
+    ) {
+      return false;
+    }
+
+    const metadataTitle = this.stripTitleYear(
+      metadataDetails.title,
+      metadataDetails.year,
+    );
+
+    return this.titlesMatch(
+      this.stripTitleYear(item.title, itemYear),
+      metadataTitle,
+    );
+  }
+
+  private async loadItemDetails(
+    itemId: string,
+  ): Promise<MediaItem | undefined> {
+    try {
+      const mediaServer = await this.mediaServerFactory.getService();
+      return await mediaServer.getMetadata(itemId);
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  private logYearMatch(itemTitle: string, providerTitle: string): void {
+    this.logger.debug(
+      `Title mismatch resolved by year-aware match for media server item "${itemTitle}" against "${providerTitle}".`,
+    );
+  }
+
+  private async matchesProviderDetails(
+    item: MediaItem,
+    metadataDetails: MetadataDetails,
+  ): Promise<boolean> {
+    if (this.titlesMatch(item.title, metadataDetails.title)) {
+      return true;
+    }
+
+    if (this.matchesTitleWithYear(item, metadataDetails)) {
+      this.logYearMatch(item.title, metadataDetails.title);
+      return true;
+    }
+
+    const detailItem = await this.loadItemDetails(item.id);
+    if (!detailItem) {
+      return false;
+    }
+
+    if (this.titlesMatch(detailItem.title, metadataDetails.title)) {
+      return true;
+    }
+
+    if (this.matchesTitleWithYear(detailItem, metadataDetails)) {
+      this.logYearMatch(item.title, metadataDetails.title);
+      return true;
+    }
+
+    return false;
   }
 
   private async resolveAllIds(

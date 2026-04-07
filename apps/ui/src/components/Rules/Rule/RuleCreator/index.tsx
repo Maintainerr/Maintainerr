@@ -334,8 +334,8 @@ const RuleCreator = (props: iRuleCreator) => {
       ) : undefined}
 
       {rulesCreated.length !== ruleAmount[1].reduce((pv, cv) => pv + cv) ? (
-        <div className="max-width-form-head mt-5">
-          <Alert>{`Some incomplete rules won't be saved`} </Alert>
+        <div className="mt-5">
+          <Alert type="error">{`Some incomplete rules won't be saved`} </Alert>
         </div>
       ) : undefined}
     </div>

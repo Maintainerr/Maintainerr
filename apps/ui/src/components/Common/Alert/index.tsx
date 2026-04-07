@@ -41,7 +41,7 @@ const Alert: React.FC<AlertProps> = ({ title, children, type }) => {
       design = {
         bgColor: 'bg-error-700',
         titleColor: 'text-error-100',
-        textColor: 'text-error-300',
+        textColor: 'text-zinc-200',
         svg: <XCircleIcon className="h-5 w-5" />,
       }
       break
