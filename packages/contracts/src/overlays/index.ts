@@ -1,7 +1,8 @@
 export * from './frame-config'
+export * from './overlay-element'
 export * from './overlay-render'
 export * from './overlay-settings'
 export * from './overlay-state'
 export * from './overlay-style-config'
+export * from './overlay-template'
 export * from './overlay-text-config'
-

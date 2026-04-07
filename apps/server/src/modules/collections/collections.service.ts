@@ -2207,4 +2207,25 @@ export class CollectionsService {
 
     return total;
   }
+
+  /**
+   * Get all active collections that have overlayEnabled=true,
+   * including their collectionMedia relation for processing.
+   */
+  async getCollectionsWithOverlayEnabled(): Promise<
+    (Collection & { collectionMedia: CollectionMedia[] })[]
+  > {
+    const collections = await this.collectionRepo.find({
+      where: { overlayEnabled: true, isActive: true },
+    });
+
+    for (const coll of collections) {
+      coll.collectionMedia =
+        (await this.CollectionMediaRepo.find({
+          where: { collectionId: coll.id },
+        })) ?? [];
+    }
+
+    return collections;
+  }
 }

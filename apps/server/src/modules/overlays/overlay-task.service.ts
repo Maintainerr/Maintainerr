@@ -76,7 +76,16 @@ export class OverlayTaskService extends TaskBase {
   ): Promise<void> {
     try {
       const settings = await this.settingsService.getSettings();
-      if (!settings.enabled || !settings.applyOnAdd) return;
+      if (!settings.enabled || !settings.applyOnAdd) {
+        this.logger.debug(
+          `Overlay on-add skipped: enabled=${settings.enabled}, applyOnAdd=${settings.applyOnAdd}`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `CollectionMedia_Added event received (${payload.mediaItems.length} items for "${payload.collectionName}")`,
+      );
 
       const collections =
         await this.collectionsService.getCollectionsWithOverlayEnabled();

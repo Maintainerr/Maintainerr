@@ -1,30 +1,29 @@
 import {
-    OverlayExport,
-    OverlayPreviewWithSettings,
-    OverlayRenderOptions,
-    OverlaySettings,
-    OverlaySettingsUpdate,
-    overlayExportSchema,
-    overlayPreviewRequestSchema,
-    overlayPreviewWithSettingsSchema,
-    overlaySettingsUpdateSchema,
+  OverlaySettings,
+  OverlaySettingsUpdate,
+  OverlayTemplateCreate,
+  OverlayTemplateUpdate,
+  overlaySettingsUpdateSchema,
+  overlayTemplateCreateSchema,
+  overlayTemplateExportSchema,
+  overlayTemplateUpdateSchema,
 } from '@maintainerr/contracts';
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    HttpException,
-    HttpStatus,
-    Param,
-    ParseIntPipe,
-    Post,
-    Put,
-    Query,
-    Res,
-    StreamableFile,
-    UploadedFile,
-    UseInterceptors,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  Res,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -36,9 +35,9 @@ import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { OverlayProcessorService } from './overlay-processor.service';
-import { OverlayRenderService } from './overlay-render.service';
 import { OverlaySettingsService } from './overlay-settings.service';
 import { OverlayTaskService } from './overlay-task.service';
+import { OverlayTemplateService } from './overlay-template.service';
 
 @Controller('api/overlays')
 export class OverlaysController {
@@ -47,8 +46,8 @@ export class OverlaysController {
   constructor(
     private readonly settingsService: OverlaySettingsService,
     private readonly processorService: OverlayProcessorService,
-    private readonly renderService: OverlayRenderService,
     private readonly taskService: OverlayTaskService,
+    private readonly templateService: OverlayTemplateService,
     private readonly plexApi: PlexApiService,
     private readonly collectionsService: CollectionsService,
     private readonly logger: MaintainerrLogger,
@@ -56,14 +55,7 @@ export class OverlaysController {
     this.logger.setContext(OverlaysController.name);
     // Bundled fonts: check dist/assets/fonts first, then source assets/fonts for dev mode
     const distFonts = path.join(__dirname, '..', '..', 'assets', 'fonts');
-    const srcFonts = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      'assets',
-      'fonts',
-    );
+    const srcFonts = path.join(__dirname, '..', '..', '..', 'assets', 'fonts');
     this.fontsDir = fs.existsSync(distFonts) ? distFonts : srcFonts;
   }
 
@@ -92,111 +84,6 @@ export class OverlaysController {
     return updated;
   }
 
-  // ── Import / Export ─────────────────────────────────────────────────────
-
-  @Post('settings/export/:type')
-  async exportSettings(
-    @Param('type') type: 'poster' | 'titlecard',
-  ): Promise<OverlayExport> {
-    if (type !== 'poster' && type !== 'titlecard') {
-      throw new HttpException(
-        'Type must be "poster" or "titlecard"',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    const settings = await this.settingsService.getSettings();
-    return this.settingsService.exportSettings(type, settings);
-  }
-
-  @Post('settings/import/:type')
-  async importSettings(
-    @Param('type') type: 'poster' | 'titlecard',
-    @Body(new ZodValidationPipe(overlayExportSchema)) data: OverlayExport,
-  ): Promise<OverlaySettings> {
-    if (type !== 'poster' && type !== 'titlecard') {
-      throw new HttpException(
-        'Type must be "poster" or "titlecard"',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    return this.settingsService.importSettings(type, data);
-  }
-
-  // ── Preview ─────────────────────────────────────────────────────────────
-
-  @Get('preview')
-  async getPreview(
-    @Query(new ZodValidationPipe(overlayPreviewRequestSchema))
-    query: { plexId: string; mode?: 'poster' | 'titlecard' },
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<StreamableFile> {
-    const settings = await this.settingsService.getSettings();
-    const result = await this.processorService.generatePreview(
-      query.plexId,
-      settings,
-      query.mode,
-    );
-
-    res.setHeader('Content-Type', result.contentType);
-    res.setHeader('Cache-Control', 'no-cache');
-    return new StreamableFile(result.buffer);
-  }
-
-  @Post('preview/with-settings')
-  async previewWithSettings(
-    @Body(new ZodValidationPipe(overlayPreviewWithSettingsSchema))
-    body: OverlayPreviewWithSettings,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<StreamableFile> {
-    // Download poster from Plex
-    const thumbPath = await this.plexApi.getBestPosterUrl(body.plexId);
-    if (!thumbPath) {
-      throw new HttpException(
-        `Could not find poster for Plex item ${body.plexId}`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    const posterBuf = await this.plexApi.downloadPoster(thumbPath);
-
-    // Build render options from the provided settings
-    const opts: OverlayRenderOptions = {
-      text: this.processorService.formatDateLabel(
-        (() => {
-          const d = new Date();
-          d.setDate(d.getDate() + 14);
-          return d;
-        })(),
-        body.overlayText,
-      ),
-      fontPath: body.overlayStyle.fontPath,
-      fontColor: body.overlayStyle.fontColor,
-      backColor: body.overlayStyle.backColor,
-      fontSize: body.overlayStyle.fontSize,
-      padding: body.overlayStyle.padding,
-      backRadius: body.overlayStyle.backRadius,
-      horizontalOffset: body.overlayStyle.horizontalOffset,
-      horizontalAlign: body.overlayStyle.horizontalAlign,
-      verticalOffset: body.overlayStyle.verticalOffset,
-      verticalAlign: body.overlayStyle.verticalAlign,
-      overlayBottomCenter: body.overlayStyle.overlayBottomCenter,
-      useFrame: body.frame.useFrame,
-      frameColor: body.frame.frameColor,
-      frameWidth: body.frame.frameWidth,
-      frameRadius: body.frame.frameRadius,
-      frameInnerRadius: body.frame.frameInnerRadius,
-      frameInnerRadiusMode: body.frame.frameInnerRadiusMode,
-      frameInset: body.frame.frameInset,
-      dockStyle: body.frame.dockStyle,
-      dockPosition: body.frame.dockPosition,
-    };
-
-    const result = await this.renderService.renderOverlay(posterBuf, opts);
-
-    res.setHeader('Content-Type', result.contentType);
-    res.setHeader('Cache-Control', 'no-cache');
-    return new StreamableFile(result.buffer);
-  }
-
   // ── Plex helpers (for preview UI) ─────────────────────────────────────
 
   @Get('sections')
@@ -207,10 +94,7 @@ export class OverlaysController {
   @Get('random-item')
   async getRandomItem(@Query('sectionId') sectionId: string) {
     if (!sectionId) {
-      throw new HttpException(
-        'sectionId is required',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('sectionId is required', HttpStatus.BAD_REQUEST);
     }
     return this.plexApi.getRandomLibraryItem([sectionId]);
   }
@@ -218,12 +102,27 @@ export class OverlaysController {
   @Get('random-episode')
   async getRandomEpisode(@Query('sectionId') sectionId: string) {
     if (!sectionId) {
-      throw new HttpException(
-        'sectionId is required',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('sectionId is required', HttpStatus.BAD_REQUEST);
     }
     return this.plexApi.getRandomEpisodeItem([sectionId]);
+  }
+
+  @Get('poster')
+  async getPoster(
+    @Query('plexId') plexId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    if (!plexId) {
+      throw new HttpException('plexId is required', HttpStatus.BAD_REQUEST);
+    }
+    const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
+    if (!thumbPath) {
+      throw new HttpException('Poster not found', HttpStatus.NOT_FOUND);
+    }
+    const buf = await this.plexApi.downloadPoster(thumbPath);
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return new StreamableFile(buf);
   }
 
   // ── Processing ──────────────────────────────────────────────────────────
@@ -260,9 +159,8 @@ export class OverlaysController {
       );
     }
 
-    const collection = await this.collectionsService.getCollection(
-      collectionId,
-    );
+    const collection =
+      await this.collectionsService.getCollection(collectionId);
     if (!collection) {
       throw new HttpException('Collection not found', HttpStatus.NOT_FOUND);
     }
@@ -347,5 +245,113 @@ export class OverlaysController {
     fs.writeFileSync(destPath, file.buffer);
 
     return { name: safeName, path: destPath };
+  }
+
+  // ── Templates ───────────────────────────────────────────────────────────
+
+  @Get('templates')
+  async listTemplates() {
+    return this.templateService.findAll();
+  }
+
+  @Get('templates/:id')
+  async getTemplate(@Param('id', ParseIntPipe) id: number) {
+    const template = await this.templateService.findById(id);
+    if (!template) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+    return template;
+  }
+
+  @Post('templates')
+  async createTemplate(
+    @Body(new ZodValidationPipe(overlayTemplateCreateSchema))
+    dto: OverlayTemplateCreate,
+  ) {
+    return this.templateService.create(dto);
+  }
+
+  @Put('templates/:id')
+  async updateTemplate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(overlayTemplateUpdateSchema))
+    dto: OverlayTemplateUpdate,
+  ) {
+    const updated = await this.templateService.update(id, dto);
+    if (!updated) {
+      throw new HttpException(
+        'Template not found or is a preset',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return updated;
+  }
+
+  @Delete('templates/:id')
+  async deleteTemplate(@Param('id', ParseIntPipe) id: number) {
+    const deleted = await this.templateService.remove(id);
+    if (!deleted) {
+      throw new HttpException(
+        'Template not found or is a preset',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return { success: true };
+  }
+
+  @Post('templates/:id/duplicate')
+  async duplicateTemplate(@Param('id', ParseIntPipe) id: number) {
+    const duplicate = await this.templateService.duplicate(id);
+    if (!duplicate) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+    return duplicate;
+  }
+
+  @Post('templates/:id/default')
+  async setDefaultTemplate(@Param('id', ParseIntPipe) id: number) {
+    const result = await this.templateService.setDefault(id);
+    if (!result) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+    return result;
+  }
+
+  @Post('templates/:id/export')
+  async exportTemplate(@Param('id', ParseIntPipe) id: number) {
+    const template = await this.templateService.findById(id);
+    if (!template) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+    return this.templateService.exportTemplate(template);
+  }
+
+  @Post('templates/import')
+  async importTemplate(
+    @Body(new ZodValidationPipe(overlayTemplateExportSchema)) data: unknown,
+  ) {
+    return this.templateService.importTemplate(data);
+  }
+
+  @Post('templates/:id/preview')
+  async previewTemplate(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('plexId') plexId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    if (!plexId) {
+      throw new HttpException('plexId is required', HttpStatus.BAD_REQUEST);
+    }
+    const template = await this.templateService.findById(id);
+    if (!template) {
+      throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
+    }
+    const result = await this.processorService.generateTemplatePreview(
+      plexId,
+      template,
+    );
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Cache-Control', 'no-cache');
+    return new StreamableFile(result.buffer);
   }
 }

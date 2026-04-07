@@ -97,8 +97,11 @@ const settingsLogsRoute = createLazyRoute(
 const settingsAboutRoute = createLazyRoute(
   () => import('./components/Settings/About'),
 )
-const settingsOverlaysRoute = createLazyRoute(
-  () => import('./components/Settings/Overlays'),
+const overlayTemplateListRoute = createLazyRoute(
+  () => import('./pages/OverlayTemplateListPage'),
+)
+const overlayTemplateEditorRoute = createLazyRoute(
+  () => import('./pages/OverlayTemplateEditorPage'),
 )
 
 /**
@@ -254,8 +257,17 @@ const appRoutes: AppRoute[] = [
       },
       {
         path: 'overlays',
-        lazy: settingsOverlaysRoute.lazy,
-        preload: settingsOverlaysRoute.preload,
+        lazy: overlayTemplateListRoute.lazy,
+        preload: overlayTemplateListRoute.preload,
+      },
+      {
+        path: 'overlays/templates',
+        element: <Navigate to="/settings/overlays" replace />,
+      },
+      {
+        path: 'overlays/templates/:id',
+        lazy: overlayTemplateEditorRoute.lazy,
+        preload: overlayTemplateEditorRoute.preload,
       },
     ],
   },

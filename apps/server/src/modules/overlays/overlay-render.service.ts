@@ -1,22 +1,41 @@
-import { OverlayRenderOptions, OverlayResult } from '@maintainerr/contracts';
+import {
+  OverlayElement,
+  OverlayRenderOptions,
+  OverlayResult,
+  type VariableElement,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import {
-    Canvas,
-    CanvasRenderingContext2D,
-    createCanvas,
-    registerFont,
+  Canvas,
+  CanvasRenderingContext2D,
+  createCanvas,
+  registerFont,
 } from 'canvas';
+import { format as dateFnsFormat, type Locale } from 'date-fns';
+import * as dateFnsLocales from 'date-fns/locale';
 import * as fs from 'fs';
 import * as path from 'path';
 import sharp from 'sharp';
+import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MaintainerrLogger } from '../logging/logs.service';
+
+export interface TemplateRenderContext {
+  /** Raw deletion date for per-element formatting */
+  deleteDate: Date;
+  /** Number of days remaining */
+  daysLeft: number;
+}
 
 @Injectable()
 export class OverlayRenderService {
   private registeredFonts = new Map<string, string>();
+  private readonly bundledFontsDir: string;
 
   constructor(private readonly logger: MaintainerrLogger) {
     this.logger.setContext(OverlayRenderService.name);
+    const distFonts = path.join(__dirname, '..', '..', 'assets', 'fonts');
+    const srcFonts = path.join(__dirname, '..', '..', '..', 'assets', 'fonts');
+    this.bundledFontsDir = fs.existsSync(distFonts) ? distFonts : srcFonts;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
@@ -46,14 +65,34 @@ export class OverlayRenderService {
     if (this.registeredFonts.has(fontPath)) {
       return this.registeredFonts.get(fontPath)!;
     }
-    if (fs.existsSync(fontPath)) {
-      const family = path.basename(fontPath, path.extname(fontPath));
+
+    // Resolve bare filenames against known font directories
+    let resolvedPath = fontPath;
+    if (!path.isAbsolute(fontPath) && !fs.existsSync(fontPath)) {
+      const bundled = path.join(this.bundledFontsDir, fontPath);
+      if (fs.existsSync(bundled)) {
+        resolvedPath = bundled;
+      } else {
+        const userPath = path.join(
+          configDataDir,
+          'overlays',
+          'fonts',
+          fontPath,
+        );
+        if (fs.existsSync(userPath)) {
+          resolvedPath = userPath;
+        }
+      }
+    }
+
+    if (fs.existsSync(resolvedPath)) {
+      const family = path.basename(resolvedPath, path.extname(resolvedPath));
       try {
-        registerFont(fontPath, { family });
+        registerFont(resolvedPath, { family });
         this.registeredFonts.set(fontPath, family);
         return family;
       } catch (err) {
-        this.logger.warn(`Failed to register font at ${fontPath}`);
+        this.logger.warn(`Failed to register font at ${resolvedPath}`);
         this.logger.debug(err);
       }
     } else {
@@ -270,10 +309,7 @@ export class OverlayRenderService {
     let tm = mCtx.measureText(opts.text);
 
     // Shrink-to-fit
-    while (
-      tm.width > maxBoxW &&
-      pointSize > Math.round(imgH * MIN_FONT_FRAC)
-    ) {
+    while (tm.width > maxBoxW && pointSize > Math.round(imgH * MIN_FONT_FRAC)) {
       pointSize = Math.max(
         Math.round(imgH * MIN_FONT_FRAC),
         pointSize - Math.ceil(Math.max(1, pointSize * 0.08)),
@@ -325,10 +361,7 @@ export class OverlayRenderService {
       innerR =
         opts.frameInnerRadiusMode === 'auto'
           ? Math.max(0, outerR - strokeW)
-          : Math.min(
-              outerR,
-              Math.max(0, Math.round(shortSide * innerFracR)),
-            );
+          : Math.min(outerR, Math.max(0, Math.round(shortSide * innerFracR)));
 
       if (opts.dockStyle === 'bar') {
         targetW = Math.max(1, imgW - 2 * innerInsetPx);
@@ -410,5 +443,388 @@ export class OverlayRenderService {
       .toBuffer();
 
     return { buffer: resultBuf, contentType: 'image/jpeg' };
+  }
+
+  // ── Template-based rendering ──────────────────────────────────────────
+
+  /**
+   * Render overlay elements from a template onto a poster.
+   * Each element is rendered to a canvas then composited in layer order.
+   */
+  async renderFromTemplate(
+    posterBuffer: Buffer,
+    elements: OverlayElement[],
+    canvasWidth: number,
+    canvasHeight: number,
+    context: TemplateRenderContext,
+  ): Promise<OverlayResult> {
+    const meta = await sharp(posterBuffer).metadata();
+    const imgW = meta.width!;
+    const imgH = meta.height!;
+
+    // Scale factor: template canvas → actual poster dimensions
+    const scaleX = imgW / canvasWidth;
+    const scaleY = imgH / canvasHeight;
+
+    // Sort elements by layerOrder, then render bottom-up
+    const sorted = [...elements]
+      .filter((el) => el.visible)
+      .sort((a, b) => a.layerOrder - b.layerOrder);
+
+    const layers: Array<{ input: Buffer; left: number; top: number }> = [];
+
+    for (const el of sorted) {
+      const sx = Math.round(el.x * scaleX);
+      const sy = Math.round(el.y * scaleY);
+      const sw = Math.max(1, Math.round(el.width * scaleX));
+      const sh = Math.max(1, Math.round(el.height * scaleY));
+
+      let layerBuf: Buffer | null = null;
+
+      switch (el.type) {
+        case 'text':
+          layerBuf = this.renderTextElement(el, sw, sh, scaleX);
+          break;
+        case 'variable':
+          layerBuf = this.renderVariableElement(el, sw, sh, scaleX, context);
+          break;
+        case 'shape':
+          layerBuf = this.renderShapeElement(el, sw, sh);
+          break;
+        case 'image':
+          layerBuf = await this.renderImageElement(el, sw, sh);
+          break;
+      }
+
+      if (layerBuf) {
+        // Apply rotation if needed
+        if (el.rotation && el.rotation !== 0) {
+          layerBuf = await sharp(layerBuf)
+            .rotate(el.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .toBuffer();
+        }
+
+        // Apply element-level opacity
+        if (el.opacity < 1) {
+          layerBuf = await this.applyOpacity(layerBuf, el.opacity);
+        }
+
+        // Clamp layer to poster bounds – sharp.composite() throws
+        // when a composite layer extends beyond the base image.
+        const layerMeta = await sharp(layerBuf).metadata();
+        let lw = layerMeta.width ?? sw;
+        let lh = layerMeta.height ?? sh;
+        let lx = sx;
+        let ly = sy;
+
+        // Handle negative offsets by extracting the visible sub-region
+        let extractLeft = 0;
+        let extractTop = 0;
+        if (lx < 0) {
+          extractLeft = -lx;
+          lw -= extractLeft;
+          lx = 0;
+        }
+        if (ly < 0) {
+          extractTop = -ly;
+          lh -= extractTop;
+          ly = 0;
+        }
+
+        // Trim to poster bounds
+        if (lx + lw > imgW) lw = imgW - lx;
+        if (ly + lh > imgH) lh = imgH - ly;
+
+        // Skip invisible layers
+        if (lw <= 0 || lh <= 0) continue;
+
+        // Extract visible region if we had to crop
+        if (
+          extractLeft > 0 ||
+          extractTop > 0 ||
+          lw !== (layerMeta.width ?? sw) ||
+          lh !== (layerMeta.height ?? sh)
+        ) {
+          layerBuf = await sharp(layerBuf)
+            .extract({
+              left: extractLeft,
+              top: extractTop,
+              width: lw,
+              height: lh,
+            })
+            .toBuffer();
+        }
+
+        layers.push({ input: layerBuf, left: lx, top: ly });
+      }
+    }
+
+    const resultBuf = await sharp(posterBuffer)
+      .composite(layers.map((l) => ({ ...l, blend: 'over' as const })))
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    return { buffer: resultBuf, contentType: 'image/jpeg' };
+  }
+
+  // ── Element renderers ─────────────────────────────────────────────────
+
+  private renderTextElement(
+    el: Extract<OverlayElement, { type: 'text' }>,
+    w: number,
+    h: number,
+    scale: number,
+  ): Buffer {
+    const canvas = createCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    if (el.backgroundColor) {
+      const bg = this.parseColor(el.backgroundColor);
+      if (!this.isTransparent(bg)) {
+        ctx.fillStyle = bg;
+        const rad = Math.round((el.backgroundRadius ?? 0) * scale);
+        this.drawRoundRect(ctx, 0, 0, w, h, rad);
+        ctx.fill();
+      }
+    }
+
+    // Text
+    const fontFamily = this.getFontFamily(el.fontPath);
+    const pointSize = Math.max(1, Math.round(el.fontSize * scale));
+    ctx.fillStyle = this.parseColor(el.fontColor);
+    ctx.font = `${el.fontWeight ?? 'normal'} ${pointSize}px "${fontFamily}"`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = (el.textAlign as CanvasTextAlign) ?? 'left';
+
+    const padX = Math.round((el.backgroundPadding ?? 0) * scale);
+    const textX =
+      el.textAlign === 'center'
+        ? w / 2
+        : el.textAlign === 'right'
+          ? w - padX
+          : padX;
+
+    ctx.fillText(el.text, textX, h / 2, w - padX * 2);
+
+    return canvas.toBuffer('image/png');
+  }
+
+  private renderVariableElement(
+    el: Extract<OverlayElement, { type: 'variable' }>,
+    w: number,
+    h: number,
+    scale: number,
+    context: TemplateRenderContext,
+  ): Buffer {
+    // Resolve variable segments into a single text string
+    const resolvedText = el.segments
+      .map((seg) => {
+        if (seg.type === 'text') return seg.value;
+        // Variable segment: resolve from context using the element's own config
+        switch (seg.field) {
+          case 'date':
+            return this.formatElementDate(el, context.deleteDate);
+          case 'days':
+            return context.daysLeft.toString();
+          case 'daysText':
+            return this.formatElementDaysText(el, context.daysLeft);
+          default:
+            return '';
+        }
+      })
+      .join('');
+
+    // Render like a text element
+    const canvas = createCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+
+    if (el.backgroundColor) {
+      const bg = this.parseColor(el.backgroundColor);
+      if (!this.isTransparent(bg)) {
+        ctx.fillStyle = bg;
+        const rad = Math.round((el.backgroundRadius ?? 0) * scale);
+        this.drawRoundRect(ctx, 0, 0, w, h, rad);
+        ctx.fill();
+      }
+    }
+
+    const fontFamily = this.getFontFamily(el.fontPath);
+    const pointSize = Math.max(1, Math.round(el.fontSize * scale));
+    ctx.fillStyle = this.parseColor(el.fontColor);
+    ctx.font = `${el.fontWeight ?? 'normal'} ${pointSize}px "${fontFamily}"`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = (el.textAlign as CanvasTextAlign) ?? 'left';
+
+    const padX = Math.round((el.backgroundPadding ?? 0) * scale);
+    const textX =
+      el.textAlign === 'center'
+        ? w / 2
+        : el.textAlign === 'right'
+          ? w - padX
+          : padX;
+
+    ctx.fillText(resolvedText, textX, h / 2, w - padX * 2);
+
+    return canvas.toBuffer('image/png');
+  }
+
+  // ── Per-element date/variable formatting ──────────────────────────────
+
+  private formatElementDate(el: VariableElement, deleteDate: Date): string {
+    const fmt = this.convertVarDateFormat(el.dateFormat ?? 'MMM d');
+    const locale = this.resolveVarLocale(el.language ?? 'en-US');
+    try {
+      let label = dateFnsFormat(deleteDate, fmt, { locale });
+      if (el.enableDaySuffix && (el.language ?? 'en-US').startsWith('en')) {
+        const day = deleteDate.getDate();
+        const suffix = this.ordinalSuffix(day);
+        label = label.replace(new RegExp(`\\b${day}\\b`), suffix);
+      }
+      return label;
+    } catch {
+      return deleteDate.toLocaleDateString();
+    }
+  }
+
+  private formatElementDaysText(el: VariableElement, daysLeft: number): string {
+    if (daysLeft === 0) return el.textToday ?? 'today';
+    if (daysLeft === 1) return el.textDay ?? 'in 1 day';
+    return (el.textDays ?? 'in {0} days').replace('{0}', String(daysLeft));
+  }
+
+  private ordinalSuffix(n: number): string {
+    const abs = Math.abs(n);
+    const lastTwo = abs % 100;
+    if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+    switch (abs % 10) {
+      case 1:
+        return `${n}st`;
+      case 2:
+        return `${n}nd`;
+      case 3:
+        return `${n}rd`;
+      default:
+        return `${n}th`;
+    }
+  }
+
+  private resolveVarLocale(language: string): Locale | undefined {
+    const key = language.replace('-', '') || language.split('-')[0];
+    const byFull = (dateFnsLocales as Record<string, Locale>)[key];
+    if (byFull) return byFull;
+    return (dateFnsLocales as Record<string, Locale>)[language.split('-')[0]];
+  }
+
+  private convertVarDateFormat(fmt: string): string {
+    return fmt
+      .replace(/MMMM/g, 'MMMM')
+      .replace(/MMM/g, 'MMM')
+      .replace(/MM/g, 'MM')
+      .replace(/\bM\b/g, 'M')
+      .replace(/dddd/g, 'EEEE')
+      .replace(/ddd/g, 'EEE')
+      .replace(/\bdd\b/g, 'dd')
+      .replace(/\bd\b/g, 'd')
+      .replace(/yyyy/g, 'yyyy')
+      .replace(/\byy\b/g, 'yy');
+  }
+
+  private renderShapeElement(
+    el: Extract<OverlayElement, { type: 'shape' }>,
+    w: number,
+    h: number,
+  ): Buffer {
+    const canvas = createCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+
+    const fill = el.fillColor ? this.parseColor(el.fillColor) : null;
+    const stroke = el.strokeColor ? this.parseColor(el.strokeColor) : null;
+
+    if (el.shapeType === 'ellipse') {
+      ctx.beginPath();
+      ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      if (fill && !this.isTransparent(fill)) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke && el.strokeWidth && !this.isTransparent(stroke)) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = el.strokeWidth;
+        ctx.stroke();
+      }
+    } else {
+      // rectangle
+      const rad = el.cornerRadius ?? 0;
+      this.drawRoundRect(ctx, 0, 0, w, h, rad);
+      if (fill && !this.isTransparent(fill)) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke && el.strokeWidth && !this.isTransparent(stroke)) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = el.strokeWidth;
+        ctx.stroke();
+      }
+    }
+
+    return canvas.toBuffer('image/png');
+  }
+
+  private async renderImageElement(
+    el: Extract<OverlayElement, { type: 'image' }>,
+    w: number,
+    h: number,
+  ): Promise<Buffer | null> {
+    if (!el.imagePath) return null;
+
+    try {
+      let imgBuf: Buffer;
+      const resolvedPath = path.isAbsolute(el.imagePath)
+        ? el.imagePath
+        : path.join(configDataDir, 'overlays', 'images', el.imagePath);
+      if (fs.existsSync(resolvedPath)) {
+        imgBuf = fs.readFileSync(resolvedPath);
+      } else {
+        this.logger.warn(`Image element source not found: ${resolvedPath}`);
+        return null;
+      }
+
+      return await sharp(imgBuf)
+        .resize(w, h, {
+          fit: 'contain',
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
+        .png()
+        .toBuffer();
+    } catch (err) {
+      this.logger.warn(`Failed to render image element: ${el.imagePath}`);
+      this.logger.debug(err);
+      return null;
+    }
+  }
+
+  private async applyOpacity(buf: Buffer, opacity: number): Promise<Buffer> {
+    // Create a single-pixel alpha channel at the desired opacity and tile it
+    const meta = await sharp(buf).metadata();
+    const w = meta.width!;
+    const h = meta.height!;
+
+    // Extract alpha, multiply, re-apply
+    const { data, info } = await sharp(buf)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const pixels = new Uint8Array(data.buffer, data.byteOffset, data.length);
+    for (let i = 3; i < pixels.length; i += 4) {
+      pixels[i] = Math.round(pixels[i] * Math.max(0, Math.min(1, opacity)));
+    }
+
+    return sharp(Buffer.from(pixels.buffer), {
+      raw: { width: info.width, height: info.height, channels: 4 },
+    })
+      .png()
+      .toBuffer();
   }
 }

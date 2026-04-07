@@ -1,17 +1,16 @@
 import type {
-    FrameConfig,
-    OverlayExport,
-    OverlaySettings,
-    OverlaySettingsUpdate,
-    OverlayStyleConfig,
-    OverlayTextConfig,
+  OverlaySettings,
+  OverlaySettingsUpdate,
+  OverlayTemplate,
+  OverlayTemplateCreate,
+  OverlayTemplateExport,
+  OverlayTemplateUpdate,
 } from '@maintainerr/contracts'
-import axios from 'axios'
 import GetApiHandler, {
-    API_BASE_PATH,
-    DeleteApiHandler,
-    PostApiHandler,
-    PutApiHandler,
+  API_BASE_PATH,
+  DeleteApiHandler,
+  PostApiHandler,
+  PutApiHandler,
 } from '../utils/ApiHandler'
 
 export const getOverlaySettings = () =>
@@ -19,14 +18,6 @@ export const getOverlaySettings = () =>
 
 export const updateOverlaySettings = (data: OverlaySettingsUpdate) =>
   PutApiHandler<OverlaySettings>('/overlays/settings', data)
-
-export const exportOverlaySettings = (type: 'poster' | 'titlecard') =>
-  PostApiHandler<OverlayExport>(`/overlays/settings/export/${type}`, {})
-
-export const importOverlaySettings = (
-  type: 'poster' | 'titlecard',
-  data: OverlayExport,
-) => PostApiHandler<OverlaySettings>(`/overlays/settings/import/${type}`, data)
 
 export const getOverlaySections = () =>
   GetApiHandler<{ key: string; title: string; type: string }[]>(
@@ -42,6 +33,9 @@ export const getRandomEpisode = (sectionId: string) =>
   GetApiHandler<{ plexId: string; title: string } | null>(
     `/overlays/random-episode?sectionId=${encodeURIComponent(sectionId)}`,
   )
+
+export const buildPosterUrl = (plexId: string) =>
+  `${API_BASE_PATH}/api/overlays/poster?plexId=${encodeURIComponent(plexId)}`
 
 export const getOverlayFonts = () =>
   GetApiHandler<{ name: string; path: string }[]>('/overlays/fonts')
@@ -67,35 +61,43 @@ export const getOverlayStatus = () =>
     } | null
   }>('/overlays/status')
 
-/**
- * Build a preview image URL for the overlay.
- * To use as `<img src={...}>`, returns a URL that the browser hits directly.
- */
-export const buildPreviewUrl = (
+// ── Template API ──────────────────────────────────────────────────────────
+
+export const getOverlayTemplates = () =>
+  GetApiHandler<OverlayTemplate[]>('/overlays/templates')
+
+export const getOverlayTemplate = (id: number) =>
+  GetApiHandler<OverlayTemplate>(`/overlays/templates/${id}`)
+
+export const createOverlayTemplate = (data: OverlayTemplateCreate) =>
+  PostApiHandler<OverlayTemplate>('/overlays/templates', data)
+
+export const updateOverlayTemplate = (
+  id: number,
+  data: OverlayTemplateUpdate,
+) => PutApiHandler<OverlayTemplate>(`/overlays/templates/${id}`, data)
+
+export const deleteOverlayTemplate = (id: number) =>
+  DeleteApiHandler<{ success: boolean }>(`/overlays/templates/${id}`)
+
+export const duplicateOverlayTemplate = (id: number) =>
+  PostApiHandler<OverlayTemplate>(`/overlays/templates/${id}/duplicate`, {})
+
+export const setDefaultOverlayTemplate = (id: number) =>
+  PostApiHandler<OverlayTemplate>(`/overlays/templates/${id}/default`, {})
+
+export const exportOverlayTemplate = (id: number) =>
+  PostApiHandler<OverlayTemplateExport>(`/overlays/templates/${id}/export`, {})
+
+export const importOverlayTemplate = (data: OverlayTemplateExport) =>
+  PostApiHandler<OverlayTemplate>('/overlays/templates/import', data)
+
+export const buildTemplatePreviewUrl = (
+  templateId: number,
   plexId: string,
-  mode: 'poster' | 'titlecard' = 'poster',
   cacheBust?: number,
 ) => {
-  const params = new URLSearchParams({ plexId, mode })
+  const params = new URLSearchParams({ plexId })
   if (cacheBust) params.set('_t', String(cacheBust))
-  return `${API_BASE_PATH}/api/overlays/preview?${params.toString()}`
-}
-
-/**
- * POST current (unsaved) settings to the preview endpoint and return an
- * object-URL that can be used as an `<img src>`.
- * Caller is responsible for revoking the previous URL via `URL.revokeObjectURL`.
- */
-export const fetchPreviewWithSettings = async (
-  plexId: string,
-  overlayText: OverlayTextConfig,
-  overlayStyle: OverlayStyleConfig,
-  frame: FrameConfig,
-): Promise<string> => {
-  const res = await axios.post(
-    `${API_BASE_PATH}/api/overlays/preview/with-settings`,
-    { plexId, overlayText, overlayStyle, frame },
-    { responseType: 'blob' },
-  )
-  return URL.createObjectURL(res.data as Blob)
+  return `${API_BASE_PATH}/api/overlays/templates/${templateId}/preview?${params.toString()}`
 }

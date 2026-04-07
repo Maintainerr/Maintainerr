@@ -1,14 +1,15 @@
 import { MediaItemType, MediaServerType } from '@maintainerr/contracts';
 import {
-    Column,
-    Entity,
-    JoinColumn,
-    ManyToOne,
-    OneToMany,
-    OneToOne,
-    PrimaryGeneratedColumn,
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { CollectionLog } from '../../collections/entities/collection_log.entities';
+import { OverlayTemplateEntity } from '../../overlays/entities/overlay-template.entities';
 import { RulesDto } from '../../rules/dtos/rules.dto';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { RadarrSettings } from '../../settings/entities/radarr_settings.entities';
@@ -105,6 +106,16 @@ export class Collection {
 
   @Column({ nullable: false, default: false })
   overlayEnabled: boolean;
+
+  @Column({ nullable: true, default: null })
+  overlayTemplateId: number | null;
+
+  @ManyToOne(() => OverlayTemplateEntity, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'overlayTemplateId' })
+  overlayTemplate: OverlayTemplateEntity | null;
 
   @OneToMany(
     () => CollectionMedia,

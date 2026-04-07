@@ -1,16 +1,10 @@
 import {
-    FrameConfig,
-    MaintainerrEvent,
-    OverlayRenderOptions,
-    OverlayResult,
-    OverlaySettings,
-    OverlayStyleConfig,
-    OverlayTextConfig,
+  MaintainerrEvent,
+  OverlayResult,
+  OverlayTemplate,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { format as dateFnsFormat, type Locale } from 'date-fns';
-import * as dateFnsLocales from 'date-fns/locale';
 import * as fs from 'fs';
 import * as path from 'path';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
@@ -19,9 +13,13 @@ import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { OverlayRenderService } from './overlay-render.service';
+import {
+  OverlayRenderService,
+  TemplateRenderContext,
+} from './overlay-render.service';
 import { OverlaySettingsService } from './overlay-settings.service';
 import { OverlayStateService } from './overlay-state.service';
+import { OverlayTemplateService } from './overlay-template.service';
 
 export type ProcessorStatus = 'idle' | 'running' | 'error';
 
@@ -46,6 +44,7 @@ export class OverlayProcessorService {
     private readonly settingsService: OverlaySettingsService,
     private readonly stateService: OverlayStateService,
     private readonly renderService: OverlayRenderService,
+    private readonly templateService: OverlayTemplateService,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -69,78 +68,6 @@ export class OverlayProcessorService {
     const now = new Date();
     const diff = deleteDate.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }
-
-  private ordinalSuffix(n: number): string {
-    const abs = Math.abs(n);
-    const lastTwo = abs % 100;
-    if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
-    switch (abs % 10) {
-      case 1:
-        return `${n}st`;
-      case 2:
-        return `${n}nd`;
-      case 3:
-        return `${n}rd`;
-      default:
-        return `${n}th`;
-    }
-  }
-
-  formatDateLabel(deleteDate: Date, textCfg: OverlayTextConfig): string {
-    let label: string;
-
-    if (textCfg.useDays) {
-      const days = this.getDaysLeft(deleteDate);
-      if (days === 0) {
-        label = textCfg.textToday;
-      } else if (days === 1) {
-        label = textCfg.textDay;
-      } else {
-        label = textCfg.textDays.replace('{0}', String(days));
-      }
-    } else {
-      try {
-        label = `${textCfg.overlayText} ${dateFnsFormat(
-          deleteDate,
-          this.convertDateFormat(textCfg.dateFormat),
-          { locale: this.resolveLocale(textCfg.language) },
-        )}`;
-
-        if (textCfg.enableDaySuffix && textCfg.language.startsWith('en')) {
-          const day = deleteDate.getDate();
-          const suffix = this.ordinalSuffix(day);
-          label = label.replace(new RegExp(`\\b${day}\\b`), suffix);
-        }
-      } catch {
-        label = `${textCfg.overlayText} ${deleteDate.toLocaleDateString()}`;
-      }
-    }
-
-    if (textCfg.enableUppercase) label = label.toUpperCase();
-    return label;
-  }
-
-  private resolveLocale(language: string): Locale | undefined {
-    const key = language.replace('-', '') || language.split('-')[0];
-    const byFull = (dateFnsLocales as Record<string, Locale>)[key];
-    if (byFull) return byFull;
-    const primary = language.split('-')[0];
-    return (dateFnsLocales as Record<string, Locale>)[primary];
-  }
-
-  private convertDateFormat(fmt: string): string {
-    return fmt
-      .replace(/MMMM/g, 'MMMM')
-      .replace(/MMM/g, 'MMM')
-      .replace(/MM/g, 'MM')
-      .replace(/\bM\b/g, 'M')
-      .replace(/dddd/g, 'EEEE')
-      .replace(/ddd/g, 'EEE')
-      .replace(/\bdd\b/g, 'dd')
-      .replace(/\bd\b/g, 'd')
-      .replace(/yyyy/g, 'yyyy')
-      .replace(/\byy\b/g, 'yy');
   }
 
   // ── Poster backup helpers ─────────────────────────────────────────────────
@@ -172,19 +99,14 @@ export class OverlayProcessorService {
 
   // ── Revert ────────────────────────────────────────────────────────────────
 
-  async revertItem(
-    collectionId: number,
-    mediaServerId: string,
-  ): Promise<void> {
+  async revertItem(collectionId: number, mediaServerId: string): Promise<void> {
     if (!this.plexApi.isPlexSetup()) return;
 
     const originalBuf = this.loadOriginalPoster(mediaServerId);
     if (originalBuf) {
       try {
         await this.plexApi.setThumb(mediaServerId, originalBuf, 'image/jpeg');
-        this.logger.log(
-          `Restored original poster for item ${mediaServerId}`,
-        );
+        this.logger.log(`Restored original poster for item ${mediaServerId}`);
       } catch (err) {
         this.logger.warn(
           `Failed to restore original poster for ${mediaServerId}`,
@@ -215,105 +137,6 @@ export class OverlayProcessorService {
 
   // ── Apply overlay to single item ──────────────────────────────────────────
 
-  private async applyOverlay(
-    plexId: string,
-    collectionId: number,
-    label: string,
-    deleteDate: Date,
-    settings: OverlaySettings,
-    isTitleCard: boolean,
-  ): Promise<boolean> {
-    const overlayStyle: OverlayStyleConfig = isTitleCard
-      ? settings.titleCardOverlayStyle
-      : settings.posterOverlayStyle;
-    const frameCfg: FrameConfig = isTitleCard
-      ? settings.titleCardFrame
-      : settings.posterFrame;
-    const textCfg: OverlayTextConfig = isTitleCard
-      ? settings.titleCardOverlayText
-      : settings.posterOverlayText;
-
-    // Get poster URL from Plex
-    const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
-    if (!thumbPath) {
-      this.logger.warn(
-        `Could not find poster URL for item ${plexId}, skipping`,
-      );
-      return false;
-    }
-
-    // Use saved original as base to prevent stacking overlays on re-apply
-    let posterBuf: Buffer;
-    const savedOriginal = this.loadOriginalPoster(plexId);
-    if (savedOriginal) {
-      posterBuf = savedOriginal;
-    } else {
-      try {
-        posterBuf = await this.plexApi.downloadPoster(thumbPath);
-      } catch (err) {
-        this.logger.warn(`Failed to download poster for ${plexId}`);
-        this.logger.debug(err);
-        return false;
-      }
-      await this.saveOriginalPoster(plexId, posterBuf);
-    }
-
-    // Build render options
-    const overlayOpts: OverlayRenderOptions = {
-      text: label,
-      fontPath: overlayStyle.fontPath,
-      fontColor: overlayStyle.fontColor,
-      backColor: overlayStyle.backColor,
-      fontSize: overlayStyle.fontSize,
-      padding: overlayStyle.padding,
-      backRadius: overlayStyle.backRadius,
-      horizontalOffset: overlayStyle.horizontalOffset,
-      horizontalAlign: overlayStyle.horizontalAlign,
-      verticalOffset: overlayStyle.verticalOffset,
-      verticalAlign: overlayStyle.verticalAlign,
-      overlayBottomCenter: overlayStyle.overlayBottomCenter,
-      useFrame: frameCfg.useFrame,
-      frameColor: frameCfg.frameColor,
-      frameWidth: frameCfg.frameWidth,
-      frameRadius: frameCfg.frameRadius,
-      frameInnerRadius: frameCfg.frameInnerRadius,
-      frameInnerRadiusMode: frameCfg.frameInnerRadiusMode,
-      frameInset: frameCfg.frameInset,
-      dockStyle: frameCfg.dockStyle,
-      dockPosition: frameCfg.dockPosition,
-    };
-
-    let result: OverlayResult;
-    try {
-      result = await this.renderService.renderOverlay(posterBuf, overlayOpts);
-    } catch (err) {
-      this.logger.warn(`Overlay rendering failed for ${plexId}`);
-      this.logger.debug(err);
-      return false;
-    }
-
-    // Upload and select
-    try {
-      await this.plexApi.setThumb(plexId, Buffer.from(result.buffer), result.contentType);
-
-      const daysLeftShown = textCfg.useDays
-        ? this.getDaysLeft(deleteDate)
-        : null;
-      await this.stateService.markProcessed(
-        collectionId,
-        plexId,
-        this.getOriginalPosterPath(plexId),
-        daysLeftShown,
-      );
-
-      return true;
-    } catch (err) {
-      this.logger.warn(`Failed to apply overlay for ${plexId}`);
-      this.logger.debug(err);
-      return false;
-    }
-  }
-
   // ── Process single collection ─────────────────────────────────────────────
 
   async processCollection(
@@ -338,15 +161,25 @@ export class OverlayProcessorService {
 
     // Auto-detect title card vs poster based on collection type
     const isTitleCard = collection.type === 'episode';
-    const textCfg: OverlayTextConfig = isTitleCard
-      ? settings.titleCardOverlayText
-      : settings.posterOverlayText;
+    const mode = isTitleCard ? 'titlecard' : 'poster';
 
-    if (isTitleCard) {
-      this.logger.log(
-        `Collection "${collection.title}" uses title card overlay settings`,
+    // Resolve the template: collection override → default for mode → null
+    const template = await this.templateService.resolveForCollection(
+      collection.overlayTemplateId ?? null,
+      mode,
+    );
+
+    if (!template) {
+      this.logger.warn(
+        `No overlay template found for collection "${collection.title}" (mode=${mode}). ` +
+          `Set a default template or assign one to this collection.`,
       );
+      return result;
     }
+
+    this.logger.log(
+      `Collection "${collection.title}" using template "${template.name}" (${mode})`,
+    );
 
     for (const mediaItem of collection.collectionMedia) {
       const plexId = mediaItem.mediaServerId;
@@ -356,29 +189,25 @@ export class OverlayProcessorService {
       );
       if (!deleteDate) continue;
 
-      const label = this.formatDateLabel(deleteDate, textCfg);
       const daysLeft = this.getDaysLeft(deleteDate);
       const existingState = await this.stateService.getItemState(
         collection.id,
         plexId,
       );
 
-      // Determine if we need to apply/re-apply
+      // Re-apply if not yet processed or if days-left changed
       const shouldApply =
-        !existingState ||
-        existingState.daysLeftShown !== daysLeft ||
-        (textCfg.useDays && existingState.daysLeftShown !== daysLeft) ||
-        (!textCfg.useDays && existingState.daysLeftShown !== null);
+        !existingState || existingState.daysLeftShown !== daysLeft;
 
       if (shouldApply) {
-        this.logger.log(`Applying overlay to item ${plexId} — "${label}"`);
-        const success = await this.applyOverlay(
+        this.logger.log(
+          `Applying template overlay to item ${plexId} — ${daysLeft} day(s) left`,
+        );
+        const success = await this.applyTemplateOverlay(
           plexId,
           collection.id,
-          label,
           deleteDate,
-          settings,
-          isTitleCard,
+          template,
         );
         if (success) {
           result.processed++;
@@ -507,61 +336,112 @@ export class OverlayProcessorService {
     this.logger.log('All overlays reset and state cleared');
   }
 
-  // ── Generate preview ──────────────────────────────────────────────────────
+  // ── Template-based overlay application ────────────────────────────────────
 
-  async generatePreview(
+  /**
+   * Apply a template-based overlay to a single Plex item.
+   */
+  async applyTemplateOverlay(
     plexId: string,
-    settings: OverlaySettings,
-    mode: 'poster' | 'titlecard' = 'poster',
+    collectionId: number,
+    deleteDate: Date,
+    template: OverlayTemplate,
+  ): Promise<boolean> {
+    // Get poster
+    const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
+    if (!thumbPath) {
+      this.logger.warn(
+        `Could not find poster URL for item ${plexId}, skipping`,
+      );
+      return false;
+    }
+
+    let posterBuf: Buffer;
+    const savedOriginal = this.loadOriginalPoster(plexId);
+    if (savedOriginal) {
+      posterBuf = savedOriginal;
+    } else {
+      try {
+        posterBuf = await this.plexApi.downloadPoster(thumbPath);
+      } catch (err) {
+        this.logger.warn(`Failed to download poster for ${plexId}`);
+        this.logger.debug(err);
+        return false;
+      }
+      await this.saveOriginalPoster(plexId, posterBuf);
+    }
+
+    // Build render context — raw data; per-element formatting is done by the render service
+    const daysLeft = this.getDaysLeft(deleteDate);
+    const context: TemplateRenderContext = {
+      deleteDate,
+      daysLeft,
+    };
+
+    let result: OverlayResult;
+    try {
+      result = await this.renderService.renderFromTemplate(
+        posterBuf,
+        template.elements,
+        template.canvasWidth,
+        template.canvasHeight,
+        context,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Template overlay rendering failed for ${plexId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      this.logger.debug(err);
+      return false;
+    }
+
+    try {
+      await this.plexApi.setThumb(
+        plexId,
+        Buffer.from(result.buffer),
+        result.contentType,
+      );
+      await this.stateService.markProcessed(
+        collectionId,
+        plexId,
+        this.getOriginalPosterPath(plexId),
+        daysLeft,
+      );
+      return true;
+    } catch (err) {
+      this.logger.warn(`Failed to apply template overlay for ${plexId}`);
+      this.logger.debug(err);
+      return false;
+    }
+  }
+
+  /**
+   * Generate a preview image using a template's elements.
+   */
+  async generateTemplatePreview(
+    plexId: string,
+    template: OverlayTemplate,
   ): Promise<OverlayResult> {
-    const isTitleCard = mode === 'titlecard';
-    const textCfg: OverlayTextConfig = isTitleCard
-      ? settings.titleCardOverlayText
-      : settings.posterOverlayText;
-    const overlayStyle: OverlayStyleConfig = isTitleCard
-      ? settings.titleCardOverlayStyle
-      : settings.posterOverlayStyle;
-    const frameCfg: FrameConfig = isTitleCard
-      ? settings.titleCardFrame
-      : settings.posterFrame;
-
-    // Generate a sample label 14 days in the future
-    const sampleDeleteDate = new Date();
-    sampleDeleteDate.setDate(sampleDeleteDate.getDate() + 14);
-    const label = this.formatDateLabel(sampleDeleteDate, textCfg);
-
-    // Download poster from Plex
     const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
     if (!thumbPath) {
       throw new Error(`Could not find poster for Plex item ${plexId}`);
     }
     const posterBuf = await this.plexApi.downloadPoster(thumbPath);
 
-    // Build render options
-    const overlayOpts: OverlayRenderOptions = {
-      text: label,
-      fontPath: overlayStyle.fontPath,
-      fontColor: overlayStyle.fontColor,
-      backColor: overlayStyle.backColor,
-      fontSize: overlayStyle.fontSize,
-      padding: overlayStyle.padding,
-      backRadius: overlayStyle.backRadius,
-      horizontalOffset: overlayStyle.horizontalOffset,
-      horizontalAlign: overlayStyle.horizontalAlign,
-      verticalOffset: overlayStyle.verticalOffset,
-      verticalAlign: overlayStyle.verticalAlign,
-      overlayBottomCenter: overlayStyle.overlayBottomCenter,
-      useFrame: frameCfg.useFrame,
-      frameColor: frameCfg.frameColor,
-      frameWidth: frameCfg.frameWidth,
-      frameRadius: frameCfg.frameRadius,
-      frameInnerRadius: frameCfg.frameInnerRadius,
-      frameInnerRadiusMode: frameCfg.frameInnerRadiusMode,
-      frameInset: frameCfg.frameInset,
-      dockStyle: frameCfg.dockStyle,
-      dockPosition: frameCfg.dockPosition,
+    // Sample context: 14 days in the future
+    const sampleDate = new Date();
+    sampleDate.setDate(sampleDate.getDate() + 14);
+    const context: TemplateRenderContext = {
+      deleteDate: sampleDate,
+      daysLeft: 14,
     };
 
-    return this.renderService.renderOverlay(posterBuf, overlayOpts);
+    return this.renderService.renderFromTemplate(
+      posterBuf,
+      template.elements,
+      template.canvasWidth,
+      template.canvasHeight,
+      context,
+    );
   }
 }

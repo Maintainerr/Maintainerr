@@ -166,6 +166,7 @@ const ruleGroupFormSchema = z
       .optional(),
     showRecommended: z.boolean(),
     showHome: z.boolean(),
+    overlayEnabled: z.boolean(),
     listExclusions: z.boolean(),
     forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
@@ -238,6 +239,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     editData?.collection?.tautulliWatchedPercentOverride ?? undefined,
   showRecommended: editData?.collection?.visibleOnRecommended ?? true,
   showHome: editData?.collection?.visibleOnHome ?? true,
+  overlayEnabled: editData?.collection?.overlayEnabled ?? false,
   listExclusions: editData?.collection?.listExclusions ?? true,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
@@ -518,6 +520,7 @@ const AddModal = (props: AddModal) => {
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
+        overlayEnabled: data.overlayEnabled,
         deleteAfterDays:
           data.arrAction === undefined ||
           data.arrAction === ServarrAction.DO_NOTHING
@@ -963,6 +966,29 @@ const AddModal = (props: AddModal) => {
                                 id="collection_visible"
                                 className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
                                 {...register('showHome')}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="overlay_enabled"
+                            className="text-label"
+                          >
+                            Enable overlays
+                            <p className="text-xs font-normal">
+                              Apply date overlays to posters in this{' '}
+                              {collectionTerm}
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="overlay_enabled"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('overlayEnabled')}
                               />
                             </div>
                           </div>
