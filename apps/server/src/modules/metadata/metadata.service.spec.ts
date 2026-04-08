@@ -219,6 +219,43 @@ describe('MetadataService', () => {
     );
   });
 
+  it('fails closed when a lookup policy only references unsupported providers', async () => {
+    const { service, logger } = createService({
+      tmdbDetails: {
+        title: 'Fixture Story',
+        type: 'movie',
+        externalIds: {
+          tmdb: 771,
+          type: 'movie',
+        },
+      },
+    });
+    const item = createMediaItem({
+      id: 'movie-invalid-policy-1',
+      type: 'movie',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    });
+    const invalidLookupPolicy = {
+      providerKeys: ['invalid-provider'],
+      providerMatchMode: 'any' as const,
+    };
+
+    await expect(
+      service.resolveLookupCandidatesFromMediaItem(item, invalidLookupPolicy),
+    ).resolves.toEqual([]);
+    await expect(
+      service.resolveIdsFromMediaItemWithLookupPolicy(item, invalidLookupPolicy),
+    ).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Metadata lookup policy references only unsupported providers: invalid-provider',
+    );
+  });
+
   it('resolves ids from hierarchy metadata when a child media item is provided', async () => {
     const episodeItem = createMediaItem({
       id: 'episode-1',

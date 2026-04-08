@@ -83,20 +83,39 @@ export class MetadataService {
     return metadataLookupPoliciesByService[service.toLowerCase()] ?? {};
   }
 
-  private getLookupPolicyProviderKeys(
+  private resolveLookupPolicyProviderKeys(
     lookupPolicy: MetadataLookupPolicy = {},
-  ): string[] {
-    if (!lookupPolicy.providerKeys?.length) {
-      return this.getOrderedProviderKeys();
+  ): {
+    providerKeys: string[];
+    hasExplicitRestriction: boolean;
+  } {
+    const hasExplicitRestriction = Array.isArray(lookupPolicy.providerKeys);
+
+    if (!hasExplicitRestriction) {
+      return {
+        providerKeys: this.getOrderedProviderKeys(),
+        hasExplicitRestriction: false,
+      };
     }
 
     const registeredProviderKeys = new Set(
       this.providers.map((provider) => provider.idKey),
     );
 
-    return lookupPolicy.providerKeys.filter((providerKey) =>
+    const providerKeys = lookupPolicy.providerKeys.filter((providerKey) =>
       registeredProviderKeys.has(providerKey),
     );
+
+    if (lookupPolicy.providerKeys.length > 0 && providerKeys.length === 0) {
+      this.logger.warn(
+        `Metadata lookup policy references only unsupported providers: ${lookupPolicy.providerKeys.join(', ')}`,
+      );
+    }
+
+    return {
+      providerKeys,
+      hasExplicitRestriction,
+    };
   }
 
   private buildLookupCandidates(
@@ -155,8 +174,9 @@ export class MetadataService {
     ids: Partial<ProviderIds>,
     lookupPolicy: MetadataLookupPolicy = {},
   ): MetadataLookupCandidate[] {
-    const providerKeys = this.getLookupPolicyProviderKeys(lookupPolicy);
-    const allowedProviderKeys = providerKeys.length
+    const { providerKeys, hasExplicitRestriction } =
+      this.resolveLookupPolicyProviderKeys(lookupPolicy);
+    const allowedProviderKeys = hasExplicitRestriction
       ? new Set(providerKeys)
       : undefined;
 
@@ -423,6 +443,13 @@ export class MetadataService {
     mediaServerId: string,
     lookupPolicy: MetadataLookupPolicy,
   ): Promise<ResolvedMediaIds | undefined> {
+    const { providerKeys, hasExplicitRestriction } =
+      this.resolveLookupPolicyProviderKeys(lookupPolicy);
+
+    if (hasExplicitRestriction && providerKeys.length === 0) {
+      return undefined;
+    }
+
     try {
       const mediaServer = await this.mediaServerFactory.getService();
       const mediaItem = await mediaServer.getMetadata(mediaServerId);
@@ -436,7 +463,7 @@ export class MetadataService {
 
       return this.resolveIdsFromHierarchyMediaItemInternal(
         mediaItem,
-        this.getLookupPolicyProviderKeys(lookupPolicy),
+        providerKeys,
         lookupPolicy.providerMatchMode ?? 'any',
         mediaServerId,
       );
@@ -485,9 +512,16 @@ export class MetadataService {
     item: MediaItem,
     lookupPolicy: MetadataLookupPolicy,
   ): Promise<ResolvedMediaIds | undefined> {
+    const { providerKeys, hasExplicitRestriction } =
+      this.resolveLookupPolicyProviderKeys(lookupPolicy);
+
+    if (hasExplicitRestriction && providerKeys.length === 0) {
+      return undefined;
+    }
+
     return this.resolveIdsFromMediaItemInternal(
       item,
-      this.getLookupPolicyProviderKeys(lookupPolicy),
+      providerKeys,
       lookupPolicy.providerMatchMode ?? 'any',
     );
   }

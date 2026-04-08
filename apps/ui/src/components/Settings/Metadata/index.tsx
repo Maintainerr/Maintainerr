@@ -164,7 +164,7 @@ const providers: ProviderConfig[] = [
     title: 'TVDB',
     description: (
       <>
-        You can create an API key at{' '}
+        You can create a free developer API key at{' '}
         <a
           href="https://thetvdb.com/dashboard/account/apikey"
           target="_blank"
@@ -607,7 +607,10 @@ const MetadataSettings = () => {
           <h3 className="heading">Metadata Settings</h3>
           <p className="description">
             Configure metadata providers and set the primary source for posters,
-            backdrops, and metadata enrichment.
+            backdrops, and metadata enrichment. Adding a TVDB developer API key
+            gives Maintainerr a fallback source for provider cross-references,
+            which helps recover missing IDs when TMDB alone cannot resolve a
+            match.
           </p>
         </div>
 
