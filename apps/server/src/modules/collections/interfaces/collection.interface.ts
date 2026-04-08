@@ -1,5 +1,11 @@
-import { MediaItemType, MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaItemType,
+  MediaServerType,
+  ServarrAction,
+} from '@maintainerr/contracts';
 import { CollectionMedia } from '../entities/collection_media.entities';
+
+export { ServarrAction };
 
 export interface ICollection {
   id?: number;
@@ -10,7 +16,7 @@ export interface ICollection {
   title: string;
   description?: string;
   isActive: boolean;
-  arrAction: number;
+  arrAction: ServarrAction;
   visibleOnRecommended?: boolean;
   visibleOnHome?: boolean;
   listExclusions?: boolean;
@@ -24,12 +30,4 @@ export interface ICollection {
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
   sortTitle?: string;
-}
-
-export enum ServarrAction {
-  DELETE,
-  UNMONITOR_DELETE_ALL,
-  UNMONITOR_DELETE_EXISTING,
-  UNMONITOR,
-  DO_NOTHING,
 }

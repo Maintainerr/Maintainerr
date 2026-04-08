@@ -1,6 +1,8 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { SonarrSeries } from '../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -17,6 +19,7 @@ export class SonarrActionHandler {
   constructor(
     private readonly servarrApi: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
+    private readonly seerrApi: SeerrApiService,
     private readonly metadataService: MetadataService,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -63,7 +66,10 @@ export class SonarrActionHandler {
     if (!sonarrMedia?.id) {
       const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
-      if (collection.arrAction !== ServarrAction.UNMONITOR) {
+      if (
+        collection.arrAction !== ServarrAction.UNMONITOR &&
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+      ) {
         this.logger.log(
           `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
         );
@@ -77,6 +83,29 @@ export class SonarrActionHandler {
     }
 
     switch (collection.arrAction) {
+      case ServarrAction.DELETE_SHOW_IF_EMPTY:
+        if (collection.type !== 'season') {
+          this.logger.warn(
+            `[Sonarr] DELETE_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+          );
+          break;
+        }
+        sonarrMedia = await sonarrApiClient.unmonitorSeasons(
+          sonarrMedia.id,
+          mediaData?.index,
+          true,
+        );
+        this.logger.log(
+          `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+        );
+        await this.deleteShowIfEmpty(
+          sonarrApiClient,
+          matchedResult.candidate,
+          media.tmdbId,
+          mediaData?.index,
+          collection.listExclusions,
+        );
+        break;
       case ServarrAction.DELETE:
         switch (collection.type) {
           case 'season':
@@ -109,6 +138,26 @@ export class SonarrActionHandler {
             this.logger.log(`Removed show '${sonarrMedia.title}' from Sonarr`);
             break;
         }
+        break;
+      case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
+        if (collection.type !== 'season') {
+          this.logger.warn(
+            `[Sonarr] UNMONITOR_SHOW_IF_EMPTY is only supported for type: season, got: ${collection.type}`,
+          );
+          break;
+        }
+        sonarrMedia = await sonarrApiClient.unmonitorSeasons(
+          sonarrMedia.id,
+          mediaData?.index,
+          false,
+        );
+        this.logger.log(
+          `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+        );
+        await this.unmonitorShowIfEmptyAndEnded(
+          sonarrApiClient,
+          matchedResult.candidate,
+        );
         break;
       case ServarrAction.UNMONITOR:
         switch (collection.type) {
@@ -216,5 +265,97 @@ export class SonarrActionHandler {
         }
         break;
     }
+  }
+
+  private async deleteShowIfEmpty(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    lookupCandidate: { providerKey: string; id: number },
+    tmdbId: number | undefined,
+    removedSeasonNumber: number | undefined,
+    listExclusions: boolean | undefined,
+  ): Promise<void> {
+    const series = await this.refetchSeries(sonarrApiClient, lookupCandidate);
+
+    if (!series?.id || !this.isShowEmpty(series, 'files')) {
+      return;
+    }
+
+    const hasSeerrCheckInputs =
+      tmdbId !== undefined && removedSeasonNumber !== undefined;
+
+    if (this.seerrApi.isConfigured() && hasSeerrCheckInputs) {
+      const hasRemainingRequests =
+        await this.seerrApi.hasRemainingSeasonRequests(
+          tmdbId,
+          removedSeasonNumber,
+        );
+
+      // Bail on true (remaining requests) or undefined (Seerr lookup failed) — only delete on explicit false
+      if (hasRemainingRequests !== false) {
+        return;
+      }
+
+      await sonarrApiClient.deleteShow(series.id, true, listExclusions);
+      this.logger.log(
+        `[Sonarr] Show '${series.title}' has no files and no remaining Seerr season requests - deleted from Sonarr`,
+      );
+      return;
+    }
+
+    if (!this.isShowEmptyAndEnded(series, 'monitored')) {
+      return;
+    }
+
+    await sonarrApiClient.deleteShow(series.id, true, listExclusions);
+    this.logger.log(
+      `[Sonarr] Show '${series.title}' is ended with no files or monitored seasons remaining - deleted from Sonarr`,
+    );
+  }
+
+  private async unmonitorShowIfEmptyAndEnded(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    lookupCandidate: { providerKey: string; id: number },
+  ): Promise<void> {
+    const series = await this.refetchSeries(sonarrApiClient, lookupCandidate);
+
+    if (!series || !this.isShowEmptyAndEnded(series, 'monitored')) {
+      return;
+    }
+
+    series.monitored = false;
+    await sonarrApiClient.updateSeries(series);
+    this.logger.log(
+      `[Sonarr] Show '${series.title}' is ended with no monitored seasons - unmonitored show`,
+    );
+  }
+
+  private async refetchSeries(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    lookupCandidate: { providerKey: string; id: number },
+  ): Promise<SonarrSeries | undefined> {
+    switch (lookupCandidate.providerKey) {
+      case 'tvdb':
+        return sonarrApiClient.getSeriesByTvdbId(lookupCandidate.id);
+      default:
+        return undefined;
+    }
+  }
+
+  private isShowEmptyAndEnded(
+    series: SonarrSeries,
+    mode: 'files' | 'monitored',
+  ): boolean {
+    return series.status === 'ended' && this.isShowEmpty(series, mode);
+  }
+
+  private isShowEmpty(
+    series: SonarrSeries,
+    mode: 'files' | 'monitored',
+  ): boolean {
+    if (mode === 'files') {
+      return (series.statistics?.episodeFileCount ?? 0) === 0;
+    }
+
+    return series.seasons.every((season) => !season.monitored);
   }
 }
