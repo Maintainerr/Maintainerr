@@ -17,7 +17,7 @@ export const mockRadarrApi = (
     logger as any,
   );
 
-  jest.spyOn(api, 'getMovieByTvdbId').mockResolvedValue(undefined);
+  jest.spyOn(api, 'getMovieByTmdbId').mockResolvedValue(undefined);
   jest.spyOn(api, 'deleteMovie').mockImplementation(jest.fn());
   jest.spyOn(api, 'updateMovie').mockImplementation(jest.fn());
 
@@ -39,7 +39,7 @@ export const mockSonarrApi = (
     logger as any,
   );
 
-  jest.spyOn(api, 'getSeriesByTmdbId').mockResolvedValue(undefined);
+  jest.spyOn(api, 'getSeriesByTvdbId').mockResolvedValue(undefined);
   jest.spyOn(api, 'unmonitorSeasons').mockImplementation(jest.fn());
   jest.spyOn(api, 'UnmonitorDeleteEpisodes').mockImplementation(jest.fn());
   jest.spyOn(api, 'deleteShow').mockImplementation(jest.fn());

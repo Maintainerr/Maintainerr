@@ -1,10 +1,10 @@
-export interface ServarrLookupCandidate {
+export interface MetadataLookupCandidate {
   providerKey: string;
   id: number;
 }
 
-export function formatServarrLookupCandidates(
-  lookupCandidates: ServarrLookupCandidate[],
+export function formatMetadataLookupCandidates(
+  lookupCandidates: MetadataLookupCandidate[],
 ): string {
   return lookupCandidates
     .map(
@@ -13,10 +13,10 @@ export function formatServarrLookupCandidates(
     .join(', ');
 }
 
-export async function findServarrLookupMatch<T>(
-  lookupCandidates: ServarrLookupCandidate[],
+export async function findMetadataLookupMatch<T>(
+  lookupCandidates: MetadataLookupCandidate[],
   lookups: Record<string, (id: number) => Promise<T | undefined>>,
-): Promise<{ candidate: ServarrLookupCandidate; result: T } | undefined> {
+): Promise<{ candidate: MetadataLookupCandidate; result: T } | undefined> {
   for (const candidate of lookupCandidates) {
     const lookup = lookups[candidate.providerKey];
 

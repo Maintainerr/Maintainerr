@@ -18,8 +18,8 @@ import {
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
+import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import {
   isBlankMediaServerId,
@@ -245,11 +245,22 @@ export class PlexAdapterService implements IMediaServerService {
 
   async getCollection(
     collectionId: string,
-    _throwOnError = false,
+    throwOnError = false,
   ): Promise<MediaCollection | undefined> {
-    const collection = await this.plexApi.getCollection(collectionId);
-    if (!collection) return undefined;
-    return PlexMapper.toMediaCollection(collection);
+    try {
+      const collection = await this.plexApi.getCollection(collectionId);
+      if (!collection) return undefined;
+      return PlexMapper.toMediaCollection(collection);
+    } catch (error) {
+      this.logger.warn(`Failed to get collection ${collectionId}`);
+      this.logger.debug(error);
+
+      if (throwOnError) {
+        throw error;
+      }
+
+      return undefined;
+    }
   }
 
   async createCollection(

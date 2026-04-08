@@ -294,6 +294,63 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('getCollection', () => {
+    it('should return undefined when PlexApiService returns undefined', async () => {
+      plexApi.getCollection.mockResolvedValue(undefined);
+
+      await expect(service.getCollection('col123')).resolves.toBeUndefined();
+    });
+
+    it('should map a Plex collection when found', async () => {
+      plexApi.getCollection.mockResolvedValue(
+        createPlexCollection({
+          ratingKey: 'col123',
+          key: '/library/collections/col123',
+          guid: 'plex://collection/col123',
+          title: 'Test Collection',
+          subtype: 'movie',
+          summary: '',
+          index: 0,
+          ratingCount: 0,
+          thumb: '/thumb/col123',
+          addedAt: 1609459200,
+          updatedAt: 1609459200,
+        }),
+      );
+
+      await expect(service.getCollection('col123')).resolves.toMatchObject({
+        id: 'col123',
+        title: 'Test Collection',
+      });
+    });
+
+    it('should return undefined and log when collection lookup fails', async () => {
+      const serverError = new Error('Plex lookup failed');
+      plexApi.getCollection.mockRejectedValueOnce(serverError);
+
+      await expect(service.getCollection('col123')).resolves.toBeUndefined();
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to get collection col123',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(serverError);
+    });
+
+    it('should rethrow lookup failures when strict verification is requested', async () => {
+      const serverError = new Error('Plex lookup failed');
+      plexApi.getCollection.mockRejectedValueOnce(serverError);
+
+      await expect(service.getCollection('col123', true)).rejects.toThrow(
+        serverError,
+      );
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to get collection col123',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(serverError);
+    });
+  });
+
   describe('getCollectionChildren', () => {
     it('refreshes incomplete Plex collection children via full metadata lookups', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
