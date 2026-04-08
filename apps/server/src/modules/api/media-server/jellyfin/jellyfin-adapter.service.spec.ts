@@ -1005,6 +1005,20 @@ describe('JellyfinAdapterService', () => {
       expect(logger.debug).toHaveBeenCalledWith(serverError);
     });
 
+    it('re-throws unexpected lookup failures when strict verification is requested', async () => {
+      const serverError = createResponseError(502);
+      jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
+
+      await expect(service.getCollection('collection-1', true)).rejects.toThrow(
+        serverError,
+      );
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to get collection collection-1',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(serverError);
+    });
+
     it('retries once after a transient collection-children failure', async () => {
       jellyfinApiMocks.getItems
         .mockRejectedValueOnce(createRetryableError('ETIMEDOUT'))
@@ -1070,6 +1084,33 @@ describe('JellyfinAdapterService', () => {
           title: 'Series One',
         }),
       ]);
+    });
+
+    it('re-throws when Jellyfin returns 400 (deleted collection)', async () => {
+      const axiosError = createResponseError(400);
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(axiosError);
+
+      await expect(
+        service.getCollectionChildren('deleted-collection'),
+      ).rejects.toThrow(axiosError);
+    });
+
+    it('re-throws when Jellyfin returns 404', async () => {
+      const axiosError = createResponseError(404);
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(axiosError);
+
+      await expect(
+        service.getCollectionChildren('missing-collection'),
+      ).rejects.toThrow(axiosError);
+    });
+
+    it('returns empty array for non-400/404 errors', async () => {
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(
+        new Error('random failure'),
+      );
+
+      const result = await service.getCollectionChildren('collection-1');
+      expect(result).toEqual([]);
     });
 
     it('should create a collection without initial item ids', async () => {

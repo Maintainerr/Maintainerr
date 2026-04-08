@@ -170,7 +170,10 @@ export interface IMediaServerService {
   /**
    * Get a specific collection by ID.
    */
-  getCollection(collectionId: string): Promise<MediaCollection | undefined>;
+  getCollection(
+    collectionId: string,
+    throwOnError?: boolean,
+  ): Promise<MediaCollection | undefined>;
 
   /**
    * Create a new collection.

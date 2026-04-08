@@ -117,12 +117,16 @@ export class SonarrApi extends ServarrApi<{
     try {
       const response = await this.get<SonarrSeries[]>(`/series?tmdbId=${id}`);
 
-      if (!response?.[0]) {
+      // Sonarr v3 does not support ?tmdbId= filtering and returns all series.
+      // Validate that the returned series actually matches the requested ID.
+      const match = response?.find((series) => series.tmdbId === id);
+
+      if (!match) {
         this.logger.warn(`Could not retrieve show by tmdb ID ${id}`);
         return undefined;
       }
 
-      return response[0];
+      return match;
     } catch (error) {
       this.logger.warn(`Error retrieving show by tmdb ID ${id}`);
       this.logger.debug(error);
