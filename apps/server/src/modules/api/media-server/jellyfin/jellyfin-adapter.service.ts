@@ -939,6 +939,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   async getCollection(
     collectionId: string,
+    throwOnError = false,
   ): Promise<MediaCollection | undefined> {
     if (!this.api) return undefined;
 
@@ -962,6 +963,11 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       this.logger.warn(`Failed to get collection ${collectionId}`);
       this.logger.debug(error);
+
+      if (throwOnError) {
+        throw error;
+      }
+
       return undefined;
     }
   }
@@ -1075,6 +1081,12 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
     } catch (error) {
+      if (
+        error instanceof AxiosError &&
+        (error.response?.status === 400 || error.response?.status === 404)
+      ) {
+        throw error;
+      }
       this.logger.error(
         `Failed to get collection children for ${collectionId}`,
         error,
