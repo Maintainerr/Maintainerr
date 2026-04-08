@@ -34,22 +34,14 @@ describe('RadarrActionHandler', () => {
     metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
 
-    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
-      const candidates = [] as Array<{
-        providerKey: 'tmdb' | 'tvdb';
-        id: number;
-      }>;
+    metadataService.resolveLookupCandidatesForService.mockImplementation(
+      async (_mediaServerId, _service, fallbackIds) => {
+        const tmdbId =
+          typeof fallbackIds?.tmdb === 'number' ? fallbackIds.tmdb : undefined;
 
-      if (ids.tmdb) {
-        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
-      }
-
-      if (ids.tvdb) {
-        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
-      }
-
-      return candidates;
-    });
+        return tmdbId ? [{ providerKey: 'tmdb', id: tmdbId }] : [];
+      },
+    );
 
     // Setup mock for MediaServerFactory
     mediaServer = {
@@ -70,13 +62,15 @@ describe('RadarrActionHandler', () => {
       tmdbId: undefined,
     });
 
-    metadataService.resolveIds.mockResolvedValue(undefined);
+    metadataService.resolveLookupCandidatesForService.mockResolvedValue([]);
 
     const mockedRadarrApi = mockRadarrApi(servarrService, logger);
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(metadataService.resolveIds).toHaveBeenCalled();
+    expect(
+      metadataService.resolveLookupCandidatesForService,
+    ).toHaveBeenCalled();
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 

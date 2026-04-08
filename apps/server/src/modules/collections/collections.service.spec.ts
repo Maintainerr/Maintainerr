@@ -28,9 +28,6 @@ describe('CollectionsService', () => {
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
   let settingsService: Mocked<SettingsService>;
-  let tmdbIdService: {
-    getTmdbIdFromMediaServerId: jest.Mock;
-  };
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -47,20 +44,10 @@ describe('CollectionsService', () => {
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
     settingsService = unitRef.get(SettingsService);
-    tmdbIdService = {
-      getTmdbIdFromMediaServerId: jest.fn(),
-    };
-
-    metadataService.resolveIds.mockImplementation(async (mediaServerId) => {
-      const tmdb =
-        await tmdbIdService.getTmdbIdFromMediaServerId(mediaServerId);
-
-      if (!tmdb) {
-        return undefined;
-      }
-
-      return { tmdb: tmdb.id, type: tmdb.type } as any;
-    });
+    metadataService.resolveIds.mockResolvedValue({
+      tmdb: 1,
+      type: 'movie',
+    } as any);
     metadataService.getDetails.mockResolvedValue({
       externalIds: { tmdb: 1 },
       posterUrl: undefined,
@@ -147,9 +134,7 @@ describe('CollectionsService', () => {
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
-    tmdbIdService.getTmdbIdFromMediaServerId.mockRejectedValue(
-      new Error('tmdb lookup failed'),
-    );
+    metadataService.resolveIds.mockResolvedValue(undefined);
 
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
 

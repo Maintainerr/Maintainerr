@@ -581,7 +581,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
 
             <div className="mt-2 text-gray-300">
-              <p>{summary || 'No summary available.'}</p>
+              <p>{metadata?.summary || summary || 'No summary available.'}</p>
             </div>
 
             {showMaintainerrDetails ? (
