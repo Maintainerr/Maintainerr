@@ -8,6 +8,8 @@ import {
   RadarrMovieFile,
 } from '../interfaces/radarr.interface';
 
+type RadarrMovieWithTvdbId = RadarrMovie & { tvdbId?: number };
+
 export class RadarrApi extends ServarrApi<{ movieId: number }> {
   constructor(
     {
@@ -65,12 +67,32 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     try {
       const response = await this.get<RadarrMovie[]>(`/movie?tvdbId=${id}`);
 
-      if (!response?.[0]) {
+      if (!response?.length) {
         this.logger.warn(`Could not find movie with TVDB id ${id} in Radarr`);
         return undefined;
       }
 
-      return response[0];
+      // Radarr's tvdbId filtering is not documented. Accept an explicit TVDB match
+      // when present, otherwise only trust a single returned result.
+      const match = response.find(
+        (movie) => (movie as RadarrMovieWithTvdbId).tvdbId === id,
+      );
+
+      if (match) {
+        return match;
+      }
+
+      if (response.length === 1) {
+        this.logger.debug(
+          `Falling back to a single unverified Radarr movie result for TVDB id ${id}. Radarr did not expose a matching tvdbId in the response.`,
+        );
+        return response[0];
+      }
+
+      this.logger.warn(
+        `Could not uniquely find movie with TVDB id ${id} in Radarr`,
+      );
+      return undefined;
     } catch (error) {
       this.logger.warn(`Error retrieving movie by TVDB ID ${id}`);
       this.logger.debug(error);
