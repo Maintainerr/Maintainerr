@@ -928,7 +928,7 @@ describe('JellyfinAdapterService', () => {
       expect(logger.debug).not.toHaveBeenCalledWith(notFoundError);
     });
 
-    it('still warns for unexpected Jellyfin collection lookup failures', async () => {
+    it('logs unexpected Jellyfin collection lookup failures at debug level', async () => {
       const serverError = createResponseError(502);
       jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
 
@@ -936,7 +936,7 @@ describe('JellyfinAdapterService', () => {
         service.getCollection('collection-1'),
       ).resolves.toBeUndefined();
 
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         'Failed to get collection collection-1',
       );
       expect(logger.debug).toHaveBeenCalledWith(serverError);
@@ -950,7 +950,7 @@ describe('JellyfinAdapterService', () => {
         serverError,
       );
 
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         'Failed to get collection collection-1',
       );
       expect(logger.debug).toHaveBeenCalledWith(serverError);

@@ -961,7 +961,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         return undefined;
       }
 
-      this.logger.warn(`Failed to get collection ${collectionId}`);
+      this.logger.debug(`Failed to get collection ${collectionId}`);
       this.logger.debug(error);
 
       if (throwOnError) {
