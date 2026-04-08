@@ -85,9 +85,9 @@ export class CollectionHandler {
     if (collection.arrAction !== ServarrAction.UNMONITOR) {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
-        const ids = await this.metadataService.resolveIds(
+        const ids = await this.metadataService.resolveIdsForService(
           media.mediaServerId,
-          'tmdb',
+          'seerr',
         );
         const tmdbId = (ids?.tmdb as number | undefined) ?? media.tmdbId;
 

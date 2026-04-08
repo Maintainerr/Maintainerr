@@ -1,5 +1,11 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts';
-import { createMediaItem } from '../../../test/utils/data';
+import {
+  createMediaItem,
+  createMetadataProviderMock,
+  createMockLogger,
+  metadataLookupServiceTestCases,
+  MetadataProviderMockConfig,
+} from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { IMetadataProvider } from './interfaces/metadata-provider.interface';
 import { MetadataService } from './metadata.service';
@@ -7,12 +13,25 @@ import { MetadataService } from './metadata.service';
 describe('MetadataService', () => {
   const createService = ({
     tmdbDetails,
+    tvdbDetails,
     tvdbMovieId = 202,
     mediaServer = {
       getMetadata: jest.fn(),
     },
+    providerMocks,
   }: {
     tmdbDetails?: {
+      title?: string;
+      year?: number;
+      type?: 'movie' | 'tv';
+      externalIds?: {
+        tmdb?: number;
+        imdb?: string;
+        tvdb?: number;
+        type: 'movie' | 'tv';
+      };
+    };
+    tvdbDetails?: {
       title?: string;
       year?: number;
       type?: 'movie' | 'tv';
@@ -27,63 +46,49 @@ describe('MetadataService', () => {
       getMetadata: jest.Mock;
     };
     tvdbMovieId?: number;
+    providerMocks?: MetadataProviderMockConfig[];
   }) => {
-    const tmdbProvider: IMetadataProvider = {
-      name: 'TMDB',
-      idKey: 'tmdb',
-      isAvailable: () => true,
-      extractId: (ids) => (typeof ids.tmdb === 'number' ? ids.tmdb : undefined),
-      assignId: (ids, id) => {
-        ids.tmdb = id;
-      },
-      getDetails: jest.fn().mockResolvedValue(
-        tmdbDetails
-          ? {
-              id: 101,
-              title: 'Fixture Story',
-              type: 'movie',
-              ...tmdbDetails,
+    const providers = (
+      providerMocks ?? [
+        {
+          name: 'TMDB',
+          idKey: 'tmdb',
+          details: tmdbDetails,
+          detailsId: 101,
+          posterUrl: 'https://tmdb/poster.jpg',
+          backdropUrl: 'https://tmdb/backdrop.jpg',
+        },
+        {
+          name: 'TVDB',
+          idKey: 'tvdb',
+          details: tvdbDetails,
+          detailsId: tvdbMovieId,
+          posterUrl: 'https://tvdb/poster.jpg',
+          backdropUrl: 'https://tvdb/backdrop.jpg',
+          findByExternalId: async (externalId, type) => {
+            if (type === 'imdb' && externalId === 'tt0099785') {
+              return [{ movieId: tvdbMovieId }];
             }
-          : undefined,
-      ),
-      getPosterUrl: jest.fn().mockResolvedValue('https://tmdb/poster.jpg'),
-      getBackdropUrl: jest.fn().mockResolvedValue('https://tmdb/backdrop.jpg'),
-      getPersonDetails: jest.fn(),
-      findByExternalId: jest.fn().mockResolvedValue(undefined),
-    };
 
-    const tvdbProvider: IMetadataProvider = {
-      name: 'TVDB',
-      idKey: 'tvdb',
-      isAvailable: () => true,
-      extractId: (ids) => (typeof ids.tvdb === 'number' ? ids.tvdb : undefined),
-      assignId: (ids, id) => {
-        ids.tvdb = id;
-      },
-      getDetails: jest.fn().mockResolvedValue(undefined),
-      getPosterUrl: jest.fn().mockResolvedValue('https://tvdb/poster.jpg'),
-      getBackdropUrl: jest.fn().mockResolvedValue('https://tvdb/backdrop.jpg'),
-      getPersonDetails: jest.fn(),
-      findByExternalId: jest.fn().mockImplementation((externalId, type) => {
-        if (type === 'imdb' && externalId === 'tt0099785') {
-          return Promise.resolve([{ movieId: tvdbMovieId }]);
-        }
+            return undefined;
+          },
+        },
+      ]
+    ).map((config) => createMetadataProviderMock(config));
 
-        return Promise.resolve(undefined);
-      }),
-    };
+    const providerByKey = Object.fromEntries(
+      providers.map((provider) => [provider.idKey, provider]),
+    ) as Record<string, jest.Mocked<IMetadataProvider>>;
 
-    const logger = {
-      setContext: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-    } as unknown as MaintainerrLogger;
+    const tmdbProvider = providerByKey.tmdb;
+    const tvdbProvider = providerByKey.tvdb;
+    const logger = createMockLogger() as unknown as MaintainerrLogger;
     const mediaServerFactory = {
       getService: jest.fn().mockResolvedValue(mediaServer),
     };
 
     const service = new MetadataService(
-      [tmdbProvider, tvdbProvider],
+      providers,
       mediaServerFactory as never,
       {
         metadata_provider_preference: MetadataProviderPreference.TVDB_PRIMARY,
@@ -94,6 +99,8 @@ describe('MetadataService', () => {
 
     return {
       service,
+      providers,
+      providerByKey,
       tmdbProvider,
       tvdbProvider,
       logger,
@@ -139,6 +146,77 @@ describe('MetadataService', () => {
       'w500',
     );
     expect(tmdbProvider.getPosterUrl).not.toHaveBeenCalled();
+  });
+
+  it.each(metadataLookupServiceTestCases)(
+    '$title',
+    async ({
+      service: targetService,
+      lookupPolicy,
+      libraryItem,
+      providerMocks,
+      expectedCandidates,
+    }) => {
+      const { service } = createService({
+        providerMocks,
+      });
+      const item = createMediaItem(libraryItem);
+
+      await expect(
+        service.resolveLookupCandidatesFromMediaItem(item, lookupPolicy),
+      ).resolves.toEqual(expectedCandidates);
+      await expect(
+        service.resolveLookupCandidatesFromMediaItemForService(
+          item,
+          targetService,
+        ),
+      ).resolves.toEqual(expectedCandidates);
+    },
+  );
+
+  it('resolves a Seerr TMDB id from a direct TVDB id when the TVDB provider is unavailable', async () => {
+    const { service, providerByKey } = createService({
+      providerMocks: [
+        {
+          name: 'TMDB',
+          idKey: 'tmdb',
+          findByExternalId: async (externalId, type) => {
+            if (type === 'tvdb' && externalId === 303) {
+              return [{ tvShowId: 404 }];
+            }
+
+            return undefined;
+          },
+        },
+        {
+          name: 'TVDB',
+          idKey: 'tvdb',
+          isAvailable: false,
+        },
+      ],
+    });
+    const item = createMediaItem({
+      id: 'show-seerr-1',
+      type: 'show',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: [],
+        imdb: [],
+        tvdb: ['303'],
+      },
+    });
+
+    await expect(
+      service.resolveIdsFromMediaItemForService(item, 'seerr'),
+    ).resolves.toMatchObject({
+      tmdb: 404,
+      tvdb: 303,
+      type: 'tv',
+    });
+    expect(providerByKey.tmdb.findByExternalId).toHaveBeenCalledWith(
+      303,
+      'tvdb',
+    );
   });
 
   it('resolves ids from hierarchy metadata when a child media item is provided', async () => {

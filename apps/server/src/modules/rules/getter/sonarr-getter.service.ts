@@ -14,10 +14,10 @@ import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MetadataService } from '../../metadata/metadata.service';
 import {
-  findServarrLookupMatch,
-  formatServarrLookupCandidates,
-  ServarrLookupCandidate,
-} from '../../metadata/servarr-lookup.util';
+  findMetadataLookupMatch,
+  formatMetadataLookupCandidates,
+  MetadataLookupCandidate,
+} from '../../metadata/metadata-lookup.util';
 import {
   Application,
   Property,
@@ -112,14 +112,13 @@ export class SonarrGetterService {
         ruleGroup.collection.sonarrSettingsId,
       );
 
-      const matchedResult = await findServarrLookupMatch(lookupCandidates, {
-        tmdb: (lookupId) => sonarrApiClient.getSeriesByTmdbId(lookupId),
+      const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
         tvdb: (lookupId) => sonarrApiClient.getSeriesByTvdbId(lookupId),
       });
       const showResponse: SonarrSeries | undefined = matchedResult?.result;
 
       if (!showResponse?.id) {
-        const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+        const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
         this.logger.warn(
           `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a series in Sonarr.`,
@@ -461,12 +460,10 @@ export class SonarrGetterService {
 
   public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
-  ): Promise<ServarrLookupCandidate[]> {
-    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
-
-    return this.metadataService.buildServarrLookupCandidates({
-      tmdb: ids?.tmdb as number | undefined,
-      tvdb: ids?.tvdb as number | undefined,
-    });
+  ): Promise<MetadataLookupCandidate[]> {
+    return this.metadataService.resolveLookupCandidatesFromMediaItemForService(
+      libItem,
+      'sonarr',
+    );
   }
 }

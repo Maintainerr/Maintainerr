@@ -41,27 +41,9 @@ describe('SonarrGetterService', () => {
     metadataService = unitRef.get(MetadataService);
     logger = unitRef.get(MaintainerrLogger);
 
-    metadataService.resolveIdsFromMediaItem.mockResolvedValue({
-      tmdb: 1,
-      tvdb: 1,
-      type: 'tv',
-    } as any);
-    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
-      const candidates = [] as Array<{
-        providerKey: 'tmdb' | 'tvdb';
-        id: number;
-      }>;
-
-      if (ids.tmdb) {
-        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
-      }
-
-      if (ids.tvdb) {
-        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
-      }
-
-      return candidates;
-    });
+    metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
+      [{ providerKey: 'tvdb', id: 1 }] as any,
+    );
 
     // Create mock media server
     mockMediaServer = {
@@ -607,15 +589,9 @@ describe('SonarrGetterService', () => {
 
     if (series) {
       jest
-        .spyOn(mockedSonarrApi, 'getSeriesByTmdbId')
-        .mockResolvedValue(series);
-      jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockResolvedValue(series);
     } else {
-      jest
-        .spyOn(mockedSonarrApi, 'getSeriesByTmdbId')
-        .mockImplementation(jest.fn());
       jest
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockImplementation(jest.fn());

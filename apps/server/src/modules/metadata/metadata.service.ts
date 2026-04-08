@@ -9,6 +9,10 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
 import {
+  MetadataLookupPolicy,
+  metadataLookupPoliciesByService,
+} from './interfaces/metadata-lookup-policy.interface';
+import {
   IMetadataProvider,
   MetadataProviders,
 } from './interfaces/metadata-provider.interface';
@@ -18,7 +22,7 @@ import {
   ProviderIds,
   ResolvedMediaIds,
 } from './interfaces/metadata.types';
-import { ServarrLookupCandidate } from './servarr-lookup.util';
+import { MetadataLookupCandidate } from './metadata-lookup.util';
 
 @Injectable()
 export class MetadataService {
@@ -75,15 +79,33 @@ export class MetadataService {
     return this.getOrderedProviders().map((provider) => provider.idKey);
   }
 
-  public buildServarrLookupCandidates(
-    ids: Partial<Record<string, number | undefined>>,
-  ): ServarrLookupCandidate[] {
-    const candidateKeys = [
-      ...this.getOrderedProviderKeys(),
-      ...Object.keys(ids),
-    ];
+  private getLookupPolicyForService(service: string): MetadataLookupPolicy {
+    return metadataLookupPoliciesByService[service.toLowerCase()] ?? {};
+  }
+
+  private getLookupPolicyProviderKeys(
+    lookupPolicy: MetadataLookupPolicy = {},
+  ): string[] {
+    if (!lookupPolicy.providerKeys?.length) {
+      return this.getOrderedProviderKeys();
+    }
+
+    const registeredProviderKeys = new Set(
+      this.providers.map((provider) => provider.idKey),
+    );
+
+    return lookupPolicy.providerKeys.filter((providerKey) =>
+      registeredProviderKeys.has(providerKey),
+    );
+  }
+
+  private buildLookupCandidates(
+    ids: Partial<ProviderIds>,
+    candidateKeys: string[],
+    allowedProviderKeys?: Set<string>,
+  ): MetadataLookupCandidate[] {
     const seen = new Set<string>();
-    const lookupCandidates: ServarrLookupCandidate[] = [];
+    const lookupCandidates: MetadataLookupCandidate[] = [];
 
     for (const providerKey of candidateKeys) {
       if (seen.has(providerKey)) {
@@ -91,6 +113,10 @@ export class MetadataService {
       }
 
       seen.add(providerKey);
+
+      if (allowedProviderKeys && !allowedProviderKeys.has(providerKey)) {
+        continue;
+      }
 
       const id = ids[providerKey];
       if (typeof id !== 'number' || !Number.isFinite(id)) {
@@ -104,6 +130,103 @@ export class MetadataService {
     }
 
     return lookupCandidates;
+  }
+
+  public buildMetadataLookupCandidates(
+    ids: Partial<ProviderIds>,
+  ): MetadataLookupCandidate[] {
+    return this.buildLookupCandidates(ids, [
+      ...this.getOrderedProviderKeys(),
+      ...Object.keys(ids),
+    ]);
+  }
+
+  public buildLookupCandidatesForService(
+    service: string,
+    ids: Partial<ProviderIds>,
+  ): MetadataLookupCandidate[] {
+    return this.buildLookupCandidatesWithPolicy(
+      ids,
+      this.getLookupPolicyForService(service),
+    );
+  }
+
+  public buildLookupCandidatesWithPolicy(
+    ids: Partial<ProviderIds>,
+    lookupPolicy: MetadataLookupPolicy = {},
+  ): MetadataLookupCandidate[] {
+    const providerKeys = this.getLookupPolicyProviderKeys(lookupPolicy);
+    const allowedProviderKeys = providerKeys.length
+      ? new Set(providerKeys)
+      : undefined;
+
+    return this.buildLookupCandidates(
+      ids,
+      [...providerKeys, ...Object.keys(ids)],
+      allowedProviderKeys,
+    );
+  }
+
+  public async resolveLookupCandidates(
+    mediaServerId: string,
+    lookupPolicy: MetadataLookupPolicy,
+    fallbackIds: Partial<ProviderIds> = {},
+  ): Promise<MetadataLookupCandidate[]> {
+    const resolvedIds = await this.resolveIdsWithLookupPolicy(
+      mediaServerId,
+      lookupPolicy,
+    );
+
+    return this.buildLookupCandidatesWithPolicy(
+      {
+        ...fallbackIds,
+        ...resolvedIds,
+      },
+      lookupPolicy,
+    );
+  }
+
+  public async resolveLookupCandidatesFromMediaItem(
+    item: MediaItem,
+    lookupPolicy: MetadataLookupPolicy,
+    fallbackIds: Partial<ProviderIds> = {},
+  ): Promise<MetadataLookupCandidate[]> {
+    const resolvedIds = await this.resolveIdsFromMediaItemWithLookupPolicy(
+      item,
+      lookupPolicy,
+    );
+
+    return this.buildLookupCandidatesWithPolicy(
+      {
+        ...fallbackIds,
+        ...resolvedIds,
+      },
+      lookupPolicy,
+    );
+  }
+
+  public async resolveLookupCandidatesForService(
+    mediaServerId: string,
+    service: string,
+    fallbackIds: Partial<ProviderIds> = {},
+  ): Promise<MetadataLookupCandidate[]> {
+    return this.resolveLookupCandidates(
+      mediaServerId,
+      this.getLookupPolicyForService(service),
+      fallbackIds,
+    );
+  }
+
+  public async resolveLookupCandidatesFromMediaItemForService(
+    item: MediaItem,
+    service: string,
+    fallbackIds: Partial<ProviderIds> = {},
+  ): Promise<MetadataLookupCandidate[]> {
+    return this.resolveLookupCandidatesFromMediaItem(
+      item,
+      this.getLookupPolicyForService(service),
+      fallbackIds,
+    );
   }
 
   private async withProviderFallback<T>(
@@ -150,6 +273,90 @@ export class MetadataService {
       : [requiredProviderKeys];
   }
 
+  private async resolveIdsFromHierarchyMediaItemInternal(
+    item: MediaItem,
+    providerKeys: string[] = [],
+    providerMatchMode: 'all' | 'any' = 'all',
+    sourceMediaServerId?: string,
+  ): Promise<ResolvedMediaIds | undefined> {
+    try {
+      const resolutionItem = await this.getHierarchyResolutionItem(
+        item,
+        sourceMediaServerId,
+      );
+
+      if (!resolutionItem) {
+        return undefined;
+      }
+
+      return this.resolveIdsFromMediaItemInternal(
+        resolutionItem,
+        providerKeys,
+        providerMatchMode,
+      );
+    } catch (error) {
+      this.logger.warn('Failed to resolve IDs from hierarchy media item');
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  private async resolveIdsFromMediaItemInternal(
+    item: MediaItem,
+    providerKeys: string[] = [],
+    providerMatchMode: 'all' | 'any' = 'all',
+  ): Promise<ResolvedMediaIds | undefined> {
+    try {
+      const ids = this.extractDirectIds(item);
+      const hasAvailableDirectIds = this.getOrderedProviders().some(
+        (provider) => provider.extractId(ids) !== undefined,
+      );
+      let metadataDetails: MetadataDetails | undefined;
+
+      if (hasAvailableDirectIds) {
+        metadataDetails = await this.getDetails(ids, ids.type);
+
+        if (
+          item.title &&
+          metadataDetails?.title &&
+          !(await this.matchesProviderDetails(item, metadataDetails))
+        ) {
+          this.logger.warn(
+            `Rejected direct provider IDs for media server item "${item.title}" because they resolved to "${metadataDetails.title}" instead. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
+          );
+          return undefined;
+        }
+
+        if (metadataDetails?.externalIds) {
+          this.fillMissingIds(ids, metadataDetails.externalIds);
+        }
+      }
+
+      if (providerKeys.length === 0) {
+        if (hasAvailableDirectIds) {
+          return ids;
+        }
+      } else if (this.hasRequiredIds(ids, providerKeys, providerMatchMode)) {
+        return ids;
+      }
+
+      await this.resolveAllIds(
+        ids,
+        providerKeys,
+        metadataDetails,
+        providerMatchMode,
+      );
+
+      return this.hasRequiredIds(ids, providerKeys, providerMatchMode)
+        ? ids
+        : undefined;
+    } catch (error) {
+      this.logger.warn('Failed to resolve IDs from media item');
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   private async getHierarchyResolutionItem(
     item: MediaItem,
     sourceMediaServerId?: string,
@@ -189,9 +396,48 @@ export class MetadataService {
         return undefined;
       }
 
-      return this.resolveIdsFromHierarchyMediaItem(
+      return this.resolveIdsFromHierarchyMediaItemInternal(
         mediaItem,
-        requiredProviderKeys,
+        this.normalizeRequiredProviderKeys(requiredProviderKeys),
+        'all',
+        mediaServerId,
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to resolve IDs for ${mediaServerId}`);
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  async resolveIdsForService(
+    mediaServerId: string,
+    service: string,
+  ): Promise<ResolvedMediaIds | undefined> {
+    return this.resolveIdsWithLookupPolicy(
+      mediaServerId,
+      this.getLookupPolicyForService(service),
+    );
+  }
+
+  async resolveIdsWithLookupPolicy(
+    mediaServerId: string,
+    lookupPolicy: MetadataLookupPolicy,
+  ): Promise<ResolvedMediaIds | undefined> {
+    try {
+      const mediaServer = await this.mediaServerFactory.getService();
+      const mediaItem = await mediaServer.getMetadata(mediaServerId);
+
+      if (!mediaItem) {
+        this.logger.warn(
+          `Failed to fetch metadata for media server item: ${mediaServerId}`,
+        );
+        return undefined;
+      }
+
+      return this.resolveIdsFromHierarchyMediaItemInternal(
+        mediaItem,
+        this.getLookupPolicyProviderKeys(lookupPolicy),
+        lookupPolicy.providerMatchMode ?? 'any',
         mediaServerId,
       );
     } catch (error) {
@@ -206,72 +452,44 @@ export class MetadataService {
     requiredProviderKeys?: string | string[],
     sourceMediaServerId?: string,
   ): Promise<ResolvedMediaIds | undefined> {
-    try {
-      const resolutionItem = await this.getHierarchyResolutionItem(
-        item,
-        sourceMediaServerId,
-      );
-
-      if (!resolutionItem) {
-        return undefined;
-      }
-
-      return this.resolveIdsFromMediaItem(resolutionItem, requiredProviderKeys);
-    } catch (error) {
-      this.logger.warn('Failed to resolve IDs from hierarchy media item');
-      this.logger.debug(error);
-      return undefined;
-    }
+    return this.resolveIdsFromHierarchyMediaItemInternal(
+      item,
+      this.normalizeRequiredProviderKeys(requiredProviderKeys),
+      'all',
+      sourceMediaServerId,
+    );
   }
 
   async resolveIdsFromMediaItem(
     item: MediaItem,
     requiredProviderKeys?: string | string[],
   ): Promise<ResolvedMediaIds | undefined> {
-    try {
-      const requiredKeys =
-        this.normalizeRequiredProviderKeys(requiredProviderKeys);
-      const ids = this.extractDirectIds(item);
-      const hasAvailableDirectIds = this.getOrderedProviders().some(
-        (provider) => provider.extractId(ids) !== undefined,
-      );
-      let metadataDetails: MetadataDetails | undefined;
+    return this.resolveIdsFromMediaItemInternal(
+      item,
+      this.normalizeRequiredProviderKeys(requiredProviderKeys),
+      'all',
+    );
+  }
 
-      if (hasAvailableDirectIds) {
-        metadataDetails = await this.getDetails(ids, ids.type);
+  async resolveIdsFromMediaItemForService(
+    item: MediaItem,
+    service: string,
+  ): Promise<ResolvedMediaIds | undefined> {
+    return this.resolveIdsFromMediaItemWithLookupPolicy(
+      item,
+      this.getLookupPolicyForService(service),
+    );
+  }
 
-        if (
-          item.title &&
-          metadataDetails?.title &&
-          !(await this.matchesProviderDetails(item, metadataDetails))
-        ) {
-          this.logger.warn(
-            `Rejected direct provider IDs for media server item "${item.title}" because they resolved to "${metadataDetails.title}" instead. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
-          );
-          return undefined;
-        }
-
-        if (metadataDetails?.externalIds) {
-          this.fillMissingIds(ids, metadataDetails.externalIds);
-        }
-      }
-
-      if (requiredKeys.length === 0 && hasAvailableDirectIds) {
-        return ids;
-      }
-
-      if (requiredKeys.length > 0 && this.hasRequiredIds(ids, requiredKeys)) {
-        return ids;
-      }
-
-      await this.resolveAllIds(ids, requiredKeys, metadataDetails);
-
-      return this.hasRequiredIds(ids, requiredKeys) ? ids : undefined;
-    } catch (error) {
-      this.logger.warn('Failed to resolve IDs from media item');
-      this.logger.debug(error);
-      return undefined;
-    }
+  async resolveIdsFromMediaItemWithLookupPolicy(
+    item: MediaItem,
+    lookupPolicy: MetadataLookupPolicy,
+  ): Promise<ResolvedMediaIds | undefined> {
+    return this.resolveIdsFromMediaItemInternal(
+      item,
+      this.getLookupPolicyProviderKeys(lookupPolicy),
+      lookupPolicy.providerMatchMode ?? 'any',
+    );
   }
 
   async getDetails(
@@ -342,14 +560,19 @@ export class MetadataService {
   private hasRequiredIds(
     ids: ProviderIds,
     requiredProviderKeys: string[] = [],
+    matchMode: 'all' | 'any' = 'all',
   ): boolean {
     if (requiredProviderKeys.length > 0) {
-      return requiredProviderKeys.every((providerKey) => {
+      const resolvedRequiredIds = requiredProviderKeys.map((providerKey) => {
         const provider = this.providers.find(
           (item) => item.idKey === providerKey,
         );
         return provider ? provider.extractId(ids) !== undefined : true;
       });
+
+      return matchMode === 'any'
+        ? resolvedRequiredIds.some(Boolean)
+        : resolvedRequiredIds.every(Boolean);
     }
 
     return this.getOrderedProviders().some(
@@ -609,6 +832,7 @@ export class MetadataService {
     ids: ResolvedMediaIds,
     requiredProviderKeys: string[] = [],
     metadataDetails?: MetadataDetails,
+    providerMatchMode: 'all' | 'any' = 'all',
   ): Promise<void> {
     if (
       this.providers.some((provider) => provider.extractId(ids) !== undefined)
@@ -620,16 +844,14 @@ export class MetadataService {
         this.fillMissingIds(ids, resolvedDetails.externalIds);
       }
 
-      if (this.hasRequiredIds(ids, requiredProviderKeys)) {
+      if (this.hasRequiredIds(ids, requiredProviderKeys, providerMatchMode)) {
         return;
       }
     }
 
-    const providerKeys = new Set(
-      this.providers.map((provider) => provider.idKey),
-    );
+    const availableProviderKeys = new Set(this.getOrderedProviderKeys());
     for (const [key, value] of Object.entries(ids)) {
-      if (!value || key === 'type' || providerKeys.has(key)) {
+      if (!value || key === 'type' || availableProviderKeys.has(key)) {
         continue;
       }
 
@@ -651,7 +873,7 @@ export class MetadataService {
         }
       }
 
-      if (this.hasRequiredIds(ids, requiredProviderKeys)) {
+      if (this.hasRequiredIds(ids, requiredProviderKeys, providerMatchMode)) {
         return;
       }
     }
