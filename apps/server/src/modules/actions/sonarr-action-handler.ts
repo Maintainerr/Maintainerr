@@ -101,7 +101,7 @@ export class SonarrActionHandler {
         await this.deleteShowIfEmpty(
           sonarrApiClient,
           matchedResult.candidate,
-          resolvedIds.tmdb,
+          media.tmdbId,
           mediaData?.index,
           collection.listExclusions,
         );
@@ -334,8 +334,6 @@ export class SonarrActionHandler {
     lookupCandidate: { providerKey: string; id: number },
   ): Promise<SonarrSeries | undefined> {
     switch (lookupCandidate.providerKey) {
-      case 'tmdb':
-        return sonarrApiClient.getSeriesByTmdbId(lookupCandidate.id);
       case 'tvdb':
         return sonarrApiClient.getSeriesByTvdbId(lookupCandidate.id);
       default:
