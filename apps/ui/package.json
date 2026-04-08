@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -60,7 +60,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
-    "@typescript-eslint/parser": "^8.57.2",
+    "@typescript-eslint/parser": "^8.58.1",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "10.4.27",
     "eslint": "^9.39.2",
@@ -69,12 +69,12 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "jsdom": "^29.0.1",
     "monaco-editor": "0.55.1",
-    "postcss": "^8.5.8",
+    "postcss": "^8.5.9",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vite": "^8.0.5",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.3"
   }
 }

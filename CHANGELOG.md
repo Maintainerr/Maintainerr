@@ -1,3 +1,11 @@
+## [3.4.1](https://github.com/maintainerr/Maintainerr/compare/v3.4.0...v3.4.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **servarr:** validate series/movie identity on filtered API lookups ([#2625](https://github.com/maintainerr/Maintainerr/issues/2625)) ([c529158](https://github.com/maintainerr/Maintainerr/commit/c529158e7b2f088862c71e3a27a500851a4d7ec8))
+* **servarr:** validate series/movie identity on filtered API lookups ([#2625](https://github.com/maintainerr/Maintainerr/issues/2625)) ([#2627](https://github.com/maintainerr/Maintainerr/issues/2627)) ([a41db20](https://github.com/maintainerr/Maintainerr/commit/a41db2010ac9fa732d359e29f8c82bcbac9ef2ab))
+
 # [3.4.0](https://github.com/maintainerr/Maintainerr/compare/v3.3.0...v3.4.0) (2026-04-07)
 
 
