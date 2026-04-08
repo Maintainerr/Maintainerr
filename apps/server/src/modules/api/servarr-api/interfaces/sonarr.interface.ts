@@ -117,6 +117,7 @@ export interface SonarrSeries {
   useSceneNumbering: boolean;
   runtime: number;
   tvdbId: number;
+  tmdbId?: number;
   tvRageId: number;
   tvMazeId: number;
   firstAired: string;
