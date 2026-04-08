@@ -69,6 +69,12 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
     Overview: 'Overview',
     People: 'People',
   },
+  LocationType: {
+    FileSystem: 'FileSystem',
+    Remote: 'Remote',
+    Virtual: 'Virtual',
+    Offline: 'Offline',
+  },
   ItemFilter: {
     IsPlayed: 'IsPlayed',
   },
@@ -498,6 +504,63 @@ describe('JellyfinAdapterService', () => {
           type: 'movie',
         },
       ]);
+    });
+  });
+
+  describe('getChildrenMetadata', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+    });
+
+    it('excludes virtual Jellyfin episodes from episode child queries', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            {
+              Id: 'episode-1',
+              Name: 'Episode One',
+              Type: 'Episode',
+              ParentId: 'season-1',
+              SeriesId: 'show-1',
+              UserData: {},
+            },
+          ],
+        },
+      });
+
+      await service.getChildrenMetadata('season-1', 'episode');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'season-1',
+          includeItemTypes: ['Episode'],
+          excludeLocationTypes: ['Virtual'],
+        }),
+      );
+    });
+
+    it('does not apply location filtering to non-episode child queries', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [],
+        },
+      });
+
+      await service.getChildrenMetadata('library-1', 'movie');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'library-1',
+          includeItemTypes: ['Movie'],
+          excludeLocationTypes: undefined,
+        }),
+      );
     });
   });
 
