@@ -10,8 +10,8 @@ export const JELLYFIN_CACHE_TTL = {
 export const JELLYFIN_BATCH_SIZE = {
   USER_WATCH_HISTORY: 5,
   // Collection item ids are sent in the query string by the Jellyfin SDK.
-  // Keep mutation batches comfortably below common 8 KB request-line limits.
-  COLLECTION_MUTATION: 50,
+  // Keep Jellyfin collection writes small enough for URL limits and slower hosts.
+  COLLECTION_MUTATION: 8,
   DEFAULT_PAGE_SIZE: 100,
   MAX_PAGE_SIZE: 500,
 } as const;
