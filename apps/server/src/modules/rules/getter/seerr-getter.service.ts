@@ -56,10 +56,11 @@ export class SeerrGetterService {
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
-      const resolvedIds = await this.metadataService.resolveIdsFromMediaItem(
-        libItem,
-        'tmdb',
-      );
+      const resolvedIds =
+        await this.metadataService.resolveIdsFromMediaItemForService(
+          libItem,
+          'seerr',
+        );
       const tmdbId = resolvedIds?.tmdb as number | undefined;
 
       if (tmdbId) {
@@ -91,6 +92,7 @@ export class SeerrGetterService {
 
       const mediaResponse: SeerrTVResponse | SeerrMovieResponse =
         tvMediaResponse ?? movieMediaResponse;
+      const requests = mediaResponse?.mediaInfo?.requests ?? [];
 
       if (mediaResponse?.mediaInfo) {
         switch (prop.name) {
@@ -133,7 +135,7 @@ export class SeerrGetterService {
           case 'amountRequested': {
             return dataType === 'season' || dataType === 'episode'
               ? this.getSeasonRequests(origLibItem, tvMediaResponse).length
-              : mediaResponse?.mediaInfo.requests.length;
+              : requests.length;
           }
           case 'requestDate': {
             if (dataType === 'season' || dataType === 'episode') {
@@ -155,7 +157,7 @@ export class SeerrGetterService {
                 : null;
             } else {
               if (dataType === 'episode') {
-                const ep = seasonMediaResponse.episodes?.find(
+                const ep = seasonMediaResponse?.episodes?.find(
                   (el) => el.episodeNumber === origLibItem.index,
                 );
                 return ep?.airDate ? new Date(ep.airDate) : null;
@@ -213,18 +215,13 @@ export class SeerrGetterService {
             }
           }
           case 'isRequested': {
-            try {
-              if (dataType === 'season' || dataType === 'episode') {
-                return this.getSeasonRequests(origLibItem, tvMediaResponse)
-                  .length > 0
-                  ? 1
-                  : 0;
-              } else {
-                return mediaResponse?.mediaInfo.requests.length > 0 ? 1 : 0;
-              }
-            } catch (error) {
-              return 0;
-            }
+            return dataType === 'season' || dataType === 'episode'
+              ? this.getSeasonRequests(origLibItem, tvMediaResponse).length > 0
+                ? 1
+                : 0
+              : requests.length > 0
+                ? 1
+                : 0;
           }
           default: {
             return null;
@@ -253,8 +250,8 @@ export class SeerrGetterService {
     mediaResponse: SeerrTVResponse,
   ) {
     const seasonRequests: SeerrTVRequest[] = [];
-    mediaResponse.mediaInfo?.requests.forEach((el) => {
-      const season = el.seasons.find(
+    mediaResponse.mediaInfo?.requests?.forEach((el) => {
+      const season = el.seasons?.find(
         (season) =>
           +season.seasonNumber ===
           (libItem.type === 'episode' ? +libItem.parentIndex : +libItem.index),
@@ -267,7 +264,7 @@ export class SeerrGetterService {
   }
 
   private includesSeason(seasons: SeerrSeasonRequest[], seasonNumber: number) {
-    const season = seasons.find(
+    const season = seasons?.find(
       (season) => season.seasonNumber === seasonNumber,
     );
     return season !== undefined;

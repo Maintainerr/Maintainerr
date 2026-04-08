@@ -1,3 +1,4 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
   createCollection,
@@ -7,10 +8,10 @@ import {
 } from '../../../test/utils/data';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
-import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { MediaItem } from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { MetadataService } from '../metadata/metadata.service';
 import { SettingsService } from '../settings/settings.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
@@ -25,6 +26,7 @@ describe('CollectionHandler', () => {
   let sonarrActionHandler: Mocked<SonarrActionHandler>;
   let seerrApi: Mocked<SeerrApiService>;
   let settings: Mocked<SettingsService>;
+  let metadataService: Mocked<MetadataService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -37,6 +39,9 @@ describe('CollectionHandler', () => {
     sonarrActionHandler = unitRef.get(SonarrActionHandler);
     seerrApi = unitRef.get(SeerrApiService);
     settings = unitRef.get(SettingsService);
+    metadataService = unitRef.get(MetadataService);
+
+    metadataService.resolveIdsForService.mockResolvedValue(undefined);
 
     // Setup media server mock
     mediaServer = {

@@ -10,9 +10,9 @@ import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import {
-  findServarrLookupMatch,
-  formatServarrLookupCandidates,
-} from '../metadata/servarr-lookup.util';
+  findMetadataLookupMatch,
+  formatMetadataLookupCandidates,
+} from '../metadata/metadata-lookup.util';
 
 @Injectable()
 export class SonarrActionHandler {
@@ -41,13 +41,15 @@ export class SonarrActionHandler {
       mediaData = await mediaServer.getMetadata(media.mediaServerId);
     }
 
-    const ids = await this.metadataService.resolveIds(media.mediaServerId);
-    const resolvedIds = {
-      tmdb: (ids?.tmdb as number | undefined) ?? media.tmdbId,
-      tvdb: (ids?.tvdb as number | undefined) ?? media.tvdbId,
-    };
     const lookupCandidates =
-      this.metadataService.buildServarrLookupCandidates(resolvedIds);
+      await this.metadataService.resolveLookupCandidatesForService(
+        media.mediaServerId,
+        'sonarr',
+        {
+          tvdb: media.tvdbId,
+          tmdb: media.tmdbId,
+        },
+      );
 
     if (lookupCandidates.length === 0) {
       this.logger.log(
@@ -56,14 +58,13 @@ export class SonarrActionHandler {
       return;
     }
 
-    const matchedResult = await findServarrLookupMatch(lookupCandidates, {
-      tmdb: (id) => sonarrApiClient.getSeriesByTmdbId(id),
+    const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
       tvdb: (id) => sonarrApiClient.getSeriesByTvdbId(id),
     });
     let sonarrMedia = matchedResult?.result;
 
     if (!sonarrMedia?.id) {
-      const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+      const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&

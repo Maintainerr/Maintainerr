@@ -61,22 +61,6 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     }
   }
 
-  public async getMovieByTvdbId(id: number): Promise<RadarrMovie> {
-    try {
-      const response = await this.get<RadarrMovie[]>(`/movie?tvdbId=${id}`);
-
-      if (!response?.[0]) {
-        this.logger.warn(`Could not find movie with TVDB id ${id} in Radarr`);
-        return undefined;
-      }
-
-      return response[0];
-    } catch (error) {
-      this.logger.warn(`Error retrieving movie by TVDB ID ${id}`);
-      this.logger.debug(error);
-    }
-  }
-
   public async searchMovie(movieId: number): Promise<void> {
     this.logger.log('Executing movie search command');
 

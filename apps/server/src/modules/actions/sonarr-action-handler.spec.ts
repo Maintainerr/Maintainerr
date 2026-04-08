@@ -46,32 +46,20 @@ describe('SonarrActionHandler', () => {
       findTvdbId: jest.fn(),
     };
 
-    metadataService.resolveIds.mockImplementation(async () => {
-      const tvdbId = await mediaIdFinder.findTvdbId();
+    metadataService.resolveLookupCandidatesForService.mockImplementation(
+      async (_mediaServerId, _service, fallbackIds) => {
+        const tvdbId = await mediaIdFinder.findTvdbId();
+        const resolvedTvdbId =
+          tvdbId ??
+          (typeof fallbackIds?.tvdb === 'number'
+            ? fallbackIds.tvdb
+            : undefined);
 
-      if (tvdbId === undefined) {
-        return undefined;
-      }
-
-      return { tmdb: 1, tvdb: tvdbId, type: 'tv' } as any;
-    });
-
-    metadataService.buildServarrLookupCandidates.mockImplementation((ids) => {
-      const candidates = [] as Array<{
-        providerKey: 'tmdb' | 'tvdb';
-        id: number;
-      }>;
-
-      if (ids.tmdb) {
-        candidates.push({ providerKey: 'tmdb', id: ids.tmdb });
-      }
-
-      if (ids.tvdb) {
-        candidates.push({ providerKey: 'tvdb', id: ids.tvdb });
-      }
-
-      return candidates;
-    });
+        return resolvedTvdbId
+          ? [{ providerKey: 'tvdb', id: resolvedTvdbId }]
+          : [];
+      },
+    );
 
     // Setup media server mock
     mediaServer = {
