@@ -9,11 +9,14 @@ export const metadataLookupPoliciesByService: Record<
 > = {
   sonarr: {
     providerKeys: ['tvdb'],
+    providerMatchMode: 'any',
   },
   radarr: {
     providerKeys: ['tmdb'],
+    providerMatchMode: 'any',
   },
   seerr: {
     providerKeys: ['tmdb'],
+    providerMatchMode: 'any',
   },
 };

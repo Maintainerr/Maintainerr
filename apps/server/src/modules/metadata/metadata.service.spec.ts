@@ -249,7 +249,10 @@ describe('MetadataService', () => {
       service.resolveLookupCandidatesFromMediaItem(item, invalidLookupPolicy),
     ).resolves.toEqual([]);
     await expect(
-      service.resolveIdsFromMediaItemWithLookupPolicy(item, invalidLookupPolicy),
+      service.resolveIdsFromMediaItemWithLookupPolicy(
+        item,
+        invalidLookupPolicy,
+      ),
     ).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
       'Metadata lookup policy references only unsupported providers: invalid-provider',

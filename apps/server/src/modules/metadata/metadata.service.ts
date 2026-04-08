@@ -83,6 +83,12 @@ export class MetadataService {
     return metadataLookupPoliciesByService[service.toLowerCase()] ?? {};
   }
 
+  /**
+   * Validates policy provider keys against all registered providers (not just
+   * available ones). An unavailable provider key like 'tvdb' is still valid —
+   * it just means the provider isn't configured right now. The "unsupported"
+   * warning only fires for completely unknown keys (e.g. a typo).
+   */
   private resolveLookupPolicyProviderKeys(
     lookupPolicy: MetadataLookupPolicy = {},
   ): {
@@ -151,26 +157,7 @@ export class MetadataService {
     return lookupCandidates;
   }
 
-  public buildMetadataLookupCandidates(
-    ids: Partial<ProviderIds>,
-  ): MetadataLookupCandidate[] {
-    return this.buildLookupCandidates(ids, [
-      ...this.getOrderedProviderKeys(),
-      ...Object.keys(ids),
-    ]);
-  }
-
-  public buildLookupCandidatesForService(
-    service: string,
-    ids: Partial<ProviderIds>,
-  ): MetadataLookupCandidate[] {
-    return this.buildLookupCandidatesWithPolicy(
-      ids,
-      this.getLookupPolicyForService(service),
-    );
-  }
-
-  public buildLookupCandidatesWithPolicy(
+  private buildLookupCandidatesWithPolicy(
     ids: Partial<ProviderIds>,
     lookupPolicy: MetadataLookupPolicy = {},
   ): MetadataLookupCandidate[] {
@@ -405,28 +392,14 @@ export class MetadataService {
     mediaServerId: string,
     requiredProviderKeys?: string | string[],
   ): Promise<ResolvedMediaIds | undefined> {
-    try {
-      const mediaServer = await this.mediaServerFactory.getService();
-      const mediaItem = await mediaServer.getMetadata(mediaServerId);
+    const normalizedKeys =
+      this.normalizeRequiredProviderKeys(requiredProviderKeys);
+    const lookupPolicy: MetadataLookupPolicy =
+      normalizedKeys.length > 0
+        ? { providerKeys: normalizedKeys, providerMatchMode: 'all' }
+        : {};
 
-      if (!mediaItem) {
-        this.logger.warn(
-          `Failed to fetch metadata for media server item: ${mediaServerId}`,
-        );
-        return undefined;
-      }
-
-      return this.resolveIdsFromHierarchyMediaItemInternal(
-        mediaItem,
-        this.normalizeRequiredProviderKeys(requiredProviderKeys),
-        'all',
-        mediaServerId,
-      );
-    } catch (error) {
-      this.logger.warn(`Failed to resolve IDs for ${mediaServerId}`);
-      this.logger.debug(error);
-      return undefined;
-    }
+    return this.resolveIdsWithLookupPolicy(mediaServerId, lookupPolicy);
   }
 
   async resolveIdsForService(
@@ -439,7 +412,7 @@ export class MetadataService {
     );
   }
 
-  async resolveIdsWithLookupPolicy(
+  public async resolveIdsWithLookupPolicy(
     mediaServerId: string,
     lookupPolicy: MetadataLookupPolicy,
   ): Promise<ResolvedMediaIds | undefined> {
@@ -491,11 +464,14 @@ export class MetadataService {
     item: MediaItem,
     requiredProviderKeys?: string | string[],
   ): Promise<ResolvedMediaIds | undefined> {
-    return this.resolveIdsFromMediaItemInternal(
-      item,
-      this.normalizeRequiredProviderKeys(requiredProviderKeys),
-      'all',
-    );
+    const normalizedKeys =
+      this.normalizeRequiredProviderKeys(requiredProviderKeys);
+    const lookupPolicy: MetadataLookupPolicy =
+      normalizedKeys.length > 0
+        ? { providerKeys: normalizedKeys, providerMatchMode: 'all' }
+        : {};
+
+    return this.resolveIdsFromMediaItemWithLookupPolicy(item, lookupPolicy);
   }
 
   async resolveIdsFromMediaItemForService(
@@ -508,7 +484,7 @@ export class MetadataService {
     );
   }
 
-  async resolveIdsFromMediaItemWithLookupPolicy(
+  public async resolveIdsFromMediaItemWithLookupPolicy(
     item: MediaItem,
     lookupPolicy: MetadataLookupPolicy,
   ): Promise<ResolvedMediaIds | undefined> {
