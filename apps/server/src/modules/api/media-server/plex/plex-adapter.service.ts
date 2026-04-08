@@ -245,6 +245,7 @@ export class PlexAdapterService implements IMediaServerService {
 
   async getCollection(
     collectionId: string,
+    _throwOnError = false,
   ): Promise<MediaCollection | undefined> {
     const collection = await this.plexApi.getCollection(collectionId);
     if (!collection) return undefined;
