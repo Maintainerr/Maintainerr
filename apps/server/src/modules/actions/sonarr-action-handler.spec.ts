@@ -431,7 +431,9 @@ describe('SonarrActionHandler', () => {
       });
 
       const mockedSonarrApi = mockSonarrApi(servarrService, logger);
-      jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(series);
       jest
         .spyOn(mockedSonarrApi, 'unmonitorSeasons')
         .mockResolvedValue(undefined);
