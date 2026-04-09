@@ -96,6 +96,11 @@ export class SonarrActionHandler {
           mediaData?.index,
           true,
         );
+
+        if (!sonarrMedia) {
+          return false;
+        }
+
         this.logger.log(
           `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
         );
@@ -106,7 +111,7 @@ export class SonarrActionHandler {
           mediaData?.index,
           collection.listExclusions,
         );
-        break;
+        return true;
       case ServarrAction.DELETE:
         switch (collection.type) {
           case 'season':
@@ -165,6 +170,11 @@ export class SonarrActionHandler {
           mediaData?.index,
           false,
         );
+
+        if (!sonarrMedia) {
+          return false;
+        }
+
         this.logger.log(
           `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
         );
@@ -172,7 +182,7 @@ export class SonarrActionHandler {
           sonarrApiClient,
           matchedResult.candidate,
         );
-        break;
+        return true;
       case ServarrAction.UNMONITOR:
         switch (collection.type) {
           case 'season':

@@ -124,11 +124,18 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       if (options?.addImportExclusion) {
-        await this.post(`/exclusions`, {
-          tmdbId: movieData.tmdbId,
-          movieTitle: movieData.title,
-          movieYear: movieData.year,
-        } satisfies RadarrImportListExclusion);
+        const exclusion = await this.post<RadarrImportListExclusion>(
+          `/exclusions`,
+          {
+            tmdbId: movieData.tmdbId,
+            movieTitle: movieData.title,
+            movieYear: movieData.year,
+          } satisfies RadarrImportListExclusion,
+        );
+
+        if (!exclusion) {
+          return false;
+        }
       }
 
       return true;
