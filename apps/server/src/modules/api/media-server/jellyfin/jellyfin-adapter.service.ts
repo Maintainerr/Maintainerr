@@ -775,7 +775,8 @@ export class JellyfinAdapterService implements IMediaServerService {
    * honouring the configured PlayedPercentage threshold via isCompletedWatch.
    * Jellyfin's Series Played flag is an all-or-nothing aggregate, so the
    * show-level watch history degenerates to sw_allEpisodesSeenBy (#2559).
-   * One getItems call per user (batched) — O(users), not O(users×episodes).
+   * One getItems call per user (batched via mapUsersBatched, shared with
+   * getAllUserItemData) — O(users), not O(users × episodes).
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.api) return [];
@@ -787,53 +788,35 @@ export class JellyfinAdapterService implements IMediaServerService {
       const cached = this.cache.data.get<string[]>(cacheKey);
       if (cached !== undefined) return cached;
 
-      const users = await this.getUsers();
-      const watcherIds = new Set<string>();
+      const entries = await this.mapUsersBatched((user) =>
+        getItemsApi(this.api!).getItems({
+          userId: user.id,
+          parentId,
+          recursive: true,
+          includeItemTypes: [BaseItemKind.Episode],
+          // Ignore unaired placeholders (mirrors #2624).
+          excludeLocationTypes: [LocationType.Virtual],
+          enableUserData: true,
+          // Minimize payload — we only need UserData per episode.
+          fields: [],
+        }),
+      );
 
-      for (
-        let i = 0;
-        i < users.length;
-        i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
-      ) {
-        const batch = users.slice(
-          i,
-          i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY,
-        );
-        const results = await Promise.allSettled(
-          batch.map((user) =>
-            getItemsApi(this.api!).getItems({
-              userId: user.id,
-              parentId,
-              recursive: true,
-              includeItemTypes: [BaseItemKind.Episode],
-              // Ignore unaired placeholders (mirrors #2624).
-              excludeLocationTypes: [LocationType.Virtual],
-              enableUserData: true,
-              // Minimize payload — we only need UserData per episode.
-              fields: [],
-            }),
+      const watcherIds = new Set<string>();
+      for (const { user, result } of entries) {
+        const items = result?.data.Items ?? [];
+        const hasWatched = items.some((item) =>
+          this.isCompletedWatch(
+            item.UserData ?? undefined,
+            playedCompletionThreshold,
           ),
         );
-
-        results.forEach((result, idx) => {
-          if (result.status !== 'fulfilled') return;
-          const user = batch[idx];
-          const items = result.value.data.Items || [];
-          const hasWatched = items.some((item) =>
-            this.isCompletedWatch(
-              item.UserData ?? undefined,
-              playedCompletionThreshold,
-            ),
-          );
-          if (hasWatched) {
-            watcherIds.add(user.id);
-          }
-        });
+        if (hasWatched) watcherIds.add(user.id);
       }
 
-      const result = [...watcherIds];
-      this.cache.data.set(cacheKey, result, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
-      return result;
+      const watchers = [...watcherIds];
+      this.cache.data.set(cacheKey, watchers, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
+      return watchers;
     } catch (error) {
       this.logger.error(
         `Failed to get descendant episode watchers for ${parentId}`,
@@ -905,18 +888,16 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Get item user data for all Jellyfin users in rate-limited batches.
-   * Centralizing this keeps the per-user Jellyfin access pattern consistent
-   * across watch history, favorited-by, and play-count aggregation.
+   * Run `fn` for every Jellyfin user in rate-limited batches with
+   * `Promise.allSettled`, returning one entry per user (undefined result on
+   * failure). Centralizes the per-user fan-out pattern shared by watch
+   * history, favorited-by, play-count and episode-watcher aggregation.
    */
-  private async getAllUserItemData(
-    itemId: string,
-  ): Promise<Array<{ user: MediaUser; userData?: UserItemDataDto }>> {
+  private async mapUsersBatched<T>(
+    fn: (user: MediaUser) => Promise<T>,
+  ): Promise<Array<{ user: MediaUser; result?: T }>> {
     const users = await this.getUsers();
-    const userDataEntries: Array<{
-      user: MediaUser;
-      userData?: UserItemDataDto;
-    }> = [];
+    const entries: Array<{ user: MediaUser; result?: T }> = [];
 
     for (
       let i = 0;
@@ -924,19 +905,30 @@ export class JellyfinAdapterService implements IMediaServerService {
       i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
     ) {
       const batch = users.slice(i, i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY);
-      const results = await Promise.allSettled(
-        batch.map((user) => this.getItemUserData(itemId, user.id)),
-      );
-
+      const results = await Promise.allSettled(batch.map((user) => fn(user)));
       results.forEach((result, idx) => {
-        userDataEntries.push({
+        entries.push({
           user: batch[idx],
-          userData: result.status === 'fulfilled' ? result.value : undefined,
+          result: result.status === 'fulfilled' ? result.value : undefined,
         });
       });
     }
 
-    return userDataEntries;
+    return entries;
+  }
+
+  /**
+   * Get item user data for all Jellyfin users. Thin adapter over
+   * `mapUsersBatched` that preserves the legacy `{ user, userData }` shape
+   * expected by watch history, favorited-by, and play-count aggregation.
+   */
+  private async getAllUserItemData(
+    itemId: string,
+  ): Promise<Array<{ user: MediaUser; userData?: UserItemDataDto }>> {
+    const entries = await this.mapUsersBatched((user) =>
+      this.getItemUserData(itemId, user.id),
+    );
+    return entries.map(({ user, result }) => ({ user, userData: result }));
   }
 
   /**
