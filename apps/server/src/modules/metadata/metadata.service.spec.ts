@@ -481,7 +481,7 @@ describe('MetadataService', () => {
     const { service, logger } = createService({
       tmdbDetails: {
         title: 'Fixture Runners',
-        year: 2098,
+        year: 2096,
         type: 'movie',
         externalIds: { tmdb: 777001, type: 'movie' },
       },
@@ -510,13 +510,13 @@ describe('MetadataService', () => {
     const { service, logger } = createService({
       tmdbDetails: {
         title: 'Fixture Runners',
-        year: 2098,
+        year: 2096,
         type: 'movie',
         externalIds: { tmdb: 777002, type: 'movie' },
       },
       tvdbDetails: {
         title: 'Fixture Runners',
-        year: 2098,
+        year: 2096,
         type: 'movie',
         externalIds: { tvdb: 888002, type: 'movie' },
       },
@@ -526,10 +526,10 @@ describe('MetadataService', () => {
 
     expect(result).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('TMDB returned 2098'),
+      expect.stringContaining('TMDB returned 2096'),
     );
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('TVDB returned 2098'),
+      expect.stringContaining('TVDB returned 2096'),
     );
   });
 
@@ -602,7 +602,7 @@ describe('MetadataService', () => {
     const { service, logger } = createService({
       tmdbDetails: {
         title: 'Fixture Beacon',
-        year: 2098,
+        year: 2096,
         type: 'movie',
         externalIds: { tmdb: 333, type: 'movie' },
       },
@@ -619,5 +619,60 @@ describe('MetadataService', () => {
 
     expect(result).toMatchObject({ tvdb: 555, type: 'movie' });
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  // ±1 year tolerance: festival premiere vs theatrical release and similar
+  // regional drift routinely produce a single-year gap between the media
+  // server and TMDB/TVDB. Single-year gaps are accepted; larger gaps are
+  // still rejected.
+  it('accepts direct ids with a logged note when the provider year differs by exactly one year', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-year-tolerance',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Premiere',
+      providerIds: { tmdb: ['606001'], imdb: [], tvdb: [] },
+    });
+    const { service, logger } = createService({
+      tmdbDetails: {
+        title: 'Fixture Premiere',
+        year: 2098,
+        type: 'movie',
+        externalIds: { tmdb: 606001, type: 'movie' },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(result).toMatchObject({ tmdb: 606001, type: 'movie' });
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('one-year drift'),
+    );
+  });
+
+  it('rejects direct ids when the provider year differs by more than one year', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-year-outside-tolerance',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Premiere',
+      providerIds: { tmdb: ['606002'], imdb: [], tvdb: [] },
+    });
+    const { service, logger } = createService({
+      tmdbDetails: {
+        title: 'Fixture Premiere',
+        year: 2097,
+        type: 'movie',
+        externalIds: { tmdb: 606002, type: 'movie' },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(result).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('TMDB returned 2097'),
+    );
   });
 });

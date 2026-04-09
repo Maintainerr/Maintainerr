@@ -771,17 +771,27 @@ export class MetadataService {
         this.fillMissingIds(ids, details.externalIds);
       }
 
-      const accept =
-        itemYear === undefined ||
-        details.year === undefined ||
-        itemYear === details.year;
+      // No year on either side: nothing to check against.
+      if (itemYear === undefined || details.year === undefined) {
+        return details;
+      }
 
-      if (accept) {
+      const delta = Math.abs(itemYear - details.year);
+
+      if (delta === 0) {
         if (disagreements.length > 0) {
           this.logger.debug(
             `Direct provider IDs for "${item.title}" validated by ${provider.name} (${details.year}) after year disagreement from: ${disagreements.join(', ')}.`,
           );
         }
+        return details;
+      }
+
+      // ±1 tolerance covers festival/theatrical release drift.
+      if (delta === 1) {
+        this.logger.debug(
+          `Accepted direct provider IDs for "${item.title}" (${itemYear}) with a one-year drift from ${provider.name} (${details.year}).`,
+        );
         return details;
       }
 
