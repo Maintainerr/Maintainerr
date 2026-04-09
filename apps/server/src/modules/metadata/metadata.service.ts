@@ -321,20 +321,13 @@ export class MetadataService {
       let metadataDetails: MetadataDetails | undefined;
 
       if (hasAvailableDirectIds) {
-        metadataDetails = await this.getDetails(ids, ids.type);
+        metadataDetails = await this.validateDirectIds(item, ids);
 
-        if (
-          item.title &&
-          metadataDetails?.title &&
-          !(await this.matchesProviderDetails(item, metadataDetails))
-        ) {
-          this.logger.warn(
-            `Rejected direct provider IDs for media server item "${item.title}" because they resolved to "${metadataDetails.title}" instead. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
-          );
+        if (!metadataDetails) {
           return undefined;
         }
 
-        if (metadataDetails?.externalIds) {
+        if (metadataDetails.externalIds) {
           this.fillMissingIds(ids, metadataDetails.externalIds);
         }
       }
@@ -515,11 +508,22 @@ export class MetadataService {
       return undefined;
     }
 
-    const externalIds = providerResult.result.externalIds;
-    if (!externalIds) {
-      return providerResult.result;
+    if (providerResult.result.externalIds) {
+      this.applyIdCorrections(
+        ids,
+        providerResult.result.externalIds,
+        providerResult.provider,
+      );
     }
 
+    return providerResult.result;
+  }
+
+  private applyIdCorrections(
+    ids: ProviderIds,
+    externalIds: ProviderIds,
+    sourceProviderName: string,
+  ): void {
     for (const provider of this.providers) {
       const currentId = provider.extractId(ids);
       const correctId = provider.extractId(externalIds);
@@ -533,12 +537,10 @@ export class MetadataService {
       }
 
       this.logger.warn(
-        `Corrected ${provider.name} ID: ${currentId} to ${correctId} via ${providerResult.provider} cross-reference. The media server may have incorrect metadata for this item.`,
+        `Corrected ${provider.name} ID: ${currentId} to ${correctId} via ${sourceProviderName} cross-reference. The media server may have incorrect metadata for this item.`,
       );
       provider.assignId(ids, correctId);
     }
-
-    return providerResult.result;
   }
 
   async getPersonDetails(ids: ProviderIds): Promise<PersonDetails | undefined> {
@@ -663,31 +665,6 @@ export class MetadataService {
     return ids;
   }
 
-  private titlesMatch(left: string, right: string): boolean {
-    const normalizedLeft = this.normalizeTitle(left);
-    const normalizedRight = this.normalizeTitle(right);
-
-    if (normalizedLeft.length === 0 || normalizedRight.length === 0) {
-      return left.trim().toLowerCase() === right.trim().toLowerCase();
-    }
-
-    return normalizedLeft === normalizedRight;
-  }
-
-  private normalizeTitle(value: string): string {
-    let normalized = '';
-
-    for (const character of value.toLowerCase()) {
-      const isDigit = character >= '0' && character <= '9';
-      const isLetter = character >= 'a' && character <= 'z';
-      if (isDigit || isLetter) {
-        normalized += character;
-      }
-    }
-
-    return normalized;
-  }
-
   private readTitleYear(title: string): number | undefined {
     const trimmedTitle = title.trim();
     const parenthesizedSuffixStart = trimmedTitle.length - 6;
@@ -746,96 +723,120 @@ export class MetadataService {
     return this.readTitleYear(item.title);
   }
 
-  private stripTitleYear(title: string, year: number): string {
-    const trimmedTitle = title.trim();
-    const parenthesizedSuffix = `(${year})`;
-
-    if (trimmedTitle.endsWith(parenthesizedSuffix)) {
-      return trimmedTitle
-        .slice(0, trimmedTitle.length - parenthesizedSuffix.length)
-        .trimEnd();
-    }
-
-    const spaceSeparatedSuffix = ` ${year}`;
-    if (trimmedTitle.endsWith(spaceSeparatedSuffix)) {
-      return trimmedTitle
-        .slice(0, trimmedTitle.length - spaceSeparatedSuffix.length)
-        .trimEnd();
-    }
-
-    return trimmedTitle;
-  }
-
-  private matchesTitleWithYear(
-    item: Pick<MediaItem, 'title' | 'year' | 'originallyAvailableAt'>,
-    metadataDetails: MetadataDetails,
-  ): boolean {
-    const itemYear = this.readItemYear(item);
-    if (
-      itemYear === undefined ||
-      metadataDetails.year === undefined ||
-      itemYear !== metadataDetails.year
-    ) {
-      return false;
-    }
-
-    const metadataTitle = this.stripTitleYear(
-      metadataDetails.title,
-      metadataDetails.year,
-    );
-
-    return this.titlesMatch(
-      this.stripTitleYear(item.title, itemYear),
-      metadataTitle,
-    );
-  }
-
-  private async loadItemDetails(
-    itemId: string,
-  ): Promise<MediaItem | undefined> {
-    try {
-      const mediaServer = await this.mediaServerFactory.getService();
-      return await mediaServer.getMetadata(itemId);
-    } catch (error) {
-      this.logger.debug(error);
-      return undefined;
-    }
-  }
-
-  private logYearMatch(itemTitle: string, providerTitle: string): void {
-    this.logger.debug(
-      `Title mismatch resolved by year-aware match for media server item "${itemTitle}" against "${providerTitle}".`,
-    );
-  }
-
-  private async matchesProviderDetails(
+  /**
+   * Validate direct provider IDs from the media server by walking the
+   * configured providers in preference order. Each provider is asked for
+   * details about whatever direct ID it can extract from the item, and
+   * the first provider whose release year matches the media server's year
+   * "vouches" for the ID set — we return its details and use its external
+   * IDs to fill in the other provider slots.
+   *
+   * This is the ID-primary / year-sanity model:
+   *   - The ID is the decisive signal. A successful lookup means the ID
+   *     points at a real entry in the authoritative provider for that type.
+   *   - The release year is the only sanity check. Titles are deliberately
+   *     not compared, because cosmetic title drift (localization, numeral
+   *     form, edition suffixes) is normal and comparing them caused the
+   *     regressions in #2636 / #2638.
+   *   - Cross-provider fallback gives the library a second opinion when
+   *     the preferred provider disagrees with the media server on year —
+   *     the scenario the metadata settings description already promises
+   *     users when they configure TVDB alongside TMDB.
+   *
+   * Rejection is the fail-closed default when no provider agrees on the
+   * year. If the media server has no year signal at all, the first
+   * successful provider lookup is trusted (we have nothing to reject with).
+   */
+  private async validateDirectIds(
     item: MediaItem,
-    metadataDetails: MetadataDetails,
-  ): Promise<boolean> {
-    if (this.titlesMatch(item.title, metadataDetails.title)) {
-      return true;
+    ids: ResolvedMediaIds,
+  ): Promise<MetadataDetails | undefined> {
+    const itemYear = this.readItemYear(item);
+    const disagreements: string[] = [];
+    const consulted = new Set<IMetadataProvider>();
+
+    const evaluate = async (
+      provider: IMetadataProvider,
+    ): Promise<MetadataDetails | undefined> => {
+      if (consulted.has(provider)) return undefined;
+      const id = provider.extractId(ids);
+      if (id === undefined) return undefined;
+      consulted.add(provider);
+
+      const details = await provider.getDetails(id, ids.type);
+      if (!details) return undefined;
+
+      if (details.externalIds) {
+        this.applyIdCorrections(ids, details.externalIds, provider.name);
+        this.fillMissingIds(ids, details.externalIds);
+      }
+
+      const accept =
+        itemYear === undefined ||
+        details.year === undefined ||
+        itemYear === details.year;
+
+      if (accept) {
+        if (disagreements.length > 0) {
+          this.logger.debug(
+            `Direct provider IDs for "${item.title}" validated by ${provider.name} (${details.year}) after year disagreement from: ${disagreements.join(', ')}.`,
+          );
+        }
+        return details;
+      }
+
+      disagreements.push(`${provider.name} returned ${details.year}`);
+      return undefined;
+    };
+
+    // First pass: consult every provider that already has an ID on the item.
+    for (const provider of this.getOrderedProviders()) {
+      const details = await evaluate(provider);
+      if (details) return details;
     }
 
-    if (this.matchesTitleWithYear(item, metadataDetails)) {
-      this.logYearMatch(item.title, metadataDetails.title);
-      return true;
+    // Second pass: if all direct provider IDs disagreed on year, bridge from
+    // non-provider external references (for example IMDB) so a configured
+    // provider that was not on the item can still vouch.
+    if (disagreements.length > 0) {
+      await this.bridgeMissingProviderIds(ids);
+      for (const provider of this.getOrderedProviders()) {
+        const details = await evaluate(provider);
+        if (details) return details;
+      }
     }
 
-    const detailItem = await this.loadItemDetails(item.id);
-    if (!detailItem) {
-      return false;
+    if (disagreements.length > 0) {
+      this.logger.warn(
+        `Rejected direct provider IDs for media server item "${item.title}" (${itemYear}) because no configured metadata provider confirmed the release year. Disagreements: ${disagreements.join('; ')}. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
+      );
     }
 
-    if (this.titlesMatch(detailItem.title, metadataDetails.title)) {
-      return true;
-    }
+    return undefined;
+  }
 
-    if (this.matchesTitleWithYear(detailItem, metadataDetails)) {
-      this.logYearMatch(item.title, metadataDetails.title);
-      return true;
+  private async bridgeMissingProviderIds(ids: ResolvedMediaIds): Promise<void> {
+    const availableProviderKeys = new Set(this.getOrderedProviderKeys());
+    for (const [key, value] of Object.entries(ids)) {
+      if (!value || key === 'type' || availableProviderKeys.has(key)) {
+        continue;
+      }
+      for (const provider of this.getOrderedProviders()) {
+        if (provider.extractId(ids) !== undefined) {
+          continue;
+        }
+        const results = await provider.findByExternalId(value, key);
+        if (!results?.length) {
+          continue;
+        }
+        for (const result of results) {
+          const id = ids.type === 'movie' ? result.movieId : result.tvShowId;
+          if (id !== undefined) {
+            provider.assignId(ids, id);
+          }
+        }
+      }
     }
-
-    return false;
   }
 
   private async resolveAllIds(
