@@ -78,14 +78,15 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     movieId: number,
     deleteFiles = true,
     importExclusion = false,
-  ) {
+  ): Promise<boolean> {
     try {
-      await this.runDelete(
+      return await this.runDelete(
         `movie/${movieId}?deleteFiles=${deleteFiles}&addImportExclusion=${importExclusion}`,
       );
     } catch (error) {
       this.logger.log("Couldn't delete movie. Does it exist in radarr?");
       this.logger.debug(error);
+      return false;
     }
   }
 
@@ -96,33 +97,52 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       monitored?: boolean;
       addImportExclusion?: boolean;
     },
-  ) {
+  ): Promise<boolean> {
     try {
       const movieData: RadarrMovie = await this.get(`movie/${movieId}`);
+
+      if (!movieData) {
+        return false;
+      }
+
       if (options?.monitored !== undefined) {
         movieData.monitored = options.monitored;
       }
-      await this.runPut(`movie/${movieId}`, JSON.stringify(movieData));
+      if (!(await this.runPut(`movie/${movieId}`, JSON.stringify(movieData)))) {
+        return false;
+      }
 
       if (options?.deleteFiles) {
         const movieFiles: RadarrMovieFile[] = await this.get(
           `moviefile?movieId=${movieId}`,
         );
-        for (const movieFile of movieFiles) {
-          await this.runDelete(`moviefile/${movieFile.id}`);
+        for (const movieFile of movieFiles ?? []) {
+          if (!(await this.runDelete(`moviefile/${movieFile.id}`))) {
+            return false;
+          }
         }
       }
 
       if (options?.addImportExclusion) {
-        await this.post(`/exclusions`, {
-          tmdbId: movieData.tmdbId,
-          movieTitle: movieData.title,
-          movieYear: movieData.year,
-        } satisfies RadarrImportListExclusion);
+        const exclusion = await this.post<RadarrImportListExclusion>(
+          `/exclusions`,
+          {
+            tmdbId: movieData.tmdbId,
+            movieTitle: movieData.title,
+            movieYear: movieData.year,
+          } satisfies RadarrImportListExclusion,
+        );
+
+        if (!exclusion) {
+          return false;
+        }
       }
+
+      return true;
     } catch (error) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");
       this.logger.debug(error);
+      return false;
     }
   }
 

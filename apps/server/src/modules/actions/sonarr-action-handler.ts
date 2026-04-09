@@ -29,7 +29,7 @@ export class SonarrActionHandler {
   public async handleAction(
     collection: Collection,
     media: CollectionMedia,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const mediaServer = await this.mediaServerFactory.getService();
     const sonarrApiClient = await this.servarrApi.getSonarrApiClient(
       collection.sonarrSettingsId,
@@ -55,7 +55,7 @@ export class SonarrActionHandler {
       this.logger.log(
         `Couldn't resolve any supported external IDs for media server item ${media.mediaServerId}. No action was taken. Please check this show manually.`,
       );
-      return;
+      return false;
     }
 
     const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
@@ -74,12 +74,13 @@ export class SonarrActionHandler {
           `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
+        return true;
       } else {
         this.logger.log(
           `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. No unmonitor action was taken.`,
         );
+        return false;
       }
-      return;
     }
 
     switch (collection.arrAction) {
@@ -95,6 +96,11 @@ export class SonarrActionHandler {
           mediaData?.index,
           true,
         );
+
+        if (!sonarrMedia) {
+          return false;
+        }
+
         this.logger.log(
           `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
         );
@@ -105,7 +111,7 @@ export class SonarrActionHandler {
           mediaData?.index,
           collection.listExclusions,
         );
-        break;
+        return true;
       case ServarrAction.DELETE:
         switch (collection.type) {
           case 'season':
@@ -114,29 +120,42 @@ export class SonarrActionHandler {
               mediaData?.index,
               true,
             );
+
+            if (!sonarrMedia) {
+              return false;
+            }
+
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-            break;
+            return true;
           case 'episode':
-            await sonarrApiClient.UnmonitorDeleteEpisodes(
-              sonarrMedia.id,
-              mediaData?.parentIndex,
-              [mediaData?.index],
-              true,
-            );
+            if (
+              !(await sonarrApiClient.UnmonitorDeleteEpisodes(
+                sonarrMedia.id,
+                mediaData?.parentIndex,
+                [mediaData?.index],
+                true,
+              ))
+            ) {
+              return false;
+            }
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-            break;
+            return true;
           default:
-            await sonarrApiClient.deleteShow(
-              sonarrMedia.id,
-              true,
-              collection.listExclusions,
-            );
+            if (
+              !(await sonarrApiClient.deleteShow(
+                sonarrMedia.id,
+                true,
+                collection.listExclusions,
+              ))
+            ) {
+              return false;
+            }
             this.logger.log(`Removed show '${sonarrMedia.title}' from Sonarr`);
-            break;
+            return true;
         }
         break;
       case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
@@ -151,6 +170,11 @@ export class SonarrActionHandler {
           mediaData?.index,
           false,
         );
+
+        if (!sonarrMedia) {
+          return false;
+        }
+
         this.logger.log(
           `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
         );
@@ -158,7 +182,7 @@ export class SonarrActionHandler {
           sonarrApiClient,
           matchedResult.candidate,
         );
-        break;
+        return true;
       case ServarrAction.UNMONITOR:
         switch (collection.type) {
           case 'season':
@@ -167,21 +191,30 @@ export class SonarrActionHandler {
               mediaData?.index,
               false,
             );
+
+            if (!sonarrMedia) {
+              return false;
+            }
+
             this.logger.log(
               `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-            break;
+            return true;
           case 'episode':
-            await sonarrApiClient.UnmonitorDeleteEpisodes(
-              sonarrMedia.id,
-              mediaData?.parentIndex,
-              [mediaData?.index],
-              false,
-            );
+            if (
+              !(await sonarrApiClient.UnmonitorDeleteEpisodes(
+                sonarrMedia.id,
+                mediaData?.parentIndex,
+                [mediaData?.index],
+                false,
+              ))
+            ) {
+              return false;
+            }
             this.logger.log(
               `[Sonarr] Unmonitored season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-            break;
+            return true;
           default:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
@@ -190,17 +223,18 @@ export class SonarrActionHandler {
             );
 
             if (sonarrMedia) {
-              // unmonitor show
               sonarrMedia.monitored = false;
-              await sonarrApiClient.updateSeries(sonarrMedia);
+              if (!(await sonarrApiClient.updateSeries(sonarrMedia))) {
+                return false;
+              }
               this.logger.log(
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}'`,
               );
+              return true;
             }
 
-            break;
+            return false;
         }
-        break;
       case ServarrAction.UNMONITOR_DELETE_ALL:
         switch (collection.type) {
           case 'show':
@@ -211,22 +245,23 @@ export class SonarrActionHandler {
             );
 
             if (sonarrMedia) {
-              // unmonitor show
               sonarrMedia.monitored = false;
-              await sonarrApiClient.updateSeries(sonarrMedia);
+              if (!(await sonarrApiClient.updateSeries(sonarrMedia))) {
+                return false;
+              }
               this.logger.log(
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed all episodes`,
               );
+              return true;
             }
 
-            break;
+            return false;
           default:
             this.logger.warn(
               `[Sonarr] UNMONITOR_DELETE_ALL is not supported for type: ${collection.type}`,
             );
-            break;
+            return false;
         }
-        break;
       case ServarrAction.UNMONITOR_DELETE_EXISTING:
         switch (collection.type) {
           case 'season':
@@ -236,10 +271,15 @@ export class SonarrActionHandler {
               true,
               true,
             );
+
+            if (!sonarrMedia) {
+              return false;
+            }
+
             this.logger.log(
               `[Sonarr] Removed existing episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
-            break;
+            return true;
           case 'show':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
@@ -248,23 +288,26 @@ export class SonarrActionHandler {
             );
 
             if (sonarrMedia) {
-              // unmonitor show
               sonarrMedia.monitored = false;
-              await sonarrApiClient.updateSeries(sonarrMedia);
+              if (!(await sonarrApiClient.updateSeries(sonarrMedia))) {
+                return false;
+              }
               this.logger.log(
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed existing episodes`,
               );
+              return true;
             }
 
-            break;
+            return false;
           default:
             this.logger.warn(
               `[Sonarr] UNMONITOR_DELETE_EXISTING is not supported for type: ${collection.type}`,
             );
-            break;
+            return false;
         }
-        break;
     }
+
+    return false;
   }
 
   private async deleteShowIfEmpty(

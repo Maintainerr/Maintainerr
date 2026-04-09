@@ -919,8 +919,6 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      // Get all BoxSets system-wide - Jellyfin collections can contain items
-      // from any library, so we can't filter by parentId
       const response = await getItemsApi(this.api).getItems({
         userId,
         includeItemTypes: [BaseItemKind.BoxSet],
@@ -932,7 +930,57 @@ export class JellyfinAdapterService implements IMediaServerService {
         ],
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaCollection);
+      const collections = (response.data.Items || []).map(
+        JellyfinMapper.toMediaCollection,
+      );
+      const seriesLibraryCache = new Map<string, Promise<boolean>>();
+
+      const belongsToLibrary = async (item: MediaItem): Promise<boolean> => {
+        if (item.library.id === libraryId) {
+          return true;
+        }
+
+        if (item.type !== 'episode' || !item.grandparentId) {
+          return false;
+        }
+
+        let isMatchingSeries = seriesLibraryCache.get(item.grandparentId);
+
+        if (isMatchingSeries === undefined) {
+          isMatchingSeries = this.getMetadata(item.grandparentId).then(
+            (seriesMetadata) => seriesMetadata?.library.id === libraryId,
+          );
+          seriesLibraryCache.set(item.grandparentId, isMatchingSeries);
+        }
+
+        return isMatchingSeries;
+      };
+
+      const filteredCollections = await Promise.all(
+        collections.map(async (collection) => {
+          if (collection.libraryId === libraryId) {
+            return collection;
+          }
+
+          const children = await this.getCollectionChildren(collection.id);
+
+          if (children.length === 0) {
+            return null;
+          }
+
+          for (const child of children) {
+            if (await belongsToLibrary(child)) {
+              return collection;
+            }
+          }
+
+          return null;
+        }),
+      );
+
+      return filteredCollections.filter(
+        (collection): collection is MediaCollection => collection !== null,
+      );
     } catch (error) {
       this.logger.error(`Failed to get collections for ${libraryId}`);
       this.logger.debug(error);

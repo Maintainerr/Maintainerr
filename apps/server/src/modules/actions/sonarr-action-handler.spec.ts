@@ -301,8 +301,12 @@ describe('SonarrActionHandler', () => {
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
-    await sonarrActionHandler.handleAction(collection, collectionMedia);
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
 
+    expect(result).toBe(true);
     expect(seerrApi.hasRemainingSeasonRequests).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
       collectionMedia.mediaData.index,
@@ -405,6 +409,46 @@ describe('SonarrActionHandler', () => {
     );
   });
 
+  it.each([
+    ServarrAction.DELETE_SHOW_IF_EMPTY,
+    ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+  ])(
+    'should return false for %s when season cleanup fails',
+    async (arrAction) => {
+      const collection = createCollection({
+        arrAction,
+        sonarrSettingsId: 1,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+
+      mockMediaServerMetadata(collectionMedia.mediaData);
+
+      const series = createSonarrSeries({
+        id: 42,
+      });
+
+      const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(series);
+      jest
+        .spyOn(mockedSonarrApi, 'unmonitorSeasons')
+        .mockResolvedValue(undefined);
+
+      mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+      await expect(
+        sonarrActionHandler.handleAction(collection, collectionMedia),
+      ).resolves.toBe(false);
+
+      expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
+      expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+    },
+  );
+
   it('should unmonitor ended show when no monitored seasons remain after season cleanup', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
@@ -433,8 +477,12 @@ describe('SonarrActionHandler', () => {
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
-    await sonarrActionHandler.handleAction(collection, collectionMedia);
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
 
+    expect(result).toBe(true);
     expect(mockedSonarrApi.updateSeries).toHaveBeenCalledWith(
       expect.objectContaining({
         id: series.id,
@@ -599,7 +647,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -693,7 +741,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -796,7 +844,7 @@ describe('SonarrActionHandler', () => {
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
     jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
-    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue();
+    jest.spyOn(mockedSonarrApi, 'updateSeries').mockResolvedValue(true);
 
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 

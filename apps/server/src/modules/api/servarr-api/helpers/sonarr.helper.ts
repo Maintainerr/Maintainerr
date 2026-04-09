@@ -113,8 +113,8 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
-  public async updateSeries(series: SonarrSeries) {
-    await this.axios.put<SonarrSeries>('/series', series);
+  public async updateSeries(series: SonarrSeries): Promise<boolean> {
+    return this.runPut('series', JSON.stringify(series));
   }
 
   public async searchSeries(seriesId: number): Promise<void> {
@@ -136,10 +136,10 @@ export class SonarrApi extends ServarrApi<{
     seriesId: number | string,
     deleteFiles = true,
     importListExclusion = false,
-  ) {
+  ): Promise<boolean> {
     this.logger.log(`Deleting show with ID ${seriesId} from Sonarr.`);
     try {
-      await this.runDelete(
+      return await this.runDelete(
         `series/${seriesId}?deleteFiles=${deleteFiles}&addImportListExclusion=${importListExclusion}`,
       );
     } catch (error) {
@@ -147,6 +147,7 @@ export class SonarrApi extends ServarrApi<{
         `Couldn't delete show by ID ${seriesId}. Does it exist in Sonarr?`,
       );
       this.logger.debug(error);
+      return false;
     }
   }
 
@@ -155,7 +156,7 @@ export class SonarrApi extends ServarrApi<{
     seasonNumber: number,
     episodeIds: number[],
     deleteFiles = true,
-  ) {
+  ): Promise<boolean> {
     this.logger.log(
       `${!deleteFiles ? 'Unmonitoring' : 'Deleting'} ${
         episodeIds.length
@@ -168,22 +169,34 @@ export class SonarrApi extends ServarrApi<{
         episodeIds,
       );
 
+      if (!episodes?.length) {
+        return false;
+      }
+
       for (const e of episodes) {
-        // unmonitor
-        await this.runPut(
-          `episode/${e.id}`,
-          JSON.stringify({ ...e, monitored: false }),
-        );
-        // also delete if required
+        if (
+          !(await this.runPut(
+            `episode/${e.id}`,
+            JSON.stringify({ ...e, monitored: false }),
+          ))
+        ) {
+          return false;
+        }
+
         if (deleteFiles) {
-          await this.runDelete(`episodefile/${e.episodeFileId}`);
+          if (!(await this.runDelete(`episodefile/${e.episodeFileId}`))) {
+            return false;
+          }
         }
       }
+
+      return true;
     } catch (error) {
       this.logger.warn(
         `Couldn't remove/unmonitor episodes: ${episodeIds.join(', ')} for series ID: ${seriesId}`,
       );
       this.logger.debug(error);
+      return false;
     }
   }
 
@@ -192,7 +205,7 @@ export class SonarrApi extends ServarrApi<{
     type: 'all' | number | 'existing' = 'all',
     deleteFiles = true,
     forceExisting = false,
-  ): Promise<SonarrSeries> {
+  ): Promise<SonarrSeries | undefined> {
     try {
       const data: SonarrSeries = (await this.axios.get(`series/${seriesId}`))
         .data;
@@ -200,8 +213,8 @@ export class SonarrApi extends ServarrApi<{
       const episodes: SonarrEpisode[] = await this.get(
         `episodefile?seriesId=${seriesId}`,
       );
+      let success = true;
 
-      // loop seasons
       data.seasons = await Promise.all(
         data.seasons.map(async (s) => {
           if (type === 'all') {
@@ -210,19 +223,18 @@ export class SonarrApi extends ServarrApi<{
             type === 'existing' ||
             (forceExisting && type === s.seasonNumber)
           ) {
-            // existing episodes only, so don't unmonitor season
             for (const e of episodes) {
               if (e.seasonNumber === s.seasonNumber) {
-                await this.UnmonitorDeleteEpisodes(
-                  +seriesId,
-                  e.seasonNumber,
-                  [e.id],
-                  false,
-                );
+                success =
+                  (await this.UnmonitorDeleteEpisodes(
+                    +seriesId,
+                    e.seasonNumber,
+                    [e.id],
+                    false,
+                  )) && success;
               }
             }
           } else if (typeof type === 'number') {
-            // specific season
             if (s.seasonNumber === type) {
               s.monitored = false;
             }
@@ -230,19 +242,23 @@ export class SonarrApi extends ServarrApi<{
           return s;
         }),
       );
-      await this.runPut(`series/`, JSON.stringify(data));
+      success = (await this.runPut(`series/`, JSON.stringify(data))) && success;
 
-      // delete files
       if (deleteFiles) {
         for (const e of episodes) {
           if (typeof type === 'number') {
             if (e.seasonNumber === type) {
-              await this.runDelete(`episodefile/${e.id}`);
+              success =
+                (await this.runDelete(`episodefile/${e.id}`)) && success;
             }
           } else {
-            await this.runDelete(`episodefile/${e.id}`);
+            success = (await this.runDelete(`episodefile/${e.id}`)) && success;
           }
         }
+      }
+
+      if (!success) {
+        return undefined;
       }
 
       this.logger.log(
@@ -257,6 +273,7 @@ export class SonarrApi extends ServarrApi<{
         `Couldn't unmonitor/delete seasons for series ID ${seriesId}. Does it exist in Sonarr?`,
       );
       this.logger.debug(error);
+      return undefined;
     }
   }
 

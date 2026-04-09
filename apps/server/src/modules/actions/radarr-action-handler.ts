@@ -25,7 +25,7 @@ export class RadarrActionHandler {
   public async handleAction(
     collection: Collection,
     media: CollectionMedia,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const radarrApiClient = await this.servarrApi.getRadarrApiClient(
       collection.radarrSettingsId,
     );
@@ -54,34 +54,48 @@ export class RadarrActionHandler {
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
           case ServarrAction.UNMONITOR_DELETE_EXISTING:
-            await radarrApiClient.deleteMovie(
-              radarrMedia.id,
-              true,
-              collection.listExclusions,
-            );
+            if (
+              !(await radarrApiClient.deleteMovie(
+                radarrMedia.id,
+                true,
+                collection.listExclusions,
+              ))
+            ) {
+              return false;
+            }
             this.logger.log(
               `Removed movie with ${matchedProvider} ID ${matchedId} from filesystem & Radarr`,
             );
-            break;
+            return true;
           case ServarrAction.UNMONITOR:
-            await radarrApiClient.updateMovie(radarrMedia.id, {
-              monitored: false,
-              addImportExclusion: collection.listExclusions,
-            });
+            if (
+              !(await radarrApiClient.updateMovie(radarrMedia.id, {
+                monitored: false,
+                addImportExclusion: collection.listExclusions,
+              }))
+            ) {
+              return false;
+            }
             this.logger.log(
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
             );
-            break;
+            return true;
           case ServarrAction.UNMONITOR_DELETE_ALL:
-            await radarrApiClient.updateMovie(radarrMedia.id, {
-              monitored: false,
-              deleteFiles: true,
-              addImportExclusion: collection.listExclusions,
-            });
+            if (
+              !(await radarrApiClient.updateMovie(radarrMedia.id, {
+                monitored: false,
+                deleteFiles: true,
+                addImportExclusion: collection.listExclusions,
+              }))
+            ) {
+              return false;
+            }
             this.logger.log(
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
-            break;
+            return true;
+          default:
+            return false;
         }
       } else {
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
@@ -92,16 +106,21 @@ export class RadarrActionHandler {
           );
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);
+          return true;
         } else {
           this.logger.log(
             `Radarr unmonitor action was not possible because no resolved external ID [${attemptedIds}] matched a movie in Radarr for media server ID ${media.mediaServerId}.`,
           );
+          return false;
         }
       }
     } else {
       this.logger.log(
         `Couldn't resolve any supported external IDs for movie with media server ID ${media.mediaServerId}. Please check this movie manually.`,
       );
+      return false;
     }
+
+    return false;
   }
 }
