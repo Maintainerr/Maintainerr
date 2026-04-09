@@ -523,6 +523,7 @@ export class MetadataService {
     ids: ProviderIds,
     externalIds: ProviderIds,
     sourceProviderName: string,
+    itemTitle?: string,
   ): void {
     for (const provider of this.providers) {
       const currentId = provider.extractId(ids);
@@ -536,8 +537,9 @@ export class MetadataService {
         continue;
       }
 
+      const target = itemTitle ? ` for "${itemTitle}"` : '';
       this.logger.warn(
-        `Corrected ${provider.name} ID: ${currentId} to ${correctId} via ${sourceProviderName} cross-reference. The media server may have incorrect metadata for this item.`,
+        `Corrected ${provider.name} ID${target}: ${currentId} to ${correctId} via ${sourceProviderName} cross-reference. The media server may have incorrect metadata for this item.`,
       );
       provider.assignId(ids, correctId);
     }
@@ -763,46 +765,57 @@ export class MetadataService {
       if (id === undefined) return undefined;
       consulted.add(provider);
 
-      const details = await provider.getDetails(id, ids.type);
-      if (!details) return undefined;
+      const providerDetails = await provider.getDetails(id, ids.type);
+      if (!providerDetails) return undefined;
 
-      if (details.externalIds) {
-        this.applyIdCorrections(ids, details.externalIds, provider.name);
-        this.fillMissingIds(ids, details.externalIds);
+      if (providerDetails.externalIds) {
+        this.applyIdCorrections(
+          ids,
+          providerDetails.externalIds,
+          provider.name,
+          item.title,
+        );
+        this.fillMissingIds(ids, providerDetails.externalIds);
       }
 
-      // No year on either side: nothing to check against.
-      if (itemYear === undefined || details.year === undefined) {
-        return details;
+      // Missing year on either side: nothing to sanity-check against, so we
+      // trust the ID. Logged so ambiguous accepts are still visible.
+      if (itemYear === undefined || providerDetails.year === undefined) {
+        const missingSide =
+          itemYear === undefined ? 'media server' : provider.name;
+        this.logger.debug(
+          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check (${missingSide} year was undefined).`,
+        );
+        return providerDetails;
       }
 
-      const delta = Math.abs(itemYear - details.year);
+      const delta = Math.abs(itemYear - providerDetails.year);
 
       if (delta === 0) {
         if (disagreements.length > 0) {
           this.logger.debug(
-            `Direct provider IDs for "${item.title}" validated by ${provider.name} (${details.year}) after year disagreement from: ${disagreements.join(', ')}.`,
+            `Direct provider IDs for "${item.title}" validated by ${provider.name} (${providerDetails.year}) after year disagreement from: ${disagreements.join(', ')}.`,
           );
         }
-        return details;
+        return providerDetails;
       }
 
       // ±1 tolerance covers festival/theatrical release drift.
       if (delta === 1) {
         this.logger.debug(
-          `Accepted direct provider IDs for "${item.title}" (${itemYear}) with a one-year drift from ${provider.name} (${details.year}).`,
+          `Accepted direct provider IDs for "${item.title}" (${itemYear}) with a one-year drift from ${provider.name} (${providerDetails.year}).`,
         );
-        return details;
+        return providerDetails;
       }
 
-      disagreements.push(`${provider.name} returned ${details.year}`);
+      disagreements.push(`${provider.name} returned ${providerDetails.year}`);
       return undefined;
     };
 
     // First pass: consult every provider that already has an ID on the item.
     for (const provider of this.getOrderedProviders()) {
-      const details = await evaluate(provider);
-      if (details) return details;
+      const providerDetails = await evaluate(provider);
+      if (providerDetails) return providerDetails;
     }
 
     // Second pass: if all direct provider IDs disagreed on year, bridge from
@@ -811,8 +824,8 @@ export class MetadataService {
     if (disagreements.length > 0) {
       await this.bridgeMissingProviderIds(ids);
       for (const provider of this.getOrderedProviders()) {
-        const details = await evaluate(provider);
-        if (details) return details;
+        const providerDetails = await evaluate(provider);
+        if (providerDetails) return providerDetails;
       }
     }
 
@@ -836,7 +849,7 @@ export class MetadataService {
           continue;
         }
         const results = await provider.findByExternalId(value, key);
-        if (!results?.length) {
+        if (!results) {
           continue;
         }
         for (const result of results) {

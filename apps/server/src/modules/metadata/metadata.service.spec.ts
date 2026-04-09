@@ -583,7 +583,9 @@ describe('MetadataService', () => {
 
     expect(result).toMatchObject({ tmdb: 222, type: 'movie' });
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Corrected TMDB ID: 111 to 222'),
+      expect.stringContaining(
+        'Corrected TMDB ID for "Fixture Harbor": 111 to 222',
+      ),
     );
   });
 
