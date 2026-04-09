@@ -402,6 +402,31 @@ describe('MetadataService', () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
+  it('warns when the provider has no release year but still accepts the ids', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-provider-missing-year',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Orbit',
+      providerIds: { tmdb: ['808001'], imdb: [], tvdb: [] },
+    });
+    const { service, logger } = createService({
+      tmdbDetails: {
+        title: 'Fixture Orbit',
+        year: undefined,
+        type: 'movie',
+        externalIds: { tmdb: 808001, type: 'movie' },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(result).toMatchObject({ tmdb: 808001, type: 'movie' });
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('TMDB returned no release year'),
+    );
+  });
+
   it('accepts direct provider ids when a parenthesized year in the title matches the provider year', async () => {
     const libraryItem = createMediaItem({
       id: 'show-1',

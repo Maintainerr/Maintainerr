@@ -778,13 +778,20 @@ export class MetadataService {
         this.fillMissingIds(ids, providerDetails.externalIds);
       }
 
-      // Missing year on either side: nothing to sanity-check against, so we
-      // trust the ID. Logged so ambiguous accepts are still visible.
-      if (itemYear === undefined || providerDetails.year === undefined) {
-        const missingSide =
-          itemYear === undefined ? 'media server' : provider.name;
+      // Missing year on either side: nothing to sanity-check against. We
+      // trust the ID, but log so ambiguous accepts stay visible. Provider
+      // missing year is the suspicious case (TMDB/TVDB almost always have
+      // one) so it's logged at warn; media server missing year is common
+      // in untagged libraries and stays at debug.
+      if (providerDetails.year === undefined) {
+        this.logger.warn(
+          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check — ${provider.name} returned no release year for this entry.`,
+        );
+        return providerDetails;
+      }
+      if (itemYear === undefined) {
         this.logger.debug(
-          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check (${missingSide} year was undefined).`,
+          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check — media server item has no year.`,
         );
         return providerDetails;
       }
