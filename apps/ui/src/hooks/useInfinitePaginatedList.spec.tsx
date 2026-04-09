@@ -114,17 +114,44 @@ describe('useInfinitePaginatedList', () => {
     })
   })
 
-  it('does not auto-fetch another page after append until a new scroll event occurs', async () => {
+  it('auto-fetches another page after append when the viewport is still full (no scroll required)', async () => {
+    // Regression: when the first page isn't tall enough to produce a
+    // scrollbar, no scroll event ever fires. The hook must still load the
+    // next page on its own, otherwise the list gets stuck (see issue #2637).
     const fetchPage = vi
       .fn()
       .mockResolvedValueOnce({
-        totalSize: 60,
+        totalSize: 2,
         items: ['page-one'],
       })
       .mockResolvedValueOnce({
-        totalSize: 60,
+        totalSize: 2,
         items: ['page-two'],
       })
+
+    const { result } = renderHook(() =>
+      useInfinitePaginatedList<string, string>({
+        fetchAmount: 1,
+        fetchPage,
+        mapPageItems: (items) => items,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchPage).toHaveBeenCalledTimes(2)
+      expect(fetchPage).toHaveBeenNthCalledWith(1, 1)
+      expect(fetchPage).toHaveBeenNthCalledWith(2, 2)
+      expect(result.current.data).toEqual(['page-one', 'page-two'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isLoadingExtra).toBe(false)
+    })
+  })
+
+  it('stops auto-fetching once totalSize is reached', async () => {
+    const fetchPage = vi.fn().mockResolvedValue({
+      totalSize: 1,
+      items: ['only'],
+    })
 
     const { result } = renderHook(() =>
       useInfinitePaginatedList<string, string>({
@@ -135,24 +162,13 @@ describe('useInfinitePaginatedList', () => {
     )
 
     await waitFor(() => {
-      expect(fetchPage).toHaveBeenCalledTimes(1)
-      expect(fetchPage).toHaveBeenCalledWith(1)
-      expect(result.current.data).toEqual(['page-one'])
+      expect(result.current.data).toEqual(['only'])
       expect(result.current.isLoading).toBe(false)
-      expect(result.current.isLoadingExtra).toBe(false)
     })
 
+    // Give the post-append effect a chance to run before asserting no
+    // additional calls were made.
+    await new Promise((resolve) => setTimeout(resolve, 50))
     expect(fetchPage).toHaveBeenCalledTimes(1)
-
-    act(() => {
-      scrollTop = 10
-      window.dispatchEvent(new Event('scroll'))
-    })
-
-    await waitFor(() => {
-      expect(fetchPage).toHaveBeenCalledTimes(2)
-      expect(fetchPage).toHaveBeenLastCalledWith(2)
-      expect(result.current.data).toEqual(['page-one', 'page-two'])
-    })
   })
 })
