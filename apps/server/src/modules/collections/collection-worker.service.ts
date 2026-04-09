@@ -75,6 +75,7 @@ export class CollectionWorkerService extends TaskBase {
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
+      let collectionHandlingFailed = false;
       let doNothingCollectionCount = 0;
       let noDueMediaCollectionCount = 0;
 
@@ -172,15 +173,37 @@ export class CollectionWorkerService extends TaskBase {
         const handledMediaForNotification = [];
 
         for (const media of collectionMedia) {
-          await this.collectionHandler.handleMedia(collection, media);
-          handledCollectionMedia++;
+          let mediaHandled = false;
+
+          try {
+            mediaHandled = await this.collectionHandler.handleMedia(
+              collection,
+              media,
+            );
+          } catch (error) {
+            collectionHandlingFailed = true;
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error';
+
+            this.logger.warn(
+              `Failed to handle media with id ${media.mediaServerId} in collection '${collection.title}': ${errorMessage}`,
+            );
+            this.logger.debug(error);
+          }
+
+          if (!mediaHandled) {
+            collectionHandlingFailed = true;
+          } else {
+            handledCollectionMedia++;
+            handledMediaForNotification.push({
+              mediaServerId: media.mediaServerId,
+            });
+          }
+
           if (progressedEvent) {
             progressedEvent.processingCollection!.processedMedias++;
             progressedEvent.processedMedias++;
           }
-          handledMediaForNotification.push({
-            mediaServerId: media.mediaServerId,
-          });
           emitProgressedEvent();
         }
 
@@ -202,6 +225,10 @@ export class CollectionWorkerService extends TaskBase {
         emitProgressedEvent();
 
         this.logger.log(`Handling collection '${collection.title}' finished`);
+      }
+
+      if (collectionHandlingFailed) {
+        failed = true;
       }
 
       if (handledCollectionMedia > 0) {

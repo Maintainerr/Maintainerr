@@ -198,12 +198,23 @@ const useInfinitePaginatedList = <TPageItem, TItem>({
   useEffect(() => {
     const debouncedScroll = debounce(loadNextPageIfNeeded, 200)
     window.addEventListener('scroll', debouncedScroll)
+    window.addEventListener('resize', debouncedScroll)
 
     return () => {
       window.removeEventListener('scroll', debouncedScroll)
+      window.removeEventListener('resize', debouncedScroll)
       debouncedScroll.cancel()
     }
   }, [loadNextPageIfNeeded])
+
+  // After each page is appended, re-check whether the viewport is already
+  // filled. If the initial page isn't tall enough to produce a scrollbar, no
+  // scroll event will ever fire, so without this the list would be stuck.
+  useEffect(() => {
+    if (isLoading || isLoadingExtra) return
+    if (dataRef.current.length >= totalSizeRef.current) return
+    loadNextPageIfNeeded()
+  }, [data, isLoading, isLoadingExtra, loadNextPageIfNeeded])
 
   return {
     data,

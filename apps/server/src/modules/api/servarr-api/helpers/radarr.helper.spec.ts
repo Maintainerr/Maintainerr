@@ -1,70 +1,65 @@
-import { createRadarrMovie } from '../../../../../test/utils/data';
+import { Mocked } from '@suites/doubles.jest';
+import {
+  createRadarrMovie,
+  createRadarrMovieFile,
+} from '../../../../../test/utils/data';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { RadarrMovie } from '../interfaces/radarr.interface';
 import { RadarrApi } from './radarr.helper';
 
-function createLoggerMock(): MaintainerrLogger {
-  return {
-    setContext: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    log: jest.fn(),
-    error: jest.fn(),
-    verbose: jest.fn(),
-    fatal: jest.fn(),
-  } as unknown as MaintainerrLogger;
-}
-
 describe('RadarrApi', () => {
-  let radarrApi: RadarrApi;
-  let logger: MaintainerrLogger;
+  let api: RadarrApi;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(() => {
-    logger = createLoggerMock();
-    radarrApi = new RadarrApi(
+    logger = {
+      setContext: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      log: jest.fn(),
+    } as unknown as Mocked<MaintainerrLogger>;
+
+    api = new RadarrApi(
       { url: 'http://localhost:7878', apiKey: 'test' },
-      logger,
+      logger as any,
     );
   });
 
-  describe('getMovieByTvdbId', () => {
-    it('returns the exact TVDB match when the response exposes tvdbId', async () => {
-      const unrelatedMovie = createRadarrMovie({ id: 10, tmdbId: 100 });
-      const matchingMovie = {
-        ...createRadarrMovie({ id: 20, tmdbId: 200 }),
-        tvdbId: 300,
-      } as RadarrMovie & { tvdbId: number };
-
-      jest
-        .spyOn(radarrApi, 'get')
-        .mockResolvedValue([unrelatedMovie, matchingMovie]);
-
-      await expect(radarrApi.getMovieByTvdbId(300)).resolves.toBe(
-        matchingMovie,
-      );
+  it('returns false when adding an import exclusion fails', async () => {
+    const movie = createRadarrMovie({
+      id: 5,
+      monitored: true,
+      tmdbId: 123,
+      title: 'Movie Title',
+      year: 2024,
     });
 
-    it('returns the single response when Radarr returns one movie without a tvdbId field', async () => {
-      const movie = createRadarrMovie({ id: 20, tmdbId: 200 });
+    jest.spyOn(api, 'get').mockImplementation(async (endpoint) => {
+      if (endpoint === 'movie/5') {
+        return movie;
+      }
 
-      jest.spyOn(radarrApi, 'get').mockResolvedValue([movie]);
+      if (endpoint === 'moviefile?movieId=5') {
+        return [createRadarrMovieFile()];
+      }
 
-      await expect(radarrApi.getMovieByTvdbId(300)).resolves.toBe(movie);
-      expect(logger.debug).toHaveBeenCalledWith(
-        'Falling back to a single unverified Radarr movie result for TVDB id 300. Radarr did not expose a matching tvdbId in the response.',
-      );
+      return undefined;
     });
 
-    it('returns undefined when multiple movies are returned without an exact TVDB match', async () => {
-      const firstMovie = createRadarrMovie({ id: 10, tmdbId: 100 });
-      const secondMovie = createRadarrMovie({ id: 20, tmdbId: 200 });
+    jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+    jest.spyOn(api as any, 'runDelete').mockResolvedValue(true);
+    jest.spyOn(api, 'post').mockResolvedValue(undefined);
 
-      jest.spyOn(radarrApi, 'get').mockResolvedValue([firstMovie, secondMovie]);
+    await expect(
+      api.updateMovie(5, {
+        monitored: false,
+        addImportExclusion: true,
+      }),
+    ).resolves.toBe(false);
 
-      await expect(radarrApi.getMovieByTvdbId(300)).resolves.toBeUndefined();
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Could not uniquely find movie with TVDB id 300 in Radarr',
-      );
+    expect(api.post).toHaveBeenCalledWith('/exclusions', {
+      tmdbId: movie.tmdbId,
+      movieTitle: movie.title,
+      movieYear: movie.year,
     });
   });
 });

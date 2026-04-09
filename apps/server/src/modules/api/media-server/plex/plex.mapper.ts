@@ -227,7 +227,7 @@ export class PlexMapper {
         id: '', // Not available on PlexMetadata
         title: '',
       },
-      summary: undefined,
+      summary: plex.summary,
       viewCount: undefined,
       skipCount: undefined,
       lastViewedAt: undefined,

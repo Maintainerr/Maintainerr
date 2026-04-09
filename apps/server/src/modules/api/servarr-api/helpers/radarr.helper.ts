@@ -8,8 +8,6 @@ import {
   RadarrMovieFile,
 } from '../interfaces/radarr.interface';
 
-type RadarrMovieWithTvdbId = RadarrMovie & { tvdbId?: number };
-
 export class RadarrApi extends ServarrApi<{ movieId: number }> {
   constructor(
     {
@@ -63,42 +61,6 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     }
   }
 
-  public async getMovieByTvdbId(id: number): Promise<RadarrMovie> {
-    try {
-      const response = await this.get<RadarrMovie[]>(`/movie?tvdbId=${id}`);
-
-      if (!response?.length) {
-        this.logger.warn(`Could not find movie with TVDB id ${id} in Radarr`);
-        return undefined;
-      }
-
-      // Radarr's tvdbId filtering is not documented. Accept an explicit TVDB match
-      // when present, otherwise only trust a single returned result.
-      const match = response.find(
-        (movie) => (movie as RadarrMovieWithTvdbId).tvdbId === id,
-      );
-
-      if (match) {
-        return match;
-      }
-
-      if (response.length === 1) {
-        this.logger.debug(
-          `Falling back to a single unverified Radarr movie result for TVDB id ${id}. Radarr did not expose a matching tvdbId in the response.`,
-        );
-        return response[0];
-      }
-
-      this.logger.warn(
-        `Could not uniquely find movie with TVDB id ${id} in Radarr`,
-      );
-      return undefined;
-    } catch (error) {
-      this.logger.warn(`Error retrieving movie by TVDB ID ${id}`);
-      this.logger.debug(error);
-    }
-  }
-
   public async searchMovie(movieId: number): Promise<void> {
     this.logger.log('Executing movie search command');
 
@@ -116,14 +78,15 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     movieId: number,
     deleteFiles = true,
     importExclusion = false,
-  ) {
+  ): Promise<boolean> {
     try {
-      await this.runDelete(
+      return await this.runDelete(
         `movie/${movieId}?deleteFiles=${deleteFiles}&addImportExclusion=${importExclusion}`,
       );
     } catch (error) {
       this.logger.log("Couldn't delete movie. Does it exist in radarr?");
       this.logger.debug(error);
+      return false;
     }
   }
 
@@ -134,33 +97,52 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       monitored?: boolean;
       addImportExclusion?: boolean;
     },
-  ) {
+  ): Promise<boolean> {
     try {
       const movieData: RadarrMovie = await this.get(`movie/${movieId}`);
+
+      if (!movieData) {
+        return false;
+      }
+
       if (options?.monitored !== undefined) {
         movieData.monitored = options.monitored;
       }
-      await this.runPut(`movie/${movieId}`, JSON.stringify(movieData));
+      if (!(await this.runPut(`movie/${movieId}`, JSON.stringify(movieData)))) {
+        return false;
+      }
 
       if (options?.deleteFiles) {
         const movieFiles: RadarrMovieFile[] = await this.get(
           `moviefile?movieId=${movieId}`,
         );
-        for (const movieFile of movieFiles) {
-          await this.runDelete(`moviefile/${movieFile.id}`);
+        for (const movieFile of movieFiles ?? []) {
+          if (!(await this.runDelete(`moviefile/${movieFile.id}`))) {
+            return false;
+          }
         }
       }
 
       if (options?.addImportExclusion) {
-        await this.post(`/exclusions`, {
-          tmdbId: movieData.tmdbId,
-          movieTitle: movieData.title,
-          movieYear: movieData.year,
-        } satisfies RadarrImportListExclusion);
+        const exclusion = await this.post<RadarrImportListExclusion>(
+          `/exclusions`,
+          {
+            tmdbId: movieData.tmdbId,
+            movieTitle: movieData.title,
+            movieYear: movieData.year,
+          } satisfies RadarrImportListExclusion,
+        );
+
+        if (!exclusion) {
+          return false;
+        }
       }
+
+      return true;
     } catch (error) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");
       this.logger.debug(error);
+      return false;
     }
   }
 

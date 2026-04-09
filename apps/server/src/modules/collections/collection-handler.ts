@@ -34,9 +34,12 @@ export class CollectionHandler {
     return this.mediaServerFactory.getService();
   }
 
-  public async handleMedia(collection: Collection, media: CollectionMedia) {
+  public async handleMedia(
+    collection: Collection,
+    media: CollectionMedia,
+  ): Promise<boolean> {
     if (collection.arrAction === ServarrAction.DO_NOTHING) {
-      return;
+      return false;
     }
 
     const mediaServer = await this.getMediaServer();
@@ -45,35 +48,28 @@ export class CollectionHandler {
       (e) => e.id === collection.libraryId.toString(),
     );
 
-    // TODO Media should only be removed from the collection if the handle action is performed successfully
-    await this.collectionService.removeFromCollection(collection.id, [
-      {
-        mediaServerId: media.mediaServerId,
-      },
-    ]);
-
-    // update handled media amount
-    collection.handledMediaAmount++;
-
-    // save a log record for the handled media item
-    await this.collectionService.CollectionLogRecordForChild(
-      media.mediaServerId,
-      collection.id,
-      'handle',
-    );
-
-    await this.collectionService.saveCollection(collection);
+    let actionHandled = false;
 
     if (library?.type === 'movie' && collection.radarrSettingsId) {
-      await this.radarrActionHandler.handleAction(collection, media);
+      actionHandled = await this.radarrActionHandler.handleAction(
+        collection,
+        media,
+      );
     } else if (library?.type == 'show' && collection.sonarrSettingsId) {
-      await this.sonarrActionHandler.handleAction(collection, media);
+      actionHandled = await this.sonarrActionHandler.handleAction(
+        collection,
+        media,
+      );
     } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
-      if (collection.arrAction !== ServarrAction.UNMONITOR) {
+      if (
+        collection.arrAction !== ServarrAction.UNMONITOR &&
+        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
+      ) {
         this.logger.log(
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
         );
         await mediaServer.deleteFromDisk(media.mediaServerId);
+        actionHandled = true;
       } else {
         this.logger.log(
           `*arr unmonitor action isn't possible, since *arr is not available. Didn't unmonitor media with id ${media.mediaServerId}.}`,
@@ -81,13 +77,21 @@ export class CollectionHandler {
       }
     }
 
+    if (!actionHandled) {
+      return false;
+    }
+
     // Only remove requests & file if needed
-    if (collection.arrAction !== ServarrAction.UNMONITOR) {
+    if (
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.DELETE_SHOW_IF_EMPTY
+    ) {
       // Seerr, if forced. Otherwise rely on media sync
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
-        const ids = await this.metadataService.resolveIds(
+        const ids = await this.metadataService.resolveIdsForService(
           media.mediaServerId,
-          'tmdb',
+          'seerr',
         );
         const tmdbId = (ids?.tmdb as number | undefined) ?? media.tmdbId;
 
@@ -144,5 +148,23 @@ export class CollectionHandler {
         }
       }
     }
+
+    await this.collectionService.removeFromCollection(collection.id, [
+      {
+        mediaServerId: media.mediaServerId,
+      },
+    ]);
+
+    collection.handledMediaAmount++;
+
+    await this.collectionService.CollectionLogRecordForChild(
+      media.mediaServerId,
+      collection.id,
+      'handle',
+    );
+
+    await this.collectionService.saveCollection(collection);
+
+    return true;
   }
 }

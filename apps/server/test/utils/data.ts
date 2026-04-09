@@ -34,6 +34,13 @@ import {
 } from '../../src/modules/collections/entities/collection_media.entities';
 import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../../src/modules/logging/logs.service';
+import { MetadataLookupPolicy } from '../../src/modules/metadata/interfaces/metadata-lookup-policy.interface';
+import { IMetadataProvider } from '../../src/modules/metadata/interfaces/metadata-provider.interface';
+import {
+  ExternalIdSearchResult,
+  MetadataDetails,
+  ResolvedMediaIds,
+} from '../../src/modules/metadata/interfaces/metadata.types';
 import { RuleDto } from '../../src/modules/rules/dtos/rule.dto';
 import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
 
@@ -212,16 +219,6 @@ export const createPlexMetadata = (
     ...properties,
     type,
   };
-};
-
-export const createPlexLibraries = (
-  properties: Partial<PlexLibrary> = {},
-): PlexLibrary[] => {
-  return [
-    createPlexLibrary(properties),
-    createPlexLibrary(),
-    createPlexLibrary(),
-  ];
 };
 
 export const createPlexLibrary = (
@@ -471,7 +468,6 @@ export const createSonarrSeries = (
     imdbId: faker.string.sample(10),
     path: faker.system.directoryPath(),
     tvdbId: faker.number.int(),
-    tmdbId: faker.number.int(),
     qualityProfileId: faker.number.int(),
     ratings: {
       votes: faker.number.int(),
@@ -630,3 +626,396 @@ export const createMockLogger = (): jest.Mocked<MaintainerrLogger> =>
     error: jest.fn(),
     debug: jest.fn(),
   }) as unknown as jest.Mocked<MaintainerrLogger>;
+
+type MetadataDetailsFixture = Partial<Omit<MetadataDetails, 'externalIds'>> & {
+  externalIds?: Partial<ResolvedMediaIds> & Pick<ResolvedMediaIds, 'type'>;
+};
+
+export interface MetadataProviderMockConfig {
+  name: string;
+  idKey: string;
+  isAvailable?: boolean;
+  details?: MetadataDetailsFixture;
+  detailsId?: number;
+  posterUrl?: string;
+  backdropUrl?: string;
+  findByExternalId?: (
+    externalId: string | number,
+    type: string,
+  ) => Promise<ExternalIdSearchResult[] | undefined>;
+}
+
+export interface MetadataLookupServiceTestCase {
+  title: string;
+  service: string;
+  lookupPolicy: MetadataLookupPolicy;
+  libraryItem: Partial<MediaItem>;
+  providerMocks: MetadataProviderMockConfig[];
+  expectedCandidates: Array<{ providerKey: string; id: number }>;
+}
+
+export const createMetadataDetails = (
+  properties: MetadataDetailsFixture = {},
+): MetadataDetails => {
+  const type = properties.type ?? properties.externalIds?.type ?? 'movie';
+
+  return {
+    id: faker.number.int(),
+    title: 'Fixture Story',
+    type,
+    externalIds: {
+      type,
+      ...properties.externalIds,
+    },
+    ...properties,
+  };
+};
+
+export const createMetadataProviderMock = ({
+  name,
+  idKey,
+  isAvailable = true,
+  details,
+  detailsId,
+  posterUrl,
+  backdropUrl,
+  findByExternalId,
+}: MetadataProviderMockConfig): jest.Mocked<IMetadataProvider> => {
+  const resolvedDetails = details
+    ? createMetadataDetails({
+        id: detailsId,
+        ...details,
+      })
+    : undefined;
+
+  return {
+    name,
+    idKey,
+    isAvailable: jest.fn(() => isAvailable),
+    extractId: jest.fn((ids) =>
+      typeof ids[idKey] === 'number' ? (ids[idKey] as number) : undefined,
+    ),
+    assignId: jest.fn((ids, id) => {
+      ids[idKey] = id;
+    }),
+    getDetails: jest.fn().mockResolvedValue(resolvedDetails),
+    getPosterUrl: jest
+      .fn()
+      .mockResolvedValue(posterUrl ?? `https://${idKey}/poster.jpg`),
+    getBackdropUrl: jest
+      .fn()
+      .mockResolvedValue(backdropUrl ?? `https://${idKey}/backdrop.jpg`),
+    getPersonDetails: jest.fn(),
+    findByExternalId: jest
+      .fn()
+      .mockImplementation(findByExternalId ?? (async () => undefined)),
+  } as unknown as jest.Mocked<IMetadataProvider>;
+};
+
+export const metadataLookupServiceTestCases: MetadataLookupServiceTestCase[] = [
+  {
+    title:
+      'resolves a Sonarr TVDB lookup candidate from TMDB provider details when TVDB is not directly available',
+    service: 'sonarr',
+    lookupPolicy: {
+      providerKeys: ['tvdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'show-1',
+      type: 'show',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+        details: {
+          title: 'Fixture Story',
+          type: 'tv',
+          externalIds: {
+            tmdb: 771,
+            tvdb: 202,
+            type: 'tv',
+          },
+        },
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+      },
+    ],
+    expectedCandidates: [{ providerKey: 'tvdb', id: 202 }],
+  },
+  {
+    title:
+      'resolves a Radarr TMDB lookup candidate from TVDB provider details because Radarr prefers TMDB',
+    service: 'radarr',
+    lookupPolicy: {
+      providerKeys: ['tmdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'movie-1',
+      type: 'movie',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: [],
+        imdb: [],
+        tvdb: ['202'],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+        detailsId: 202,
+        details: {
+          title: 'Fixture Story',
+          type: 'movie',
+          externalIds: {
+            tmdb: 771,
+            tvdb: 202,
+            type: 'movie',
+          },
+        },
+      },
+    ],
+    expectedCandidates: [{ providerKey: 'tmdb', id: 771 }],
+  },
+  {
+    title:
+      'resolves a Seerr TMDB lookup candidate from TVDB provider details because Seerr prefers TMDB',
+    service: 'seerr',
+    lookupPolicy: {
+      providerKeys: ['tmdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'show-2',
+      type: 'show',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: [],
+        imdb: [],
+        tvdb: ['303'],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+        detailsId: 303,
+        details: {
+          title: 'Fixture Story',
+          type: 'tv',
+          externalIds: {
+            tmdb: 404,
+            tvdb: 303,
+            type: 'tv',
+          },
+        },
+      },
+    ],
+    expectedCandidates: [{ providerKey: 'tmdb', id: 404 }],
+  },
+  {
+    title:
+      'resolves a Radarr TMDB lookup candidate from a direct TVDB id when the TVDB provider is unavailable',
+    service: 'radarr',
+    lookupPolicy: {
+      providerKeys: ['tmdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'movie-2',
+      type: 'movie',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: [],
+        imdb: [],
+        tvdb: ['303'],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+        findByExternalId: async (externalId, type) => {
+          if (type === 'tvdb' && externalId === 303) {
+            return [{ movieId: 404 }];
+          }
+
+          return undefined;
+        },
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+        isAvailable: false,
+      },
+    ],
+    expectedCandidates: [{ providerKey: 'tmdb', id: 404 }],
+  },
+  {
+    title:
+      'resolves a Sonarr TVDB lookup candidate via TMDB cross-reference when TVDB provider is unavailable',
+    service: 'sonarr',
+    lookupPolicy: {
+      providerKeys: ['tvdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'show-3',
+      type: 'show',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+        details: {
+          title: 'Fixture Story',
+          type: 'tv',
+          externalIds: {
+            tmdb: 771,
+            tvdb: 505,
+            type: 'tv',
+          },
+        },
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+        isAvailable: false,
+      },
+    ],
+    expectedCandidates: [{ providerKey: 'tvdb', id: 505 }],
+  },
+  {
+    title:
+      'returns no Sonarr lookup candidates when TVDB remains unresolved while the TVDB provider is unavailable',
+    service: 'sonarr',
+    lookupPolicy: {
+      providerKeys: ['tvdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'show-3b',
+      type: 'show',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: [],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+        details: {
+          title: 'Fixture Story',
+          type: 'tv',
+          externalIds: {
+            tmdb: 771,
+            type: 'tv',
+          },
+        },
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+        isAvailable: false,
+      },
+    ],
+    expectedCandidates: [],
+  },
+  {
+    title:
+      'resolves candidates directly when both TMDB and TVDB IDs are available on the library item',
+    service: 'sonarr',
+    lookupPolicy: {
+      providerKeys: ['tvdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'show-4',
+      type: 'show',
+      title: 'Fixture Story',
+      providerIds: {
+        tmdb: ['771'],
+        imdb: [],
+        tvdb: ['202'],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+        details: {
+          title: 'Fixture Story',
+          type: 'tv',
+          externalIds: {
+            tmdb: 771,
+            tvdb: 202,
+            type: 'tv',
+          },
+        },
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+      },
+    ],
+    expectedCandidates: [{ providerKey: 'tvdb', id: 202 }],
+  },
+  {
+    title:
+      'returns empty candidates when no provider can resolve the required IDs',
+    service: 'sonarr',
+    lookupPolicy: {
+      providerKeys: ['tvdb'],
+      providerMatchMode: 'any',
+    },
+    libraryItem: {
+      id: 'show-5',
+      type: 'show',
+      title: 'Unknown Show',
+      providerIds: {
+        tmdb: [],
+        imdb: [],
+        tvdb: [],
+      },
+    },
+    providerMocks: [
+      {
+        name: 'TMDB',
+        idKey: 'tmdb',
+      },
+      {
+        name: 'TVDB',
+        idKey: 'tvdb',
+      },
+    ],
+    expectedCandidates: [],
+  },
+];

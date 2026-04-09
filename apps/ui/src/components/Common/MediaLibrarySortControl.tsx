@@ -143,26 +143,40 @@ const collectionDeleteSoonestSortOption: SortOption<CollectionMediaSortParams> =
     sortParams: { sort: 'deleteSoonest', sortOrder: 'asc' },
   }
 
+const collectionDeleteLatestSortOption: SortOption<CollectionMediaSortParams> =
+  {
+    value: 'deleteSoonest.desc',
+    label: 'Delete Latest',
+    sortParams: { sort: 'deleteSoonest', sortOrder: 'desc' },
+  }
+
 export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
   includeDeleteSoonest: boolean = false,
 ): SortConfig<CollectionMediaSortParams> => {
-  const options = getCollectionSortConfig(
-    libraryType,
-    includeDeleteSoonest ? 'Delete Latest' : 'Recently Added',
-  ).options.map((option) => ({
-    value: option.value,
-    label: option.label,
-    sortParams: option.sortParams
-      ? {
-          sort: option.sortParams.sort,
-          sortOrder: option.sortParams.sortOrder,
-        }
-      : undefined,
-  }))
+  const options = getCollectionSortConfig(libraryType, 'Recently Added')
+    .options.map((option) => ({
+      value: option.value,
+      label: option.label,
+      sortParams: option.sortParams
+        ? {
+            sort: option.sortParams.sort,
+            sortOrder: option.sortParams.sortOrder,
+          }
+        : undefined,
+    }))
+    // When Delete Soonest/Latest are present they replace the empty-string
+    // fallback, which would otherwise surface as a meaningless duplicate.
+    .filter(
+      (option) => !includeDeleteSoonest || option.value !== defaultSortValue,
+    )
 
   const resolvedOptions = includeDeleteSoonest
-    ? [collectionDeleteSoonestSortOption, ...options]
+    ? [
+        collectionDeleteSoonestSortOption,
+        collectionDeleteLatestSortOption,
+        ...options,
+      ]
     : options
 
   return {

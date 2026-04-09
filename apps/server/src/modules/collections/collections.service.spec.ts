@@ -28,9 +28,6 @@ describe('CollectionsService', () => {
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
   let settingsService: Mocked<SettingsService>;
-  let tmdbIdService: {
-    getTmdbIdFromMediaServerId: jest.Mock;
-  };
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -47,20 +44,10 @@ describe('CollectionsService', () => {
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
     settingsService = unitRef.get(SettingsService);
-    tmdbIdService = {
-      getTmdbIdFromMediaServerId: jest.fn(),
-    };
-
-    metadataService.resolveIds.mockImplementation(async (mediaServerId) => {
-      const tmdb =
-        await tmdbIdService.getTmdbIdFromMediaServerId(mediaServerId);
-
-      if (!tmdb) {
-        return undefined;
-      }
-
-      return { tmdb: tmdb.id, type: tmdb.type } as any;
-    });
+    metadataService.resolveIds.mockResolvedValue({
+      tmdb: 1,
+      type: 'movie',
+    } as any);
     metadataService.getDetails.mockResolvedValue({
       externalIds: { tmdb: 1 },
       posterUrl: undefined,
@@ -147,9 +134,7 @@ describe('CollectionsService', () => {
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
-    tmdbIdService.getTmdbIdFromMediaServerId.mockRejectedValue(
-      new Error('tmdb lookup failed'),
-    );
+    metadataService.resolveIds.mockResolvedValue(undefined);
 
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
 
@@ -724,5 +709,121 @@ describe('CollectionsService', () => {
         image_path: 'https://image.example/show-poster.jpg',
       }),
     ]);
+  });
+
+  it('clears stale mediaServerId when getCollectionChildren throws and getCollection confirms deletion', async () => {
+    const collection = createCollection({
+      id: 10,
+      mediaServerId: 'deleted-jellyfin-collection',
+      type: 'movie',
+    });
+    const items = [
+      createCollectionMedia(collection, { mediaServerId: 'movie-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.getCollectionChildren.mockRejectedValue(
+      new Error('Request failed with status code 400'),
+    );
+    // getCollection confirms the collection is truly gone
+    mediaServer.getCollection.mockResolvedValue(undefined);
+    mediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({ id: 'movie-1', title: 'Fallback Movie' }),
+    );
+
+    const result = await (service as any).hydrateCollectionMediaWithMetadata(
+      items,
+      mediaServer,
+    );
+
+    expect(mediaServer.getCollection).toHaveBeenCalledWith(
+      'deleted-jellyfin-collection',
+      true,
+    );
+    expect(collectionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaServerId: null }),
+    );
+    // Fallback per-item lookup still works
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('movie-1');
+    expect(result).toHaveLength(1);
+    expect(result[0].mediaData?.title).toBe('Fallback Movie');
+  });
+
+  it('keeps mediaServerId when getCollectionChildren throws but getCollection confirms collection exists', async () => {
+    const collection = createCollection({
+      id: 11,
+      mediaServerId: 'existing-jellyfin-collection',
+      type: 'movie',
+    });
+    const items = [
+      createCollectionMedia(collection, { mediaServerId: 'movie-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    mediaServer.getCollectionChildren.mockRejectedValue(
+      new Error('Request failed with status code 400'),
+    );
+    // getCollection confirms the collection still exists
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'existing-jellyfin-collection',
+      title: 'My Collection',
+      childCount: 1,
+      smart: false,
+    });
+    mediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({ id: 'movie-1', title: 'Fallback Movie' }),
+    );
+
+    const result = await (service as any).hydrateCollectionMediaWithMetadata(
+      items,
+      mediaServer,
+    );
+
+    expect(mediaServer.getCollection).toHaveBeenCalledWith(
+      'existing-jellyfin-collection',
+      true,
+    );
+    // mediaServerId should NOT be cleared
+    expect(collectionRepo.save).not.toHaveBeenCalled();
+    expect(collection.mediaServerId).toBe('existing-jellyfin-collection');
+    // Fallback per-item lookup still works
+    expect(result).toHaveLength(1);
+    expect(result[0].mediaData?.title).toBe('Fallback Movie');
+  });
+
+  it('keeps mediaServerId when collection verification fails transiently', async () => {
+    const collection = createCollection({
+      id: 12,
+      mediaServerId: 'verification-failure-collection',
+      type: 'movie',
+    });
+    const items = [
+      createCollectionMedia(collection, { mediaServerId: 'movie-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    mediaServer.getCollectionChildren.mockRejectedValue(
+      new Error('Request failed with status code 400'),
+    );
+    mediaServer.getCollection.mockRejectedValue(new Error('status code 502'));
+    mediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({ id: 'movie-1', title: 'Fallback Movie' }),
+    );
+
+    const result = await (service as any).hydrateCollectionMediaWithMetadata(
+      items,
+      mediaServer,
+    );
+
+    expect(mediaServer.getCollection).toHaveBeenCalledWith(
+      'verification-failure-collection',
+      true,
+    );
+    expect(collectionRepo.save).not.toHaveBeenCalled();
+    expect(collection.mediaServerId).toBe('verification-failure-collection');
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('movie-1');
+    expect(result).toHaveLength(1);
+    expect(result[0].mediaData?.title).toBe('Fallback Movie');
   });
 });

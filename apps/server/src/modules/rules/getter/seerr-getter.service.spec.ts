@@ -10,6 +10,10 @@ import { MetadataService } from '../../metadata/metadata.service';
 import { SeerrGetterService } from './seerr-getter.service';
 
 describe('SeerrGetterService', () => {
+  const RELEASE_DATE_PROP_ID = 2;
+  const AMOUNT_REQUESTED_PROP_ID = 5;
+  const IS_REQUESTED_PROP_ID = 6;
+
   const createService = () => {
     const seerrApi = {
       getMovie: jest.fn(),
@@ -24,22 +28,10 @@ describe('SeerrGetterService', () => {
       }),
     } as unknown as jest.Mocked<MediaServerFactory>;
 
-    const tmdbIdHelper = {
-      getTmdbIdFromMediaItem: jest
-        .fn()
-        .mockResolvedValue({ id: 12345, type: 'movie' }),
-    };
-
     const metadataService = {
-      resolveIdsFromMediaItem: jest.fn(async () => {
-        const tmdb = await tmdbIdHelper.getTmdbIdFromMediaItem();
-
-        if (!tmdb) {
-          return undefined;
-        }
-
-        return { tmdb: tmdb.id, type: tmdb.type } as any;
-      }),
+      resolveIdsFromMediaItemForService: jest
+        .fn()
+        .mockResolvedValue({ tmdb: 12345, type: 'movie' }),
     } as unknown as jest.Mocked<MetadataService>;
 
     const logger = createMockLogger();
@@ -54,7 +46,6 @@ describe('SeerrGetterService', () => {
     return {
       service,
       seerrApi,
-      tmdbIdHelper,
       metadataService,
       mediaServerFactory,
       logger,
@@ -511,6 +502,94 @@ describe('SeerrGetterService', () => {
 
       // Only season 1 request user should be returned
       expect(result).toEqual(['UserWhoRequestedSeason1']);
+    });
+  });
+
+  describe('amountRequested (property id=5)', () => {
+    it('should return 0 when mediaInfo.requests is missing for movies', async () => {
+      const { service, seerrApi } = createService();
+
+      seerrApi.getMovie.mockResolvedValue({
+        id: 1,
+        mediaInfo: {},
+      } as unknown as SeerrMovieResponse);
+
+      await expect(
+        service.get(AMOUNT_REQUESTED_PROP_ID, movieLibItem, undefined),
+      ).resolves.toBe(0);
+    });
+
+    it('should return 0 when mediaInfo.requests is missing for seasons', async () => {
+      const { service, seerrApi, mediaServerFactory } = createService();
+      const mockMediaServer = await mediaServerFactory.getService();
+      (mockMediaServer as any).getMetadata = jest
+        .fn()
+        .mockResolvedValue(showLibItem);
+
+      seerrApi.getShow.mockResolvedValue({
+        id: 1,
+        mediaInfo: {},
+      } as unknown as SeerrTVResponse);
+      seerrApi.getSeason.mockResolvedValue(undefined);
+
+      await expect(
+        service.get(
+          AMOUNT_REQUESTED_PROP_ID,
+          seasonLibItem,
+          'season' as MediaItemType,
+        ),
+      ).resolves.toBe(0);
+    });
+  });
+
+  describe('releaseDate (property id=2)', () => {
+    it('should return null for episodes when season metadata could not be loaded', async () => {
+      const { service, seerrApi, mediaServerFactory, logger } = createService();
+      const episodeLibItem = createMediaItem({
+        type: 'episode',
+        grandparentId: showLibItem.id,
+        parentIndex: 1,
+        index: 2,
+      });
+      const mockMediaServer = await mediaServerFactory.getService();
+      (mockMediaServer as any).getMetadata = jest
+        .fn()
+        .mockResolvedValue(showLibItem);
+
+      seerrApi.getShow.mockResolvedValue({
+        id: 1,
+        mediaInfo: {
+          requests: [],
+        },
+        firstAirDate: '2026-01-01',
+      } as unknown as SeerrTVResponse);
+      seerrApi.getSeason.mockResolvedValue(undefined);
+
+      await expect(
+        service.get(
+          RELEASE_DATE_PROP_ID,
+          episodeLibItem,
+          'episode' as MediaItemType,
+        ),
+      ).resolves.toBeNull();
+      expect(logger.debug).toHaveBeenCalledWith(
+        `Couldn't fetch season data for '${showLibItem.title}' season 1 from Seerr. As a result, unreliable results are expected.`,
+      );
+    });
+  });
+
+  describe('isRequested (property id=6)', () => {
+    it('should return 0 when mediaInfo.requests is missing for movies', async () => {
+      const { service, seerrApi } = createService();
+
+      seerrApi.getMovie.mockResolvedValue({
+        id: 1,
+        mediaInfo: {},
+      } as unknown as SeerrMovieResponse);
+
+      await expect(
+        service.get(IS_REQUESTED_PROP_ID, movieLibItem, undefined),
+      ).resolves.toBe(0);
     });
   });
 });
