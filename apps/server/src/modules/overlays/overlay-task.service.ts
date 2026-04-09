@@ -2,7 +2,10 @@ import { MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CollectionsService } from '../collections/collections.service';
-import { CollectionMediaAddedDto } from '../events/events.dto';
+import {
+  CollectionMediaAddedDto,
+  CollectionMediaRemovedDto,
+} from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
@@ -111,6 +114,51 @@ export class OverlayTaskService extends TaskBase {
       }
     } catch (err) {
       this.logger.warn('Error handling CollectionMedia_Added for overlays');
+      this.logger.debug(err);
+    }
+  }
+
+  /**
+   * Handle CollectionMedia_Removed event — revert overlays immediately
+   * for items removed from overlay-enabled collections.
+   */
+  @OnEvent(MaintainerrEvent.CollectionMedia_Removed)
+  async handleCollectionMediaRemoved(
+    payload: CollectionMediaRemovedDto,
+  ): Promise<void> {
+    try {
+      const settings = await this.settingsService.getSettings();
+      if (!settings.enabled) {
+        return;
+      }
+
+      const collections =
+        await this.collectionsService.getCollectionsWithOverlayEnabled();
+
+      for (const item of payload.mediaItems) {
+        // Only revert if the item is not in any other overlay-enabled collection
+        const stillInOverlayCollection = collections.some((c) =>
+          c.collectionMedia.some(
+            (cm) => cm.mediaServerId === item.mediaServerId,
+          ),
+        );
+
+        if (stillInOverlayCollection) {
+          this.logger.debug(
+            `Item ${item.mediaServerId} still in another overlay collection, skipping revert`,
+          );
+          continue;
+        }
+
+        // Revert from whichever collection had the overlay state
+        const collectionId = payload.identifier.value;
+        this.logger.log(
+          `Reverting overlay for item ${item.mediaServerId} (removed from "${payload.collectionName}")`,
+        );
+        await this.processor.revertItem(collectionId, item.mediaServerId);
+      }
+    } catch (err) {
+      this.logger.warn('Error handling CollectionMedia_Removed for overlays');
       this.logger.debug(err);
     }
   }
