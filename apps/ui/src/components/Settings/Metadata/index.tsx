@@ -609,8 +609,9 @@ const MetadataSettings = () => {
             Configure metadata providers and set the primary source for posters,
             backdrops, and metadata enrichment. Adding a TVDB developer API key
             gives Maintainerr a fallback source for provider cross-references,
-            which helps recover missing IDs when TMDB alone cannot resolve a
-            match.
+            which helps recover missing IDs when the primary provider cannot
+            resolve a match and can provide a second opinion for some items
+            through existing external ID cross-references.
           </p>
         </div>
 
