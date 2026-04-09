@@ -88,12 +88,36 @@ describe('MediaServerFactory', () => {
     settingsService.getSettings.mockResolvedValue(
       createSettings({ media_server_type: MediaServerType.JELLYFIN }),
     );
-    jellyfinAdapter.isSetup.mockReturnValue(false);
+    jellyfinAdapter.isSetup
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
 
     const service = await factory.getService();
 
     expect(jellyfinAdapter.initialize).toHaveBeenCalledTimes(1);
     expect(service).toBe(jellyfinAdapter);
+  });
+
+  it('throws when Jellyfin remains uninitialized after initialize', async () => {
+    settingsService.getSettings.mockResolvedValue(
+      createSettings({ media_server_type: MediaServerType.JELLYFIN }),
+    );
+    jellyfinAdapter.isSetup.mockReturnValue(false);
+
+    await expect(factory.getService()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('throws when Plex remains uninitialized after initialize', async () => {
+    settingsService.getSettings.mockResolvedValue(
+      createSettings({ media_server_type: MediaServerType.PLEX }),
+    );
+    plexAdapter.isSetup.mockReturnValue(false);
+
+    await expect(factory.getService()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 
   it('returns Plex adapter without initialization if already setup', async () => {

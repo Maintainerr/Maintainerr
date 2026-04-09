@@ -113,12 +113,72 @@ describe('CollectionWorkerService', () => {
 
     collectionRepository.find.mockResolvedValue([collection]);
     collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue(true);
 
     await collectionWorkerService.execute();
 
     expect(executionLock.acquire).toHaveBeenCalled();
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
+  });
+
+  it('should not report failed media as handled', async () => {
+    settings.testConnections.mockResolvedValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
+
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue(false);
+
+    await collectionWorkerService.execute();
+
+    expect(seerrApi.api.post).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Failed,
+    );
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Handled,
+      expect.anything(),
+    );
+  });
+
+  it('should emit failure and continue when media handling throws', async () => {
+    settings.testConnections.mockResolvedValue(true);
+    settings.seerrConfigured.mockReturnValue(true);
+
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const firstCollectionMedia = createCollectionMedia(collection, {
+      mediaServerId: '1',
+    });
+    const secondCollectionMedia = createCollectionMedia(collection, {
+      mediaServerId: '2',
+    });
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([
+      firstCollectionMedia,
+      secondCollectionMedia,
+    ]);
+    collectionHandler.handleMedia
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(true);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).toHaveBeenCalledTimes(2);
+    expect(seerrApi.api.post).toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Failed,
+    );
   });
 
   it('should not emit collection progress when no media exceeds the delete threshold', async () => {
