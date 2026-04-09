@@ -771,6 +771,79 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
+   * Users who watched ≥1 Episode descendant of `parentId` (show or season),
+   * honouring the configured PlayedPercentage threshold via isCompletedWatch.
+   * Jellyfin's Series Played flag is an all-or-nothing aggregate, so the
+   * show-level watch history degenerates to sw_allEpisodesSeenBy (#2559).
+   * One getItems call per user (batched) — O(users), not O(users×episodes).
+   */
+  async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
+    if (!this.api) return [];
+
+    try {
+      const playedCompletionThreshold =
+        await this.getPlayedCompletionThreshold();
+      const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:episode-watchers:${parentId}`;
+      const cached = this.cache.data.get<string[]>(cacheKey);
+      if (cached !== undefined) return cached;
+
+      const users = await this.getUsers();
+      const watcherIds = new Set<string>();
+
+      for (
+        let i = 0;
+        i < users.length;
+        i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
+      ) {
+        const batch = users.slice(
+          i,
+          i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY,
+        );
+        const results = await Promise.allSettled(
+          batch.map((user) =>
+            getItemsApi(this.api!).getItems({
+              userId: user.id,
+              parentId,
+              recursive: true,
+              includeItemTypes: [BaseItemKind.Episode],
+              // Ignore unaired placeholders (mirrors #2624).
+              excludeLocationTypes: [LocationType.Virtual],
+              enableUserData: true,
+              // Minimize payload — we only need UserData per episode.
+              fields: [],
+            }),
+          ),
+        );
+
+        results.forEach((result, idx) => {
+          if (result.status !== 'fulfilled') return;
+          const user = batch[idx];
+          const items = result.value.data.Items || [];
+          const hasWatched = items.some((item) =>
+            this.isCompletedWatch(
+              item.UserData ?? undefined,
+              playedCompletionThreshold,
+            ),
+          );
+          if (hasWatched) {
+            watcherIds.add(user.id);
+          }
+        });
+      }
+
+      const result = [...watcherIds];
+      this.cache.data.set(cacheKey, result, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get descendant episode watchers for ${parentId}`,
+      );
+      this.logger.debug(error);
+      return [];
+    }
+  }
+
+  /**
    * Get user IDs of all users who have favorited an item.
    * Iterates over all users and checks UserData.IsFavorite.
    */

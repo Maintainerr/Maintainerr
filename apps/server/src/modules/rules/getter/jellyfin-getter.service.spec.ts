@@ -780,6 +780,117 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('sw_watchers (id: 18) - Users that watched the show', () => {
+    const SW_WATCHERS_PROP_ID = 18;
+
+    it('returns the union of users that watched at least one episode', async () => {
+      // Regression test for #2559: sw_watchers must include partial show
+      // watchers (users who have seen any episode), not only users who
+      // finished every episode (which is sw_allEpisodesSeenBy's semantic).
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([
+        'user-1',
+        'user-2',
+      ]);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+        createMediaUser({ id: 'user-3', name: 'Carol' }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        SW_WATCHERS_PROP_ID,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Alice', 'Bob']);
+      expect(jellyfinAdapter.getDescendantEpisodeWatchers).toHaveBeenCalledWith(
+        'show-1',
+      );
+    });
+
+    it('returns an empty list when no user has watched any episode', async () => {
+      const showItem = createMediaItem({
+        id: 'show-2',
+        type: 'show' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([]);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        SW_WATCHERS_PROP_ID,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual([]);
+    });
+
+    it('works for seasons (recursive episode descendants)', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([
+        'user-2',
+      ]);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        SW_WATCHERS_PROP_ID,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Bob']);
+      expect(jellyfinAdapter.getDescendantEpisodeWatchers).toHaveBeenCalledWith(
+        'season-1',
+      );
+    });
+
+    it('falls back to the user id when a name is not resolvable', async () => {
+      const showItem = createMediaItem({
+        id: 'show-3',
+        type: 'show' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([
+        'user-ghost',
+      ]);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        SW_WATCHERS_PROP_ID,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['user-ghost']);
+    });
+  });
+
   describe('error handling', () => {
     it('should return undefined when an error occurs', async () => {
       const mediaItem = createMediaItem({ type: 'movie' });

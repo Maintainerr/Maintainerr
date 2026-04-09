@@ -837,6 +837,149 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getDescendantEpisodeWatchers', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('returns users who played any episode under a show', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+          { Id: 'user-3', Name: 'Carol' },
+        ],
+      });
+      jellyfinApiMocks.getConfiguration.mockResolvedValue({
+        data: { MaxResumePct: 90 },
+      });
+
+      // Alice finished an episode, Bob only has unplayed episodes, Carol
+      // is above the PlayedPercentage threshold on a partial play.
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => {
+          if (userId === 'user-1') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  { UserData: { Played: true } },
+                  { UserData: { Played: false, PlayedPercentage: 10 } },
+                ],
+              },
+            });
+          }
+          if (userId === 'user-2') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  { UserData: { Played: false, PlayedPercentage: 0 } },
+                  { UserData: { Played: false, PlayedPercentage: 20 } },
+                ],
+              },
+            });
+          }
+          if (userId === 'user-3') {
+            return Promise.resolve({
+              data: {
+                Items: [{ UserData: { Played: false, PlayedPercentage: 95 } }],
+              },
+            });
+          }
+          return Promise.resolve({ data: { Items: [] } });
+        },
+      );
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+
+      expect(result).toEqual(expect.arrayContaining(['user-1', 'user-3']));
+      expect(result).not.toContain('user-2');
+      expect(result).toHaveLength(2);
+
+      // One getItems call per user, scoped to Episode descendants.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'show-1',
+          recursive: true,
+          includeItemTypes: ['Episode'],
+          enableUserData: true,
+        }),
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(3);
+    });
+
+    it('returns an empty list when nobody has watched an episode', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [{ UserData: { Played: false, PlayedPercentage: 0 } }],
+        },
+      });
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+      expect(result).toEqual([]);
+    });
+
+    it('deduplicates users who watched multiple episodes', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            { UserData: { Played: true } },
+            { UserData: { Played: true } },
+            { UserData: { Played: true } },
+          ],
+        },
+      });
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+      expect(result).toEqual(['user-1']);
+    });
+
+    it('caches results per parent id', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinCacheMocks.data.get.mockReturnValue(['user-1']);
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+
+      expect(result).toEqual(['user-1']);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('skips users whose per-user query fails without aborting others', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => {
+          if (userId === 'user-1') {
+            return Promise.reject(new Error('boom'));
+          }
+          return Promise.resolve({
+            data: { Items: [{ UserData: { Played: true } }] },
+          });
+        },
+      );
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+      expect(result).toEqual(['user-2']);
+    });
+  });
+
   describe('getWatchState', () => {
     it('should derive count and watched state from watch history', async () => {
       jest.spyOn(service, 'getWatchHistory').mockResolvedValue([
