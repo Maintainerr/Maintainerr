@@ -21,6 +21,7 @@ describe('PosterCard', () => {
     root = null
     rootMargin = '400px 0px'
     thresholds = [0]
+    scrollMargin = '0px'
     observe = vi.fn()
     disconnect = vi.fn()
     unobserve = vi.fn()

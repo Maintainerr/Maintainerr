@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { forwardRef, InputHTMLAttributes } from 'react'
+import { forwardRef, InputHTMLAttributes, type ReactNode } from 'react'
 
 type InputProps = {
   name: string
@@ -34,7 +34,7 @@ Input.displayName = 'Input'
 type InputGroupProps = {
   name: string
   label: string
-  helpText?: JSX.Element | string
+  helpText?: ReactNode
   error?: string
 } & InputHTMLAttributes<HTMLInputElement>
 
