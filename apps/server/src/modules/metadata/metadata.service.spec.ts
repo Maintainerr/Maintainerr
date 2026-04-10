@@ -148,6 +148,112 @@ describe('MetadataService', () => {
     expect(tmdbProvider.getPosterUrl).not.toHaveBeenCalled();
   });
 
+  it('resolves parent show IDs when a season mediaServerItemId is provided', async () => {
+    const seasonItem = createMediaItem({
+      id: 'season-42',
+      type: 'season',
+      parentId: 'show-1',
+      providerIds: { tmdb: ['9999'], tvdb: ['8888'] },
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      providerIds: { tmdb: ['100'], tvdb: ['200'] },
+    });
+    const mediaServer = {
+      getMetadata: jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'season-42' ? seasonItem : showItem),
+        ),
+    };
+    const { service, tvdbProvider } = createService({ mediaServer });
+
+    const result = await service.getPosterUrl(
+      { tmdb: 9999, tvdb: 8888 },
+      'tv',
+      'w500',
+      'season-42',
+    );
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('season-42');
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toBeDefined();
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', 'w500');
+  });
+
+  it('resolves parent show IDs when an episode mediaServerItemId is provided', async () => {
+    const episodeItem = createMediaItem({
+      id: 'episode-7',
+      type: 'episode',
+      parentId: 'season-3',
+      grandparentId: 'show-1',
+      providerIds: { tmdb: ['5555'] },
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      providerIds: { tmdb: ['100'], tvdb: ['200'] },
+    });
+    const mediaServer = {
+      getMetadata: jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'episode-7' ? episodeItem : showItem),
+        ),
+    };
+    const { service, tvdbProvider } = createService({ mediaServer });
+
+    const result = await service.getBackdropUrl(
+      { tmdb: 5555 },
+      'tv',
+      'w1280',
+      'episode-7',
+    );
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('episode-7');
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toBeDefined();
+    expect(tvdbProvider.getBackdropUrl).toHaveBeenCalledWith(
+      200,
+      'tv',
+      'w1280',
+    );
+  });
+
+  it('falls back to original IDs when mediaServer lookup fails', async () => {
+    const mediaServer = {
+      getMetadata: jest.fn().mockRejectedValue(new Error('connection failed')),
+    };
+    const { service, tvdbProvider } = createService({ mediaServer });
+
+    const result = await service.getPosterUrl(
+      { tvdb: 200 },
+      'tv',
+      'w500',
+      'season-42',
+    );
+
+    expect(result).toBeDefined();
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', 'w500');
+  });
+
+  it('skips show ID resolution for movies even when mediaServerItemId is provided', async () => {
+    const mediaServer = {
+      getMetadata: jest.fn(),
+    };
+    const { service, tvdbProvider } = createService({ mediaServer });
+
+    await service.getPosterUrl({ tvdb: 200 }, 'movie', 'w500', 'movie-1');
+
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(
+      200,
+      'movie',
+      'w500',
+    );
+  });
+
   it.each(metadataLookupServiceTestCases)(
     '$title',
     async ({
