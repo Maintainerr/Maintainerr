@@ -69,6 +69,12 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
     Overview: 'Overview',
     People: 'People',
   },
+  LocationType: {
+    FileSystem: 'FileSystem',
+    Remote: 'Remote',
+    Virtual: 'Virtual',
+    Offline: 'Offline',
+  },
   ItemFilter: {
     IsPlayed: 'IsPlayed',
   },
@@ -309,6 +315,68 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getCollections', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+    });
+
+    it('filters collections to the requested library', async () => {
+      jellyfinApiMocks.getItems.mockImplementation(
+        (params: { parentId?: string; ids?: string[] }) => {
+          if (!params.parentId && !params.ids) {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  {
+                    Id: 'collection-in-lib',
+                    Name: 'In Library',
+                    Type: 'BoxSet',
+                    ParentId: 'lib123',
+                    ChildCount: 1,
+                  },
+                  {
+                    Id: 'collection-other-lib',
+                    Name: 'Other Library',
+                    Type: 'BoxSet',
+                    ParentId: 'lib999',
+                    ChildCount: 1,
+                  },
+                ],
+              },
+            });
+          }
+
+          if (params.parentId === 'collection-other-lib') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  {
+                    Id: 'movie-2',
+                    Name: 'Movie 2',
+                    Type: 'Movie',
+                    ParentId: 'lib999',
+                    DateCreated: '2024-01-01T00:00:00.000Z',
+                  },
+                ],
+              },
+            });
+          }
+
+          return Promise.resolve({ data: { Items: [] } });
+        },
+      );
+
+      const collections = await service.getCollections('lib123');
+
+      expect(collections).toHaveLength(1);
+      expect(collections[0].id).toBe('collection-in-lib');
+    });
+  });
+
   describe('getLibraryContents', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue({
@@ -501,6 +569,63 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getChildrenMetadata', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+    });
+
+    it('excludes virtual Jellyfin episodes from episode child queries', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            {
+              Id: 'episode-1',
+              Name: 'Episode One',
+              Type: 'Episode',
+              ParentId: 'season-1',
+              SeriesId: 'show-1',
+              UserData: {},
+            },
+          ],
+        },
+      });
+
+      await service.getChildrenMetadata('season-1', 'episode');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'season-1',
+          includeItemTypes: ['Episode'],
+          excludeLocationTypes: ['Virtual'],
+        }),
+      );
+    });
+
+    it('does not apply location filtering to non-episode child queries', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [],
+        },
+      });
+
+      await service.getChildrenMetadata('library-1', 'movie');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'library-1',
+          includeItemTypes: ['Movie'],
+          excludeLocationTypes: undefined,
+        }),
+      );
+    });
+  });
+
   describe('cache management', () => {
     it('should not throw when resetting cache with itemId', () => {
       expect(() => service.resetMetadataCache('item123')).not.toThrow();
@@ -526,7 +651,11 @@ describe('JellyfinAdapterService', () => {
 
       await service.refreshItemMetadata(itemId);
 
-      expect(jellyfinApiMocks.refreshItem).toHaveBeenCalledWith({ itemId });
+      expect(jellyfinApiMocks.refreshItem).toHaveBeenCalledWith({
+        itemId,
+        metadataRefreshMode: 'Default',
+        imageRefreshMode: 'Default',
+      });
     });
 
     it('rejects blank Jellyfin item ids before calling the API', async () => {
@@ -924,7 +1053,7 @@ describe('JellyfinAdapterService', () => {
       expect(logger.debug).not.toHaveBeenCalledWith(notFoundError);
     });
 
-    it('still warns for unexpected Jellyfin collection lookup failures', async () => {
+    it('logs unexpected Jellyfin collection lookup failures at debug level', async () => {
       const serverError = createResponseError(502);
       jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
 
@@ -932,7 +1061,21 @@ describe('JellyfinAdapterService', () => {
         service.getCollection('collection-1'),
       ).resolves.toBeUndefined();
 
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
+        'Failed to get collection collection-1',
+      );
+      expect(logger.debug).toHaveBeenCalledWith(serverError);
+    });
+
+    it('re-throws unexpected lookup failures when strict verification is requested', async () => {
+      const serverError = createResponseError(502);
+      jellyfinApiMocks.getItem.mockRejectedValueOnce(serverError);
+
+      await expect(service.getCollection('collection-1', true)).rejects.toThrow(
+        serverError,
+      );
+
+      expect(logger.debug).toHaveBeenCalledWith(
         'Failed to get collection collection-1',
       );
       expect(logger.debug).toHaveBeenCalledWith(serverError);
@@ -1003,6 +1146,33 @@ describe('JellyfinAdapterService', () => {
           title: 'Series One',
         }),
       ]);
+    });
+
+    it('re-throws when Jellyfin returns 400 (deleted collection)', async () => {
+      const axiosError = createResponseError(400);
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(axiosError);
+
+      await expect(
+        service.getCollectionChildren('deleted-collection'),
+      ).rejects.toThrow(axiosError);
+    });
+
+    it('re-throws when Jellyfin returns 404', async () => {
+      const axiosError = createResponseError(404);
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(axiosError);
+
+      await expect(
+        service.getCollectionChildren('missing-collection'),
+      ).rejects.toThrow(axiosError);
+    });
+
+    it('returns empty array for non-400/404 errors', async () => {
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(
+        new Error('random failure'),
+      );
+
+      const result = await service.getCollectionChildren('collection-1');
+      expect(result).toEqual([]);
     });
 
     it('should create a collection without initial item ids', async () => {

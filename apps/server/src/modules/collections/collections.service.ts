@@ -447,9 +447,38 @@ export class CollectionsService {
         });
       } catch (error) {
         this.logger.debug(
-          `Failed to hydrate collection ${collectionId} from collection children, falling back to direct metadata lookups`,
+          `Failed to get children for collection "${collection.title}" (mediaServerId=${collection.mediaServerId}), verifying collection still exists`,
         );
-        this.logger.debug(error);
+
+        let stillExists = false;
+
+        try {
+          // Only clear the link when the verification lookup explicitly
+          // confirms the collection is missing.
+          stillExists = Boolean(
+            await mediaServer.getCollection(collection.mediaServerId, true),
+          );
+        } catch (verificationError) {
+          this.logger.warn(
+            `Failed to verify collection "${collection.title}" after getCollectionChildren error — keeping link`,
+          );
+          this.logger.debug(error);
+          this.logger.debug(verificationError);
+          stillExists = true;
+        }
+
+        if (!stillExists) {
+          this.logger.warn(
+            `Collection "${collection.title}" references a media server collection that no longer exists — clearing stale link`,
+          );
+          collection.mediaServerId = null;
+          await this.saveCollection(collection);
+        } else {
+          this.logger.warn(
+            `getCollectionChildren failed for "${collection.title}" but collection still exists on server — keeping link`,
+          );
+          this.logger.debug(error);
+        }
       }
     }
 

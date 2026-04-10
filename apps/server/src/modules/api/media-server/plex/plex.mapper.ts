@@ -227,11 +227,11 @@ export class PlexMapper {
         id: '', // Not available on PlexMetadata
         title: '',
       },
-      summary: undefined,
+      summary: plex.summary,
       viewCount: undefined,
       skipCount: undefined,
       lastViewedAt: undefined,
-      year: undefined,
+      year: plex.year,
       durationMs: plex.media?.[0]?.duration,
       originallyAvailableAt: plex.originallyAvailableAt
         ? new Date(plex.originallyAvailableAt)

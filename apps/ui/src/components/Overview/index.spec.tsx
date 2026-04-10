@@ -232,7 +232,7 @@ describe('Overview', () => {
     })
   })
 
-  it('only exposes the reachable delete soonest collection sort option', () => {
+  it('exposes both delete soonest and delete latest collection sort options', () => {
     const sortConfig = getCollectionMediaSortConfig('show', true)
     const deleteSoonestOptions = sortConfig.options.filter(
       (option) => option.sortParams?.sort === 'deleteSoonest',
@@ -240,14 +240,19 @@ describe('Overview', () => {
 
     expect(sortConfig.defaultValue).toBe('deleteSoonest.asc')
     expect(sortConfig.options[0]?.value).toBe('deleteSoonest.asc')
-    expect(
-      sortConfig.options.some((option) => option.value === 'deleteSoonest.asc'),
-    ).toBe(true)
-    expect(deleteSoonestOptions).toHaveLength(1)
+    expect(sortConfig.options[1]?.value).toBe('deleteSoonest.desc')
+    expect(deleteSoonestOptions).toHaveLength(2)
     expect(deleteSoonestOptions[0]?.sortParams).toEqual({
       sort: 'deleteSoonest',
       sortOrder: 'asc',
     })
+    expect(deleteSoonestOptions[1]?.sortParams).toEqual({
+      sort: 'deleteSoonest',
+      sortOrder: 'desc',
+    })
+    // The empty-string "no sort" fallback should not appear alongside the
+    // explicit Delete Soonest/Latest options.
+    expect(sortConfig.options.some((option) => option.value === '')).toBe(false)
   })
 
   it('keeps the selected library type in the query even without explicit sort params', () => {

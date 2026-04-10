@@ -34,6 +34,15 @@ export class TvdbMetadataProvider implements IMetadataProvider {
       : this.tvdbApi.getSeries(tvdbId);
   }
 
+  private parseYear(value?: string): number | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const year = Number.parseInt(value, 10);
+    return Number.isFinite(year) ? year : undefined;
+  }
+
   async getDetails(
     tvdbId: number,
     type: 'movie' | 'tv',
@@ -46,6 +55,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     return {
       id: record.id,
       title: record.name,
+      year: this.parseYear(record.year),
       overview: record.overview ?? undefined,
       posterUrl: this.tvdbApi.getPosterUrl(record, type),
       backdropUrl: this.tvdbApi.getBackdropUrl(record, type),

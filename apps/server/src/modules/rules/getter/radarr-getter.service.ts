@@ -4,10 +4,10 @@ import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MetadataService } from '../../metadata/metadata.service';
 import {
-  findServarrLookupMatch,
-  formatServarrLookupCandidates,
-  ServarrLookupCandidate,
-} from '../../metadata/servarr-lookup.util';
+  findMetadataLookupMatch,
+  formatMetadataLookupCandidates,
+  MetadataLookupCandidate,
+} from '../../metadata/metadata-lookup.util';
 import {
   Application,
   Property,
@@ -79,14 +79,13 @@ export class RadarrGetterService {
         ruleGroup.collection.radarrSettingsId,
       );
 
-      const matchedResult = await findServarrLookupMatch(lookupCandidates, {
+      const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
         tmdb: (lookupId) => radarrApiClient.getMovieByTmdbId(lookupId),
-        tvdb: (lookupId) => radarrApiClient.getMovieByTvdbId(lookupId),
       });
       const movieResponse = matchedResult?.result;
 
       if (!movieResponse) {
-        const attemptedIds = formatServarrLookupCandidates(lookupCandidates);
+        const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
         this.logger.warn(
           `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a movie in Radarr.`,
@@ -222,12 +221,10 @@ export class RadarrGetterService {
 
   public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
-  ): Promise<ServarrLookupCandidate[]> {
-    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
-
-    return this.metadataService.buildServarrLookupCandidates({
-      tmdb: ids?.tmdb as number | undefined,
-      tvdb: ids?.tvdb as number | undefined,
-    });
+  ): Promise<MetadataLookupCandidate[]> {
+    return this.metadataService.resolveLookupCandidatesFromMediaItemForService(
+      libItem,
+      'radarr',
+    );
   }
 }
