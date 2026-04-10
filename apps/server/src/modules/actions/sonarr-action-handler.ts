@@ -129,21 +129,33 @@ export class SonarrActionHandler {
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             return true;
-          case 'episode':
+          case 'episode': {
+            const episodeLookup = this.getEpisodeLookup(mediaData);
+
+            if (!episodeLookup) {
+              this.logger.warn(
+                `[Sonarr] Couldn't identify episode '${mediaData?.title ?? media.mediaServerId}' for show '${sonarrMedia.title}'. No delete action was taken.`,
+              );
+              return false;
+            }
+
             if (
               !(await sonarrApiClient.UnmonitorDeleteEpisodes(
                 sonarrMedia.id,
-                mediaData?.parentIndex,
-                [mediaData?.index],
+                episodeLookup.seasonNumber,
+                episodeLookup.episodeNumbers,
                 true,
+                episodeLookup.airDate,
               ))
             ) {
               return false;
             }
+
             this.logger.log(
-              `[Sonarr] Removed season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed season ${mediaData?.parentIndex} ${this.getEpisodeLogLabel(mediaData)} from show '${sonarrMedia.title}'`,
             );
             return true;
+          }
           default:
             if (
               !(await sonarrApiClient.deleteShow(
@@ -200,21 +212,33 @@ export class SonarrActionHandler {
               `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             return true;
-          case 'episode':
+          case 'episode': {
+            const episodeLookup = this.getEpisodeLookup(mediaData);
+
+            if (!episodeLookup) {
+              this.logger.warn(
+                `[Sonarr] Couldn't identify episode '${mediaData?.title ?? media.mediaServerId}' for show '${sonarrMedia.title}'. No unmonitor action was taken.`,
+              );
+              return false;
+            }
+
             if (
               !(await sonarrApiClient.UnmonitorDeleteEpisodes(
                 sonarrMedia.id,
-                mediaData?.parentIndex,
-                [mediaData?.index],
+                episodeLookup.seasonNumber,
+                episodeLookup.episodeNumbers,
                 false,
+                episodeLookup.airDate,
               ))
             ) {
               return false;
             }
+
             this.logger.log(
-              `[Sonarr] Unmonitored season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Unmonitored season ${mediaData?.parentIndex} ${this.getEpisodeLogLabel(mediaData)} from show '${sonarrMedia.title}'`,
             );
             return true;
+          }
           default:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
@@ -308,6 +332,49 @@ export class SonarrActionHandler {
     }
 
     return false;
+  }
+
+  private getEpisodeLookup(mediaData?: MediaItem):
+    | {
+        seasonNumber: number;
+        episodeNumbers: number[];
+        airDate?: Date;
+      }
+    | undefined {
+    if (mediaData?.parentIndex === undefined) {
+      return undefined;
+    }
+
+    if (mediaData.index !== undefined) {
+      return {
+        seasonNumber: mediaData.parentIndex,
+        episodeNumbers: [mediaData.index],
+      };
+    }
+
+    if (mediaData.originallyAvailableAt) {
+      return {
+        seasonNumber: mediaData.parentIndex,
+        episodeNumbers: [],
+        airDate: mediaData.originallyAvailableAt,
+      };
+    }
+
+    return undefined;
+  }
+
+  private getEpisodeLogLabel(mediaData?: MediaItem): string {
+    if (mediaData?.index !== undefined) {
+      return `episode ${mediaData.index}`;
+    }
+
+    if (mediaData?.originallyAvailableAt) {
+      return `episode airing ${
+        mediaData.originallyAvailableAt.toISOString().split('T')[0]
+      }`;
+    }
+
+    return 'episode';
   }
 
   private async deleteShowIfEmpty(

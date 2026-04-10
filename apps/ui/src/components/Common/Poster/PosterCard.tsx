@@ -17,6 +17,7 @@ type PosterCardProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & {
   imagePath?: string | null
   mediaType: 'movie' | 'show' | 'season' | 'episode'
   providerIds?: MediaProviderIds
+  itemId?: string | number
   imageClassName?: string
   children: (image: string | null) => ReactNode
 }
@@ -72,6 +73,7 @@ const PosterCard = ({
   imagePath,
   mediaType,
   providerIds,
+  itemId,
   className,
   imageClassName,
   children,
@@ -83,6 +85,7 @@ const PosterCard = ({
     'image',
     mediaType,
     providerIds,
+    itemId,
   )
   const cachedImage = imageRequestPath
     ? resolvedPosterImageCache.get(imageRequestPath)

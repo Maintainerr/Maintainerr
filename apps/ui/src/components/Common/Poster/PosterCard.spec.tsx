@@ -108,6 +108,80 @@ describe('PosterCard', () => {
     })
   })
 
+  it('includes itemId in the metadata request for season cards', async () => {
+    getApiHandlerMock.mockResolvedValue({
+      url: 'https://image.example/show-poster.jpg',
+    })
+
+    render(
+      <PosterCard
+        mediaType="season"
+        providerIds={{ tmdb: ['9999'] }}
+        itemId="season-42"
+      >
+        {(image) => <div>{image ?? 'missing'}</div>}
+      </PosterCard>,
+    )
+
+    observerInstances[0]?.callback(
+      [
+        {
+          isIntersecting: true,
+        } as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/metadata/image/show?tmdbId=9999&itemId=season-42',
+      )
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('https://image.example/show-poster.jpg'),
+      ).toBeTruthy()
+    })
+  })
+
+  it('does not include itemId in the metadata request for show cards', async () => {
+    getApiHandlerMock.mockResolvedValue({
+      url: 'https://image.example/show-poster.jpg',
+    })
+
+    render(
+      <PosterCard
+        mediaType="show"
+        providerIds={{ tmdb: ['9999'] }}
+        itemId="show-1"
+      >
+        {(image) => <div>{image ?? 'missing'}</div>}
+      </PosterCard>,
+    )
+
+    observerInstances[0]?.callback(
+      [
+        {
+          isIntersecting: true,
+        } as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/metadata/image/show?tmdbId=9999',
+      )
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('https://image.example/show-poster.jpg'),
+      ).toBeTruthy()
+    })
+  })
+
   it('reuses the same in-flight metadata image request across poster cards', async () => {
     let resolveRequest:
       | ((value: { url: string } | undefined) => void)
