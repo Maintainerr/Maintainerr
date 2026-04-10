@@ -124,6 +124,7 @@ const MediaCard: React.FC<IMediaCard> = ({
       <PosterCard
         mediaType={mediaType}
         providerIds={providerIds}
+        itemId={id}
         className={`media-card relative transform-gpu cursor-pointer overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${showDetail ? 'show-detail' : ''}`}
         onMouseEnter={() => setShowDetail(true)}
         onMouseLeave={() => setShowDetail(false)}

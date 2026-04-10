@@ -204,6 +204,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       'backdrop',
       mediaType,
       providerIds,
+      id,
     )
     const isCurrentBackdrop = backdropResult.requestKey === backdropRequestPath
     const resolvedBackdrop = isCurrentBackdrop ? backdropResult.url : null
