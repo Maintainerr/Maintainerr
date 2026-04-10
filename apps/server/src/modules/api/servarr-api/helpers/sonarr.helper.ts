@@ -375,7 +375,7 @@ export class SonarrApi extends ServarrApi<{
   ): Promise<SonarrEpisode[]> {
     return this.get<SonarrEpisode[]>(
       `/episode?seriesId=${seriesID}${
-        seasonNumber ? `&seasonNumber=${seasonNumber}` : ''
+        seasonNumber !== undefined ? `&seasonNumber=${seasonNumber}` : ''
       }`,
     );
   }

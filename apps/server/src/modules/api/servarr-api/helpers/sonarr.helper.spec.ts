@@ -123,6 +123,14 @@ describe('SonarrApi', () => {
     ).resolves.toEqual([]);
   });
 
+  it('should include season 0 when fetching specials', async () => {
+    const getSpy = jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([]);
+
+    await expect(sonarrApi.getEpisodes(1, 0)).resolves.toEqual([]);
+
+    expect(getSpy).toHaveBeenCalledWith('/episode?seriesId=1&seasonNumber=0');
+  });
+
   it('should rethrow when episode lookup fails', async () => {
     jest.spyOn(sonarrApi as any, 'get').mockRejectedValue(new Error('boom'));
 
