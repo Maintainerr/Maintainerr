@@ -1,3 +1,22 @@
+# [3.5.0](https://github.com/maintainerr/Maintainerr/compare/v3.4.1...v3.5.0) (2026-04-10)
+
+
+### Bug Fixes
+
+* carry over valid PR 2534 hardening fixes ([#2617](https://github.com/maintainerr/Maintainerr/issues/2617)) ([eeb6078](https://github.com/maintainerr/Maintainerr/commit/eeb607806551e086633fde9b967381c57503f2a5))
+* **collections:** auto-load next page when viewport already filled ([a817e0d](https://github.com/maintainerr/Maintainerr/commit/a817e0dec18d65009dce757345a39562b7acc41e)), closes [#2637](https://github.com/maintainerr/Maintainerr/issues/2637)
+* **collections:** make Delete Latest send a real sort param ([#2634](https://github.com/maintainerr/Maintainerr/issues/2634)) ([0dfa68c](https://github.com/maintainerr/Maintainerr/commit/0dfa68c7830b88ea979f43ecbd6e2991ed0be224))
+* **jellyfin:** clear stale collection link when media server collection is deleted ([3bb8521](https://github.com/maintainerr/Maintainerr/commit/3bb85213cce114e5ce2072e0525574c9cfdcca76))
+* **jellyfin:** exclude virtual episodes from child queries ([#2624](https://github.com/maintainerr/Maintainerr/issues/2624)) ([1ee309c](https://github.com/maintainerr/Maintainerr/commit/1ee309c4f328090186ccf0596bd4dc5bdf53efa6)), closes [#2558](https://github.com/maintainerr/Maintainerr/issues/2558)
+* **jellyfin:** lower collection mutation batch size ([13aedfe](https://github.com/maintainerr/Maintainerr/commit/13aedfea248537e3cb16dada1e03321547cc54d3))
+* **metadata:** validate direct provider IDs by year with cross-provider fallback ([#2643](https://github.com/maintainerr/Maintainerr/issues/2643)) ([1933af8](https://github.com/maintainerr/Maintainerr/commit/1933af8b7c50df07148a6ec051025f7b94018d38))
+* **server:** import SeerrApiModule into ActionsModule ([3f25613](https://github.com/maintainerr/Maintainerr/commit/3f25613b211e72fc7de85f8569d59990ac07dd15))
+
+
+### Features
+
+* clean up empty Sonarr shows after season actions ([#2618](https://github.com/maintainerr/Maintainerr/issues/2618)) ([2addb83](https://github.com/maintainerr/Maintainerr/commit/2addb83a835518957a153b0a21146f8e79409c77))
+
 ## [3.4.1](https://github.com/maintainerr/Maintainerr/compare/v3.4.0...v3.4.1) (2026-04-08)
 
 
