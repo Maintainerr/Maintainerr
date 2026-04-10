@@ -66,6 +66,50 @@ describe('SonarrApi', () => {
     expect(runDeleteSpy).toHaveBeenCalledWith(
       `episodefile/${matchingEpisode.episodeFileId}`,
     );
+    expect(logger.log).toHaveBeenCalledWith(
+      'Deleting 1 episode(s) from show with ID 1 from Sonarr.',
+    );
+  });
+
+  it('should log actual matched count when an air date matches multiple episodes', async () => {
+    const firstMatchingEpisode = createSonarrEpisode({
+      id: 101,
+      seasonNumber: 2026,
+      episodeNumber: 5,
+      airDate: '2026-01-05',
+      episodeFileId: 501,
+    });
+    const secondMatchingEpisode = createSonarrEpisode({
+      id: 102,
+      seasonNumber: 2026,
+      episodeNumber: 6,
+      airDate: '2026-01-05',
+      episodeFileId: 502,
+    });
+
+    jest
+      .spyOn(sonarrApi as any, 'get')
+      .mockResolvedValue([firstMatchingEpisode, secondMatchingEpisode]);
+    const runPutSpy = jest
+      .spyOn(sonarrApi as any, 'runPut')
+      .mockResolvedValue(true);
+    const runDeleteSpy = jest
+      .spyOn(sonarrApi as any, 'runDelete')
+      .mockResolvedValue(true);
+
+    await sonarrApi.UnmonitorDeleteEpisodes(
+      1,
+      2026,
+      [],
+      true,
+      new Date('2026-01-05T00:00:00.000Z'),
+    );
+
+    expect(runPutSpy).toHaveBeenCalledTimes(2);
+    expect(runDeleteSpy).toHaveBeenCalledTimes(2);
+    expect(logger.log).toHaveBeenCalledWith(
+      'Deleting 2 episode(s) from show with ID 1 from Sonarr.',
+    );
   });
 
   it('should return no matches when explicit episode numbers are all undefined', async () => {
@@ -83,6 +127,16 @@ describe('SonarrApi', () => {
     jest.spyOn(sonarrApi as any, 'get').mockRejectedValue(new Error('boom'));
 
     await expect(sonarrApi.getEpisodes(1, 1, [1])).rejects.toThrow('boom');
+  });
+
+  it('should log a usable message when episode lookup throws a non-Error value', async () => {
+    jest.spyOn(sonarrApi as any, 'get').mockRejectedValue('boom');
+
+    await expect(sonarrApi.getEpisodes(1, 1, [1])).rejects.toBe('boom');
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Failed to retrieve show 1's episodes 1: boom",
+    );
   });
 
   it('should use episode numbers and episode file ids for existing-season cleanup', async () => {

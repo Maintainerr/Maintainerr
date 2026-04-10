@@ -61,8 +61,11 @@ export class SonarrApi extends ServarrApi<{
 
       return response;
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       this.logger.warn(
-        `Failed to retrieve show ${seriesID}'s episodes ${this.formatEpisodeLookup(episodeNumbers)}: ${error.message}`,
+        `Failed to retrieve show ${seriesID}'s episodes ${this.formatEpisodeLookup(episodeNumbers)}: ${errorMessage}`,
       );
       this.logger.debug(error);
       throw error;
@@ -172,11 +175,6 @@ export class SonarrApi extends ServarrApi<{
       return false;
     }
 
-    this.logger.log(
-      `${!deleteFiles ? 'Unmonitoring' : 'Deleting'} ${
-        validEpisodeIds.length || (airDate ? 1 : 0)
-      } episode(s) from show with ID ${seriesId} from Sonarr.`,
-    );
     try {
       const episodes = await this.getEpisodes(seriesId, seasonNumber);
 
@@ -192,6 +190,12 @@ export class SonarrApi extends ServarrApi<{
         );
         return false;
       }
+
+      this.logger.log(
+        `${!deleteFiles ? 'Unmonitoring' : 'Deleting'} ${
+          matchedEpisodes.length
+        } episode(s) from show with ID ${seriesId} from Sonarr.`,
+      );
 
       for (const e of matchedEpisodes) {
         if (
