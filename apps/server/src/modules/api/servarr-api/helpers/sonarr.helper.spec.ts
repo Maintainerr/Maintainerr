@@ -113,10 +113,12 @@ describe('SonarrApi', () => {
   });
 
   it('should return no matches when explicit episode numbers are all undefined', async () => {
-    jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([
-      createSonarrEpisode({ episodeNumber: 1 }),
-      createSonarrEpisode({ episodeNumber: 2 }),
-    ]);
+    jest
+      .spyOn(sonarrApi as any, 'get')
+      .mockResolvedValue([
+        createSonarrEpisode({ episodeNumber: 1 }),
+        createSonarrEpisode({ episodeNumber: 2 }),
+      ]);
 
     await expect(
       sonarrApi.getEpisodes(1, 1, [undefined as unknown as number]),
