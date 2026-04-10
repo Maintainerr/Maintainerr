@@ -270,7 +270,7 @@ export class JellyfinGetterService {
         }
 
         case 'sw_watchers': {
-          return await this.getShowWatchers(metadata.id);
+          return await this.getSwWatchers(metadata.id, metadata.type);
         }
 
         case 'collection_names': {
@@ -652,13 +652,31 @@ export class JellyfinGetterService {
     return totalViews;
   }
 
-  private async getShowWatchers(itemId: string): Promise<string[]> {
-    // Delegate to the adapter — Jellyfin's show-level Played flag is an
-    // all-or-nothing aggregate, so partial watchers need an episode walk. (#2559)
-    const [watcherIds, users] = await Promise.all([
-      this.jellyfinAdapter.getDescendantEpisodeWatchers(itemId),
-      this.jellyfinAdapter.getUsers(),
-    ]);
+  private async getSwWatchers(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<string[]> {
+    let watcherIds: string[];
+
+    switch (type) {
+      case 'episode': {
+        watcherIds = await this.jellyfinAdapter.getItemSeenBy(itemId);
+        break;
+      }
+
+      case 'season':
+      case 'show': {
+        watcherIds =
+          await this.jellyfinAdapter.getDescendantEpisodeWatchers(itemId);
+        break;
+      }
+
+      default: {
+        return [];
+      }
+    }
+
+    const users = await this.jellyfinAdapter.getUsers();
     const userMap = new Map(users.map((u) => [u.id, u.name]));
     return watcherIds.map((id) => userMap.get(id) || id);
   }

@@ -788,30 +788,33 @@ export class JellyfinAdapterService implements IMediaServerService {
       const cached = this.cache.data.get<string[]>(cacheKey);
       if (cached !== undefined) return cached;
 
-      const entries = await this.mapUsersBatched((user) =>
-        getItemsApi(this.api!).getItems({
-          userId: user.id,
-          parentId,
-          recursive: true,
-          includeItemTypes: [BaseItemKind.Episode],
-          // Ignore unaired placeholders (mirrors #2624).
-          excludeLocationTypes: [LocationType.Virtual],
-          enableUserData: true,
-          // Minimize payload — we only need UserData per episode.
-          fields: [],
-        }),
-      );
+      const entries = await this.mapUsersBatched(async (user) => ({
+        userId: user.id,
+        items:
+          (
+            await getItemsApi(this.api!).getItems({
+              userId: user.id,
+              parentId,
+              recursive: true,
+              includeItemTypes: [BaseItemKind.Episode],
+              // Ignore unaired placeholders (mirrors #2624).
+              excludeLocationTypes: [LocationType.Virtual],
+              enableUserData: true,
+              // Minimize payload — we only need UserData per episode.
+              fields: [],
+            })
+          ).data.Items ?? [],
+      }));
 
       const watcherIds = new Set<string>();
-      for (const { user, result } of entries) {
-        const items = result?.data.Items ?? [];
+      for (const { userId, items } of entries) {
         const hasWatched = items.some((item) =>
           this.isCompletedWatch(
             item.UserData ?? undefined,
             playedCompletionThreshold,
           ),
         );
-        if (hasWatched) watcherIds.add(user.id);
+        if (hasWatched) watcherIds.add(userId);
       }
 
       const watchers = [...watcherIds];
@@ -889,15 +892,14 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   /**
    * Run `fn` for every Jellyfin user in rate-limited batches with
-   * `Promise.allSettled`, returning one entry per user (undefined result on
-   * failure). Centralizes the per-user fan-out pattern shared by watch
-   * history, favorited-by, play-count and episode-watcher aggregation.
+   * `Promise.allSettled`. Centralizes the per-user fan-out pattern shared by
+   * watch history, favorited-by, play-count and episode-watcher aggregation.
    */
   private async mapUsersBatched<T>(
     fn: (user: MediaUser) => Promise<T>,
-  ): Promise<Array<{ user: MediaUser; result?: T }>> {
+  ): Promise<T[]> {
     const users = await this.getUsers();
-    const entries: Array<{ user: MediaUser; result?: T }> = [];
+    const entries: T[] = [];
 
     for (
       let i = 0;
@@ -907,10 +909,15 @@ export class JellyfinAdapterService implements IMediaServerService {
       const batch = users.slice(i, i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY);
       const results = await Promise.allSettled(batch.map((user) => fn(user)));
       results.forEach((result, idx) => {
-        entries.push({
-          user: batch[idx],
-          result: result.status === 'fulfilled' ? result.value : undefined,
-        });
+        if (result.status === 'fulfilled') {
+          entries.push(result.value);
+          return;
+        }
+
+        this.logger.debug(
+          `Failed Jellyfin per-user batch operation for user ${batch[idx].id}`,
+        );
+        this.logger.debug(result.reason);
       });
     }
 
@@ -918,17 +925,15 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Get item user data for all Jellyfin users. Thin adapter over
-   * `mapUsersBatched` that preserves the legacy `{ user, userData }` shape
-   * expected by watch history, favorited-by, and play-count aggregation.
+   * Get item user data for all Jellyfin users.
    */
   private async getAllUserItemData(
     itemId: string,
   ): Promise<Array<{ user: MediaUser; userData?: UserItemDataDto }>> {
-    const entries = await this.mapUsersBatched((user) =>
-      this.getItemUserData(itemId, user.id),
-    );
-    return entries.map(({ user, result }) => ({ user, userData: result }));
+    return this.mapUsersBatched(async (user) => ({
+      user,
+      userData: await this.getItemUserData(itemId, user.id),
+    }));
   }
 
   /**

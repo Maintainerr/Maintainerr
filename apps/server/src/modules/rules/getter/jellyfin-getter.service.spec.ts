@@ -780,7 +780,7 @@ describe('JellyfinGetterService', () => {
     });
   });
 
-  describe('sw_watchers (id: 18) - Users that watched the show', () => {
+  describe('sw_watchers (id: 18) - Users that watched the show/season/episode', () => {
     const SW_WATCHERS_PROP_ID = 18;
 
     it('returns the union of users that watched at least one episode', async () => {
@@ -864,6 +864,33 @@ describe('JellyfinGetterService', () => {
       expect(jellyfinAdapter.getDescendantEpisodeWatchers).toHaveBeenCalledWith(
         'season-1',
       );
+    });
+
+    it('keeps episode watcher lookups on direct watch history', async () => {
+      const episodeItem = createMediaItem({
+        id: 'episode-1',
+        type: 'episode' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(episodeItem);
+      jellyfinAdapter.getItemSeenBy.mockResolvedValue(['user-2']);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        SW_WATCHERS_PROP_ID,
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'episode' }),
+      );
+
+      expect(response).toEqual(['Bob']);
+      expect(jellyfinAdapter.getItemSeenBy).toHaveBeenCalledWith('episode-1');
+      expect(
+        jellyfinAdapter.getDescendantEpisodeWatchers,
+      ).not.toHaveBeenCalled();
     });
 
     it('falls back to the user id when a name is not resolvable', async () => {
