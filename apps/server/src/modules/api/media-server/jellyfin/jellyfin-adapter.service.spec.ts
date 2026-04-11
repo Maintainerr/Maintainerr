@@ -1,5 +1,9 @@
 import { getCollectionApi } from '@jellyfin/sdk/lib/utils/api/index.js';
-import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaItem,
+  MediaServerFeature,
+  MediaServerType,
+} from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { AxiosError } from 'axios';
 import { delay } from '../../../../utils/delay';
@@ -11,6 +15,8 @@ import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 const jellyfinApiMocks = {
   getPublicSystemInfo: jest.fn(),
   getMediaFolders: jest.fn(),
+  getAncestors: jest.fn(),
+  deleteItem: jest.fn(),
   getUsers: jest.fn(),
   getUserById: jest.fn(),
   getConfiguration: jest.fn(),
@@ -106,6 +112,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getLibraryApi: jest.fn().mockImplementation(() => ({
     getMediaFolders: (...args: unknown[]) =>
       jellyfinApiMocks.getMediaFolders(...args),
+    getAncestors: (...args: unknown[]) =>
+      jellyfinApiMocks.getAncestors(...args),
+    deleteItem: (...args: unknown[]) => jellyfinApiMocks.deleteItem(...args),
   })),
   getUserApi: jest.fn().mockImplementation(() => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
@@ -177,6 +186,8 @@ describe('JellyfinAdapterService', () => {
       },
     });
     jellyfinApiMocks.getMediaFolders.mockResolvedValue({ data: { Items: [] } });
+    jellyfinApiMocks.getAncestors.mockResolvedValue({ data: [] });
+    jellyfinApiMocks.deleteItem.mockResolvedValue(undefined);
     jellyfinApiMocks.getUsers.mockResolvedValue({ data: [] });
     jellyfinApiMocks.getUserById.mockResolvedValue({ data: undefined });
     jellyfinApiMocks.getConfiguration.mockResolvedValue({
@@ -1435,6 +1446,91 @@ describe('JellyfinAdapterService', () => {
       ).resolves.toEqual([]);
 
       expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledTimes(3);
+    });
+
+    it('should remove only items from the specified library and keep manual shared collections', async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+
+      jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
+        {
+          id: 'item-old-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+        {
+          id: 'item-other-1',
+          type: 'movie',
+          library: {
+            id: 'other-library',
+            title: 'Other Library',
+            type: 'movie',
+          },
+        } as unknown as MediaItem,
+      ]);
+
+      jellyfinApiMocks.getAncestors.mockImplementation(({ itemId }) => {
+        return Promise.resolve({
+          data:
+            itemId === 'item-old-1'
+              ? [{ Id: 'old-library' }]
+              : [{ Id: 'other-library' }],
+        });
+      });
+
+      await service.cleanupCollectionForLibrary(
+        'collection-1',
+        'old-library',
+        true,
+      );
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-old-1'],
+      });
+      expect(jellyfinApiMocks.deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('should delete empty automatic collections after removing the old library items', async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+
+      jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
+        {
+          id: 'item-old-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+        {
+          id: 'item-old-2',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+      ]);
+
+      jellyfinApiMocks.getAncestors.mockResolvedValue({
+        data: [{ Id: 'old-library' }],
+      });
+
+      await service.cleanupCollectionForLibrary(
+        'collection-1',
+        'old-library',
+        false,
+      );
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-old-1', 'item-old-2'],
+      });
+      expect(jellyfinApiMocks.deleteItem).toHaveBeenCalledWith({
+        itemId: 'collection-1',
+      });
     });
   });
 });

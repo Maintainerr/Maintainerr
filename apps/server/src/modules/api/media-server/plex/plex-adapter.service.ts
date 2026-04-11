@@ -167,18 +167,6 @@ export class PlexAdapterService implements IMediaServerService {
     return results.map(PlexMapper.toMediaItem);
   }
 
-  /**
-   * this needs help from a plex programmer 
-   * 
-   * @param id 
-   * @param libraryId 
-   * @returns 
-   */
-  async itemIsInLibrary(id: string, libraryId: string): Promise<boolean> {
-   console.log ("not sure what to do about this")
-   return false
-  }
-
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     const metadata = await this.plexApi.getMetadata(itemId);
     if (!metadata) return undefined;
@@ -490,13 +478,17 @@ export class PlexAdapterService implements IMediaServerService {
     return failedItemIds;
   }
 
-  async removeCollectionItemsFromCollection(
+  async cleanupCollectionForLibrary(
     collectionId: string,
-    items: string[],
+    _libraryId: string,
+    _isManualCollection: boolean,
   ): Promise<void> {
-    for (const item of items) {
-      await this.removeFromCollection(collectionId, item);
-    }
+    void _libraryId;
+    void _isManualCollection;
+
+    // Plex collections are per-library, so no cross-library sharing occurs.
+    // Always delete the entire collection.
+    await this.deleteCollection(collectionId);
   }
 
   async removeFromCollection(
