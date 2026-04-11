@@ -225,7 +225,7 @@ export class SonarrGetterService {
         case 'tags': {
           const tagIds = showResponse.tags;
           return (await sonarrApiClient.getTags())
-            .filter((el) => tagIds.includes(el.id))
+            ?.filter((el) => tagIds.includes(el.id))
             .map((el) => el.label);
         }
         case 'qualityProfileId': {
