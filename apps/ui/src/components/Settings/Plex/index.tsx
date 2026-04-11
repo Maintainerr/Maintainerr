@@ -566,9 +566,8 @@ const PlexSettings = () => {
                 <label className="text-label">
                   Server
                   <span className="label-tip">
-                    Docker users: if connections fail, ensure your container can
-                    resolve the hostname or use Advanced Settings below with a
-                    direct IP
+                    Ensure DNS is properly configured since Plex depends on
+                    working DNS resolution
                   </span>
                 </label>
                 <div className="form-input">
@@ -705,8 +704,10 @@ const PlexSettings = () => {
                       >
                         Manual connection override
                         <span className="label-tip">
-                          Override the connection discovered by Plex. Disables
-                          automatic reconnection.
+                          Override the connection discovered by Plex.
+                          <br />
+                          Disables automatic reconnection — you manage the
+                          connection.
                         </span>
                       </label>
                       <div className="form-input">
@@ -733,6 +734,10 @@ const PlexSettings = () => {
                             />
                             <span className="text-sm text-zinc-300">
                               Enable manual mode
+                              <br />
+                              <span className="text-xs text-zinc-500">
+                                Plex authentication (above) is still required
+                              </span>
                             </span>
                           </label>
                         </div>
@@ -741,11 +746,6 @@ const PlexSettings = () => {
 
                     {manualMode && (
                       <>
-                        <p className="mb-4 text-sm text-zinc-500">
-                          Tip: If Plex shows *.plex.direct hostnames that
-                          don&apos;t resolve in your network, use a direct IP or
-                          Docker service name instead.
-                        </p>
 
                         <div className="form-row">
                           <label
@@ -801,7 +801,7 @@ const PlexSettings = () => {
 
                         <div className="form-row">
                           <label htmlFor="advanced-ssl" className="text-label">
-                            SSL
+                            TLS
                           </label>
                           <div className="form-input">
                             <div className="form-input-field">
