@@ -51,6 +51,12 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   plex_auth_token: string;
 
+  @Column({ nullable: true })
+  plex_machine_id?: string;
+
+  @Column({ nullable: true, default: 0 })
+  plex_manual_mode?: number;
+
   // Jellyfin settings
   @Column({ nullable: true })
   jellyfin_url?: string;

@@ -2,6 +2,61 @@ import { Mocked, TestBed } from '@suites/unit';
 import { SettingsService } from '../../settings/settings.service';
 import { MaintainerrLoggerFactory } from '../../logging/logs.service';
 import { PlexApiService } from './plex-api.service';
+import { PlexConnection } from './interfaces/server.interface';
+
+describe('PlexApiService.rankConnections', () => {
+  const conn = (overrides: Partial<PlexConnection> = {}): PlexConnection => ({
+    protocol: 'http',
+    address: '192.168.1.50',
+    port: 32400,
+    uri: 'http://192.168.1.50:32400',
+    local: true,
+    status: 200,
+    ...overrides,
+  });
+
+  it('prefers reachable connections over unreachable ones', () => {
+    const ranked = PlexApiService.rankConnections([
+      conn({ address: '10.0.0.1', status: undefined }),
+      conn({ address: '10.0.0.2', status: 200 }),
+    ]);
+    expect(ranked[0].address).toBe('10.0.0.2');
+  });
+
+  it('prefers local connections over remote ones', () => {
+    const ranked = PlexApiService.rankConnections([
+      conn({ address: '1.2.3.4', local: false }),
+      conn({ address: '192.168.1.50', local: true }),
+    ]);
+    expect(ranked[0].address).toBe('192.168.1.50');
+  });
+
+  it('prefers direct IP over plex.direct hostnames', () => {
+    const ranked = PlexApiService.rankConnections([
+      conn({ address: 'abc123.plex.direct' }),
+      conn({ address: '192.168.1.50' }),
+    ]);
+    expect(ranked[0].address).toBe('192.168.1.50');
+  });
+
+  it('sorts by latency when all else is equal', () => {
+    const ranked = PlexApiService.rankConnections([
+      conn({ address: '192.168.1.2', latency: 100 }),
+      conn({ address: '192.168.1.1', latency: 10 }),
+    ]);
+    expect(ranked[0].address).toBe('192.168.1.1');
+  });
+
+  it('does not mutate the input array', () => {
+    const input = [
+      conn({ address: '10.0.0.1', local: false }),
+      conn({ address: '10.0.0.2', local: true }),
+    ];
+    const ranked = PlexApiService.rankConnections(input);
+    expect(ranked).not.toBe(input);
+    expect(input[0].address).toBe('10.0.0.1');
+  });
+});
 
 describe('PlexApiService.getMetadata', () => {
   let service: PlexApiService;
@@ -168,5 +223,70 @@ describe('PlexApiService.getMetadata', () => {
     await expect(service.validateAuthToken()).rejects.toThrow(
       'Plex auth token is required for validation',
     );
+  });
+});
+
+describe('PlexApiService.initialize', () => {
+  let service: PlexApiService;
+  let settingsService: Mocked<SettingsService>;
+  let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+
+    service = unit;
+    settingsService = unitRef.get(SettingsService);
+    loggerFactory = unitRef.get(MaintainerrLoggerFactory);
+
+    settingsService.plex_hostname = 'plex.local';
+    settingsService.plex_port = 32400;
+    settingsService.plex_ssl = 0;
+    settingsService.plex_auth_token = 'token';
+    settingsService.plex_manual_mode = 0;
+    settingsService.plex_machine_id = 'machine123';
+    settingsService.updatePlexConnectionDetails = jest
+      .fn()
+      .mockResolvedValue(undefined);
+    loggerFactory.createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as any);
+  });
+
+  it('clears plexClient when primary connection and rediscovery both fail', async () => {
+    // Mock getStatus to fail on the primary connection
+    jest.spyOn(service, 'getAvailableServers').mockResolvedValue([]);
+
+    await service.initialize();
+
+    expect(service.isPlexSetup()).toBe(false);
+  });
+
+  it('skips rediscovery in manual mode when primary connection fails', async () => {
+    settingsService.plex_manual_mode = 1;
+    const getServersSpy = jest
+      .spyOn(service, 'getAvailableServers')
+      .mockResolvedValue([]);
+
+    await service.initialize();
+
+    expect(getServersSpy).not.toHaveBeenCalled();
+    expect(service.isPlexSetup()).toBe(false);
+  });
+
+  it('attempts rediscovery when primary connection fails', async () => {
+    const getServersSpy = jest
+      .spyOn(service, 'getAvailableServers')
+      .mockResolvedValue([]);
+
+    await service.initialize();
+
+    // Verify rediscovery was attempted (getAvailableServers called)
+    expect(getServersSpy).toHaveBeenCalled();
+    // No working connection found, so client should be cleared
+    expect(service.isPlexSetup()).toBe(false);
   });
 });
