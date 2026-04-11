@@ -604,6 +604,8 @@ const PlexSettings = () => {
                           buttonType="default"
                           onClick={() => {
                             setSelectedServer(null)
+                            setManualMode(false)
+                            setAdvancedOpen(false)
                             clearError()
                             clearTestBanner()
                           }}
@@ -630,6 +632,8 @@ const PlexSettings = () => {
                               local: preset.local,
                               latency: preset.latency,
                             })
+                            setManualMode(false)
+                            setAdvancedOpen(false)
                             clearError()
                             clearTestBanner()
                           }
