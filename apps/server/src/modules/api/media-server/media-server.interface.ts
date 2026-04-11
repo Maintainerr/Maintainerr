@@ -197,8 +197,6 @@ export interface IMediaServerService {
   deleteCollection(collectionId: string): Promise<void>;
 
   /**
-   * DISCLAIMER: this is only implemented for JellyFin at the moment. 
-   * 
    * @param collectionId id of collection to remove items from
    * @param items  a list of mediaserver ids to remove from collection
    */
