@@ -1115,12 +1115,9 @@ const AddModal = (props: AddModal) => {
                         <label htmlFor="force_seerr" className="text-label">
                           Force delete Seerr request
                           <p className="text-xs font-normal">
-                            For movies and standard delete actions, deletes the
-                            Seerr request immediately instead of relying on
-                            media availability sync. For the season action that
-                            deletes the show if it becomes empty, Maintainerr
-                            only checks whether other Seerr season requests
-                            still exist before deleting the show.
+                            Removes the related Seerr request immediately.
+                            Otherwise, Maintainerr waits for Seerr availability
+                            sync.
                           </p>
                         </label>
                         <div className="form-input">
