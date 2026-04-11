@@ -850,6 +850,7 @@ const RuleInput = (props: IRuleInput) => {
                 onChange={updateCustomValue}
                 value={customVal}
                 placeholder={
+                  ruleType === RuleType.TEXT_LIST ||
                   customValType === RuleType.TEXT_LIST
                     ? '["Value1", "Value2"]'
                     : 'Text'
