@@ -1023,7 +1023,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const collections = (response.data.Items || []).map(
         JellyfinMapper.toMediaCollection,
       );
-  
+
       return collections.filter(
         (collection): collection is MediaCollection => collection !== null,
       );

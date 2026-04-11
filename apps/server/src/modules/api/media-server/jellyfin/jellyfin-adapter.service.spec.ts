@@ -326,17 +326,6 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
-  describe('getCollections', () => {
-    beforeEach(async () => {
-      settingsService.getSettings.mockResolvedValue({
-        ...mockSettings,
-        jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
-      await service.initialize();
-    });
-
-  });
-
   describe('getLibraryContents', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue({
