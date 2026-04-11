@@ -204,21 +204,9 @@ const PlexSettings = () => {
       return
     }
 
-    if (
-      !selectedServer ||
-      selectedServer.hostname === '' ||
-      selectedServer.port === '' ||
-      selectedServer.name === ''
-    ) {
-      showInfo(
-        'Please complete server setup by selecting a server from the dropdown.',
-      )
-      return
-    }
-
     try {
       if (manualMode) {
-        // Advanced settings: save manual override
+        // Advanced settings: save manual override (no server selection required)
         const normalizedHostname =
           normalizePlexHostname(advancedHostname).trim()
         const port = Number(advancedPort.trim())
@@ -238,11 +226,23 @@ const PlexSettings = () => {
             ? `https://${normalizedHostname}`
             : normalizedHostname,
           plex_port: port,
-          plex_name: selectedServer.name,
+          plex_name: selectedServer?.name || normalizedHostname,
           plex_ssl: Number(advancedSsl),
           plex_manual_mode: 1,
         })
       } else {
+        if (
+          !selectedServer ||
+          selectedServer.hostname === '' ||
+          selectedServer.port === '' ||
+          selectedServer.name === ''
+        ) {
+          showInfo(
+            'Please complete server setup by selecting a server from the dropdown.',
+          )
+          return
+        }
+
         await updateSettings({
           ...buildPlexServerPayload(selectedServer),
           plex_manual_mode: 0,
@@ -676,7 +676,7 @@ const PlexSettings = () => {
             )}
 
             {/* Advanced Settings — hidden collapsible section */}
-            {isAuthenticated && selectedServer && (
+            {isAuthenticated && (
               <div className="mt-6">
                 <button
                   type="button"
@@ -844,7 +844,7 @@ const PlexSettings = () => {
                     disabled={
                       testing ||
                       !isAuthenticated ||
-                      !hasSelectedServer ||
+                      (!hasSelectedServer && !manualMode) ||
                       updatePlexAuthPending ||
                       testWouldTestWrongServer ||
                       hasUnsavedAdvancedChanges
@@ -858,7 +858,7 @@ const PlexSettings = () => {
                         ? 'Wait for Plex authentication to finish before testing.'
                         : !isAuthenticated
                           ? 'Authenticate with Plex before testing the connection.'
-                          : !hasSelectedServer
+                          : !hasSelectedServer && !manualMode
                             ? 'Select a Plex server before testing.'
                             : testWouldTestWrongServer ||
                                 hasUnsavedAdvancedChanges
