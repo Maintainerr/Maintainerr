@@ -222,9 +222,7 @@ export class MediaServerFactory {
     // Verify the re-initialized adapter is actually reachable
     const retryStatus = await reinitAdapter.getStatus();
     if (!retryStatus) {
-      throw new Error(
-        'Media server still unreachable after re-initialization',
-      );
+      throw new Error('Media server still unreachable after re-initialization');
     }
 
     return reinitAdapter;

@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddPlexConnectionResilience1775929945733 implements MigrationInterface {
-    name = 'AddPlexConnectionResilience1775929945733'
+  name = 'AddPlexConnectionResilience1775929945733';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "temporary_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -35,7 +35,7 @@ export class AddPlexConnectionResilience1775929945733 implements MigrationInterf
                 "plex_manual_mode" integer DEFAULT (0)
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_settings"(
                     "id",
                     "clientId",
@@ -90,21 +90,21 @@ export class AddPlexConnectionResilience1775929945733 implements MigrationInterf
                 "metadata_provider_preference"
             FROM "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_settings"
                 RENAME TO "settings"
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "settings"
                 RENAME TO "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -133,7 +133,7 @@ export class AddPlexConnectionResilience1775929945733 implements MigrationInterf
                 "metadata_provider_preference" varchar NOT NULL DEFAULT ('tmdb_primary')
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "settings"(
                     "id",
                     "clientId",
@@ -188,9 +188,8 @@ export class AddPlexConnectionResilience1775929945733 implements MigrationInterf
                 "metadata_provider_preference"
             FROM "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_settings"
         `);
-    }
-
+  }
 }

@@ -203,9 +203,7 @@ describe('MediaServerFactory', () => {
     });
 
     it('returns the adapter when status check succeeds', async () => {
-      jest
-        .spyOn(factory, 'getService')
-        .mockResolvedValue(plexAdapter as any);
+      jest.spyOn(factory, 'getService').mockResolvedValue(plexAdapter as any);
       (plexAdapter as any).getStatus.mockResolvedValue({
         machineIdentifier: 'abc',
       });
@@ -235,9 +233,7 @@ describe('MediaServerFactory', () => {
     });
 
     it('throws when re-initialization also fails to produce a live connection', async () => {
-      jest
-        .spyOn(factory, 'getService')
-        .mockResolvedValue(plexAdapter as any);
+      jest.spyOn(factory, 'getService').mockResolvedValue(plexAdapter as any);
       jest
         .spyOn(factory, 'getConfiguredServerType')
         .mockResolvedValue(MediaServerType.PLEX);

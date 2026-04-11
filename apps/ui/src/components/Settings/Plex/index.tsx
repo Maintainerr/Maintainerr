@@ -746,7 +746,6 @@ const PlexSettings = () => {
 
                     {manualMode && (
                       <>
-
                         <div className="form-row">
                           <label
                             htmlFor="advanced-hostname"
