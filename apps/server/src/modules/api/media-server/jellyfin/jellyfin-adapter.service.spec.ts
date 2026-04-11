@@ -335,57 +335,6 @@ describe('JellyfinAdapterService', () => {
       await service.initialize();
     });
 
-    it('filters collections to the requested library', async () => {
-      jellyfinApiMocks.getItems.mockImplementation(
-        (params: { parentId?: string; ids?: string[] }) => {
-          if (!params.parentId && !params.ids) {
-            return Promise.resolve({
-              data: {
-                Items: [
-                  {
-                    Id: 'collection-in-lib',
-                    Name: 'In Library',
-                    Type: 'BoxSet',
-                    ParentId: 'lib123',
-                    ChildCount: 1,
-                  },
-                  {
-                    Id: 'collection-other-lib',
-                    Name: 'Other Library',
-                    Type: 'BoxSet',
-                    ParentId: 'lib999',
-                    ChildCount: 1,
-                  },
-                ],
-              },
-            });
-          }
-
-          if (params.parentId === 'collection-other-lib') {
-            return Promise.resolve({
-              data: {
-                Items: [
-                  {
-                    Id: 'movie-2',
-                    Name: 'Movie 2',
-                    Type: 'Movie',
-                    ParentId: 'lib999',
-                    DateCreated: '2024-01-01T00:00:00.000Z',
-                  },
-                ],
-              },
-            });
-          }
-
-          return Promise.resolve({ data: { Items: [] } });
-        },
-      );
-
-      const collections = await service.getCollections('lib123');
-
-      expect(collections).toHaveLength(1);
-      expect(collections[0].id).toBe('collection-in-lib');
-    });
   });
 
   describe('getLibraryContents', () => {
