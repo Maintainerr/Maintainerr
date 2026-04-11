@@ -41,6 +41,8 @@ import { RuleGroup } from './entities/rule-group.entities';
 import { Rules } from './entities/rules.entities';
 import { RuleComparatorServiceFactory } from './helpers/rule.comparator.service';
 import { RuleYamlService } from './helpers/yaml.service';
+import { getCollectionApi, getItemsApi } from '@jellyfin/sdk/lib/utils/api';
+import { Jellyfin } from '@jellyfin/sdk';
 
 export interface ReturnStatus {
   code: 0 | 1;
@@ -455,7 +457,23 @@ export class RulesService {
           if (dbCollection.mediaServerId) {
             const mediaServer = await this.getMediaServer();
             try {
-              await mediaServer.deleteCollection(dbCollection.mediaServerId);
+              if (mediaServer.getServerType() === MediaServerType.JELLYFIN) {
+                
+                const tmp = (await mediaServer.getCollectionChildren(dbCollection.mediaServerId))
+                .map(item => item.id)
+                const itemsToClear = []
+                for (const item of tmp){
+                  if(await mediaServer.itemIsInLibrary(item, params.libraryId)){
+                    itemsToClear.push(item)
+                  }
+                }
+                await mediaServer.removeCollectionItemsFromCollection(
+                  dbCollection.mediaServerId,
+              itemsToClear
+                );
+              } else if (mediaServer.getServerType() === MediaServerType.PLEX) {
+                await mediaServer.deleteCollection(dbCollection.mediaServerId);
+              }
             } catch (error) {
               // Collection may already be deleted, ignore errors
               this.logger.debug(

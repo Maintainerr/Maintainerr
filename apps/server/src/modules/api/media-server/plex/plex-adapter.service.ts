@@ -167,6 +167,18 @@ export class PlexAdapterService implements IMediaServerService {
     return results.map(PlexMapper.toMediaItem);
   }
 
+  /**
+   * this needs help from a plex programmer 
+   * 
+   * @param id 
+   * @param libraryId 
+   * @returns 
+   */
+  async itemIsInLibrary(id: string, libraryId: string): Promise<boolean> {
+   console.log ("not sure what to do about this")
+   return false
+  }
+
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     const metadata = await this.plexApi.getMetadata(itemId);
     if (!metadata) return undefined;
@@ -466,6 +478,15 @@ export class PlexAdapterService implements IMediaServerService {
     }
 
     return failedItemIds;
+  }
+
+  async removeCollectionItemsFromCollection(
+    collectionId: string,
+    items: string[],
+  ): Promise<void> {
+    for (const item of items) {
+      await this.removeFromCollection(collectionId, item);
+    }
   }
 
   async removeFromCollection(
