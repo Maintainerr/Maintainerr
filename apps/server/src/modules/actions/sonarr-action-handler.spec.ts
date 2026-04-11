@@ -767,6 +767,38 @@ describe('SonarrActionHandler', () => {
     validateNoSonarrActionsTaken(mockedSonarrApi);
   });
 
+  it('should not delete from disk when show cannot be found and action is CHANGE_QUALITY_PROFILE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: 3,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(undefined);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(false);
+    expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
+    expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+    validateNoSonarrActionsTaken(mockedSonarrApi);
+  });
+
   it('should do nothing for episode type EPISODES and action UNMONITOR_DELETE_ALL', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
@@ -960,8 +992,12 @@ describe('SonarrActionHandler', () => {
 
     mediaIdFinder.findTvdbId.mockResolvedValue(123);
 
-    await sonarrActionHandler.handleAction(collection, collectionMedia);
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
 
+    expect(result).toBe(true);
     expect(mockedSonarrApi.updateSeries).toHaveBeenCalledWith({
       ...existingSeries,
       qualityProfileId: targetProfileId,

@@ -125,7 +125,7 @@ const numberOrUndefined = (value: unknown): number | undefined => {
   return value as number | undefined
 }
 
-const ruleGroupFormSchema = z
+export const ruleGroupFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required'),
     description: z.string().optional(),
@@ -230,7 +230,7 @@ const ruleGroupFormSchema = z
       const isMovie = data.dataType === 'movie'
       const isShow = data.dataType === 'show'
 
-      if (isMovie && data.radarrQualityProfileId === undefined) {
+      if (isMovie && data.radarrQualityProfileId == null) {
         ctx.addIssue({
           code: 'custom',
           path: ['radarrQualityProfileId'],
@@ -238,7 +238,7 @@ const ruleGroupFormSchema = z
         })
       }
 
-      if (isShow && data.sonarrQualityProfileId === undefined) {
+      if (isShow && data.sonarrQualityProfileId == null) {
         ctx.addIssue({
           code: 'custom',
           path: ['sonarrQualityProfileId'],
@@ -278,10 +278,10 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     ? (editData.collection?.sonarrSettingsId ?? null)
     : undefined,
   radarrQualityProfileId: editData
-    ? (editData.collection?.radarrQualityProfileId ?? null)
+    ? (editData.collection?.radarrQualityProfileId ?? undefined)
     : undefined,
   sonarrQualityProfileId: editData
-    ? (editData.collection?.sonarrQualityProfileId ?? null)
+    ? (editData.collection?.sonarrQualityProfileId ?? undefined)
     : undefined,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })

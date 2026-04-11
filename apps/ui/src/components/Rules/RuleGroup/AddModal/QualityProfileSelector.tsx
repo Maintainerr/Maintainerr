@@ -4,7 +4,7 @@ interface QualityProfileSelectorProps {
   type: 'Radarr' | 'Sonarr'
   settingId?: number | null
   qualityProfileId?: number | null
-  onUpdate: (qualityProfileId?: number | null) => void
+  onUpdate: (qualityProfileId?: number) => void
   error?: string
 }
 
@@ -15,9 +15,7 @@ const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
   )
 
   const selectedProfile =
-    props.qualityProfileId === undefined
-      ? '-1'
-      : (props.qualityProfileId?.toString() ?? '')
+    props.qualityProfileId == null ? '-1' : props.qualityProfileId.toString()
 
   return (
     <div className="form-row items-center">
@@ -35,7 +33,7 @@ const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
             value={selectedProfile}
             disabled={!props.settingId || isLoading}
             onChange={(e) => {
-              props.onUpdate(e.target.value === '' ? null : +e.target.value)
+              props.onUpdate(+e.target.value)
             }}
           >
             {selectedProfile === '-1' && (
@@ -43,7 +41,6 @@ const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
                 Select a quality profile
               </option>
             )}
-            <option value="">None</option>
             {profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
                 {profile.name}

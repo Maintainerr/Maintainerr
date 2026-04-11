@@ -66,6 +66,13 @@ export class SonarrActionHandler {
     if (!sonarrMedia?.id) {
       const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
+      if (collection.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
+        this.logger.log(
+          `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. No quality profile change was applied.`,
+        );
+        return false;
+      }
+
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&
         collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY
@@ -335,7 +342,7 @@ export class SonarrActionHandler {
           this.logger.warn(
             `[Sonarr] CHANGE_QUALITY_PROFILE is not supported for type: ${collection.type}. Quality profiles can only be changed for entire shows.`,
           );
-          break;
+          return false;
         }
 
         const targetProfileId = collection.sonarrQualityProfileId;
@@ -344,26 +351,30 @@ export class SonarrActionHandler {
           this.logger.warn(
             `No target quality profile configured for collection ${collection.title}`,
           );
-          break;
+          return false;
         }
 
         if (!Number.isInteger(targetProfileId) || targetProfileId <= 0) {
           this.logger.warn(
             `[Sonarr] Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
           );
-          break;
+          return false;
         }
 
         sonarrMedia.qualityProfileId = targetProfileId;
-        await sonarrApiClient.updateSeries(sonarrMedia);
+        if (!(await sonarrApiClient.updateSeries(sonarrMedia))) {
+          return false;
+        }
 
         this.logger.log(
           `[Sonarr] Changed quality profile for show '${sonarrMedia.title}' to profile ID ${targetProfileId}`,
         );
 
         await sonarrApiClient.searchSeries(sonarrMedia.id);
-        break;
+        return true;
     }
+
+    return false;
   }
 
   private getEpisodeLookup(mediaData?: MediaItem):

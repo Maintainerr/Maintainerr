@@ -132,6 +132,13 @@ export class RadarrActionHandler {
       } else {
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
+        if (collection.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
+          this.logger.log(
+            `Couldn't find movie in Radarr using resolved external IDs [${attemptedIds}] for media server ID ${media.mediaServerId}. No quality profile change was applied.`,
+          );
+          return false;
+        }
+
         if (collection.arrAction !== ServarrAction.UNMONITOR) {
           this.logger.log(
             `Couldn't find movie in Radarr using resolved external IDs [${attemptedIds}] for media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,

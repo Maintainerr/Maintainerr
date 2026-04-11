@@ -96,6 +96,33 @@ describe('RadarrActionHandler', () => {
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 
+  it('should not delete from disk when movie cannot be found and action is CHANGE_QUALITY_PROFILE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      radarrSettingsId: 1,
+      radarrQualityProfileId: 3,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: 1,
+    });
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+      .mockResolvedValue(undefined);
+
+    const result = await radarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(false);
+    expect(mockedRadarrApi.getMovieByTmdbId).toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+    validateNoRadarrActionsTaken(mockedRadarrApi);
+  });
+
   it.each([
     { action: ServarrAction.DELETE, title: 'DELETE' },
     {
