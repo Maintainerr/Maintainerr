@@ -1,3 +1,4 @@
+import { ServarrAction } from '@maintainerr/contracts'
 import { useEffect, useEffectEvent, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
 import { IRadarrSetting } from '../../../../Settings/Radarr'
@@ -22,8 +23,7 @@ interface Option {
 }
 
 const ArrAction = (props: ArrActionProps) => {
-  const selectedSetting =
-    props.settingId === undefined ? '-1' : (props.settingId?.toString() ?? '')
+  const selectedSetting = props.settingId?.toString() ?? ''
   const [settings, setSettings] = useState<(IRadarrSetting | ISonarrSetting)[]>(
     [],
   )
@@ -70,11 +70,11 @@ const ArrAction = (props: ArrActionProps) => {
   const options: Option[] = noneServerSelected
     ? [
         {
-          id: 0,
+          id: ServarrAction.DELETE,
           name: 'Delete',
         },
         {
-          id: 4,
+          id: ServarrAction.DO_NOTHING,
           name: 'Do nothing',
         },
       ]
@@ -98,9 +98,6 @@ const ArrAction = (props: ArrActionProps) => {
                 )
               }}
             >
-              {selectedSetting === '-1' && (
-                <option value="-1" disabled></option>
-              )}
               <option value="">None</option>
               {settings.map((e) => {
                 return (
