@@ -1432,6 +1432,47 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinApiMocks.deleteItem).not.toHaveBeenCalled();
     });
 
+    it('should keep automatic collections when library membership lookup is incomplete', async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+
+      jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
+        {
+          id: 'item-old-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+        {
+          id: 'item-unknown-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+      ]);
+
+      jellyfinApiMocks.getAncestors.mockImplementation(({ itemId }) => {
+        if (itemId === 'item-old-1') {
+          return Promise.resolve({ data: [{ Id: 'old-library' }] });
+        }
+
+        return Promise.reject(new Error('ancestor lookup failed'));
+      });
+
+      await service.cleanupCollectionForLibrary(
+        'collection-1',
+        'old-library',
+        false,
+      );
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-old-1'],
+      });
+      expect(jellyfinApiMocks.deleteItem).not.toHaveBeenCalled();
+    });
+
     it('should delete empty automatic collections after removing the old library items', async () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
