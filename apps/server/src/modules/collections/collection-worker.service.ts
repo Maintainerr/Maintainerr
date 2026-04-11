@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { delay } from '../../utils/delay';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionMediaHandledDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -38,6 +39,7 @@ export class CollectionWorkerService extends TaskBase {
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionHandler: CollectionHandler,
     private readonly collectionsService: CollectionsService,
+    private readonly mediaServerFactory: MediaServerFactory,
     protected readonly logger: MaintainerrLogger,
     private readonly executionLock: ExecutionLockService,
   ) {
@@ -50,6 +52,17 @@ export class CollectionWorkerService extends TaskBase {
   }
 
   protected async executeTask() {
+    // Pre-flight: verify media server is reachable (triggers re-discovery for Plex)
+    try {
+      await this.mediaServerFactory.verifyConnection();
+    } catch (error) {
+      this.logger.warn(
+        'Media server unreachable, skipping collection handler run',
+      );
+      this.logger.debug(error);
+      return;
+    }
+
     this.eventEmitter.emit(
       MaintainerrEvent.CollectionHandler_Started,
       new CollectionHandlerStartedEventDto(

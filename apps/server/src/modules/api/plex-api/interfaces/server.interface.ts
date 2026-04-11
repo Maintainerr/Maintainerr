@@ -46,4 +46,5 @@ export interface PlexConnection {
   local: boolean;
   status?: number;
   message?: string;
+  latency?: number;
 }

@@ -4,6 +4,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExecutionLockService } from '../../tasks/execution-lock.service';
 import { RuleExecutorService } from './rule-executor.service';
@@ -30,6 +31,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   constructor(
     private readonly ruleExecutorService: RuleExecutorService,
     private readonly executionLock: ExecutionLockService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -161,6 +163,19 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     this.processingQueue = true;
     this.processQueuePromise = (async () => {
       try {
+        // Pre-flight: verify media server is reachable (triggers re-discovery for Plex)
+        try {
+          await this.mediaServerFactory.verifyConnection();
+        } catch (error) {
+          this.logger.warn(
+            'Media server unreachable, skipping rule execution queue',
+          );
+          this.logger.debug(error);
+          this.queue.length = 0;
+          this.emitStatusUpdate();
+          return;
+        }
+
         while (this.queue.length > 0) {
           const next = this.queue.shift();
           this.emitStatusUpdate();

@@ -167,6 +167,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     } catch (error) {
       this.logger.warn('Failed to retrieve tags');
       this.logger.debug(error);
+      return [];
     }
   };
 

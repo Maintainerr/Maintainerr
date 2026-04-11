@@ -34,6 +34,7 @@ let currentSettings: {
   plex_name?: string
   plex_ssl?: number
   plex_auth_token?: string
+  plex_manual_mode?: number
 } = {}
 
 vi.mock('../../../api/settings', () => ({
@@ -415,5 +416,57 @@ describe('PlexSettings', () => {
         screen.getByText('Authentication timed out. Please try again.'),
       ).toBeTruthy()
     })
+  })
+
+  it('requires a hostname before saving manual mode', async () => {
+    render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
+    fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
+
+    const hostnameInput = await screen.findByLabelText(/Hostname \/ IP/i)
+
+    fireEvent.change(hostnameInput, {
+      target: { value: '   ' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Please enter a hostname or IP address.'),
+      ).toBeTruthy()
+    })
+
+    expect(updateSettings).not.toHaveBeenCalled()
+  })
+
+  it('requires a valid port before saving manual mode', async () => {
+    render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
+    fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
+
+    const portInput = await screen.findByLabelText(/^Port$/i)
+
+    fireEvent.change(portInput, {
+      target: { value: '70000' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Please enter a valid port.')).toBeTruthy()
+    })
+
+    expect(updateSettings).not.toHaveBeenCalled()
   })
 })

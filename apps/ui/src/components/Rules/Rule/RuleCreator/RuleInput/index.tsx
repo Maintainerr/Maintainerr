@@ -849,7 +849,12 @@ const RuleInput = (props: IRuleInput) => {
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal}
-                placeholder="Text"
+                placeholder={
+                  ruleType === RuleType.TEXT_LIST ||
+                  customValType === RuleType.TEXT_LIST
+                    ? '["Value1", "Value2"]'
+                    : 'Text'
+                }
               ></input>
             ) : customValType === RuleType.DATE ? (
               <input
