@@ -27,7 +27,7 @@ export class ServarrApiController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<QualityProfile[]> {
     const client = await this.servarrService.getRadarrApiClient(id);
-    return await client.getProfiles();
+    return (await client.getProfiles()) ?? [];
   }
 
   @Get('sonarr/:id/profiles')
@@ -35,6 +35,6 @@ export class ServarrApiController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<QualityProfile[]> {
     const client = await this.servarrService.getSonarrApiClient(id);
-    return await client.getProfiles();
+    return (await client.getProfiles()) ?? [];
   }
 }

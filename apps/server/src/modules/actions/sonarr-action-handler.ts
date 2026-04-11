@@ -361,16 +361,7 @@ export class SonarrActionHandler {
           `[Sonarr] Changed quality profile for show '${sonarrMedia.title}' to profile ID ${targetProfileId}`,
         );
 
-        try {
-          await sonarrApiClient.searchSeries(sonarrMedia.id);
-          this.logger.log(
-            `[Sonarr] Triggered search for show '${sonarrMedia.title}'`,
-          );
-        } catch (error) {
-          this.logger.warn(
-            `[Sonarr] Failed to trigger search for show '${sonarrMedia.title}': ${error.message}`,
-          );
-        }
+        await sonarrApiClient.searchSeries(sonarrMedia.id);
         break;
     }
   }

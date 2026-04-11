@@ -123,16 +123,7 @@ export class RadarrActionHandler {
               `Changed quality profile for movie with ${matchedProvider} ID ${matchedId} to profile ID ${targetProfileId} in Radarr`,
             );
 
-            try {
-              await radarrApiClient.searchMovie(radarrMedia.id);
-              this.logger.log(
-                `Triggered search for movie with ${matchedProvider} ID ${matchedId} in Radarr`,
-              );
-            } catch (error) {
-              this.logger.warn(
-                `Failed to trigger search for movie with ${matchedProvider} ID ${matchedId} in Radarr: ${error.message}`,
-              );
-            }
+            await radarrApiClient.searchMovie(radarrMedia.id);
             return true;
           }
           default:
