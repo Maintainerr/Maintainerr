@@ -194,6 +194,42 @@ export class MediaServerFactory {
     return null;
   }
 
+  /**
+   * Verify that the configured media server is reachable. If the connection
+   * is dead, forces a re-initialization (which for Plex triggers re-discovery
+   * from plex.tv). Returns the ready adapter on success.
+   *
+   * Intended for use as a pre-flight check before jobs that depend on the
+   * media server (rule execution, collection handling).
+   */
+  async verifyConnection(): Promise<IMediaServerService> {
+    const adapter = await this.getService();
+    const status = await adapter.getStatus();
+
+    if (status) {
+      return adapter;
+    }
+
+    // Connection is dead — force re-initialization
+    this.logger.debug(
+      'Media server unreachable during pre-job check, attempting re-initialization',
+    );
+
+    const serverType = await this.getConfiguredServerType();
+    this.uninitializeServer(serverType);
+    const reinitAdapter = await this.getService(); // calls ensureAdapterReady → initialize()
+
+    // Verify the re-initialized adapter is actually reachable
+    const retryStatus = await reinitAdapter.getStatus();
+    if (!retryStatus) {
+      throw new Error(
+        'Media server still unreachable after re-initialization',
+      );
+    }
+
+    return reinitAdapter;
+  }
+
   private async ensureAdapterReady(
     serverType: MediaServerType,
     adapter: IMediaServerService,

@@ -191,4 +191,62 @@ describe('MediaServerFactory', () => {
 
     await expect(factory.initialize()).resolves.toBeUndefined();
   });
+
+  describe('verifyConnection', () => {
+    beforeEach(() => {
+      settingsService.getSettings.mockResolvedValue(
+        createSettings({ media_server_type: MediaServerType.PLEX }),
+      );
+      plexAdapter.isSetup.mockReturnValue(true);
+      (plexAdapter as any).getStatus = jest.fn();
+      (logger as any).debug = jest.fn();
+    });
+
+    it('returns the adapter when status check succeeds', async () => {
+      jest
+        .spyOn(factory, 'getService')
+        .mockResolvedValue(plexAdapter as any);
+      (plexAdapter as any).getStatus.mockResolvedValue({
+        machineIdentifier: 'abc',
+      });
+
+      const result = await factory.verifyConnection();
+      expect(result).toBe(plexAdapter);
+    });
+
+    it('re-initializes and verifies again when first status check fails', async () => {
+      const getServiceSpy = jest
+        .spyOn(factory, 'getService')
+        .mockResolvedValue(plexAdapter as any);
+      jest
+        .spyOn(factory, 'getConfiguredServerType')
+        .mockResolvedValue(MediaServerType.PLEX);
+
+      // First status: fails. After re-init: succeeds.
+      (plexAdapter as any).getStatus
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({ machineIdentifier: 'abc' });
+
+      const result = await factory.verifyConnection();
+
+      expect(plexAdapter.uninitialize).toHaveBeenCalled();
+      expect(getServiceSpy).toHaveBeenCalledTimes(2);
+      expect(result).toBe(plexAdapter);
+    });
+
+    it('throws when re-initialization also fails to produce a live connection', async () => {
+      jest
+        .spyOn(factory, 'getService')
+        .mockResolvedValue(plexAdapter as any);
+      jest
+        .spyOn(factory, 'getConfiguredServerType')
+        .mockResolvedValue(MediaServerType.PLEX);
+
+      (plexAdapter as any).getStatus.mockResolvedValue(undefined);
+
+      await expect(factory.verifyConnection()).rejects.toThrow(
+        'Media server still unreachable after re-initialization',
+      );
+    });
+  });
 });

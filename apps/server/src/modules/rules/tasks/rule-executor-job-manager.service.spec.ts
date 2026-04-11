@@ -34,15 +34,21 @@ describe('RuleExecutorJobManagerService', () => {
       acquire: jest.fn().mockResolvedValue(jest.fn()),
     } as unknown as ExecutionLockService;
 
+    const mediaServerFactory = {
+      verifyConnection: jest.fn().mockResolvedValue({}),
+    };
+
     return {
       service: new RuleExecutorJobManagerService(
         ruleExecutorService as any,
         executionLock,
+        mediaServerFactory as any,
         eventEmitter as any,
         logger as any,
       ),
       ruleExecutorService,
       executionLock,
+      mediaServerFactory,
       eventEmitter,
     };
   };
