@@ -460,19 +460,29 @@ export class RulesService {
             const mediaServer = await this.getMediaServer();
             try {
               if (mediaServer.getServerType() === MediaServerType.JELLYFIN) {
-                
-                const tmp = (await mediaServer.getCollectionChildren(dbCollection.mediaServerId))
-                .map(item => item.id)
-                const itemsToClear = []
-                for (const item of tmp){
-                  if(await mediaServer.itemIsInLibrary(item, params.libraryId)){
-                    itemsToClear.push(item)
+                const tmp = (
+                  await mediaServer.getCollectionChildren(
+                    dbCollection.mediaServerId,
+                  )
+                ).map((item) => item.id);
+                const itemsToClear = [];
+                for (const item of tmp) {
+                  if (
+                    await mediaServer.itemIsInLibrary(item, params.libraryId)
+                  ) {
+                    itemsToClear.push(item);
                   }
                 }
+
                 await mediaServer.removeCollectionItemsFromCollection(
                   dbCollection.mediaServerId,
-              itemsToClear
+                  itemsToClear,
                 );
+                if (tmp.length === itemsToClear.length && !dbCollection.manualCollection) {
+                  await mediaServer.deleteCollection(
+                    dbCollection.mediaServerId,
+                  );
+                }
               } else if (mediaServer.getServerType() === MediaServerType.PLEX) {
                 await mediaServer.deleteCollection(dbCollection.mediaServerId);
               }
