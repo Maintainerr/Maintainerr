@@ -452,6 +452,26 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  private async itemIsInLibrary(
+    itemId: string,
+    libraryId: string,
+  ): Promise<boolean> {
+    try {
+      const userId = await this.getUserId();
+      const ancestors = (
+        await getLibraryApi(this.api!).getAncestors({ itemId, userId })
+      ).data;
+
+      return ancestors.some((ancestor) => ancestor.Id === libraryId);
+    } catch (error) {
+      this.logger.debug(
+        `Failed to check library membership for item ${itemId}`,
+      );
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
   async getLibraryContents(
     libraryId: string,
     options?: LibraryQueryOptions,
@@ -1003,52 +1023,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       const collections = (response.data.Items || []).map(
         JellyfinMapper.toMediaCollection,
       );
-      const seriesLibraryCache = new Map<string, Promise<boolean>>();
 
-      const belongsToLibrary = async (item: MediaItem): Promise<boolean> => {
-        if (item.library.id === libraryId) {
-          return true;
-        }
-
-        if (item.type !== 'episode' || !item.grandparentId) {
-          return false;
-        }
-
-        let isMatchingSeries = seriesLibraryCache.get(item.grandparentId);
-
-        if (isMatchingSeries === undefined) {
-          isMatchingSeries = this.getMetadata(item.grandparentId).then(
-            (seriesMetadata) => seriesMetadata?.library.id === libraryId,
-          );
-          seriesLibraryCache.set(item.grandparentId, isMatchingSeries);
-        }
-
-        return isMatchingSeries;
-      };
-
-      const filteredCollections = await Promise.all(
-        collections.map(async (collection) => {
-          if (collection.libraryId === libraryId) {
-            return collection;
-          }
-
-          const children = await this.getCollectionChildren(collection.id);
-
-          if (children.length === 0) {
-            return null;
-          }
-
-          for (const child of children) {
-            if (await belongsToLibrary(child)) {
-              return collection;
-            }
-          }
-
-          return null;
-        }),
-      );
-
-      return filteredCollections.filter(
+      return collections.filter(
         (collection): collection is MediaCollection => collection !== null,
       );
     } catch (error) {
@@ -1259,6 +1235,40 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     return failedIds;
+  }
+
+  async cleanupCollectionForLibrary(
+    collectionId: string,
+    libraryId: string,
+    isManualCollection: boolean,
+  ): Promise<void> {
+    const children = await this.getCollectionChildren(collectionId);
+    const childIds = children.map((item) => item.id);
+
+    const itemsToRemove: string[] = [];
+    for (const id of childIds) {
+      if (await this.itemIsInLibrary(id, libraryId)) {
+        itemsToRemove.push(id);
+      }
+    }
+
+    // Remove items belonging to the specified library
+    const failedIds = await this.removeBatchFromCollection(
+      collectionId,
+      itemsToRemove,
+    );
+
+    if (failedIds.length > 0) {
+      this.logger.warn(
+        `Failed to remove ${failedIds.length} items from collection ${collectionId}`,
+      );
+    }
+
+    // Delete the collection if all items belonged to this library and it's not manual.
+    // Jellyfin auto-deletes empty collections, but we explicitly delete when appropriate.
+    if (childIds.length === itemsToRemove.length && !isManualCollection) {
+      await this.deleteCollection(collectionId);
+    }
   }
 
   async removeFromCollection(
