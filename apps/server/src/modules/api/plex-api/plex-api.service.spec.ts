@@ -1,8 +1,24 @@
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsService } from '../../settings/settings.service';
-import { MaintainerrLoggerFactory } from '../../logging/logs.service';
+import {
+  MaintainerrLogger,
+  MaintainerrLoggerFactory,
+} from '../../logging/logs.service';
+import { Settings } from '../../settings/entities/settings.entities';
 import { PlexApiService } from './plex-api.service';
 import { PlexConnection } from './interfaces/server.interface';
+
+type PlexApiSettingsStub = Pick<
+  Settings,
+  | 'plex_hostname'
+  | 'plex_port'
+  | 'plex_ssl'
+  | 'plex_auth_token'
+  | 'plex_manual_mode'
+  | 'plex_machine_id'
+> & {
+  updatePlexConnectionDetails: jest.Mock;
+};
 
 describe('PlexApiService.rankConnections', () => {
   const conn = (overrides: Partial<PlexConnection> = {}): PlexConnection => ({
@@ -60,14 +76,18 @@ describe('PlexApiService.rankConnections', () => {
 
 describe('PlexApiService.getMetadata', () => {
   let service: PlexApiService;
-  let settingsService: Mocked<SettingsService>;
+  let settingsService: PlexApiSettingsStub;
+  let logger: Mocked<MaintainerrLogger>;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
 
     service = unit;
-    settingsService = unitRef.get(SettingsService);
+    settingsService = unitRef.get(
+      SettingsService,
+    ) as unknown as PlexApiSettingsStub;
+    logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
 
     settingsService.plex_hostname = 'plex.local';
@@ -151,6 +171,9 @@ describe('PlexApiService.getMetadata', () => {
           'Plex request failed with 400 Bad Request. Response body: {"error":"duplicate items"}',
       }),
     );
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.debug).not.toHaveBeenCalled();
   });
 
   it('keeps network failures distinct from HTTP request failures', async () => {
@@ -228,14 +251,18 @@ describe('PlexApiService.getMetadata', () => {
 
 describe('PlexApiService.initialize', () => {
   let service: PlexApiService;
-  let settingsService: Mocked<SettingsService>;
+  let settingsService: PlexApiSettingsStub;
+  let logger: Mocked<MaintainerrLogger>;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
 
     service = unit;
-    settingsService = unitRef.get(SettingsService);
+    settingsService = unitRef.get(
+      SettingsService,
+    ) as unknown as PlexApiSettingsStub;
+    logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
 
     settingsService.plex_hostname = 'plex.local';
@@ -263,6 +290,9 @@ describe('PlexApiService.initialize', () => {
     await service.initialize();
 
     expect(service.isPlexSetup()).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Plex connection failed after re-discovery attempt. Please check your settings',
+    );
   });
 
   it('skips rediscovery in manual mode when primary connection fails', async () => {
@@ -288,5 +318,16 @@ describe('PlexApiService.initialize', () => {
     expect(getServersSpy).toHaveBeenCalled();
     // No working connection found, so client should be cleared
     expect(service.isPlexSetup()).toBe(false);
+  });
+
+  it('returns undefined from getStatus without logging an error when Plex is unreachable', async () => {
+    (service as any).plexClient = {
+      query: jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')),
+    };
+
+    await expect(service.getStatus()).resolves.toBeUndefined();
+
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith('Plex status probe failed');
   });
 });

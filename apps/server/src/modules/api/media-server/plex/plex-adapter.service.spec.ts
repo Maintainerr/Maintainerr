@@ -515,8 +515,27 @@ describe('PlexAdapterService', () => {
       ]);
       expect(plexApi.addChildToCollection).toHaveBeenCalledTimes(3);
       expect(logger.warn).toHaveBeenCalledWith(
-        'Plex batch add fell back to per-item adds for collection col123 on 1 chunk(s) (3 item(s) total). 1 item(s) failed after fallback.',
+        'Plex batch add fallback left 1 failed item(s) for collection col123',
       );
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
+    });
+
+    it('should stay silent when per-item fallback recovers all Plex batch add failures', async () => {
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 400,
+        message: 'batch failed',
+      } as any);
+      plexApi.addChildToCollection.mockResolvedValue({ status: 'OK' } as any);
+
+      await expect(
+        service.addBatchToCollection('col123', ['good', 'good-2']),
+      ).resolves.toEqual([]);
+
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
     });
 
     it('should treat 404 removes as successful in batch remove', async () => {

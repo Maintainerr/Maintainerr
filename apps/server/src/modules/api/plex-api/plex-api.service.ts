@@ -49,6 +49,18 @@ import {
   PlexStatusResponse,
 } from './interfaces/server.interface';
 
+type PlexApiSettings = SettingsService &
+  Pick<
+    Settings,
+    | 'plex_name'
+    | 'plex_hostname'
+    | 'plex_port'
+    | 'plex_ssl'
+    | 'plex_auth_token'
+    | 'plex_machine_id'
+    | 'plex_manual_mode'
+  >;
+
 @Injectable()
 export class PlexApiService {
   private plexClient: PlexApi;
@@ -58,7 +70,7 @@ export class PlexApiService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: PlexApiSettings,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
@@ -241,6 +253,9 @@ export class PlexApiService {
       if (!recovered) {
         // Clear the dead client so isSetup() reflects reality
         this.plexClient = undefined;
+        this.logger.warn(
+          'Plex connection failed after re-discovery attempt. Please check your settings',
+        );
       }
     } catch (error) {
       this.plexClient = undefined;
@@ -340,10 +355,7 @@ export class PlexApiService {
       );
       return response.MediaContainer;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logger.debug('Plex status probe failed');
       return undefined;
     }
   }
@@ -977,12 +989,11 @@ export class PlexApiService {
     } catch (error) {
       const failure = this.buildCollectionMutationFailure(error);
 
-      if (failure.logLevel === 'warn') {
-        this.logger.warn(failure.message);
-      } else {
+      if (failure.logLevel === 'error') {
         this.logger.error(failure.message);
+        this.logger.debug(error);
       }
-      this.logger.debug(error);
+
       return {
         status: 'NOK',
         code: failure.code,
@@ -1418,15 +1429,9 @@ export class PlexApiService {
         }
 
         return response.machineIdentifier;
-      } else {
-        this.logger.warn("Couldn't reach Plex");
-        return null;
       }
+      return null;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
       return null;
     }
   }

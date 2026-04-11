@@ -41,6 +41,25 @@ import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 
+type PlexConnectionSettingsUpdate = Partial<
+  Pick<
+    Settings,
+    | 'plex_hostname'
+    | 'plex_port'
+    | 'plex_ssl'
+    | 'plex_machine_id'
+    | 'plex_manual_mode'
+  >
+>;
+
+export interface SettingsService {
+  plex_machine_id?: string;
+  plex_manual_mode?: number;
+  updatePlexConnectionDetails(
+    details: PlexConnectionSettingsUpdate,
+  ): Promise<void>;
+}
+
 @Injectable()
 export class SettingsService implements SettingDto {
   id: number;
@@ -920,16 +939,7 @@ export class SettingsService implements SettingDto {
    * to persist the new connection details and machineId.
    */
   public async updatePlexConnectionDetails(
-    details: Partial<
-      Pick<
-        Settings,
-        | 'plex_hostname'
-        | 'plex_port'
-        | 'plex_ssl'
-        | 'plex_machine_id'
-        | 'plex_manual_mode'
-      >
-    >,
+    details: PlexConnectionSettingsUpdate,
   ): Promise<void> {
     const settingsDb = await this.settingsRepo.findOne({ where: {} });
     if (!settingsDb) return;
