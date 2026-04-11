@@ -125,6 +125,102 @@ const numberOrUndefined = (value: unknown): number | undefined => {
   return value as number | undefined
 }
 
+const sortActionOptions = <T extends { name: string }>(options: T[]): T[] => {
+  return [...options].sort((left, right) => left.name.localeCompare(right.name))
+}
+
+const RADARR_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Delete',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_ALL,
+    name: 'Unmonitor and delete files',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor and keep files',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+  {
+    id: ServarrAction.CHANGE_QUALITY_PROFILE,
+    name: 'Change quality profile and search',
+  },
+])
+
+const SONARR_SHOW_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Delete entire show',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_ALL,
+    name: 'Unmonitor show + seasons, delete all episodes',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
+    name: 'Unmonitor show, delete existing episodes',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor show + seasons, keep files',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+  {
+    id: ServarrAction.CHANGE_QUALITY_PROFILE,
+    name: 'Change quality profile and search',
+  },
+])
+
+const SONARR_SEASON_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Unmonitor and delete season',
+  },
+  {
+    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
+    name: 'Unmonitor and delete season + delete show if empty',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
+    name: 'Unmonitor and delete existing episodes',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor season and keep files',
+  },
+  {
+    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+    name: 'Unmonitor season + unmonitor show if empty',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+])
+
+const SONARR_EPISODE_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Unmonitor and delete episode',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor and keep file',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+])
+
 export const ruleGroupFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required'),
@@ -197,23 +293,6 @@ export const ruleGroupFormSchema = z
       message: 'Custom collection name is required',
     },
   )
-  .superRefine((data, ctx) => {
-    if (
-      data.radarrSettingsId === undefined &&
-      data.sonarrSettingsId === undefined
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['radarrSettingsId'],
-        message: 'Select an *arr server',
-      })
-      ctx.addIssue({
-        code: 'custom',
-        path: ['sonarrSettingsId'],
-        message: 'Select an *arr server',
-      })
-    }
-  })
   .refine(
     (data) =>
       data.arrAction === undefined ||
@@ -354,6 +433,8 @@ const AddModal = (props: AddModal) => {
     control,
     name: 'sonarrQualityProfileId',
   }) as number | null | undefined
+  const hasSelectedRadarrServer = radarrSettingsId != null
+  const hasSelectedSonarrServer = sonarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
@@ -443,6 +524,14 @@ const AddModal = (props: AddModal) => {
     settingId?: number | null,
   ) => {
     updateArrOption(arrAction)
+
+    if (type === 'Radarr' && settingId !== radarrSettingsId) {
+      setValue('radarrQualityProfileId', undefined)
+    }
+
+    if (type === 'Sonarr' && settingId !== sonarrSettingsId) {
+      setValue('sonarrQualityProfileId', undefined)
+    }
 
     const newRadarrId = type === 'Radarr' ? settingId : undefined
     const newSonarrId = type === 'Sonarr' ? settingId : undefined
@@ -761,36 +850,19 @@ const AddModal = (props: AddModal) => {
                       arrAction={arrActionValue}
                       settingIdError={errors.radarrSettingsId?.message}
                       settingId={radarrSettingsId}
-                      onUpdate={(arrAction: number, settingId) => {
+                      onUpdate={(
+                        arrAction: number,
+                        settingId?: number | null,
+                      ) => {
                         handleUpdateArrAction('Radarr', arrAction, settingId)
                       }}
-                      options={[
-                        {
-                          id: ServarrAction.DELETE,
-                          name: 'Delete',
-                        },
-                        {
-                          id: ServarrAction.UNMONITOR_DELETE_ALL,
-                          name: 'Unmonitor and delete files',
-                        },
-                        {
-                          id: ServarrAction.UNMONITOR,
-                          name: 'Unmonitor and keep files',
-                        },
-                        {
-                          id: ServarrAction.DO_NOTHING,
-                          name: 'Do nothing',
-                        },
-                        {
-                          id: ServarrAction.CHANGE_QUALITY_PROFILE,
-                          name: 'Change quality profile and search',
-                        },
-                      ]}
+                      options={RADARR_ACTION_OPTIONS}
                     />
                   )}
 
                   {selectedLibraryType &&
                     selectedLibraryType === 'movie' &&
+                    hasSelectedRadarrServer &&
                     arrActionValue === ServarrAction.CHANGE_QUALITY_PROFILE && (
                       <QualityProfileSelector
                         type="Radarr"
@@ -852,79 +924,16 @@ const AddModal = (props: AddModal) => {
                         mediaServerName={mediaServerName}
                         arrAction={arrActionValue}
                         settingId={sonarrSettingsId}
-                        onUpdate={(e: number, settingId) => {
+                        onUpdate={(e: number, settingId?: number | null) => {
                           handleUpdateArrAction('Sonarr', e, settingId)
                         }}
                         options={
                           selectedType === 'show'
-                            ? [
-                                {
-                                  id: ServarrAction.DELETE,
-                                  name: 'Delete entire show',
-                                },
-                                {
-                                  id: ServarrAction.UNMONITOR_DELETE_ALL,
-                                  name: 'Unmonitor show + seasons, delete all episodes',
-                                },
-                                {
-                                  id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-                                  name: 'Unmonitor show, delete existing episodes',
-                                },
-                                {
-                                  id: ServarrAction.UNMONITOR,
-                                  name: 'Unmonitor show + seasons, keep files',
-                                },
-                                {
-                                  id: ServarrAction.DO_NOTHING,
-                                  name: 'Do nothing',
-                                },
-                                {
-                                  id: ServarrAction.CHANGE_QUALITY_PROFILE,
-                                  name: 'Change quality profile and search',
-                                },
-                              ]
+                            ? SONARR_SHOW_ACTION_OPTIONS
                             : selectedType === 'season'
-                              ? [
-                                  {
-                                    id: ServarrAction.DELETE,
-                                    name: 'Unmonitor and delete season',
-                                  },
-                                  {
-                                    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
-                                    name: 'Unmonitor and delete season + delete show if empty',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-                                    name: 'Unmonitor and delete existing episodes',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR,
-                                    name: 'Unmonitor season and keep files',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
-                                    name: 'Unmonitor season + unmonitor show if empty',
-                                  },
-                                  {
-                                    id: ServarrAction.DO_NOTHING,
-                                    name: 'Do nothing',
-                                  },
-                                ]
+                              ? SONARR_SEASON_ACTION_OPTIONS
                               : // episodes
-                                [
-                                  {
-                                    id: ServarrAction.DELETE,
-                                    name: 'Unmonitor and delete episode',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR,
-                                    name: 'Unmonitor and keep file',
-                                  },
-                                  {
-                                    id: ServarrAction.DO_NOTHING,
-                                    name: 'Do nothing',
-                                  },
-                                ]
+                                SONARR_EPISODE_ACTION_OPTIONS
                         }
                       />
                       {errors.sonarrSettingsId && (
@@ -933,18 +942,22 @@ const AddModal = (props: AddModal) => {
                         </p>
                       )}
 
-                      {arrActionValue ===
-                        ServarrAction.CHANGE_QUALITY_PROFILE && (
-                        <QualityProfileSelector
-                          type="Sonarr"
-                          settingId={sonarrSettingsId}
-                          qualityProfileId={sonarrQualityProfileId}
-                          onUpdate={(qualityProfileId) => {
-                            setValue('sonarrQualityProfileId', qualityProfileId)
-                          }}
-                          error={errors.sonarrQualityProfileId?.message}
-                        />
-                      )}
+                      {hasSelectedSonarrServer &&
+                        arrActionValue ===
+                          ServarrAction.CHANGE_QUALITY_PROFILE && (
+                          <QualityProfileSelector
+                            type="Sonarr"
+                            settingId={sonarrSettingsId}
+                            qualityProfileId={sonarrQualityProfileId}
+                            onUpdate={(qualityProfileId) => {
+                              setValue(
+                                'sonarrQualityProfileId',
+                                qualityProfileId,
+                              )
+                            }}
+                            error={errors.sonarrQualityProfileId?.message}
+                          />
+                        )}
                     </>
                   )}
 
