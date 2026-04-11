@@ -555,8 +555,14 @@ export class MetadataService {
     ids: ProviderIds,
     type: 'movie' | 'tv',
     size = 'w500',
+    mediaServerItemId?: string,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
-    return this.resolveImageUrl(ids, type, (provider, id) =>
+    const resolvedIds = await this.resolveShowIdsForImage(
+      ids,
+      type,
+      mediaServerItemId,
+    );
+    return this.resolveImageUrl(resolvedIds, type, (provider, id) =>
       provider.getPosterUrl(id, type, size),
     );
   }
@@ -565,10 +571,68 @@ export class MetadataService {
     ids: ProviderIds,
     type: 'movie' | 'tv',
     size = 'w1280',
+    mediaServerItemId?: string,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
-    return this.resolveImageUrl(ids, type, (provider, id) =>
+    const resolvedIds = await this.resolveShowIdsForImage(
+      ids,
+      type,
+      mediaServerItemId,
+    );
+    return this.resolveImageUrl(resolvedIds, type, (provider, id) =>
       provider.getBackdropUrl(id, type, size),
     );
+  }
+
+  /**
+   * For season/episode items, resolve the parent show's provider IDs so that
+   * image lookups use show-level IDs instead of season-specific ones.
+   */
+  private async resolveShowIdsForImage(
+    ids: ProviderIds,
+    type: 'movie' | 'tv',
+    mediaServerItemId?: string,
+  ): Promise<ProviderIds> {
+    if (!mediaServerItemId || type !== 'tv') {
+      return ids;
+    }
+
+    try {
+      const mediaServer = await this.mediaServerFactory.getService();
+      const item = await mediaServer.getMetadata(mediaServerItemId);
+
+      if (!item || (item.type !== 'season' && item.type !== 'episode')) {
+        return ids;
+      }
+
+      const showId =
+        item.type === 'episode' ? item.grandparentId : item.parentId;
+
+      if (!showId) {
+        return ids;
+      }
+
+      const show = await mediaServer.getMetadata(showId);
+
+      if (!show) {
+        return ids;
+      }
+
+      const showIds = this.extractDirectIds(show);
+      // Merge show-level IDs over the original, keeping 'type' from original
+      const merged: ProviderIds = { ...ids };
+      for (const [key, value] of Object.entries(showIds)) {
+        if (key !== 'type' && value !== undefined) {
+          merged[key] = value;
+        }
+      }
+
+      return merged;
+    } catch (err) {
+      this.logger.warn(
+        `Failed to resolve show IDs for item ${mediaServerItemId}: ${err}`,
+      );
+      return ids;
+    }
   }
 
   private hasRequiredIds(

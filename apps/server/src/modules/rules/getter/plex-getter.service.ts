@@ -117,6 +117,7 @@ export class PlexGetterService {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
             libItem.viewCount,
+            libItem.title,
           );
           return watchState.viewCount;
         }
@@ -124,6 +125,7 @@ export class PlexGetterService {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
             libItem.viewCount,
+            libItem.title,
           );
           return watchState.isWatched;
         }

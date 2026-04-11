@@ -18,7 +18,7 @@ export class MetadataController {
     const ids: Record<string, string | number> = {};
 
     for (const [key, value] of Object.entries(query)) {
-      if (!key.endsWith('Id') || !value) {
+      if (!key.endsWith('Id') || !value || key === 'itemId') {
         continue;
       }
 
@@ -49,7 +49,12 @@ export class MetadataController {
       return undefined;
     }
 
-    return this.metadata.getBackdropUrl(ids, this.resolveMetadataType(type));
+    return this.metadata.getBackdropUrl(
+      ids,
+      this.resolveMetadataType(type),
+      undefined,
+      query.itemId,
+    );
   }
 
   @Get('/image/:type')
@@ -66,6 +71,7 @@ export class MetadataController {
       ids,
       this.resolveMetadataType(type),
       'w300_and_h450_face',
+      query.itemId,
     );
   }
 }

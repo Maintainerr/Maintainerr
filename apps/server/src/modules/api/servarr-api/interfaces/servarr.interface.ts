@@ -44,11 +44,6 @@ export interface RootFolder {
 
 export type DiskSpaceResource = ArrDiskspaceResource;
 
-export interface QualityProfile {
-  id: number;
-  name: string;
-}
-
 export interface QueueItem {
   size: number;
   title: string;

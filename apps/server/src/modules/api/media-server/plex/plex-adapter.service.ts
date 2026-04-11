@@ -220,6 +220,7 @@ export class PlexAdapterService implements IMediaServerService {
   async getWatchState(
     itemId: string,
     nativeViewCount?: number,
+    itemTitle?: string,
   ): Promise<MediaWatchState> {
     const history = await this.plexApi.getWatchHistory(itemId, false);
 
@@ -236,6 +237,15 @@ export class PlexAdapterService implements IMediaServerService {
     // the numeric viewCount to avoid misrepresenting server-wide counts.
     const watchedByNative =
       nativeViewCount !== undefined && nativeViewCount > 0;
+
+    if (watchedByNative) {
+      this.logger.log(
+        `Media '${itemTitle ?? 'unknown'}' (ratingKey=${itemId}) is marked watched in Plex ` +
+          `but has no watch history. viewCount will be 0. This can happen when ` +
+          `history is purged or the item was marked watched without a play event ` +
+          `(e.g. Trakt/API scrobble).`,
+      );
+    }
 
     return {
       viewCount: 0,

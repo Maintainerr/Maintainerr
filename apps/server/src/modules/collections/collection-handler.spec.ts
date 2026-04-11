@@ -299,6 +299,47 @@ describe('CollectionHandler', () => {
     expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
   });
 
+  it('should not mutate Seerr requests for CHANGE_QUALITY_PROFILE and should still remove media from collection', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      forceSeerr: true,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe(true);
+
+    expect(sonarrActionHandler.handleAction).toHaveBeenCalledWith(
+      collection,
+      collectionMedia,
+    );
+    expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
+    expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
+    expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
+    expect(collectionsService.CollectionLogRecordForChild).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+      collection.id,
+      'handle',
+    );
+    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handledMediaAmount: 1,
+      }),
+    );
+  });
+
   it('should call removeMediaByTmdbId for movies', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,

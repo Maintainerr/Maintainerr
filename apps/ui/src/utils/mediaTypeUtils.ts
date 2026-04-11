@@ -47,14 +47,19 @@ export function buildMetadataImagePath(
   kind: 'image' | 'backdrop',
   mediaType: 'movie' | 'show' | 'season' | 'episode',
   providerIds: MediaProviderIds | undefined,
+  itemId?: string | number,
 ): string | undefined {
-  const query = buildProviderIdParams(providerIds).toString()
+  const params = buildProviderIdParams(providerIds)
 
-  if (!query) {
+  if (!params.toString()) {
     return undefined
   }
 
-  return `/metadata/${kind}/${toImageEndpointType(mediaType)}?${query}`
+  if (itemId && (mediaType === 'season' || mediaType === 'episode')) {
+    params.set('itemId', String(itemId))
+  }
+
+  return `/metadata/${kind}/${toImageEndpointType(mediaType)}?${params.toString()}`
 }
 
 export function toProviderIds(ids: {
