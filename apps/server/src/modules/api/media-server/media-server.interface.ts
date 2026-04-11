@@ -188,6 +188,21 @@ export interface IMediaServerService {
   deleteCollection(collectionId: string): Promise<void>;
 
   /**
+   * Clean up a collection when a rule group's settings change.
+   * Removes items belonging to the specified library from the collection.
+   * Deletes the collection entirely if it becomes empty and is not manual.
+   *
+   * @param collectionId - The media server collection ID
+   * @param libraryId - The library whose items should be removed
+   * @param isManualCollection - Whether this is a manual (user-named) collection
+   */
+  cleanupCollectionForLibrary(
+    collectionId: string,
+    libraryId: string,
+    isManualCollection: boolean,
+  ): Promise<void>;
+
+  /**
    * Get items in a collection.
    * Returns empty array if collection not found or on error.
    */

@@ -348,6 +348,8 @@ export class RulesService {
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
+          radarrQualityProfileId: params.radarrQualityProfileId ?? null,
+          sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
@@ -450,16 +452,24 @@ export class RulesService {
             collectionId: group.collectionId,
           });
 
-          // Delete the media server collection if it exists, then clear mediaServerId.
-          // Jellyfin auto-deletes empty collections, but Plex does not.
+          // Clean up the media server collection if it exists, then clear mediaServerId.
+          // For Jellyfin: removes only items from this library, keeps the collection
+          //   if other libraries still have items in it (shared manual collections).
+          // For Plex: collections are per-library, so the entire collection is deleted.
           if (dbCollection.mediaServerId) {
             const mediaServer = await this.getMediaServer();
             try {
-              await mediaServer.deleteCollection(dbCollection.mediaServerId);
+              // Use the OLD library ID — we're cleaning up items that belonged
+              // to the previous library, not the one the rule is moving to.
+              await mediaServer.cleanupCollectionForLibrary(
+                dbCollection.mediaServerId,
+                dbCollection.libraryId,
+                !!dbCollection.manualCollection,
+              );
             } catch (error) {
               // Collection may already be deleted, ignore errors
               this.logger.debug(
-                'Failed to delete media server collection',
+                'Failed to clean up media server collection',
                 error,
               );
             }
@@ -502,6 +512,8 @@ export class RulesService {
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
+          radarrQualityProfileId: params.radarrQualityProfileId ?? null,
+          sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,

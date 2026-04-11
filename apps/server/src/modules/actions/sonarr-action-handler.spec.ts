@@ -523,6 +523,75 @@ describe('SonarrActionHandler', () => {
       collectionMedia.mediaData.parentIndex,
       [collectionMedia.mediaData.index],
       true,
+      undefined,
+    );
+  });
+
+  it('should fall back to episode air date when episode index is undefined', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'episode',
+    });
+    const airDate = new Date('2026-01-05T00:00:00.000Z');
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      mediaData: {
+        index: undefined,
+        parentIndex: 2026,
+        originallyAvailableAt: airDate,
+      },
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries();
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
+      series.id,
+      collectionMedia.mediaData.parentIndex,
+      [],
+      true,
+      airDate,
+    );
+  });
+
+  it('should skip episode action when no season, episode number, or air date is available', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      mediaData: {
+        index: undefined,
+        parentIndex: undefined,
+        originallyAvailableAt: undefined,
+      },
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries();
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      `[Sonarr] Couldn't identify episode '${collectionMedia.mediaData.title}' for show '${series.title}'. No delete action was taken.`,
     );
   });
 
@@ -627,6 +696,7 @@ describe('SonarrActionHandler', () => {
       collectionMedia.mediaData.parentIndex,
       [collectionMedia.mediaData.index],
       false,
+      undefined,
     );
   });
 
@@ -691,6 +761,38 @@ describe('SonarrActionHandler', () => {
 
     await sonarrActionHandler.handleAction(collection, collectionMedia);
 
+    expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
+    expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+    validateNoSonarrActionsTaken(mockedSonarrApi);
+  });
+
+  it('should not delete from disk when show cannot be found and action is CHANGE_QUALITY_PROFILE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: 3,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(undefined);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(false);
     expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
     expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
     expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
@@ -865,5 +967,129 @@ describe('SonarrActionHandler', () => {
       ...series,
       monitored: false,
     });
+  });
+
+  it('should change quality profile and trigger search when action is CHANGE_QUALITY_PROFILE for SHOWS', async () => {
+    const targetProfileId = 3;
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: targetProfileId,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    const existingSeries = createSonarrSeries({ id: 5, qualityProfileId: 1 });
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(existingSeries);
+    jest.spyOn(mockedSonarrApi, 'searchSeries').mockResolvedValue();
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mockedSonarrApi.updateSeries).toHaveBeenCalledWith({
+      ...existingSeries,
+      qualityProfileId: targetProfileId,
+    });
+    expect(mockedSonarrApi.searchSeries).toHaveBeenCalledWith(5);
+  });
+
+  it('should log warning when quality profile action used on SEASONS type', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: 3,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CHANGE_QUALITY_PROFILE is not supported for type',
+      ),
+    );
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+  });
+
+  it('should log warning when quality profile action used on EPISODES type', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: 3,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CHANGE_QUALITY_PROFILE is not supported for type',
+      ),
+    );
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+  });
+
+  it('should log warning when quality profile ID not configured for SHOWS', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: undefined,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 5 }));
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('No target quality profile configured'),
+    );
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
   });
 });

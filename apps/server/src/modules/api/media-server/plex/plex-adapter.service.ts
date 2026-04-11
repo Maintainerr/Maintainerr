@@ -208,6 +208,7 @@ export class PlexAdapterService implements IMediaServerService {
   async getWatchState(
     itemId: string,
     nativeViewCount?: number,
+    itemTitle?: string,
   ): Promise<MediaWatchState> {
     const history = await this.plexApi.getWatchHistory(itemId, false);
 
@@ -224,6 +225,15 @@ export class PlexAdapterService implements IMediaServerService {
     // the numeric viewCount to avoid misrepresenting server-wide counts.
     const watchedByNative =
       nativeViewCount !== undefined && nativeViewCount > 0;
+
+    if (watchedByNative) {
+      this.logger.log(
+        `Media '${itemTitle ?? 'unknown'}' (ratingKey=${itemId}) is marked watched in Plex ` +
+          `but has no watch history. viewCount will be 0. This can happen when ` +
+          `history is purged or the item was marked watched without a play event ` +
+          `(e.g. Trakt/API scrobble).`,
+      );
+    }
 
     return {
       viewCount: 0,
@@ -372,7 +382,11 @@ export class PlexAdapterService implements IMediaServerService {
     }
   }
 
-  async addToCollection(collectionId: string, itemId: string): Promise<void> {
+  private async addToCollectionInternal(
+    collectionId: string,
+    itemId: string,
+    logFailure: boolean,
+  ): Promise<void> {
     try {
       const result = await this.plexApi.addChildToCollection(
         collectionId,
@@ -383,12 +397,18 @@ export class PlexAdapterService implements IMediaServerService {
         `Failed to add item ${itemId} to collection ${collectionId}`,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to add item ${itemId} to collection ${collectionId}`,
-      );
-      this.logger.debug(error);
+      if (logFailure) {
+        this.logger.error(
+          `Failed to add item ${itemId} to collection ${collectionId}`,
+        );
+        this.logger.debug(error);
+      }
       throw error;
     }
+  }
+
+  async addToCollection(collectionId: string, itemId: string): Promise<void> {
+    await this.addToCollectionInternal(collectionId, itemId, true);
   }
 
   async addBatchToCollection(
@@ -396,12 +416,7 @@ export class PlexAdapterService implements IMediaServerService {
     itemIds: string[],
   ): Promise<string[]> {
     const failedItemIds: string[] = [];
-    const fallbackChunks: Array<{
-      chunkNumber: number;
-      chunkStart: number;
-      chunkSize: number;
-      itemIds: string[];
-    }> = [];
+    let usedFallback = false;
 
     for (
       let index = 0;
@@ -424,48 +439,40 @@ export class PlexAdapterService implements IMediaServerService {
         );
         continue;
       } catch (error) {
-        const chunkNumber =
-          Math.floor(index / PLEX_BATCH_SIZE.COLLECTION_MUTATION) + 1;
-
-        fallbackChunks.push({
-          chunkNumber,
-          chunkStart: index,
-          chunkSize: chunk.length,
-          itemIds: chunk,
-        });
-        this.logger.debug({
-          collectionId,
-          chunkNumber,
-          chunkStart: index,
-          chunkSize: chunk.length,
-          itemIds: chunk,
-        });
-        this.logger.debug(error);
+        usedFallback = true;
 
         // Fall back to per-item mutations to preserve precise failed item reporting.
       }
 
       for (const itemId of chunk) {
         try {
-          await this.addToCollection(collectionId, itemId);
+          await this.addToCollectionInternal(collectionId, itemId, false);
         } catch {
           failedItemIds.push(itemId);
         }
       }
     }
 
-    if (fallbackChunks.length > 0) {
-      const fallbackItemCount = fallbackChunks.reduce(
-        (total, chunk) => total + chunk.chunkSize,
-        0,
-      );
-
+    if (usedFallback && failedItemIds.length > 0) {
       this.logger.warn(
-        `Plex batch add fell back to per-item adds for collection ${collectionId} on ${fallbackChunks.length} chunk(s) (${fallbackItemCount} item(s) total). ${failedItemIds.length} item(s) failed after fallback.`,
+        `Plex batch add fallback left ${failedItemIds.length} failed item(s) for collection ${collectionId}`,
       );
     }
 
     return failedItemIds;
+  }
+
+  async cleanupCollectionForLibrary(
+    collectionId: string,
+    _libraryId: string,
+    _isManualCollection: boolean,
+  ): Promise<void> {
+    void _libraryId;
+    void _isManualCollection;
+
+    // Plex collections are per-library, so no cross-library sharing occurs.
+    // Always delete the entire collection.
+    await this.deleteCollection(collectionId);
   }
 
   async removeFromCollection(

@@ -54,13 +54,16 @@ const CollectionItem = (props: ICollectionItem) => {
             return media.image_path
           }
 
+          // Pass 'season' for TV collections so the backend can resolve
+          // parent show IDs when the preview item's own IDs differ.
           const imageRequestPath = buildMetadataImagePath(
             'image',
-            props.collection.type,
+            props.collection.type === 'movie' ? 'movie' : 'season',
             toProviderIds({
               tmdbId: media.tmdbId,
               tvdbId: media.tvdbId,
             }),
+            media.mediaServerId,
           )
 
           if (!imageRequestPath) {

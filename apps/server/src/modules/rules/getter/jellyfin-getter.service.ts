@@ -270,7 +270,7 @@ export class JellyfinGetterService {
         }
 
         case 'sw_watchers': {
-          return await this.getShowWatchers(metadata.id);
+          return await this.getSwWatchers(metadata.id, metadata.type);
         }
 
         case 'collection_names': {
@@ -652,13 +652,33 @@ export class JellyfinGetterService {
     return totalViews;
   }
 
-  private async getShowWatchers(itemId: string): Promise<string[]> {
-    const watchHistory = await this.jellyfinAdapter.getWatchHistory(itemId);
+  private async getSwWatchers(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<string[]> {
+    let watcherIds: string[];
+
+    switch (type) {
+      case 'episode': {
+        watcherIds = await this.jellyfinAdapter.getItemSeenBy(itemId);
+        break;
+      }
+
+      case 'season':
+      case 'show': {
+        watcherIds =
+          await this.jellyfinAdapter.getDescendantEpisodeWatchers(itemId);
+        break;
+      }
+
+      default: {
+        return [];
+      }
+    }
+
     const users = await this.jellyfinAdapter.getUsers();
     const userMap = new Map(users.map((u) => [u.id, u.name]));
-
-    const uniqueViewerIds = [...new Set(watchHistory.map((r) => r.userId))];
-    return uniqueViewerIds.map((id) => userMap.get(id) || id);
+    return watcherIds.map((id) => userMap.get(id) || id);
   }
 
   private async getCollectionNames(

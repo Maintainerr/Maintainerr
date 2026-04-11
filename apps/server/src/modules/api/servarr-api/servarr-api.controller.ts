@@ -1,4 +1,4 @@
-import { ArrDiskspaceResource } from '@maintainerr/contracts';
+import { ArrDiskspaceResource, QualityProfile } from '@maintainerr/contracts';
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { ServarrService } from './servarr.service';
 
@@ -20,5 +20,21 @@ export class ServarrApiController {
   ): Promise<ArrDiskspaceResource[]> {
     const client = await this.servarrService.getRadarrApiClient(id);
     return await client.getDiskspaceWithRootFolders();
+  }
+
+  @Get('radarr/:id/profiles')
+  async getRadarrProfiles(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<QualityProfile[]> {
+    const client = await this.servarrService.getRadarrApiClient(id);
+    return (await client.getProfiles()) ?? [];
+  }
+
+  @Get('sonarr/:id/profiles')
+  async getSonarrProfiles(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<QualityProfile[]> {
+    const client = await this.servarrService.getSonarrApiClient(id);
+    return (await client.getProfiles()) ?? [];
   }
 }

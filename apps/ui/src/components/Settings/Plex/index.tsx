@@ -1,4 +1,5 @@
 import { RefreshIcon } from '@heroicons/react/outline'
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -30,6 +31,7 @@ interface PresetServerDisplay {
   address: string
   port: number
   local: boolean
+  directIp: boolean
   status?: boolean
   latency?: number
 }
@@ -52,6 +54,18 @@ interface SelectedServer {
 
 const normalizePlexHostname = (hostname?: string) =>
   hostname?.replace('http://', '').replace('https://', '') ?? ''
+
+const isDirectIpAddress = (address: string) => {
+  if (address.includes(':')) return true
+
+  const parts = address.split('.')
+  if (parts.length !== 4) return false
+
+  return parts.every(
+    (part) =>
+      part.length > 0 && part.length <= 3 && !Number.isNaN(Number(part)),
+  )
+}
 
 const buildPlexServerPayload = (state: PlexServerFormState) => {
   const normalizedHostname = normalizePlexHostname(state.hostname)
@@ -79,6 +93,7 @@ export const hasUnsavedPlexServerChanges = (
 }
 
 const PlexSettings = () => {
+  const { settings } = useSettingsOutletContext()
   const [tokenValid, setTokenValid] = useState<boolean>(false)
   const [tokenValidationPending, setTokenValidationPending] =
     useState<boolean>(false)
@@ -91,6 +106,15 @@ const PlexSettings = () => {
     version: string
   }>({ status: false, version: '' })
   const [testing, setTesting] = useState(false)
+  const [manualMode, setManualMode] = useState(
+    () => settings?.plex_manual_mode === 1,
+  )
+  const [advancedOpen, setAdvancedOpen] = useState(
+    () => settings?.plex_manual_mode === 1,
+  )
+  const [advancedHostname, setAdvancedHostname] = useState('')
+  const [advancedPort, setAdvancedPort] = useState('')
+  const [advancedSsl, setAdvancedSsl] = useState(false)
   const {
     feedback,
     showInfo,
@@ -106,7 +130,6 @@ const PlexSettings = () => {
     useDeletePlexAuth()
   const { mutateAsync: updatePlexAuth, isPending: updatePlexAuthPending } =
     useUpdatePlexAuth()
-  const { settings } = useSettingsOutletContext()
   const hasStoredPlexToken = Boolean(settings?.plex_auth_token)
   const isAuthenticated = tokenValid
 
@@ -150,6 +173,25 @@ const PlexSettings = () => {
     settings?.plex_ssl,
   ])
 
+  // Pre-fill advanced fields from current settings when manual mode is enabled
+  useEffect(() => {
+    if (manualMode && settings) {
+      setAdvancedHostname(normalizePlexHostname(settings.plex_hostname) || '')
+      setAdvancedPort(
+        settings.plex_port != null ? String(settings.plex_port) : '32400',
+      )
+      setAdvancedSsl(Boolean(settings.plex_ssl))
+    }
+  }, [manualMode, settings])
+
+  // Track whether the user has edited the advanced fields since last save
+  const hasUnsavedAdvancedChanges =
+    manualMode &&
+    (advancedHostname !== normalizePlexHostname(settings?.plex_hostname) ||
+      advancedPort !==
+        (settings?.plex_port != null ? String(settings.plex_port) : '32400') ||
+      advancedSsl !== Boolean(settings?.plex_ssl))
+
   const clearTestBanner = useCallback(() => {
     setTestbanner({ status: false, version: '' })
   }, [])
@@ -162,20 +204,50 @@ const PlexSettings = () => {
       return
     }
 
-    if (
-      !selectedServer ||
-      selectedServer.hostname === '' ||
-      selectedServer.port === '' ||
-      selectedServer.name === ''
-    ) {
-      showInfo(
-        'Please complete server setup by selecting a server from the dropdown.',
-      )
-      return
-    }
-
     try {
-      await updateSettings(buildPlexServerPayload(selectedServer))
+      if (manualMode) {
+        // Advanced settings: save manual override (no server selection required)
+        const normalizedHostname =
+          normalizePlexHostname(advancedHostname).trim()
+        const port = Number(advancedPort.trim())
+
+        if (!normalizedHostname) {
+          showInfo('Please enter a hostname or IP address.')
+          return
+        }
+
+        if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+          showInfo('Please enter a valid port.')
+          return
+        }
+
+        await updateSettings({
+          plex_hostname: advancedSsl
+            ? `https://${normalizedHostname}`
+            : normalizedHostname,
+          plex_port: port,
+          plex_name: selectedServer?.name || normalizedHostname,
+          plex_ssl: Number(advancedSsl),
+          plex_manual_mode: 1,
+        })
+      } else {
+        if (
+          !selectedServer ||
+          selectedServer.hostname === '' ||
+          selectedServer.port === '' ||
+          selectedServer.name === ''
+        ) {
+          showInfo(
+            'Please complete server setup by selecting a server from the dropdown.',
+          )
+          return
+        }
+
+        await updateSettings({
+          ...buildPlexServerPayload(selectedServer),
+          plex_manual_mode: 0,
+        })
+      }
       clearTestBanner()
       showUpdated()
     } catch {
@@ -209,6 +281,7 @@ const PlexSettings = () => {
           address: conn.address,
           port: conn.port,
           local: conn.local,
+          directIp: isDirectIpAddress(conn.address),
           status: conn.status == null ? true : conn.status === 200,
           latency: conn.latency,
         }),
@@ -216,8 +289,8 @@ const PlexSettings = () => {
     })
     return orderBy(
       finalPresets,
-      ['status', 'local', 'latency', 'ssl'],
-      ['desc', 'desc', 'asc', 'desc'],
+      ['status', 'local', 'directIp', 'latency', 'ssl'],
+      ['desc', 'desc', 'desc', 'asc', 'desc'],
     )
   }, [availableServers])
 
@@ -490,7 +563,13 @@ const PlexSettings = () => {
             {/* Server — only shown when authenticated */}
             {isAuthenticated && (
               <div className="form-row">
-                <label className="text-label">Server</label>
+                <label className="text-label">
+                  Server
+                  <span className="label-tip">
+                    Ensure DNS is properly configured since Plex depends on
+                    working DNS resolution
+                  </span>
+                </label>
                 <div className="form-input">
                   {selectedServer ? (
                     <div className="max-w-xl rounded-xl bg-zinc-800 p-4 ring-1 ring-zinc-700">
@@ -525,6 +604,8 @@ const PlexSettings = () => {
                           buttonType="default"
                           onClick={() => {
                             setSelectedServer(null)
+                            setManualMode(false)
+                            setAdvancedOpen(false)
                             clearError()
                             clearTestBanner()
                           }}
@@ -551,6 +632,8 @@ const PlexSettings = () => {
                               local: preset.local,
                               latency: preset.latency,
                             })
+                            setManualMode(false)
+                            setAdvancedOpen(false)
                             clearError()
                             clearTestBanner()
                           }
@@ -595,6 +678,161 @@ const PlexSettings = () => {
               </div>
             )}
 
+            {/* Advanced Settings — hidden collapsible section */}
+            {isAuthenticated && (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-white"
+                  onClick={() => setAdvancedOpen((prev) => !prev)}
+                >
+                  {advancedOpen ? (
+                    <ChevronUpIcon className="h-4 w-4" />
+                  ) : (
+                    <ChevronDownIcon className="h-4 w-4" />
+                  )}
+                  Advanced Settings
+                  {manualMode && (
+                    <span className="ml-1.5 inline-flex items-center rounded bg-amber-700 px-1.5 py-0.5 text-xs text-amber-200">
+                      Manual
+                    </span>
+                  )}
+                </button>
+
+                {advancedOpen && (
+                  <div className="mt-3 rounded-xl bg-zinc-800/50 p-4 ring-1 ring-zinc-700">
+                    <div className="form-row">
+                      <label
+                        htmlFor="advanced-manual-mode"
+                        className="text-label"
+                      >
+                        Manual connection override
+                        <span className="label-tip">
+                          Override the connection discovered by Plex.
+                          <br />
+                          Disables automatic reconnection — you manage the
+                          connection.
+                        </span>
+                      </label>
+                      <div className="form-input">
+                        <div className="form-input-field">
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              id="advanced-manual-mode"
+                              name="advanced-manual-mode"
+                              type="checkbox"
+                              checked={manualMode}
+                              onChange={(e) => {
+                                setManualMode(e.target.checked)
+                                // When disabling manual mode while it's the saved state,
+                                // clear server selection to force re-discovery from plex.tv
+                                if (
+                                  !e.target.checked &&
+                                  settings?.plex_manual_mode === 1
+                                ) {
+                                  setSelectedServer(null)
+                                  clearTestBanner()
+                                }
+                              }}
+                              className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
+                            />
+                            <span className="text-sm text-zinc-300">
+                              Enable manual mode
+                              <br />
+                              <span className="text-xs text-zinc-500">
+                                Plex authentication (above) is still required
+                              </span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {manualMode && (
+                      <>
+                        <div className="form-row">
+                          <label
+                            htmlFor="advanced-hostname"
+                            className="text-label"
+                          >
+                            Hostname / IP
+                            <span className="label-tip">
+                              e.g. plex, 192.168.1.50, or localhost
+                            </span>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                id="advanced-hostname"
+                                name="advanced-hostname"
+                                type="text"
+                                value={advancedHostname}
+                                onChange={(e) =>
+                                  setAdvancedHostname(e.target.value)
+                                }
+                                placeholder={
+                                  normalizePlexHostname(
+                                    settings?.plex_hostname,
+                                  ) || 'plex'
+                                }
+                                className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm sm:text-sm sm:leading-5"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="advanced-port" className="text-label">
+                            Port
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                id="advanced-port"
+                                name="advanced-port"
+                                type="number"
+                                value={advancedPort}
+                                onChange={(e) =>
+                                  setAdvancedPort(e.target.value)
+                                }
+                                placeholder="32400"
+                                className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm sm:text-sm sm:leading-5"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="form-row">
+                          <label htmlFor="advanced-ssl" className="text-label">
+                            TLS
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <label className="inline-flex items-center gap-2">
+                                <input
+                                  id="advanced-ssl"
+                                  name="advanced-ssl"
+                                  type="checkbox"
+                                  checked={advancedSsl}
+                                  onChange={(e) =>
+                                    setAdvancedSsl(e.target.checked)
+                                  }
+                                  className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
+                                />
+                                <span className="text-sm text-zinc-300">
+                                  Use HTTPS
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">
                 <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
@@ -609,9 +847,10 @@ const PlexSettings = () => {
                     disabled={
                       testing ||
                       !isAuthenticated ||
-                      !hasSelectedServer ||
+                      (!hasSelectedServer && !manualMode) ||
                       updatePlexAuthPending ||
-                      testWouldTestWrongServer
+                      testWouldTestWrongServer ||
+                      hasUnsavedAdvancedChanges
                     }
                     isPending={testing}
                     feedbackStatus={
@@ -622,10 +861,11 @@ const PlexSettings = () => {
                         ? 'Wait for Plex authentication to finish before testing.'
                         : !isAuthenticated
                           ? 'Authenticate with Plex before testing the connection.'
-                          : !hasSelectedServer
+                          : !hasSelectedServer && !manualMode
                             ? 'Select a Plex server before testing.'
-                            : testWouldTestWrongServer
-                              ? 'Save your server selection before testing.'
+                            : testWouldTestWrongServer ||
+                                hasUnsavedAdvancedChanges
+                              ? 'Save your settings before testing.'
                               : undefined
                     }
                   />

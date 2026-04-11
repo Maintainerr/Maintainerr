@@ -44,9 +44,22 @@ import {
 } from './interfaces/media.interface';
 import {
   PlexAccountsResponse,
+  PlexConnection,
   PlexDevice,
   PlexStatusResponse,
 } from './interfaces/server.interface';
+
+type PlexApiSettings = SettingsService &
+  Pick<
+    Settings,
+    | 'plex_name'
+    | 'plex_hostname'
+    | 'plex_port'
+    | 'plex_ssl'
+    | 'plex_auth_token'
+    | 'plex_machine_id'
+    | 'plex_manual_mode'
+  >;
 
 @Injectable()
 export class PlexApiService {
@@ -57,7 +70,7 @@ export class PlexApiService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: PlexApiSettings,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
@@ -72,13 +85,56 @@ export class PlexApiService {
       port: this.settings.plex_port,
       auth_token: this.settings.plex_auth_token,
       useSsl: this.settings.plex_ssl === 1 ? true : false,
-      manualMode: false,
       webAppUrl: this.settings.plex_hostname,
-    } as PlexSetting;
+      manualMode: this.settings.plex_manual_mode === 1,
+    };
   }
 
   public isPlexSetup(): boolean {
     return this.plexClient != null;
+  }
+
+  /**
+   * Rank discovered Plex connections by preference.
+   * Prefers local direct-IP connections (no DNS needed) over plex.direct
+   * hostnames, which avoids DNS resolution issues common in Docker.
+   *
+   * Priority: reachable > local + direct IP > local + plex.direct > remote
+   */
+  public static rankConnections(
+    connections: PlexConnection[],
+  ): PlexConnection[] {
+    const isDirectIp = (address: string) => {
+      // IPv6
+      if (address.includes(':')) return true;
+
+      // IPv4: four dot-separated groups of digits (e.g. 192.168.1.50)
+      const parts = address.split('.');
+      if (parts.length !== 4) return false;
+      return parts.every(
+        (p) => p.length > 0 && p.length <= 3 && !Number.isNaN(Number(p)),
+      );
+    };
+
+    return [...connections].sort((a, b) => {
+      // 1. Reachable first (status 200)
+      const aReachable = a.status === 200 ? 1 : 0;
+      const bReachable = b.status === 200 ? 1 : 0;
+      if (bReachable !== aReachable) return bReachable - aReachable;
+
+      // 2. Local over remote
+      const aLocal = a.local ? 1 : 0;
+      const bLocal = b.local ? 1 : 0;
+      if (bLocal !== aLocal) return bLocal - aLocal;
+
+      // 3. Direct IP over DNS-dependent hostnames (e.g., *.plex.direct)
+      const aDirectIp = isDirectIp(a.address) ? 1 : 0;
+      const bDirectIp = isDirectIp(b.address) ? 1 : 0;
+      if (bDirectIp !== aDirectIp) return bDirectIp - aDirectIp;
+
+      // 4. Lower latency preferred
+      return (a.latency ?? Infinity) - (b.latency ?? Infinity);
+    });
   }
 
   private buildCollectionItemsUri(itemIds: string[]): string {
@@ -152,34 +208,138 @@ export class PlexApiService {
       this.uninitialize();
       const settingsPlex = this.getDbSettings();
       const plexToken = settingsPlex.auth_token;
-      if (settingsPlex.ip && plexToken) {
-        this.plexClient = new PlexApi({
-          hostname: settingsPlex.ip,
-          port: settingsPlex.port,
-          https: settingsPlex.useSsl,
-          token: plexToken,
-        });
 
-        this.plexTvClient = new PlexTvApi(
-          plexToken,
-          this.loggerFactory.createLogger(),
-        );
-        this.plexCommunityClient = new PlexCommunityApi(
-          plexToken,
-          this.loggerFactory.createLogger(),
-        );
-
-        await this.setMachineId();
-      } else {
+      if (!settingsPlex.ip || !plexToken) {
         this.logger.warn(
           "Plex API isn't fully initialized, required settings aren't set",
         );
+        return;
+      }
+
+      this.plexTvClient = new PlexTvApi(
+        plexToken,
+        this.loggerFactory.createLogger(),
+      );
+      this.plexCommunityClient = new PlexCommunityApi(
+        plexToken,
+        this.loggerFactory.createLogger(),
+      );
+
+      // Try stored primary connection
+      this.plexClient = new PlexApi({
+        hostname: settingsPlex.ip,
+        port: settingsPlex.port,
+        https: settingsPlex.useSsl,
+        token: plexToken,
+      });
+
+      const machineId = await this.setMachineId();
+
+      if (machineId) {
+        return; // Primary connection works
+      }
+
+      // Manual mode: don't attempt re-discovery, user owns the connection
+      if (settingsPlex.manualMode) {
+        this.plexClient = undefined;
+        this.logger.warn(
+          'Plex connection failed (manual mode active — skipping re-discovery)',
+        );
+        return;
+      }
+
+      // Re-discover from plex.tv
+      const recovered = await this.rediscoverConnection(plexToken);
+      if (!recovered) {
+        // Clear the dead client so isSetup() reflects reality
+        this.plexClient = undefined;
+        this.logger.warn(
+          'Plex connection failed after re-discovery attempt. Please check your settings',
+        );
       }
     } catch (error) {
+      this.plexClient = undefined;
       this.logger.error(
         `Couldn't connect to Plex.. Please check your settings`,
       );
       this.logger.debug(error);
+    }
+  }
+
+  /**
+   * Attempt to re-discover a working Plex connection from plex.tv.
+   * Matches the stored machineId to find the right server, ranks connections
+   * to prefer local direct-IP, and promotes the first working one to primary.
+   */
+  private async rediscoverConnection(plexToken: string): Promise<boolean> {
+    const storedMachineId = this.settings.plex_machine_id;
+
+    if (!storedMachineId) {
+      this.logger.debug(
+        'No stored machine ID — cannot identify server for re-discovery',
+      );
+      return false;
+    }
+
+    this.logger.log(
+      'Primary Plex connection failed, attempting re-discovery from plex.tv...',
+    );
+
+    try {
+      const devices = await this.getAvailableServers();
+      const matchingDevice = devices?.find(
+        (d) => d.clientIdentifier === storedMachineId,
+      );
+
+      if (!matchingDevice?.connection?.length) {
+        this.logger.debug(
+          'Re-discovery: server not found or no reachable connections',
+        );
+        return false;
+      }
+
+      const ranked = PlexApiService.rankConnections(matchingDevice.connection);
+
+      for (const conn of ranked) {
+        const testClient = new PlexApi({
+          hostname: conn.address,
+          port: conn.port,
+          https: conn.protocol === 'https',
+          timeout: CONNECTION_TEST_TIMEOUT_MS,
+          token: plexToken,
+        });
+
+        const ok = await testClient.getStatus();
+        if (!ok) continue;
+
+        // Found a working connection — promote it
+        this.plexClient = new PlexApi({
+          hostname: conn.address,
+          port: conn.port,
+          https: conn.protocol === 'https',
+          token: plexToken,
+        });
+
+        await this.settings.updatePlexConnectionDetails({
+          plex_hostname: conn.address,
+          plex_port: conn.port,
+          plex_ssl: conn.protocol === 'https' ? 1 : 0,
+        });
+
+        await this.setMachineId();
+
+        this.logger.log(
+          `Re-discovery: switched to ${conn.protocol}://${conn.address}:${conn.port} (local=${conn.local})`,
+        );
+        return true;
+      }
+
+      this.logger.debug('Re-discovery: all discovered connections failed');
+      return false;
+    } catch (error) {
+      this.logger.debug('Re-discovery from plex.tv failed');
+      this.logger.debug(error);
+      return false;
     }
   }
 
@@ -195,10 +355,7 @@ export class PlexApiService {
       );
       return response.MediaContainer;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logger.debug('Plex status probe failed');
       return undefined;
     }
   }
@@ -832,12 +989,11 @@ export class PlexApiService {
     } catch (error) {
       const failure = this.buildCollectionMutationFailure(error);
 
-      if (failure.logLevel === 'warn') {
-        this.logger.warn(failure.message);
-      } else {
+      if (failure.logLevel === 'error') {
         this.logger.error(failure.message);
+        this.logger.debug(error);
       }
-      this.logger.debug(error);
+
       return {
         status: 'NOK',
         code: failure.code,
@@ -992,9 +1148,9 @@ export class PlexApiService {
               },
             );
 
-            device.connection = (
-              await Promise.all(filteredConnectionPromises)
-            ).filter(Boolean);
+            device.connection = PlexApiService.rankConnections(
+              (await Promise.all(filteredConnectionPromises)).filter(Boolean),
+            );
           }),
         );
       }
@@ -1258,22 +1414,25 @@ export class PlexApiService {
     });
   }
 
-  private async setMachineId() {
+  private async setMachineId(): Promise<string | null> {
     try {
       const response = await this.getStatus();
       if (response?.machineIdentifier) {
         this.machineId = response.machineIdentifier;
+
+        // Persist to DB so re-discovery can match the server when the
+        // primary connection is dead and we can't query the server directly.
+        if (this.settings.plex_machine_id !== response.machineIdentifier) {
+          await this.settings.updatePlexConnectionDetails({
+            plex_machine_id: response.machineIdentifier,
+          });
+        }
+
         return response.machineIdentifier;
-      } else {
-        this.logger.warn("Couldn't reach Plex");
-        return null;
       }
+      return null;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
-      return undefined;
+      return null;
     }
   }
 

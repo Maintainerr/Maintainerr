@@ -12,6 +12,7 @@ export const plexSettingSchema = z.object({
   useSsl: z.boolean().optional().default(false),
   // Plex stores hostname/port/SSL separately; this value may be a bare hostname.
   webAppUrl: z.string().trim().optional(),
+  manualMode: z.boolean().optional().default(false),
 })
 
 export type PlexSetting = z.infer<typeof plexSettingSchema>

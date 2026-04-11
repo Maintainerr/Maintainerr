@@ -41,6 +41,25 @@ import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 
+type PlexConnectionSettingsUpdate = Partial<
+  Pick<
+    Settings,
+    | 'plex_hostname'
+    | 'plex_port'
+    | 'plex_ssl'
+    | 'plex_machine_id'
+    | 'plex_manual_mode'
+  >
+>;
+
+export interface SettingsService {
+  plex_machine_id?: string;
+  plex_manual_mode?: number;
+  updatePlexConnectionDetails(
+    details: PlexConnectionSettingsUpdate,
+  ): Promise<void>;
+}
+
 @Injectable()
 export class SettingsService implements SettingDto {
   id: number;
@@ -66,6 +85,10 @@ export class SettingsService implements SettingDto {
   plex_ssl: number;
 
   plex_auth_token: string;
+
+  plex_machine_id?: string;
+
+  plex_manual_mode?: number;
 
   jellyfin_url?: string;
 
@@ -136,6 +159,8 @@ export class SettingsService implements SettingDto {
       this.plex_port = settingsDb?.plex_port;
       this.plex_ssl = settingsDb?.plex_ssl;
       this.plex_auth_token = settingsDb?.plex_auth_token;
+      this.plex_machine_id = settingsDb?.plex_machine_id;
+      this.plex_manual_mode = settingsDb?.plex_manual_mode ?? 0;
       this.jellyfin_url = settingsDb?.jellyfin_url;
       this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
       this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
@@ -906,6 +931,30 @@ export class SettingsService implements SettingDto {
       normalizedCurrent.port !== normalizedNext.port ||
       normalizedCurrent.ssl !== normalizedNext.ssl
     );
+  }
+
+  /**
+   * Update specific Plex connection fields without triggering a full settings
+   * reload or re-initialization cycle. Used by PlexApiService during failover
+   * to persist the new connection details and machineId.
+   */
+  public async updatePlexConnectionDetails(
+    details: PlexConnectionSettingsUpdate,
+  ): Promise<void> {
+    const settingsDb = await this.settingsRepo.findOne({ where: {} });
+    if (!settingsDb) return;
+
+    await this.settingsRepo.save({ ...settingsDb, ...details });
+
+    // Sync in-memory state so subsequent reads are consistent
+    if (details.plex_hostname !== undefined)
+      this.plex_hostname = details.plex_hostname;
+    if (details.plex_port !== undefined) this.plex_port = details.plex_port;
+    if (details.plex_ssl !== undefined) this.plex_ssl = details.plex_ssl;
+    if (details.plex_machine_id !== undefined)
+      this.plex_machine_id = details.plex_machine_id;
+    if (details.plex_manual_mode !== undefined)
+      this.plex_manual_mode = details.plex_manual_mode;
   }
 
   private async saveSettings(settings: Settings): Promise<Settings> {

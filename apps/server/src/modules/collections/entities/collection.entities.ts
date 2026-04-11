@@ -103,6 +103,12 @@ export class Collection {
   @Column({ type: 'bigint', nullable: true, default: null })
   totalSizeBytes: number | null;
 
+  @Column({ nullable: true })
+  radarrQualityProfileId: number;
+
+  @Column({ nullable: true })
+  sonarrQualityProfileId: number;
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,
