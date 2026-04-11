@@ -73,7 +73,7 @@ describe('RuleInput', () => {
     vi.clearAllMocks()
   })
 
-  it('shows the JSON array placeholder when entering a custom text value for a list rule', async () => {
+  it('shows the single and multiple value placeholder when entering a custom text value for a list rule', async () => {
     render(
       <RuleInput
         id={1}
@@ -98,11 +98,11 @@ describe('RuleInput', () => {
     await waitFor(() => {
       expect(
         (screen.getByLabelText('Custom Value') as HTMLInputElement).placeholder,
-      ).toBe('["Value1", "Value2"]')
+      ).toBe('Value1 or ["Value1", "Value2"]')
     })
   })
 
-  it('keeps the JSON array placeholder when reopening an existing list rule saved as custom text', async () => {
+  it('keeps the single and multiple value placeholder when reopening an existing list rule saved as custom text', async () => {
     render(
       <RuleInput
         id={1}
@@ -129,7 +129,7 @@ describe('RuleInput', () => {
     await waitFor(() => {
       expect(
         (screen.getByLabelText('Custom Value') as HTMLInputElement).placeholder,
-      ).toBe('["Value1", "Value2"]')
+      ).toBe('Value1 or ["Value1", "Value2"]')
     })
   })
 })
