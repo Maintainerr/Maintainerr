@@ -152,12 +152,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
@@ -265,12 +271,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(collectionService.checkAutomaticMediaServerLink).toHaveBeenCalled();
@@ -309,12 +321,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -356,12 +374,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -382,14 +406,16 @@ describe('RuleExecutorService', () => {
         manualCollection: true,
       }),
       {
-        touchedMediaServerIds: new Set(),
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+        serverChildren: [{ id: 'm-shared' }],
       },
     );
     expect(
       collectionService.syncMediaServerChildrenToCollection,
     ).not.toHaveBeenCalled();
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
-    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(mediaServer.getCollectionChildren).toHaveBeenCalledWith('coll-1');
     expect(logger.log).toHaveBeenCalledWith(
       "Synced collection 'Leaving Media' with media server",
     );
@@ -405,12 +431,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(collectionService.removeFromCollection).toHaveBeenCalledWith(
@@ -446,12 +478,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -496,12 +534,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -549,12 +593,18 @@ describe('RuleExecutorService', () => {
               id: number;
               collectionId: number;
             },
-            touchedMediaServerIds: Set<string>,
+            collectionSyncChanges: {
+              addedMediaServerIds: Set<string>;
+              removedMediaServerIds: Set<string>;
+            },
           ) => Promise<void>;
         }
       ).syncManualMediaServerToCollectionDB(
         { id: 10, collectionId: 1 },
-        new Set(),
+        {
+          addedMediaServerIds: new Set(),
+          removedMediaServerIds: new Set(),
+        },
       ),
     ).resolves.toBeUndefined();
 
@@ -589,12 +639,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(['m-stale']), // item was touched by rule execution
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(['m-stale']),
+      }, // item was removed by rule execution
     );
 
     // Should NOT be re-added as manual

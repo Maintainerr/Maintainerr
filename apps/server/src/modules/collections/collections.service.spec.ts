@@ -162,7 +162,9 @@ describe('CollectionsService', () => {
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
-    metadataService.resolveIds.mockResolvedValue(undefined);
+    jest
+      .spyOn(service as any, 'insertCollectionMediaMembership')
+      .mockRejectedValue(new Error('local bookkeeping failed'));
 
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
 
@@ -397,33 +399,124 @@ describe('CollectionsService', () => {
     );
   });
 
-  it('passes shared collection children into reconciliation to avoid a duplicate fetch on add', async () => {
+  it('preserves local provenance for shared manual items while importing sibling shared rows', async () => {
     const collection = createCollection({
       id: 30,
       mediaServerId: 'shared-collection',
       manualCollection: true,
       manualCollectionName: 'Shared Collection',
     });
-    const sharedCollectionChildren = [
+    const siblingCollection = createCollection({
+      id: 31,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const localManualRow = createCollectionMedia(collection, {
+      id: 301,
+      mediaServerId: 'item-1',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+    });
+
+    collectionRepo.find.mockResolvedValue([collection, siblingCollection]);
+    collectionMediaRepo.find.mockResolvedValue([localManualRow]);
+    ruleGroupRepo.find.mockResolvedValue([]);
+    exclusionRepo.find.mockResolvedValue([]);
+    collectionMediaRepo.save.mockImplementation(async (value) => value as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([
       createMediaItem({ id: 'item-1', type: 'movie' }),
-    ];
+    ]);
+    const insertCollectionMediaMembershipSpy = jest
+      .spyOn(service as any, 'insertCollectionMediaMembership')
+      .mockResolvedValue(undefined);
+
+    await service.reconcileSharedManualCollectionState(collection);
+
+    expect(collectionMediaRepo.save).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 301,
+        manualMembershipSource: CollectionMediaManualMembershipSource.SHARED,
+      }),
+    );
+    expect(insertCollectionMediaMembershipSpy).toHaveBeenCalledWith(
+      31,
+      'item-1',
+      {
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.SHARED,
+      },
+      { type: 'media_added_manually' },
+    );
+  });
+
+  it('clears missing manual-only rows in shared collections instead of re-adding them to the media server', async () => {
+    const collection = createCollection({
+      id: 32,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const siblingCollection = createCollection({
+      id: 33,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const localManualRow = createCollectionMedia(collection, {
+      id: 321,
+      mediaServerId: 'item-1',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+    });
+
+    collectionRepo.find.mockResolvedValue([collection, siblingCollection]);
+    collectionMediaRepo.find.mockResolvedValue([localManualRow]);
+    ruleGroupRepo.find.mockResolvedValue([]);
+    exclusionRepo.find.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+
+    await service.reconcileSharedManualCollectionState(collection);
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(collectionMediaRepo.delete).toHaveBeenCalledWith({ id: 321 });
+  });
+
+  it('preserves newly added local rows in shared collections when child enumeration is stale after add', async () => {
+    const collection = createCollection({
+      id: 34,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const siblingCollection = createCollection({
+      id: 35,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const newlyAddedLocalRow = createCollectionMedia(collection, {
+      id: 341,
+      mediaServerId: 'item-1',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+    });
 
     collectionRepo.findOne.mockResolvedValue(collection);
-    collectionMediaRepo.find.mockResolvedValue([]);
     collectionRepo.count.mockResolvedValue(1);
+    collectionRepo.find.mockResolvedValue([collection, siblingCollection]);
+    collectionMediaRepo.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([newlyAddedLocalRow])
+      .mockResolvedValueOnce([newlyAddedLocalRow]);
     collectionMediaRepo.save.mockImplementation(async (value) => value as any);
-    mediaServer.getCollectionChildren.mockResolvedValue(
-      sharedCollectionChildren,
-    );
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
     jest
       .spyOn(service as any, 'resolveCollectionMediaArtwork')
       .mockResolvedValue({});
-    const reconcileSharedManualCollectionStateSpy = jest
-      .spyOn(service, 'reconcileSharedManualCollectionState')
-      .mockResolvedValue(undefined);
 
     await service.addToCollection(
       collection.id,
@@ -431,12 +524,48 @@ describe('CollectionsService', () => {
       true,
     );
 
-    expect(mediaServer.getCollectionChildren).toHaveBeenCalledTimes(1);
+    expect(collectionMediaRepo.delete).not.toHaveBeenCalledWith({ id: 341 });
+  });
+
+  it('passes removed ids into shared manual reconciliation after collection removal', async () => {
+    const collection = createCollection({
+      id: 36,
+      mediaServerId: 'shared-collection',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+    });
+    const currentCollectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'item-1',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.SHARED,
+      }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionRepo.count.mockResolvedValue(1);
+    collectionMediaRepo.find
+      .mockResolvedValueOnce(currentCollectionMedia)
+      .mockResolvedValueOnce([]);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue(['item-1']);
+    const reconcileSharedManualCollectionStateSpy = jest
+      .spyOn(service, 'reconcileSharedManualCollectionState')
+      .mockResolvedValue(undefined);
+
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+    ]);
+
     expect(reconcileSharedManualCollectionStateSpy).toHaveBeenCalledWith(
       collection,
-      expect.objectContaining({
-        serverChildren: sharedCollectionChildren,
-      }),
+      {
+        removedMediaServerIds: new Set(['item-1']),
+      },
     );
   });
 

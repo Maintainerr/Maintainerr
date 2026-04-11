@@ -72,8 +72,9 @@ export class PlexApiService {
       port: this.settings.plex_port,
       auth_token: this.settings.plex_auth_token,
       useSsl: this.settings.plex_ssl === 1 ? true : false,
+      manualMode: false,
       webAppUrl: this.settings.plex_hostname,
-    };
+    } as PlexSetting;
   }
 
   public isPlexSetup(): boolean {

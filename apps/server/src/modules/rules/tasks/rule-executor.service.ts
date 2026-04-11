@@ -50,6 +50,11 @@ interface MediaServerSyncContext {
   sharedManualCollection?: boolean;
 }
 
+interface CollectionMembershipSyncChanges {
+  addedMediaServerIds: Set<string>;
+  removedMediaServerIds: Set<string>;
+}
+
 export type RuleExecutionResult =
   | { status: 'success' }
   | { status: 'failed'; failedPayload: RuleHandlerFailedDto }
@@ -186,7 +191,10 @@ export class RuleExecutorService {
           totalEvaluations: totalEvaluations,
         });
 
-        let touchedMediaServerIds = new Set<string>();
+        let collectionSyncChanges: CollectionMembershipSyncChanges = {
+          addedMediaServerIds: new Set<string>(),
+          removedMediaServerIds: new Set<string>(),
+        };
 
         if (ruleGroup.useRules) {
           this.logger.log(`Executing rules for '${ruleGroup.name}'`);
@@ -228,7 +236,7 @@ export class RuleExecutorService {
           }
 
           abortSignal.throwIfAborted();
-          touchedMediaServerIds = await this.handleCollection(
+          collectionSyncChanges = await this.handleCollection(
             await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
             abortSignal,
           );
@@ -239,7 +247,7 @@ export class RuleExecutorService {
         abortSignal.throwIfAborted();
         await this.syncManualMediaServerToCollectionDB(
           await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
-          touchedMediaServerIds,
+          collectionSyncChanges,
         );
       } else {
         this.logger.warn(
@@ -293,7 +301,7 @@ export class RuleExecutorService {
 
   private async syncManualMediaServerToCollectionDB(
     rulegroup: RuleGroup,
-    touchedMediaServerIds: Set<string>,
+    collectionSyncChanges: CollectionMembershipSyncChanges,
   ) {
     if (rulegroup && rulegroup.collectionId) {
       const syncContext = await this.getCollectionForMediaServerSync(rulegroup);
@@ -301,10 +309,19 @@ export class RuleExecutorService {
 
       if (collection) {
         if (syncContext.sharedManualCollection) {
+          const children = await this.getCollectionChildrenForSync(collection);
+
+          if (children === undefined) {
+            return;
+          }
+
           await this.collectionService.reconcileSharedManualCollectionState(
             collection,
             {
-              touchedMediaServerIds,
+              addedMediaServerIds: collectionSyncChanges.addedMediaServerIds,
+              removedMediaServerIds:
+                collectionSyncChanges.removedMediaServerIds,
+              serverChildren: children,
             },
           );
 
@@ -355,7 +372,10 @@ export class RuleExecutorService {
 
               // Skip items that were just added/removed by rule execution.
               // The media server API may still return stale children after removal.
-              if (touchedMediaServerIds.has(childId)) {
+              if (
+                collectionSyncChanges.addedMediaServerIds.has(childId) ||
+                collectionSyncChanges.removedMediaServerIds.has(childId)
+              ) {
                 continue;
               }
 
@@ -413,7 +433,14 @@ export class RuleExecutorService {
               continue;
             }
 
-            if (touchedMediaServerIds.has(mediaItem.mediaServerId)) {
+            if (
+              collectionSyncChanges.addedMediaServerIds.has(
+                mediaItem.mediaServerId,
+              ) ||
+              collectionSyncChanges.removedMediaServerIds.has(
+                mediaItem.mediaServerId,
+              )
+            ) {
               continue;
             }
 
@@ -533,7 +560,7 @@ export class RuleExecutorService {
   private async handleCollection(
     rulegroup: RuleGroup,
     abortSignal?: AbortSignal,
-  ): Promise<Set<string>> {
+  ): Promise<CollectionMembershipSyncChanges> {
     try {
       let collection = await this.collectionService.getCollection(
         rulegroup?.collectionId,
@@ -767,10 +794,14 @@ export class RuleExecutorService {
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);
 
-        return new Set<string>([
-          ...addedToCollection.map((item) => item.mediaServerId),
-          ...removedFromCollection.map((item) => item.mediaServerId),
-        ]);
+        return {
+          addedMediaServerIds: new Set(
+            addedToCollection.map((item) => item.mediaServerId),
+          ),
+          removedMediaServerIds: new Set(
+            removedFromCollection.map((item) => item.mediaServerId),
+          ),
+        };
       } else {
         this.logger.log(
           `collection not found with id ${rulegroup?.collectionId}`,

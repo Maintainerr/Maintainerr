@@ -73,7 +73,8 @@ interface CollectionPreviewMediaRow {
 type CollectionMediaRemovalScope = 'all' | 'rule' | 'manual';
 
 interface SharedManualCollectionReconciliationOptions {
-  touchedMediaServerIds?: Set<string>;
+  addedMediaServerIds?: Set<string>;
+  removedMediaServerIds?: Set<string>;
   serverChildren?: MediaItem[];
 }
 
@@ -191,15 +192,33 @@ export class CollectionsService {
     }
 
     const mediaServer = await this.getMediaServer();
-    const serverChildren =
-      options.serverChildren ??
-      (await mediaServer.getCollectionChildren(collection.mediaServerId)) ??
-      [];
-    const serverChildIds = new Set(
+    let serverChildren = options.serverChildren;
+
+    if (serverChildren === undefined) {
+      try {
+        serverChildren =
+          (await mediaServer.getCollectionChildren(collection.mediaServerId)) ??
+          [];
+      } catch (error) {
+        this.logger.warn(
+          `Skipping shared manual collection reconciliation for '${collection.manualCollectionName ?? collection.title}' because the linked media server collection could not be enumerated.`,
+        );
+        this.logger.debug(error);
+        return;
+      }
+    }
+
+    const removedMediaServerIds = options.removedMediaServerIds ?? new Set();
+    const addedMediaServerIds = options.addedMediaServerIds ?? new Set();
+    const effectiveServerChildIds = new Set(
       serverChildren
         .map((child) => child?.id?.toString())
         .filter((childId): childId is string => Boolean(childId)),
     );
+
+    for (const removedMediaServerId of removedMediaServerIds) {
+      effectiveServerChildIds.delete(removedMediaServerId);
+    }
 
     const linkedCollectionIds = linkedCollections.map(
       (linkedCollection) => linkedCollection.id,
@@ -215,39 +234,6 @@ export class CollectionsService {
       }),
     ]);
 
-    const desiredServerIds = new Set(
-      collectionMediaRows
-        .filter(
-          (collectionMedia) =>
-            hasCollectionMediaManualMembership(collectionMedia) ||
-            hasCollectionMediaRuleMembership(collectionMedia),
-        )
-        .map((collectionMedia) => collectionMedia.mediaServerId),
-    );
-    const missingServerIds = Array.from(desiredServerIds).filter(
-      (mediaServerId) => !serverChildIds.has(mediaServerId),
-    );
-
-    if (missingServerIds.length > 0) {
-      const failedItemIds = new Set(
-        await mediaServer.addBatchToCollection(
-          collection.mediaServerId,
-          missingServerIds,
-        ),
-      );
-
-      for (const mediaServerId of missingServerIds) {
-        if (failedItemIds.has(mediaServerId)) {
-          this.logger.warn(
-            `Failed to re-sync shared manual collection item ${mediaServerId} to ${collection.mediaServerId}`,
-          );
-          continue;
-        }
-
-        serverChildIds.add(mediaServerId);
-      }
-    }
-
     const ruleOwnedIds = new Set(
       collectionMediaRows
         .filter((collectionMedia) =>
@@ -255,13 +241,34 @@ export class CollectionsService {
         )
         .map((collectionMedia) => collectionMedia.mediaServerId),
     );
-    const touchedMediaServerIds =
-      options.touchedMediaServerIds ?? new Set<string>();
+    const missingRuleOwnedIds = Array.from(ruleOwnedIds).filter(
+      (mediaServerId) =>
+        !effectiveServerChildIds.has(mediaServerId) &&
+        !addedMediaServerIds.has(mediaServerId),
+    );
+
+    if (missingRuleOwnedIds.length > 0) {
+      const failedItemIds = new Set(
+        await mediaServer.addBatchToCollection(
+          collection.mediaServerId,
+          missingRuleOwnedIds,
+        ),
+      );
+
+      for (const mediaServerId of missingRuleOwnedIds) {
+        if (failedItemIds.has(mediaServerId)) {
+          this.logger.warn(
+            `Failed to re-sync shared manual collection item ${mediaServerId} to ${collection.mediaServerId}`,
+          );
+          continue;
+        }
+
+        effectiveServerChildIds.add(mediaServerId);
+      }
+    }
     const sharedManualCandidateIds = new Set(
-      Array.from(serverChildIds).filter(
-        (mediaServerId) =>
-          !ruleOwnedIds.has(mediaServerId) &&
-          !touchedMediaServerIds.has(mediaServerId),
+      Array.from(effectiveServerChildIds).filter(
+        (mediaServerId) => !ruleOwnedIds.has(mediaServerId),
       ),
     );
     const childById = new Map(
@@ -348,10 +355,13 @@ export class CollectionsService {
           currentCollectionMediaById.get(mediaServerId);
 
         if (existingCollectionMedia) {
-          await this.updateCollectionMediaMembership(existingCollectionMedia, {
-            manualMembershipSource:
-              CollectionMediaManualMembershipSource.SHARED,
-          });
+          if (
+            existingCollectionMedia.manualMembershipSource ===
+            CollectionMediaManualMembershipSource.SHARED
+          ) {
+            continue;
+          }
+
           continue;
         }
 
@@ -377,19 +387,37 @@ export class CollectionsService {
           continue;
         }
 
-        if (allowedSharedManualIds.has(existingCollectionMedia.mediaServerId)) {
-          if (
-            manualMembershipSource !==
-            CollectionMediaManualMembershipSource.SHARED
-          ) {
-            await this.updateCollectionMediaMembership(
-              existingCollectionMedia,
-              {
-                manualMembershipSource:
-                  CollectionMediaManualMembershipSource.SHARED,
-              },
-            );
+        const mediaServerId = existingCollectionMedia.mediaServerId;
+        const isPresentOnServer =
+          effectiveServerChildIds.has(mediaServerId) ||
+          addedMediaServerIds.has(mediaServerId);
+        const isRuleOwnedAnywhere = ruleOwnedIds.has(mediaServerId);
+
+        if (
+          manualMembershipSource ===
+          CollectionMediaManualMembershipSource.SHARED
+        ) {
+          if (allowedSharedManualIds.has(mediaServerId)) {
+            continue;
           }
+        } else if (
+          manualMembershipSource === CollectionMediaManualMembershipSource.LOCAL
+        ) {
+          if (isPresentOnServer) {
+            continue;
+          }
+        } else if (
+          manualMembershipSource ===
+          CollectionMediaManualMembershipSource.LEGACY
+        ) {
+          if (
+            isPresentOnServer &&
+            (!isRuleOwnedAnywhere ||
+              hasCollectionMediaRuleMembership(existingCollectionMedia))
+          ) {
+            continue;
+          }
+        } else {
           continue;
         }
 
@@ -1759,10 +1787,9 @@ export class CollectionsService {
           collection.manualCollection &&
           collection.mediaServerId &&
           (await this.isMediaServerCollectionShared(collection));
-        let sharedCollectionChildren: MediaItem[] | undefined;
 
         if (isSharedManualCollection && newMedia.length > 0) {
-          sharedCollectionChildren =
+          const sharedCollectionChildren =
             (await mediaServer.getCollectionChildren(
               collection.mediaServerId,
             )) ?? [];
@@ -1810,7 +1837,11 @@ export class CollectionsService {
 
         if (isSharedManualCollection) {
           await this.reconcileSharedManualCollectionState(collection, {
-            serverChildren: sharedCollectionChildren,
+            addedMediaServerIds: new Set(
+              newMedia.map(
+                (collectionMediaItem) => collectionMediaItem.mediaServerId,
+              ),
+            ),
           });
         }
 
@@ -1933,7 +1964,9 @@ export class CollectionsService {
           (await this.isMediaServerCollectionShared(collection));
 
         if (isSharedManualCollection) {
-          await this.reconcileSharedManualCollectionState(collection);
+          await this.reconcileSharedManualCollectionState(collection, {
+            removedMediaServerIds: removedItemIds,
+          });
         }
 
         collectionMedia = await this.CollectionMediaRepo.find({
