@@ -17,6 +17,7 @@ import {
   WatchRecord,
 } from '@maintainerr/contracts';
 
+
 export interface MediaWatchState {
   viewCount: number;
   isWatched: boolean;
@@ -37,6 +38,14 @@ export interface MediaWatchState {
  * - This allows callers to safely iterate over read results while catching write failures
  */
 export interface IMediaServerService {
+
+
+/**
+ * 
+ * @param id the item id of the item to check
+ * @param libraryId the library to check
+ */
+  itemIsInLibrary(id: string, libraryId: string): Promise<boolean>;
   /**
    * Initialize the connection to the media server.
    * Should validate connection and cache server info.
@@ -186,6 +195,14 @@ export interface IMediaServerService {
    * @throws Error if deletion fails
    */
   deleteCollection(collectionId: string): Promise<void>;
+
+  /**
+   * DISCLAIMER: this is only implemented for JellyFin at the moment. 
+   * 
+   * @param collectionId id of collection to remove items from
+   * @param items  a list of mediaserver ids to remove from collection
+   */
+  removeCollectionItemsFromCollection(collectionId: string, items: string[]): Promise<void>;
 
   /**
    * Get items in a collection.

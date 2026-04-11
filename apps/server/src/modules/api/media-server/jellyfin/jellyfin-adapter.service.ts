@@ -452,6 +452,15 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  async itemIsInLibrary(id: string, libraryId: string): Promise<boolean> {
+    const userId = await this.getUserId();
+    const tmp = (await getLibraryApi(this.api).getAncestors({
+       itemId: id,
+    userId
+    })).data.filter(item => item.Id === libraryId)
+    return tmp.length === 1
+  }
+
   async getLibraryContents(
     libraryId: string,
     options?: LibraryQueryOptions,
@@ -933,52 +942,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       const collections = (response.data.Items || []).map(
         JellyfinMapper.toMediaCollection,
       );
-      const seriesLibraryCache = new Map<string, Promise<boolean>>();
 
-      const belongsToLibrary = async (item: MediaItem): Promise<boolean> => {
-        if (item.library.id === libraryId) {
-          return true;
-        }
-
-        if (item.type !== 'episode' || !item.grandparentId) {
-          return false;
-        }
-
-        let isMatchingSeries = seriesLibraryCache.get(item.grandparentId);
-
-        if (isMatchingSeries === undefined) {
-          isMatchingSeries = this.getMetadata(item.grandparentId).then(
-            (seriesMetadata) => seriesMetadata?.library.id === libraryId,
-          );
-          seriesLibraryCache.set(item.grandparentId, isMatchingSeries);
-        }
-
-        return isMatchingSeries;
-      };
-
-      const filteredCollections = await Promise.all(
-        collections.map(async (collection) => {
-          if (collection.libraryId === libraryId) {
-            return collection;
-          }
-
-          const children = await this.getCollectionChildren(collection.id);
-
-          if (children.length === 0) {
-            return null;
-          }
-
-          for (const child of children) {
-            if (await belongsToLibrary(child)) {
-              return collection;
-            }
-          }
-
-          return null;
-        }),
-      );
-
-      return filteredCollections.filter(
+      return collections.filter(
         (collection): collection is MediaCollection => collection !== null,
       );
     } catch (error) {
@@ -1189,6 +1154,16 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     return failedIds;
+  }
+
+  async removeCollectionItemsFromCollection(
+    collectionId: string,
+    items: string[],
+  ): Promise<void> {
+for (const item of items) {
+  await this.removeFromCollection(collectionId, item);
+}
+
   }
 
   async removeFromCollection(
