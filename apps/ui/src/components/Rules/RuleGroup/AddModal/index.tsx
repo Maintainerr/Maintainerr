@@ -304,7 +304,6 @@ const AddModal = (props: AddModal) => {
     control,
     setValue,
     getValues,
-    watch,
     formState: { errors },
   } = useForm<RuleGroupFormInput, any, RuleGroupFormOutput>({
     resolver: zodResolver(ruleGroupFormSchema),
@@ -347,6 +346,14 @@ const AddModal = (props: AddModal) => {
     | number
     | null
     | undefined
+  const radarrQualityProfileId = useWatch({
+    control,
+    name: 'radarrQualityProfileId',
+  }) as number | null | undefined
+  const sonarrQualityProfileId = useWatch({
+    control,
+    name: 'sonarrQualityProfileId',
+  }) as number | null | undefined
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
@@ -788,7 +795,7 @@ const AddModal = (props: AddModal) => {
                       <QualityProfileSelector
                         type="Radarr"
                         settingId={radarrSettingsId}
-                        qualityProfileId={watch('radarrQualityProfileId')}
+                        qualityProfileId={radarrQualityProfileId}
                         onUpdate={(qualityProfileId) => {
                           setValue('radarrQualityProfileId', qualityProfileId)
                         }}
@@ -931,7 +938,7 @@ const AddModal = (props: AddModal) => {
                         <QualityProfileSelector
                           type="Sonarr"
                           settingId={sonarrSettingsId}
-                          qualityProfileId={watch('sonarrQualityProfileId')}
+                          qualityProfileId={sonarrQualityProfileId}
                           onUpdate={(qualityProfileId) => {
                             setValue('sonarrQualityProfileId', qualityProfileId)
                           }}
