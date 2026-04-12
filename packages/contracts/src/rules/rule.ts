@@ -24,8 +24,10 @@ export interface ISectionComparisonResults {
 export interface IRuleComparisonResult {
   firstValueName: string
   firstValue: RuleValueType
+  firstValueReason?: string
   secondValueName: string
   secondValue: RuleValueType
+  secondValueReason?: string
   action: string
   operator?: string
   result: boolean
