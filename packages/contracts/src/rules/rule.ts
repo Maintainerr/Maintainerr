@@ -25,8 +25,8 @@ export interface IRuleComparisonResult {
   firstValueName: string
   firstValue: RuleValueType
   firstValueReason?: string
-  secondValueName: string
-  secondValue: RuleValueType
+  secondValueName?: string
+  secondValue?: RuleValueType
   secondValueReason?: string
   action: string
   operator?: string

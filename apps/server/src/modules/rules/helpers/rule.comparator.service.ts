@@ -406,6 +406,15 @@ export class RuleComparatorService {
       return;
     }
     const lastSectionIndex = stat.sectionResults.length - 1;
+    const secondValueFields = this.isUnaryRuleAction(rule.action)
+      ? {}
+      : {
+          secondValueName: this.getSecondValueName(rule),
+          secondValue: secondVal,
+          ...(reasons?.secondValueReason
+            ? { secondValueReason: reasons.secondValueReason }
+            : undefined),
+        };
 
     // push result to currently last section
     stat.sectionResults[lastSectionIndex].ruleResults.push({
@@ -420,11 +429,7 @@ export class RuleComparatorService {
       ...(reasons?.firstValueReason
         ? { firstValueReason: reasons.firstValueReason }
         : undefined),
-      secondValueName: this.getSecondValueName(rule),
-      secondValue: secondVal,
-      ...(reasons?.secondValueReason
-        ? { secondValueReason: reasons.secondValueReason }
-        : undefined),
+      ...secondValueFields,
       result: result,
     });
   }
@@ -450,10 +455,6 @@ export class RuleComparatorService {
   }
 
   private getSecondValueName(rule: RuleDto): string {
-    if (this.isUnaryRuleAction(rule.action)) {
-      return 'none';
-    }
-
     return rule.lastVal
       ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
       : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;

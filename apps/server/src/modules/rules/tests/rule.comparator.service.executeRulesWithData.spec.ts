@@ -219,10 +219,14 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
       action: 'exists',
       firstValue: 'HEVC 1080p',
-      secondValue: null,
-      secondValueName: 'none',
       result: true,
     });
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValue',
+    );
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValueName',
+    );
     expect(valueGetterService.get).toHaveBeenCalledTimes(1);
   });
 
@@ -250,10 +254,14 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       action: 'not_exists',
       firstValue: null,
       firstValueReason: 'Value unavailable',
-      secondValue: null,
-      secondValueName: 'none',
       result: true,
     });
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValue',
+    );
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValueName',
+    );
   });
 
   it('keeps BEFORE date rules fail-closed when lastViewedAt is null', async () => {
