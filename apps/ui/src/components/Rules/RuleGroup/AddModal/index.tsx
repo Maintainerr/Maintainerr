@@ -455,8 +455,16 @@ const AddModal = (props: AddModal) => {
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
 
-  const { data: libraries, isLoading: librariesLoading } =
-    useMediaServerLibraries()
+  const {
+    data: libraries,
+    isLoading: librariesLoading,
+    isError: librariesError,
+  } = useMediaServerLibraries()
+  const storedLibraryId = props.editData?.libraryId?.toString()
+  const storedLibraryMissing =
+    !!storedLibraryId &&
+    !librariesLoading &&
+    !libraries?.some((lib) => lib.id === storedLibraryId)
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
@@ -473,6 +481,12 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.SEERR) ?? false
 
   function updateLibraryId(value: string) {
+    // Re-selecting the stored library (or selecting it while the server is
+    // unreachable) must not drop existing *arr rules from the form state.
+    if (value === storedLibraryId) {
+      return
+    }
+
     if (!libraries) {
       throw new Error('Libraries not loaded')
     }
@@ -824,6 +838,11 @@ const AddModal = (props: AddModal) => {
                               {selectedLibraryId === '' && (
                                 <option value="" disabled></option>
                               )}
+                              {storedLibraryMissing && storedLibraryId && (
+                                <option value={storedLibraryId}>
+                                  Stored library (unavailable)
+                                </option>
+                              )}
                               {libraries?.map((data: MediaLibrary) => {
                                 return (
                                   <option key={data.id} value={data.id}>
@@ -835,6 +854,13 @@ const AddModal = (props: AddModal) => {
                           )
                         })()}
                       </div>
+                      {(librariesError || storedLibraryMissing) && (
+                        <p className="mt-1 text-xs text-warning-500">
+                          {librariesError
+                            ? `Could not load libraries from ${mediaServerName}. The saved library selection is preserved — cancel editing to avoid losing rules.`
+                            : 'The saved library could not be found in the current library list. Re-select it once your media server is reachable.'}
+                        </p>
+                      )}
                       {errors.libraryId && (
                         <p className="mt-1 text-xs text-error-400">
                           {errors.libraryId.message}

@@ -44,7 +44,7 @@ const RuleGroup = (props: {
   onEdit: (group: IRuleGroup) => void
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
-  const { data: libraries } = useMediaServerLibraries()
+  const { data: libraries, isError: librariesError } = useMediaServerLibraries()
   const { queueStatus } = useTaskStatusContext()
   const { mutate: executeRules } = useExecuteRuleGroup({
     onError(error) {
@@ -97,6 +97,11 @@ const RuleGroup = (props: {
     isQueued ||
     isPending
   const hasNoLibrary = !props.group.libraryId || props.group.libraryId === ''
+  const libraryTitle = libraries?.find(
+    (lib) => lib.id === props.group.libraryId,
+  )?.title
+  const libraryUnresolved = !hasNoLibrary && !libraryTitle
+  const libraryUnreachable = libraryUnresolved && librariesError
 
   return (
     <>
@@ -167,10 +172,16 @@ const RuleGroup = (props: {
                 >
                   Not set
                 </p>
+              ) : libraryUnreachable ? (
+                <p
+                  className="truncate text-warning-500"
+                  title="Media server is unreachable. The stored library selection is preserved."
+                >
+                  Unavailable
+                </p>
               ) : (
                 <p className="truncate text-maintainerr">
-                  {libraries?.find((lib) => lib.id === props.group.libraryId)
-                    ?.title ?? '-'}
+                  {libraryTitle ?? '-'}
                 </p>
               )}
             </div>
