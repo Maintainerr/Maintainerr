@@ -1,4 +1,9 @@
 import { createMockLogger } from '../../../test/utils/data';
+import {
+  Application,
+  RulePossibility,
+  RuleType,
+} from './constants/rules.constants';
 import { RulesService } from './rules.service';
 
 describe('RulesService.updateRules', () => {
@@ -66,6 +71,78 @@ describe('RulesService.updateRules', () => {
       code: 0,
       result: 'Rule group not found',
       message: 'Rule group not found',
+    });
+  });
+
+  it('continues past validation for date rules using custom_days values', async () => {
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = createRulesService({ ruleGroupRepository });
+
+    const result = await service.updateRules({
+      id: 999,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'Test',
+      description: '',
+      rules: [
+        {
+          operator: null,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.PLEX, 7],
+          customVal: {
+            ruleTypeId: +RuleType.NUMBER,
+            value: (330 * 86400).toString(),
+          },
+          section: 0,
+        },
+      ],
+    } as any);
+
+    expect(ruleGroupRepository.findOne).toHaveBeenCalledWith({
+      where: { id: 999 },
+    });
+    expect(result).toEqual({
+      code: 0,
+      result: 'Rule group not found',
+      message: 'Rule group not found',
+    });
+  });
+
+  it('rejects numeric custom values for non-date rules', async () => {
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = createRulesService({ ruleGroupRepository });
+
+    const result = await service.updateRules({
+      id: 999,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'Test',
+      description: '',
+      rules: [
+        {
+          operator: null,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.PLEX, 10],
+          customVal: {
+            ruleTypeId: +RuleType.NUMBER,
+            value: '6',
+          },
+          section: 0,
+        },
+      ],
+    } as any);
+
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      code: 0,
+      result: 'Validation failed',
+      message: 'Validation failed',
     });
   });
 

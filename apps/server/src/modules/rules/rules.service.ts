@@ -27,7 +27,6 @@ import {
   Application,
   Property,
   RuleConstants,
-  RulePossibility,
   RuleType,
 } from './constants/rules.constants';
 import { CommunityRule } from './dtos/communityRule.dto';
@@ -304,7 +303,7 @@ export class RulesService {
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      params.rules.forEach((rule) => {
+      for (const rule of params.rules as RuleDto[]) {
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -319,7 +318,7 @@ export class RulesService {
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
         }
-      }, this);
+      }
 
       if (state.code !== 1) {
         return state;
@@ -403,7 +402,7 @@ export class RulesService {
   async updateRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      params.rules.forEach((rule) => {
+      for (const rule of params.rules as RuleDto[]) {
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -418,7 +417,7 @@ export class RulesService {
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
         }
-      }, this);
+      }
 
       if (state.code === 1) {
         // get current group
@@ -911,6 +910,8 @@ export class RulesService {
       } else if (rule.customVal) {
         if (
           val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
+          (val1.type === RuleType.DATE &&
+            rule.customVal.ruleTypeId === +RuleType.NUMBER) ||
           (val1.type == RuleType.TEXT_LIST &&
             rule.customVal.ruleTypeId.toString() == RuleType.TEXT.toString())
         ) {
@@ -923,15 +924,7 @@ export class RulesService {
             );
           }
         }
-        if (
-          (rule.action === RulePossibility.IN_LAST ||
-            RulePossibility.IN_NEXT) &&
-          rule.customVal.ruleTypeId === 0
-        ) {
-          return this.createReturnStatus(true, 'Success');
-        } else {
-          return this.createReturnStatus(false, 'Validation failed');
-        }
+        return this.createReturnStatus(false, 'Validation failed');
       } else {
         return this.createReturnStatus(false, 'No second value found');
       }
