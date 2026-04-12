@@ -31,6 +31,7 @@ import {
   Post,
   Put,
   Query,
+  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -198,6 +199,27 @@ export class MediaServerController {
     };
   }
 
+  private async getLibrariesOrThrowUnavailable(
+    mediaServer: IMediaServerService,
+  ): Promise<MediaLibrary[]> {
+    const libraries = await mediaServer.getLibraries();
+
+    // Distinguish "server unreachable" from "server healthy but no libraries".
+    // Adapters swallow upstream failures and return []; without this check the
+    // UI would render as though the media server has zero libraries, hiding
+    // any rule groups referencing a stored libraryId.
+    if (libraries.length === 0 && mediaServer.isSetup()) {
+      const status = await mediaServer.getStatus();
+      if (!status) {
+        throw new ServiceUnavailableException(
+          'Media server is configured but unreachable. Library list unavailable.',
+        );
+      }
+    }
+
+    return libraries;
+  }
+
   @Get()
   async getStatus(): Promise<MediaServerStatus | undefined> {
     const mediaServer = await this.mediaServerFactory.getService();
@@ -213,7 +235,7 @@ export class MediaServerController {
   @Get('libraries')
   async getLibraries(): Promise<MediaLibrary[]> {
     const mediaServer = await this.mediaServerFactory.getService();
-    return await mediaServer.getLibraries();
+    return await this.getLibrariesOrThrowUnavailable(mediaServer);
   }
 
   @Get('overview/bootstrap')
@@ -225,7 +247,7 @@ export class MediaServerController {
     sortOrder?: MediaSortOrder,
   ): Promise<OverviewBootstrapResult> {
     const mediaServer = await this.mediaServerFactory.getService();
-    const libraries = await mediaServer.getLibraries();
+    const libraries = await this.getLibrariesOrThrowUnavailable(mediaServer);
     const selectedLibrary = libraries[0];
     const size = limit ?? 50;
 

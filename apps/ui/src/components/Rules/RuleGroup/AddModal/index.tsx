@@ -57,6 +57,27 @@ interface AddModal {
   onSuccess: () => void
 }
 
+export const getStoredLibraryFallbackState = (
+  storedLibraryId: string | undefined,
+  libraries: MediaLibrary[] | undefined,
+  librariesLoading: boolean,
+  librariesError: boolean,
+) => {
+  const storedLibraryResolved = Boolean(
+    storedLibraryId && libraries?.some((lib) => lib.id === storedLibraryId),
+  )
+  const storedLibraryMissing =
+    !!storedLibraryId && !librariesLoading && !storedLibraryResolved
+  const showStoredLibraryFallback =
+    !!storedLibraryId && (librariesError || storedLibraryMissing)
+
+  return {
+    storedLibraryResolved,
+    storedLibraryMissing,
+    showStoredLibraryFallback,
+  }
+}
+
 // Helper function to check if an app should be filtered
 const shouldFilterApp = (
   appId: number,
@@ -455,8 +476,22 @@ const AddModal = (props: AddModal) => {
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
 
-  const { data: libraries, isLoading: librariesLoading } =
-    useMediaServerLibraries()
+  const {
+    data: libraries,
+    isLoading: librariesLoading,
+    isError: librariesError,
+  } = useMediaServerLibraries()
+  const storedLibraryId = props.editData?.libraryId?.toString()
+  const {
+    storedLibraryResolved,
+    storedLibraryMissing,
+    showStoredLibraryFallback,
+  } = getStoredLibraryFallbackState(
+    storedLibraryId,
+    libraries,
+    librariesLoading,
+    librariesError,
+  )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
@@ -473,6 +508,16 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.SEERR) ?? false
 
   function updateLibraryId(value: string) {
+    // Selecting the unresolved stored-library fallback keeps the original
+    // library type intact instead of resetting dependent state based on an
+    // entry the media server could not resolve.
+    if (value === storedLibraryId && !storedLibraryResolved) {
+      if (props.editData?.dataType) {
+        setValue('dataType', props.editData.dataType)
+      }
+      return
+    }
+
     if (!libraries) {
       throw new Error('Libraries not loaded')
     }
@@ -705,7 +750,13 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  if (librariesLoading || constantsLoading) {
+  // Only hard-block on rule constants: the form can't render its applications,
+  // rule operators, or field options without them. Libraries are allowed to
+  // stream in later — when editing, the stored library is surfaced via
+  // `storedLibraryMissing` so the form remains usable even if the media
+  // server is offline. For brand-new rule groups we still wait for libraries
+  // because there's no fallback selection to preserve.
+  if (constantsLoading || (librariesLoading && !props.editData)) {
     return <LoadingSpinner />
   }
 
@@ -824,6 +875,11 @@ const AddModal = (props: AddModal) => {
                               {selectedLibraryId === '' && (
                                 <option value="" disabled></option>
                               )}
+                              {showStoredLibraryFallback && storedLibraryId && (
+                                <option value={storedLibraryId}>
+                                  Stored library (unavailable)
+                                </option>
+                              )}
                               {libraries?.map((data: MediaLibrary) => {
                                 return (
                                   <option key={data.id} value={data.id}>
@@ -835,6 +891,13 @@ const AddModal = (props: AddModal) => {
                           )
                         })()}
                       </div>
+                      {(librariesError || storedLibraryMissing) && (
+                        <p className="mt-1 text-xs text-warning-500">
+                          {librariesError
+                            ? `Could not load libraries from ${mediaServerName}. The saved library selection is preserved — cancel editing to avoid losing rules.`
+                            : 'The saved library could not be found in the current library list. Re-select it once your media server is reachable.'}
+                        </p>
+                      )}
                       {errors.libraryId && (
                         <p className="mt-1 text-xs text-error-400">
                           {errors.libraryId.message}
