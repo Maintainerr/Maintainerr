@@ -10,7 +10,10 @@ const nullReasonCases: Array<[[number, number], string]> = [
     'Plex Availability status is not available for this item',
   ],
   [[Application.PLEX, 4], 'Plex Label is not set for this item'],
-  [[Application.PLEX, 5], 'Plex Collection titles has no entries for this item'],
+  [
+    [Application.PLEX, 5],
+    'Plex Collection titles has no entries for this item',
+  ],
 ];
 
 describe('RuleConstanstService', () => {
