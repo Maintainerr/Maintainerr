@@ -1345,21 +1345,66 @@ describe('JellyfinAdapterService', () => {
       });
     });
 
-    it('should continue add batching and return failed ids for failed chunks', async () => {
+    it('should fall back to per-item adds and return item ids that still fail', async () => {
       const items = Array.from(
         { length: JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2 },
         (_, index) => `item-${index + 1}`,
       );
 
-      collectionApiMocks.addToCollection
-        .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new Error('Request line too long'));
+      collectionApiMocks.addToCollection.mockImplementation(
+        async ({ ids }: { ids: string[] }) => {
+          if (
+            ids.length === JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION &&
+            ids[0] === `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`
+          ) {
+            throw new Error('Request line too long');
+          }
+
+          if (
+            ids.length === 1 &&
+            ids[0] === `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`
+          ) {
+            throw new Error('still bad');
+          }
+
+          return undefined;
+        },
+      );
 
       await expect(
         service.addBatchToCollection('collection-1', items),
-      ).resolves.toEqual(items.slice(JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION));
+      ).resolves.toEqual([
+        `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`,
+      ]);
 
-      expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(2);
+      expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(
+        JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 2,
+      );
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Jellyfin batch add fallback left 1 failed item(s) for collection collection-1',
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
+    });
+
+    it('should stay silent when per-item fallback recovers all Jellyfin batch add failures', async () => {
+      collectionApiMocks.addToCollection.mockImplementation(
+        async ({ ids }: { ids: string[] }) => {
+          if (ids.length > 1) {
+            throw new Error('Request line too long');
+          }
+
+          return undefined;
+        },
+      );
+
+      await expect(
+        service.addBatchToCollection('collection-1', ['item-1', 'item-2']),
+      ).resolves.toEqual([]);
+
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
     });
 
     it('should remove a batch of items in one Jellyfin request', async () => {

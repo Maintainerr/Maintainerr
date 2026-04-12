@@ -2,8 +2,8 @@ import { Jellyfin, type Api } from '@jellyfin/sdk';
 import {
   BaseItemKind,
   ItemFields,
-  LocationType,
   ItemSortBy,
+  LocationType,
   SortOrder,
   type UserItemDataDto,
 } from '@jellyfin/sdk/lib/generated-client/models';
@@ -1192,7 +1192,11 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
-  async addToCollection(collectionId: string, itemId: string): Promise<void> {
+  private async addToCollectionInternal(
+    collectionId: string,
+    itemId: string,
+    logFailure: boolean,
+  ): Promise<void> {
     if (!this.api) return;
 
     try {
@@ -1201,12 +1205,18 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to add item ${itemId} to collection ${collectionId}`,
-        error,
-      );
+      if (logFailure) {
+        this.logger.error(
+          `Failed to add item ${itemId} to collection ${collectionId}`,
+          error,
+        );
+      }
       throw error;
     }
+  }
+
+  async addToCollection(collectionId: string, itemId: string): Promise<void> {
+    await this.addToCollectionInternal(collectionId, itemId, true);
   }
 
   async addBatchToCollection(
@@ -1217,6 +1227,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
     const failedIds: string[] = [];
+    let usedFallback = false;
 
     for (let i = 0; i < itemIds.length; i += chunkSize) {
       const chunk = itemIds.slice(i, i + chunkSize);
@@ -1226,12 +1237,22 @@ export class JellyfinAdapterService implements IMediaServerService {
           ids: chunk,
         });
       } catch (error) {
-        this.logger.error(
-          `Failed to add ${chunk.length} items to collection ${collectionId}`,
-          error,
-        );
-        failedIds.push(...chunk);
+        usedFallback = true;
+
+        for (const itemId of chunk) {
+          try {
+            await this.addToCollectionInternal(collectionId, itemId, false);
+          } catch {
+            failedIds.push(itemId);
+          }
+        }
       }
+    }
+
+    if (usedFallback && failedIds.length > 0) {
+      this.logger.warn(
+        `Jellyfin batch add fallback left ${failedIds.length} failed item(s) for collection ${collectionId}`,
+      );
     }
 
     return failedIds;

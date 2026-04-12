@@ -852,7 +852,7 @@ const RuleInput = (props: IRuleInput) => {
                 placeholder={
                   ruleType === RuleType.TEXT_LIST ||
                   customValType === RuleType.TEXT_LIST
-                    ? '["Value1", "Value2"]'
+                    ? 'Value1 or ["Value1", "Value2"]'
                     : 'Text'
                 }
               ></input>

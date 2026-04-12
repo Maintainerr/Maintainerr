@@ -38,6 +38,10 @@ describe('RuleExecutorService', () => {
         mediaServerId: 'coll-1',
         manualCollection: false,
       }),
+      isMediaServerCollectionShared: jest.fn().mockResolvedValue(false),
+      reconcileSharedManualCollectionState: jest
+        .fn()
+        .mockResolvedValue(undefined),
       relinkManualCollection: jest.fn().mockImplementation(async (c) => c),
       getCollectionMedia: jest.fn().mockResolvedValue([
         {
@@ -148,12 +152,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
@@ -261,12 +271,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(collectionService.checkAutomaticMediaServerLink).toHaveBeenCalled();
@@ -305,12 +321,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -319,6 +341,83 @@ describe('RuleExecutorService', () => {
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(
       "Skipping manual child import for newly linked automatic collection 'Test Collection' to avoid marking existing collection contents as manual.",
+    );
+  });
+
+  it('reconciles shared manual collections through the collection service', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Foreign Movies',
+      mediaServerId: 'coll-1',
+      manualCollection: true,
+      manualCollectionName: 'Leaving Media',
+    } as any);
+    collectionService.relinkManualCollection.mockResolvedValue({
+      id: 1,
+      title: 'Foreign Movies',
+      mediaServerId: 'coll-1',
+      manualCollection: true,
+      manualCollectionName: 'Leaving Media',
+    } as any);
+    collectionService.isMediaServerCollectionShared.mockResolvedValue(true);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-shared' }]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.isMediaServerCollectionShared,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        mediaServerId: 'coll-1',
+        manualCollection: true,
+      }),
+    );
+    expect(
+      collectionService.reconcileSharedManualCollectionState,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        mediaServerId: 'coll-1',
+        manualCollection: true,
+      }),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+        serverChildren: [{ id: 'm-shared' }],
+      },
+    );
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(mediaServer.getCollectionChildren).toHaveBeenCalledWith('coll-1');
+    expect(logger.log).toHaveBeenCalledWith(
+      "Synced collection 'Leaving Media' with media server",
     );
   });
 
@@ -332,12 +431,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(collectionService.removeFromCollection).toHaveBeenCalledWith(
@@ -348,6 +453,7 @@ describe('RuleExecutorService', () => {
           reason: { type: 'media_removed_manually' },
         }),
       ]),
+      'manual',
     );
   });
 
@@ -372,12 +478,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -397,7 +509,7 @@ describe('RuleExecutorService', () => {
           reason: { type: 'media_added_manually' },
         },
       ],
-      true,
+      'local',
     );
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
   });
@@ -422,12 +534,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(),
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
     );
 
     expect(
@@ -443,7 +561,7 @@ describe('RuleExecutorService', () => {
           reason: { type: 'media_added_manually' },
         },
       ],
-      true,
+      'local',
     );
   });
 
@@ -475,12 +593,18 @@ describe('RuleExecutorService', () => {
               id: number;
               collectionId: number;
             },
-            touchedMediaServerIds: Set<string>,
+            collectionSyncChanges: {
+              addedMediaServerIds: Set<string>;
+              removedMediaServerIds: Set<string>;
+            },
           ) => Promise<void>;
         }
       ).syncManualMediaServerToCollectionDB(
         { id: 10, collectionId: 1 },
-        new Set(),
+        {
+          addedMediaServerIds: new Set(),
+          removedMediaServerIds: new Set(),
+        },
       ),
     ).resolves.toBeUndefined();
 
@@ -515,12 +639,18 @@ describe('RuleExecutorService', () => {
             id: number;
             collectionId: number;
           },
-          touchedMediaServerIds: Set<string>,
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
         ) => Promise<void>;
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      new Set(['m-stale']), // item was touched by rule execution
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(['m-stale']),
+      }, // item was removed by rule execution
     );
 
     // Should NOT be re-added as manual
@@ -591,6 +721,7 @@ describe('RuleExecutorService', () => {
           },
         },
       ],
+      'rule',
     );
   });
 

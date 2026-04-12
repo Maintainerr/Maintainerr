@@ -1,6 +1,9 @@
 import { type MediaItem } from '@maintainerr/contracts';
 import { Repository } from 'typeorm';
-import { CollectionMedia } from '../../collections/entities/collection_media.entities';
+import {
+  CollectionMedia,
+  CollectionMediaManualMembershipSource,
+} from '../../collections/entities/collection_media.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
@@ -70,7 +73,7 @@ describe('MediaItemEnrichmentService', () => {
     collectionMediaRepo.find.mockResolvedValue([
       {
         mediaServerId: 'episode-1',
-        isManual: true,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
       },
     ] as CollectionMedia[]);
 
@@ -107,11 +110,11 @@ describe('MediaItemEnrichmentService', () => {
     collectionMediaRepo.find.mockResolvedValue([
       {
         mediaServerId: 'movie-1',
-        isManual: false,
+        manualMembershipSource: null,
       },
       {
         mediaServerId: 'movie-1',
-        isManual: true,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
       },
     ] as CollectionMedia[]);
 
@@ -159,7 +162,7 @@ describe('MediaItemEnrichmentService', () => {
     collectionMediaRepo.find.mockResolvedValue([
       {
         mediaServerId: 'show-1',
-        isManual: true,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
       },
     ] as CollectionMedia[]);
 
@@ -185,7 +188,7 @@ describe('MediaItemEnrichmentService', () => {
       {
         collectionId: 7,
         mediaServerId: 'movie-1',
-        isManual: true,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
         addDate: new Date('2026-04-01T00:00:00.000Z'),
         collection: {
           id: 7,

@@ -1,4 +1,4 @@
-import { IAlterableMediaDto } from '../../collections/interfaces/collection-media.interface';
+import { AlterableMediaContext } from '../../collections/interfaces/collection-media.interface';
 
 export class ExclusionDto {
   mediaServerId: string;
@@ -9,7 +9,7 @@ export class ExclusionDto {
 
 export interface ExclusionContextDto {
   mediaId: string;
-  context: IAlterableMediaDto;
+  context: AlterableMediaContext;
   collectionId: number;
   ruleGroupId: number;
   action: 0 | 1;
