@@ -7,6 +7,23 @@ describe('ExternalApiService', () => {
     warn: jest.fn(),
   });
 
+  it('rejects base URLs that do not use http or https', () => {
+    expect(
+      () => new ExternalApiService('ftp://example.test', {}, createLogger() as any),
+    ).toThrow('External API base URL must use http:// or https://');
+  });
+
+  it('rejects base URLs with embedded credentials', () => {
+    expect(
+      () =>
+        new ExternalApiService(
+          'https://user:pass@example.test',
+          {},
+          createLogger() as any,
+        ),
+    ).toThrow('External API base URL must not include embedded credentials');
+  });
+
   it('logs a single debug line for expected 404 GET failures', async () => {
     const logger = createLogger();
     const service = new ExternalApiService(
@@ -31,7 +48,6 @@ describe('ExternalApiService', () => {
           } as any,
         ),
       ),
-      getUri: jest.fn().mockReturnValue('https://example.test/items/123'),
     };
 
     await expect(service.get('/items/123')).resolves.toBeUndefined();
@@ -55,7 +71,6 @@ describe('ExternalApiService', () => {
 
     (service as any).axios = {
       get: jest.fn().mockRejectedValue(error),
-      getUri: jest.fn().mockReturnValue('https://example.test/items/123'),
     };
 
     await expect(service.get('/items/123')).resolves.toBeUndefined();

@@ -2,6 +2,10 @@ import axios, { AxiosError, AxiosInstance, RawAxiosRequestConfig } from 'axios';
 import axiosRetry from 'axios-retry';
 import NodeCache from 'node-cache';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import {
+  describeRequestTarget,
+  normalizeExternalApiBaseUrl,
+} from '../lib/requestLogging';
 
 // 20 minute default TTL (in seconds)
 const DEFAULT_TTL = 1200;
@@ -25,8 +29,10 @@ export class ExternalApiService {
     protected readonly logger: MaintainerrLogger,
     options: ExternalAPIOptions = {},
   ) {
+    const normalizedBaseUrl = normalizeExternalApiBaseUrl(baseUrl);
+
     this.axios = axios.create({
-      baseURL: baseUrl,
+      baseURL: normalizedBaseUrl,
       params,
       timeout: 10000, // timeout after 10s
       headers: {
@@ -39,7 +45,7 @@ export class ExternalApiService {
       retries: 3,
       retryDelay: axiosRetry.exponentialDelay,
     });
-    this.baseUrl = baseUrl;
+    this.baseUrl = normalizedBaseUrl;
     this.cache = options.nodeCache;
   }
 
@@ -170,7 +176,7 @@ export class ExternalApiService {
     config?: RawAxiosRequestConfig,
     ttl?: number,
   ): Promise<T | undefined> {
-    const url = this.axios.getUri({ ...config, url: endpoint });
+    const url = describeRequestTarget(this.baseUrl, endpoint, config);
 
     try {
       const cacheKey = this.serializeCacheKey(
@@ -236,7 +242,7 @@ export class ExternalApiService {
     config: RawAxiosRequestConfig | undefined,
     error: unknown,
   ) {
-    const url = this.axios.getUri({ ...config, url: endpoint });
+    const url = describeRequestTarget(this.baseUrl, endpoint, config);
     this.logger.debug(this.formatRequestFailure(method, url, error));
   }
 
