@@ -199,21 +199,9 @@ export class MediaServerController {
     };
   }
 
-  @Get()
-  async getStatus(): Promise<MediaServerStatus | undefined> {
-    const mediaServer = await this.mediaServerFactory.getService();
-    return mediaServer.getStatus();
-  }
-
-  @Get('type')
-  async getServerType(): Promise<{ type: string }> {
-    const mediaServer = await this.mediaServerFactory.getService();
-    return { type: mediaServer.getServerType() };
-  }
-
-  @Get('libraries')
-  async getLibraries(): Promise<MediaLibrary[]> {
-    const mediaServer = await this.mediaServerFactory.getService();
+  private async getLibrariesOrThrowUnavailable(
+    mediaServer: IMediaServerService,
+  ): Promise<MediaLibrary[]> {
     const libraries = await mediaServer.getLibraries();
 
     // Distinguish "server unreachable" from "server healthy but no libraries".
@@ -232,6 +220,24 @@ export class MediaServerController {
     return libraries;
   }
 
+  @Get()
+  async getStatus(): Promise<MediaServerStatus | undefined> {
+    const mediaServer = await this.mediaServerFactory.getService();
+    return mediaServer.getStatus();
+  }
+
+  @Get('type')
+  async getServerType(): Promise<{ type: string }> {
+    const mediaServer = await this.mediaServerFactory.getService();
+    return { type: mediaServer.getServerType() };
+  }
+
+  @Get('libraries')
+  async getLibraries(): Promise<MediaLibrary[]> {
+    const mediaServer = await this.mediaServerFactory.getService();
+    return await this.getLibrariesOrThrowUnavailable(mediaServer);
+  }
+
   @Get('overview/bootstrap')
   async getOverviewBootstrap(
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
@@ -241,7 +247,7 @@ export class MediaServerController {
     sortOrder?: MediaSortOrder,
   ): Promise<OverviewBootstrapResult> {
     const mediaServer = await this.mediaServerFactory.getService();
-    const libraries = await mediaServer.getLibraries();
+    const libraries = await this.getLibrariesOrThrowUnavailable(mediaServer);
     const selectedLibrary = libraries[0];
     const size = limit ?? 50;
 

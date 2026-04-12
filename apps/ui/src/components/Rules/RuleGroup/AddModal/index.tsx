@@ -57,6 +57,27 @@ interface AddModal {
   onSuccess: () => void
 }
 
+export const getStoredLibraryFallbackState = (
+  storedLibraryId: string | undefined,
+  libraries: MediaLibrary[] | undefined,
+  librariesLoading: boolean,
+  librariesError: boolean,
+) => {
+  const storedLibraryResolved = Boolean(
+    storedLibraryId && libraries?.some((lib) => lib.id === storedLibraryId),
+  )
+  const storedLibraryMissing =
+    !!storedLibraryId && !librariesLoading && !storedLibraryResolved
+  const showStoredLibraryFallback =
+    !!storedLibraryId && (librariesError || storedLibraryMissing)
+
+  return {
+    storedLibraryResolved,
+    storedLibraryMissing,
+    showStoredLibraryFallback,
+  }
+}
+
 // Helper function to check if an app should be filtered
 const shouldFilterApp = (
   appId: number,
@@ -461,11 +482,16 @@ const AddModal = (props: AddModal) => {
     isError: librariesError,
   } = useMediaServerLibraries()
   const storedLibraryId = props.editData?.libraryId?.toString()
-  // Show the stored library as a fallback whenever it's not present in the
-  // current libraries list — including during loading/error. This keeps the
-  // edit form usable when the media server is unreachable on cold load.
-  const storedLibraryMissing =
-    !!storedLibraryId && !libraries?.some((lib) => lib.id === storedLibraryId)
+  const {
+    storedLibraryResolved,
+    storedLibraryMissing,
+    showStoredLibraryFallback,
+  } = getStoredLibraryFallbackState(
+    storedLibraryId,
+    libraries,
+    librariesLoading,
+    librariesError,
+  )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
@@ -482,9 +508,13 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.SEERR) ?? false
 
   function updateLibraryId(value: string) {
-    // Re-selecting the stored library (or selecting it while the server is
-    // unreachable) must not drop existing *arr rules from the form state.
-    if (value === storedLibraryId) {
+    // Selecting the unresolved stored-library fallback keeps the original
+    // library type intact instead of resetting dependent state based on an
+    // entry the media server could not resolve.
+    if (value === storedLibraryId && !storedLibraryResolved) {
+      if (props.editData?.dataType) {
+        setValue('dataType', props.editData.dataType)
+      }
       return
     }
 
@@ -845,7 +875,7 @@ const AddModal = (props: AddModal) => {
                               {selectedLibraryId === '' && (
                                 <option value="" disabled></option>
                               )}
-                              {storedLibraryMissing && storedLibraryId && (
+                              {showStoredLibraryFallback && storedLibraryId && (
                                 <option value={storedLibraryId}>
                                   Stored library (unavailable)
                                 </option>

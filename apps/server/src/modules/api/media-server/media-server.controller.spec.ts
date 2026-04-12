@@ -29,6 +29,7 @@ describe('MediaServerController', () => {
   beforeEach(() => {
     mockMediaServerService = {
       getLibraries: jest.fn().mockResolvedValue([]),
+      getStatus: jest.fn().mockResolvedValue(undefined),
       getLibraryContents: jest.fn().mockResolvedValue({
         items: [],
         totalSize: 0,
@@ -38,6 +39,7 @@ describe('MediaServerController', () => {
       searchContent: jest.fn().mockResolvedValue([]),
       searchLibraryContents: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
+      isSetup: jest.fn().mockReturnValue(false),
       updateCollectionVisibility: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<IMediaServerService>;
 
@@ -442,10 +444,8 @@ describe('MediaServerController', () => {
   describe('getLibraries - Unreachable Detection', () => {
     it('throws ServiceUnavailableException when configured but unreachable', async () => {
       mockMediaServerService.getLibraries.mockResolvedValue([]);
-      (mockMediaServerService as any).isSetup = jest.fn().mockReturnValue(true);
-      (mockMediaServerService as any).getStatus = jest
-        .fn()
-        .mockResolvedValue(undefined);
+      mockMediaServerService.isSetup.mockReturnValue(true);
+      mockMediaServerService.getStatus.mockResolvedValue(undefined);
 
       await expect(controller.getLibraries()).rejects.toThrow(
         ServiceUnavailableException,
@@ -454,23 +454,33 @@ describe('MediaServerController', () => {
 
     it('returns an empty list when the server is reachable but has zero libraries', async () => {
       mockMediaServerService.getLibraries.mockResolvedValue([]);
-      (mockMediaServerService as any).isSetup = jest.fn().mockReturnValue(true);
-      (mockMediaServerService as any).getStatus = jest
-        .fn()
-        .mockResolvedValue({ machineId: 'm1', version: '1' });
+      mockMediaServerService.isSetup.mockReturnValue(true);
+      mockMediaServerService.getStatus.mockResolvedValue({
+        machineId: 'm1',
+        version: '1',
+      });
 
       await expect(controller.getLibraries()).resolves.toEqual([]);
     });
 
     it('skips the status probe when the server is not set up', async () => {
       mockMediaServerService.getLibraries.mockResolvedValue([]);
-      (mockMediaServerService as any).isSetup = jest
-        .fn()
-        .mockReturnValue(false);
-      (mockMediaServerService as any).getStatus = jest.fn();
+      mockMediaServerService.isSetup.mockReturnValue(false);
 
       await expect(controller.getLibraries()).resolves.toEqual([]);
-      expect((mockMediaServerService as any).getStatus).not.toHaveBeenCalled();
+      expect(mockMediaServerService.getStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getOverviewBootstrap - Unreachable Detection', () => {
+    it('throws ServiceUnavailableException when configured but unreachable', async () => {
+      mockMediaServerService.getLibraries.mockResolvedValue([]);
+      mockMediaServerService.isSetup.mockReturnValue(true);
+      mockMediaServerService.getStatus.mockResolvedValue(undefined);
+
+      await expect(controller.getOverviewBootstrap(30)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
   });
 
