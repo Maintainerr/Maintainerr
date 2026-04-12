@@ -464,14 +464,13 @@ export class PlexAdapterService implements IMediaServerService {
 
   async cleanupCollectionForLibrary(
     collectionId: string,
-    _libraryId: string,
-    _isManualCollection: boolean,
+    libraryId: string,
+    isManualCollection: boolean,
   ): Promise<void> {
-    void _libraryId;
-    void _isManualCollection;
+    void libraryId;
+    void isManualCollection;
 
     // Plex collections are per-library, so no cross-library sharing occurs.
-    // Always delete the entire collection.
     await this.deleteCollection(collectionId);
   }
 

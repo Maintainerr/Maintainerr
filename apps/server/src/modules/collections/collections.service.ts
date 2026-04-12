@@ -355,13 +355,6 @@ export class CollectionsService {
           currentCollectionMediaById.get(mediaServerId);
 
         if (existingCollectionMedia) {
-          if (
-            existingCollectionMedia.manualMembershipSource ===
-            CollectionMediaManualMembershipSource.SHARED
-          ) {
-            continue;
-          }
-
           continue;
         }
 

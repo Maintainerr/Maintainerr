@@ -1,12 +1,12 @@
 import { Mocked, TestBed } from '@suites/unit';
-import { SettingsService } from '../../settings/settings.service';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { PlexApiService } from './plex-api.service';
+import { SettingsService } from '../../settings/settings.service';
 import { PlexConnection } from './interfaces/server.interface';
+import { PlexApiService } from './plex-api.service';
 
 type PlexApiSettingsStub = Pick<
   Settings,
@@ -53,6 +53,14 @@ describe('PlexApiService.rankConnections', () => {
       conn({ address: '192.168.1.50' }),
     ]);
     expect(ranked[0].address).toBe('192.168.1.50');
+  });
+
+  it('treats IPv6 literals as direct IP connections', () => {
+    const ranked = PlexApiService.rankConnections([
+      conn({ address: 'abc123.plex.direct' }),
+      conn({ address: '2001:db8::10' }),
+    ]);
+    expect(ranked[0].address).toBe('2001:db8::10');
   });
 
   it('sorts by latency when all else is equal', () => {

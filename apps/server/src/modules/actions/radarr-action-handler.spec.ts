@@ -242,6 +242,37 @@ describe('RadarrActionHandler', () => {
     expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
   });
 
+  it('should skip update and search when movie already has the target quality profile', async () => {
+    const targetProfileId = 3;
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      radarrSettingsId: 1,
+      radarrQualityProfileId: targetProfileId,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: 1,
+    });
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+      .mockResolvedValue(
+        createRadarrMovie({ id: 5, qualityProfileId: targetProfileId }),
+      );
+    jest.spyOn(mockedRadarrApi, 'searchMovie').mockResolvedValue();
+
+    const result = await radarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mockedRadarrApi.updateMovie).not.toHaveBeenCalled();
+    expect(mockedRadarrApi.searchMovie).not.toHaveBeenCalled();
+    expect(mockedRadarrApi.deleteMovie).not.toHaveBeenCalled();
+  });
+
   it('should log warning when quality profile ID not configured', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
