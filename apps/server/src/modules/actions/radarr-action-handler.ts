@@ -5,11 +5,11 @@ import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MetadataService } from '../metadata/metadata.service';
 import {
   findMetadataLookupMatch,
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class RadarrActionHandler {
@@ -109,6 +109,10 @@ export class RadarrActionHandler {
                 `Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
               );
               return false;
+            }
+
+            if (radarrMedia.qualityProfileId === targetProfileId) {
+              return true;
             }
 
             if (

@@ -8,11 +8,11 @@ import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MetadataService } from '../metadata/metadata.service';
 import {
   findMetadataLookupMatch,
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class SonarrActionHandler {
@@ -337,7 +337,7 @@ export class SonarrActionHandler {
             return false;
         }
         break;
-      case ServarrAction.CHANGE_QUALITY_PROFILE:
+      case ServarrAction.CHANGE_QUALITY_PROFILE: {
         if (collection.type === 'season' || collection.type === 'episode') {
           this.logger.warn(
             `[Sonarr] CHANGE_QUALITY_PROFILE is not supported for type: ${collection.type}. Quality profiles can only be changed for entire shows.`,
@@ -361,6 +361,10 @@ export class SonarrActionHandler {
           return false;
         }
 
+        if (sonarrMedia.qualityProfileId === targetProfileId) {
+          return true;
+        }
+
         sonarrMedia.qualityProfileId = targetProfileId;
         if (!(await sonarrApiClient.updateSeries(sonarrMedia))) {
           return false;
@@ -372,6 +376,7 @@ export class SonarrActionHandler {
 
         await sonarrApiClient.searchSeries(sonarrMedia.id);
         return true;
+      }
     }
 
     return false;

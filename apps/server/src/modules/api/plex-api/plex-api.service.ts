@@ -1,6 +1,7 @@
 import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
+import { isIP } from 'net';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
   getErrorMessage,
@@ -19,7 +20,6 @@ import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsService } from '../../settings/settings.service';
 import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
-import { PLEX_PAGE_SIZE } from './plex-api.constants';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
@@ -48,6 +48,7 @@ import {
   PlexDevice,
   PlexStatusResponse,
 } from './interfaces/server.interface';
+import { PLEX_PAGE_SIZE } from './plex-api.constants';
 
 type PlexApiSettings = SettingsService &
   Pick<
@@ -104,17 +105,7 @@ export class PlexApiService {
   public static rankConnections(
     connections: PlexConnection[],
   ): PlexConnection[] {
-    const isDirectIp = (address: string) => {
-      // IPv6
-      if (address.includes(':')) return true;
-
-      // IPv4: four dot-separated groups of digits (e.g. 192.168.1.50)
-      const parts = address.split('.');
-      if (parts.length !== 4) return false;
-      return parts.every(
-        (p) => p.length > 0 && p.length <= 3 && !Number.isNaN(Number(p)),
-      );
-    };
+    const isDirectIp = (address: string) => isIP(address) !== 0;
 
     return [...connections].sort((a, b) => {
       // 1. Reachable first (status 200)

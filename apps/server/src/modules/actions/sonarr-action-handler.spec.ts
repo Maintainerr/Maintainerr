@@ -1005,6 +1005,40 @@ describe('SonarrActionHandler', () => {
     expect(mockedSonarrApi.searchSeries).toHaveBeenCalledWith(5);
   });
 
+  it('should skip update and search when show already has the target quality profile', async () => {
+    const targetProfileId = 3;
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      sonarrSettingsId: 1,
+      sonarrQualityProfileId: targetProfileId,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(
+        createSonarrSeries({ id: 5, qualityProfileId: targetProfileId }),
+      );
+    jest.spyOn(mockedSonarrApi, 'searchSeries').mockResolvedValue();
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(123);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+    expect(mockedSonarrApi.searchSeries).not.toHaveBeenCalled();
+  });
+
   it('should log warning when quality profile action used on SEASONS type', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
