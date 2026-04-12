@@ -530,8 +530,6 @@ const RuleInput = (props: IRuleInput) => {
 
     if (!app?.props.find((prop) => prop.id === +val[1])) {
       setFirstVal(undefined)
-      setSecondVal(undefined)
-      setCustomVal(undefined)
       setArrDiskPath('')
     }
   })
