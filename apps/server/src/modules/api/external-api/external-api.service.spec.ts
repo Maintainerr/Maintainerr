@@ -7,23 +7,6 @@ describe('ExternalApiService', () => {
     warn: jest.fn(),
   });
 
-  it('rejects base URLs that do not use http or https', () => {
-    expect(
-      () => new ExternalApiService('ftp://example.test', {}, createLogger() as any),
-    ).toThrow('External API base URL must use http:// or https://');
-  });
-
-  it('rejects base URLs with embedded credentials', () => {
-    expect(
-      () =>
-        new ExternalApiService(
-          'https://user:pass@example.test',
-          {},
-          createLogger() as any,
-        ),
-    ).toThrow('External API base URL must not include embedded credentials');
-  });
-
   it('logs a single debug line for expected 404 GET failures', async () => {
     const logger = createLogger();
     const service = new ExternalApiService(

@@ -2,10 +2,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axiosRetry from 'axios-retry';
 import { PlexLibraryResponse } from '../plex-api/interfaces/library.interfaces';
 import cacheManager, { Cache } from './cache';
-import {
-  describeRequestTarget,
-  normalizeExternalApiBaseUrl,
-} from './requestLogging';
+import { describeRequestTarget } from './requestLogging';
 
 type PlexApiOptions = {
   hostname: string;
@@ -29,9 +26,8 @@ class PlexApi {
     this.options = options;
     this.cache = cacheManager.getCache('plexguid');
 
-    const baseURL = normalizeExternalApiBaseUrl(
-      this.getServerScheme() + options.hostname + ':' + options.port,
-    );
+    const baseURL =
+      this.getServerScheme() + options.hostname + ':' + options.port;
 
     this.axios = axios.create({
       baseURL,

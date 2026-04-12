@@ -221,25 +221,6 @@ describe('JellyfinAdapterService', () => {
     return error;
   };
 
-  describe('URL validation', () => {
-    it('rejects unsupported URL schemes when testing a connection', async () => {
-      await expect(
-        service.testConnection('ftp://jellyfin.test:8096', 'test-api-key'),
-      ).rejects.toThrow('External API base URL must use http:// or https://');
-    });
-
-    it('rejects embedded credentials when testing a connection', async () => {
-      await expect(
-        service.testConnection(
-          'https://user:pass@jellyfin.test:8096',
-          'test-api-key',
-        ),
-      ).rejects.toThrow(
-        'External API base URL must not include embedded credentials',
-      );
-    });
-  });
-
   const createResponseError = (status: number): AxiosError => {
     const error = new AxiosError(`request failed with status ${status}`);
     Object.assign(error, {

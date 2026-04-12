@@ -3,27 +3,6 @@ export interface RequestTargetConfig {
   params?: unknown;
 }
 
-export function normalizeExternalApiBaseUrl(baseUrl: string): string {
-  const parsedUrl = new URL(baseUrl);
-
-  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-    throw new Error('External API base URL must use http:// or https://');
-  }
-
-  if (parsedUrl.username || parsedUrl.password) {
-    throw new Error(
-      'External API base URL must not include embedded credentials',
-    );
-  }
-
-  parsedUrl.hash = '';
-
-  let normalizedUrl = parsedUrl.toString();
-  while (normalizedUrl.endsWith('/')) normalizedUrl = normalizedUrl.slice(0, -1);
-
-  return normalizedUrl;
-}
-
 export function describeRequestTarget(
   fallbackBaseURL: string | undefined,
   endpoint: string | undefined,
@@ -48,7 +27,9 @@ export function describeRequestTarget(
 function serializeParams(params: unknown): string {
   if (!params || typeof params !== 'object') return '';
   const parts: string[] = [];
-  for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+  for (const [key, value] of Object.entries(
+    params as Record<string, unknown>,
+  )) {
     if (value === undefined || value === null) continue;
     parts.push(
       encodeURIComponent(key) + '=' + encodeURIComponent(String(value)),

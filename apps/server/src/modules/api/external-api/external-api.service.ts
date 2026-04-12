@@ -2,10 +2,7 @@ import axios, { AxiosError, AxiosInstance, RawAxiosRequestConfig } from 'axios';
 import axiosRetry from 'axios-retry';
 import NodeCache from 'node-cache';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import {
-  describeRequestTarget,
-  normalizeExternalApiBaseUrl,
-} from '../lib/requestLogging';
+import { describeRequestTarget } from '../lib/requestLogging';
 
 // 20 minute default TTL (in seconds)
 const DEFAULT_TTL = 1200;
@@ -29,10 +26,8 @@ export class ExternalApiService {
     protected readonly logger: MaintainerrLogger,
     options: ExternalAPIOptions = {},
   ) {
-    const normalizedBaseUrl = normalizeExternalApiBaseUrl(baseUrl);
-
     this.axios = axios.create({
-      baseURL: normalizedBaseUrl,
+      baseURL: baseUrl,
       params,
       timeout: 10000, // timeout after 10s
       headers: {
@@ -45,7 +40,7 @@ export class ExternalApiService {
       retries: 3,
       retryDelay: axiosRetry.exponentialDelay,
     });
-    this.baseUrl = normalizedBaseUrl;
+    this.baseUrl = baseUrl;
     this.cache = options.nodeCache;
   }
 

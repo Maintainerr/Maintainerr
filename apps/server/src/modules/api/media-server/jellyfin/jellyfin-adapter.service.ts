@@ -46,7 +46,6 @@ import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
-import { normalizeExternalApiBaseUrl } from '../../lib/requestLogging';
 import {
   isBlankMediaServerId,
   isForeignServerId,
@@ -130,8 +129,6 @@ export class JellyfinAdapterService implements IMediaServerService {
     apiKey: string,
     deviceSuffix: string = 'default',
   ): Api {
-    const normalizedUrl = normalizeExternalApiBaseUrl(url);
-
     const jellyfin = new Jellyfin({
       clientInfo: {
         name: JELLYFIN_CLIENT_INFO.name,
@@ -143,7 +140,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       },
     });
 
-    return jellyfin.createApi(normalizedUrl, apiKey);
+    return jellyfin.createApi(url, apiKey);
   }
 
   /**
