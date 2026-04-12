@@ -63,6 +63,10 @@ export const useMediaServerLibraries = (
       return await GetApiHandler<MediaLibrary[]>('/media-server/libraries')
     },
     staleTime: 0,
+    // Keep retries minimal so an unreachable media server surfaces as an
+    // error quickly instead of blocking rule/collection UIs behind the
+    // TanStack Query default of 3 retries.
+    retry: 1,
     ...options,
   })
 }

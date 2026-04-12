@@ -9,12 +9,12 @@ import { isAxiosError } from 'axios'
 import clsx from 'clsx'
 import { useState } from 'react'
 import { toast } from 'react-toastify'
-import { useMediaServerLibraries } from '../../../api/media-server'
 import {
   useExecuteRuleGroup,
   useStopRuleGroupExecution,
 } from '../../../api/rules'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
+import { useLibraryDisplay } from '../../../hooks/useLibraryDisplay'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
@@ -44,7 +44,11 @@ const RuleGroup = (props: {
   onEdit: (group: IRuleGroup) => void
 }) => {
   const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
-  const { data: libraries } = useMediaServerLibraries()
+  const {
+    title: libraryTitle,
+    hasLibraryId,
+    isUnreachable: libraryUnreachable,
+  } = useLibraryDisplay(props.group.libraryId)
   const { queueStatus } = useTaskStatusContext()
   const { mutate: executeRules } = useExecuteRuleGroup({
     onError(error) {
@@ -96,7 +100,7 @@ const RuleGroup = (props: {
     queueStatus?.executingRuleGroupId === props.group.id ||
     isQueued ||
     isPending
-  const hasNoLibrary = !props.group.libraryId || props.group.libraryId === ''
+  const hasNoLibrary = !hasLibraryId
 
   return (
     <>
@@ -167,10 +171,16 @@ const RuleGroup = (props: {
                 >
                   Not set
                 </p>
+              ) : libraryUnreachable ? (
+                <p
+                  className="truncate text-warning-500"
+                  title="Media server is unreachable. The stored library selection is preserved."
+                >
+                  Unavailable
+                </p>
               ) : (
                 <p className="truncate text-maintainerr">
-                  {libraries?.find((lib) => lib.id === props.group.libraryId)
-                    ?.title ?? '-'}
+                  {libraryTitle ?? '-'}
                 </p>
               )}
             </div>
