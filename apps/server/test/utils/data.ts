@@ -30,6 +30,7 @@ import {
 import { Collection } from '../../src/modules/collections/entities/collection.entities';
 import {
   CollectionMedia,
+  CollectionMediaManualMembershipSource,
   CollectionMediaWithMetadata,
 } from '../../src/modules/collections/entities/collection_media.entities';
 import { ServarrAction } from '../../src/modules/collections/interfaces/collection.interface';
@@ -104,17 +105,20 @@ export const createCollectionMedia = (
     ? (collectionOrType as Collection)
     : createCollection({ type: collectionOrType as MediaItemType });
 
-  return {
+  return Object.assign(new CollectionMedia(), {
     id: faker.number.int(),
     collection: collectionToUse,
     collectionId: collectionToUse.id,
     addDate: faker.date.past(),
     image_path: '',
     isManual: false,
+    includedByRule: true,
+    manualMembershipSource:
+      null as CollectionMediaManualMembershipSource | null,
     mediaServerId: faker.number.int().toString(),
     tmdbId: faker.number.int(),
     ...properties,
-  };
+  });
 };
 
 type CollectionMediaWithMetadataOptional = Omit<
@@ -128,19 +132,20 @@ export const createCollectionMediaWithMetadata = (
   collectionOrType?: Collection | MediaItemType,
   properties: Partial<CollectionMediaWithMetadataOptional> = {},
 ): CollectionMediaWithMetadata => {
-  const collectionMedia: CollectionMedia = {
-    ...createCollectionMedia(collectionOrType, properties),
-    ...properties,
-  };
+  const collectionMedia = Object.assign(
+    new CollectionMedia(),
+    createCollectionMedia(collectionOrType, properties),
+    properties,
+  );
 
-  return {
+  return Object.assign(new CollectionMediaWithMetadata(), {
     ...createCollectionMedia(collectionOrType, properties),
     ...properties,
     mediaData: createMediaItem({
       ...properties.mediaData,
       type: collectionMedia.collection.type,
     }),
-  };
+  });
 };
 
 export const createMediaItem = (

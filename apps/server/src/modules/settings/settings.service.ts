@@ -52,14 +52,6 @@ type PlexConnectionSettingsUpdate = Partial<
   >
 >;
 
-export interface SettingsService {
-  plex_machine_id?: string;
-  plex_manual_mode?: number;
-  updatePlexConnectionDetails(
-    details: PlexConnectionSettingsUpdate,
-  ): Promise<void>;
-}
-
 @Injectable()
 export class SettingsService implements SettingDto {
   id: number;

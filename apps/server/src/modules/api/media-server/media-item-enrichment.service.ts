@@ -5,7 +5,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
@@ -46,9 +46,9 @@ export class MediaItemEnrichmentService {
       return items;
     }
 
-    const [exclusionMap, manualItemIds] = await Promise.all([
+    const [exclusionMap, manuallyIncludedItemIds] = await Promise.all([
       this.fetchExclusionMap(relationIds),
-      this.fetchManualItemIds(directIds),
+      this.fetchManuallyIncludedItemIds(directIds),
     ]);
 
     return items.map((item) => {
@@ -60,9 +60,9 @@ export class MediaItemEnrichmentService {
       const exclusion = itemRelationIds
         .map((id) => exclusionMap.get(id))
         .find((value): value is ExclusionState => value !== undefined);
-      const isManual = manualItemIds.has(item.id);
+      const isManuallyIncluded = manuallyIncludedItemIds.has(item.id);
 
-      if (!exclusion && !isManual) {
+      if (!exclusion && !isManuallyIncluded) {
         return item;
       }
 
@@ -74,7 +74,7 @@ export class MediaItemEnrichmentService {
               maintainerrExclusionType: exclusion.type,
             }
           : {}),
-        ...(isManual
+        ...(isManuallyIncluded
           ? {
               maintainerrIsManual: true,
             }
@@ -109,7 +109,10 @@ export class MediaItemEnrichmentService {
         ],
       }),
       this.collectionMediaRepo.find({
-        where: { mediaServerId: item.id, isManual: true },
+        where: {
+          mediaServerId: item.id,
+          manualMembershipSource: Not(IsNull()),
+        },
         relations: { collection: true },
       }),
     ]);
@@ -147,9 +150,14 @@ export class MediaItemEnrichmentService {
     return map;
   }
 
-  private async fetchManualItemIds(ids: string[]): Promise<Set<string>> {
+  private async fetchManuallyIncludedItemIds(
+    ids: string[],
+  ): Promise<Set<string>> {
     const collectionMedia = await this.collectionMediaRepo.find({
-      where: { mediaServerId: In(ids), isManual: true },
+      where: {
+        mediaServerId: In(ids),
+        manualMembershipSource: Not(IsNull()),
+      },
     });
 
     return new Set(

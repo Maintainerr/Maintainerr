@@ -16,7 +16,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { AddRemoveCollectionMedia } from '../collections/interfaces/collection-media.interface';
+import { CollectionMediaChange } from '../collections/interfaces/collection-media.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
@@ -591,7 +591,7 @@ export class RulesService {
   }
   async setExclusion(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
-    let handleMedia: AddRemoveCollectionMedia[] = [];
+    let handleMedia: CollectionMediaChange[] = [];
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -731,7 +731,7 @@ export class RulesService {
 
   async removeExclusionWitData(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
-    let handleMedia: AddRemoveCollectionMedia[] = [];
+    let handleMedia: CollectionMediaChange[] = [];
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -800,7 +800,7 @@ export class RulesService {
   async removeAllExclusion(mediaServerId: string) {
     const mediaServer = await this.getMediaServer();
     // get type from metadata
-    let handleMedia: AddRemoveCollectionMedia[] = [];
+    let handleMedia: CollectionMediaChange[] = [];
 
     const metaData = await mediaServer.getMetadata(mediaServerId);
     if (!metaData?.type) {
