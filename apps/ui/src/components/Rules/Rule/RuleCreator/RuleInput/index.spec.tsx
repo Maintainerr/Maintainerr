@@ -111,7 +111,7 @@ describe('RuleInput', () => {
         editData={{
           rule: {
             operator: null,
-            firstVal: [Application.RADARR, listPropertyId],
+            firstVal: [String(Application.RADARR), String(listPropertyId)],
             action: RulePossibility.NOT_EQUALS,
             customVal: {
               ruleTypeId: 2,
