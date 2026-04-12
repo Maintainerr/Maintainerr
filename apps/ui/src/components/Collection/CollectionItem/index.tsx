@@ -24,11 +24,13 @@ function formatSize(bytes: number | null | undefined): string {
 }
 
 const CollectionItem = (props: ICollectionItem) => {
-  const { data: libraries } = useMediaServerLibraries()
+  const { data: libraries, isError: librariesError } = useMediaServerLibraries()
+  const resolvedLibraryTitle = libraries?.find(
+    (lib) => String(lib.id) === String(props.collection.libraryId),
+  )?.title
+  const libraryUnreachable = !resolvedLibraryTitle && librariesError
   const libraryTitle =
-    libraries?.find(
-      (lib) => String(lib.id) === String(props.collection.libraryId),
-    )?.title ?? '-'
+    resolvedLibraryTitle ?? (libraryUnreachable ? 'Unavailable' : '-')
   const deleteAfterLabel =
     props.collection.deleteAfterDays == null
       ? 'Never'
@@ -159,7 +161,18 @@ const CollectionItem = (props: ICollectionItem) => {
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Library
             </p>
-            <p className="truncate text-maintainerr" title={libraryTitle}>
+            <p
+              className={
+                libraryUnreachable
+                  ? 'truncate text-warning-500'
+                  : 'truncate text-maintainerr'
+              }
+              title={
+                libraryUnreachable
+                  ? 'Media server is unreachable. The stored library selection is preserved.'
+                  : libraryTitle
+              }
+            >
               {libraryTitle}
             </p>
           </div>
