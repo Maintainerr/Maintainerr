@@ -461,10 +461,11 @@ const AddModal = (props: AddModal) => {
     isError: librariesError,
   } = useMediaServerLibraries()
   const storedLibraryId = props.editData?.libraryId?.toString()
+  // Show the stored library as a fallback whenever it's not present in the
+  // current libraries list — including during loading/error. This keeps the
+  // edit form usable when the media server is unreachable on cold load.
   const storedLibraryMissing =
-    !!storedLibraryId &&
-    !librariesLoading &&
-    !libraries?.some((lib) => lib.id === storedLibraryId)
+    !!storedLibraryId && !libraries?.some((lib) => lib.id === storedLibraryId)
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
 
@@ -719,7 +720,13 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  if (librariesLoading || constantsLoading) {
+  // Only hard-block on rule constants: the form can't render its applications,
+  // rule operators, or field options without them. Libraries are allowed to
+  // stream in later — when editing, the stored library is surfaced via
+  // `storedLibraryMissing` so the form remains usable even if the media
+  // server is offline. For brand-new rule groups we still wait for libraries
+  // because there's no fallback selection to preserve.
+  if (constantsLoading || (librariesLoading && !props.editData)) {
     return <LoadingSpinner />
   }
 

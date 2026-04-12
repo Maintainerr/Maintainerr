@@ -1,7 +1,7 @@
 import { MediaItemTypeLabels } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import { ICollection } from '..'
-import { useMediaServerLibraries } from '../../../api/media-server'
+import { useLibraryDisplay } from '../../../hooks/useLibraryDisplay'
 import GetApiHandler from '../../../utils/ApiHandler'
 import {
   buildMetadataImagePath,
@@ -24,11 +24,8 @@ function formatSize(bytes: number | null | undefined): string {
 }
 
 const CollectionItem = (props: ICollectionItem) => {
-  const { data: libraries, isError: librariesError } = useMediaServerLibraries()
-  const resolvedLibraryTitle = libraries?.find(
-    (lib) => String(lib.id) === String(props.collection.libraryId),
-  )?.title
-  const libraryUnreachable = !resolvedLibraryTitle && librariesError
+  const { title: resolvedLibraryTitle, isUnreachable: libraryUnreachable } =
+    useLibraryDisplay(props.collection.libraryId)
   const libraryTitle =
     resolvedLibraryTitle ?? (libraryUnreachable ? 'Unavailable' : '-')
   const deleteAfterLabel =

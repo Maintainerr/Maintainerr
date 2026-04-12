@@ -1,5 +1,8 @@
 import { MediaItem } from '@maintainerr/contracts';
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { MediaServerController } from './media-server.controller';
@@ -433,6 +436,41 @@ describe('MediaServerController', () => {
       );
 
       expect(result.content.items).toEqual([bravo, alpha]);
+    });
+  });
+
+  describe('getLibraries - Unreachable Detection', () => {
+    it('throws ServiceUnavailableException when configured but unreachable', async () => {
+      mockMediaServerService.getLibraries.mockResolvedValue([]);
+      (mockMediaServerService as any).isSetup = jest.fn().mockReturnValue(true);
+      (mockMediaServerService as any).getStatus = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await expect(controller.getLibraries()).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('returns an empty list when the server is reachable but has zero libraries', async () => {
+      mockMediaServerService.getLibraries.mockResolvedValue([]);
+      (mockMediaServerService as any).isSetup = jest.fn().mockReturnValue(true);
+      (mockMediaServerService as any).getStatus = jest
+        .fn()
+        .mockResolvedValue({ machineId: 'm1', version: '1' });
+
+      await expect(controller.getLibraries()).resolves.toEqual([]);
+    });
+
+    it('skips the status probe when the server is not set up', async () => {
+      mockMediaServerService.getLibraries.mockResolvedValue([]);
+      (mockMediaServerService as any).isSetup = jest
+        .fn()
+        .mockReturnValue(false);
+      (mockMediaServerService as any).getStatus = jest.fn();
+
+      await expect(controller.getLibraries()).resolves.toEqual([]);
+      expect((mockMediaServerService as any).getStatus).not.toHaveBeenCalled();
     });
   });
 
