@@ -2,8 +2,8 @@ import { Jellyfin, type Api } from '@jellyfin/sdk';
 import {
   BaseItemKind,
   ItemFields,
-  LocationType,
   ItemSortBy,
+  LocationType,
   SortOrder,
   type UserItemDataDto,
 } from '@jellyfin/sdk/lib/generated-client/models';

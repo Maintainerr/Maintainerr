@@ -31,7 +31,6 @@ describe('ExternalApiService', () => {
           } as any,
         ),
       ),
-      getUri: jest.fn().mockReturnValue('https://example.test/items/123'),
     };
 
     await expect(service.get('/items/123')).resolves.toBeUndefined();
@@ -55,7 +54,6 @@ describe('ExternalApiService', () => {
 
     (service as any).axios = {
       get: jest.fn().mockRejectedValue(error),
-      getUri: jest.fn().mockReturnValue('https://example.test/items/123'),
     };
 
     await expect(service.get('/items/123')).resolves.toBeUndefined();
