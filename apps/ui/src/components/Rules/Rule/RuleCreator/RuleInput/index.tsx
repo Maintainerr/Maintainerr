@@ -570,8 +570,6 @@ const RuleInput = (props: IRuleInput) => {
     action,
     arrDiskPath,
     customVal,
-    customValActive,
-    customValType,
     firstval,
     isSelectedArrDiskspaceRule,
     operator,

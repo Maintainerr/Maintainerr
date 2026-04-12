@@ -505,11 +505,11 @@ export class RuleComparatorService {
     action: RulePossibility,
   ): boolean {
     if (action === RulePossibility.EXISTS) {
-      return val1 != null;
+      return this.hasExistsValue(val1);
     }
 
     if (action === RulePossibility.NOT_EXISTS) {
-      return val1 == null;
+      return !this.hasExistsValue(val1);
     }
 
     if (typeof val1 === 'string') {
@@ -712,6 +712,18 @@ export class RuleComparatorService {
         return val1.length < val2Length;
       }
     }
+  }
+
+  private hasExistsValue(val: RuleValueType): boolean {
+    if (val == null) {
+      return false;
+    }
+
+    if (Array.isArray(val) || typeof val === 'string') {
+      return val.length > 0;
+    }
+
+    return true;
   }
 
   private isStringParsableToArray(str: string) {
