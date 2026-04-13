@@ -2,9 +2,9 @@ import axios from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Notification } from '../entities/notification.entities';
 import {
-    NotificationAgentDiscord,
-    NotificationAgentKey,
-    NotificationType,
+  NotificationAgentDiscord,
+  NotificationAgentKey,
+  NotificationType,
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';

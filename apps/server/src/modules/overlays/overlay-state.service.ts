@@ -30,7 +30,8 @@ export class OverlayStateService {
     let entity = await this.getItemState(collectionId, mediaServerId);
 
     if (entity) {
-      entity.originalPosterPath = originalPosterPath ?? entity.originalPosterPath;
+      entity.originalPosterPath =
+        originalPosterPath ?? entity.originalPosterPath;
       entity.daysLeftShown = daysLeftShown;
       entity.processedAt = new Date();
     } else {

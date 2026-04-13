@@ -1,8 +1,8 @@
 import {
-    ECollectionLogType,
-    MaintainerrEvent,
-    MediaItemType,
-    MediaServerType,
+  ECollectionLogType,
+  MaintainerrEvent,
+  MediaItemType,
+  MediaServerType,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';

@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
-    name = 'OverlaySchemaGenerated1776053413074'
+  name = 'OverlaySchemaGenerated1776053413074';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "overlay_templates" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "name" varchar(100) NOT NULL,
@@ -19,7 +19,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "updatedAt" datetime NOT NULL DEFAULT (datetime('now'))
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "overlay_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "enabled" boolean NOT NULL DEFAULT (0),
@@ -33,7 +33,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "applyOnAdd" boolean NOT NULL DEFAULT (1)
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "overlay_item_state" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -43,10 +43,10 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "processedAt" datetime NOT NULL DEFAULT (datetime('now'))
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_overlay_item_state_collection_media" ON "overlay_item_state" ("collectionId", "mediaServerId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -81,7 +81,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 CONSTRAINT "FK_7b354cc91e78c8e730465f14f69" FOREIGN KEY ("radarrSettingsId") REFERENCES "radarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection"(
                     "id",
                     "libraryId",
@@ -140,14 +140,14 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "sonarrQualityProfileId"
             FROM "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection"
                 RENAME TO "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -184,7 +184,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 SET NULL ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection"(
                     "id",
                     "libraryId",
@@ -247,17 +247,17 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "overlayTemplateId"
             FROM "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection"
                 RENAME TO "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_overlay_item_state_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_overlay_item_state" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -268,7 +268,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 CONSTRAINT "FK_0cdb2226a8ee24176a22b2421e1" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_overlay_item_state"(
                     "id",
                     "collectionId",
@@ -285,27 +285,27 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "processedAt"
             FROM "overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_overlay_item_state"
                 RENAME TO "overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_overlay_item_state_collection_media" ON "overlay_item_state" ("collectionId", "mediaServerId")
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP INDEX "IDX_overlay_item_state_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "overlay_item_state"
                 RENAME TO "temporary_overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "overlay_item_state" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -315,7 +315,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "processedAt" datetime NOT NULL DEFAULT (datetime('now'))
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "overlay_item_state"(
                     "id",
                     "collectionId",
@@ -332,17 +332,17 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "processedAt"
             FROM "temporary_overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_overlay_item_state_collection_media" ON "overlay_item_state" ("collectionId", "mediaServerId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection"
                 RENAME TO "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -377,7 +377,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 CONSTRAINT "FK_7b354cc91e78c8e730465f14f69" FOREIGN KEY ("radarrSettingsId") REFERENCES "radarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection"(
                     "id",
                     "libraryId",
@@ -440,14 +440,14 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "overlayTemplateId"
             FROM "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection"
                 RENAME TO "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -480,7 +480,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 CONSTRAINT "FK_7b354cc91e78c8e730465f14f69" FOREIGN KEY ("radarrSettingsId") REFERENCES "radarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection"(
                     "id",
                     "libraryId",
@@ -539,21 +539,20 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "sonarrQualityProfileId"
             FROM "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "IDX_overlay_item_state_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "overlay_item_state"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "overlay_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "overlay_templates"
         `);
-    }
-
+  }
 }

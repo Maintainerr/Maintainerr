@@ -4,9 +4,9 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
 import { Notification } from '../entities/notification.entities';
 import {
-    NotificationAgentKey,
-    NotificationAgentWebhook,
-    NotificationType,
+  NotificationAgentKey,
+  NotificationAgentWebhook,
+  NotificationType,
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';

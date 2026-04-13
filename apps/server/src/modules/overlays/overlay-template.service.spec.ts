@@ -30,10 +30,7 @@ describe('OverlayTemplateService', () => {
         isDefault: false,
       });
 
-    const service = new OverlayTemplateService(
-      repo as any,
-      createMockLogger(),
-    );
+    const service = new OverlayTemplateService(repo as any, createMockLogger());
 
     await expect(service.remove(7)).resolves.toBe(true);
     expect(repo.remove).toHaveBeenCalledWith(

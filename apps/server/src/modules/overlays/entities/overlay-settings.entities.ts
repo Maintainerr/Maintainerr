@@ -1,7 +1,7 @@
 import {
-    FrameConfig,
-    OverlayStyleConfig,
-    OverlayTextConfig,
+  FrameConfig,
+  OverlayStyleConfig,
+  OverlayTextConfig,
 } from '@maintainerr/contracts';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 

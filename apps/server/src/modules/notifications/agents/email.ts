@@ -5,9 +5,9 @@ import { SettingsService } from '../../settings/settings.service';
 import PreparedEmail from '../email/preparedEmail';
 import { Notification } from '../entities/notification.entities';
 import {
-    NotificationAgentEmail,
-    NotificationAgentKey,
-    NotificationType,
+  NotificationAgentEmail,
+  NotificationAgentKey,
+  NotificationType,
 } from '../notifications-interfaces';
 import type { NotificationAgent, NotificationPayload } from './agent';
 

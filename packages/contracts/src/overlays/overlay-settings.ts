@@ -1,7 +1,13 @@
 import z from 'zod'
 import { DEFAULT_FRAME_CONFIG, frameConfigSchema } from './frame-config'
-import { DEFAULT_OVERLAY_STYLE_CONFIG, overlayStyleConfigSchema } from './overlay-style-config'
-import { DEFAULT_OVERLAY_TEXT_CONFIG, overlayTextConfigSchema } from './overlay-text-config'
+import {
+  DEFAULT_OVERLAY_STYLE_CONFIG,
+  overlayStyleConfigSchema,
+} from './overlay-style-config'
+import {
+  DEFAULT_OVERLAY_TEXT_CONFIG,
+  overlayTextConfigSchema,
+} from './overlay-text-config'
 
 export const overlaySettingsSchema = z.object({
   enabled: z.boolean(),

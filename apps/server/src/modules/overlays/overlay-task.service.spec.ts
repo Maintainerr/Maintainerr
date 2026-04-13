@@ -1,8 +1,5 @@
 import { CollectionMediaRemovedDto } from '../events/events.dto';
-import {
-  createCollection,
-  createMockLogger,
-} from '../../../test/utils/data';
+import { createCollection, createMockLogger } from '../../../test/utils/data';
 import { OverlayTaskService } from './overlay-task.service';
 
 describe('OverlayTaskService', () => {

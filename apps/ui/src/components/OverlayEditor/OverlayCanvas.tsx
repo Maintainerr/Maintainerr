@@ -35,7 +35,10 @@ export function OverlayCanvas({
 }: OverlayCanvasProps) {
   const stageRef = useRef<Konva.Stage>(null)
   const trRef = useRef<Konva.Transformer>(null)
-  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null)
+  const [loadedBackground, setLoadedBackground] = useState<{
+    image: HTMLImageElement
+    url: string
+  } | null>(null)
 
   // Scale to fit display area
   const scale = Math.min(1, MAX_DISPLAY_HEIGHT / canvasHeight)
@@ -45,15 +48,22 @@ export function OverlayCanvas({
   // Load background image when URL changes
   useEffect(() => {
     if (!backgroundUrl) {
-      setBgImage(null)
       return
     }
+
+    let cancelled = false
     const img = new window.Image()
     img.crossOrigin = 'anonymous'
-    img.onload = () => setBgImage(img)
-    img.onerror = () => setBgImage(null)
+    img.onload = () => {
+      if (!cancelled) {
+        setLoadedBackground({ image: img, url: backgroundUrl })
+      }
+    }
+    img.onerror = () => undefined
     img.src = backgroundUrl
+
     return () => {
+      cancelled = true
       img.onload = null
       img.onerror = null
     }
@@ -146,9 +156,9 @@ export function OverlayCanvas({
             fill="#1a1a2e"
             listening={false}
           />
-          {bgImage ? (
+          {backgroundUrl && loadedBackground?.url === backgroundUrl ? (
             <KonvaImage
-              image={bgImage}
+              image={loadedBackground.image}
               width={displayW}
               height={displayH}
               listening={false}
@@ -231,7 +241,7 @@ function ElementRenderer({
   }
 
   switch (el.type) {
-    case 'text':
+    case 'text': {
       const textValue = el.uppercase ? el.text.toUpperCase() : el.text
       return (
         <Group {...commonProps}>
@@ -262,8 +272,9 @@ function ElementRenderer({
           />
         </Group>
       )
+    }
 
-    case 'variable':
+    case 'variable': {
       // Show placeholder text in editor
       const placeholder = el.segments
         .map((s) => (s.type === 'text' ? s.value : `{${s.field}}`))
@@ -300,6 +311,7 @@ function ElementRenderer({
           />
         </Group>
       )
+    }
 
     case 'shape':
       if (el.shapeType === 'ellipse') {

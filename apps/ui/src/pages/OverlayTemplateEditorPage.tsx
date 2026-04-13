@@ -128,15 +128,12 @@ const OverlayTemplateEditorPage = () => {
     }
   }, [mode, selectedSection])
 
-  const handleSectionChange = useCallback(
-    (sectionKey: string) => {
-      setSelectedSection(sectionKey)
-      if (!sectionKey) {
-        setBackgroundUrl(null)
-      }
-    },
-    [],
-  )
+  const handleSectionChange = useCallback((sectionKey: string) => {
+    setSelectedSection(sectionKey)
+    if (!sectionKey) {
+      setBackgroundUrl(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedSection) {

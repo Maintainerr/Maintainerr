@@ -1441,18 +1441,17 @@ export class PlexApiService {
    */
   public async getBestPosterUrl(plexId: string): Promise<string | null> {
     try {
-      const response =
-        await this.plexClient.query<PlexMetadataResponse>(
-          `/library/metadata/${plexId}`,
-          false,
-        );
+      const response = await this.plexClient.query<PlexMetadataResponse>(
+        `/library/metadata/${plexId}`,
+        false,
+      );
 
       const mc = response?.MediaContainer;
       if (!mc) return null;
 
-      const candidates = [mc.Metadata]
-        .flat()
-        .filter(Boolean) as Array<{ thumb?: string }>;
+      const candidates = [mc.Metadata].flat().filter(Boolean) as Array<{
+        thumb?: string;
+      }>;
 
       for (const item of candidates) {
         if (item.thumb) return item.thumb;
@@ -1475,7 +1474,9 @@ export class PlexApiService {
       settings.ip +
       ':' +
       settings.port;
-    const url = thumbPath.startsWith('http') ? thumbPath : `${baseUrl}${thumbPath}`;
+    const url = thumbPath.startsWith('http')
+      ? thumbPath
+      : `${baseUrl}${thumbPath}`;
 
     const { data } = await axios.get<ArrayBuffer>(url, {
       responseType: 'arraybuffer',
@@ -1531,19 +1532,15 @@ export class PlexApiService {
       ':' +
       settings.port;
 
-    await axios.post(
-      `${baseUrl}/library/metadata/${plexId}/posters`,
-      buffer,
-      {
-        headers: {
-          'X-Plex-Token': settings.auth_token,
-          'Content-Type': contentType,
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        timeout: 120000,
+    await axios.post(`${baseUrl}/library/metadata/${plexId}/posters`, buffer, {
+      headers: {
+        'X-Plex-Token': settings.auth_token,
+        'Content-Type': contentType,
       },
-    );
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 120000,
+    });
   }
 
   /**
@@ -1561,15 +1558,11 @@ export class PlexApiService {
         ':' +
         settings.port;
 
-      await axios.put(
-        `${baseUrl}/library/metadata/${plexId}/poster`,
-        null,
-        {
-          params: { url: `upload://posters/${uploadId}` },
-          headers: { 'X-Plex-Token': settings.auth_token },
-          timeout: 30000,
-        },
-      );
+      await axios.put(`${baseUrl}/library/metadata/${plexId}/poster`, null, {
+        params: { url: `upload://posters/${uploadId}` },
+        headers: { 'X-Plex-Token': settings.auth_token },
+        timeout: 30000,
+      });
       return true;
     } catch (err) {
       this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`);
@@ -1668,11 +1661,10 @@ export class PlexApiService {
    */
   public async getItemType(plexId: string): Promise<string | null> {
     try {
-      const response =
-        await this.plexClient.query<PlexMetadataResponse>(
-          `/library/metadata/${plexId}`,
-          false,
-        );
+      const response = await this.plexClient.query<PlexMetadataResponse>(
+        `/library/metadata/${plexId}`,
+        false,
+      );
       const item = response?.MediaContainer?.Metadata?.[0];
       return (item as { type?: string })?.type ?? null;
     } catch {
@@ -1797,8 +1789,7 @@ export class PlexApiService {
       const withThumb = episodes.filter((e) => e.thumb);
       if (!withThumb.length) return null;
 
-      const episode =
-        withThumb[Math.floor(Math.random() * withThumb.length)];
+      const episode = withThumb[Math.floor(Math.random() * withThumb.length)];
       const displayTitle = episode.grandparentTitle
         ? `${episode.grandparentTitle} — ${episode.title ?? episode.ratingKey}`
         : (episode.title ?? String(episode.ratingKey));

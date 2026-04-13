@@ -1,10 +1,10 @@
 import {
-    DEFAULT_OVERLAY_SETTINGS,
-    OverlayExport,
-    overlayExportSchema,
-    OverlaySettings,
-    OverlaySettingsUpdate,
-    overlaySettingsUpdateSchema
+  DEFAULT_OVERLAY_SETTINGS,
+  OverlayExport,
+  overlayExportSchema,
+  OverlaySettings,
+  OverlaySettingsUpdate,
+  overlaySettingsUpdateSchema,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';

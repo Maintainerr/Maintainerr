@@ -1,18 +1,22 @@
 import {
-    Column,
-    CreateDateColumn,
-    Entity,
-    Index,
-    JoinColumn,
-    ManyToOne,
-    PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Collection } from '../../collections/entities/collection.entities';
 
 @Entity('overlay_item_state')
-@Index('IDX_overlay_item_state_collection_media', ['collectionId', 'mediaServerId'], {
-  unique: true,
-})
+@Index(
+  'IDX_overlay_item_state_collection_media',
+  ['collectionId', 'mediaServerId'],
+  {
+    unique: true,
+  },
+)
 export class OverlayItemStateEntity {
   @PrimaryGeneratedColumn()
   id: number;
