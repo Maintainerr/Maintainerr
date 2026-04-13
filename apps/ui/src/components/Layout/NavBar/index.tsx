@@ -1,8 +1,9 @@
 import { Transition, TransitionChild } from '@headlessui/react'
 import {
-  ArchiveIcon,
+  CalendarIcon,
   ClipboardCheckIcon,
   CogIcon,
+  CollectionIcon,
   EyeIcon,
   XIcon,
 } from '@heroicons/react/outline'
@@ -56,9 +57,16 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
       {
         key: '2',
         href: '/collections',
-        svgIcon: <ArchiveIcon className="mr-3 h-6 w-6" />,
+        svgIcon: <CollectionIcon className="mr-3 h-6 w-6" />,
         name: collectionsLabel,
         matchPattern: /^\/collections(?:\/.*)?$/,
+      },
+      {
+        key: '4',
+        href: '/calendar',
+        svgIcon: <CalendarIcon className="mr-3 h-6 w-6" />,
+        name: 'Calendar',
+        matchPattern: /^\/calendar(?:\/.*)?$/,
       },
       {
         key: '3',

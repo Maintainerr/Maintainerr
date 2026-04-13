@@ -39,6 +39,8 @@ describe('MediaModal', () => {
       isLoading: false,
       isPlex: false,
       isJellyfin: false,
+      isMediaServerTypeSelected: false,
+      isSetupComplete: false,
       isNotConfigured: true,
     })
   })
