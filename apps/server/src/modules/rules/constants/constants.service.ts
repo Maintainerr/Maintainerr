@@ -1,5 +1,51 @@
 import { Injectable } from '@nestjs/common';
-import { RuleConstants, RuleType } from './rules.constants';
+import { Property, RuleConstants, RuleType } from './rules.constants';
+
+/**
+ * Derive a friendly "why is this null" explanation entirely from the
+ * property's existing metadata (type, humanName, name). No static tables:
+ * anything added to RuleConstants automatically gets a sensible reason.
+ *
+ * The humanName is already authored in a human-readable form like
+ * "Last view date" or "[list] Collections media is present in (titles)",
+ * so we can reuse it as the noun and wrap it with a verb that matches the
+ * field's type. The `[list]` / `[time]` prefixes are stripped so the
+ * sentence reads naturally.
+ */
+const buildDynamicNullReason = (
+  property: Property,
+  applicationName?: string,
+): string => {
+  const cleanHuman = stripHumanNamePrefix(property.humanName);
+  const noun = cleanHuman || property.name;
+  const label = applicationName ? `${applicationName} ${noun}` : noun;
+
+  switch (property.type) {
+    case RuleType.DATE:
+      return `${label} is not recorded for this item`;
+    case RuleType.NUMBER:
+      return `${label} is not available for this item`;
+    case RuleType.BOOL:
+      return `${label} is not available for this item`;
+    case RuleType.TEXT:
+      return `${label} is not set for this item`;
+    case RuleType.TEXT_LIST:
+      return `${label} has no entries for this item`;
+    default:
+      return `${label} is not available for this item`;
+  }
+};
+
+const stripHumanNamePrefix = (humanName?: string): string => {
+  if (!humanName) return '';
+  // Strip leading "[list]", "[time]", etc. prefixes used in the UI.
+  const trimmed = humanName.trim();
+  if (trimmed.startsWith('[')) {
+    const close = trimmed.indexOf(']');
+    if (close !== -1) return trimmed.slice(close + 1).trim();
+  }
+  return trimmed;
+};
 
 export interface ICustomIdentifier {
   type: string;
@@ -38,6 +84,23 @@ export class RuleConstanstService {
         .find((el) => el.id === location[0])
         ?.props.find((el) => el.id === location[1])?.humanName
     }`;
+  }
+
+  /**
+   * Translate a (null) rule value into a human-readable explanation of why
+   * it was missing. Surfaces in the Test Media YAML output so users stop
+   * seeing bare "null" values and can tell the field has no data for this
+   * item. Derived dynamically from the property's existing metadata — no
+   * static table to maintain. Rules comparisons still fail closed; this is
+   * purely diagnostic.
+   */
+  public getValueNullReason(location: [number, number]): string {
+    const application = this.ruleConstants.applications.find(
+      (el) => el.id === location[0],
+    );
+    const prop = application?.props.find((el) => el.id === location[1]);
+    if (!prop) return 'Value unavailable';
+    return buildDynamicNullReason(prop, application?.name);
   }
 
   public getValueFromIdentifier(identifier: string): [number, number] {

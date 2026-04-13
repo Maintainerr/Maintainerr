@@ -1,5 +1,11 @@
 import { Application, MediaType, RulePossibility } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RuleInput from './index'
 
@@ -44,7 +50,7 @@ const ruleConstants = {
           mediaType: MediaType.BOTH,
           type: {
             key: '4',
-            possibilities: [RulePossibility.NOT_EQUALS],
+            possibilities: [RulePossibility.NOT_EQUALS, RulePossibility.EXISTS],
           },
         },
       ],
@@ -70,6 +76,7 @@ describe('RuleInput', () => {
   })
 
   afterEach(() => {
+    cleanup()
     vi.clearAllMocks()
   })
 
@@ -130,6 +137,40 @@ describe('RuleInput', () => {
       expect(
         (screen.getByLabelText('Custom Value') as HTMLInputElement).placeholder,
       ).toBe('Value1 or ["Value1", "Value2"]')
+    })
+  })
+
+  it('commits unary exists rules without a second value input', async () => {
+    render(
+      <RuleInput
+        id={1}
+        mediaType={MediaType.MOVIE}
+        radarrSettingsId={1}
+        onCommit={onCommit}
+        onIncomplete={onIncomplete}
+        onDelete={onDelete}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('First Value'), {
+      target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
+    })
+    fireEvent.change(screen.getByLabelText('Action'), {
+      target: { value: String(RulePossibility.EXISTS) },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Second Value')).toBeNull()
+    })
+
+    await waitFor(() => {
+      const committedRule = onCommit.mock.calls.at(-1)?.[1]
+      expect(committedRule).toMatchObject({
+        firstVal: [Application.RADARR, listPropertyId],
+        action: RulePossibility.EXISTS,
+      })
+      expect(committedRule.lastVal).toBeUndefined()
+      expect(committedRule.customVal).toBeUndefined()
     })
   })
 })

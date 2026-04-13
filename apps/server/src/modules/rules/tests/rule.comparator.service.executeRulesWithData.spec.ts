@@ -59,6 +59,9 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       type: 'number',
       value: 6,
     });
+    ruleConstanstService.getValueNullReason.mockReturnValue(
+      'Value unavailable',
+    );
     ruleConstanstService.getRuleConstants.mockReturnValue({
       applications: [
         {
@@ -145,6 +148,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
       action: 'smaller',
       firstValue: null,
+      firstValueReason: 'Value unavailable',
       secondValue: 6,
       result: false,
     });
@@ -187,8 +191,112 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       action: 'bigger',
       firstValue: 10,
       secondValue: null,
+      secondValueReason: 'Value unavailable',
       result: true,
     });
+  });
+
+  it('matches exists rules when the first value is present without a second operand', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.EXISTS,
+        firstVal: [Application.PLEX, 8],
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence('HEVC 1080p');
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRulesDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    expect(result.data).toHaveLength(1);
+    expect(result.stats[0].result).toBe(true);
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
+      action: 'exists',
+      firstValue: 'HEVC 1080p',
+      result: true,
+    });
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValue',
+    );
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValueName',
+    );
+    expect(valueGetterService.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('matches not_exists rules when the first value is missing', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.NOT_EXISTS,
+        firstVal: [Application.PLEX, 6],
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence(null);
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRulesDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    expect(result.data).toHaveLength(1);
+    expect(result.stats[0].result).toBe(true);
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
+      action: 'not_exists',
+      firstValue: null,
+      firstValueReason: 'Value unavailable',
+      result: true,
+    });
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValue',
+    );
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
+      'secondValueName',
+    );
+  });
+
+  it('keeps BEFORE date rules fail-closed when lastViewedAt is null', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.BEFORE,
+        firstVal: [Application.PLEX, 6],
+        customVal: {
+          ruleTypeId: +RuleType.DATE,
+          value: '2024-01-01T00:00:00.000Z',
+        },
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence(null);
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRulesDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    expect(result.data).toEqual([]);
+    expect(result.stats[0].result).toBe(false);
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
+      action: 'before',
+      firstValue: null,
+      firstValueReason: 'Value unavailable',
+      result: false,
+    });
+    expect(
+      result.stats[0].sectionResults[0].ruleResults[0].secondValue,
+    ).toEqual(new Date('2024-01-01T00:00:00.000Z'));
   });
 
   it('formats custom_days second value as a past Date when first value is null (issue #2582)', async () => {
