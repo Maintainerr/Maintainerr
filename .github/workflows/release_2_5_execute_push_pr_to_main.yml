@@ -90,7 +90,7 @@ jobs:
     steps:
       - name: Gather PR metadata
         id: pr
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const pullNumber = Number('${{ needs.load_context.outputs.pr_number }}');
@@ -155,7 +155,7 @@ jobs:
       statuses: read
     steps:
       - name: Wait for non-release checks
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const prNumber = Number('${{ needs.resolve_pr.outputs.pr_number }}');
@@ -376,7 +376,7 @@ jobs:
 
       - name: Squash-merge PR
         id: merge
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
