@@ -7,7 +7,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExecutionLockService } from '../../tasks/execution-lock.service';
-import { RuleExecutorService } from './rule-executor.service';
+import {
+  RuleExecutorService,
+  type RuleExecutionResult,
+} from './rule-executor.service';
 
 type QueueItem = {
   ruleGroupId: number;
@@ -163,7 +166,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
     this.processingQueue = true;
     this.processQueuePromise = (async () => {
       try {
-        // Pre-flight: verify media server is reachable (triggers re-discovery for Plex)
+        // Queue-level pre-flight: if the media server is unreachable at the
+        // start of the run, silently drop the whole queue to avoid spamming
+        // per-rule failure notifications during a sustained outage. The
+        // per-rule check inside RuleExecutorService still handles transient
+        // blips that occur between rules in a long run.
         try {
           await this.mediaServerFactory.verifyConnection();
         } catch (error) {
@@ -207,10 +214,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       this.emitStatusUpdate();
 
       try {
-        await this.ruleExecutorService.executeForRuleGroups(
+        const result = await this.ruleExecutorService.executeForRuleGroups(
           request.ruleGroupId,
           this.abortController.signal,
         );
+        this.handleQueueLevelFailure(result);
       } catch (error) {
         this.logger.error(
           `An error occurred while executing job for rule group ${request.ruleGroupId}`,
@@ -225,6 +233,23 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       this.reservedRuleGroupIds.delete(request.ruleGroupId);
       this.emitStatusUpdate();
     }
+  }
+
+  private handleQueueLevelFailure(result: RuleExecutionResult) {
+    if (
+      result.status !== 'failed' ||
+      result.reason !== 'media-server-unreachable'
+    ) {
+      return;
+    }
+
+    if (this.queue.length > 0) {
+      this.logger.warn(
+        'Media server became unreachable during queue execution. Dropping remaining queued rule groups.',
+      );
+    }
+    this.queue.length = 0;
+    this.emitStatusUpdate();
   }
 
   public getStatus() {

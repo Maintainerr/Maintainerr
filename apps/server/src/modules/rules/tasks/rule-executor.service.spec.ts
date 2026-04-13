@@ -29,6 +29,7 @@ describe('RuleExecutorService', () => {
 
     const mediaServerFactory = {
       getService: jest.fn().mockResolvedValue(mediaServer),
+      verifyConnection: jest.fn().mockResolvedValue(mediaServer),
     } as unknown as jest.Mocked<MediaServerFactory>;
 
     const collectionService = {
@@ -88,7 +89,6 @@ describe('RuleExecutorService', () => {
 
     const settings = {
       media_server_type: mediaServerType,
-      testConnections: jest.fn().mockResolvedValue(true),
       testSetup: jest.fn().mockResolvedValue(true),
     } as unknown as jest.Mocked<SettingsService>;
 
@@ -821,13 +821,54 @@ describe('RuleExecutorService', () => {
     expect(progressManager.reset).toHaveBeenCalled();
   });
 
+  it('fails the rule group when the media server is unreachable', async () => {
+    const { service, rulesService, mediaServerFactory, eventEmitter, logger } =
+      createService(MediaServerType.PLEX);
+
+    const ruleGroup = {
+      id: 55,
+      name: 'Reduce movie quality',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Movies' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    mediaServerFactory.verifyConnection.mockRejectedValue(
+      new Error('Media server still unreachable after re-initialization'),
+    );
+
+    await expect(
+      service.executeForRuleGroups(55, new AbortController().signal),
+    ).resolves.toEqual({
+      status: 'failed',
+      failedPayload: expect.objectContaining({
+        collectionName: 'Movies',
+        identifier: { type: 'rulegroup', value: 55 },
+      }),
+      reason: 'media-server-unreachable',
+    });
+
+    expect(mediaServerFactory.verifyConnection).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Media server unreachable. Skipping execution of rule 'Reduce movie quality'.",
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.RuleHandler_Failed,
+      expect.anything(),
+    );
+  });
+
   it('does not emit started and still cleans up when execution was already aborted before starting', async () => {
     const {
       service,
       rulesService,
       eventEmitter,
       progressManager,
-      settings,
+      mediaServerFactory,
       logger,
     } = createService(MediaServerType.JELLYFIN);
 
@@ -851,7 +892,7 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.RuleHandler_Started,
       expect.anything(),
     );
-    expect(settings.testConnections).not.toHaveBeenCalled();
+    expect(mediaServerFactory.verifyConnection).not.toHaveBeenCalled();
     expect(logger.log).toHaveBeenCalledWith(
       "Execution of rule 'Aborted Group' was aborted.",
     );
