@@ -20,6 +20,8 @@ export enum RulePossibility {
   COUNT_NOT_EQUALS,
   COUNT_BIGGER,
   COUNT_SMALLER,
+  EXISTS,
+  NOT_EXISTS,
 }
 
 /**
@@ -44,6 +46,8 @@ export const RulePossibilityTranslations: Record<RulePossibility, string> = {
   [RulePossibility.COUNT_NOT_EQUALS]: 'Count Does Not Equal',
   [RulePossibility.COUNT_BIGGER]: 'Count Is Bigger Than',
   [RulePossibility.COUNT_SMALLER]: 'Count Is Smaller Than',
+  [RulePossibility.EXISTS]: 'Exists',
+  [RulePossibility.NOT_EXISTS]: 'Does Not Exist',
 }
 
 /**

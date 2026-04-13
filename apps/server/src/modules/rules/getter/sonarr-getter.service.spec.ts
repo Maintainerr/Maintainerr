@@ -246,6 +246,276 @@ describe('SonarrGetterService', () => {
     });
   });
 
+  describe('seasons_monitored', () => {
+    it('returns monitored episode count for a season even when all episodes have files', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({
+          type: 'show',
+        }),
+      );
+
+      const series = createSonarrSeries({
+        seasons: [
+          {
+            seasonNumber: 0,
+            monitored: false,
+          },
+          {
+            seasonNumber: 6,
+            monitored: true,
+            statistics: {
+              episodeCount: 10,
+              episodeFileCount: 10,
+              totalEpisodeCount: 10,
+              sizeOnDisk: 0,
+              percentOfEpisodes: 100,
+            },
+          },
+        ],
+      });
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue(
+        Array.from({ length: 10 }, (_, index) =>
+          createSonarrEpisode({
+            seriesId: series.id,
+            seasonNumber: 6,
+            episodeNumber: index + 1,
+            monitored: false,
+            hasFile: true,
+          }),
+        ),
+      );
+
+      const response = await sonarrGetterService.get(
+        11,
+        createMediaItem({
+          type: 'season',
+          index: 6,
+        }),
+        'season',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(0);
+      expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(series.id, 6);
+    });
+
+    it('returns monitored episode count for a season even when only some monitored episodes have files', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({
+          type: 'show',
+        }),
+      );
+
+      const series = createSonarrSeries({
+        seasons: [
+          {
+            seasonNumber: 0,
+            monitored: false,
+          },
+          {
+            seasonNumber: 8,
+            monitored: true,
+            statistics: {
+              episodeCount: 2,
+              episodeFileCount: 2,
+              totalEpisodeCount: 10,
+              sizeOnDisk: 0,
+              percentOfEpisodes: 20,
+            },
+          },
+        ],
+      });
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue(
+        Array.from({ length: 10 }, (_, index) =>
+          createSonarrEpisode({
+            seriesId: series.id,
+            seasonNumber: 8,
+            episodeNumber: index + 1,
+            monitored: true,
+            hasFile: index < 2,
+          }),
+        ),
+      );
+
+      const response = await sonarrGetterService.get(
+        11,
+        createMediaItem({
+          type: 'season',
+          index: 8,
+        }),
+        'season',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(10);
+      expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(series.id, 8);
+    });
+
+    it('returns the season monitored episode count for episode rules', async () => {
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({
+          type: 'show',
+        }),
+      );
+
+      const series = createSonarrSeries({
+        seasons: [
+          {
+            seasonNumber: 0,
+            monitored: false,
+          },
+          {
+            seasonNumber: 4,
+            monitored: true,
+            statistics: {
+              episodeCount: 3,
+              episodeFileCount: 1,
+              totalEpisodeCount: 10,
+              sizeOnDisk: 0,
+              percentOfEpisodes: 30,
+            },
+          },
+        ],
+      });
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue(
+        Array.from({ length: 10 }, (_, index) =>
+          createSonarrEpisode({
+            seriesId: series.id,
+            seasonNumber: 4,
+            episodeNumber: index + 1,
+            monitored: index < 3,
+            hasFile: index === 0,
+          }),
+        ),
+      );
+
+      const response = await sonarrGetterService.get(
+        11,
+        createMediaItem({
+          type: 'episode',
+          index: 1,
+          parentIndex: 4,
+          parentId: 'season-4',
+          grandparentId: 'show-1',
+        }),
+        'episode',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+      );
+
+      expect(response).toBe(3);
+      expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(series.id, 4);
+    });
+  });
+
+  describe('finale properties', () => {
+    it('returns season finale state for season rules', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({
+          type: 'show',
+        }),
+      );
+
+      const series = createSonarrSeries({
+        seasons: [
+          {
+            seasonNumber: 0,
+            monitored: false,
+          },
+          {
+            seasonNumber: 5,
+            monitored: true,
+          },
+        ],
+      });
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 5,
+          episodeNumber: 10,
+          finaleType: 'season',
+          hasFile: true,
+        }),
+      ]);
+
+      const response = await sonarrGetterService.get(
+        16,
+        createMediaItem({
+          type: 'season',
+          index: 5,
+        }),
+        'season',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(true);
+      expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(series.id, 5);
+    });
+
+    it('returns series finale state for show rules', async () => {
+      const collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      const series = createSonarrSeries();
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 5,
+          episodeNumber: 10,
+          finaleType: 'series',
+          hasFile: true,
+        }),
+      ]);
+
+      const response = await sonarrGetterService.get(
+        17,
+        createMediaItem({
+          type: 'show',
+        }),
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+      expect(response).toBe(true);
+      expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(series.id);
+    });
+  });
+
   describe('episode file properties', () => {
     let collectionMedia: CollectionMedia;
     let mockedSonarrApi: SonarrApi;

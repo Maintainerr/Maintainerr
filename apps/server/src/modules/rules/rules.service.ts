@@ -27,6 +27,7 @@ import {
   Application,
   Property,
   RuleConstants,
+  RulePossibility,
   RuleType,
 } from './constants/rules.constants';
 import { CommunityRule } from './dtos/communityRule.dto';
@@ -887,6 +888,16 @@ export class RulesService {
       const val1: Property = this.ruleConstants.applications
         .find((el) => el.id === rule.firstVal[0])
         .props.find((el) => el.id === rule.firstVal[1]);
+      if (
+        [RulePossibility.EXISTS, RulePossibility.NOT_EXISTS].includes(
+          +rule.action,
+        )
+      ) {
+        return val1.type.possibilities.includes(+rule.action)
+          ? this.createReturnStatus(true, 'Success')
+          : this.createReturnStatus(false, 'Action is not supported on type');
+      }
+
       if (rule.lastVal) {
         const val2: Property = this.ruleConstants.applications
           .find((el) => el.id === rule.lastVal[0])
@@ -912,6 +923,14 @@ export class RulesService {
           val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
           (val1.type === RuleType.DATE &&
             rule.customVal.ruleTypeId === +RuleType.NUMBER) ||
+          (val1.type === RuleType.TEXT_LIST &&
+            rule.customVal.ruleTypeId === +RuleType.NUMBER &&
+            [
+              RulePossibility.COUNT_EQUALS,
+              RulePossibility.COUNT_NOT_EQUALS,
+              RulePossibility.COUNT_BIGGER,
+              RulePossibility.COUNT_SMALLER,
+            ].includes(+rule.action)) ||
           (val1.type == RuleType.TEXT_LIST &&
             rule.customVal.ruleTypeId.toString() == RuleType.TEXT.toString())
         ) {

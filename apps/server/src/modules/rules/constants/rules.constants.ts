@@ -23,6 +23,8 @@ export class RuleType {
       RulePossibility.SMALLER,
       RulePossibility.EQUALS,
       RulePossibility.NOT_EQUALS,
+      RulePossibility.EXISTS,
+      RulePossibility.NOT_EXISTS,
     ],
     'number',
   );
@@ -35,6 +37,8 @@ export class RuleType {
       RulePossibility.AFTER,
       RulePossibility.IN_LAST,
       RulePossibility.IN_NEXT,
+      RulePossibility.EXISTS,
+      RulePossibility.NOT_EXISTS,
     ],
     'date',
   );
@@ -45,12 +49,19 @@ export class RuleType {
       RulePossibility.NOT_EQUALS,
       RulePossibility.CONTAINS,
       RulePossibility.NOT_CONTAINS,
+      RulePossibility.EXISTS,
+      RulePossibility.NOT_EXISTS,
     ],
     'text',
   );
   static readonly BOOL = new RuleType(
     '3',
-    [RulePossibility.EQUALS, RulePossibility.NOT_EQUALS],
+    [
+      RulePossibility.EQUALS,
+      RulePossibility.NOT_EQUALS,
+      RulePossibility.EXISTS,
+      RulePossibility.NOT_EXISTS,
+    ],
     'boolean',
   );
   static readonly TEXT_LIST = new RuleType(
@@ -68,6 +79,8 @@ export class RuleType {
       RulePossibility.COUNT_NOT_EQUALS,
       RulePossibility.COUNT_BIGGER,
       RulePossibility.COUNT_SMALLER,
+      RulePossibility.EXISTS,
+      RulePossibility.NOT_EXISTS,
     ],
     'text list',
   );
