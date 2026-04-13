@@ -152,7 +152,7 @@ describe('PlexApiService.getMetadata', () => {
     await service.addChildrenToCollection('55', ['1', '2']);
 
     expect(putQuery).toHaveBeenCalledWith({
-      uri: '/library/collections/55/items?uri=library://machine123/item/%2Flibrary%2Fmetadata%2F1%2C%2Flibrary%2Fmetadata%2F2',
+      uri: '/library/collections/55/items?uri=server%3A%2F%2Fmachine123%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F1%2C2',
     });
   });
 

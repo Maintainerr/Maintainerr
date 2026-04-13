@@ -129,9 +129,14 @@ export class PlexApiService {
   }
 
   private buildCollectionItemsUri(itemIds: string[]): string {
-    return `library://${this.machineId}/item/${encodeURIComponent(
-      itemIds.map((itemId) => `/library/metadata/${itemId}`).join(','),
-    )}`;
+    // Canonical Plex URI for `PUT /library/collections/{id}/items?uri=…`, aligned
+    // with python-plexapi's Collection.addItems: a single `/library/metadata/`
+    // prefix followed by comma-joined ratingKeys. The previous `library://.../item/`
+    // form did not match that upstream shape and is the most likely cause of the
+    // observed 400 responses on multi-item batches.
+    return encodeURIComponent(
+      `server://${this.machineId}/com.plexapp.plugins.library/library/metadata/${itemIds.join(',')}`,
+    );
   }
 
   private extractPlexAvatarUuid(thumb?: string): string | undefined {
