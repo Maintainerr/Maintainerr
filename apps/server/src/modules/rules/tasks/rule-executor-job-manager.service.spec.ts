@@ -1,8 +1,12 @@
 import { createMockLogger } from '../../../../test/utils/data';
 import { ExecutionLockService } from '../../tasks/execution-lock.service';
 import { RuleExecutorJobManagerService } from './rule-executor-job-manager.service';
+import { RuleExecutionResult } from './rule-executor.service';
 
-type ExecuteMock = jest.Mock<Promise<void>, [number, AbortSignal]>;
+type ExecuteMock = jest.Mock<
+  Promise<RuleExecutionResult>,
+  [number, AbortSignal]
+>;
 
 const createDeferred = () => {
   let resolve: () => void;
@@ -23,7 +27,8 @@ describe('RuleExecutorJobManagerService', () => {
   const buildService = (executeMock?: ExecuteMock) => {
     const ruleExecutorService = {
       executeForRuleGroups:
-        executeMock ?? (jest.fn().mockResolvedValue(undefined) as ExecuteMock),
+        executeMock ??
+        (jest.fn().mockResolvedValue({ status: 'success' }) as ExecuteMock),
     };
 
     const eventEmitter = {
@@ -72,6 +77,7 @@ describe('RuleExecutorJobManagerService', () => {
           await second.promise;
         }
         inFlight.pop();
+        return { status: 'success' };
       });
 
     const { service } = buildService(executeMock);
@@ -101,9 +107,10 @@ describe('RuleExecutorJobManagerService', () => {
 
   it('aborts the currently executing job when requested', async () => {
     const executionDeferred = createDeferred();
-    const executeMock: ExecuteMock = jest
-      .fn()
-      .mockImplementation(async () => executionDeferred.promise);
+    const executeMock: ExecuteMock = jest.fn().mockImplementation(async () => {
+      await executionDeferred.promise;
+      return { status: 'success' };
+    });
 
     const { service } = buildService(executeMock);
 
@@ -122,8 +129,98 @@ describe('RuleExecutorJobManagerService', () => {
     await flushMicrotasks();
   });
 
+  it('drops the whole queue silently when the media server is unreachable at queue start', async () => {
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValue({ status: 'success' });
+    const { service, mediaServerFactory, eventEmitter } =
+      buildService(executeMock);
+
+    mediaServerFactory.verifyConnection.mockRejectedValue(
+      new Error('Media server still unreachable after re-initialization'),
+    );
+
+    service.enqueue({ ruleGroupId: 1 });
+    service.enqueue({ ruleGroupId: 2 });
+    service.enqueue({ ruleGroupId: 3 });
+
+    await flushMicrotasks();
+    await waitForNextTick();
+    await flushMicrotasks();
+
+    expect(executeMock).not.toHaveBeenCalled();
+    expect(service.getQueuedRuleGroupIds()).toHaveLength(0);
+    expect(service.isProcessing()).toBe(false);
+
+    const failedEvents = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === 'rule-handler.failed',
+    );
+    expect(failedEvents).toHaveLength(0);
+  });
+
+  it('drops remaining queued rule groups after the first mid-queue media server outage', async () => {
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValueOnce({ status: 'success' })
+      .mockResolvedValueOnce({
+        status: 'failed',
+        failedPayload: {
+          collectionName: 'Movies',
+          identifier: { type: 'rulegroup', value: 2 },
+        } as any,
+        reason: 'media-server-unreachable',
+      });
+
+    const { service } = buildService(executeMock);
+
+    service.enqueue({ ruleGroupId: 1 });
+    service.enqueue({ ruleGroupId: 2 });
+    service.enqueue({ ruleGroupId: 3 });
+
+    await flushMicrotasks();
+    await waitForNextTick();
+    await flushMicrotasks();
+    await waitForNextTick();
+    await flushMicrotasks();
+
+    expect(executeMock).toHaveBeenCalledTimes(2);
+    expect(executeMock).toHaveBeenNthCalledWith(1, 1, expect.any(AbortSignal));
+    expect(executeMock).toHaveBeenNthCalledWith(2, 2, expect.any(AbortSignal));
+    expect(service.getQueuedRuleGroupIds()).toEqual([]);
+    expect(service.isProcessing()).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Media server became unreachable during queue execution. Dropping remaining queued rule groups.',
+    );
+  });
+
+  it('does not log a queue-drain warning when the last executing rule fails from a media server outage', async () => {
+    const executeMock: ExecuteMock = jest.fn().mockResolvedValue({
+      status: 'failed',
+      failedPayload: {
+        collectionName: 'Movies',
+        identifier: { type: 'rulegroup', value: 1 },
+      } as any,
+      reason: 'media-server-unreachable',
+    });
+
+    const { service } = buildService(executeMock);
+
+    service.enqueue({ ruleGroupId: 1 });
+
+    await flushMicrotasks();
+    await waitForNextTick();
+    await flushMicrotasks();
+
+    expect(executeMock).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      'Media server became unreachable during queue execution. Dropping remaining queued rule groups.',
+    );
+  });
+
   it('clears queued work when stopProcessing is called', async () => {
-    const executeMock: ExecuteMock = jest.fn().mockResolvedValue(undefined);
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValue({ status: 'success' });
     const { service } = buildService(executeMock);
 
     service.enqueue({ ruleGroupId: 1 });
@@ -137,9 +234,10 @@ describe('RuleExecutorJobManagerService', () => {
 
   it('reports status correctly', async () => {
     const inFlight = createDeferred();
-    const executeMock: ExecuteMock = jest
-      .fn()
-      .mockImplementation(() => inFlight.promise);
+    const executeMock: ExecuteMock = jest.fn().mockImplementation(async () => {
+      await inFlight.promise;
+      return { status: 'success' };
+    });
     const { service } = buildService(executeMock);
 
     expect(service.getStatus()).toEqual({
@@ -164,7 +262,9 @@ describe('RuleExecutorJobManagerService', () => {
   it('reports a rule group as pending while waiting for the execution lock', async () => {
     const lockDeferred = createDeferred();
     const release = jest.fn();
-    const executeMock: ExecuteMock = jest.fn().mockResolvedValue(undefined);
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValue({ status: 'success' });
 
     const { service, executionLock, eventEmitter } = buildService(executeMock);
     jest.spyOn(executionLock, 'acquire').mockImplementation(async () => {
@@ -210,7 +310,9 @@ describe('RuleExecutorJobManagerService', () => {
   it('preserves an abort request while waiting for the execution lock', async () => {
     const lockDeferred = createDeferred();
     const release = jest.fn();
-    const executeMock: ExecuteMock = jest.fn().mockResolvedValue(undefined);
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValue({ status: 'success' });
 
     const { service, executionLock } = buildService(executeMock);
     jest.spyOn(executionLock, 'acquire').mockImplementation(async () => {

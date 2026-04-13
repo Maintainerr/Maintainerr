@@ -55,15 +55,22 @@ interface CollectionMembershipSyncChanges {
   removedMediaServerIds: Set<string>;
 }
 
+export type RuleExecutionFailureReason = 'media-server-unreachable';
+
 export type RuleExecutionResult =
   | { status: 'success' }
-  | { status: 'failed'; failedPayload: RuleHandlerFailedDto }
+  | {
+      status: 'failed';
+      failedPayload: RuleHandlerFailedDto;
+      reason?: RuleExecutionFailureReason;
+    }
   | { status: 'aborted' }
   | { status: 'skipped'; reason: 'not-found' | 'inactive' };
 
 class RuleExecutionFailure extends Error {
   constructor(
     public readonly payload: RuleHandlerFailedDto,
+    public readonly reason?: RuleExecutionFailureReason,
     message?: string,
   ) {
     super(message ?? 'Rule execution failed');
@@ -170,94 +177,100 @@ export class RuleExecutorService {
         );
       }
 
-      const appStatus = await this.settings.testConnections();
+      // Verify the only hard dependency for rule execution: the media server.
+      // Ancillary services (Radarr/Sonarr/Seerr/Tautulli) are exercised at the
+      // call site by the rules that actually use them, so a transient blip in
+      // an unrelated backend must not abort the whole rule run. Plex auto
+      // re-discovery is handled inside verifyConnection().
+      try {
+        await this.mediaServerFactory.verifyConnection();
+      } catch (error) {
+        this.logger.warn(
+          `Media server unreachable. Skipping execution of rule '${ruleGroup.name}'.`,
+        );
+        this.logger.debug(error);
+        throw new RuleExecutionFailure(
+          this.buildRuleHandlerFailedDto(ruleGroup),
+          'media-server-unreachable',
+        );
+      }
 
-      if (appStatus) {
-        // reset API caches, make sure latest data is used
-        cacheManager.flushAll();
+      // reset API caches, make sure latest data is used
+      cacheManager.flushAll();
 
-        const comparator = this.comparatorFactory.create();
-        const mediaServer = await this.getMediaServer();
+      const comparator = this.comparatorFactory.create();
+      const mediaServer = await this.getMediaServer();
 
-        const mediaItemCount = await mediaServer.getLibraryContentCount(
-          ruleGroup.libraryId.toString(),
-          ruleGroup.dataType ? ruleGroup.dataType : undefined,
+      const mediaItemCount = await mediaServer.getLibraryContentCount(
+        ruleGroup.libraryId.toString(),
+        ruleGroup.dataType ? ruleGroup.dataType : undefined,
+      );
+
+      const totalEvaluations = mediaItemCount * ruleGroup.rules.length;
+
+      this.progressManager.initialize({
+        name: ruleGroup.name,
+        totalEvaluations: totalEvaluations,
+      });
+
+      let collectionSyncChanges: CollectionMembershipSyncChanges = {
+        addedMediaServerIds: new Set<string>(),
+        removedMediaServerIds: new Set<string>(),
+      };
+
+      if (ruleGroup.useRules) {
+        this.logger.log(`Executing rules for '${ruleGroup.name}'`);
+        this.startTime = new Date();
+
+        // reset media server cache if group uses a rule that requires it (collection rules for example)
+        await this.rulesService.resetCacheIfGroupUsesRuleThatRequiresIt(
+          ruleGroup,
         );
 
-        const totalEvaluations = mediaItemCount * ruleGroup.rules.length;
+        // prepare
+        this.workerData = [];
+        this.resultData = [];
+        this.statisticsData = [];
+        this.mediaData = { page: 0, finished: false, data: [] };
 
-        this.progressManager.initialize({
-          name: ruleGroup.name,
-          totalEvaluations: totalEvaluations,
-        });
+        this.mediaDataType = ruleGroup.dataType || undefined;
 
-        let collectionSyncChanges: CollectionMembershipSyncChanges = {
-          addedMediaServerIds: new Set<string>(),
-          removedMediaServerIds: new Set<string>(),
-        };
-
-        if (ruleGroup.useRules) {
-          this.logger.log(`Executing rules for '${ruleGroup.name}'`);
-          this.startTime = new Date();
-
-          // reset media server cache if group uses a rule that requires it (collection rules for example)
-          await this.rulesService.resetCacheIfGroupUsesRuleThatRequiresIt(
-            ruleGroup,
-          );
-
-          // prepare
-          this.workerData = [];
-          this.resultData = [];
-          this.statisticsData = [];
-          this.mediaData = { page: 0, finished: false, data: [] };
-
-          this.mediaDataType = ruleGroup.dataType || undefined;
-
-          // Run rules data chunks of 50
-          while (!this.mediaData.finished) {
-            abortSignal.throwIfAborted();
-            await this.getMediaData(ruleGroup.libraryId);
-
-            const ruleResult = await comparator.executeRulesWithData(
-              ruleGroup,
-              this.mediaData.data,
-              () => {
-                this.progressManager.incrementProcessed(
-                  this.mediaData.data.length,
-                );
-              },
-              abortSignal,
-            );
-
-            if (ruleResult) {
-              this.statisticsData.push(...ruleResult.stats);
-              this.resultData.push(...ruleResult.data);
-            }
-          }
-
+        // Run rules data chunks of 50
+        while (!this.mediaData.finished) {
           abortSignal.throwIfAborted();
-          collectionSyncChanges = await this.handleCollection(
-            await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+          await this.getMediaData(ruleGroup.libraryId);
+
+          const ruleResult = await comparator.executeRulesWithData(
+            ruleGroup,
+            this.mediaData.data,
+            () => {
+              this.progressManager.incrementProcessed(
+                this.mediaData.data.length,
+              );
+            },
             abortSignal,
           );
 
-          this.logger.log(`Execution of rules for '${ruleGroup.name}' done.`);
+          if (ruleResult) {
+            this.statisticsData.push(...ruleResult.stats);
+            this.resultData.push(...ruleResult.data);
+          }
         }
 
         abortSignal.throwIfAborted();
-        await this.syncManualMediaServerToCollectionDB(
+        collectionSyncChanges = await this.handleCollection(
           await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
-          collectionSyncChanges,
-        );
-      } else {
-        this.logger.warn(
-          'Not all applications are reachable.. Skipped rule execution.',
+          abortSignal,
         );
 
-        throw new RuleExecutionFailure(
-          this.buildRuleHandlerFailedDto(ruleGroup),
-        );
+        this.logger.log(`Execution of rules for '${ruleGroup.name}' done.`);
       }
+
+      abortSignal.throwIfAborted();
+      await this.syncManualMediaServerToCollectionDB(
+        await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
+        collectionSyncChanges,
+      );
     } catch (error) {
       const executionBeingAborted =
         error instanceof DOMException && error.name === 'AbortError';
@@ -265,7 +278,11 @@ export class RuleExecutorService {
       if (!executionBeingAborted) {
         if (error instanceof RuleExecutionFailure) {
           failedPayload = error.payload;
-          result = { status: 'failed', failedPayload: error.payload };
+          result = {
+            status: 'failed',
+            failedPayload: error.payload,
+            ...(error.reason ? { reason: error.reason } : undefined),
+          };
         } else {
           this.logger.error('Error running rules executor.');
           this.logger.debug(error);
