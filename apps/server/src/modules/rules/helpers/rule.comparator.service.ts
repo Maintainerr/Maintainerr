@@ -289,8 +289,17 @@ export class RuleComparatorService {
                 rule.customVal.ruleTypeId === +RuleType.BOOL
               ? +rule.customVal.value
               : null;
+      // Key conversion off the first-value slot's *declared* type, not the
+      // runtime value. This preserves the previous behavior for every action
+      // (before/after/in_last/in_next plus equals/not_equals) while still
+      // converting custom_days when firstVal is null — see issue #2582.
+      const firstValProperty = this.ruleConstanstService
+        .getRuleConstants()
+        .applications.find((app) => app.id === rule.firstVal[0])
+        ?.props.find((prop) => prop.id === rule.firstVal[1]);
+      const firstValIsDateType = firstValProperty?.type === RuleType.DATE;
       if (
-        firstVal instanceof Date &&
+        firstValIsDateType &&
         rule.customVal.ruleTypeId === +RuleType.NUMBER
       ) {
         if (
@@ -451,11 +460,15 @@ export class RuleComparatorService {
     }
 
     if (Array.isArray(val1)) {
-      val1 = val1.map((el) => (typeof el == 'string' ? el.toLowerCase() : el));
+      val1 = (val1 as (number | string)[]).map((el) =>
+        typeof el == 'string' ? el.toLowerCase() : el,
+      ) as RuleValueType;
     }
 
     if (Array.isArray(val2)) {
-      val2 = val2.map((el) => (typeof el == 'string' ? el.toLowerCase() : el));
+      val2 = (val2 as (number | string)[]).map((el) =>
+        typeof el == 'string' ? el.toLowerCase() : el,
+      ) as RuleValueType;
     }
 
     if (action === RulePossibility.BIGGER) {
@@ -503,7 +516,7 @@ export class RuleComparatorService {
           return (val1 as unknown[])?.includes(val2);
         } else {
           if (val2.length > 0) {
-            return val2.some((el) => {
+            return (val2 as (number | string)[]).some((el) => {
               return (val1 as unknown[])?.includes(el);
             });
           } else {
@@ -533,7 +546,7 @@ export class RuleComparatorService {
           );
         } else {
           if (val2.length > 0) {
-            return val2.some((el) => {
+            return (val2 as string[]).some((el) => {
               return (
                 (val1 as unknown[]).some((line) => {
                   return typeof line === 'string' &&

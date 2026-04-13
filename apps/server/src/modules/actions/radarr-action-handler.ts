@@ -5,11 +5,11 @@ import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MetadataService } from '../metadata/metadata.service';
 import {
   findMetadataLookupMatch,
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class RadarrActionHandler {
@@ -94,11 +94,54 @@ export class RadarrActionHandler {
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             return true;
+          case ServarrAction.CHANGE_QUALITY_PROFILE: {
+            const targetProfileId = collection.radarrQualityProfileId;
+
+            if (!targetProfileId) {
+              this.logger.warn(
+                `No target quality profile configured for collection ${collection.title}`,
+              );
+              return false;
+            }
+
+            if (!Number.isInteger(targetProfileId) || targetProfileId <= 0) {
+              this.logger.warn(
+                `Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
+              );
+              return false;
+            }
+
+            if (radarrMedia.qualityProfileId === targetProfileId) {
+              return true;
+            }
+
+            if (
+              !(await radarrApiClient.updateMovie(radarrMedia.id, {
+                qualityProfileId: targetProfileId,
+              }))
+            ) {
+              return false;
+            }
+
+            this.logger.log(
+              `Changed quality profile for movie with ${matchedProvider} ID ${matchedId} to profile ID ${targetProfileId} in Radarr`,
+            );
+
+            await radarrApiClient.searchMovie(radarrMedia.id);
+            return true;
+          }
           default:
             return false;
         }
       } else {
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
+
+        if (collection.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
+          this.logger.log(
+            `Couldn't find movie in Radarr using resolved external IDs [${attemptedIds}] for media server ID ${media.mediaServerId}. No quality profile change was applied.`,
+          );
+          return false;
+        }
 
         if (collection.arrAction !== ServarrAction.UNMONITOR) {
           this.logger.log(

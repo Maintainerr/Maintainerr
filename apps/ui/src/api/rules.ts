@@ -69,6 +69,7 @@ export interface RuleGroupCollectionPayload {
   visibleOnRecommended: boolean
   visibleOnHome: boolean
   overlayEnabled?: boolean
+  overlayTemplateId?: number | null
   deleteAfterDays?: number
   manualCollection?: boolean
   manualCollectionName?: string
@@ -88,6 +89,8 @@ export interface RuleGroupCreatePayload {
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number
+  radarrQualityProfileId?: number
+  sonarrQualityProfileId?: number
   collection: RuleGroupCollectionPayload
   rules: IRule[]
   dataType: MediaItemType

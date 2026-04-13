@@ -25,6 +25,8 @@ const createStoredRule = (
 });
 
 describe('RuleComparatorService.executeRulesWithData', () => {
+  const customDaysSeconds = (330 * 86400).toString();
+
   let ruleComparatorService: RuleComparatorService;
   let valueGetterService: Mocked<ValueGetterService>;
   let ruleConstanstService: Mocked<RuleConstanstService>;
@@ -57,6 +59,66 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       type: 'number',
       value: 6,
     });
+    ruleConstanstService.getRuleConstants.mockReturnValue({
+      applications: [
+        {
+          id: Application.PLEX,
+          name: 'Plex',
+          mediaType: 0,
+          props: [
+            {
+              id: 31,
+              name: 'imdb',
+              type: RuleType.NUMBER,
+              mediaType: 0,
+              humanName: 'IMDb',
+            },
+            {
+              id: 5,
+              name: 'viewCount',
+              type: RuleType.NUMBER,
+              mediaType: 0,
+              humanName: 'Times viewed',
+            },
+            {
+              id: 6,
+              name: 'lastViewedAt',
+              type: RuleType.DATE,
+              mediaType: 0,
+              humanName: 'Last view date',
+            },
+            {
+              id: 8,
+              name: 'resolution',
+              type: RuleType.TEXT,
+              mediaType: 0,
+              humanName: 'Resolution',
+            },
+            {
+              id: 10,
+              name: 'codec',
+              type: RuleType.TEXT,
+              mediaType: 0,
+              humanName: 'Codec',
+            },
+          ],
+        },
+        {
+          id: Application.JELLYFIN,
+          name: 'Jellyfin',
+          mediaType: 0,
+          props: [
+            {
+              id: 0,
+              name: 'lastViewedAt',
+              type: RuleType.DATE,
+              mediaType: 0,
+              humanName: 'Last view date',
+            },
+          ],
+        },
+      ],
+    } as never);
   });
 
   it('fails closed when the first value is missing for a custom comparison', async () => {
@@ -127,6 +189,101 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       secondValue: null,
       result: true,
     });
+  });
+
+  it('formats custom_days second value as a past Date when first value is null (issue #2582)', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.BEFORE,
+        firstVal: [Application.JELLYFIN, 0],
+        customVal: { ruleTypeId: +RuleType.NUMBER, value: customDaysSeconds },
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence(null);
+
+    const startedAt = Date.now();
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRulesDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    const completedAt = Date.now();
+    const secondValue = result.stats[0].sectionResults[0].ruleResults[0]
+      .secondValue as Date;
+
+    expect(result.stats[0].sectionResults[0].ruleResults[0].result).toBe(false);
+    expect(secondValue).toBeInstanceOf(Date);
+    expect(secondValue.getTime()).toBeGreaterThanOrEqual(
+      startedAt - +customDaysSeconds * 1000,
+    );
+    expect(secondValue.getTime()).toBeLessThanOrEqual(
+      completedAt - +customDaysSeconds * 1000,
+    );
+  });
+
+  it('keeps numeric custom values numeric for non-date rules when first value is null', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.EQUALS,
+        firstVal: [Application.PLEX, 31],
+        customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence(null);
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRulesDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
+      firstValue: null,
+      secondValue: 6,
+      result: false,
+    });
+  });
+
+  it('formats custom_days second value as a future Date for equality date rules when first value is null', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.EQUALS,
+        firstVal: [Application.PLEX, 6],
+        customVal: { ruleTypeId: +RuleType.NUMBER, value: customDaysSeconds },
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence(null);
+
+    const startedAt = Date.now();
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRulesDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    const completedAt = Date.now();
+    const secondValue = result.stats[0].sectionResults[0].ruleResults[0]
+      .secondValue as Date;
+
+    expect(secondValue).toBeInstanceOf(Date);
+    expect(secondValue.getTime()).toBeGreaterThanOrEqual(
+      startedAt + +customDaysSeconds * 1000,
+    );
+    expect(secondValue.getTime()).toBeLessThanOrEqual(
+      completedAt + +customDaysSeconds * 1000,
+    );
   });
 
   it('preserves 3.1.0 text lastVal behavior when the second value is missing', async () => {

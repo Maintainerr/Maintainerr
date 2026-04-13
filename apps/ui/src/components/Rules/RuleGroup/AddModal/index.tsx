@@ -14,16 +14,18 @@ import {
   Application,
   MediaItemType,
   MediaLibrary,
+  OverlayTemplate,
   ServarrAction,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
-import { lazy, useState, useSyncExternalStore } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { lazy, useEffect, useState, useSyncExternalStore } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
 import { useMediaServerLibraries } from '../../../../api/media-server'
+import { getOverlayTemplates } from '../../../../api/overlays'
 import {
   RuleGroupCreatePayload,
   useCreateRuleGroup,
@@ -41,6 +43,7 @@ import LoadingSpinner from '../../../Common/LoadingSpinner'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
+import QualityProfileSelector from './QualityProfileSelector'
 
 const YamlImporterModal = lazy(
   () => import('../../../Common/YamlImporterModal'),
@@ -54,6 +57,27 @@ interface AddModal {
   isCloneMode?: boolean
   onCancel: () => void
   onSuccess: () => void
+}
+
+export const getStoredLibraryFallbackState = (
+  storedLibraryId: string | undefined,
+  libraries: MediaLibrary[] | undefined,
+  librariesLoading: boolean,
+  librariesError: boolean,
+) => {
+  const storedLibraryResolved = Boolean(
+    storedLibraryId && libraries?.some((lib) => lib.id === storedLibraryId),
+  )
+  const storedLibraryMissing =
+    !!storedLibraryId && !librariesLoading && !storedLibraryResolved
+  const showStoredLibraryFallback =
+    !!storedLibraryId && (librariesError || storedLibraryMissing)
+
+  return {
+    storedLibraryResolved,
+    storedLibraryMissing,
+    showStoredLibraryFallback,
+  }
 }
 
 // Helper function to check if an app should be filtered
@@ -124,7 +148,103 @@ const numberOrUndefined = (value: unknown): number | undefined => {
   return value as number | undefined
 }
 
-const ruleGroupFormSchema = z
+const sortActionOptions = <T extends { name: string }>(options: T[]): T[] => {
+  return [...options].sort((left, right) => left.name.localeCompare(right.name))
+}
+
+const RADARR_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Delete',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_ALL,
+    name: 'Unmonitor and delete files',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor and keep files',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+  {
+    id: ServarrAction.CHANGE_QUALITY_PROFILE,
+    name: 'Change quality profile and search',
+  },
+])
+
+const SONARR_SHOW_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Delete entire show',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_ALL,
+    name: 'Unmonitor show + seasons, delete all episodes',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
+    name: 'Unmonitor show, delete existing episodes',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor show + seasons, keep files',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+  {
+    id: ServarrAction.CHANGE_QUALITY_PROFILE,
+    name: 'Change quality profile and search',
+  },
+])
+
+const SONARR_SEASON_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Unmonitor and delete season',
+  },
+  {
+    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
+    name: 'Unmonitor and delete season + delete show if empty',
+  },
+  {
+    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
+    name: 'Unmonitor and delete existing episodes',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor season and keep files',
+  },
+  {
+    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+    name: 'Unmonitor season + unmonitor show if empty',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+])
+
+const SONARR_EPISODE_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Unmonitor and delete episode',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor and keep file',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+])
+
+export const ruleGroupFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required'),
     description: z.string().optional(),
@@ -167,6 +287,7 @@ const ruleGroupFormSchema = z
     showRecommended: z.boolean(),
     showHome: z.boolean(),
     overlayEnabled: z.boolean(),
+    overlayTemplateId: z.number().int().nullable().optional(),
     listExclusions: z.boolean(),
     forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
@@ -176,6 +297,8 @@ const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    radarrQualityProfileId: z.number().int().nullable().optional(),
+    sonarrQualityProfileId: z.number().int().nullable().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -195,33 +318,39 @@ const ruleGroupFormSchema = z
       message: 'Custom collection name is required',
     },
   )
-  .superRefine((data, ctx) => {
-    if (
-      data.radarrSettingsId === undefined &&
-      data.sonarrSettingsId === undefined
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['radarrSettingsId'],
-        message: 'Select an *arr server',
-      })
-      ctx.addIssue({
-        code: 'custom',
-        path: ['sonarrSettingsId'],
-        message: 'Select an *arr server',
-      })
-    }
-  })
   .refine(
     (data) =>
       data.arrAction === undefined ||
       data.arrAction === ServarrAction.DO_NOTHING ||
+      data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE ||
       data.deleteAfterDays !== undefined,
     {
       path: ['deleteAfterDays'],
       message: 'Take action after days is required for this action',
     },
   )
+  .superRefine((data, ctx) => {
+    if (data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
+      const isMovie = data.dataType === 'movie'
+      const isShow = data.dataType === 'show'
+
+      if (isMovie && data.radarrQualityProfileId == null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['radarrQualityProfileId'],
+          message: 'Quality profile is required for this action',
+        })
+      }
+
+      if (isShow && data.sonarrQualityProfileId == null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sonarrQualityProfileId'],
+          message: 'Quality profile is required for this action',
+        })
+      }
+    }
+  })
 
 type RuleGroupFormValues = z.infer<typeof ruleGroupFormSchema>
 type RuleGroupFormInput = z.input<typeof ruleGroupFormSchema>
@@ -240,6 +369,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   showRecommended: editData?.collection?.visibleOnRecommended ?? true,
   showHome: editData?.collection?.visibleOnHome ?? true,
   overlayEnabled: editData?.collection?.overlayEnabled ?? false,
+  overlayTemplateId: editData?.collection?.overlayTemplateId ?? null,
   listExclusions: editData?.collection?.listExclusions ?? true,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
@@ -252,6 +382,12 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     : undefined,
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
+    : undefined,
+  radarrQualityProfileId: editData
+    ? (editData.collection?.radarrQualityProfileId ?? undefined)
+    : undefined,
+  sonarrQualityProfileId: editData
+    ? (editData.collection?.sonarrQualityProfileId ?? undefined)
     : undefined,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
@@ -304,6 +440,11 @@ const AddModal = (props: AddModal) => {
     control,
     name: 'manualCollection',
   })
+  const overlayEnabled = useWatch({ control, name: 'overlayEnabled' })
+  const overlayTemplateId = useWatch({
+    control,
+    name: 'overlayTemplateId',
+  }) as number | null | undefined
   const useRulesEnabled = useWatch({ control, name: 'useRules' })
   const arrActionValue = useWatch({ control, name: 'arrAction' }) as
     | number
@@ -316,6 +457,16 @@ const AddModal = (props: AddModal) => {
     | number
     | null
     | undefined
+  const radarrQualityProfileId = useWatch({
+    control,
+    name: 'radarrQualityProfileId',
+  }) as number | null | undefined
+  const sonarrQualityProfileId = useWatch({
+    control,
+    name: 'sonarrQualityProfileId',
+  }) as number | null | undefined
+  const hasSelectedRadarrServer = radarrSettingsId != null
+  const hasSelectedSonarrServer = sonarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificionModal, setConfigureNotificationModal] =
@@ -335,11 +486,56 @@ const AddModal = (props: AddModal) => {
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
+  const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>(
+    [],
+  )
 
-  const { data: libraries, isLoading: librariesLoading } =
-    useMediaServerLibraries()
+  const overlayTemplateMode =
+    selectedType === 'episode' ? 'titlecard' : 'poster'
+  const availableOverlayTemplates = overlayTemplates.filter(
+    (template) => template.mode === overlayTemplateMode,
+  )
+
+  const {
+    data: libraries,
+    isLoading: librariesLoading,
+    isError: librariesError,
+  } = useMediaServerLibraries()
+  const storedLibraryId = props.editData?.libraryId?.toString()
+  const {
+    storedLibraryResolved,
+    storedLibraryMissing,
+    showStoredLibraryFallback,
+  } = getStoredLibraryFallbackState(
+    storedLibraryId,
+    libraries,
+    librariesLoading,
+    librariesError,
+  )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
+
+  useEffect(() => {
+    void getOverlayTemplates().then((templates) => {
+      if (templates) {
+        setOverlayTemplates(templates)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (overlayTemplateId == null) {
+      return
+    }
+
+    const hasMatchingTemplate = availableOverlayTemplates.some(
+      (template) => template.id === overlayTemplateId,
+    )
+
+    if (!hasMatchingTemplate) {
+      setValue('overlayTemplateId', null)
+    }
+  }, [availableOverlayTemplates, overlayTemplateId, setValue])
 
   // Scroll detection without useEffect
   const atBottom = useSyncExternalStore(
@@ -354,6 +550,16 @@ const AddModal = (props: AddModal) => {
     constants?.applications?.some((x) => x.id == Application.SEERR) ?? false
 
   function updateLibraryId(value: string) {
+    // Selecting the unresolved stored-library fallback keeps the original
+    // library type intact instead of resetting dependent state based on an
+    // entry the media server could not resolve.
+    if (value === storedLibraryId && !storedLibraryResolved) {
+      if (props.editData?.dataType) {
+        setValue('dataType', props.editData.dataType)
+      }
+      return
+    }
+
     if (!libraries) {
       throw new Error('Libraries not loaded')
     }
@@ -367,6 +573,8 @@ const AddModal = (props: AddModal) => {
 
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
+    setValue('radarrQualityProfileId', undefined)
+    setValue('sonarrQualityProfileId', undefined)
     updateArrOption(ServarrAction.DELETE)
 
     // Clear rules that reference *arr servers since we're resetting them
@@ -380,10 +588,20 @@ const AddModal = (props: AddModal) => {
   function updateArrOption(value: number | undefined) {
     setValue('arrAction', value)
 
-    if (value === undefined || value === ServarrAction.DO_NOTHING) {
+    if (
+      value === undefined ||
+      value === ServarrAction.DO_NOTHING ||
+      value === ServarrAction.CHANGE_QUALITY_PROFILE
+    ) {
       setValue('deleteAfterDays', undefined)
     } else if (getValues('deleteAfterDays') === undefined) {
       setValue('deleteAfterDays', 30)
+    }
+
+    // Clear quality profile IDs when switching away from quality profile change
+    if (value !== ServarrAction.CHANGE_QUALITY_PROFILE) {
+      setValue('radarrQualityProfileId', undefined)
+      setValue('sonarrQualityProfileId', undefined)
     }
   }
 
@@ -393,6 +611,14 @@ const AddModal = (props: AddModal) => {
     settingId?: number | null,
   ) => {
     updateArrOption(arrAction)
+
+    if (type === 'Radarr' && settingId !== radarrSettingsId) {
+      setValue('radarrQualityProfileId', undefined)
+    }
+
+    if (type === 'Sonarr' && settingId !== sonarrSettingsId) {
+      setValue('sonarrQualityProfileId', undefined)
+    }
 
     const newRadarrId = type === 'Radarr' ? settingId : undefined
     const newSonarrId = type === 'Sonarr' ? settingId : undefined
@@ -517,13 +743,17 @@ const AddModal = (props: AddModal) => {
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
+      radarrQualityProfileId: data.radarrQualityProfileId ?? undefined,
+      sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
         overlayEnabled: data.overlayEnabled,
+        overlayTemplateId: data.overlayTemplateId ?? null,
         deleteAfterDays:
           data.arrAction === undefined ||
-          data.arrAction === ServarrAction.DO_NOTHING
+          data.arrAction === ServarrAction.DO_NOTHING ||
+          data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE
             ? undefined
             : data.deleteAfterDays,
         manualCollection: data.manualCollection,
@@ -564,7 +794,13 @@ const AddModal = (props: AddModal) => {
     }
   }
 
-  if (librariesLoading || constantsLoading) {
+  // Only hard-block on rule constants: the form can't render its applications,
+  // rule operators, or field options without them. Libraries are allowed to
+  // stream in later — when editing, the stored library is surfaced via
+  // `storedLibraryMissing` so the form remains usable even if the media
+  // server is offline. For brand-new rule groups we still wait for libraries
+  // because there's no fallback selection to preserve.
+  if (constantsLoading || (librariesLoading && !props.editData)) {
     return <LoadingSpinner />
   }
 
@@ -683,6 +919,11 @@ const AddModal = (props: AddModal) => {
                               {selectedLibraryId === '' && (
                                 <option value="" disabled></option>
                               )}
+                              {showStoredLibraryFallback && storedLibraryId && (
+                                <option value={storedLibraryId}>
+                                  Stored library (unavailable)
+                                </option>
+                              )}
                               {libraries?.map((data: MediaLibrary) => {
                                 return (
                                   <option key={data.id} value={data.id}>
@@ -694,6 +935,13 @@ const AddModal = (props: AddModal) => {
                           )
                         })()}
                       </div>
+                      {(librariesError || storedLibraryMissing) && (
+                        <p className="mt-1 text-xs text-warning-500">
+                          {librariesError
+                            ? `Could not load libraries from ${mediaServerName}. The saved library selection is preserved — cancel editing to avoid losing rules.`
+                            : 'The saved library could not be found in the current library list. Re-select it once your media server is reachable.'}
+                        </p>
+                      )}
                       {errors.libraryId && (
                         <p className="mt-1 text-xs text-error-400">
                           {errors.libraryId.message}
@@ -709,29 +957,30 @@ const AddModal = (props: AddModal) => {
                       arrAction={arrActionValue}
                       settingIdError={errors.radarrSettingsId?.message}
                       settingId={radarrSettingsId}
-                      onUpdate={(arrAction: number, settingId) => {
+                      onUpdate={(
+                        arrAction: number,
+                        settingId?: number | null,
+                      ) => {
                         handleUpdateArrAction('Radarr', arrAction, settingId)
                       }}
-                      options={[
-                        {
-                          id: ServarrAction.DELETE,
-                          name: 'Delete',
-                        },
-                        {
-                          id: ServarrAction.UNMONITOR_DELETE_ALL,
-                          name: 'Unmonitor and delete files',
-                        },
-                        {
-                          id: ServarrAction.UNMONITOR,
-                          name: 'Unmonitor and keep files',
-                        },
-                        {
-                          id: ServarrAction.DO_NOTHING,
-                          name: 'Do nothing',
-                        },
-                      ]}
+                      options={RADARR_ACTION_OPTIONS}
                     />
                   )}
+
+                  {selectedLibraryType &&
+                    selectedLibraryType === 'movie' &&
+                    hasSelectedRadarrServer &&
+                    arrActionValue === ServarrAction.CHANGE_QUALITY_PROFILE && (
+                      <QualityProfileSelector
+                        type="Radarr"
+                        settingId={radarrSettingsId}
+                        qualityProfileId={radarrQualityProfileId}
+                        onUpdate={(qualityProfileId) => {
+                          setValue('radarrQualityProfileId', qualityProfileId)
+                        }}
+                        error={errors.radarrQualityProfileId?.message}
+                      />
+                    )}
 
                   {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
@@ -782,75 +1031,16 @@ const AddModal = (props: AddModal) => {
                         mediaServerName={mediaServerName}
                         arrAction={arrActionValue}
                         settingId={sonarrSettingsId}
-                        onUpdate={(e: number, settingId) => {
+                        onUpdate={(e: number, settingId?: number | null) => {
                           handleUpdateArrAction('Sonarr', e, settingId)
                         }}
                         options={
                           selectedType === 'show'
-                            ? [
-                                {
-                                  id: ServarrAction.DELETE,
-                                  name: 'Delete entire show',
-                                },
-                                {
-                                  id: ServarrAction.UNMONITOR_DELETE_ALL,
-                                  name: 'Unmonitor show + seasons, delete all episodes',
-                                },
-                                {
-                                  id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-                                  name: 'Unmonitor show, delete existing episodes',
-                                },
-                                {
-                                  id: ServarrAction.UNMONITOR,
-                                  name: 'Unmonitor show + seasons, keep files',
-                                },
-                                {
-                                  id: ServarrAction.DO_NOTHING,
-                                  name: 'Do nothing',
-                                },
-                              ]
+                            ? SONARR_SHOW_ACTION_OPTIONS
                             : selectedType === 'season'
-                              ? [
-                                  {
-                                    id: ServarrAction.DELETE,
-                                    name: 'Unmonitor and delete season',
-                                  },
-                                  {
-                                    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
-                                    name: 'Unmonitor and delete season + delete show if empty',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-                                    name: 'Unmonitor and delete existing episodes',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR,
-                                    name: 'Unmonitor season and keep files',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
-                                    name: 'Unmonitor season + unmonitor show if empty',
-                                  },
-                                  {
-                                    id: ServarrAction.DO_NOTHING,
-                                    name: 'Do nothing',
-                                  },
-                                ]
+                              ? SONARR_SEASON_ACTION_OPTIONS
                               : // episodes
-                                [
-                                  {
-                                    id: ServarrAction.DELETE,
-                                    name: 'Unmonitor and delete episode',
-                                  },
-                                  {
-                                    id: ServarrAction.UNMONITOR,
-                                    name: 'Unmonitor and keep file',
-                                  },
-                                  {
-                                    id: ServarrAction.DO_NOTHING,
-                                    name: 'Do nothing',
-                                  },
-                                ]
+                                SONARR_EPISODE_ACTION_OPTIONS
                         }
                       />
                       {errors.sonarrSettingsId && (
@@ -858,11 +1048,29 @@ const AddModal = (props: AddModal) => {
                           {errors.sonarrSettingsId.message}
                         </p>
                       )}
+
+                      {hasSelectedSonarrServer &&
+                        arrActionValue ===
+                          ServarrAction.CHANGE_QUALITY_PROFILE && (
+                          <QualityProfileSelector
+                            type="Sonarr"
+                            settingId={sonarrSettingsId}
+                            qualityProfileId={sonarrQualityProfileId}
+                            onUpdate={(qualityProfileId) => {
+                              setValue(
+                                'sonarrQualityProfileId',
+                                qualityProfileId,
+                              )
+                            }}
+                            error={errors.sonarrQualityProfileId?.message}
+                          />
+                        )}
                     </>
                   )}
 
                   {arrActionValue !== undefined &&
-                    arrActionValue !== ServarrAction.DO_NOTHING && (
+                    arrActionValue !== ServarrAction.DO_NOTHING &&
+                    arrActionValue !== ServarrAction.CHANGE_QUALITY_PROFILE && (
                       <div className="form-row items-center">
                         <label
                           htmlFor="collection_deleteDays"
@@ -993,6 +1201,61 @@ const AddModal = (props: AddModal) => {
                             </div>
                           </div>
                         </div>
+
+                        {overlayEnabled && (
+                          <div className="form-row items-center">
+                            <label
+                              htmlFor="overlay_template_id"
+                              className="text-label"
+                            >
+                              Overlay template
+                              <p className="text-xs font-normal">
+                                Leave unset to use the default{' '}
+                                {overlayTemplateMode === 'titlecard'
+                                  ? 'title card'
+                                  : 'poster'}{' '}
+                                template
+                              </p>
+                            </label>
+                            <div className="form-input">
+                              <div className="form-input-field">
+                                <Controller
+                                  name="overlayTemplateId"
+                                  control={control}
+                                  render={({ field }) => (
+                                    <select
+                                      id="overlay_template_id"
+                                      value={field.value ?? ''}
+                                      onChange={(event) => {
+                                        const value = event.target.value
+                                        field.onChange(
+                                          value === '' ? null : Number(value),
+                                        )
+                                      }}
+                                    >
+                                      <option value="">
+                                        Default {overlayTemplateMode} template
+                                      </option>
+                                      {availableOverlayTemplates.map(
+                                        (template) => (
+                                          <option
+                                            key={template.id}
+                                            value={template.id}
+                                          >
+                                            {template.name}
+                                            {template.isDefault
+                                              ? ' (default)'
+                                              : ''}
+                                          </option>
+                                        ),
+                                      )}
+                                    </select>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -1037,12 +1300,9 @@ const AddModal = (props: AddModal) => {
                         <label htmlFor="force_seerr" className="text-label">
                           Force delete Seerr request
                           <p className="text-xs font-normal">
-                            For movies and standard delete actions, deletes the
-                            Seerr request immediately instead of relying on
-                            media availability sync. For the season action that
-                            deletes the show if it becomes empty, Maintainerr
-                            only checks whether other Seerr season requests
-                            still exist before deleting the show.
+                            Removes the related Seerr request immediately.
+                            Otherwise, Maintainerr waits for Seerr availability
+                            sync.
                           </p>
                         </label>
                         <div className="form-input">

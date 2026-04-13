@@ -164,7 +164,15 @@ export class OverlayTemplateService implements OnModuleInit {
       return false;
     }
 
+    const mode = entity.mode;
+    const wasDefault = entity.isDefault;
+
     await this.repo.remove(entity);
+
+    if (wasDefault) {
+      await this.ensureDefault(mode);
+    }
+
     this.logger.log(`Deleted template "${entity.name}" (id=${id})`);
     return true;
   }
@@ -240,6 +248,31 @@ export class OverlayTemplateService implements OnModuleInit {
 
   private async unsetDefaults(mode: OverlayTemplateMode): Promise<void> {
     await this.repo.update({ mode, isDefault: true }, { isDefault: false });
+  }
+
+  private async ensureDefault(mode: OverlayTemplateMode): Promise<void> {
+    const existingDefault = await this.repo.findOne({
+      where: { mode, isDefault: true },
+    });
+
+    if (existingDefault) {
+      return;
+    }
+
+    const fallback = await this.repo.findOne({
+      where: { mode },
+      order: { isPreset: 'DESC', id: 'ASC' },
+    });
+
+    if (!fallback) {
+      return;
+    }
+
+    fallback.isDefault = true;
+    await this.repo.save(fallback);
+    this.logger.log(
+      `Assigned fallback default template "${fallback.name}" for ${mode}`,
+    );
   }
 
   private toDto(entity: OverlayTemplateEntity): OverlayTemplate {

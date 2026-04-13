@@ -1,66 +1,34 @@
 import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CogIcon,
   DownloadIcon,
   DuplicateIcon,
   PencilAltIcon,
   PlusIcon,
-  SaveIcon,
   StarIcon,
   TrashIcon,
   UploadIcon,
 } from '@heroicons/react/solid'
-import { zodResolver } from '@hookform/resolvers/zod'
 import type {
-  OverlaySettings,
-  OverlaySettingsUpdate,
   OverlayTemplate,
   OverlayTemplateExport,
 } from '@maintainerr/contracts'
-import { overlaySettingsSchema } from '@maintainerr/contracts'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import {
   deleteOverlayTemplate,
   duplicateOverlayTemplate,
   exportOverlayTemplate,
-  getOverlaySettings,
   getOverlayTemplates,
   importOverlayTemplate,
-  processAllOverlays,
-  resetAllOverlays,
   setDefaultOverlayTemplate,
-  updateOverlaySettings,
 } from '../api/overlays'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
-import PendingButton from '../components/Common/PendingButton'
-import { InputGroup } from '../components/Forms/Input'
 
 const OverlayTemplateListPage = () => {
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<OverlayTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [processing, setProcessing] = useState(false)
-  const [resetting, setResetting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    reset: resetForm,
-    formState: { errors, isSubmitting, isLoading: isFormLoading },
-  } = useForm<OverlaySettings>({
-    resolver: zodResolver(overlaySettingsSchema),
-    defaultValues: async () => {
-      const settings = await getOverlaySettings()
-      return settings
-    },
-  })
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -74,45 +42,6 @@ const OverlayTemplateListPage = () => {
   useEffect(() => {
     void fetchTemplates()
   }, [fetchTemplates])
-
-  const onSettingsSubmit = async (data: OverlaySettings) => {
-    try {
-      const updated = await updateOverlaySettings(data as OverlaySettingsUpdate)
-      resetForm(updated)
-      toast.success('Overlay settings saved')
-    } catch {
-      toast.error('Failed to save overlay settings')
-    }
-  }
-
-  const handleProcessAll = async () => {
-    setProcessing(true)
-    try {
-      const result = await processAllOverlays()
-      toast.info(
-        `Processed: ${result.processed}, Reverted: ${result.reverted}, Errors: ${result.errors}`,
-      )
-    } catch {
-      toast.error('Failed to process overlays')
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  const handleResetAll = async () => {
-    if (!window.confirm('Reset all overlays? This will revert all posters.')) {
-      return
-    }
-    setResetting(true)
-    try {
-      await resetAllOverlays()
-      toast.info('All overlays have been reset')
-    } catch {
-      toast.error('Failed to reset overlays')
-    } finally {
-      setResetting(false)
-    }
-  }
 
   const handleCreate = () => {
     navigate('/settings/overlays/templates/new')
@@ -192,24 +121,22 @@ const OverlayTemplateListPage = () => {
       <div className="w-full">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-zinc-200">
-            Overlay Templates
-          </h2>
-          <div className="flex gap-2">
+          <div>
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded bg-zinc-700 px-3 py-1.5 text-sm text-zinc-200 transition hover:bg-zinc-600"
-              onClick={() => setSettingsOpen((v) => !v)}
-              title="Overlay settings"
+              className="mb-2 text-sm text-zinc-400 transition hover:text-zinc-200"
+              onClick={() => navigate('/settings/overlays')}
             >
-              <CogIcon className="h-4 w-4" />
-              Settings
-              {settingsOpen ? (
-                <ChevronUpIcon className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDownIcon className="h-3.5 w-3.5" />
-              )}
+              &larr; Overlay Settings
             </button>
+            <h2 className="text-lg font-semibold text-zinc-200">
+              Overlay Templates
+            </h2>
+            <p className="text-sm text-zinc-400">
+              Manage the templates used by overlay-enabled collections.
+            </p>
+          </div>
+          <div className="flex gap-2">
             <input
               ref={importInputRef}
               type="file"
@@ -235,79 +162,6 @@ const OverlayTemplateListPage = () => {
             </button>
           </div>
         </div>
-
-        {/* Collapsible settings panel */}
-        {settingsOpen && (
-          <div className="mb-6 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4">
-            <form onSubmit={handleSubmit(onSettingsSubmit)}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Controller
-                  name="enabled"
-                  control={control}
-                  render={({ field }) => (
-                    <label className="flex items-center gap-2 text-sm text-zinc-300">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                        className="h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-amber-600 focus:ring-amber-500"
-                      />
-                      Enable overlays
-                    </label>
-                  )}
-                />
-                <Controller
-                  name="applyOnAdd"
-                  control={control}
-                  render={({ field }) => (
-                    <label className="flex items-center gap-2 text-sm text-zinc-300">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                        className="h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-amber-600 focus:ring-amber-500"
-                      />
-                      Apply on collection add
-                    </label>
-                  )}
-                />
-                <InputGroup
-                  label="Cron schedule"
-                  {...register('cronSchedule')}
-                  error={errors.cronSchedule?.message}
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <PendingButton
-                  buttonType="primary"
-                  type="submit"
-                  disabled={isSubmitting || isFormLoading}
-                  idleLabel="Save Settings"
-                  pendingLabel="Saving..."
-                  isPending={isSubmitting}
-                  idleIcon={<SaveIcon />}
-                  reserveLabel="Save Settings"
-                />
-                <button
-                  type="button"
-                  onClick={handleProcessAll}
-                  disabled={processing}
-                  className="rounded-md bg-zinc-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-600 disabled:opacity-50"
-                >
-                  {processing ? 'Processing...' : 'Run Now'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetAll}
-                  disabled={resetting}
-                  className="rounded-md bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
-                >
-                  {resetting ? 'Resetting...' : 'Reset All'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Poster templates */}
         <TemplateSection

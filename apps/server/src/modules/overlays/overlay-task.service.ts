@@ -11,6 +11,7 @@ import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
 import { OverlayProcessorService } from './overlay-processor.service';
 import { OverlaySettingsService } from './overlay-settings.service';
+import { OverlayStateService } from './overlay-state.service';
 
 @Injectable()
 export class OverlayTaskService extends TaskBase {
@@ -20,6 +21,7 @@ export class OverlayTaskService extends TaskBase {
     private readonly processor: OverlayProcessorService,
     private readonly settingsService: OverlaySettingsService,
     private readonly collectionsService: CollectionsService,
+    private readonly stateService: OverlayStateService,
   ) {
     super(taskService, logger);
     this.logger.setContext(OverlayTaskService.name);
@@ -144,8 +146,12 @@ export class OverlayTaskService extends TaskBase {
         );
 
         if (stillInOverlayCollection) {
+          await this.stateService.removeState(
+            payload.identifier.value,
+            item.mediaServerId,
+          );
           this.logger.debug(
-            `Item ${item.mediaServerId} still in another overlay collection, skipping revert`,
+            `Item ${item.mediaServerId} still in another overlay collection, cleared stale state without reverting`,
           );
           continue;
         }

@@ -147,6 +147,41 @@ describe('CollectionItem', () => {
     expect(openDetail).toHaveBeenCalledTimes(1)
   })
 
+  it('shows "Unavailable" in warning style when libraries query errored and the id is unresolved', () => {
+    librariesHookMock.mockReturnValue({
+      data: undefined,
+      error: new Error('offline'),
+      isError: true,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useMediaServerLibraries>)
+
+    render(
+      <CollectionItem
+        collection={
+          {
+            id: 1,
+            title: 'Action',
+            libraryId: 'library-1',
+            description: 'Collection description',
+            isActive: true,
+            type: 'movie',
+            arrAction: 0,
+            media: [],
+            manualCollection: false,
+            manualCollectionName: '',
+            addDate: new Date(),
+            handledMediaAmount: 0,
+            lastDurationInSeconds: 0,
+            keepLogsForMonths: 0,
+          } as any
+        }
+      />,
+    )
+
+    const label = screen.getByText('Unavailable')
+    expect(label.className).toContain('text-warning-500')
+  })
+
   it('does not render a collection modal when no detail handler is provided', () => {
     render(
       <CollectionItem

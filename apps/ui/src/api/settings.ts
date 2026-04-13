@@ -39,6 +39,8 @@ export interface ISettings {
   plex_port: number
   plex_ssl: number
   plex_auth_token: string | null
+  plex_machine_id?: string | null
+  plex_manual_mode?: number
   // Jellyfin settings
   jellyfin_url?: string
   jellyfin_api_key?: string

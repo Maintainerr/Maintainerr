@@ -16,7 +16,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { AddRemoveCollectionMedia } from '../collections/interfaces/collection-media.interface';
+import { CollectionMediaChange } from '../collections/interfaces/collection-media.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
@@ -24,11 +24,10 @@ import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 import { RuleMigrationService } from '../settings/rule-migration.service';
 import {
-    Application,
-    Property,
-    RuleConstants,
-    RulePossibility,
-    RuleType,
+  Application,
+  Property,
+  RuleConstants,
+  RuleType,
 } from './constants/rules.constants';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionContextDto } from './dtos/exclusion.dto';
@@ -304,7 +303,7 @@ export class RulesService {
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      params.rules.forEach((rule) => {
+      for (const rule of params.rules as RuleDto[]) {
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -319,7 +318,7 @@ export class RulesService {
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
         }
-      }, this);
+      }
 
       if (state.code !== 1) {
         return state;
@@ -348,6 +347,8 @@ export class RulesService {
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
+          radarrQualityProfileId: params.radarrQualityProfileId ?? null,
+          sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
@@ -356,6 +357,7 @@ export class RulesService {
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
           overlayEnabled: params.collection?.overlayEnabled,
+          overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         })
       )?.dbCollection;
 
@@ -402,7 +404,7 @@ export class RulesService {
   async updateRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      params.rules.forEach((rule) => {
+      for (const rule of params.rules as RuleDto[]) {
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -417,7 +419,7 @@ export class RulesService {
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
         }
-      }, this);
+      }
 
       if (state.code === 1) {
         // get current group
@@ -451,16 +453,24 @@ export class RulesService {
             collectionId: group.collectionId,
           });
 
-          // Delete the media server collection if it exists, then clear mediaServerId.
-          // Jellyfin auto-deletes empty collections, but Plex does not.
+          // Clean up the media server collection if it exists, then clear mediaServerId.
+          // For Jellyfin: removes only items from this library, keeps the collection
+          //   if other libraries still have items in it (shared manual collections).
+          // For Plex: collections are per-library, so the entire collection is deleted.
           if (dbCollection.mediaServerId) {
             const mediaServer = await this.getMediaServer();
             try {
-              await mediaServer.deleteCollection(dbCollection.mediaServerId);
+              // Use the OLD library ID — we're cleaning up items that belonged
+              // to the previous library, not the one the rule is moving to.
+              await mediaServer.cleanupCollectionForLibrary(
+                dbCollection.mediaServerId,
+                dbCollection.libraryId,
+                !!dbCollection.manualCollection,
+              );
             } catch (error) {
               // Collection may already be deleted, ignore errors
               this.logger.debug(
-                'Failed to delete media server collection',
+                'Failed to clean up media server collection',
                 error,
               );
             }
@@ -503,6 +513,8 @@ export class RulesService {
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
+          radarrQualityProfileId: params.radarrQualityProfileId ?? null,
+          sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
@@ -511,6 +523,7 @@ export class RulesService {
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
           overlayEnabled: params.collection?.overlayEnabled,
+          overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         };
 
         // If there's no existing collection (e.g., after rule migration), create a new one
@@ -581,7 +594,7 @@ export class RulesService {
   }
   async setExclusion(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
-    let handleMedia: AddRemoveCollectionMedia[] = [];
+    let handleMedia: CollectionMediaChange[] = [];
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -721,7 +734,7 @@ export class RulesService {
 
   async removeExclusionWitData(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
-    let handleMedia: AddRemoveCollectionMedia[] = [];
+    let handleMedia: CollectionMediaChange[] = [];
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -790,7 +803,7 @@ export class RulesService {
   async removeAllExclusion(mediaServerId: string) {
     const mediaServer = await this.getMediaServer();
     // get type from metadata
-    let handleMedia: AddRemoveCollectionMedia[] = [];
+    let handleMedia: CollectionMediaChange[] = [];
 
     const metaData = await mediaServer.getMetadata(mediaServerId);
     if (!metaData?.type) {
@@ -901,6 +914,8 @@ export class RulesService {
       } else if (rule.customVal) {
         if (
           val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
+          (val1.type === RuleType.DATE &&
+            rule.customVal.ruleTypeId === +RuleType.NUMBER) ||
           (val1.type == RuleType.TEXT_LIST &&
             rule.customVal.ruleTypeId.toString() == RuleType.TEXT.toString())
         ) {
@@ -913,15 +928,7 @@ export class RulesService {
             );
           }
         }
-        if (
-          (rule.action === RulePossibility.IN_LAST ||
-            RulePossibility.IN_NEXT) &&
-          rule.customVal.ruleTypeId === 0
-        ) {
-          return this.createReturnStatus(true, 'Success');
-        } else {
-          return this.createReturnStatus(false, 'Validation failed');
-        }
+        return this.createReturnStatus(false, 'Validation failed');
       } else {
         return this.createReturnStatus(false, 'No second value found');
       }

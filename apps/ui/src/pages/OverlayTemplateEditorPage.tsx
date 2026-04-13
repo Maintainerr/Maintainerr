@@ -72,13 +72,13 @@ const OverlayTemplateEditorPage = () => {
     if (isNew) return
     const templateId = Number(id)
     if (Number.isNaN(templateId)) {
-      navigate('/settings/overlays')
+      navigate('/settings/overlays/templates')
       return
     }
     void getOverlayTemplate(templateId).then((t) => {
       if (!t) {
         toast.error('Template not found')
-        navigate('/settings/overlays')
+        navigate('/settings/overlays/templates')
         return
       }
       setName(t.name)
@@ -121,31 +121,30 @@ const OverlayTemplateEditorPage = () => {
 
   const loadRandomPoster = useCallback(async () => {
     if (!selectedSection) return
-    const section = sections.find((s) => s.key === selectedSection)
-    const fetcher = section?.type === 'show' ? getRandomEpisode : getRandomItem
+    const fetcher = mode === 'titlecard' ? getRandomEpisode : getRandomItem
     const item = await fetcher(selectedSection)
     if (item) {
       setBackgroundUrl(buildPosterUrl(item.plexId))
     }
-  }, [selectedSection, sections])
+  }, [mode, selectedSection])
 
   const handleSectionChange = useCallback(
     (sectionKey: string) => {
       setSelectedSection(sectionKey)
       if (!sectionKey) {
         setBackgroundUrl(null)
-        return
       }
-      // Auto-fetch a random poster when selecting a section
-      const section = sections.find((s) => s.key === sectionKey)
-      const fetcher =
-        section?.type === 'show' ? getRandomEpisode : getRandomItem
-      void fetcher(sectionKey).then((item) => {
-        if (item) setBackgroundUrl(buildPosterUrl(item.plexId))
-      })
     },
-    [sections],
+    [],
   )
+
+  useEffect(() => {
+    if (!selectedSection) {
+      return
+    }
+
+    void loadRandomPoster()
+  }, [loadRandomPoster, selectedSection])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -254,7 +253,7 @@ const OverlayTemplateEditorPage = () => {
             <button
               type="button"
               className="text-sm text-zinc-400 transition hover:text-zinc-200"
-              onClick={() => navigate('/settings/overlays')}
+              onClick={() => navigate('/settings/overlays/templates')}
             >
               &larr; Templates
             </button>

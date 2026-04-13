@@ -592,10 +592,24 @@ export class OverlayRenderService {
     // Text
     const fontFamily = this.getFontFamily(el.fontPath);
     const pointSize = Math.max(1, Math.round(el.fontSize * scale));
+    const renderedText = el.uppercase ? el.text.toUpperCase() : el.text;
+    const padY = Math.round((el.backgroundPadding ?? 0) * scale);
     ctx.fillStyle = this.parseColor(el.fontColor);
     ctx.font = `${el.fontWeight ?? 'normal'} ${pointSize}px "${fontFamily}"`;
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline =
+      el.verticalAlign === 'top'
+        ? 'top'
+        : el.verticalAlign === 'bottom'
+          ? 'bottom'
+          : 'middle';
     ctx.textAlign = (el.textAlign as CanvasTextAlign) ?? 'left';
+
+    if (el.shadow) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowBlur = Math.ceil(pointSize * 0.12);
+      ctx.shadowOffsetX = Math.max(1, Math.round(pointSize * 0.05));
+      ctx.shadowOffsetY = Math.max(1, Math.round(pointSize * 0.05));
+    }
 
     const padX = Math.round((el.backgroundPadding ?? 0) * scale);
     const textX =
@@ -604,8 +618,14 @@ export class OverlayRenderService {
         : el.textAlign === 'right'
           ? w - padX
           : padX;
+    const textY =
+      el.verticalAlign === 'top'
+        ? padY
+        : el.verticalAlign === 'bottom'
+          ? h - padY
+          : h / 2;
 
-    ctx.fillText(el.text, textX, h / 2, w - padX * 2);
+    ctx.fillText(renderedText, textX, textY, w - padX * 2);
 
     return canvas.toBuffer('image/png');
   }
@@ -634,6 +654,9 @@ export class OverlayRenderService {
         }
       })
       .join('');
+    const renderedText = el.uppercase
+      ? resolvedText.toUpperCase()
+      : resolvedText;
 
     // Render like a text element
     const canvas = createCanvas(w, h);
@@ -651,10 +674,23 @@ export class OverlayRenderService {
 
     const fontFamily = this.getFontFamily(el.fontPath);
     const pointSize = Math.max(1, Math.round(el.fontSize * scale));
+    const padY = Math.round((el.backgroundPadding ?? 0) * scale);
     ctx.fillStyle = this.parseColor(el.fontColor);
     ctx.font = `${el.fontWeight ?? 'normal'} ${pointSize}px "${fontFamily}"`;
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline =
+      el.verticalAlign === 'top'
+        ? 'top'
+        : el.verticalAlign === 'bottom'
+          ? 'bottom'
+          : 'middle';
     ctx.textAlign = (el.textAlign as CanvasTextAlign) ?? 'left';
+
+    if (el.shadow) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowBlur = Math.ceil(pointSize * 0.12);
+      ctx.shadowOffsetX = Math.max(1, Math.round(pointSize * 0.05));
+      ctx.shadowOffsetY = Math.max(1, Math.round(pointSize * 0.05));
+    }
 
     const padX = Math.round((el.backgroundPadding ?? 0) * scale);
     const textX =
@@ -663,8 +699,14 @@ export class OverlayRenderService {
         : el.textAlign === 'right'
           ? w - padX
           : padX;
+    const textY =
+      el.verticalAlign === 'top'
+        ? padY
+        : el.verticalAlign === 'bottom'
+          ? h - padY
+          : h / 2;
 
-    ctx.fillText(resolvedText, textX, h / 2, w - padX * 2);
+    ctx.fillText(renderedText, textX, textY, w - padX * 2);
 
     return canvas.toBuffer('image/png');
   }

@@ -4,7 +4,7 @@ import {
 } from '@maintainerr/contracts';
 
 export const PLEX_BATCH_SIZE = {
-  COLLECTION_MUTATION: 8,
+  COLLECTION_MUTATION: 4,
 } as const;
 
 const PLEX_SORT_FIELDS: Partial<Record<MediaLibrarySortField, string>> = {

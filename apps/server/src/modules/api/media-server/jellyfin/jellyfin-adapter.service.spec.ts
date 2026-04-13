@@ -1,5 +1,9 @@
 import { getCollectionApi } from '@jellyfin/sdk/lib/utils/api/index.js';
-import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaItem,
+  MediaServerFeature,
+  MediaServerType,
+} from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { AxiosError } from 'axios';
 import { delay } from '../../../../utils/delay';
@@ -11,6 +15,8 @@ import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 const jellyfinApiMocks = {
   getPublicSystemInfo: jest.fn(),
   getMediaFolders: jest.fn(),
+  getAncestors: jest.fn(),
+  deleteItem: jest.fn(),
   getUsers: jest.fn(),
   getUserById: jest.fn(),
   getConfiguration: jest.fn(),
@@ -106,6 +112,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getLibraryApi: jest.fn().mockImplementation(() => ({
     getMediaFolders: (...args: unknown[]) =>
       jellyfinApiMocks.getMediaFolders(...args),
+    getAncestors: (...args: unknown[]) =>
+      jellyfinApiMocks.getAncestors(...args),
+    deleteItem: (...args: unknown[]) => jellyfinApiMocks.deleteItem(...args),
   })),
   getUserApi: jest.fn().mockImplementation(() => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
@@ -177,6 +186,8 @@ describe('JellyfinAdapterService', () => {
       },
     });
     jellyfinApiMocks.getMediaFolders.mockResolvedValue({ data: { Items: [] } });
+    jellyfinApiMocks.getAncestors.mockResolvedValue({ data: [] });
+    jellyfinApiMocks.deleteItem.mockResolvedValue(undefined);
     jellyfinApiMocks.getUsers.mockResolvedValue({ data: [] });
     jellyfinApiMocks.getUserById.mockResolvedValue({ data: undefined });
     jellyfinApiMocks.getConfiguration.mockResolvedValue({
@@ -312,68 +323,6 @@ describe('JellyfinAdapterService', () => {
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, false],
     ])('supportsFeature(%s) is %s', (feature, expected) => {
       expect(service.supportsFeature(feature)).toBe(expected);
-    });
-  });
-
-  describe('getCollections', () => {
-    beforeEach(async () => {
-      settingsService.getSettings.mockResolvedValue({
-        ...mockSettings,
-        jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
-      await service.initialize();
-    });
-
-    it('filters collections to the requested library', async () => {
-      jellyfinApiMocks.getItems.mockImplementation(
-        (params: { parentId?: string; ids?: string[] }) => {
-          if (!params.parentId && !params.ids) {
-            return Promise.resolve({
-              data: {
-                Items: [
-                  {
-                    Id: 'collection-in-lib',
-                    Name: 'In Library',
-                    Type: 'BoxSet',
-                    ParentId: 'lib123',
-                    ChildCount: 1,
-                  },
-                  {
-                    Id: 'collection-other-lib',
-                    Name: 'Other Library',
-                    Type: 'BoxSet',
-                    ParentId: 'lib999',
-                    ChildCount: 1,
-                  },
-                ],
-              },
-            });
-          }
-
-          if (params.parentId === 'collection-other-lib') {
-            return Promise.resolve({
-              data: {
-                Items: [
-                  {
-                    Id: 'movie-2',
-                    Name: 'Movie 2',
-                    Type: 'Movie',
-                    ParentId: 'lib999',
-                    DateCreated: '2024-01-01T00:00:00.000Z',
-                  },
-                ],
-              },
-            });
-          }
-
-          return Promise.resolve({ data: { Items: [] } });
-        },
-      );
-
-      const collections = await service.getCollections('lib123');
-
-      expect(collections).toHaveLength(1);
-      expect(collections[0].id).toBe('collection-in-lib');
     });
   });
 
@@ -837,6 +786,149 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getDescendantEpisodeWatchers', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('returns users who played any episode under a show', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+          { Id: 'user-3', Name: 'Carol' },
+        ],
+      });
+      jellyfinApiMocks.getConfiguration.mockResolvedValue({
+        data: { MaxResumePct: 90 },
+      });
+
+      // Alice finished an episode, Bob only has unplayed episodes, Carol
+      // is above the PlayedPercentage threshold on a partial play.
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => {
+          if (userId === 'user-1') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  { UserData: { Played: true } },
+                  { UserData: { Played: false, PlayedPercentage: 10 } },
+                ],
+              },
+            });
+          }
+          if (userId === 'user-2') {
+            return Promise.resolve({
+              data: {
+                Items: [
+                  { UserData: { Played: false, PlayedPercentage: 0 } },
+                  { UserData: { Played: false, PlayedPercentage: 20 } },
+                ],
+              },
+            });
+          }
+          if (userId === 'user-3') {
+            return Promise.resolve({
+              data: {
+                Items: [{ UserData: { Played: false, PlayedPercentage: 95 } }],
+              },
+            });
+          }
+          return Promise.resolve({ data: { Items: [] } });
+        },
+      );
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+
+      expect(result).toEqual(expect.arrayContaining(['user-1', 'user-3']));
+      expect(result).not.toContain('user-2');
+      expect(result).toHaveLength(2);
+
+      // One getItems call per user, scoped to Episode descendants.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          parentId: 'show-1',
+          recursive: true,
+          includeItemTypes: ['Episode'],
+          enableUserData: true,
+        }),
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(3);
+    });
+
+    it('returns an empty list when nobody has watched an episode', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [{ UserData: { Played: false, PlayedPercentage: 0 } }],
+        },
+      });
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+      expect(result).toEqual([]);
+    });
+
+    it('deduplicates users who watched multiple episodes', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            { UserData: { Played: true } },
+            { UserData: { Played: true } },
+            { UserData: { Played: true } },
+          ],
+        },
+      });
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+      expect(result).toEqual(['user-1']);
+    });
+
+    it('caches results per parent id', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinCacheMocks.data.get.mockReturnValue(['user-1']);
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+
+      expect(result).toEqual(['user-1']);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('skips users whose per-user query fails without aborting others', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => {
+          if (userId === 'user-1') {
+            return Promise.reject(new Error('boom'));
+          }
+          return Promise.resolve({
+            data: { Items: [{ UserData: { Played: true } }] },
+          });
+        },
+      );
+
+      const result = await service.getDescendantEpisodeWatchers('show-1');
+      expect(result).toEqual(['user-2']);
+    });
+  });
+
   describe('getWatchState', () => {
     it('should derive count and watched state from watch history', async () => {
       jest.spyOn(service, 'getWatchHistory').mockResolvedValue([
@@ -1253,21 +1345,66 @@ describe('JellyfinAdapterService', () => {
       });
     });
 
-    it('should continue add batching and return failed ids for failed chunks', async () => {
+    it('should fall back to per-item adds and return item ids that still fail', async () => {
       const items = Array.from(
         { length: JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION * 2 },
         (_, index) => `item-${index + 1}`,
       );
 
-      collectionApiMocks.addToCollection
-        .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new Error('Request line too long'));
+      collectionApiMocks.addToCollection.mockImplementation(
+        async ({ ids }: { ids: string[] }) => {
+          if (
+            ids.length === JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION &&
+            ids[0] === `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`
+          ) {
+            throw new Error('Request line too long');
+          }
+
+          if (
+            ids.length === 1 &&
+            ids[0] === `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`
+          ) {
+            throw new Error('still bad');
+          }
+
+          return undefined;
+        },
+      );
 
       await expect(
         service.addBatchToCollection('collection-1', items),
-      ).resolves.toEqual(items.slice(JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION));
+      ).resolves.toEqual([
+        `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`,
+      ]);
 
-      expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(2);
+      expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(
+        JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 2,
+      );
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Jellyfin batch add fallback left 1 failed item(s) for collection collection-1',
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
+    });
+
+    it('should stay silent when per-item fallback recovers all Jellyfin batch add failures', async () => {
+      collectionApiMocks.addToCollection.mockImplementation(
+        async ({ ids }: { ids: string[] }) => {
+          if (ids.length > 1) {
+            throw new Error('Request line too long');
+          }
+
+          return undefined;
+        },
+      );
+
+      await expect(
+        service.addBatchToCollection('collection-1', ['item-1', 'item-2']),
+      ).resolves.toEqual([]);
+
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
     });
 
     it('should remove a batch of items in one Jellyfin request', async () => {
@@ -1292,6 +1429,132 @@ describe('JellyfinAdapterService', () => {
       ).resolves.toEqual([]);
 
       expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledTimes(3);
+    });
+
+    it('should remove only items from the specified library and keep manual shared collections', async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+
+      jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
+        {
+          id: 'item-old-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+        {
+          id: 'item-other-1',
+          type: 'movie',
+          library: {
+            id: 'other-library',
+            title: 'Other Library',
+            type: 'movie',
+          },
+        } as unknown as MediaItem,
+      ]);
+
+      jellyfinApiMocks.getAncestors.mockImplementation(({ itemId }) => {
+        return Promise.resolve({
+          data:
+            itemId === 'item-old-1'
+              ? [{ Id: 'old-library' }]
+              : [{ Id: 'other-library' }],
+        });
+      });
+
+      await service.cleanupCollectionForLibrary(
+        'collection-1',
+        'old-library',
+        true,
+      );
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-old-1'],
+      });
+      expect(jellyfinApiMocks.deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('should keep automatic collections when library membership lookup is incomplete', async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+
+      jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
+        {
+          id: 'item-old-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+        {
+          id: 'item-unknown-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+      ]);
+
+      jellyfinApiMocks.getAncestors.mockImplementation(({ itemId }) => {
+        if (itemId === 'item-old-1') {
+          return Promise.resolve({ data: [{ Id: 'old-library' }] });
+        }
+
+        return Promise.reject(new Error('ancestor lookup failed'));
+      });
+
+      await service.cleanupCollectionForLibrary(
+        'collection-1',
+        'old-library',
+        false,
+      );
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-old-1'],
+      });
+      expect(jellyfinApiMocks.deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('should delete empty automatic collections after removing the old library items', async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+
+      jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
+        {
+          id: 'item-old-1',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+        {
+          id: 'item-old-2',
+          type: 'movie',
+          library: { id: 'old-library', title: 'Old Library', type: 'movie' },
+        } as unknown as MediaItem,
+      ]);
+
+      jellyfinApiMocks.getAncestors.mockResolvedValue({
+        data: [{ Id: 'old-library' }],
+      });
+
+      await service.cleanupCollectionForLibrary(
+        'collection-1',
+        'old-library',
+        false,
+      );
+
+      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
+        collectionId: 'collection-1',
+        ids: ['item-old-1', 'item-old-2'],
+      });
+      expect(jellyfinApiMocks.deleteItem).toHaveBeenCalledWith({
+        itemId: 'collection-1',
+      });
     });
   });
 });

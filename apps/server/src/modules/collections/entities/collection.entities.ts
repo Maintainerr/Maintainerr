@@ -117,6 +117,12 @@ export class Collection {
   @JoinColumn({ name: 'overlayTemplateId' })
   overlayTemplate: OverlayTemplateEntity | null;
 
+  @Column({ nullable: true })
+  radarrQualityProfileId: number;
+
+  @Column({ nullable: true })
+  sonarrQualityProfileId: number;
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,

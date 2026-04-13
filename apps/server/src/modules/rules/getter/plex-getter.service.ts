@@ -232,7 +232,7 @@ export class PlexGetterService {
         case 'collection_names': {
           return metadata.Collection
             ? metadata.Collection.map((el) => el.tag.trim())
-            : null;
+            : [];
         }
         case 'sw_collection_names_including_parent': {
           const parent = await getParent();

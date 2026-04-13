@@ -1,8 +1,8 @@
-import { Logger } from '@nestjs/common';
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axiosRetry from 'axios-retry';
 import { PlexLibraryResponse } from '../plex-api/interfaces/library.interfaces';
 import cacheManager, { Cache } from './cache';
+import { describeRequestTarget } from './requestLogging';
 
 type PlexApiOptions = {
   hostname: string;
@@ -18,7 +18,6 @@ type RequestOptions = {
 };
 
 class PlexApi {
-  private logger = new Logger(PlexApi.name);
   private cache: Cache;
   private options: PlexApiOptions;
   private axios: AxiosInstance;
@@ -41,12 +40,6 @@ class PlexApi {
     axiosRetry(this.axios, {
       retries: 3,
       retryDelay: axiosRetry.exponentialDelay,
-      onRetry: (_, error, requestConfig) => {
-        const url = this.axios.getUri(requestConfig);
-        this.logger.debug(
-          `Retrying ${requestConfig.method.toUpperCase()} ${url}: ${error}`,
-        );
-      },
     });
   }
 
@@ -157,7 +150,10 @@ class PlexApi {
       const response = await this.axios.request(requestConfig);
       return response.data as T;
     } catch (error) {
-      const url = this.axios.getUri(requestConfig);
+      const url = describeRequestTarget(
+        this.axios.defaults.baseURL,
+        options.uri,
+      );
 
       if (error instanceof AxiosError) {
         if (error.response?.status === 403) {

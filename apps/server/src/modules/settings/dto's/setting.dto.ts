@@ -30,6 +30,10 @@ export class SettingDto {
 
   plex_auth_token: string;
 
+  plex_machine_id?: string;
+
+  plex_manual_mode?: number;
+
   // Jellyfin settings
   jellyfin_url?: string;
 

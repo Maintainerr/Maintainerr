@@ -58,7 +58,7 @@ export class OverlayProcessorService {
     addDate: string | Date,
     deleteAfterDays: number | null,
   ): Date | null {
-    if (!deleteAfterDays) return null;
+    if (deleteAfterDays == null) return null;
     const d = new Date(addDate);
     d.setDate(d.getDate() + deleteAfterDays);
     return d;
@@ -149,7 +149,7 @@ export class OverlayProcessorService {
       errors: 0,
     };
 
-    if (!collection.deleteAfterDays) {
+    if (collection.deleteAfterDays == null) {
       this.logger.debug(
         `Collection "${collection.title}" has no deleteAfterDays set, skipping`,
       );

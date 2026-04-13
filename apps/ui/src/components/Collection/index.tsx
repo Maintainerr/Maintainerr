@@ -10,6 +10,7 @@ export interface ICollection {
   visibleOnRecommended?: boolean
   visibleOnHome?: boolean
   overlayEnabled?: boolean
+  overlayTemplateId?: number | null
   deleteAfterDays?: number
   listExclusions?: boolean
   forceSeerr?: boolean
@@ -25,6 +26,8 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number
+  radarrQualityProfileId?: number
+  sonarrQualityProfileId?: number
   sortTitle?: string
   totalSizeBytes?: number | null
   mediaCount?: number
@@ -38,7 +41,7 @@ export interface ICollectionMedia {
   tvdbId?: number
   addDate: Date
   image_path?: string
-  isManual: boolean
+  isManual?: boolean
   collection: ICollection
   /** Server-agnostic media metadata */
   mediaData?: MediaItem

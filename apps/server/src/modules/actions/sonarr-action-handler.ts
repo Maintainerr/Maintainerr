@@ -8,11 +8,11 @@ import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { MetadataService } from '../metadata/metadata.service';
 import {
   findMetadataLookupMatch,
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class SonarrActionHandler {
@@ -65,6 +65,13 @@ export class SonarrActionHandler {
 
     if (!sonarrMedia?.id) {
       const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
+
+      if (collection.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
+        this.logger.log(
+          `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. No quality profile change was applied.`,
+        );
+        return false;
+      }
 
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&
@@ -129,21 +136,33 @@ export class SonarrActionHandler {
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             return true;
-          case 'episode':
+          case 'episode': {
+            const episodeLookup = this.getEpisodeLookup(mediaData);
+
+            if (!episodeLookup) {
+              this.logger.warn(
+                `[Sonarr] Couldn't identify episode '${mediaData?.title ?? media.mediaServerId}' for show '${sonarrMedia.title}'. No delete action was taken.`,
+              );
+              return false;
+            }
+
             if (
               !(await sonarrApiClient.UnmonitorDeleteEpisodes(
                 sonarrMedia.id,
-                mediaData?.parentIndex,
-                [mediaData?.index],
+                episodeLookup.seasonNumber,
+                episodeLookup.episodeNumbers,
                 true,
+                episodeLookup.airDate,
               ))
             ) {
               return false;
             }
+
             this.logger.log(
-              `[Sonarr] Removed season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed season ${mediaData?.parentIndex} ${this.getEpisodeLogLabel(mediaData)} from show '${sonarrMedia.title}'`,
             );
             return true;
+          }
           default:
             if (
               !(await sonarrApiClient.deleteShow(
@@ -200,21 +219,33 @@ export class SonarrActionHandler {
               `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             return true;
-          case 'episode':
+          case 'episode': {
+            const episodeLookup = this.getEpisodeLookup(mediaData);
+
+            if (!episodeLookup) {
+              this.logger.warn(
+                `[Sonarr] Couldn't identify episode '${mediaData?.title ?? media.mediaServerId}' for show '${sonarrMedia.title}'. No unmonitor action was taken.`,
+              );
+              return false;
+            }
+
             if (
               !(await sonarrApiClient.UnmonitorDeleteEpisodes(
                 sonarrMedia.id,
-                mediaData?.parentIndex,
-                [mediaData?.index],
+                episodeLookup.seasonNumber,
+                episodeLookup.episodeNumbers,
                 false,
+                episodeLookup.airDate,
               ))
             ) {
               return false;
             }
+
             this.logger.log(
-              `[Sonarr] Unmonitored season ${mediaData?.parentIndex} episode ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Unmonitored season ${mediaData?.parentIndex} ${this.getEpisodeLogLabel(mediaData)} from show '${sonarrMedia.title}'`,
             );
             return true;
+          }
           default:
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
@@ -305,9 +336,93 @@ export class SonarrActionHandler {
             );
             return false;
         }
+        break;
+      case ServarrAction.CHANGE_QUALITY_PROFILE: {
+        if (collection.type === 'season' || collection.type === 'episode') {
+          this.logger.warn(
+            `[Sonarr] CHANGE_QUALITY_PROFILE is not supported for type: ${collection.type}. Quality profiles can only be changed for entire shows.`,
+          );
+          return false;
+        }
+
+        const targetProfileId = collection.sonarrQualityProfileId;
+
+        if (!targetProfileId) {
+          this.logger.warn(
+            `No target quality profile configured for collection ${collection.title}`,
+          );
+          return false;
+        }
+
+        if (!Number.isInteger(targetProfileId) || targetProfileId <= 0) {
+          this.logger.warn(
+            `[Sonarr] Invalid quality profile ID (${targetProfileId}) for collection ${collection.title}`,
+          );
+          return false;
+        }
+
+        if (sonarrMedia.qualityProfileId === targetProfileId) {
+          return true;
+        }
+
+        sonarrMedia.qualityProfileId = targetProfileId;
+        if (!(await sonarrApiClient.updateSeries(sonarrMedia))) {
+          return false;
+        }
+
+        this.logger.log(
+          `[Sonarr] Changed quality profile for show '${sonarrMedia.title}' to profile ID ${targetProfileId}`,
+        );
+
+        await sonarrApiClient.searchSeries(sonarrMedia.id);
+        return true;
+      }
     }
 
     return false;
+  }
+
+  private getEpisodeLookup(mediaData?: MediaItem):
+    | {
+        seasonNumber: number;
+        episodeNumbers: number[];
+        airDate?: Date;
+      }
+    | undefined {
+    if (mediaData?.parentIndex === undefined) {
+      return undefined;
+    }
+
+    if (mediaData.index !== undefined) {
+      return {
+        seasonNumber: mediaData.parentIndex,
+        episodeNumbers: [mediaData.index],
+      };
+    }
+
+    if (mediaData.originallyAvailableAt) {
+      return {
+        seasonNumber: mediaData.parentIndex,
+        episodeNumbers: [],
+        airDate: mediaData.originallyAvailableAt,
+      };
+    }
+
+    return undefined;
+  }
+
+  private getEpisodeLogLabel(mediaData?: MediaItem): string {
+    if (mediaData?.index !== undefined) {
+      return `episode ${mediaData.index}`;
+    }
+
+    if (mediaData?.originallyAvailableAt) {
+      return `episode airing ${
+        mediaData.originallyAvailableAt.toISOString().split('T')[0]
+      }`;
+    }
+
+    return 'episode';
   }
 
   private async deleteShowIfEmpty(

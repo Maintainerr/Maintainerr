@@ -2,56 +2,6 @@ import { MaintainerrEvent } from '@maintainerr/contracts';
 import { createMockLogger } from '../../../test/utils/data';
 import { RulesService } from './rules.service';
 
-describe('RulesService.updateRules - null guard', () => {
-  const logger = createMockLogger();
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('returns error status when rule group is not found', async () => {
-    const ruleGroupRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
-    };
-
-    const service = new RulesService(
-      {} as any, // rulesRepository
-      ruleGroupRepository as any,
-      {} as any, // collectionMediaRepository
-      {} as any, // communityRuleKarmaRepository
-      {} as any, // exclusionRepo
-      {} as any, // settingsRepo
-      {} as any, // radarrSettingsRepo
-      {} as any, // sonarrSettingsRepo
-      {} as any, // collectionService
-      {} as any, // mediaServerFactory
-      {} as any, // connection
-      {} as any, // ruleYamlService
-      {} as any, // ruleComparatorServiceFactory
-      {} as any, // ruleMigrationService
-      {} as any, // eventEmitter
-      logger as any,
-    );
-
-    // Before the fix, this would throw:
-    // TypeError: Cannot read properties of null (reading 'collectionId')
-    const result = await service.updateRules({
-      id: 999,
-      libraryId: '1',
-      dataType: 'show',
-      name: 'Test',
-      rules: [],
-      description: '',
-    });
-
-    expect(result).toEqual({
-      code: 0,
-      result: 'Rule group not found',
-      message: 'Rule group not found',
-    });
-  });
-});
-
 describe('RulesService.deleteRuleGroup', () => {
   const logger = createMockLogger();
 

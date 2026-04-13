@@ -88,6 +88,9 @@ const settingsTautulliRoute = createLazyRoute(
 const settingsNotificationsRoute = createLazyRoute(
   () => import('./components/Settings/Notifications'),
 )
+const settingsOverlaysRoute = createLazyRoute(
+  () => import('./components/Settings/Overlays'),
+)
 const settingsJobsRoute = createLazyRoute(
   () => import('./components/Settings/Jobs'),
 )
@@ -257,12 +260,13 @@ const appRoutes: AppRoute[] = [
       },
       {
         path: 'overlays',
-        lazy: overlayTemplateListRoute.lazy,
-        preload: overlayTemplateListRoute.preload,
+        lazy: settingsOverlaysRoute.lazy,
+        preload: settingsOverlaysRoute.preload,
       },
       {
         path: 'overlays/templates',
-        element: <Navigate to="/settings/overlays" replace />,
+        lazy: overlayTemplateListRoute.lazy,
+        preload: overlayTemplateListRoute.preload,
       },
       {
         path: 'overlays/templates/:id',

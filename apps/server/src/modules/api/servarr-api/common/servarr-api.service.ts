@@ -1,11 +1,10 @@
-import { normalizeDiskPath } from '@maintainerr/contracts';
+import { normalizeDiskPath, QualityProfile } from '@maintainerr/contracts';
 import { ExternalApiService } from '../../../../modules/api/external-api/external-api.service';
 import { DVRSettings } from '../../../../modules/settings/interfaces/dvr-settings.interface';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import cacheManager from '../../lib/cache';
 import {
   DiskSpaceResource,
-  QualityProfile,
   QueueItem,
   QueueResponse,
   RootFolder,
@@ -168,6 +167,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     } catch (error) {
       this.logger.warn('Failed to retrieve tags');
       this.logger.debug(error);
+      return [];
     }
   };
 

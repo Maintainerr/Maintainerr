@@ -232,6 +232,7 @@ function ElementRenderer({
 
   switch (el.type) {
     case 'text':
+      const textValue = el.uppercase ? el.text.toUpperCase() : el.text
       return (
         <Group {...commonProps}>
           {el.backgroundColor && (
@@ -245,7 +246,7 @@ function ElementRenderer({
           <Text
             width={w}
             height={h}
-            text={el.text}
+            text={textValue}
             fontSize={el.fontSize * scale}
             fontFamily={el.fontFamily}
             fontStyle={el.fontWeight}
@@ -253,6 +254,11 @@ function ElementRenderer({
             align={el.textAlign}
             verticalAlign={el.verticalAlign}
             padding={el.backgroundPadding * scale}
+            shadowEnabled={el.shadow}
+            shadowBlur={el.shadow ? 6 * scale : 0}
+            shadowColor="rgba(0, 0, 0, 0.55)"
+            shadowOffsetX={el.shadow ? Math.max(1, 2 * scale) : 0}
+            shadowOffsetY={el.shadow ? Math.max(1, 2 * scale) : 0}
           />
         </Group>
       )
@@ -262,6 +268,9 @@ function ElementRenderer({
       const placeholder = el.segments
         .map((s) => (s.type === 'text' ? s.value : `{${s.field}}`))
         .join('')
+      const variableValue = el.uppercase
+        ? placeholder.toUpperCase()
+        : placeholder
       return (
         <Group {...commonProps}>
           {el.backgroundColor && (
@@ -275,7 +284,7 @@ function ElementRenderer({
           <Text
             width={w}
             height={h}
-            text={placeholder}
+            text={variableValue}
             fontSize={el.fontSize * scale}
             fontFamily={el.fontFamily}
             fontStyle={el.fontWeight}
@@ -283,6 +292,11 @@ function ElementRenderer({
             align={el.textAlign}
             verticalAlign={el.verticalAlign}
             padding={el.backgroundPadding * scale}
+            shadowEnabled={el.shadow}
+            shadowBlur={el.shadow ? 6 * scale : 0}
+            shadowColor="rgba(0, 0, 0, 0.55)"
+            shadowOffsetX={el.shadow ? Math.max(1, 2 * scale) : 0}
+            shadowOffsetY={el.shadow ? Math.max(1, 2 * scale) : 0}
           />
         </Group>
       )

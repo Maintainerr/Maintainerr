@@ -225,7 +225,7 @@ export class SonarrGetterService {
         case 'tags': {
           const tagIds = showResponse.tags;
           return (await sonarrApiClient.getTags())
-            .filter((el) => tagIds.includes(el.id))
+            ?.filter((el) => tagIds.includes(el.id))
             .map((el) => el.label);
         }
         case 'qualityProfileId': {
@@ -346,10 +346,6 @@ export class SonarrGetterService {
             origLibItem.index,
           );
 
-          if (!episodes) {
-            return null;
-          }
-
           return episodes.some(
             (el) => el.finaleType === 'season' && el.hasFile,
           );
@@ -359,10 +355,6 @@ export class SonarrGetterService {
             showResponse.id,
             dataType === 'season' ? origLibItem.index : undefined,
           );
-
-          if (!episodes) {
-            return null;
-          }
 
           return episodes.some(
             (el) => el.finaleType === 'series' && el.hasFile,
