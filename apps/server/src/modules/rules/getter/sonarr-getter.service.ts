@@ -12,12 +12,12 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { MetadataService } from '../../metadata/metadata.service';
 import {
   findMetadataLookupMatch,
   formatMetadataLookupCandidates,
   MetadataLookupCandidate,
 } from '../../metadata/metadata-lookup.util';
+import { MetadataService } from '../../metadata/metadata.service';
 import {
   Application,
   Property,
@@ -188,6 +188,47 @@ export class SonarrGetterService {
         return episodeFilePromise;
       };
 
+      let seasonEpisodesPromise:
+        | Promise<SonarrEpisode[] | undefined>
+        | undefined;
+      const getSeasonEpisodes = async (): Promise<
+        SonarrEpisode[] | undefined
+      > => {
+        if (dataType !== 'season' && dataType !== 'episode') {
+          return undefined;
+        }
+
+        if (showResponse.added === '0001-01-01T00:00:00Z') {
+          return undefined;
+        }
+
+        if (!showResponse.id || !origLibItem) {
+          return undefined;
+        }
+
+        seasonEpisodesPromise ??= sonarrApiClient.getEpisodes(
+          showResponse.id,
+          origLibItem.grandparentId
+            ? origLibItem.parentIndex
+            : origLibItem.index,
+        );
+
+        return seasonEpisodesPromise;
+      };
+
+      let showEpisodesPromise: Promise<SonarrEpisode[] | undefined> | undefined;
+      const getShowEpisodes = async (): Promise<
+        SonarrEpisode[] | undefined
+      > => {
+        if (!showResponse.id) {
+          return undefined;
+        }
+
+        showEpisodesPromise ??= sonarrApiClient.getEpisodes(showResponse.id);
+
+        return showEpisodesPromise;
+      };
+
       switch (prop.name) {
         case 'addDate': {
           return showResponse.added &&
@@ -313,10 +354,13 @@ export class SonarrGetterService {
         case 'seasons_monitored': {
           // returns the number of monitored seasons / episodes
           if (dataType === 'season' || dataType === 'episode') {
-            return season?.statistics?.episodeCount
-              ? +season.statistics.episodeCount
-              : null;
+            return (
+              (await getSeasonEpisodes())?.filter(
+                (episode) => episode.monitored,
+              ).length ?? null
+            );
           } else {
+            // Show rules intentionally keep the legacy season-count unit; season/episode rules count monitored episodes.
             return showResponse.seasons.filter((el) => el.monitored).length;
           }
         }
@@ -341,22 +385,17 @@ export class SonarrGetterService {
             : null;
         }
         case 'seasonFinale': {
-          const episodes = await sonarrApiClient.getEpisodes(
-            showResponse.id,
-            origLibItem.index,
-          );
-
-          return episodes.some(
+          return (await getSeasonEpisodes())?.some(
             (el) => el.finaleType === 'season' && el.hasFile,
           );
         }
         case 'seriesFinale': {
-          const episodes = await sonarrApiClient.getEpisodes(
-            showResponse.id,
-            dataType === 'season' ? origLibItem.index : undefined,
-          );
+          const episodes =
+            dataType === 'season'
+              ? await getSeasonEpisodes()
+              : await getShowEpisodes();
 
-          return episodes.some(
+          return episodes?.some(
             (el) => el.finaleType === 'series' && el.hasFile,
           );
         }
