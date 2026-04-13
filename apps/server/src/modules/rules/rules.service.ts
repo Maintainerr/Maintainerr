@@ -923,6 +923,14 @@ export class RulesService {
           val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
           (val1.type === RuleType.DATE &&
             rule.customVal.ruleTypeId === +RuleType.NUMBER) ||
+          (val1.type === RuleType.TEXT_LIST &&
+            rule.customVal.ruleTypeId === +RuleType.NUMBER &&
+            [
+              RulePossibility.COUNT_EQUALS,
+              RulePossibility.COUNT_NOT_EQUALS,
+              RulePossibility.COUNT_BIGGER,
+              RulePossibility.COUNT_SMALLER,
+            ].includes(+rule.action)) ||
           (val1.type == RuleType.TEXT_LIST &&
             rule.customVal.ruleTypeId.toString() == RuleType.TEXT.toString())
         ) {
