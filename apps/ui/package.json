@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,7 @@
     "hoistingLimits": "workspaces"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.9",
+    "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^1.0.6",
     "@hookform/resolvers": "^5.2.2",
     "@maintainerr/contracts": "workspace:^",
@@ -52,7 +52,7 @@
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.19",
-    "@tanstack/eslint-plugin-query": "^5.97.0",
+    "@tanstack/eslint-plugin-query": "^5.99.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/lodash-es": "^4.17.12",
@@ -67,14 +67,14 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "jsdom": "^29.0.1",
+    "jsdom": "^29.0.2",
     "monaco-editor": "0.55.1",
     "postcss": "^8.5.9",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
-    "vite": "^8.0.5",
+    "vite": "^8.0.8",
     "vitest": "^4.1.4"
   }
 }
