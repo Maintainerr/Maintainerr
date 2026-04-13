@@ -1852,6 +1852,16 @@ export class CollectionsService {
           });
         }
 
+        if (isSharedManualCollection) {
+          await this.reconcileSharedManualCollectionState(collection, {
+            addedMediaServerIds: new Set(
+              newMedia.map(
+                (collectionMediaItem) => collectionMediaItem.mediaServerId,
+              ),
+            ),
+          });
+        }
+
         // Update cached total size (non-blocking)
         this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
