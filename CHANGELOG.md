@@ -1,3 +1,33 @@
+# [3.6.0](https://github.com/maintainerr/Maintainerr/compare/v3.5.0...v3.6.0) (2026-04-13)
+
+
+### Bug Fixes
+
+* clarify rule placeholders and Seerr helper copy ([3322808](https://github.com/maintainerr/Maintainerr/commit/3322808f618db6bf44c36b0d617f9ef3511be987))
+* finalize release review follow-ups ([88bda2c](https://github.com/maintainerr/Maintainerr/commit/88bda2c083dd0453216de1a6e77c92752dda5f3d))
+* finalize release review follow-ups ([#2668](https://github.com/maintainerr/Maintainerr/issues/2668)) ([3c61c5f](https://github.com/maintainerr/Maintainerr/commit/3c61c5fc89e4d7d3982d0d242f6a96ce40b8c5d8))
+* handle media server unreachable in rule UI ([#2666](https://github.com/maintainerr/Maintainerr/issues/2666)) ([28a61bf](https://github.com/maintainerr/Maintainerr/commit/28a61bf2f8f2f9ec265eb4ed62585faf824d992e))
+* **jellyfin:** include partial watchers in sw_watchers ([#2559](https://github.com/maintainerr/Maintainerr/issues/2559)) ([#2646](https://github.com/maintainerr/Maintainerr/issues/2646)) ([a8f386a](https://github.com/maintainerr/Maintainerr/commit/a8f386a48d6998905ed6f5a71d472d5123d69fd6))
+* log plex native watch fallback details ([e920b07](https://github.com/maintainerr/Maintainerr/commit/e920b07315963fdd6b6faa91b0146d9f913f252a))
+* **metadata:** resolve parent show IDs for season/episode image lookups ([5c18c0c](https://github.com/maintainerr/Maintainerr/commit/5c18c0c2bcd8e7d6924844fcb6c7e159c1f9a158)), closes [#2649](https://github.com/maintainerr/Maintainerr/issues/2649)
+* preserve custom_days rule comparisons ([4e23e54](https://github.com/maintainerr/Maintainerr/commit/4e23e54986879e9dfd37a8c1c18a4667a1f480e1)), closes [#2582](https://github.com/maintainerr/Maintainerr/issues/2582)
+* quiet noisy service logs ([ef63bf6](https://github.com/maintainerr/Maintainerr/commit/ef63bf62b28911c6b4e79464b6fbc1012a586bb4))
+* refine arr action quality profile UI ([#2655](https://github.com/maintainerr/Maintainerr/issues/2655)) ([f6f8300](https://github.com/maintainerr/Maintainerr/commit/f6f8300f775be8c3573d90d913c10c8717dc64b8))
+* remove SSRF sinks from API failure logging ([#2665](https://github.com/maintainerr/Maintainerr/issues/2665)) ([ea77a31](https://github.com/maintainerr/Maintainerr/commit/ea77a310765088e8dd43c6f6af20ca170cf2150f))
+* retain items from different libraries in jellyfin ([#2658](https://github.com/maintainerr/Maintainerr/issues/2658)) ([d45cd11](https://github.com/maintainerr/Maintainerr/commit/d45cd11d18023f847740f2f9f3367479059ec953))
+* return empty array for Plex collection_names when no collections ([3ff191d](https://github.com/maintainerr/Maintainerr/commit/3ff191d6c7103130b540f2c2763aac3e8b716c84))
+* return empty array for Plex collection_names when no collections ([#2669](https://github.com/maintainerr/Maintainerr/issues/2669)) ([dc06205](https://github.com/maintainerr/Maintainerr/commit/dc0620518c9ccb217c917448b3d6651f592bd81f))
+* return empty array from getTags() on error and add list format hint ([4bbbf9c](https://github.com/maintainerr/Maintainerr/commit/4bbbf9ccaed4ee72df7b136d76da32238195d8c5)), closes [#2660](https://github.com/maintainerr/Maintainerr/issues/2660) [#2572](https://github.com/maintainerr/Maintainerr/issues/2572)
+* **server:** restore Sonarr episode fallback handling ([#2653](https://github.com/maintainerr/Maintainerr/issues/2653)) ([db89edd](https://github.com/maintainerr/Maintainerr/commit/db89edda7a24a2542e42299eec47f78db6991bc1))
+* show placeholder for all list rules ([8888c1f](https://github.com/maintainerr/Maintainerr/commit/8888c1f0d652e266cd00883132d34ac109c2ad03))
+* track collection membership provenance ([#2663](https://github.com/maintainerr/Maintainerr/issues/2663)) ([34a24fc](https://github.com/maintainerr/Maintainerr/commit/34a24fcc188eaf76c04aacdf45259ec3ed40bb74))
+
+
+### Features
+
+* add quality profile change action for Radarr and Sonarr  ([#2360](https://github.com/maintainerr/Maintainerr/issues/2360)) ([fffdd05](https://github.com/maintainerr/Maintainerr/commit/fffdd0561f20b9d09f734aa436038ffb9eb56ae2))
+* Plex connection resilience — auto re-discovery + manual override ([#2661](https://github.com/maintainerr/Maintainerr/issues/2661)) ([befde07](https://github.com/maintainerr/Maintainerr/commit/befde07616b0e8738e987700c89c6564c55735a6))
+
 # [3.5.0](https://github.com/maintainerr/Maintainerr/compare/v3.4.1...v3.5.0) (2026-04-10)
 
 
