@@ -112,7 +112,7 @@ const CollectionMediaPage = () => {
 
   return (
     <div className="w-full">
-      <div className="mb-5 w-full sm:max-w-sm">
+      <div className="mb-5 w-full sm:ml-auto sm:max-w-sm">
         <MediaLibrarySortControl
           ariaLabel="Sort collection items"
           options={sortConfig.options}

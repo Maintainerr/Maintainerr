@@ -15,12 +15,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         id={props.id || props.name}
         className={clsx(
-          'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm transition duration-150 ease-in-out disabled:opacity-50 sm:text-sm sm:leading-5',
-          {
-            '!border-error-500 outline-error-500 focus:border-error-500 focus:outline-none focus:ring-0':
-              !props.disabled && error,
-            className,
-          },
+          'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
+          !props.disabled &&
+            error &&
+            '!border-error-500 outline-error-500 focus:border-error-500 focus:ring-0',
+          className,
         )}
         aria-required={required}
         aria-invalid={error}

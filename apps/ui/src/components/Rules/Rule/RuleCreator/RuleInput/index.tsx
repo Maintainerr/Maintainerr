@@ -24,6 +24,7 @@ import {
 } from '../../../../../contexts/constants-context'
 import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
+import { Select } from '../../../../Forms/Select'
 
 enum RuleType {
   NUMBER,
@@ -626,7 +627,7 @@ const RuleInput = (props: IRuleInput) => {
             )}
             <div className="md:ml-4">
               <div className="flex w-1/2 md:w-fit">
-                <select
+                <Select
                   name="operator"
                   id="operator"
                   onChange={updateOperator}
@@ -644,7 +645,7 @@ const RuleInput = (props: IRuleInput) => {
                       }
                     },
                   )}
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -657,12 +658,11 @@ const RuleInput = (props: IRuleInput) => {
           <label htmlFor="first_val" className="block text-sm font-medium">
             First Value
           </label>
-          <select
+          <Select
             name="first_val"
             id="first_val"
             onChange={updateFirstValue}
             value={firstval}
-            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select First Value...
@@ -699,7 +699,7 @@ const RuleInput = (props: IRuleInput) => {
                   </optgroup>
                 ) : null,
               )}
-          </select>
+          </Select>
         </div>
 
         {/* Action Selection */}
@@ -707,12 +707,11 @@ const RuleInput = (props: IRuleInput) => {
           <label htmlFor="action" className="mb-1 block text-sm font-medium">
             Action
           </label>
-          <select
+          <Select
             name="action"
             id="action"
             onChange={updateAction}
             value={action}
-            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select Action...
@@ -722,7 +721,7 @@ const RuleInput = (props: IRuleInput) => {
                 {RulePossibilityTranslations[action]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {!isUnaryRuleAction(action) ? (
@@ -733,12 +732,11 @@ const RuleInput = (props: IRuleInput) => {
             >
               Second Value
             </label>
-            <select
+            <Select
               name="second_val"
               id="second_val"
               onChange={updateSecondValue}
               value={secondVal}
-              className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
             >
               <option value="" className="text-maintainerr-600">
                 Select Second Value...
@@ -807,7 +805,7 @@ const RuleInput = (props: IRuleInput) => {
                     </optgroup>
                   ) : undefined
                 })}
-            </select>
+            </Select>
           </div>
         ) : null}
 
@@ -819,12 +817,11 @@ const RuleInput = (props: IRuleInput) => {
             >
               Disk Target
             </label>
-            <select
+            <Select
               name="arr_disk_path"
               id="arr_disk_path"
               onChange={updateArrDiskPath}
               value={arrDiskPath}
-              className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
             >
               <option value="">Aggregate (all paths)</option>
               {preservedArrDiskPathOption ? (
@@ -849,7 +846,7 @@ const RuleInput = (props: IRuleInput) => {
                     : 'No disk paths reported by ARR'}
                 </option>
               ) : null}
-            </select>
+            </Select>
             {isSelectedArrTotalDiskspaceRule ? (
               <p className="mt-1 text-xs text-zinc-400">
                 Total disk space only works for paths reported by ARR disk
@@ -905,7 +902,7 @@ const RuleInput = (props: IRuleInput) => {
                 placeholder="Date"
               ></input>
             ) : customValType === RuleType.BOOL ? (
-              <select
+              <Select
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
@@ -913,7 +910,7 @@ const RuleInput = (props: IRuleInput) => {
               >
                 <option value={1}>True</option>
                 <option value={0}>False</option>
-              </select>
+              </Select>
             ) : (
               <input
                 type="number"

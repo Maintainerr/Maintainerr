@@ -30,22 +30,25 @@ const CollectionOverview = (props: ICollectionOverview) => {
   const showRefreshing = props.isLoading && hasCollections
 
   return (
-    <div>
-      <LibrarySwitcher
-        onLibraryChange={props.onSwitchLibrary}
-        selectedLibraryId={props.selectedLibraryId}
-        libraries={libraries}
-        librariesLoading={librariesLoading}
-        librariesError={!!librariesError}
-      />
-
-      <div className="m-auto mb-3 flex">
-        <div className="m-auto sm:m-0">
+    <div className="w-full px-4">
+      <div className="mb-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-2">
           <ExecuteButton
             onClick={props.doActions}
             text="Handle Collections"
             executing={collectionHandlerRunning}
             disabled={collectionHandlerRunning}
+          />
+        </div>
+        <div className="w-full sm:ml-auto sm:w-[18rem]">
+          <LibrarySwitcher
+            containerClassName="mb-0"
+            formClassName="max-w-none"
+            onLibraryChange={props.onSwitchLibrary}
+            selectedLibraryId={props.selectedLibraryId}
+            libraries={libraries}
+            librariesLoading={librariesLoading}
+            librariesError={!!librariesError}
           />
         </div>
       </div>

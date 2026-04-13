@@ -91,20 +91,10 @@ const RulesListPage = () => {
   return (
     <>
       <title>Rules - Maintainerr</title>
-      <div className="w-full">
-        <LibrarySwitcher
-          onLibraryChange={onSwitchLibrary}
-          selectedLibraryId={selectedLibrary}
-          libraries={libraries}
-          librariesLoading={librariesLoading}
-          librariesError={!!librariesError}
-        />
-
-        <div className="m-auto mb-3 flex">
-          <div className="ml-auto sm:ml-0">
+      <div className="w-full px-4">
+        <div className="mb-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <AddButton onClick={() => navigate('/rules/new')} text="New Rule" />
-          </div>
-          <div className="ml-2 mr-auto sm:mr-0">
             <ExecuteButton
               onClick={() => {
                 if (ruleHandlerRunning) {
@@ -115,6 +105,17 @@ const RulesListPage = () => {
               }}
               text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
               executing={ruleHandlerRunning}
+            />
+          </div>
+          <div className="w-full sm:ml-auto sm:w-[18rem]">
+            <LibrarySwitcher
+              containerClassName="mb-0"
+              formClassName="max-w-none"
+              onLibraryChange={onSwitchLibrary}
+              selectedLibraryId={selectedLibrary}
+              libraries={libraries}
+              librariesLoading={librariesLoading}
+              librariesError={!!librariesError}
             />
           </div>
         </div>

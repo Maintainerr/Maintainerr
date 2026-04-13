@@ -38,6 +38,7 @@ import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
@@ -864,7 +865,7 @@ const AddModal = (props: AddModal) => {
                         {(() => {
                           const field = register('libraryId')
                           return (
-                            <select
+                            <Select
                               id="library"
                               {...field}
                               onChange={(event) => {
@@ -887,7 +888,7 @@ const AddModal = (props: AddModal) => {
                                   </option>
                                 )
                               })}
-                            </select>
+                            </Select>
                           )
                         })()}
                       </div>
@@ -952,7 +953,7 @@ const AddModal = (props: AddModal) => {
                             {(() => {
                               const field = register('dataType')
                               return (
-                                <select
+                                <Select
                                   id="type"
                                   {...field}
                                   onChange={(event) => {
@@ -970,7 +971,7 @@ const AddModal = (props: AddModal) => {
                                       </option>
                                     ),
                                   )}
-                                </select>
+                                </Select>
                               )
                             })()}
                           </div>

@@ -6,6 +6,7 @@ interface ILibrarySwitcher {
   onLibraryChange: (libraryId: string) => void
   shouldShowAllOption?: boolean
   selectedLibraryId?: string
+  containerClassName?: string
   formClassName?: string
   libraries?: MediaLibrary[]
   librariesLoading?: boolean
@@ -17,6 +18,7 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
     onLibraryChange,
     selectedLibraryId,
     shouldShowAllOption,
+    containerClassName,
     formClassName,
     libraries,
     librariesLoading = false,
@@ -56,14 +58,9 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
   }, [libraries, onLibraryChange, selectedLibraryId, shouldShowAllOption])
 
   return (
-    <div className="mb-5 min-h-[44px] w-full">
-      <form className={`w-full ${formClassName ?? 'max-w-xs'}`}>
-        <Select
-          className="h-11 px-3"
-          name="library"
-          onChange={onSwitchLibrary}
-          value={selectValue}
-        >
+    <div className={`w-full ${containerClassName ?? 'mb-5'}`}>
+      <form className={`ml-auto w-full ${formClassName ?? 'max-w-xs'}`}>
+        <Select name="library" onChange={onSwitchLibrary} value={selectValue}>
           {librariesLoading ? (
             <option disabled={true} value="">
               Loading libraries...

@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react'
 import type { RouteObject } from 'react-router-dom'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
-import Calendar from './components/Calendar'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
 import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
 import Overview from './components/Overview'
@@ -57,6 +56,7 @@ const collectionMediaRoute = createLazyRoute(
 const collectionExclusionsRoute = createLazyRoute(
   () => import('./pages/CollectionExclusionsPage'),
 )
+const calendarRoute = createLazyRoute(() => import('./pages/CalendarPage'))
 const collectionInfoRoute = createLazyRoute(
   () => import('./pages/CollectionInfoPage'),
 )
@@ -156,7 +156,8 @@ const appRoutes: AppRoute[] = [
       },
       {
         path: 'calendar',
-        element: <Calendar />,
+        lazy: calendarRoute.lazy,
+        preload: calendarRoute.preload,
       },
       {
         path: 'rules',

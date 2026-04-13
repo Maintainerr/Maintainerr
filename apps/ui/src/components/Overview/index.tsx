@@ -462,28 +462,31 @@ const Overview = () => {
   return (
     <>
       <title>Overview - Maintainerr</title>
-      <div className="w-full">
+      <div className="w-full px-4">
         {!searchUsed ? (
-          <div className="mb-5 flex w-full flex-col gap-3 sm:flex-row">
-            <div className="w-full sm:w-1/2">
-              <LibrarySwitcher
-                shouldShowAllOption={false}
-                onLibraryChange={onSwitchLibrary}
-                selectedLibraryId={selectedLibrary ?? defaultLibraryId}
-                formClassName="max-w-none"
-                libraries={libraries}
-                librariesLoading={librariesLoading}
-                librariesError={!!librariesError}
-              />
-            </div>
-            <div className="w-full sm:w-1/2">
-              <MediaLibrarySortControl
-                ariaLabel="Sort overview items"
-                options={sortConfig.options}
-                value={sortValue}
-                onSortChange={handleSortChange}
-                isLoading={showRefreshing}
-              />
+          <div className="mb-5 flex w-full">
+            <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+              <div className="w-full sm:w-[18rem]">
+                <LibrarySwitcher
+                  shouldShowAllOption={false}
+                  containerClassName="mb-0"
+                  onLibraryChange={onSwitchLibrary}
+                  selectedLibraryId={selectedLibrary ?? defaultLibraryId}
+                  formClassName="max-w-none"
+                  libraries={libraries}
+                  librariesLoading={librariesLoading}
+                  librariesError={!!librariesError}
+                />
+              </div>
+              <div className="w-full sm:w-[18rem]">
+                <MediaLibrarySortControl
+                  ariaLabel="Sort overview items"
+                  options={sortConfig.options}
+                  value={sortValue}
+                  onSortChange={handleSortChange}
+                  isLoading={showRefreshing}
+                />
+              </div>
             </div>
           </div>
         ) : undefined}

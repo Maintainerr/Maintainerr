@@ -1,6 +1,7 @@
 import { ServarrAction } from '@maintainerr/contracts'
 import { useEffect, useEffectEvent, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
+import { Select } from '../../../../Forms/Select'
 import { IRadarrSetting } from '../../../../Settings/Radarr'
 import { ISonarrSetting } from '../../../../Settings/Sonarr'
 
@@ -88,7 +89,7 @@ const ArrAction = (props: ArrActionProps) => {
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <select
+            <Select
               name={`${props.type}-server`}
               id={`${props.type}-server`}
               value={selectedSetting}
@@ -111,7 +112,7 @@ const ArrAction = (props: ArrActionProps) => {
                   Loading servers...
                 </option>
               )}
-            </select>
+            </Select>
           </div>
           {props.settingIdError ? (
             <p className="mt-1 text-xs text-error-400">
@@ -129,7 +130,7 @@ const ArrAction = (props: ArrActionProps) => {
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <select
+            <Select
               name={`${props.type}-action`}
               id={`${props.type}-action`}
               value={action}
@@ -144,7 +145,7 @@ const ArrAction = (props: ArrActionProps) => {
                   </option>
                 )
               })}
-            </select>
+            </Select>
           </div>
           {props.accActionError ? (
             <p className="mt-1 text-xs text-error-400">

@@ -20,6 +20,7 @@ import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
+import { Select } from '../../Forms/Select'
 import PlexLoginButton from '../../Login/Plex'
 import SettingsAlertSlot from '../SettingsAlertSlot'
 import { useSettingsFeedback } from '../useSettingsFeedback'
@@ -616,51 +617,53 @@ const PlexSettings = () => {
                     </div>
                   ) : (
                     <div className="form-input-field">
-                      <select
-                        className="rounded-l-only"
-                        defaultValue=""
-                        disabled={isRefreshingPresets}
-                        onChange={(e) => {
-                          const preset =
-                            availablePresets[Number(e.target.value)]
-                          if (preset) {
-                            setSelectedServer({
-                              name: preset.name,
-                              hostname: preset.address,
-                              port: String(preset.port),
-                              ssl: preset.ssl,
-                              local: preset.local,
-                              latency: preset.latency,
-                            })
-                            setManualMode(false)
-                            setAdvancedOpen(false)
-                            clearError()
-                            clearTestBanner()
-                          }
-                        }}
-                      >
-                        <option value="" disabled>
-                          {isRefreshingPresets
-                            ? 'Retrieving servers...'
-                            : isServersError
-                              ? 'Failed to load servers — press refresh to retry'
-                              : !availableServers
-                                ? 'Loading servers...'
-                                : 'Select a server...'}
-                        </option>
-                        {availablePresets.map((server, index) => (
-                          <option
-                            key={`preset-${index}`}
-                            value={index}
-                            disabled={!server.status}
-                          >
-                            {server.name} ({server.address}:{server.port}) [
-                            {server.local ? 'local' : 'remote'}]
-                            {server.ssl ? ' [secure]' : ''}
-                            {!server.status ? ' (unavailable)' : ''}
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          className="rounded-l-only rounded-r-none border-r-0"
+                          defaultValue=""
+                          disabled={isRefreshingPresets}
+                          onChange={(e) => {
+                            const preset =
+                              availablePresets[Number(e.target.value)]
+                            if (preset) {
+                              setSelectedServer({
+                                name: preset.name,
+                                hostname: preset.address,
+                                port: String(preset.port),
+                                ssl: preset.ssl,
+                                local: preset.local,
+                                latency: preset.latency,
+                              })
+                              setManualMode(false)
+                              setAdvancedOpen(false)
+                              clearError()
+                              clearTestBanner()
+                            }
+                          }}
+                        >
+                          <option value="" disabled>
+                            {isRefreshingPresets
+                              ? 'Retrieving servers...'
+                              : isServersError
+                                ? 'Failed to load servers — press refresh to retry'
+                                : !availableServers
+                                  ? 'Loading servers...'
+                                  : 'Select a server...'}
                           </option>
-                        ))}
-                      </select>
+                          {availablePresets.map((server, index) => (
+                            <option
+                              key={`preset-${index}`}
+                              value={index}
+                              disabled={!server.status}
+                            >
+                              {server.name} ({server.address}:{server.port}) [
+                              {server.local ? 'local' : 'remote'}]
+                              {server.ssl ? ' [secure]' : ''}
+                              {!server.status ? ' (unavailable)' : ''}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
                       <button
                         type="button"
                         onClick={() => void refetchServers()}

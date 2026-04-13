@@ -7,9 +7,11 @@ import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 import SaveButton from '../../../Common/SaveButton'
-import TestingButton from '../../../Common/TestingButton'
-import { getTestingButtonType } from '../../../Common/TestingButton'
+import TestingButton, {
+  getTestingButtonType,
+} from '../../../Common/TestingButton'
 import ToggleItem from '../../../Common/ToggleButton'
+import { Select } from '../../../Forms/Select'
 import SettingsAlertSlot from '../../SettingsAlertSlot'
 
 interface agentSpec {
@@ -314,7 +316,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
               </label>
               <div className="form-input">
                 <div className="form-input-field">
-                  <select
+                  <Select
                     id="agent"
                     name="agent"
                     value={selectedAgentIndex}
@@ -323,14 +325,13 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                       setTargetAgent(availableAgents[Number(e.target.value)])
                       clearFeedback()
                     }}
-                    className="rounded-l-only"
                   >
                     {availableAgents?.map((agent, index) => (
                       <option key={`agent-${index}`} value={index}>
                         {`${agent.friendlyName ? agent.friendlyName : ''}`}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
