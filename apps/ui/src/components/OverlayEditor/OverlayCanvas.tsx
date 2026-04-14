@@ -23,6 +23,7 @@ interface OverlayCanvasProps {
 }
 
 const MAX_DISPLAY_HEIGHT = 600
+const MIN_DISPLAY_HEIGHT = 240
 
 export function OverlayCanvas({
   elements,
@@ -33,17 +34,49 @@ export function OverlayCanvas({
   onUpdate,
   backgroundUrl,
 }: OverlayCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const trRef = useRef<Konva.Transformer>(null)
   const [loadedBackground, setLoadedBackground] = useState<{
     image: HTMLImageElement
     url: string
   } | null>(null)
+  const [containerSize, setContainerSize] = useState<{
+    width: number
+    height: number
+  }>({ width: 0, height: 0 })
 
-  // Scale to fit display area
-  const scale = Math.min(1, MAX_DISPLAY_HEIGHT / canvasHeight)
-  const displayW = Math.round(canvasWidth * scale)
-  const displayH = Math.round(canvasHeight * scale)
+  // Observe container dimensions
+  useEffect(() => {
+    const node = containerRef.current
+    if (!node) return
+    const update = () => {
+      setContainerSize({
+        width: node.clientWidth,
+        height: node.clientHeight,
+      })
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  // Scale to fit available container while preserving aspect ratio
+  const availableHeight =
+    containerSize.height > 0
+      ? Math.min(
+          MAX_DISPLAY_HEIGHT,
+          Math.max(MIN_DISPLAY_HEIGHT, containerSize.height),
+        )
+      : MAX_DISPLAY_HEIGHT
+  const availableWidth =
+    containerSize.width > 0 ? containerSize.width : canvasWidth
+  const scaleByHeight = availableHeight / canvasHeight
+  const scaleByWidth = availableWidth / canvasWidth
+  const scale = Math.min(1, scaleByHeight, scaleByWidth)
+  const displayW = Math.max(1, Math.round(canvasWidth * scale))
+  const displayH = Math.max(1, Math.round(canvasHeight * scale))
 
   // Load background image when URL changes
   useEffect(() => {
@@ -134,75 +167,80 @@ export function OverlayCanvas({
 
   return (
     <div
-      className="overflow-hidden rounded-lg shadow-xl"
-      style={{ width: displayW, height: displayH }}
+      ref={containerRef}
+      className="flex h-full w-full items-center justify-center"
     >
-      <Stage
-        ref={stageRef}
-        width={displayW}
-        height={displayH}
-        onClick={handleStageClick}
-        onTap={
-          handleStageClick as unknown as (
-            evt: Konva.KonvaEventObject<TouchEvent>,
-          ) => void
-        }
+      <div
+        className="overflow-hidden rounded-lg shadow-xl"
+        style={{ width: displayW, height: displayH }}
       >
-        {/* Background */}
-        <Layer>
-          <Rect
-            width={displayW}
-            height={displayH}
-            fill="#1a1a2e"
-            listening={false}
-          />
-          {backgroundUrl && loadedBackground?.url === backgroundUrl ? (
-            <KonvaImage
-              image={loadedBackground.image}
-              width={displayW}
-              height={displayH}
-              listening={false}
-            />
-          ) : (
+        <Stage
+          ref={stageRef}
+          width={displayW}
+          height={displayH}
+          onClick={handleStageClick}
+          onTap={
+            handleStageClick as unknown as (
+              evt: Konva.KonvaEventObject<TouchEvent>,
+            ) => void
+          }
+        >
+          {/* Background */}
+          <Layer>
             <Rect
               width={displayW}
               height={displayH}
-              stroke="#333"
-              strokeWidth={1}
+              fill="#1a1a2e"
               listening={false}
             />
-          )}
-        </Layer>
+            {backgroundUrl && loadedBackground?.url === backgroundUrl ? (
+              <KonvaImage
+                image={loadedBackground.image}
+                width={displayW}
+                height={displayH}
+                listening={false}
+              />
+            ) : (
+              <Rect
+                width={displayW}
+                height={displayH}
+                stroke="#333"
+                strokeWidth={1}
+                listening={false}
+              />
+            )}
+          </Layer>
 
-        {/* Elements */}
-        <Layer>
-          {sorted.map((el) => (
-            <ElementRenderer
-              key={el.id}
-              element={el}
-              scale={scale}
-              onSelect={() => onSelect(el.id)}
-              onDragEnd={(e) => handleDragEnd(el, e)}
-              onTransformEnd={(e) => handleTransformEnd(el, e)}
+          {/* Elements */}
+          <Layer>
+            {sorted.map((el) => (
+              <ElementRenderer
+                key={el.id}
+                element={el}
+                scale={scale}
+                onSelect={() => onSelect(el.id)}
+                onDragEnd={(e) => handleDragEnd(el, e)}
+                onTransformEnd={(e) => handleTransformEnd(el, e)}
+              />
+            ))}
+          </Layer>
+
+          {/* Transformer layer */}
+          <Layer>
+            <Transformer
+              ref={trRef as React.RefObject<Konva.Transformer>}
+              boundBoxFunc={(oldBox, newBox) => {
+                if (newBox.width < 5 || newBox.height < 5) return oldBox
+                return newBox
+              }}
+              anchorSize={8}
+              borderStroke="#f59e0b"
+              anchorStroke="#f59e0b"
+              anchorFill="#27272a"
             />
-          ))}
-        </Layer>
-
-        {/* Transformer layer */}
-        <Layer>
-          <Transformer
-            ref={trRef as React.RefObject<Konva.Transformer>}
-            boundBoxFunc={(oldBox, newBox) => {
-              if (newBox.width < 5 || newBox.height < 5) return oldBox
-              return newBox
-            }}
-            anchorSize={8}
-            borderStroke="#f59e0b"
-            anchorStroke="#f59e0b"
-            anchorFill="#27272a"
-          />
-        </Layer>
-      </Stage>
+          </Layer>
+        </Stage>
+      </div>
     </div>
   )
 }

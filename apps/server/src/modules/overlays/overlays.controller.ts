@@ -7,6 +7,7 @@ import {
   overlayTemplateCreateSchema,
   overlayTemplateExportSchema,
   overlayTemplateUpdateSchema,
+  sanitizeFilenameChars,
 } from '@maintainerr/contracts';
 import {
   Body,
@@ -234,10 +235,7 @@ export class OverlaysController {
       );
     }
 
-    // Sanitize filename: only allow alphanumeric, dash, underscore, dot
-    const safeName = path
-      .basename(file.originalname)
-      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName = sanitizeFilenameChars(path.basename(file.originalname));
     const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
 
     fs.mkdirSync(userFontsDir, { recursive: true });

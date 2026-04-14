@@ -1,5 +1,8 @@
 import type { OverlayElement, VariableSegment } from '@maintainerr/contracts'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import ColorPickerModal from '../Common/ColorPickerModal'
+import { Input } from '../Forms/Input'
+import { Select } from '../Forms/Select'
 
 interface PropertiesPanelProps {
   element: OverlayElement
@@ -118,7 +121,7 @@ function TextProperties({
     <>
       <FieldGroup label="Text">
         <textarea
-          className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-zinc-200 focus:border-amber-500 focus:outline-none"
+          className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 px-3 py-1.5 text-sm text-white shadow-sm transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50"
           rows={2}
           value={el.text}
           onChange={(e) => update('text', e.target.value)}
@@ -207,9 +210,9 @@ function VariableProperties({
         {el.segments.map((seg, i) => (
           <div key={i} className="mb-1 flex items-center gap-1">
             {seg.type === 'text' ? (
-              <input
+              <Input
+                name={`segment-text-${i}`}
                 type="text"
-                className="flex-1 rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200 focus:border-amber-500 focus:outline-none"
                 value={seg.value}
                 onChange={(e) =>
                   updateSegment(i, { type: 'text', value: e.target.value })
@@ -217,8 +220,8 @@ function VariableProperties({
                 placeholder="Text..."
               />
             ) : (
-              <select
-                className="flex-1 rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200"
+              <Select
+                name={`segment-variable-${i}`}
                 value={seg.field}
                 onChange={(e) =>
                   updateSegment(i, {
@@ -230,11 +233,11 @@ function VariableProperties({
                 <option value="date">{'{date}'}</option>
                 <option value="days">{'{days}'}</option>
                 <option value="daysText">{'{daysText}'}</option>
-              </select>
+              </Select>
             )}
             <button
               type="button"
-              className="text-red-400 hover:text-red-300"
+              className="shrink-0 text-red-400 hover:text-red-300"
               onClick={() => removeSegment(i)}
               title="Remove"
             >
@@ -345,8 +348,8 @@ function ShapeProperties({
   return (
     <>
       <FieldGroup label="Shape">
-        <select
-          className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-zinc-200"
+        <Select
+          name="shape-type"
           value={el.shapeType}
           onChange={(e) =>
             update('shapeType', e.target.value as 'rectangle' | 'ellipse')
@@ -354,7 +357,7 @@ function ShapeProperties({
         >
           <option value="rectangle">Rectangle</option>
           <option value="ellipse">Ellipse</option>
-        </select>
+        </Select>
       </FieldGroup>
       <FieldGroup label="Fill & Stroke">
         <ColorField
@@ -399,12 +402,13 @@ function ImageProperties({
   return (
     <FieldGroup label="Image">
       <TextField
-        label="Path"
+        label="Filename"
         value={el.imagePath}
         onChange={(v) => update('imagePath', v)}
       />
       <p className="text-[10px] text-zinc-500">
-        Relative to data/overlays/images/
+        Filename of an image placed in data/overlays/images/ on the server (e.g.
+        poster.png). Subdirectories are not allowed.
       </p>
     </FieldGroup>
   )
@@ -462,8 +466,8 @@ function FontFields<
     <FieldGroup label="Font">
       <label className="flex items-center gap-1.5">
         <span className="w-12 shrink-0 text-zinc-400">Font</span>
-        <select
-          className="w-full rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200"
+        <Select
+          name="font-family"
           value={selectValue}
           onChange={(e) => handleFontSelect(e.target.value)}
         >
@@ -477,10 +481,10 @@ function FontFields<
               {f.name}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
-          className="shrink-0 rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-600"
+          className="shrink-0 rounded-md border border-zinc-500 bg-zinc-700 px-2 py-1 text-[10px] text-zinc-200 hover:bg-zinc-600"
           onClick={() => fileRef.current?.click()}
           title="Upload font (.ttf, .otf, .woff)"
         >
@@ -564,9 +568,9 @@ function NumberField({
   return (
     <label className="flex items-center gap-1.5">
       <span className="w-12 shrink-0 text-zinc-400">{label}</span>
-      <input
+      <Input
+        name={`number-${label}`}
         type="number"
-        className="w-full rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200 focus:border-amber-500 focus:outline-none"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         min={min}
@@ -589,9 +593,9 @@ function TextField({
   return (
     <label className="flex items-center gap-1.5">
       <span className="w-12 shrink-0 text-zinc-400">{label}</span>
-      <input
+      <Input
+        name={`text-${label}`}
         type="text"
-        className="w-full rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200 focus:border-amber-500 focus:outline-none"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -608,22 +612,37 @@ function ColorField({
   value: string
   onChange: (v: string) => void
 }) {
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   return (
-    <label className="flex items-center gap-1.5">
-      <span className="w-12 shrink-0 text-zinc-400">{label}</span>
-      <input
-        type="color"
-        className="h-6 w-8 cursor-pointer rounded border border-zinc-600 bg-zinc-800"
-        value={value.slice(0, 7)}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <input
-        type="text"
-        className="flex-1 rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200 focus:border-amber-500 focus:outline-none"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
+    <>
+      <label className="flex items-center gap-1.5">
+        <span className="w-12 shrink-0 text-zinc-400">{label}</span>
+        <button
+          type="button"
+          aria-label={`Pick ${label} color`}
+          className="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-zinc-500 bg-zinc-700"
+          style={{ backgroundColor: value }}
+          onClick={() => setIsPickerOpen(true)}
+        />
+        <Input
+          name={`color-${label}`}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </label>
+      {isPickerOpen && (
+        <ColorPickerModal
+          title={`Choose ${label.toLowerCase()} color`}
+          initialValue={value}
+          onCancel={() => setIsPickerOpen(false)}
+          onSave={(next) => {
+            onChange(next)
+            setIsPickerOpen(false)
+          }}
+        />
+      )}
+    </>
   )
 }
 
@@ -641,8 +660,8 @@ function SelectField({
   return (
     <label className="flex items-center gap-1.5">
       <span className="w-12 shrink-0 text-zinc-400">{label}</span>
-      <select
-        className="w-full rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-zinc-200"
+      <Select
+        name={`select-${label}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -651,7 +670,7 @@ function SelectField({
             {opt}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   )
 }

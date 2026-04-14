@@ -2,7 +2,6 @@ import {
   DownloadIcon,
   DuplicateIcon,
   PencilAltIcon,
-  PlusIcon,
   StarIcon,
   TrashIcon,
   UploadIcon,
@@ -13,7 +12,6 @@ import type {
 } from '@maintainerr/contracts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import {
   deleteOverlayTemplate,
   duplicateOverlayTemplate,
@@ -22,13 +20,21 @@ import {
   importOverlayTemplate,
   setDefaultOverlayTemplate,
 } from '../api/overlays'
+import Button from '../components/Common/Button'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import PageControlRow from '../components/Common/PageControlRow'
+import {
+  SettingsFeedbackAlert,
+  useSettingsFeedback,
+} from '../components/Settings/useSettingsFeedback'
 
 const OverlayTemplateListPage = () => {
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<OverlayTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const { feedback, showSuccess, showError } =
+    useSettingsFeedback('Overlay templates')
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -43,19 +49,17 @@ const OverlayTemplateListPage = () => {
     void fetchTemplates()
   }, [fetchTemplates])
 
-  const handleCreate = () => {
-    navigate('/settings/overlays/templates/new')
-  }
-
   const handleEdit = (id: number) => {
-    navigate(`/settings/overlays/templates/${id}`)
+    navigate(`/overlays/templates/${id}`)
   }
 
   const handleDuplicate = async (id: number) => {
     const result = await duplicateOverlayTemplate(id)
     if (result) {
-      toast.success('Template duplicated')
+      showSuccess('Template duplicated')
       void fetchTemplates()
+    } else {
+      showError('Failed to duplicate template')
     }
   }
 
@@ -63,18 +67,20 @@ const OverlayTemplateListPage = () => {
     if (!window.confirm(`Delete template "${name}"?`)) return
     const result = await deleteOverlayTemplate(id)
     if (result?.success) {
-      toast.success('Template deleted')
+      showSuccess('Template deleted')
       void fetchTemplates()
     } else {
-      toast.error('Cannot delete preset templates')
+      showError('Cannot delete preset templates')
     }
   }
 
   const handleSetDefault = async (id: number) => {
     const result = await setDefaultOverlayTemplate(id)
     if (result) {
-      toast.success(`"${result.name}" set as default for ${result.mode}`)
+      showSuccess(`"${result.name}" set as default for ${result.mode}`)
       void fetchTemplates()
+    } else {
+      showError('Failed to set default template')
     }
   }
 
@@ -100,17 +106,17 @@ const OverlayTemplateListPage = () => {
       const data = JSON.parse(text) as OverlayTemplateExport
       const result = await importOverlayTemplate(data)
       if (result) {
-        toast.success(`Imported template "${result.name}"`)
+        showSuccess(`Imported template "${result.name}"`)
         void fetchTemplates()
+      } else {
+        showError('Failed to import template')
       }
     } catch {
-      toast.error('Invalid template file')
+      showError('Invalid template file')
     }
     // Reset input so the same file can be re-imported
     if (importInputRef.current) importInputRef.current.value = ''
   }
-
-  if (isLoading) return <LoadingSpinner />
 
   const posterTemplates = templates.filter((t) => t.mode === 'poster')
   const titleCardTemplates = templates.filter((t) => t.mode === 'titlecard')
@@ -118,72 +124,65 @@ const OverlayTemplateListPage = () => {
   return (
     <>
       <title>Overlay Templates - Maintainerr</title>
-      <div className="w-full">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <button
-              type="button"
-              className="mb-2 text-sm text-zinc-400 transition hover:text-zinc-200"
-              onClick={() => navigate('/settings/overlays')}
-            >
-              &larr; Overlay Settings
-            </button>
-            <h2 className="text-lg font-semibold text-zinc-200">
-              Overlay Templates
-            </h2>
-            <p className="text-sm text-zinc-400">
-              Manage the templates used by overlay-enabled collections.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={handleImport}
-            />
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded bg-zinc-700 px-3 py-1.5 text-sm text-zinc-200 transition hover:bg-zinc-600"
-              onClick={() => importInputRef.current?.click()}
-            >
-              <UploadIcon className="h-4 w-4" />
-              Import
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded bg-amber-600 px-3 py-1.5 text-sm text-white transition hover:bg-amber-500"
-              onClick={handleCreate}
-            >
-              <PlusIcon className="h-4 w-4" />
-              New Template
-            </button>
-          </div>
+      <div className="h-full w-full">
+        <div className="section h-full w-full">
+          <h3 className="heading">Overlay Templates</h3>
+          <p className="description">
+            Manage the templates used by overlay-enabled collections.
+          </p>
         </div>
 
-        {/* Poster templates */}
-        <TemplateSection
-          title="Poster Templates"
-          templates={posterTemplates}
-          onEdit={handleEdit}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          onSetDefault={handleSetDefault}
-          onExport={handleExport}
+        <SettingsFeedbackAlert feedback={feedback} />
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleImport}
+        />
+        <PageControlRow
+          actions={
+            <Button
+              buttonType="default"
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+            >
+              <UploadIcon />
+              <span>Import</span>
+            </Button>
+          }
         />
 
-        {/* Title card templates */}
-        <TemplateSection
-          title="Title Card Templates"
-          templates={titleCardTemplates}
-          onEdit={handleEdit}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          onSetDefault={handleSetDefault}
-          onExport={handleExport}
-        />
+        {isLoading ? (
+          <div className="min-h-[16rem] rounded-lg border border-zinc-700 bg-zinc-900/20">
+            <LoadingSpinner containerClassName="min-h-[16rem]" />
+          </div>
+        ) : (
+          <>
+            {/* Poster templates */}
+            <TemplateSection
+              title="Poster Templates"
+              templates={posterTemplates}
+              onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+              onSetDefault={handleSetDefault}
+              onExport={handleExport}
+            />
+
+            {/* Title card templates */}
+            <TemplateSection
+              title="Title Card Templates"
+              templates={titleCardTemplates}
+              onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+              onSetDefault={handleSetDefault}
+              onExport={handleExport}
+            />
+          </>
+        )}
       </div>
     </>
   )

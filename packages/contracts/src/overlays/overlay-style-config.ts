@@ -1,10 +1,11 @@
 import z from 'zod'
+import { safeFilenameField } from './overlay-element'
 
 export const horizontalAlignValues = ['left', 'center', 'right'] as const
 export const verticalAlignValues = ['top', 'center', 'bottom'] as const
 
 export const overlayStyleConfigSchema = z.object({
-  fontPath: z.string().min(1),
+  fontPath: safeFilenameField(),
   fontColor: z.string().min(4),
   backColor: z.string().min(4),
   fontSize: z.number().min(1).max(20),

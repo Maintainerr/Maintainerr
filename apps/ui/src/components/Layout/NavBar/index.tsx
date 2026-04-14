@@ -5,6 +5,7 @@ import {
   CogIcon,
   CollectionIcon,
   EyeIcon,
+  PhotographIcon,
   XIcon,
 } from '@heroicons/react/outline'
 import { ReactNode, useContext, useMemo, useRef } from 'react'
@@ -67,6 +68,13 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         svgIcon: <CalendarIcon className="mr-3 h-6 w-6" />,
         name: 'Calendar',
         matchPattern: /^\/calendar(?:\/.*)?$/,
+      },
+      {
+        key: '5',
+        href: '/overlays',
+        svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
+        name: 'Overlays',
+        matchPattern: /^\/overlays(?:\/.*)?$/,
       },
       {
         key: '3',

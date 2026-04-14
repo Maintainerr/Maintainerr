@@ -1,5 +1,38 @@
 import z from 'zod'
 
+/**
+ * Replace any character outside the safe filename charset (alphanumerics,
+ * dot, dash, underscore) with an underscore. Shared by the font upload
+ * endpoint and the `fontPath` / `imagePath` validation below so there is
+ * one source of truth for what "safe" means.
+ */
+export function sanitizeFilenameChars(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]/g, '_')
+}
+
+/** True when `value` is already a safe filename (no sanitization needed). */
+export function isSafeFilename(value: string): boolean {
+  if (value.length === 0 || value.length > 255) return false
+  if (value === '.' || value === '..') return false
+  return sanitizeFilenameChars(value) === value
+}
+
+const safeFilenameMessage =
+  'Must be a filename containing only letters, numbers, dot, dash, or underscore'
+
+export const safeFilenameField = () =>
+  z.string().refine(isSafeFilename, { message: safeFilenameMessage })
+
+/**
+ * Like `safeFilenameField`, but also accepts an empty string (meaning
+ * "not set"). Used for `imagePath` where the element can exist on the
+ * canvas before the user picks a source file.
+ */
+export const optionalSafeFilenameField = () =>
+  z.string().refine((v) => v === '' || isSafeFilename(v), {
+    message: safeFilenameMessage,
+  })
+
 // ── Enums ─────────────────────────────────────────────────────────────────
 
 export const overlayElementTypes = [
@@ -60,7 +93,7 @@ export const textElementSchema = z.object({
   type: z.literal('text'),
   text: z.string(),
   fontFamily: z.string().min(1),
-  fontPath: z.string().min(1),
+  fontPath: safeFilenameField(),
   fontSize: z.number().min(1),
   fontColor: z.string().min(4),
   fontWeight: z.enum(['normal', 'bold']).default('bold'),
@@ -82,7 +115,7 @@ export const variableElementSchema = z.object({
   type: z.literal('variable'),
   segments: z.array(variableSegmentSchema).min(1),
   fontFamily: z.string().min(1),
-  fontPath: z.string().min(1),
+  fontPath: safeFilenameField(),
   fontSize: z.number().min(1),
   fontColor: z.string().min(4),
   fontWeight: z.enum(['normal', 'bold']).default('bold'),
@@ -123,8 +156,9 @@ export type ShapeElement = z.infer<typeof shapeElementSchema>
 export const imageElementSchema = z.object({
   ...baseElementFields,
   type: z.literal('image'),
-  /** Relative path within `data/overlays/images/` */
-  imagePath: z.string().min(1),
+  /** Filename within `data/overlays/images/` (no path separators). Empty
+   *  string means the user hasn't picked a source yet. */
+  imagePath: optionalSafeFilenameField(),
 })
 
 export type ImageElement = z.infer<typeof imageElementSchema>

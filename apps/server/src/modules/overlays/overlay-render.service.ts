@@ -1,4 +1,5 @@
 import {
+  isSafeFilename,
   OverlayElement,
   OverlayRenderOptions,
   OverlayResult,
@@ -66,26 +67,31 @@ export class OverlayRenderService {
       return this.registeredFonts.get(fontPath)!;
     }
 
-    // Resolve bare filenames against known font directories
-    let resolvedPath = fontPath;
-    if (!path.isAbsolute(fontPath) && !fs.existsSync(fontPath)) {
-      const bundled = path.join(this.bundledFontsDir, fontPath);
-      if (fs.existsSync(bundled)) {
-        resolvedPath = bundled;
-      } else {
-        const userPath = path.join(
-          configDataDir,
-          'overlays',
-          'fonts',
-          fontPath,
-        );
-        if (fs.existsSync(userPath)) {
-          resolvedPath = userPath;
-        }
+    if (!isSafeFilename(fontPath)) {
+      this.logger.warn(
+        `Rejected unsafe font path: ${JSON.stringify(fontPath)}`,
+      );
+      return 'sans-serif';
+    }
+
+    const bundledBase = path.resolve(this.bundledFontsDir);
+    const userBase = path.resolve(configDataDir, 'overlays', 'fonts');
+    const candidates = [
+      path.resolve(bundledBase, fontPath),
+      path.resolve(userBase, fontPath),
+    ];
+
+    let resolvedPath: string | null = null;
+    for (const candidate of candidates) {
+      const withinBundled = candidate.startsWith(bundledBase + path.sep);
+      const withinUser = candidate.startsWith(userBase + path.sep);
+      if ((withinBundled || withinUser) && fs.existsSync(candidate)) {
+        resolvedPath = candidate;
+        break;
       }
     }
 
-    if (fs.existsSync(resolvedPath)) {
+    if (resolvedPath) {
       const family = path.basename(resolvedPath, path.extname(resolvedPath));
       try {
         registerFont(resolvedPath, { family });
@@ -96,7 +102,7 @@ export class OverlayRenderService {
         this.logger.debug(err);
       }
     } else {
-      this.logger.warn(`Font file not found: ${fontPath}`);
+      this.logger.warn(`Font file not found: ${JSON.stringify(fontPath)}`);
     }
     return 'sans-serif';
   }
@@ -812,17 +818,25 @@ export class OverlayRenderService {
   ): Promise<Buffer | null> {
     if (!el.imagePath) return null;
 
+    let resolvedPath = '';
     try {
-      let imgBuf: Buffer;
-      const resolvedPath = path.isAbsolute(el.imagePath)
-        ? el.imagePath
-        : path.join(configDataDir, 'overlays', 'images', el.imagePath);
-      if (fs.existsSync(resolvedPath)) {
-        imgBuf = fs.readFileSync(resolvedPath);
-      } else {
-        this.logger.warn(`Image element source not found: ${resolvedPath}`);
+      if (!isSafeFilename(el.imagePath)) {
+        this.logger.warn(
+          `Rejected unsafe image path: ${JSON.stringify(el.imagePath)}`,
+        );
         return null;
       }
+
+      const baseDir = path.resolve(configDataDir, 'overlays', 'images');
+      resolvedPath = path.resolve(baseDir, el.imagePath);
+      if (!resolvedPath.startsWith(baseDir + path.sep)) {
+        this.logger.warn(
+          `Rejected image path outside base directory: ${JSON.stringify(el.imagePath)}`,
+        );
+        return null;
+      }
+
+      const imgBuf = await fs.promises.readFile(resolvedPath);
 
       return await sharp(imgBuf)
         .resize(w, h, {
@@ -832,7 +846,13 @@ export class OverlayRenderService {
         .png()
         .toBuffer();
     } catch (err) {
-      this.logger.warn(`Failed to render image element: ${el.imagePath}`);
+      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+        this.logger.warn(`Image element source not found: ${resolvedPath}`);
+        return null;
+      }
+      this.logger.warn(
+        `Failed to render image element: ${JSON.stringify(el.imagePath)}`,
+      );
       this.logger.debug(err);
       return null;
     }

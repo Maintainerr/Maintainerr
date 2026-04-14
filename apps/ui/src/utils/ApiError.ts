@@ -1,5 +1,43 @@
 import axios from 'axios'
 
+type ApiValidationIssue = {
+  message?: string
+  path?: Array<string | number>
+}
+
+type ApiErrorResponse = {
+  message?: string | string[]
+  errors?: ApiValidationIssue[]
+}
+
+const formatValidationPath = (path: Array<string | number> | undefined) => {
+  if (!path || path.length === 0) {
+    return 'request'
+  }
+
+  return path.reduce((accumulator, segment) => {
+    if (typeof segment === 'number') {
+      return `${accumulator}[${segment}]`
+    }
+
+    return accumulator ? `${accumulator}.${segment}` : segment
+  }, '')
+}
+
+const formatValidationMessage = (issues: ApiValidationIssue[] | undefined) => {
+  if (!issues || issues.length === 0) {
+    return undefined
+  }
+
+  return issues
+    .slice(0, 3)
+    .map(
+      (issue) =>
+        `${formatValidationPath(issue.path)}: ${issue.message ?? 'Invalid value'}`,
+    )
+    .join('; ')
+}
+
 const looksLikeTlsMismatch = (text: string) => {
   const lower = text.toLowerCase()
 
@@ -67,12 +105,20 @@ export const getApiErrorMessage = (
   fallback = 'Connection test failed. Verify URL and credentials.',
 ) => {
   if (axios.isAxiosError(error)) {
-    const responseData = error.response?.data as
-      | { message?: string }
-      | undefined
+    const responseData = error.response?.data as ApiErrorResponse | undefined
+    const validationMessage = formatValidationMessage(responseData?.errors)
+
+    if (validationMessage) {
+      return `Validation failed: ${validationMessage}`
+    }
+
+    const rawMessage = responseData?.message
+    const normalizedMessage = Array.isArray(rawMessage)
+      ? rawMessage.join('; ')
+      : rawMessage
 
     const bestMessage =
-      responseData?.message ??
+      normalizedMessage ??
       error.message ??
       (error.code ? `Request failed (${error.code})` : undefined)
 

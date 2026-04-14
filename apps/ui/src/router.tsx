@@ -6,6 +6,7 @@ import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
 import Overview from './components/Overview'
 // Settings is kept eager because it wraps an <Outlet /> — making it lazy
 // would cause two sequential fetches (wrapper then child) on every settings navigation.
+import Overlays from './components/Overlays'
 import Settings from './components/Settings'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
@@ -169,6 +170,32 @@ const appRoutes: AppRoute[] = [
         preload: calendarRoute.preload,
       },
       {
+        path: 'overlays',
+        element: <Overlays />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/overlays/settings" replace />,
+            preload: settingsOverlaysRoute.preload,
+          },
+          {
+            path: 'settings',
+            lazy: settingsOverlaysRoute.lazy,
+            preload: settingsOverlaysRoute.preload,
+          },
+          {
+            path: 'templates',
+            lazy: overlayTemplateListRoute.lazy,
+            preload: overlayTemplateListRoute.preload,
+          },
+          {
+            path: 'templates/:id',
+            lazy: overlayTemplateEditorRoute.lazy,
+            preload: overlayTemplateEditorRoute.preload,
+          },
+        ],
+      },
+      {
         path: 'rules',
         children: [
           {
@@ -263,21 +290,6 @@ const appRoutes: AppRoute[] = [
         path: 'about',
         lazy: settingsAboutRoute.lazy,
         preload: settingsAboutRoute.preload,
-      },
-      {
-        path: 'overlays',
-        lazy: settingsOverlaysRoute.lazy,
-        preload: settingsOverlaysRoute.preload,
-      },
-      {
-        path: 'overlays/templates',
-        lazy: overlayTemplateListRoute.lazy,
-        preload: overlayTemplateListRoute.preload,
-      },
-      {
-        path: 'overlays/templates/:id',
-        lazy: overlayTemplateEditorRoute.lazy,
-        preload: overlayTemplateEditorRoute.preload,
       },
     ],
   },
