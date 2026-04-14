@@ -85,7 +85,7 @@ export const InputAdornment = ({
 type InputGroupProps = {
   name: string
   label: string
-  helpText?: JSX.Element | string
+  helpText?: ReactNode
   error?: string
 } & InputHTMLAttributes<HTMLInputElement>
 

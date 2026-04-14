@@ -84,16 +84,17 @@ class PushbulletAgent implements NotificationAgent {
           },
         );
       } catch (error) {
+        const err = error as Error & { response?: { data?: unknown } };
         this.logger.error(
           `Error sending Pushbullet notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: error.response?.data,
+            response: err.response?.data,
           })}`,
           error,
         );
 
-        return `Failure: ${error.message}`;
+        return `Failure: ${err.message}`;
       }
     } else if (
       hasNotificationType(type, settings.types ?? [0]) &&
@@ -109,16 +110,17 @@ class PushbulletAgent implements NotificationAgent {
           },
         });
       } catch (error) {
+        const err = error as Error & { response?: { data?: unknown } };
         this.logger.error(
           `Error sending Pushbullet notification. Details: ${JSON.stringify({
             type: NotificationType[type],
             subject: payload.subject,
-            response: error.response?.data,
+            response: err.response?.data,
           })}`,
           error,
         );
 
-        return `Failure: ${error.message}`;
+        return `Failure: ${err.message}`;
       }
     }
 

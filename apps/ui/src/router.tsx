@@ -6,6 +6,7 @@ import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
 import Overview from './components/Overview'
 // Settings is kept eager because it wraps an <Outlet /> — making it lazy
 // would cause two sequential fetches (wrapper then child) on every settings navigation.
+import Overlays from './components/Overlays'
 import Settings from './components/Settings'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
@@ -89,6 +90,9 @@ const settingsTautulliRoute = createLazyRoute(
 const settingsNotificationsRoute = createLazyRoute(
   () => import('./components/Settings/Notifications'),
 )
+const settingsOverlaysRoute = createLazyRoute(
+  () => import('./components/Settings/Overlays'),
+)
 const settingsJobsRoute = createLazyRoute(
   () => import('./components/Settings/Jobs'),
 )
@@ -97,6 +101,12 @@ const settingsLogsRoute = createLazyRoute(
 )
 const settingsAboutRoute = createLazyRoute(
   () => import('./components/Settings/About'),
+)
+const overlayTemplateListRoute = createLazyRoute(
+  () => import('./pages/OverlayTemplateListPage'),
+)
+const overlayTemplateEditorRoute = createLazyRoute(
+  () => import('./pages/OverlayTemplateEditorPage'),
 )
 
 /**
@@ -158,6 +168,32 @@ const appRoutes: AppRoute[] = [
         path: 'calendar',
         lazy: calendarRoute.lazy,
         preload: calendarRoute.preload,
+      },
+      {
+        path: 'overlays',
+        element: <Overlays />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/overlays/settings" replace />,
+            preload: settingsOverlaysRoute.preload,
+          },
+          {
+            path: 'settings',
+            lazy: settingsOverlaysRoute.lazy,
+            preload: settingsOverlaysRoute.preload,
+          },
+          {
+            path: 'templates',
+            lazy: overlayTemplateListRoute.lazy,
+            preload: overlayTemplateListRoute.preload,
+          },
+          {
+            path: 'templates/:id',
+            lazy: overlayTemplateEditorRoute.lazy,
+            preload: overlayTemplateEditorRoute.preload,
+          },
+        ],
       },
       {
         path: 'rules',

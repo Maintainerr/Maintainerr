@@ -357,6 +357,8 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          overlayEnabled: params.collection?.overlayEnabled,
+          overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         })
       )?.dbCollection;
 
@@ -521,6 +523,8 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          overlayEnabled: params.collection?.overlayEnabled,
+          overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         };
 
         // If there's no existing collection (e.g., after rule migration), create a new one

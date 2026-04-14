@@ -64,12 +64,10 @@ describe('Calendar', () => {
       isLoading: false,
     } as ReturnType<typeof useCalendarSchedule>)
     const overlayCollections: ICollection[] = []
-    useCalendarOverlayDataMock.mockReturnValue(
-      ({
-        data: overlayCollections,
-        isLoading: false,
-      } as unknown) as ReturnType<typeof useCalendarOverlayData>,
-    )
+    useCalendarOverlayDataMock.mockReturnValue({
+      data: overlayCollections,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useCalendarOverlayData>)
     useCalendarEntryDetailsMock.mockImplementation(
       (params: Parameters<typeof useCalendarEntryDetails>[0]) => {
         return {

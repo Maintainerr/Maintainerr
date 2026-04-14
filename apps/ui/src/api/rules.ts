@@ -68,6 +68,8 @@ export type UseRuleGroupForCollectionResult = ReturnType<
 export interface RuleGroupCollectionPayload {
   visibleOnRecommended: boolean
   visibleOnHome: boolean
+  overlayEnabled?: boolean
+  overlayTemplateId?: number | null
   deleteAfterDays?: number
   manualCollection?: boolean
   manualCollectionName?: string

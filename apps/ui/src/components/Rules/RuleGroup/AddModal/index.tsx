@@ -14,16 +14,18 @@ import {
   Application,
   MediaItemType,
   MediaLibrary,
+  OverlayTemplate,
   ServarrAction,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
-import { lazy, useState, useSyncExternalStore } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { lazy, useEffect, useState, useSyncExternalStore } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
 import { useMediaServerLibraries } from '../../../../api/media-server'
+import { getOverlayTemplates } from '../../../../api/overlays'
 import {
   RuleGroupCreatePayload,
   useCreateRuleGroup,
@@ -286,6 +288,8 @@ export const ruleGroupFormSchema = z
       .optional(),
     showRecommended: z.boolean(),
     showHome: z.boolean(),
+    overlayEnabled: z.boolean(),
+    overlayTemplateId: z.number().int().nullable().optional(),
     listExclusions: z.boolean(),
     forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
@@ -366,6 +370,8 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     editData?.collection?.tautulliWatchedPercentOverride ?? undefined,
   showRecommended: editData?.collection?.visibleOnRecommended ?? true,
   showHome: editData?.collection?.visibleOnHome ?? true,
+  overlayEnabled: editData?.collection?.overlayEnabled ?? false,
+  overlayTemplateId: editData?.collection?.overlayTemplateId ?? null,
   listExclusions: editData?.collection?.listExclusions ?? true,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
@@ -436,6 +442,11 @@ const AddModal = (props: AddModal) => {
     control,
     name: 'manualCollection',
   })
+  const overlayEnabled = useWatch({ control, name: 'overlayEnabled' })
+  const overlayTemplateId = useWatch({
+    control,
+    name: 'overlayTemplateId',
+  }) as number | null | undefined
   const useRulesEnabled = useWatch({ control, name: 'useRules' })
   const arrActionValue = useWatch({ control, name: 'arrAction' }) as
     | number
@@ -477,6 +488,15 @@ const AddModal = (props: AddModal) => {
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
+  const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>(
+    [],
+  )
+
+  const overlayTemplateMode =
+    selectedType === 'episode' ? 'titlecard' : 'poster'
+  const availableOverlayTemplates = overlayTemplates.filter(
+    (template) => template.mode === overlayTemplateMode,
+  )
 
   const {
     data: libraries,
@@ -496,6 +516,28 @@ const AddModal = (props: AddModal) => {
   )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
+
+  useEffect(() => {
+    void getOverlayTemplates().then((templates) => {
+      if (templates) {
+        setOverlayTemplates(templates)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (overlayTemplateId == null) {
+      return
+    }
+
+    const hasMatchingTemplate = availableOverlayTemplates.some(
+      (template) => template.id === overlayTemplateId,
+    )
+
+    if (!hasMatchingTemplate) {
+      setValue('overlayTemplateId', null)
+    }
+  }, [availableOverlayTemplates, overlayTemplateId, setValue])
 
   // Scroll detection without useEffect
   const atBottom = useSyncExternalStore(
@@ -708,6 +750,8 @@ const AddModal = (props: AddModal) => {
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
+        overlayEnabled: data.overlayEnabled,
+        overlayTemplateId: data.overlayTemplateId ?? null,
         deleteAfterDays:
           data.arrAction === undefined ||
           data.arrAction === ServarrAction.DO_NOTHING ||
@@ -1132,6 +1176,84 @@ const AddModal = (props: AddModal) => {
                             </div>
                           </div>
                         </div>
+
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="overlay_enabled"
+                            className="text-label"
+                          >
+                            Enable overlays
+                            <p className="text-xs font-normal">
+                              Apply date overlays to posters in this{' '}
+                              {collectionTerm}
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="overlay_enabled"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('overlayEnabled')}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {overlayEnabled && (
+                          <div className="form-row items-center">
+                            <label
+                              htmlFor="overlay_template_id"
+                              className="text-label"
+                            >
+                              Overlay template
+                              <p className="text-xs font-normal">
+                                Leave unset to use the default{' '}
+                                {overlayTemplateMode === 'titlecard'
+                                  ? 'title card'
+                                  : 'poster'}{' '}
+                                template
+                              </p>
+                            </label>
+                            <div className="form-input">
+                              <div className="form-input-field">
+                                <Controller
+                                  name="overlayTemplateId"
+                                  control={control}
+                                  render={({ field }) => (
+                                    <select
+                                      id="overlay_template_id"
+                                      value={field.value ?? ''}
+                                      onChange={(event) => {
+                                        const value = event.target.value
+                                        field.onChange(
+                                          value === '' ? null : Number(value),
+                                        )
+                                      }}
+                                    >
+                                      <option value="">
+                                        Default {overlayTemplateMode} template
+                                      </option>
+                                      {availableOverlayTemplates.map(
+                                        (template) => (
+                                          <option
+                                            key={template.id}
+                                            value={template.id}
+                                          >
+                                            {template.name}
+                                            {template.isDefault
+                                              ? ' (default)'
+                                              : ''}
+                                          </option>
+                                        ),
+                                      )}
+                                    </select>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
 

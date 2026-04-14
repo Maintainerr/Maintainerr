@@ -42,6 +42,8 @@ describe('MediaModal', () => {
       isMediaServerTypeSelected: false,
       isSetupComplete: false,
       isNotConfigured: true,
+      isMediaServerTypeSelected: false,
+      isSetupComplete: false,
     })
   })
 

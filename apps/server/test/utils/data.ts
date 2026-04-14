@@ -83,9 +83,12 @@ export const createCollection = (
     ruleGroup: undefined,
     visibleOnHome: false,
     visibleOnRecommended: false,
+    overlayEnabled: false,
     tautulliWatchedPercentOverride: undefined,
     sortTitle: undefined,
     totalSizeBytes: null,
+    overlayTemplateId: null,
+    overlayTemplate: null,
     ...properties,
   };
 };

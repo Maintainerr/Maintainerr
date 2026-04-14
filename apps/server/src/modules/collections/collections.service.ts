@@ -22,6 +22,10 @@ import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import {
+  CollectionMediaAddedDto,
+  CollectionMediaRemovedDto,
+} from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
@@ -1826,6 +1830,26 @@ export class CollectionsService {
             skipMediaServerAdd,
             manualMembershipSource,
           );
+
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Added,
+            new CollectionMediaAddedDto(
+              newMedia,
+              collection.title,
+              { type: 'collection', value: collection.id },
+              collection.deleteAfterDays,
+            ),
+          );
+        }
+
+        if (isSharedManualCollection) {
+          await this.reconcileSharedManualCollectionState(collection, {
+            addedMediaServerIds: new Set(
+              newMedia.map(
+                (collectionMediaItem) => collectionMediaItem.mediaServerId,
+              ),
+            ),
+          });
         }
 
         if (isSharedManualCollection) {
@@ -1951,6 +1975,18 @@ export class CollectionsService {
           (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
         );
 
+        if (removedItemIds.size > 0) {
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionMedia_Removed,
+            new CollectionMediaRemovedDto(
+              childrenMedia.filter((m) => removedItemIds.has(m.mediaServerId)),
+              collection.title,
+              { type: 'collection', value: collection.id },
+              collection.deleteAfterDays,
+            ),
+          );
+        }
+
         const isSharedManualCollection =
           collection.manualCollection &&
           collection.mediaServerId &&
@@ -1967,7 +2003,6 @@ export class CollectionsService {
             collectionId: collectionDbId,
           },
         });
-
         if (
           collectionMedia.length <= 0 &&
           !collection.manualCollection &&
@@ -2851,5 +2886,26 @@ export class CollectionsService {
     }
 
     return total;
+  }
+
+  /**
+   * Get all active collections that have overlayEnabled=true,
+   * including their collectionMedia relation for processing.
+   */
+  async getCollectionsWithOverlayEnabled(): Promise<
+    (Collection & { collectionMedia: CollectionMedia[] })[]
+  > {
+    const collections = await this.collectionRepo.find({
+      where: { overlayEnabled: true, isActive: true },
+    });
+
+    for (const coll of collections) {
+      coll.collectionMedia =
+        (await this.CollectionMediaRepo.find({
+          where: { collectionId: coll.id },
+        })) ?? [];
+    }
+
+    return collections;
   }
 }

@@ -89,16 +89,17 @@ class EmailAgent implements NotificationAgent {
         this.buildMessage(type, payload, this.getSettings().options.emailTo),
       );
     } catch (error) {
+      const err = error as Error & { response?: { data?: unknown } };
       this.logger.error(
         `Error sending Email notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: error.response?.data,
+          response: err.response?.data,
         })}`,
         error,
       );
 
-      return `Failure: ${error.message}`;
+      return `Failure: ${err.message}`;
     }
 
     return 'Success';
