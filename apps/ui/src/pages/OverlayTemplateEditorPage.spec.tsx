@@ -87,7 +87,7 @@ describe('OverlayTemplateEditorPage', () => {
       ).disabled,
     ).toBe(true)
     expect(
-      (screen.getByPlaceholderText('Untitled Template') as HTMLInputElement)
+      (screen.getByPlaceholderText('Template Name') as HTMLInputElement)
         .disabled,
     ).toBe(true)
   })
