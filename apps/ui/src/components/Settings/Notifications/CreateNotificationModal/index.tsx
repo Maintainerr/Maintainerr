@@ -11,6 +11,7 @@ import TestingButton, {
   getTestingButtonType,
 } from '../../../Common/TestingButton'
 import ToggleItem from '../../../Common/ToggleButton'
+import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
 import SettingsAlertSlot from '../../SettingsAlertSlot'
 
@@ -276,7 +277,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
               </label>
               <div className="form-input">
                 <div className="form-input-field">
-                  <input
+                  <Input
                     type="text"
                     id="name"
                     name="name"
@@ -285,7 +286,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                       setName(event.target.value)
                       clearFeedback()
                     }}
-                  ></input>
+                  />
                 </div>
               </div>
             </div>
@@ -380,7 +381,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                               )
                             }
                           />
-                        ) : (
+                        ) : option.type === 'checkbox' ? (
                           <input
                             name={option.field}
                             id={`${targetAgent.name}-${option.field}`}
@@ -408,6 +409,22 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                               }
                             }}
                           ></input>
+                        ) : (
+                          <Input
+                            name={option.field}
+                            id={`${targetAgent.name}-${option.field}`}
+                            type={option.type}
+                            required={option.required}
+                            key={`${targetAgent.name}-option-${option.field}`}
+                            defaultValue={
+                              formValues?.[option.field]
+                                ? formValues?.[option.field]
+                                : undefined
+                            }
+                            onChange={(e) => {
+                              handleInputChange(option.field, e.target.value)
+                            }}
+                          />
                         )}
                       </div>
                     </div>
@@ -450,9 +467,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                           </label>
                           <div className="form-input">
                             <div className="form-input-field">
-                              <input
+                              <Input
                                 type="number"
                                 name="about-scale"
+                                id="about-scale"
                                 value={aboutScale}
                                 onChange={(
                                   event: React.ChangeEvent<HTMLInputElement>,

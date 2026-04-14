@@ -3,6 +3,7 @@ import { downloadDatabase } from '../../../api/settings'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
+import { Input } from '../../Forms/Input'
 import {
   createDateStampedFilename,
   normalizeDatabaseFilename,
@@ -73,9 +74,10 @@ const DatabaseBackupModal = ({
           </label>
           <div className="form-input">
             <div className="form-input-field">
-              <input
+              <Input
                 ref={filenameRef}
                 id="database-filename"
+                name="database-filename"
                 type="text"
                 value={filename}
                 onChange={(e) => setFilename(e.currentTarget.value)}

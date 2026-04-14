@@ -24,6 +24,7 @@ import {
 } from '../../../../../contexts/constants-context'
 import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
+import { Input } from '../../../../Forms/Input'
 import { Select } from '../../../../Forms/Select'
 
 enum RuleType {
@@ -868,18 +869,18 @@ const RuleInput = (props: IRuleInput) => {
             </label>
             {customValType === RuleType.TEXT &&
             secondVal === CustomParams.CUSTOM_DAYS ? (
-              <input
+              <Input
                 type="number"
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal ? +customVal / 86400 : undefined}
                 placeholder="Amount of days"
-              ></input>
+              />
             ) : (customValType === RuleType.TEXT &&
                 secondVal === CustomParams.CUSTOM_TEXT) ||
               customValType === RuleType.TEXT_LIST ? (
-              <input
+              <Input
                 type="text"
                 name="custom_val"
                 id="custom_val"
@@ -891,16 +892,16 @@ const RuleInput = (props: IRuleInput) => {
                     ? 'Value1 or ["Value1", "Value2"]'
                     : 'Text'
                 }
-              ></input>
+              />
             ) : customValType === RuleType.DATE ? (
-              <input
+              <Input
                 type="date"
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal}
                 placeholder="Date"
-              ></input>
+              />
             ) : customValType === RuleType.BOOL ? (
               <Select
                 name="custom_val"
@@ -912,14 +913,14 @@ const RuleInput = (props: IRuleInput) => {
                 <option value={0}>False</option>
               </Select>
             ) : (
-              <input
+              <Input
                 type="number"
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal}
                 placeholder="Number"
-              ></input>
+              />
             )}
           </div>
         ) : null}
