@@ -96,7 +96,10 @@ const RulesListPage = () => {
         <PageControlRow
           actions={
             <>
-              <AddButton onClick={() => navigate('/rules/new')} text="New Rule" />
+              <AddButton
+                onClick={() => navigate('/rules/new')}
+                text="New Rule"
+              />
               <ExecuteButton
                 onClick={() => {
                   if (ruleHandlerRunning) {

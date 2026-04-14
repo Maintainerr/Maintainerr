@@ -28,7 +28,12 @@ const PageControlRow = ({
       )}
     >
       {actions ? (
-        <div className={clsx('flex flex-wrap items-center gap-2', actionsClassName)}>
+        <div
+          className={clsx(
+            'flex flex-wrap items-center gap-2',
+            actionsClassName,
+          )}
+        >
           {actions}
         </div>
       ) : null}

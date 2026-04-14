@@ -195,7 +195,11 @@ const MainSettingsForm = ({
                 <DocsButton />
               </span>
               <span className="flex rounded-md shadow-sm">
-                <Button buttonType="default" type="button" onClick={onOpenBackup}>
+                <Button
+                  buttonType="default"
+                  type="button"
+                  onClick={onOpenBackup}
+                >
                   <DownloadIcon />
                   <span>Backup Database</span>
                 </Button>

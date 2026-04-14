@@ -327,11 +327,16 @@ const CollectionInfo = (props: ICollectionInfo) => {
                         .filter((value) => typeof value === 'number')
                         .map((value, index) => {
                           return (
-                            <option key={`filter-option-${index}`} value={+value}>
+                            <option
+                              key={`filter-option-${index}`}
+                              value={+value}
+                            >
                               {ECollectionLogType[+value]
                                 .charAt(0)
                                 .toUpperCase() +
-                                ECollectionLogType[+value].slice(1).toLowerCase()}
+                                ECollectionLogType[+value]
+                                  .slice(1)
+                                  .toLowerCase()}
                             </option>
                           )
                         })}

@@ -8,6 +8,7 @@ import {
   useCalendarOverlayData,
   useCalendarSchedule,
 } from '../../api/calendar'
+import type { ICollection } from '../Collection'
 import Calendar from './index'
 
 vi.mock('../../api/calendar', () => ({
@@ -62,9 +63,13 @@ describe('Calendar', () => {
       data: calendarDays,
       isLoading: false,
     } as ReturnType<typeof useCalendarSchedule>)
-    useCalendarOverlayDataMock.mockReturnValue({
-      data: [],
-    } as ReturnType<typeof useCalendarOverlayData>)
+    const overlayCollections: ICollection[] = []
+    useCalendarOverlayDataMock.mockReturnValue(
+      ({
+        data: overlayCollections,
+        isLoading: false,
+      } as unknown) as ReturnType<typeof useCalendarOverlayData>,
+    )
     useCalendarEntryDetailsMock.mockImplementation(
       (params: Parameters<typeof useCalendarEntryDetails>[0]) => {
         return {

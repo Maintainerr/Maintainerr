@@ -828,7 +828,7 @@ const AddModal = (props: AddModal) => {
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
-                          <Input id="name" type="text" {...register('name')} />
+                        <Input id="name" type="text" {...register('name')} />
                       </div>
                       {errors.name && (
                         <p className="mt-1 text-xs text-error-400">
