@@ -619,7 +619,7 @@ const PlexSettings = () => {
                     <div className="form-input-field">
                       <div className="min-w-0 flex-1">
                         <Select
-                          className="rounded-l-only rounded-r-none border-r-0"
+                          join="left"
                           defaultValue=""
                           disabled={isRefreshingPresets}
                           onChange={(e) => {

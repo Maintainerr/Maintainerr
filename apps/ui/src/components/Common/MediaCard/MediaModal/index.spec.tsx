@@ -451,4 +451,56 @@ describe('MediaModal', () => {
     const link = screen.getByRole('link', { name: 'Fresh Collection' })
     expect(link.getAttribute('href')).toBe('/collections/20')
   })
+
+  it('keeps both maintainerr status tiles visible in a two-column grid when both sections are shown', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/88') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/88/maintainerr-status') {
+        return Promise.resolve({
+          excludedFrom: [
+            {
+              label: 'Excluded Collection',
+              targetPath: '/collections/88/exclusions',
+            },
+          ],
+          manuallyAddedTo: [
+            {
+              label: 'Manual Collection',
+              targetPath: '/collections/88',
+            },
+          ],
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    const { container } = render(
+      <MediaModal
+        onClose={() => {}}
+        id={88}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        forceStatusLoad={true}
+      />,
+    )
+
+    expect(await screen.findByText('Excluded From')).toBeTruthy()
+    expect(screen.getByText('Manually Added To')).toBeTruthy()
+
+    const detailsGrid = container.querySelector('.mt-4.grid')
+    expect(detailsGrid?.className).toContain('grid-cols-2')
+  })
 })

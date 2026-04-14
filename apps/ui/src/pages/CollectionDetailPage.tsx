@@ -1,9 +1,9 @@
-import { PlayIcon } from '@heroicons/react/solid'
 import { lazy, useEffect, useEffectEvent, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
+import ExecuteButton from '../components/Common/ExecuteButton'
 import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
@@ -15,6 +15,12 @@ import { logClientError } from '../utils/ClientLogger'
 const TestMediaItem = lazy(
   () => import('../components/Collection/CollectionDetail/TestMediaItem'),
 )
+
+export interface CollectionDetailOutletContext {
+  collection: ICollection
+  canTestMedia: boolean
+  openMediaTestModal: () => void
+}
 
 const CollectionDetailPage = () => {
   const navigate = useNavigate()
@@ -118,7 +124,7 @@ const CollectionDetailPage = () => {
   return (
     <>
       <title>{collection.title} - Maintainerr</title>
-      <div className="w-full">
+      <div className="w-full px-4">
         <div className="m-auto mb-3 flex w-full">
           <h1 className="flex w-full justify-center overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-zinc-200 sm:m-0 sm:justify-start xl:m-0">
             {collection.title}
@@ -137,19 +143,22 @@ const CollectionDetailPage = () => {
               />
             </div>
           </div>
-          {ruleGroup?.useRules && (
+          {currentTab === 'info' && ruleGroup?.useRules ? (
             <div className="flex justify-center sm:justify-start">
-              <button
-                className="edit-button mb-4 flex h-9 rounded text-zinc-200 shadow-md"
+              <ExecuteButton
                 onClick={() => setMediaTestModalOpen(true)}
-              >
-                {<PlayIcon className="m-auto ml-5 h-5" />}{' '}
-                <p className="rules-button-text m-auto ml-1 mr-5">Test Media</p>
-              </button>
+                text="Test Media"
+              />
             </div>
-          )}
+          ) : null}
 
-          <Outlet context={{ collection }} />
+          <Outlet
+            context={{
+              collection,
+              canTestMedia: Boolean(ruleGroup?.useRules),
+              openMediaTestModal: () => setMediaTestModalOpen(true),
+            }}
+          />
         </div>
 
         {mediaTestModalOpen && collection?.id ? (

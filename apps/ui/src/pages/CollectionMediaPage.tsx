@@ -1,7 +1,8 @@
 import { type MediaItem } from '@maintainerr/contracts'
 import { useCallback, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { ICollection, ICollectionMedia } from '../components/Collection'
+import type { ICollectionMedia } from '../components/Collection'
+import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
 import {
   getCollectionMediaSortConfig,
   MediaLibrarySortControl,
@@ -9,14 +10,12 @@ import {
 } from '../components/Common/MediaLibrarySortControl'
 import OverviewContent from '../components/Overview/Content'
 import useInfinitePaginatedList from '../hooks/useInfinitePaginatedList'
+import type { CollectionDetailOutletContext } from './CollectionDetailPage'
 import GetApiHandler from '../utils/ApiHandler'
 
-interface CollectionContextType {
-  collection: ICollection
-}
-
 const CollectionMediaPage = () => {
-  const { collection } = useOutletContext<CollectionContextType>()
+  const { collection, canTestMedia, openMediaTestModal } =
+    useOutletContext<CollectionDetailOutletContext>()
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
   const fetchAmount = 30
@@ -112,7 +111,10 @@ const CollectionMediaPage = () => {
 
   return (
     <div className="w-full">
-      <div className="mb-5 w-full sm:ml-auto sm:max-w-sm">
+      <CollectionDetailControlRow
+        canTestMedia={canTestMedia}
+        onOpenTestMedia={openMediaTestModal}
+      >
         <MediaLibrarySortControl
           ariaLabel="Sort collection items"
           options={sortConfig.options}
@@ -120,7 +122,7 @@ const CollectionMediaPage = () => {
           onSortChange={handleSortChange}
           isLoading={showRefreshing}
         />
-      </div>
+      </CollectionDetailControlRow>
 
       <OverviewContent
         dataFinished={true}

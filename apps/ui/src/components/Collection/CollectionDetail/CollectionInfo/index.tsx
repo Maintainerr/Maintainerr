@@ -29,7 +29,8 @@ import LoadingSpinner, {
 } from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 import Table from '../../../Common/Table'
-import { Select } from '../../../Forms/Select'
+import { Input, InputAdornment } from '../../../Forms/Input'
+import { Select, SelectAdornment } from '../../../Forms/Select'
 
 interface ICollectionInfo {
   collection: ICollection
@@ -260,12 +261,13 @@ const CollectionInfo = (props: ICollectionInfo) => {
           <div className="mb-2 flex flex-grow flex-col sm:flex-grow-0 sm:flex-row sm:justify-end">
             {/* search */}
             <div className="mr-2 mt-4 flex w-full flex-grow sm:w-1/2">
-              <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
+              <InputAdornment>
                 <SearchIcon className="h-6 w-6" />
-              </span>
-              <input
+              </InputAdornment>
+              <Input
                 type="text"
-                className="rounded-r-only"
+                name="log-search"
+                join="right"
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value as string)}
               />
@@ -275,13 +277,13 @@ const CollectionInfo = (props: ICollectionInfo) => {
             <div className="mb-2 flex flex-1 flex-row justify-between sm:mb-0 sm:flex-none">
               {/* sort */}
               <div className="mr-2 mt-4 flex flex-grow sm:w-auto">
-                <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
+                <SelectAdornment>
                   {currentSort === 'DESC' ? (
                     <SortDescendingIcon className="h-6 w-6" />
                   ) : (
                     <SortAscendingIcon className="h-6 w-6" />
                   )}
-                </span>
+                </SelectAdornment>
                 <div className="min-w-0 flex-1">
                   <Select
                     id="sort"
@@ -290,7 +292,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                       setCurrentSort(e.target.value as 'ASC' | 'DESC')
                     }}
                     value={currentSort}
-                    className="rounded-r-only border-l-0"
+                    join="right"
                   >
                     <option value="DESC">{'Descending'}</option>
                     <option value="ASC">{'Ascending'}</option>
@@ -300,9 +302,9 @@ const CollectionInfo = (props: ICollectionInfo) => {
 
               {/* filter */}
               <div className="mt-4 flex flex-grow sm:w-auto">
-                <span className="inline-flex cursor-default items-center rounded-l-md border border-r-0 border-gray-500 bg-zinc-800 px-3 text-sm text-gray-100">
+                <SelectAdornment>
                   <FilterIcon className="h-6 w-6" />
-                </span>
+                </SelectAdornment>
                 <div className="min-w-0 flex-1">
                   <Select
                     id="filter"
@@ -311,7 +313,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                       setCurrentFilter(+e.target.value as ECollectionLogType)
                     }}
                     value={currentFilter}
-                    className="rounded-r-only border-l-0"
+                    join="right"
                   >
                     <option key={`filter-option-all`} value={-1}>
                       -
