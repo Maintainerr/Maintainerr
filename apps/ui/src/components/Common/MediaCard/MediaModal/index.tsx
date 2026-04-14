@@ -587,7 +587,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
             {showMaintainerrDetails ? (
               <div
-                className={`mt-4 grid gap-4 ${shouldShowExcludedDetails && shouldShowManualDetails ? 'md:grid-cols-2' : ''}`}
+                className={`mt-4 grid gap-4 ${shouldShowExcludedDetails && shouldShowManualDetails ? 'grid-cols-2' : ''}`}
               >
                 {shouldShowExcludedDetails ? (
                   <div

@@ -24,6 +24,8 @@ import {
 } from '../../../../../contexts/constants-context'
 import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
+import { Input } from '../../../../Forms/Input'
+import { Select } from '../../../../Forms/Select'
 
 enum RuleType {
   NUMBER,
@@ -106,6 +108,44 @@ const isArrDiskspaceProperty = (prop?: IProperty): boolean => {
     prop?.name === DISKSPACE_REMAINING_PROPERTY ||
     prop?.name === DISKSPACE_TOTAL_PROPERTY
   )
+}
+
+const isUnaryRuleAction = (action: RulePossibility | undefined): boolean => {
+  return (
+    action === RulePossibility.EXISTS || action === RulePossibility.NOT_EXISTS
+  )
+}
+
+const getCustomValueState = (
+  secondVal: string | undefined,
+): {
+  customValActive: boolean
+  customValType: RuleType | undefined
+} => {
+  if (secondVal === CustomParams.CUSTOM_NUMBER) {
+    return { customValActive: true, customValType: RuleType.NUMBER }
+  }
+
+  if (secondVal === CustomParams.CUSTOM_DATE) {
+    return { customValActive: true, customValType: RuleType.DATE }
+  }
+
+  if (
+    secondVal === CustomParams.CUSTOM_DAYS ||
+    secondVal === CustomParams.CUSTOM_TEXT
+  ) {
+    return { customValActive: true, customValType: RuleType.TEXT }
+  }
+
+  if (secondVal === CustomParams.CUSTOM_TEXT_LIST) {
+    return { customValActive: true, customValType: RuleType.TEXT_LIST }
+  }
+
+  if (secondVal === CustomParams.CUSTOM_BOOLEAN) {
+    return { customValActive: true, customValType: RuleType.BOOL }
+  }
+
+  return { customValActive: false, customValType: undefined }
 }
 
 const buildDiskspaceOptions = (
@@ -235,11 +275,9 @@ const RuleInput = (props: IRuleInput) => {
     initialRuleState.secondVal,
   )
 
-  const [customValType, setCustomValType] = useState<RuleType>()
   const [customVal, setCustomVal] = useState<string | undefined>(
     initialRuleState.customVal,
   )
-  const [customValActive, setCustomValActive] = useState<boolean>(true)
   const [arrDiskPath, setArrDiskPath] = useState<string>(
     initialRuleState.arrDiskPath,
   )
@@ -331,19 +369,40 @@ const RuleInput = (props: IRuleInput) => {
     }
   }, [arrDiskPath, arrDiskspaceOptions, isSelectedArrTotalDiskspaceRule])
 
+  const { customValActive, customValType } = useMemo(
+    () => getCustomValueState(secondVal),
+    [secondVal],
+  )
+
   const updateFirstValue = (event: { target: { value: string } }) => {
     if (event.target.value === '') {
       setFirstVal(undefined)
+      setArrDiskPath('')
     } else {
       setFirstVal(event.target.value)
+
+      const nextProp = getPropFromTuple(event.target.value, constants)
+      if (!isArrDiskspaceProperty(nextProp)) {
+        setArrDiskPath('')
+      }
     }
   }
 
   const updateSecondValue = (event: { target: { value: string } }) => {
-    if (event.target.value === '') {
-      setSecondVal(undefined)
-    } else {
-      setSecondVal(event.target.value)
+    const nextSecondVal = event.target.value || undefined
+    const nextCustomValueState = getCustomValueState(nextSecondVal)
+
+    setSecondVal(nextSecondVal)
+
+    if (nextSecondVal === CustomParams.CUSTOM_BOOLEAN) {
+      setCustomVal((currentValue) =>
+        currentValue === '0' ? currentValue : '1',
+      )
+      return
+    }
+
+    if (!nextCustomValueState.customValActive) {
+      setCustomVal(undefined)
     }
   }
 
@@ -364,7 +423,12 @@ const RuleInput = (props: IRuleInput) => {
     if (event.target.value === '') {
       setAction(undefined)
     } else {
-      setAction(+event.target.value)
+      const nextAction = +event.target.value as RulePossibility
+      setAction(nextAction)
+      if (isUnaryRuleAction(nextAction)) {
+        setSecondVal(undefined)
+        setCustomVal(undefined)
+      }
     }
   }
 
@@ -382,17 +446,20 @@ const RuleInput = (props: IRuleInput) => {
   }
 
   const commitCurrentRule = () => {
+    const requiresSecondValue = !isUnaryRuleAction(action)
+    const hasSecondValue =
+      !!secondVal &&
+      secondVal !== CustomParams.CUSTOM_DATE &&
+      secondVal !== CustomParams.CUSTOM_DAYS &&
+      secondVal !== CustomParams.CUSTOM_NUMBER &&
+      secondVal !== CustomParams.CUSTOM_TEXT &&
+      secondVal !== CustomParams.CUSTOM_TEXT_LIST &&
+      secondVal !== CustomParams.CUSTOM_BOOLEAN
+
     if (
       firstval &&
       action != null &&
-      ((secondVal &&
-        secondVal !== CustomParams.CUSTOM_DATE &&
-        secondVal !== CustomParams.CUSTOM_DAYS &&
-        secondVal !== CustomParams.CUSTOM_NUMBER &&
-        secondVal !== CustomParams.CUSTOM_TEXT &&
-        secondVal !== CustomParams.CUSTOM_TEXT_LIST &&
-        secondVal !== CustomParams.CUSTOM_BOOLEAN) ||
-        customVal)
+      (!requiresSecondValue || hasSecondValue || !!customVal)
     ) {
       const ruleValues = {
         operator: operator ? operator : null,
@@ -401,7 +468,9 @@ const RuleInput = (props: IRuleInput) => {
         section: props.section ? props.section - 1 : 0,
         ...(isSelectedArrDiskspaceRule && arrDiskPath ? { arrDiskPath } : {}),
       }
-      if (customVal) {
+      if (!requiresSecondValue) {
+        props.onCommit(props.id ? props.id : 0, ruleValues)
+      } else if (customVal) {
         props.onCommit(props.id ? props.id : 0, {
           customVal: {
             ruleTypeId: customValActive
@@ -439,30 +508,11 @@ const RuleInput = (props: IRuleInput) => {
     commitCurrentRule()
   })
 
-  const submit = (e: FormEvent | null) => {
-    e?.preventDefault()
-    commitCurrentRule()
-  }
+  const syncFirstValueAvailability = useEffectEvent(() => {
+    if (!constants || !firstval) {
+      return
+    }
 
-  useEffect(() => {
-    submitCurrentRule()
-  }, [
-    action,
-    arrDiskPath,
-    customVal,
-    customValActive,
-    customValType,
-    firstval,
-    isSelectedArrDiskspaceRule,
-    operator,
-    ruleType,
-    secondVal,
-  ])
-
-  useEffect(() => {
-    if (!constants) return
-
-    // reset firstval & secondval in case of type switch & choices don't exist
     const apps = cloneDeep(constants.applications)?.map((app) => {
       app.props = app.props.filter((prop) => {
         return (
@@ -475,74 +525,67 @@ const RuleInput = (props: IRuleInput) => {
       })
       return app
     })
-    if (firstval) {
-      const val = JSON.parse(firstval)
-      const appId = val[0]
-      // Find application by ID instead of using array index
-      const app = apps?.find((a) => a.id === appId)
-      if (!app?.props.find((el) => el.id === val[1])) {
-        setFirstVal(undefined)
-      }
-    }
-  }, [props.dataType, props.mediaType, constants, firstval])
 
-  useEffect(() => {
+    const val = JSON.parse(firstval)
+    const appId = +val[0]
+    const app = apps?.find((currentApp) => currentApp.id === appId)
+
+    if (!app?.props.find((prop) => prop.id === +val[1])) {
+      setFirstVal(undefined)
+      setArrDiskPath('')
+    }
+  })
+
+  const syncRuleTypeSelection = useEffectEvent(() => {
     if (!firstval) {
       return
     }
 
     const prop = getPropFromTuple(firstval, constants)
 
-    if (prop?.type.key) {
-      if (possibilities.length <= 0) {
-        setRuleType(+prop.type.key)
-        setPossibilities(prop.type.possibilities)
-      } else if (+prop.type.key !== ruleType) {
-        setSecondVal(undefined)
-        setCustomVal('')
-        setRuleType(+prop.type.key)
-        setPossibilities(prop.type.possibilities)
-      }
-    }
-  }, [constants, firstval, possibilities.length, ruleType])
-
-  useEffect(() => {
-    if (!isSelectedArrDiskspaceRule) {
-      setArrDiskPath('')
-    }
-  }, [isSelectedArrDiskspaceRule])
-
-  useEffect(() => {
-    if (!secondVal) {
+    if (!prop?.type.key) {
       return
     }
 
-    if (secondVal === CustomParams.CUSTOM_NUMBER) {
-      setCustomValActive(true)
-      setCustomValType(RuleType.NUMBER)
-    } else if (secondVal === CustomParams.CUSTOM_DATE) {
-      setCustomValActive(true)
-      setCustomValType(RuleType.DATE)
-    } else if (secondVal === CustomParams.CUSTOM_DAYS) {
-      setCustomValActive(true)
-      setCustomValType(RuleType.TEXT)
-    } else if (secondVal === CustomParams.CUSTOM_TEXT) {
-      setCustomValActive(true)
-      setCustomValType(RuleType.TEXT)
-    } else if (secondVal === CustomParams.CUSTOM_TEXT_LIST) {
-      setCustomValActive(true)
-      setCustomValType(RuleType.TEXT_LIST)
-    } else if (secondVal === CustomParams.CUSTOM_BOOLEAN) {
-      setCustomValActive(true)
-      setCustomValType(RuleType.BOOL)
-      if (customVal !== '0') {
-        setCustomVal('1')
-      }
-    } else {
-      setCustomValActive(false)
-      setCustomVal(undefined)
+    if (possibilities.length <= 0) {
+      setRuleType(+prop.type.key)
+      setPossibilities(prop.type.possibilities)
+      return
     }
-  }, [customVal, secondVal])
+
+    if (+prop.type.key !== ruleType) {
+      setSecondVal(undefined)
+      setCustomVal('')
+      setRuleType(+prop.type.key)
+      setPossibilities(prop.type.possibilities)
+    }
+  })
+
+  const submit = (e: FormEvent | null) => {
+    e?.preventDefault()
+    commitCurrentRule()
+  }
+
+  useEffect(() => {
+    submitCurrentRule()
+  }, [
+    action,
+    arrDiskPath,
+    customVal,
+    firstval,
+    isSelectedArrDiskspaceRule,
+    operator,
+    ruleType,
+    secondVal,
+  ])
+
+  useEffect(() => {
+    syncFirstValueAvailability()
+  }, [props.dataType, props.mediaType, constants, firstval])
+
+  useEffect(() => {
+    syncRuleTypeSelection()
+  }, [constants, firstval, possibilities.length, ruleType])
 
   if (!constants || constantsLoading) {
     return <LoadingSpinner />
@@ -585,7 +628,7 @@ const RuleInput = (props: IRuleInput) => {
             )}
             <div className="md:ml-4">
               <div className="flex w-1/2 md:w-fit">
-                <select
+                <Select
                   name="operator"
                   id="operator"
                   onChange={updateOperator}
@@ -603,7 +646,7 @@ const RuleInput = (props: IRuleInput) => {
                       }
                     },
                   )}
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -616,12 +659,11 @@ const RuleInput = (props: IRuleInput) => {
           <label htmlFor="first_val" className="block text-sm font-medium">
             First Value
           </label>
-          <select
+          <Select
             name="first_val"
             id="first_val"
             onChange={updateFirstValue}
             value={firstval}
-            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select First Value...
@@ -658,7 +700,7 @@ const RuleInput = (props: IRuleInput) => {
                   </optgroup>
                 ) : null,
               )}
-          </select>
+          </Select>
         </div>
 
         {/* Action Selection */}
@@ -666,12 +708,11 @@ const RuleInput = (props: IRuleInput) => {
           <label htmlFor="action" className="mb-1 block text-sm font-medium">
             Action
           </label>
-          <select
+          <Select
             name="action"
             id="action"
             onChange={updateAction}
             value={action}
-            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
           >
             <option value="" className="text-maintainerr-600">
               Select Action...
@@ -681,96 +722,93 @@ const RuleInput = (props: IRuleInput) => {
                 {RulePossibilityTranslations[action]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
-        {/* Second Value Selection */}
-        <div>
-          <label
-            htmlFor="second_val"
-            className="mb-1 block text-sm font-medium"
-          >
-            Second Value
-          </label>
-          <select
-            name="second_val"
-            id="second_val"
-            onChange={updateSecondValue}
-            value={secondVal}
-            className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
-          >
-            <option value="" className="text-maintainerr-600">
-              Select Second Value...
-            </option>
-            <optgroup label="Custom values">
-              {ruleType === RuleType.DATE ? (
-                <>
-                  <option value={CustomParams.CUSTOM_DAYS}>
-                    Amount of days
-                  </option>
-                  {action != null &&
-                  action !== RulePossibility.IN_LAST &&
-                  action !== RulePossibility.IN_NEXT ? (
-                    <option value={CustomParams.CUSTOM_DATE}>
-                      Specific date
+        {!isUnaryRuleAction(action) ? (
+          <div>
+            <label
+              htmlFor="second_val"
+              className="mb-1 block text-sm font-medium"
+            >
+              Second Value
+            </label>
+            <Select
+              name="second_val"
+              id="second_val"
+              onChange={updateSecondValue}
+              value={secondVal}
+            >
+              <option value="" className="text-maintainerr-600">
+                Select Second Value...
+              </option>
+              <optgroup label="Custom values">
+                {ruleType === RuleType.DATE ? (
+                  <>
+                    <option value={CustomParams.CUSTOM_DAYS}>
+                      Amount of days
                     </option>
-                  ) : undefined}
-                </>
-              ) : undefined}
-              {ruleType === RuleType.NUMBER ? (
-                <option value={CustomParams.CUSTOM_NUMBER}>Number</option>
-              ) : undefined}
-              {ruleType === RuleType.BOOL ? (
-                <option value={CustomParams.CUSTOM_BOOLEAN}>Boolean</option>
-              ) : undefined}
-              {ruleType === RuleType.TEXT ? (
-                <option value={CustomParams.CUSTOM_TEXT}>Text</option>
-              ) : undefined}
-              <MaybeTextListOptions ruleType={ruleType} action={action} />
-            </optgroup>
-            {constants.applications
-              ?.filter(
-                (app) =>
-                  !shouldFilterApplication(
-                    app.id,
-                    props.radarrSettingsId,
-                    props.sonarrSettingsId,
-                    isPlex,
-                    isJellyfin,
-                  ),
-              )
-              .map((app) => {
-                return (app.mediaType === MediaType.BOTH ||
-                  props.mediaType === app.mediaType) &&
-                  action != null &&
-                  action !== RulePossibility.IN_LAST &&
-                  action !== RulePossibility.IN_NEXT ? (
-                  <optgroup key={app.id} label={app.name}>
-                    {app.props.map((prop) => {
-                      // Add valid application-specific second values. Note that the second value
-                      // type may be different to the rule type - e.g. a rule type of "text list"
-                      // may be able to be matched to values of type "text list" as well as "text".
-                      const secondValueTypes = getSecondValueTypes(ruleType)
-                      for (const type of secondValueTypes) {
-                        if (+prop.type.key === type) {
-                          return (prop.mediaType === MediaType.BOTH ||
-                            props.mediaType === prop.mediaType) &&
-                            (props.mediaType === MediaType.MOVIE ||
-                              prop.showType === undefined ||
-                              prop.showType.includes(props.dataType!)) ? (
-                            <option
-                              key={app.id + 10 + prop.id}
-                              value={JSON.stringify([app.id, prop.id])}
-                            >{`${app.name} - ${prop.humanName}`}</option>
-                          ) : undefined
+                    {action != null &&
+                    action !== RulePossibility.IN_LAST &&
+                    action !== RulePossibility.IN_NEXT ? (
+                      <option value={CustomParams.CUSTOM_DATE}>
+                        Specific date
+                      </option>
+                    ) : undefined}
+                  </>
+                ) : undefined}
+                {ruleType === RuleType.NUMBER ? (
+                  <option value={CustomParams.CUSTOM_NUMBER}>Number</option>
+                ) : undefined}
+                {ruleType === RuleType.BOOL ? (
+                  <option value={CustomParams.CUSTOM_BOOLEAN}>Boolean</option>
+                ) : undefined}
+                {ruleType === RuleType.TEXT ? (
+                  <option value={CustomParams.CUSTOM_TEXT}>Text</option>
+                ) : undefined}
+                <MaybeTextListOptions ruleType={ruleType} action={action} />
+              </optgroup>
+              {constants.applications
+                ?.filter(
+                  (app) =>
+                    !shouldFilterApplication(
+                      app.id,
+                      props.radarrSettingsId,
+                      props.sonarrSettingsId,
+                      isPlex,
+                      isJellyfin,
+                    ),
+                )
+                .map((app) => {
+                  return (app.mediaType === MediaType.BOTH ||
+                    props.mediaType === app.mediaType) &&
+                    action != null &&
+                    action !== RulePossibility.IN_LAST &&
+                    action !== RulePossibility.IN_NEXT ? (
+                    <optgroup key={app.id} label={app.name}>
+                      {app.props.map((prop) => {
+                        const secondValueTypes = getSecondValueTypes(ruleType)
+                        for (const type of secondValueTypes) {
+                          if (+prop.type.key === type) {
+                            return (prop.mediaType === MediaType.BOTH ||
+                              props.mediaType === prop.mediaType) &&
+                              (props.mediaType === MediaType.MOVIE ||
+                                prop.showType === undefined ||
+                                prop.showType.includes(props.dataType!)) ? (
+                              <option
+                                key={app.id + 10 + prop.id}
+                                value={JSON.stringify([app.id, prop.id])}
+                              >{`${app.name} - ${prop.humanName}`}</option>
+                            ) : undefined
+                          }
                         }
-                      }
-                    })}
-                  </optgroup>
-                ) : undefined
-              })}
-          </select>
-        </div>
+                      })}
+                    </optgroup>
+                  ) : undefined
+                })}
+            </Select>
+          </div>
+        ) : null}
 
         {isSelectedArrDiskspaceRule ? (
           <div>
@@ -780,12 +818,11 @@ const RuleInput = (props: IRuleInput) => {
             >
               Disk Target
             </label>
-            <select
+            <Select
               name="arr_disk_path"
               id="arr_disk_path"
               onChange={updateArrDiskPath}
               value={arrDiskPath}
-              className="w-full rounded-lg p-2 text-zinc-100 focus:border-maintainerr focus:ring-maintainerr"
             >
               <option value="">Aggregate (all paths)</option>
               {preservedArrDiskPathOption ? (
@@ -810,7 +847,7 @@ const RuleInput = (props: IRuleInput) => {
                     : 'No disk paths reported by ARR'}
                 </option>
               ) : null}
-            </select>
+            </Select>
             {isSelectedArrTotalDiskspaceRule ? (
               <p className="mt-1 text-xs text-zinc-400">
                 Total disk space only works for paths reported by ARR disk
@@ -832,18 +869,18 @@ const RuleInput = (props: IRuleInput) => {
             </label>
             {customValType === RuleType.TEXT &&
             secondVal === CustomParams.CUSTOM_DAYS ? (
-              <input
+              <Input
                 type="number"
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal ? +customVal / 86400 : undefined}
                 placeholder="Amount of days"
-              ></input>
+              />
             ) : (customValType === RuleType.TEXT &&
                 secondVal === CustomParams.CUSTOM_TEXT) ||
               customValType === RuleType.TEXT_LIST ? (
-              <input
+              <Input
                 type="text"
                 name="custom_val"
                 id="custom_val"
@@ -855,18 +892,18 @@ const RuleInput = (props: IRuleInput) => {
                     ? 'Value1 or ["Value1", "Value2"]'
                     : 'Text'
                 }
-              ></input>
+              />
             ) : customValType === RuleType.DATE ? (
-              <input
+              <Input
                 type="date"
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal}
                 placeholder="Date"
-              ></input>
+              />
             ) : customValType === RuleType.BOOL ? (
-              <select
+              <Select
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
@@ -874,16 +911,16 @@ const RuleInput = (props: IRuleInput) => {
               >
                 <option value={1}>True</option>
                 <option value={0}>False</option>
-              </select>
+              </Select>
             ) : (
-              <input
+              <Input
                 type="number"
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal}
                 placeholder="Number"
-              ></input>
+              />
             )}
           </div>
         ) : null}

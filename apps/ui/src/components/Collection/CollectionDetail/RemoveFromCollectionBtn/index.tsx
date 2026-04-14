@@ -1,4 +1,5 @@
 import { TrashIcon } from '@heroicons/react/solid'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { DeleteApiHandler, PostApiHandler } from '../../../../utils/ApiHandler'
 import Button from '../../../Common/Button'
@@ -12,6 +13,7 @@ interface IRemoveFromCollectionBtn {
   onRemove: () => void
 }
 const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
+  const queryClient = useQueryClient()
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setppopup] = useState<boolean>(false)
   const [removing, setRemoving] = useState<boolean>(false)
@@ -40,6 +42,10 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
             action: 0,
           }),
         ])
+
+        await queryClient.invalidateQueries({
+          queryKey: ['calendar', 'collections', 'overlay-data'],
+        })
       } else {
         await DeleteApiHandler(`/rules/exclusion/${props.exclusionId}`)
       }

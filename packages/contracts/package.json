@@ -26,14 +26,14 @@
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.4.0",
-    "prettier": "^3.8.1",
+    "globals": "^17.5.0",
+    "prettier": "^3.8.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.58.0"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.18",
-    "@nestjs/core": "^11.1.18",
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/core": "^11.1.19",
     "@nestjs/swagger": "^11.2.7",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",

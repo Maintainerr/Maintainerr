@@ -52,17 +52,6 @@ export class CollectionWorkerService extends TaskBase {
   }
 
   protected async executeTask() {
-    // Pre-flight: verify media server is reachable (triggers re-discovery for Plex)
-    try {
-      await this.mediaServerFactory.verifyConnection();
-    } catch (error) {
-      this.logger.warn(
-        'Media server unreachable, skipping collection handler run',
-      );
-      this.logger.debug(error);
-      return;
-    }
-
     this.eventEmitter.emit(
       MaintainerrEvent.CollectionHandler_Started,
       new CollectionHandlerStartedEventDto(
@@ -75,14 +64,19 @@ export class CollectionWorkerService extends TaskBase {
     let failed = false;
 
     try {
-      // Start actual task
-      const appStatus = await this.settings.testConnections();
-
-      if (!appStatus) {
+      // Verify the only hard dependency for collection handling: the media
+      // server. Ancillary services (Radarr/Sonarr/Seerr/Tautulli) are
+      // exercised at the call site by the handler, so a transient blip in
+      // an unrelated backend must not abort the whole run. Plex auto
+      // re-discovery is handled inside verifyConnection().
+      try {
+        await this.mediaServerFactory.verifyConnection();
+      } catch (error) {
         failed = true;
         this.logger.log(
-          'Not all applications are reachable.. Skipping collection handling',
+          'Media server unreachable. Skipping collection handling.',
         );
+        this.logger.debug(error);
         return;
       }
 

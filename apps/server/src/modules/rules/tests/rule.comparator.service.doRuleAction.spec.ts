@@ -16,6 +16,42 @@ describe('RuleComparatorService', () => {
   });
 
   describe('doRuleAction', () => {
+    const existsData = [
+      [true, ['abc']],
+      [true, 'abc'],
+      [true, 0],
+      [true, false],
+      [true, new Date('2022-01-01')],
+      [false, []],
+      [false, ''],
+      [false, null],
+      [false, undefined],
+    ] as [boolean, any][];
+
+    it.each(existsData)(
+      'should return %s when val1 is %o with action EXISTS',
+      (expected, val1) => {
+        const result = ruleComparatorService['doRuleAction'](
+          val1,
+          null,
+          RulePossibility.EXISTS,
+        );
+        expect(result).toBe(expected);
+      },
+    );
+
+    it.each(existsData)(
+      'should return %s when val1 is %o with action NOT_EXISTS',
+      (expected, val1) => {
+        const result = ruleComparatorService['doRuleAction'](
+          val1,
+          null,
+          RulePossibility.NOT_EXISTS,
+        );
+        expect(result).toBe(!expected);
+      },
+    );
+
     it('returns false for NOT_CONTAINS when searched tag exists in list (reported keep-tag scenario)', () => {
       const result = ruleComparatorService['doRuleAction'](
         ['9-simon', 'anime', 'huntarr-upgrade', 'keep'],

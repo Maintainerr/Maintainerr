@@ -1,26 +1,61 @@
 import clsx from 'clsx'
-import { forwardRef, InputHTMLAttributes, type ReactNode } from 'react'
+import {
+  HTMLAttributes,
+  ReactNode,
+  forwardRef,
+  InputHTMLAttributes,
+} from 'react'
+
+const inputClassNames = {
+  base: 'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
+  leadingAdornment:
+    'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-500 bg-zinc-700 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
+  joinedLeft: 'rounded-l-only rounded-r-none border-r-0',
+  joinedRight: 'rounded-r-only border-l-0',
+} as const
+
+type FieldJoinProps = {
+  children?: ReactNode
+  className?: string
+} & HTMLAttributes<HTMLDivElement>
+
+export const FieldJoin = ({
+  children,
+  className,
+  ...props
+}: FieldJoinProps) => {
+  return (
+    <div
+      {...props}
+      className={clsx('group flex w-full items-stretch', className)}
+    >
+      {children}
+    </div>
+  )
+}
 
 type InputProps = {
   name: string
   className?: string
   error?: boolean
+  join?: 'left' | 'right'
 } & InputHTMLAttributes<HTMLInputElement>
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, required, error, ...props }: InputProps, ref) => {
+  ({ className, required, error, join, ...props }: InputProps, ref) => {
     return (
       <input
         {...props}
         ref={ref}
         id={props.id || props.name}
         className={clsx(
-          'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm transition duration-150 ease-in-out disabled:opacity-50 sm:text-sm sm:leading-5',
-          {
-            '!border-error-500 outline-error-500 focus:border-error-500 focus:outline-none focus:ring-0':
-              !props.disabled && error,
-            className,
-          },
+          inputClassNames.base,
+          join === 'left' && inputClassNames.joinedLeft,
+          join === 'right' && inputClassNames.joinedRight,
+          !props.disabled &&
+            error &&
+            '!border-error-500 outline-error-500 focus:border-error-500 focus:ring-0',
+          className,
         )}
         aria-required={required}
         aria-invalid={error}
@@ -30,6 +65,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 )
 
 Input.displayName = 'Input'
+
+type InputAdornmentProps = {
+  children?: ReactNode
+  className?: string
+}
+
+export const InputAdornment = ({
+  children,
+  className,
+}: InputAdornmentProps) => {
+  return (
+    <span className={clsx(inputClassNames.leadingAdornment, className)}>
+      {children}
+    </span>
+  )
+}
 
 type InputGroupProps = {
   name: string

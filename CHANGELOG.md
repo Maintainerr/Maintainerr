@@ -1,3 +1,17 @@
+# [3.7.0](https://github.com/maintainerr/Maintainerr/compare/v3.6.0...v3.7.0) (2026-04-14)
+
+
+### Bug Fixes
+
+* count Sonarr monitored episodes accurately ([#2684](https://github.com/maintainerr/Maintainerr/issues/2684)) ([ba56941](https://github.com/maintainerr/Maintainerr/commit/ba56941f7196e03f2febbce0642d7ffb48e797be))
+* scope rule/collection pre-flight to media server only ([#2581](https://github.com/maintainerr/Maintainerr/issues/2581)) ([#2683](https://github.com/maintainerr/Maintainerr/issues/2683)) ([3c65f25](https://github.com/maintainerr/Maintainerr/commit/3c65f256afe66fb0e61bcf5771740922bda66447))
+* use canonical Plex collection item URI ([c97a138](https://github.com/maintainerr/Maintainerr/commit/c97a13800b48e17833176699866b00255ce34215))
+
+
+### Features
+
+* add explicit exists rule operators ([#2671](https://github.com/maintainerr/Maintainerr/issues/2671)) ([e082ee2](https://github.com/maintainerr/Maintainerr/commit/e082ee2c0b910a439c0ddf935b0027e7edb0117a)), closes [#2672](https://github.com/maintainerr/Maintainerr/issues/2672)
+
 # [3.6.0](https://github.com/maintainerr/Maintainerr/compare/v3.5.0...v3.6.0) (2026-04-13)
 
 

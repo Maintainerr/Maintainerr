@@ -54,6 +54,11 @@ export class RuleComparatorService {
   private resultIds: Set<string>;
   private statsById: Map<string, IComparisonStatistics>;
 
+  private static readonly UNARY_RULE_ACTIONS = new Set<RulePossibility>([
+    RulePossibility.EXISTS,
+    RulePossibility.NOT_EXISTS,
+  ]);
+
   constructor(
     private readonly valueGetter: ValueGetterService,
     private readonly ruleConstanstService: RuleConstanstService,
@@ -205,16 +210,21 @@ export class RuleComparatorService {
       );
       this.abortSignal?.throwIfAborted();
 
-      secondVal = await this.getSecondValue(
-        rule,
-        mediaItem,
-        ruleGroup,
-        firstVal,
-      );
-      this.abortSignal?.throwIfAborted();
+      secondVal = null;
+      if (!this.isUnaryRuleAction(rule.action)) {
+        secondVal = await this.getSecondValue(
+          rule,
+          mediaItem,
+          ruleGroup,
+          firstVal,
+        );
+        this.abortSignal?.throwIfAborted();
+      }
 
-      const shouldCompare =
-        firstVal != null && (secondVal != null || rule.lastVal != null);
+      const reasons = this.buildMissingReasons(rule, firstVal, secondVal);
+      const shouldCompare = this.isUnaryRuleAction(rule.action)
+        ? true
+        : firstVal != null && (secondVal != null || rule.lastVal != null);
 
       if (shouldCompare) {
         // do action
@@ -231,6 +241,7 @@ export class RuleComparatorService {
           secondVal,
           mediaId,
           comparisonResult,
+          reasons,
         );
 
         // alter workerData
@@ -251,7 +262,14 @@ export class RuleComparatorService {
         }
       } else {
         this.logMissingOperand(rule, ruleGroup, mediaId, firstVal, secondVal);
-        this.addStatistictoParent(rule, firstVal, secondVal, mediaId, false);
+        this.addStatistictoParent(
+          rule,
+          firstVal,
+          secondVal,
+          mediaId,
+          false,
+          reasons,
+        );
 
         if (rule.operator != null && +rule.operator === +RuleOperators.AND) {
           this.workerData.splice(i, 1);
@@ -259,6 +277,30 @@ export class RuleComparatorService {
         }
       }
     }
+  }
+
+  private buildMissingReasons(
+    rule: RuleDto,
+    firstVal: RuleValueType,
+    secondVal: RuleValueType,
+  ): { firstValueReason?: string; secondValueReason?: string } {
+    const reasons: { firstValueReason?: string; secondValueReason?: string } =
+      {};
+    if (firstVal == null) {
+      reasons.firstValueReason = this.ruleConstanstService.getValueNullReason(
+        rule.firstVal,
+      );
+    }
+    if (secondVal == null && rule.lastVal) {
+      reasons.secondValueReason = this.ruleConstanstService.getValueNullReason(
+        rule.lastVal,
+      );
+    }
+    return reasons;
+  }
+
+  private isUnaryRuleAction(action: RulePossibility): boolean {
+    return RuleComparatorService.UNARY_RULE_ACTIONS.has(action);
   }
 
   private async getSecondValue(
@@ -357,12 +399,22 @@ export class RuleComparatorService {
     secondVal: RuleValueType,
     mediaId: string,
     result: boolean,
+    reasons?: { firstValueReason?: string; secondValueReason?: string },
   ) {
     const stat = this.statsById.get(mediaId);
     if (!stat) {
       return;
     }
     const lastSectionIndex = stat.sectionResults.length - 1;
+    const secondValueFields = this.isUnaryRuleAction(rule.action)
+      ? {}
+      : {
+          secondValueName: this.getSecondValueName(rule),
+          secondValue: secondVal,
+          ...(reasons?.secondValueReason
+            ? { secondValueReason: reasons.secondValueReason }
+            : undefined),
+        };
 
     // push result to currently last section
     stat.sectionResults[lastSectionIndex].ruleResults.push({
@@ -374,8 +426,10 @@ export class RuleComparatorService {
         rule.firstVal,
       ),
       firstValue: firstVal,
-      secondValueName: this.getSecondValueName(rule),
-      secondValue: secondVal,
+      ...(reasons?.firstValueReason
+        ? { firstValueReason: reasons.firstValueReason }
+        : undefined),
+      ...secondValueFields,
       result: result,
     });
   }
@@ -451,6 +505,14 @@ export class RuleComparatorService {
     val2: RuleValueType,
     action: RulePossibility,
   ): boolean {
+    if (action === RulePossibility.EXISTS) {
+      return this.hasExistsValue(val1);
+    }
+
+    if (action === RulePossibility.NOT_EXISTS) {
+      return !this.hasExistsValue(val1);
+    }
+
     if (typeof val1 === 'string') {
       val1 = val1.toLowerCase();
     }
@@ -651,6 +713,18 @@ export class RuleComparatorService {
         return val1.length < val2Length;
       }
     }
+  }
+
+  private hasExistsValue(val: RuleValueType): boolean {
+    if (val == null) {
+      return false;
+    }
+
+    if (Array.isArray(val) || typeof val === 'string') {
+      return val.length > 0;
+    }
+
+    return true;
   }
 
   private isStringParsableToArray(str: string) {

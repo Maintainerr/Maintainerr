@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
 import SaveButton from '../../Common/SaveButton'
+import { Input } from '../../Forms/Input'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -147,21 +148,23 @@ const JobSettings = () => {
               </label>
               <div className="form-input">
                 <div className="form-input-field">
-                  <input
+                  <Input
                     {...register('rules_handler_job_cron')}
                     id="rules_handler_job_cron"
+                    name="rules_handler_job_cron"
                     type="text"
                     value={ruleHandlerCron}
+                    error={!firstCronValid}
                     className={
                       !firstCronValid
-                        ? '!border-error-700 focus:!border-error-700 focus:outline-none focus:!ring-0'
+                        ? '!border-error-700 focus:!border-error-700'
                         : undefined
                     }
                     onBlur={normalizeRuleHandler}
                     onChange={(event) => {
                       handleRuleHandlerChange(event.target.value)
                     }}
-                  ></input>
+                  />
                 </div>
               </div>
             </div>
@@ -187,21 +190,23 @@ const JobSettings = () => {
 
               <div className="form-input">
                 <div className="form-input-field">
-                  <input
+                  <Input
                     {...register('collection_handler_job_cron')}
                     id="collection_handler_job_cron"
+                    name="collection_handler_job_cron"
                     type="text"
                     value={collectionHandlerCron}
+                    error={!secondCronValid}
                     className={
                       !secondCronValid
-                        ? '!border-error-700 focus:!border-error-700 focus:outline-none focus:!ring-0'
+                        ? '!border-error-700 focus:!border-error-700'
                         : undefined
                     }
                     onBlur={normalizeCollectionHandler}
                     onChange={(event) => {
                       handleCollectionHandlerChange(event.target.value)
                     }}
-                  ></input>
+                  />
                 </div>
               </div>
             </div>

@@ -56,6 +56,7 @@ const collectionMediaRoute = createLazyRoute(
 const collectionExclusionsRoute = createLazyRoute(
   () => import('./pages/CollectionExclusionsPage'),
 )
+const calendarRoute = createLazyRoute(() => import('./pages/CalendarPage'))
 const collectionInfoRoute = createLazyRoute(
   () => import('./pages/CollectionInfoPage'),
 )
@@ -161,6 +162,11 @@ const appRoutes: AppRoute[] = [
             ],
           },
         ],
+      },
+      {
+        path: 'calendar',
+        lazy: calendarRoute.lazy,
+        preload: calendarRoute.preload,
       },
       {
         path: 'rules',

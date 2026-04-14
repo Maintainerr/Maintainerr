@@ -7,6 +7,7 @@ import {
   createCollection,
   createCollectionMedia,
 } from '../../../test/utils/data';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
@@ -31,6 +32,7 @@ describe('CollectionWorkerService', () => {
   let executionLock: Mocked<ExecutionLockService>;
   let eventEmitter: Mocked<EventEmitter2>;
   let logger: Mocked<MaintainerrLogger>;
+  let mediaServerFactory: Mocked<MediaServerFactory>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
@@ -51,9 +53,11 @@ describe('CollectionWorkerService', () => {
     executionLock = unitRef.get(ExecutionLockService);
     eventEmitter = unitRef.get(EventEmitter2);
     logger = unitRef.get(MaintainerrLogger);
+    mediaServerFactory = unitRef.get(MediaServerFactory);
 
     executionLock.acquire.mockResolvedValue(jest.fn());
     eventEmitter.emit.mockImplementation();
+    mediaServerFactory.verifyConnection.mockResolvedValue({} as any);
   });
 
   it('should abort if another instance is running', async () => {
@@ -64,8 +68,10 @@ describe('CollectionWorkerService', () => {
     expect(executionLock.acquire).not.toHaveBeenCalled();
   });
 
-  it('should abort if testing connection fails', async () => {
-    settings.testConnections.mockResolvedValue(false);
+  it('should abort if the media server is unreachable', async () => {
+    mediaServerFactory.verifyConnection.mockRejectedValue(
+      new Error('Media server still unreachable after re-initialization'),
+    );
 
     await collectionWorkerService.execute();
 
