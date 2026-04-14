@@ -6,6 +6,7 @@ import LibrarySwitcher from '../../Common/LibrarySwitcher'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
+import PageControlRow from '../../Common/PageControlRow'
 import CollectionItem from '../CollectionItem'
 
 interface ICollectionOverview {
@@ -31,16 +32,16 @@ const CollectionOverview = (props: ICollectionOverview) => {
 
   return (
     <div className="w-full px-4">
-      <div className="mb-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-wrap items-center gap-2">
+      <PageControlRow
+        actions={
           <ExecuteButton
             onClick={props.doActions}
             text="Handle Collections"
             executing={collectionHandlerRunning}
             disabled={collectionHandlerRunning}
           />
-        </div>
-        <div className="w-full sm:ml-auto sm:w-[18rem]">
+        }
+        controls={
           <LibrarySwitcher
             containerClassName="mb-0"
             formClassName="max-w-none"
@@ -50,8 +51,8 @@ const CollectionOverview = (props: ICollectionOverview) => {
             librariesLoading={librariesLoading}
             librariesError={!!librariesError}
           />
-        </div>
-      </div>
+        }
+      />
 
       <div className="w-full">
         <div className="m-auto mb-3 flex items-center justify-between gap-3">
@@ -71,7 +72,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
         ) : hasCollections ? (
           <ul
             aria-busy={props.isLoading}
-            className="grid grid-cols-2 gap-4 xs:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]"
           >
             {props.collections?.map((col, index) => (
               <li

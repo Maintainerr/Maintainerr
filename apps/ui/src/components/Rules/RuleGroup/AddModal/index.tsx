@@ -38,6 +38,7 @@ import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
@@ -827,11 +828,7 @@ const AddModal = (props: AddModal) => {
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
-                        <input
-                          id="name"
-                          type="text"
-                          {...register('name')}
-                        ></input>
+                          <Input id="name" type="text" {...register('name')} />
                       </div>
                       {errors.name && (
                         <p className="mt-1 text-xs text-error-400">
@@ -1042,7 +1039,7 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field">
-                            <input
+                            <Input
                               type="number"
                               id="collection_deleteDays"
                               {...register('deleteAfterDays')}
@@ -1249,7 +1246,7 @@ const AddModal = (props: AddModal) => {
 
                       <div className="py-2">
                         <div className="form-input-field">
-                          <input
+                          <Input
                             type="text"
                             id="manual_collection_name"
                             placeholder={`My custom ${collectionTerm}`}
@@ -1309,7 +1306,7 @@ const AddModal = (props: AddModal) => {
                       </label>
                       <div className="form-input">
                         <div className="form-input-field flex w-32 flex-col">
-                          <input
+                          <Input
                             type="number"
                             id="collection_logs_months"
                             min={0}
@@ -1337,7 +1334,7 @@ const AddModal = (props: AddModal) => {
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-full">
-                          <input
+                          <Input
                             type="text"
                             id="sort_title"
                             placeholder={`e.g., 001 My ${collectionTermCapitalized}`}
@@ -1362,7 +1359,7 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field flex w-32 flex-col">
-                            <input
+                            <Input
                               type="number"
                               min={0}
                               max={100}
@@ -1399,7 +1396,7 @@ const AddModal = (props: AddModal) => {
                       </label>
                       <div className="form-input">
                         <div className="form-input-field flex w-32 flex-col">
-                          <input
+                          <Input
                             type="text"
                             id="rule_handler_cron_schedule"
                             {...register('ruleHandlerCronSchedule')}

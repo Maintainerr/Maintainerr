@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
-import ExecuteButton from '../components/Common/ExecuteButton'
+import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
 import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
@@ -144,12 +144,10 @@ const CollectionDetailPage = () => {
             </div>
           </div>
           {currentTab === 'info' && ruleGroup?.useRules ? (
-            <div className="flex justify-center sm:justify-start">
-              <ExecuteButton
-                onClick={() => setMediaTestModalOpen(true)}
-                text="Test Media"
-              />
-            </div>
+            <CollectionDetailControlRow
+              canTestMedia={true}
+              onOpenTestMedia={() => setMediaTestModalOpen(true)}
+            />
           ) : null}
 
           <Outlet

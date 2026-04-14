@@ -18,6 +18,7 @@ import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
+import PageControlRow from '../Common/PageControlRow'
 import {
   getMediaLibrarySortConfig,
   MediaLibrarySortControl,
@@ -464,8 +465,11 @@ const Overview = () => {
       <title>Overview - Maintainerr</title>
       <div className="w-full px-4">
         {!searchUsed ? (
-          <div className="mb-5 flex w-full">
-            <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+          <PageControlRow
+            className="justify-end"
+            controlsClassName="sm:w-auto"
+            controls={
+              <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
               <div className="w-full sm:w-[18rem]">
                 <LibrarySwitcher
                   shouldShowAllOption={false}
@@ -487,8 +491,9 @@ const Overview = () => {
                   isLoading={showRefreshing}
                 />
               </div>
-            </div>
-          </div>
+              </div>
+            }
+          />
         ) : undefined}
         {showBootstrapLoading ? (
           <div className="min-h-[20rem]">

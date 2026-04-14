@@ -29,7 +29,7 @@ import LoadingSpinner, {
 } from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 import Table from '../../../Common/Table'
-import { Input, InputAdornment } from '../../../Forms/Input'
+import { FieldJoin, Input, InputAdornment } from '../../../Forms/Input'
 import { Select, SelectAdornment } from '../../../Forms/Select'
 
 interface ICollectionInfo {
@@ -261,77 +261,83 @@ const CollectionInfo = (props: ICollectionInfo) => {
           <div className="mb-2 flex flex-grow flex-col sm:flex-grow-0 sm:flex-row sm:justify-end">
             {/* search */}
             <div className="mr-2 mt-4 flex w-full flex-grow sm:w-1/2">
-              <InputAdornment>
-                <SearchIcon className="h-6 w-6" />
-              </InputAdornment>
-              <Input
-                type="text"
-                name="log-search"
-                join="right"
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value as string)}
-              />
+              <FieldJoin>
+                <InputAdornment>
+                  <SearchIcon className="h-6 w-6" />
+                </InputAdornment>
+                <Input
+                  type="text"
+                  name="log-search"
+                  join="right"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value as string)}
+                />
+              </FieldJoin>
             </div>
 
             {/* sort/filter container */}
             <div className="mb-2 flex flex-1 flex-row justify-between sm:mb-0 sm:flex-none">
               {/* sort */}
               <div className="mr-2 mt-4 flex flex-grow sm:w-auto">
-                <SelectAdornment>
-                  {currentSort === 'DESC' ? (
-                    <SortDescendingIcon className="h-6 w-6" />
-                  ) : (
-                    <SortAscendingIcon className="h-6 w-6" />
-                  )}
-                </SelectAdornment>
-                <div className="min-w-0 flex-1">
-                  <Select
-                    id="sort"
-                    name="sort"
-                    onChange={(e) => {
-                      setCurrentSort(e.target.value as 'ASC' | 'DESC')
-                    }}
-                    value={currentSort}
-                    join="right"
-                  >
-                    <option value="DESC">{'Descending'}</option>
-                    <option value="ASC">{'Ascending'}</option>
-                  </Select>
-                </div>
+                <FieldJoin>
+                  <SelectAdornment>
+                    {currentSort === 'DESC' ? (
+                      <SortDescendingIcon className="h-6 w-6" />
+                    ) : (
+                      <SortAscendingIcon className="h-6 w-6" />
+                    )}
+                  </SelectAdornment>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      id="sort"
+                      name="sort"
+                      onChange={(e) => {
+                        setCurrentSort(e.target.value as 'ASC' | 'DESC')
+                      }}
+                      value={currentSort}
+                      join="right"
+                    >
+                      <option value="DESC">{'Descending'}</option>
+                      <option value="ASC">{'Ascending'}</option>
+                    </Select>
+                  </div>
+                </FieldJoin>
               </div>
 
               {/* filter */}
               <div className="mt-4 flex flex-grow sm:w-auto">
-                <SelectAdornment>
-                  <FilterIcon className="h-6 w-6" />
-                </SelectAdornment>
-                <div className="min-w-0 flex-1">
-                  <Select
-                    id="filter"
-                    name="filter"
-                    onChange={(e) => {
-                      setCurrentFilter(+e.target.value as ECollectionLogType)
-                    }}
-                    value={currentFilter}
-                    join="right"
-                  >
-                    <option key={`filter-option-all`} value={-1}>
-                      -
-                    </option>
-                    {Object.values(ECollectionLogType)
-                      .filter((value) => typeof value === 'number')
-                      .map((value, index) => {
-                        return (
-                          <option key={`filter-option-${index}`} value={+value}>
-                            {ECollectionLogType[+value]
-                              .charAt(0)
-                              .toUpperCase() +
-                              ECollectionLogType[+value].slice(1).toLowerCase()}
-                          </option>
-                        )
-                      })}
-                  </Select>
-                </div>
+                <FieldJoin>
+                  <SelectAdornment>
+                    <FilterIcon className="h-6 w-6" />
+                  </SelectAdornment>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      id="filter"
+                      name="filter"
+                      onChange={(e) => {
+                        setCurrentFilter(+e.target.value as ECollectionLogType)
+                      }}
+                      value={currentFilter}
+                      join="right"
+                    >
+                      <option key={`filter-option-all`} value={-1}>
+                        -
+                      </option>
+                      {Object.values(ECollectionLogType)
+                        .filter((value) => typeof value === 'number')
+                        .map((value, index) => {
+                          return (
+                            <option key={`filter-option-${index}`} value={+value}>
+                              {ECollectionLogType[+value]
+                                .charAt(0)
+                                .toUpperCase() +
+                                ECollectionLogType[+value].slice(1).toLowerCase()}
+                            </option>
+                          )
+                        })}
+                    </Select>
+                  </div>
+                </FieldJoin>
               </div>
             </div>
           </div>

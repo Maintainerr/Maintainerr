@@ -20,6 +20,7 @@ import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
+import { Input } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
 import PlexLoginButton from '../../Login/Plex'
 import SettingsAlertSlot from '../SettingsAlertSlot'
@@ -765,7 +766,7 @@ const PlexSettings = () => {
                           </label>
                           <div className="form-input">
                             <div className="form-input-field">
-                              <input
+                              <Input
                                 id="advanced-hostname"
                                 name="advanced-hostname"
                                 type="text"
@@ -778,7 +779,6 @@ const PlexSettings = () => {
                                     settings?.plex_hostname,
                                   ) || 'plex'
                                 }
-                                className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm sm:text-sm sm:leading-5"
                               />
                             </div>
                           </div>
@@ -790,7 +790,7 @@ const PlexSettings = () => {
                           </label>
                           <div className="form-input">
                             <div className="form-input-field">
-                              <input
+                              <Input
                                 id="advanced-port"
                                 name="advanced-port"
                                 type="number"
@@ -799,7 +799,6 @@ const PlexSettings = () => {
                                   setAdvancedPort(e.target.value)
                                 }
                                 placeholder="32400"
-                                className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm sm:text-sm sm:leading-5"
                               />
                             </div>
                           </div>

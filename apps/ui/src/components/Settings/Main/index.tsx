@@ -6,7 +6,9 @@ import { usePatchSettings } from '../../../api/settings'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
+import PageControlRow from '../../Common/PageControlRow'
 import SaveButton from '../../Common/SaveButton'
+import { FieldJoin, Input } from '../../Forms/Input'
 import MediaServerSelector from '../MediaServerSelector'
 import {
   SettingsFeedbackAlert,
@@ -148,11 +150,11 @@ const MainSettingsForm = ({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
+            <Input
               id="hostname"
               type="text"
               {...register('applicationUrl', { onChange: onClearError })}
-            ></input>
+            />
           </div>
         </div>
       </div>
@@ -163,46 +165,54 @@ const MainSettingsForm = ({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
-              className="!rounded-r-none"
-              id="api-key"
-              type="text"
-              {...register('apikey', { onChange: onClearError })}
-            ></input>
-            <button
-              aria-label="Regenerate API key"
-              onClick={(e) => {
-                e.preventDefault()
-                void regenerateApi()
-              }}
-              className="input-action ml-3"
-            >
-              <RefreshIcon />
-            </button>
+            <FieldJoin>
+              <Input
+                id="api-key"
+                type="text"
+                join="left"
+                {...register('apikey', { onChange: onClearError })}
+              />
+              <button
+                aria-label="Regenerate API key"
+                onClick={(e) => {
+                  e.preventDefault()
+                  void regenerateApi()
+                }}
+                className="input-action"
+              >
+                <RefreshIcon />
+              </button>
+            </FieldJoin>
           </div>
         </div>
       </div>
       <div className="actions mt-5 w-full">
-        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex rounded-md shadow-sm">
-              <DocsButton />
+        <PageControlRow
+          className="mb-0"
+          actions={
+            <>
+              <span className="flex rounded-md shadow-sm">
+                <DocsButton />
+              </span>
+              <span className="flex rounded-md shadow-sm">
+                <Button buttonType="default" type="button" onClick={onOpenBackup}>
+                  <DownloadIcon />
+                  <span>Backup Database</span>
+                </Button>
+              </span>
+            </>
+          }
+          controls={
+            <span className="flex rounded-md shadow-sm sm:ml-auto">
+              <SaveButton
+                type="submit"
+                disabled={!canSave}
+                isPending={isPending}
+              />
             </span>
-            <span className="flex rounded-md shadow-sm">
-              <Button buttonType="default" type="button" onClick={onOpenBackup}>
-                <DownloadIcon />
-                <span>Backup Database</span>
-              </Button>
-            </span>
-          </div>
-          <span className="flex rounded-md shadow-sm sm:ml-auto">
-            <SaveButton
-              type="submit"
-              disabled={!canSave}
-              isPending={isPending}
-            />
-          </span>
-        </div>
+          }
+          controlsClassName="sm:w-auto"
+        />
       </div>
     </form>
   )

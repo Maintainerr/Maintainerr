@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import PageControlRow from '../../Common/PageControlRow'
 import ExecuteButton from '../../Common/ExecuteButton'
 
 interface CollectionDetailControlRowProps {
@@ -17,17 +18,14 @@ const CollectionDetailControlRow = ({
   }
 
   return (
-    <div className="mb-5 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="flex flex-wrap items-center gap-2">
-        {canTestMedia ? (
+    <PageControlRow
+      actions={
+        canTestMedia ? (
           <ExecuteButton onClick={onOpenTestMedia} text="Test Media" />
-        ) : null}
-      </div>
-
-      {children ? (
-        <div className="w-full sm:ml-auto sm:w-[18rem]">{children}</div>
-      ) : null}
-    </div>
+        ) : undefined
+      }
+      controls={children}
+    />
   )
 }
 

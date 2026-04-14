@@ -17,6 +17,7 @@ import Modal from '../../Common/Modal'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { getTestingButtonType } from '../../Common/TestingButton'
+import { Input } from '../../Forms/Input'
 import SettingsAlertSlot from '../SettingsAlertSlot'
 
 interface ServarrSettingShape {
@@ -386,7 +387,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
+            <Input
               id="serverName"
               type="text"
               {...register('serverName', { onChange: clearFeedback })}
@@ -401,7 +402,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
+            <Input
               id="hostname"
               type="text"
               {...register('hostname', { onChange: clearFeedback })}
@@ -416,7 +417,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
+            <Input
               id="port"
               type="number"
               {...register('port', { onChange: clearFeedback })}
@@ -432,7 +433,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
+            <Input
               id="baseUrl"
               type="text"
               {...register('baseUrl', { onChange: clearFeedback })}
@@ -447,7 +448,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         </label>
         <div className="form-input">
           <div className="form-input-field">
-            <input
+            <Input
               id="apikey"
               type="password"
               {...register('apiKey', { onChange: clearFeedback })}

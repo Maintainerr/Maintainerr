@@ -5,7 +5,7 @@ import { ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
 const selectClassNames = {
   base: 'block h-10 w-full min-w-0 flex-1 appearance-none rounded-md border border-zinc-600 bg-zinc-600 px-3 text-left text-white shadow-none transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
   leadingAdornment:
-    'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-600 bg-zinc-600 px-3 text-sm text-zinc-100',
+    'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-600 bg-zinc-600 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
   joinedLeft: 'rounded-l-only rounded-r-none border-r-0',
   joinedRight: 'rounded-r-only border-l-0',
 } as const
