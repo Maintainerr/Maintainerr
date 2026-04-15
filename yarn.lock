@@ -3068,7 +3068,7 @@ __metadata:
     "@eslint/js": "npm:^9.39.2"
     "@nestjs/common": "npm:^11.1.19"
     "@nestjs/core": "npm:^11.1.19"
-    "@nestjs/swagger": "npm:^11.2.7"
+    "@nestjs/swagger": "npm:^11.3.0"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.15.1"
     eslint: "npm:^9.39.2"
@@ -3093,15 +3093,15 @@ __metadata:
     "@faker-js/faker": "npm:^9.9.0"
     "@jellyfin/sdk": "npm:^0.13.0"
     "@maintainerr/contracts": "workspace:^"
-    "@nestjs/cli": "npm:^11.0.19"
+    "@nestjs/cli": "npm:^11.0.21"
     "@nestjs/common": "npm:^11.1.19"
     "@nestjs/core": "npm:^11.1.19"
     "@nestjs/event-emitter": "npm:^3.0.1"
     "@nestjs/platform-express": "npm:^11.1.19"
-    "@nestjs/schedule": "npm:^6.1.1"
+    "@nestjs/schedule": "npm:^6.1.3"
     "@nestjs/schematics": "npm:^11.0.10"
     "@nestjs/serve-static": "npm:^5.0.5"
-    "@nestjs/swagger": "npm:^11.2.7"
+    "@nestjs/swagger": "npm:^11.3.0"
     "@nestjs/testing": "npm:^11.1.19"
     "@nestjs/typeorm": "npm:^11.0.1"
     "@octokit/core": "npm:^5.2.0"
@@ -3330,9 +3330,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/cli@npm:^11.0.19":
-  version: 11.0.19
-  resolution: "@nestjs/cli@npm:11.0.19"
+"@nestjs/cli@npm:^11.0.21":
+  version: 11.0.21
+  resolution: "@nestjs/cli@npm:11.0.21"
   dependencies:
     "@angular-devkit/core": "npm:19.2.24"
     "@angular-devkit/schematics": "npm:19.2.24"
@@ -3362,7 +3362,7 @@ __metadata:
       optional: true
   bin:
     nest: bin/nest.js
-  checksum: 10c0/c0e6aa491b3aa00c3c841fbad4720b841c74cd04b63d5f3b7a555f2d48f4587832b700855c3a270f61519209984e2329132222585479913f91009d33c096bd9b
+  checksum: 10c0/1806e58004443fefbfa1773edd821430bea227b006e6280ab56587d07826d5c4db21e55ad0bb7a0a28115734a6e63c91a43414454d79c2e6329846fa22a72e7e
   languageName: node
   linkType: hard
 
@@ -3462,15 +3462,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/schedule@npm:^6.1.1":
-  version: 6.1.1
-  resolution: "@nestjs/schedule@npm:6.1.1"
+"@nestjs/schedule@npm:^6.1.3":
+  version: 6.1.3
+  resolution: "@nestjs/schedule@npm:6.1.3"
   dependencies:
     cron: "npm:4.4.0"
   peerDependencies:
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@nestjs/core": ^10.0.0 || ^11.0.0
-  checksum: 10c0/0185efe4824bd353fea792954ea04d2d4cb99836c93c6d42d76fe9d57a6fd97eb7ba9d874be6f7f94b6f8bbca11badab16993f30e9b1f94b4c341639407578de
+  checksum: 10c0/de6da8d0246f486f7fdefaf6991fea18718f7a2d2eb698cf40094bfaa21e028107e37a27352af4571370c14cd757ca7402b5398af544438cc046d28575dee827
   languageName: node
   linkType: hard
 
@@ -3526,16 +3526,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/swagger@npm:^11.2.7":
-  version: 11.2.7
-  resolution: "@nestjs/swagger@npm:11.2.7"
+"@nestjs/swagger@npm:^11.3.0":
+  version: 11.3.0
+  resolution: "@nestjs/swagger@npm:11.3.0"
   dependencies:
     "@microsoft/tsdoc": "npm:0.16.0"
     "@nestjs/mapped-types": "npm:2.1.1"
     js-yaml: "npm:4.1.1"
     lodash: "npm:4.18.1"
     path-to-regexp: "npm:8.4.2"
-    swagger-ui-dist: "npm:5.32.2"
+    swagger-ui-dist: "npm:5.32.4"
   peerDependencies:
     "@fastify/static": ^8.0.0 || ^9.0.0
     "@nestjs/common": ^11.0.1
@@ -3550,7 +3550,7 @@ __metadata:
       optional: true
     class-validator:
       optional: true
-  checksum: 10c0/34f491ccdf1f57174eb5aeb78956a59ec2738e494bbf98f53e915936b6859502bbdd9bb19b909f70f20579d8000fbca2be122fde9539320ea6428ecba74b6bdf
+  checksum: 10c0/e7032639971430a52da0ccbde88587c4e4014acd09dff806ff84b5f14c0ac76ed8cc733b783181c5d231de217e05afcea0f03e19d65e50eec03a0fcbc9b6a6ba
   languageName: node
   linkType: hard
 
@@ -19930,12 +19930,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:5.32.2":
-  version: 5.32.2
-  resolution: "swagger-ui-dist@npm:5.32.2"
+"swagger-ui-dist@npm:5.32.4":
+  version: 5.32.4
+  resolution: "swagger-ui-dist@npm:5.32.4"
   dependencies:
     "@scarf/scarf": "npm:=1.4.0"
-  checksum: 10c0/b6a6469edd97bf416695e910378e4b202dfc9f4ee2eeffba6e791bc987d70763bdd3a05c8004c4f9b39043497d80158db2985e231df7bf2b571d8fb37387f41e
+  checksum: 10c0/3622e845557b842e4ded510c5043c970f11a3bdeb6c09c5829647e04bf6637a705a4d4faaf978b819cc5ea8785289a18a5050fe74fcc64b760b6b8a1f22e3e7b
   languageName: node
   linkType: hard
 
