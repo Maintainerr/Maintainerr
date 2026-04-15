@@ -34,7 +34,7 @@
     "react-hook-form": "^7.72.1",
     "react-konva": "^19.2.3",
     "react-markdown": "10.1.0",
-    "react-router-dom": "^7.14.0",
+    "react-router-dom": "^7.14.1",
     "react-select": "^5.10.2",
     "react-toastify": "^11.0.5",
     "reconnecting-eventsource": "^1.6.5",
