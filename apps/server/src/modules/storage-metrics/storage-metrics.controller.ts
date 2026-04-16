@@ -1,4 +1,7 @@
-import { StorageMetricsResponse } from '@maintainerr/contracts';
+import {
+  StorageLibrarySizesResponse,
+  StorageMetricsResponse,
+} from '@maintainerr/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StorageMetricsService } from './storage-metrics.service';
@@ -19,5 +22,19 @@ export class StorageMetricsController {
   })
   async getMetrics(): Promise<StorageMetricsResponse> {
     return this.storageMetricsService.getMetrics();
+  }
+
+  @Get('library-sizes')
+  @ApiOperation({
+    summary:
+      'Accurate per-library size computed by iterating media items. Potentially slow — call on demand.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns a map of media server library id → bytes. Libraries missing from the map could not be sized.',
+  })
+  async getLibrarySizes(): Promise<StorageLibrarySizesResponse> {
+    return this.storageMetricsService.computeMediaServerLibrarySizes();
   }
 }

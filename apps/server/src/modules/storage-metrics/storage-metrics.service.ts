@@ -7,6 +7,7 @@ import {
   StorageCollectionSummary,
   StorageDiskspaceEntry,
   StorageInstanceStatus,
+  StorageLibrarySizesResponse,
   StorageMediaServerInfo,
   StorageMediaServerLibrary,
   StorageMetricsResponse,
@@ -17,6 +18,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import type { IMediaServerService } from '../api/media-server/media-server.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -29,8 +31,18 @@ interface DedupKey {
   path: string;
 }
 
+const LIBRARY_SIZES_CACHE_TTL_MS = 15 * 60 * 1000;
+
+interface LibrarySizesCacheEntry {
+  generatedAt: string;
+  sizeBytesByLibrary: Record<string, number>;
+  expiresAt: number;
+}
+
 @Injectable()
 export class StorageMetricsService {
+  private librarySizesCache: LibrarySizesCacheEntry | null = null;
+
   constructor(
     private readonly servarrService: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
@@ -90,6 +102,50 @@ export class StorageMetricsService {
       collectionSummary,
       topCollections,
     };
+  }
+
+  public async computeMediaServerLibrarySizes(): Promise<StorageLibrarySizesResponse> {
+    const now = Date.now();
+    if (this.librarySizesCache && this.librarySizesCache.expiresAt > now) {
+      return {
+        generatedAt: this.librarySizesCache.generatedAt,
+        sizeBytesByLibrary: this.librarySizesCache.sizeBytesByLibrary,
+      };
+    }
+
+    let service: IMediaServerService;
+    try {
+      service = await this.mediaServerFactory.getService();
+    } catch (error) {
+      this.logger.debug(error);
+      return { generatedAt: new Date().toISOString(), sizeBytesByLibrary: {} };
+    }
+
+    if (!service.isSetup()) {
+      return { generatedAt: new Date().toISOString(), sizeBytesByLibrary: {} };
+    }
+
+    let sizes = new Map<string, number>();
+    try {
+      sizes = await service.computeLibraryStorageSizes();
+    } catch (error) {
+      this.logger.warn('Failed to compute media server library sizes');
+      this.logger.debug(error);
+    }
+
+    const sizeBytesByLibrary: Record<string, number> = {};
+    for (const [id, bytes] of sizes) {
+      sizeBytesByLibrary[id] = bytes;
+    }
+
+    const generatedAt = new Date().toISOString();
+    this.librarySizesCache = {
+      generatedAt,
+      sizeBytesByLibrary,
+      expiresAt: now + LIBRARY_SIZES_CACHE_TTL_MS,
+    };
+
+    return { generatedAt, sizeBytesByLibrary };
   }
 
   private async fetchInstanceMounts(
@@ -233,7 +289,7 @@ export class StorageMetricsService {
       totalItemCount: 0,
     };
 
-    let service;
+    let service: IMediaServerService;
     try {
       service = await this.mediaServerFactory.getService();
     } catch (error) {

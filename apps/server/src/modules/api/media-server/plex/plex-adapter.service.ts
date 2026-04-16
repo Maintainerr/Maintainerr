@@ -100,6 +100,12 @@ export class PlexAdapterService implements IMediaServerService {
     return this.plexApi.getLibrariesStorage();
   }
 
+  async computeLibraryStorageSizes(): Promise<Map<string, number>> {
+    // Plex exposes accurate per-library cumulative file size via storageTotal
+    // on the same cheap call used for getLibrariesStorage.
+    return this.plexApi.getLibrariesStorage();
+  }
+
   async getLibraryContents(
     libraryId: string,
     options?: LibraryQueryOptions,

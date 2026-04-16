@@ -10,6 +10,7 @@ import {
 import type {
   StorageDiskspaceEntry,
   StorageInstanceStatus,
+  StorageLibrarySizesResponse,
   StorageMediaServerInfo,
   StorageMetricsResponse,
   StorageTopCollection,
@@ -17,7 +18,9 @@ import type {
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler from '../../utils/ApiHandler'
 import { formatBytes, formatPercent } from '../../utils/formatBytes'
+import Button from '../Common/Button'
 import LoadingSpinner from '../Common/LoadingSpinner'
+import Modal from '../Common/Modal'
 import StorageUsageBar from './StorageUsageBar'
 
 interface SummaryCardProps {
@@ -229,7 +232,25 @@ const StorageMetrics: React.FC = () => {
           </div>
         </section>
 
-        <MediaServerSection mediaServer={metrics.mediaServer} />
+        <MediaServerSection
+          mediaServer={metrics.mediaServer}
+          onLibrarySizesComputed={(sizeBytesByLibrary) =>
+            setMetrics((current) =>
+              current
+                ? {
+                    ...current,
+                    mediaServer: {
+                      ...current.mediaServer,
+                      libraries: current.mediaServer.libraries.map((lib) => ({
+                        ...lib,
+                        sizeBytes: sizeBytesByLibrary[lib.id] ?? lib.sizeBytes,
+                      })),
+                    },
+                  }
+                : current,
+            )
+          }
+        />
 
         <section className="mt-8">
           <h2 className="sm-heading">Mounts by instance</h2>
@@ -300,6 +321,7 @@ const StorageMetrics: React.FC = () => {
 
 interface MediaServerSectionProps {
   mediaServer: StorageMediaServerInfo
+  onLibrarySizesComputed: (sizeBytesByLibrary: Record<string, number>) => void
 }
 
 const mediaServerLabel: Record<string, string> = {
@@ -309,7 +331,36 @@ const mediaServerLabel: Record<string, string> = {
 
 const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   mediaServer,
+  onLibrarySizesComputed,
 }) => {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const [isComputing, setIsComputing] = useState(false)
+  const [computeError, setComputeError] = useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    setIsComputing(true)
+    setComputeError(null)
+    try {
+      const response = await GetApiHandler<StorageLibrarySizesResponse>(
+        '/storage-metrics/library-sizes',
+      )
+      onLibrarySizesComputed(response.sizeBytesByLibrary)
+      setIsConfirmOpen(false)
+    } catch {
+      setComputeError(
+        'Failed to compute library sizes. Check that Maintainerr can reach your media server.',
+      )
+    } finally {
+      setIsComputing(false)
+    }
+  }
+
+  const closeConfirm = () => {
+    if (isComputing) return
+    setIsConfirmOpen(false)
+    setComputeError(null)
+  }
+
   if (!mediaServer.configured) {
     return (
       <section className="mt-8">
@@ -333,7 +384,8 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
       <h2 className="sm-heading">Media server</h2>
       <p className="description">
         Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees
-        through the server API.
+        through the server API. Use Compute library sizes for an accurate
+        per-library total — it can take a while.
       </p>
 
       <div className="transparent-glass-bg mt-3 rounded-lg border border-zinc-700 p-4">
@@ -346,11 +398,22 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
             </span>
             <span className="text-base font-medium text-white">{header}</span>
           </div>
-          <span className="text-xs text-zinc-400">
-            {mediaServer.reachable
-              ? `${mediaServer.totalItemCount.toLocaleString()} items`
-              : 'Unavailable'}
-          </span>
+          <div className="flex items-center gap-3">
+            {mediaServer.reachable && mediaServer.libraries.length > 0 ? (
+              <Button
+                buttonType="default"
+                buttonSize="sm"
+                onClick={() => setIsConfirmOpen(true)}
+              >
+                Compute library sizes
+              </Button>
+            ) : null}
+            <span className="text-xs text-zinc-400">
+              {mediaServer.reachable
+                ? `${mediaServer.totalItemCount.toLocaleString()} items`
+                : 'Unavailable'}
+            </span>
+          </div>
         </div>
 
         {!mediaServer.reachable ? (
@@ -398,6 +461,39 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
           </div>
         )}
       </div>
+
+      {isConfirmOpen ? (
+        <Modal
+          title="Compute library sizes"
+          size="md"
+          backgroundClickable={!isComputing}
+          onCancel={closeConfirm}
+          cancelText="Cancel"
+          loading={isComputing}
+          footerActions={
+            <Button
+              buttonType="primary"
+              onClick={() => {
+                void handleConfirm()
+              }}
+              disabled={isComputing}
+            >
+              Run scan
+            </Button>
+          }
+        >
+          <div className="space-y-3">
+            <p>
+              Maintainerr will iterate every movie and episode in your{' '}
+              {typeLabel} libraries to compute an accurate size on disk. This
+              can take a while on large libraries.
+            </p>
+            {computeError ? (
+              <p className="text-sm text-error-200">{computeError}</p>
+            ) : null}
+          </div>
+        </Modal>
+      ) : null}
     </section>
   )
 }

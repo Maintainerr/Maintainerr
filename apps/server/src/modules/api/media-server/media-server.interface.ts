@@ -87,12 +87,19 @@ export interface IMediaServerService {
   getLibraries(): Promise<MediaLibrary[]>;
 
   /**
-   * Get per-library size on disk, in bytes.
+   * Get per-library size on disk, in bytes, via a cheap native endpoint.
    * Returns a map of library id → bytes for libraries where the server
    * exposes that data. Libraries missing from the map have no size info.
    * Implementations that don't support storage stats return an empty map.
    */
   getLibrariesStorage?(): Promise<Map<string, number>>;
+
+  /**
+   * Compute per-library size on disk by enumerating items. Potentially slow
+   * — meant to be called on demand. Returns a map of library id → bytes.
+   * Libraries missing from the map could not be sized.
+   */
+  computeLibraryStorageSizes(): Promise<Map<string, number>>;
 
   /**
    * Get contents of a specific library with optional pagination and filtering.

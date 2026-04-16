@@ -455,7 +455,9 @@ export class JellyfinAdapterService implements IMediaServerService {
   /**
    * Uses GET /System/Storage (added in Jellyfin 10.11.0, admin-only).
    * Returns an empty map when the endpoint is missing (older server) or the
-   * configured user is not an administrator.
+   * configured user is not an administrator. Note that for libraries sharing
+   * the same disk the reported UsedSpace is the drive's used space — accurate
+   * per-library sizes require iterating items (computeLibraryStorageSizes).
    */
   async getLibrariesStorage(): Promise<Map<string, number>> {
     const result = new Map<string, number>();
@@ -490,6 +492,63 @@ export class JellyfinAdapterService implements IMediaServerService {
       }
     }
     return result;
+  }
+
+  async computeLibraryStorageSizes(): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (!this.api) return result;
+
+    const userId = await this.getUserId();
+    if (!userId) return result;
+
+    const libraries = await this.getLibraries();
+    for (const library of libraries) {
+      result.set(library.id, await this.sumLibraryItemSizes(userId, library));
+    }
+    return result;
+  }
+
+  private async sumLibraryItemSizes(
+    userId: string,
+    library: MediaLibrary,
+  ): Promise<number> {
+    const includeItemTypes =
+      library.type === 'show' ? [BaseItemKind.Episode] : [BaseItemKind.Movie];
+
+    let total = 0;
+    let startIndex = 0;
+    const pageSize = JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE;
+
+    while (true) {
+      let page: Awaited<ReturnType<ReturnType<typeof getItemsApi>['getItems']>>;
+      try {
+        page = await getItemsApi(this.api!).getItems({
+          userId,
+          parentId: library.id,
+          recursive: true,
+          includeItemTypes,
+          fields: [ItemFields.MediaSources],
+          startIndex,
+          limit: pageSize,
+        });
+      } catch (error) {
+        this.logLibraryError(library.id, 'compute library size', error);
+        return total;
+      }
+
+      const items = page.data.Items ?? [];
+      for (const item of items) {
+        for (const source of item.MediaSources ?? []) {
+          total += source.Size ?? 0;
+        }
+      }
+
+      const totalRecordCount = page.data.TotalRecordCount ?? items.length;
+      startIndex += items.length;
+      if (items.length < pageSize || startIndex >= totalRecordCount) break;
+    }
+
+    return total;
   }
 
   private async itemIsInLibrary(

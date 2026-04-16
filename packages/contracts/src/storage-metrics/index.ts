@@ -80,3 +80,8 @@ export interface StorageMetricsResponse {
   collectionSummary: StorageCollectionSummary
   topCollections: StorageTopCollection[]
 }
+
+export interface StorageLibrarySizesResponse {
+  generatedAt: string
+  sizeBytesByLibrary: Record<string, number>
+}
