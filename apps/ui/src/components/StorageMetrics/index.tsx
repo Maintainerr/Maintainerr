@@ -45,13 +45,8 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   </div>
 )
 
-const instanceBadgeClasses = (type: StorageInstanceStatus['type']) =>
-  type === 'radarr'
-    ? 'bg-maintainerr-600/25 text-maintainerr-200'
-    : 'bg-info-500/25 text-info-100'
-
-const formatInstanceHeader = (instance: StorageInstanceStatus) =>
-  `${instance.name} · ${instance.type === 'radarr' ? 'Radarr' : 'Sonarr'}`
+const pillBadgeClasses =
+  'bg-maintainerrdark-500/25 text-maintainerr-200'
 
 const groupMountsByInstance = (mounts: StorageDiskspaceEntry[]) => {
   const map = new Map<string, StorageDiskspaceEntry[]>()
@@ -182,7 +177,7 @@ const StorageMetrics: React.FC = () => {
           <SummaryCard
             title="Free"
             value={formatBytes(totals.freeSpace)}
-            subtitle={`Aggregated across ${mountLabel(totals.mountCount)}`}
+            subtitle={`Aggregated across ${mountLabel(totals.accurateMountCount)}`}
             icon={<ChartBarIcon className="h-5 w-5" />}
           />
           <SummaryCard
@@ -334,9 +329,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
     ? (mediaServerLabel[mediaServer.serverType] ?? mediaServer.serverType)
     : 'Media server'
 
-  const header = mediaServer.serverName
-    ? `${mediaServer.serverName} · ${typeLabel}`
-    : typeLabel
+  const header = mediaServer.serverName ?? typeLabel
 
   return (
     <section className="mt-8">
@@ -349,7 +342,9 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
       <div className="transparent-glass-bg mt-3 rounded-lg border border-zinc-700 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded bg-maintainerrdark-500/25 px-2 py-0.5 text-xs font-semibold text-maintainerr-200">
+            <span
+              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${pillBadgeClasses}`}
+            >
               {typeLabel}
             </span>
             <span className="text-base font-medium text-white">{header}</span>
@@ -414,14 +409,12 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${instanceBadgeClasses(
-              instance.type,
-            )}`}
+            className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${pillBadgeClasses}`}
           >
             {instance.type === 'radarr' ? 'Radarr' : 'Sonarr'}
           </span>
           <span className="text-base font-medium text-white">
-            {formatInstanceHeader(instance)}
+            {instance.name}
           </span>
         </div>
         <span className="text-xs text-zinc-400">

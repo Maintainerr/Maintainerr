@@ -185,19 +185,17 @@ export class StorageMetricsService {
 
     let freeSpace = 0;
     let totalSpace = 0;
-    let accurateFreeSpace = 0;
     let accurateMountCount = 0;
 
     for (const mount of seen.values()) {
-      freeSpace += mount.freeSpace;
       if (mount.hasAccurateTotalSpace) {
         totalSpace += mount.totalSpace;
-        accurateFreeSpace += mount.freeSpace;
+        freeSpace += mount.freeSpace;
         accurateMountCount += 1;
       }
     }
 
-    const usedSpace = Math.max(totalSpace - accurateFreeSpace, 0);
+    const usedSpace = Math.max(totalSpace - freeSpace, 0);
     const accurateTotalSpace =
       seen.size > 0 && accurateMountCount === seen.size && totalSpace > 0;
 
