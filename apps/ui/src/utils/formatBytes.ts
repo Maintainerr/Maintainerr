@@ -21,9 +21,7 @@ export const formatBytes = (bytes: number, decimals = 2): string => {
  * and otherwise round to the nearest GB/MB with one-decimal / integer
  * precision respectively.
  */
-export const formatSizeCompact = (
-  bytes: number | null | undefined,
-): string => {
+export const formatSizeCompact = (bytes: number | null | undefined): string => {
   if (bytes == null) return 'N/A'
   const gb = bytes / (1024 * 1024 * 1024)
   if (gb >= 1) return `${gb.toFixed(1)} GB`

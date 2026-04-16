@@ -246,7 +246,11 @@ export class StorageMetricsService {
     }
 
     if (!service.isSetup()) {
-      return { ...empty, configured: true, serverType: service.getServerType() };
+      return {
+        ...empty,
+        configured: true,
+        serverType: service.getServerType(),
+      };
     }
 
     const serverType = service.getServerType() as MediaServerType;

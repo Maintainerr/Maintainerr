@@ -45,8 +45,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   </div>
 )
 
-const pillBadgeClasses =
-  'border border-zinc-600 bg-zinc-600 text-zinc-200'
+const pillBadgeClasses = 'border border-zinc-600 bg-zinc-600 text-zinc-200'
 
 const groupMountsByInstance = (mounts: StorageDiskspaceEntry[]) => {
   const map = new Map<string, StorageDiskspaceEntry[]>()
@@ -142,9 +141,7 @@ const StorageMetrics: React.FC = () => {
       <title>Storage Metrics - Maintainerr</title>
       <div className="w-full px-0 pb-8">
         <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-white">
-            Storage Metrics
-          </h1>
+          <h1 className="text-2xl font-semibold text-white">Storage Metrics</h1>
           <p className="mt-1 text-sm text-zinc-400">
             Disk usage across your Radarr and Sonarr instances, plus how much
             space Maintainerr can reclaim from active collections.
@@ -251,9 +248,9 @@ const StorageMetrics: React.FC = () => {
           <div className="mt-3 flex flex-col gap-4">
             {metrics.instances.map((instance) => {
               const mounts =
-                (mountsByInstance.get(
-                  `${instance.type}-${instance.id}`,
-                ) as StorageDiskspaceEntry[] | undefined) ?? []
+                (mountsByInstance.get(`${instance.type}-${instance.id}`) as
+                  | StorageDiskspaceEntry[]
+                  | undefined) ?? []
 
               return (
                 <InstanceCard
@@ -267,8 +264,8 @@ const StorageMetrics: React.FC = () => {
 
           {hasInstances && !hasAnyMounts ? (
             <p className="mt-3 text-sm text-zinc-400">
-              No mount data returned. Check that each instance has a root
-              folder configured.
+              No mount data returned. Check that each instance has a root folder
+              configured.
             </p>
           ) : null}
         </section>
@@ -454,9 +451,7 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
                     {mount.path ?? 'Unknown path'}
                   </span>
                   {mount.label ? (
-                    <span className="text-xs text-zinc-400">
-                      {mount.label}
-                    </span>
+                    <span className="text-xs text-zinc-400">{mount.label}</span>
                   ) : null}
                 </div>
                 <div className="mt-2">
