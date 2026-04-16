@@ -74,10 +74,44 @@ describe('CollectionsService', () => {
     );
 
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
+    mediaServerFactory.getConfiguredServerType.mockResolvedValue(
+      MediaServerType.PLEX,
+    );
     settingsService.media_server_type = MediaServerType.PLEX;
     jest
       .spyOn(service, 'updateCollectionTotalSize')
       .mockResolvedValue(undefined);
+  });
+
+  it('persists overlay settings when creating a collection', async () => {
+    const queryBuilder = {
+      insert: jest.fn(),
+      into: jest.fn(),
+      values: jest.fn(),
+      execute: jest.fn().mockResolvedValue({ generatedMaps: [{ id: 42 }] }),
+    };
+
+    queryBuilder.insert.mockReturnValue(queryBuilder);
+    queryBuilder.into.mockReturnValue(queryBuilder);
+    queryBuilder.values.mockReturnValue(queryBuilder);
+    dataSource.createQueryBuilder.mockReturnValue(queryBuilder as any);
+
+    await service.createCollection(
+      createCollection({
+        overlayEnabled: true,
+        overlayTemplateId: 7,
+        mediaServerId: null,
+      }),
+    );
+
+    expect(queryBuilder.values).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          overlayEnabled: true,
+          overlayTemplateId: 7,
+        }),
+      ]),
+    );
   });
 
   it('does not delete a collection when some removals fail', async () => {

@@ -29,6 +29,7 @@ import { ElementToolbox } from '../components/OverlayEditor/ElementToolbox'
 import { LayerPanel } from '../components/OverlayEditor/LayerPanel'
 import { OverlayCanvas } from '../components/OverlayEditor/OverlayCanvas'
 import { PropertiesPanel } from '../components/OverlayEditor/PropertiesPanel'
+import { loadOverlayEditorFonts } from '../components/OverlayEditor/editorFonts'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -114,6 +115,10 @@ const OverlayTemplateEditorPage = () => {
       if (f) setFonts(f)
     })
   }, [])
+
+  useEffect(() => {
+    void loadOverlayEditorFonts(fonts)
+  }, [fonts])
 
   const handleUploadFont = useCallback(
     async (file: File) => {

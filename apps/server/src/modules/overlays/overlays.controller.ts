@@ -1,11 +1,12 @@
 import {
+  isSafeFilename,
   OverlaySettings,
   OverlaySettingsUpdate,
-  OverlayTemplateCreate,
-  OverlayTemplateUpdate,
   overlaySettingsUpdateSchema,
+  OverlayTemplateCreate,
   overlayTemplateCreateSchema,
   overlayTemplateExportSchema,
+  OverlayTemplateUpdate,
   overlayTemplateUpdateSchema,
   sanitizeFilenameChars,
 } from '@maintainerr/contracts';
@@ -195,15 +196,12 @@ export class OverlaysController {
 
   @Get('fonts')
   listFonts() {
-    const dirs = [this.fontsDir];
-
-    // Also check user-uploaded fonts directory
+    // User-uploaded fonts take precedence over bundled fonts when names
+    // collide, so the dropdown and the served file agree on a single source.
     const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
-    if (fs.existsSync(userFontsDir)) {
-      dirs.push(userFontsDir);
-    }
+    const dirs = [userFontsDir, this.fontsDir];
 
-    const fonts: { name: string; path: string }[] = [];
+    const byName = new Map<string, { name: string; path: string }>();
     for (const dir of dirs) {
       if (!fs.existsSync(dir)) continue;
       const files = fs.readdirSync(dir).filter((f) => {
@@ -211,11 +209,42 @@ export class OverlaysController {
         return ext === '.ttf' || ext === '.otf' || ext === '.woff';
       });
       for (const file of files) {
-        fonts.push({ name: file, path: path.join(dir, file) });
+        if (!byName.has(file)) {
+          byName.set(file, { name: file, path: path.join(dir, file) });
+        }
       }
     }
 
-    return fonts;
+    return Array.from(byName.values());
+  }
+
+  @Get('fonts/:name')
+  getFont(
+    @Param('name') name: string,
+    @Res({ passthrough: true }) res: Response,
+  ): StreamableFile {
+    if (!isSafeFilename(name)) {
+      throw new HttpException('Invalid font name', HttpStatus.BAD_REQUEST);
+    }
+
+    // Mirror `listFonts`: user-uploaded fonts win on name collisions.
+    const candidates = [
+      path.join(configDataDir, 'overlays', 'fonts', name),
+      path.join(this.fontsDir, name),
+    ];
+    const fontPath = candidates.find((candidate) => fs.existsSync(candidate));
+
+    if (!fontPath) {
+      throw new HttpException('Font not found', HttpStatus.NOT_FOUND);
+    }
+
+    const ext = path.extname(fontPath).toLowerCase();
+    const contentType =
+      ext === '.otf' ? 'font/otf' : ext === '.woff' ? 'font/woff' : 'font/ttf';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return new StreamableFile(fs.createReadStream(fontPath));
   }
 
   @Post('fonts')

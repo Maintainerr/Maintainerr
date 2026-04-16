@@ -77,8 +77,8 @@ export class OverlayRenderService {
     const bundledBase = path.resolve(this.bundledFontsDir);
     const userBase = path.resolve(configDataDir, 'overlays', 'fonts');
     const candidates = [
-      path.resolve(bundledBase, fontPath),
       path.resolve(userBase, fontPath),
+      path.resolve(bundledBase, fontPath),
     ];
 
     let resolvedPath: string | null = null;

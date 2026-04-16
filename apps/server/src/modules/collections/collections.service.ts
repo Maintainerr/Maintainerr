@@ -2570,6 +2570,8 @@ export class CollectionsService {
             sonarrSettingsId: collection.sonarrSettingsId,
             radarrSettingsId: collection.radarrSettingsId,
             sortTitle: collection.sortTitle,
+            overlayEnabled: collection.overlayEnabled ?? false,
+            overlayTemplateId: collection.overlayTemplateId ?? null,
           },
         ])
         .execute();
