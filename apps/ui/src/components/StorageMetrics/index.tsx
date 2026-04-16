@@ -46,7 +46,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 )
 
 const pillBadgeClasses =
-  'bg-maintainerrdark-500/25 text-maintainerr-200'
+  'border border-zinc-600 bg-zinc-600 text-zinc-200'
 
 const groupMountsByInstance = (mounts: StorageDiskspaceEntry[]) => {
   const map = new Map<string, StorageDiskspaceEntry[]>()
