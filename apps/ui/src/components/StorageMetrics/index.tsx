@@ -4,11 +4,13 @@ import {
   DesktopComputerIcon,
   ExclamationCircleIcon,
   FilmIcon,
+  FolderIcon,
   ServerIcon,
 } from '@heroicons/react/solid'
 import type {
   StorageDiskspaceEntry,
   StorageInstanceStatus,
+  StorageMediaServerInfo,
   StorageMetricsResponse,
   StorageTopCollection,
 } from '@maintainerr/contracts'
@@ -33,7 +35,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 }) => (
   <div className="transparent-glass-bg flex flex-col rounded-lg border border-zinc-700 p-4 shadow">
     <div className="flex items-center text-sm font-medium uppercase tracking-wide text-zinc-400">
-      <span className="mr-2 text-maintainerr-600">{icon}</span>
+      <span className="mr-2 text-maintainerr-500">{icon}</span>
       {title}
     </div>
     <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
@@ -45,8 +47,8 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 
 const instanceBadgeClasses = (type: StorageInstanceStatus['type']) =>
   type === 'radarr'
-    ? 'bg-amber-500/20 text-amber-200'
-    : 'bg-sky-500/20 text-sky-200'
+    ? 'bg-maintainerr-600/25 text-maintainerr-200'
+    : 'bg-info-500/25 text-info-100'
 
 const formatInstanceHeader = (instance: StorageInstanceStatus) =>
   `${instance.name} · ${instance.type === 'radarr' ? 'Radarr' : 'Sonarr'}`
@@ -135,6 +137,10 @@ const StorageMetrics: React.FC = () => {
   const hasInstances = metrics.instances.length > 0
   const hasAnyMounts = metrics.mounts.length > 0
   const hasCollectionData = metrics.collectionSummary.totalCollectionCount > 0
+  const { totals } = metrics
+  const hasAnyTotal = totals.totalSpace > 0
+  const mountLabel = (count: number) =>
+    `${count} mount${count === 1 ? '' : 's'}`
 
   return (
     <>
@@ -153,41 +159,30 @@ const StorageMetrics: React.FC = () => {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             title="Total capacity"
-            value={
-              metrics.totals.accurateTotalSpace && metrics.totals.totalSpace > 0
-                ? formatBytes(metrics.totals.totalSpace)
-                : '—'
-            }
+            value={hasAnyTotal ? formatBytes(totals.totalSpace) : '—'}
             subtitle={
-              metrics.totals.accurateTotalSpace
-                ? `${metrics.totals.mountCount} unique mount${
-                    metrics.totals.mountCount === 1 ? '' : 's'
-                  }`
-                : 'Not all instances report total capacity'
+              !hasAnyTotal
+                ? 'No instance reports total capacity'
+                : totals.accurateTotalSpace
+                  ? mountLabel(totals.mountCount)
+                  : `${totals.accurateMountCount} of ${totals.mountCount} mounts report total capacity`
             }
             icon={<ServerIcon className="h-5 w-5" />}
           />
           <SummaryCard
             title="Used"
-            value={
-              metrics.totals.accurateTotalSpace && metrics.totals.totalSpace > 0
-                ? formatBytes(metrics.totals.usedSpace)
-                : '—'
-            }
+            value={hasAnyTotal ? formatBytes(totals.usedSpace) : '—'}
             subtitle={
-              metrics.totals.accurateTotalSpace
-                ? formatPercent(
-                    metrics.totals.usedSpace,
-                    metrics.totals.totalSpace,
-                  )
-                : 'Requires accurate total-space reporting'
+              hasAnyTotal
+                ? formatPercent(totals.usedSpace, totals.totalSpace)
+                : 'Requires total-space reporting'
             }
             icon={<ChartBarIcon className="h-5 w-5" />}
           />
           <SummaryCard
             title="Free"
-            value={formatBytes(metrics.totals.freeSpace)}
-            subtitle="Aggregated across deduplicated mounts"
+            value={formatBytes(totals.freeSpace)}
+            subtitle={`Aggregated across ${mountLabel(totals.mountCount)}`}
             icon={<ChartBarIcon className="h-5 w-5" />}
           />
           <SummaryCard
@@ -208,7 +203,7 @@ const StorageMetrics: React.FC = () => {
             <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
-                  <FilmIcon className="h-5 w-5 text-amber-300" />
+                  <FilmIcon className="h-5 w-5 text-maintainerr-500" />
                   Movies
                 </span>
                 <span className="text-zinc-400">
@@ -225,7 +220,7 @@ const StorageMetrics: React.FC = () => {
             <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
-                  <DesktopComputerIcon className="h-5 w-5 text-sky-300" />
+                  <DesktopComputerIcon className="h-5 w-5 text-maintainerrdark-500" />
                   Shows
                 </span>
                 <span className="text-zinc-400">
@@ -241,6 +236,8 @@ const StorageMetrics: React.FC = () => {
             </div>
           </div>
         </section>
+
+        <MediaServerSection mediaServer={metrics.mediaServer} />
 
         <section className="mt-8">
           <h2 className="sm-heading">Mounts by instance</h2>
@@ -309,6 +306,103 @@ const StorageMetrics: React.FC = () => {
   )
 }
 
+interface MediaServerSectionProps {
+  mediaServer: StorageMediaServerInfo
+}
+
+const mediaServerLabel: Record<string, string> = {
+  plex: 'Plex',
+  jellyfin: 'Jellyfin',
+}
+
+const MediaServerSection: React.FC<MediaServerSectionProps> = ({
+  mediaServer,
+}) => {
+  if (!mediaServer.configured) {
+    return (
+      <section className="mt-8">
+        <h2 className="sm-heading">Media server</h2>
+        <p className="description">
+          Connect a Plex or Jellyfin server in Settings to see library item
+          counts here.
+        </p>
+      </section>
+    )
+  }
+
+  const typeLabel = mediaServer.serverType
+    ? (mediaServerLabel[mediaServer.serverType] ?? mediaServer.serverType)
+    : 'Media server'
+
+  const header = mediaServer.serverName
+    ? `${mediaServer.serverName} · ${typeLabel}`
+    : typeLabel
+
+  return (
+    <section className="mt-8">
+      <h2 className="sm-heading">Media server</h2>
+      <p className="description">
+        Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees
+        through the server API.
+      </p>
+
+      <div className="transparent-glass-bg mt-3 rounded-lg border border-zinc-700 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded bg-maintainerrdark-500/25 px-2 py-0.5 text-xs font-semibold text-maintainerr-200">
+              {typeLabel}
+            </span>
+            <span className="text-base font-medium text-white">{header}</span>
+          </div>
+          <span className="text-xs text-zinc-400">
+            {mediaServer.reachable
+              ? `${mediaServer.totalItemCount.toLocaleString()} items`
+              : 'Unavailable'}
+          </span>
+        </div>
+
+        {!mediaServer.reachable ? (
+          <p className="mt-2 text-sm text-error-200">
+            {mediaServer.error ??
+              'Media server is not reachable. Check your Settings.'}
+          </p>
+        ) : mediaServer.libraries.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-400">
+            No libraries reported. Add libraries in your media server, then
+            refresh.
+          </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {mediaServer.libraries.map((library) => (
+              <div
+                key={library.id}
+                className="rounded border border-zinc-800 bg-zinc-900/40 p-3"
+              >
+                <div className="flex items-center gap-2 text-sm text-zinc-200">
+                  {library.type === 'movie' ? (
+                    <FilmIcon className="h-4 w-4 text-maintainerr-500" />
+                  ) : (
+                    <DesktopComputerIcon className="h-4 w-4 text-maintainerrdark-500" />
+                  )}
+                  <span className="truncate" title={library.title}>
+                    {library.title}
+                  </span>
+                </div>
+                <div className="mt-1 text-lg font-semibold text-white">
+                  {library.itemCount.toLocaleString()}
+                </div>
+                <div className="text-xs capitalize text-zinc-400">
+                  {library.type === 'movie' ? 'Movies' : 'Shows'}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 interface InstanceCardProps {
   instance: StorageInstanceStatus
   mounts: StorageDiskspaceEntry[]
@@ -355,7 +449,8 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
                 className="rounded border border-zinc-800 bg-zinc-900/40 p-3"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                  <span className="font-mono text-zinc-100">
+                  <span className="flex items-center gap-2 font-mono text-zinc-100">
+                    <FolderIcon className="h-4 w-4 text-info-400" />
                     {mount.path ?? 'Unknown path'}
                   </span>
                   {mount.label ? (
@@ -415,7 +510,7 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
             <tr key={collection.id}>
               <td className="px-3 py-2">
                 <a
-                  className="text-maintainerr-600 hover:text-maintainerrdark-800 hover:underline"
+                  className="text-maintainerr-500 hover:text-maintainerrdark-500 hover:underline"
                   href={`/collections/${collection.id}`}
                 >
                   {collection.title}
@@ -432,11 +527,11 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
               </td>
               <td className="px-3 py-2 text-xs">
                 {collection.isActive ? (
-                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-200">
+                  <span className="rounded bg-success-500/20 px-2 py-0.5 text-success-200">
                     Active
                   </span>
                 ) : (
-                  <span className="rounded bg-zinc-500/20 px-2 py-0.5 text-zinc-300">
+                  <span className="rounded bg-info-500/20 px-2 py-0.5 text-info-200">
                     Inactive
                   </span>
                 )}

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MediaServerModule } from '../api/media-server/media-server.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -11,6 +12,7 @@ import { StorageMetricsService } from './storage-metrics.service';
 @Module({
   imports: [
     ServarrApiModule,
+    MediaServerModule,
     TypeOrmModule.forFeature([
       RadarrSettings,
       SonarrSettings,

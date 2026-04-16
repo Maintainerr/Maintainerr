@@ -17,10 +17,10 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
   const percent = ratio * 100
   const barColor =
     percent >= 90
-      ? 'bg-red-500'
+      ? 'bg-error-500'
       : percent >= 75
-        ? 'bg-amber-500'
-        : 'bg-maintainerr-600'
+        ? 'bg-maintainerr-500'
+        : 'bg-maintainerrdark-500'
 
   return (
     <div>

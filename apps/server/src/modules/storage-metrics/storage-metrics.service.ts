@@ -1,10 +1,14 @@
 import {
   ArrDiskspaceResource,
   MediaItemType,
+  MediaLibrary,
+  MediaServerType,
   normalizeDiskPath,
   StorageCollectionSummary,
   StorageDiskspaceEntry,
   StorageInstanceStatus,
+  StorageMediaServerInfo,
+  StorageMediaServerLibrary,
   StorageMetricsResponse,
   StorageTopCollection,
   StorageTotals,
@@ -12,6 +16,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -28,6 +33,7 @@ interface DedupKey {
 export class StorageMetricsService {
   constructor(
     private readonly servarrService: ServarrService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly logger: MaintainerrLogger,
     @InjectRepository(RadarrSettings)
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
@@ -69,9 +75,10 @@ export class StorageMetricsService {
       ...sonarrSettings,
     ]);
 
-    const [collectionSummary, topCollections] = await Promise.all([
+    const [collectionSummary, topCollections, mediaServer] = await Promise.all([
       this.buildCollectionSummary(),
       this.buildTopCollections(),
+      this.buildMediaServerInfo(),
     ]);
 
     return {
@@ -79,6 +86,7 @@ export class StorageMetricsService {
       totals,
       mounts,
       instances,
+      mediaServer,
       collectionSummary,
       topCollections,
     };
@@ -154,7 +162,6 @@ export class StorageMetricsService {
     }
 
     const seen = new Map<string, StorageDiskspaceEntry>();
-    let accurate = true;
 
     for (const mount of mounts) {
       if (!mount.path) continue;
@@ -178,30 +185,36 @@ export class StorageMetricsService {
 
     let freeSpace = 0;
     let totalSpace = 0;
+    let accurateFreeSpace = 0;
+    let accurateMountCount = 0;
 
     for (const mount of seen.values()) {
       freeSpace += mount.freeSpace;
-      totalSpace += mount.totalSpace;
-      if (!mount.hasAccurateTotalSpace) {
-        accurate = false;
+      if (mount.hasAccurateTotalSpace) {
+        totalSpace += mount.totalSpace;
+        accurateFreeSpace += mount.freeSpace;
+        accurateMountCount += 1;
       }
     }
 
-    const usedSpace = Math.max(totalSpace - freeSpace, 0);
+    const usedSpace = Math.max(totalSpace - accurateFreeSpace, 0);
+    const accurateTotalSpace =
+      seen.size > 0 && accurateMountCount === seen.size && totalSpace > 0;
 
     return {
       freeSpace,
       totalSpace,
       usedSpace,
       mountCount: seen.size,
-      accurateTotalSpace: accurate,
+      accurateMountCount,
+      accurateTotalSpace,
     };
   }
 
   private extractHost(url: string | undefined): string {
     if (!url) return '';
     try {
-      return new URL(url).host.toLowerCase();
+      return new URL(url).hostname.toLowerCase();
     } catch {
       return url.toLowerCase();
     }
@@ -209,6 +222,92 @@ export class StorageMetricsService {
 
   private buildDedupKey(key: DedupKey): string {
     return `${key.host}||${key.path}`;
+  }
+
+  private async buildMediaServerInfo(): Promise<StorageMediaServerInfo> {
+    const empty: StorageMediaServerInfo = {
+      configured: false,
+      serverType: null,
+      serverName: null,
+      reachable: false,
+      error: null,
+      libraries: [],
+      totalItemCount: 0,
+    };
+
+    let service;
+    try {
+      service = await this.mediaServerFactory.getService();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'No media server type configured') {
+        return empty;
+      }
+      this.logger.debug(error);
+      return { ...empty, error: message || 'Media server unavailable' };
+    }
+
+    if (!service.isSetup()) {
+      return { ...empty, configured: true, serverType: service.getServerType() };
+    }
+
+    const serverType = service.getServerType() as MediaServerType;
+    let serverName: string | null = null;
+    try {
+      const status = await service.getStatus();
+      serverName = status?.name ?? null;
+    } catch (error) {
+      this.logger.debug(error);
+    }
+
+    let libraries: MediaLibrary[] = [];
+    try {
+      libraries = await service.getLibraries();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Failed to retrieve media server libraries: ${message}`);
+      return {
+        configured: true,
+        serverType,
+        serverName,
+        reachable: false,
+        error: message,
+        libraries: [],
+        totalItemCount: 0,
+      };
+    }
+
+    const libraryStats: StorageMediaServerLibrary[] = await Promise.all(
+      libraries.map(async (library) => {
+        let itemCount = 0;
+        try {
+          itemCount = await service.getLibraryContentCount(library.id);
+        } catch (error) {
+          this.logger.debug(error);
+        }
+        return {
+          id: library.id,
+          title: library.title,
+          type: library.type,
+          itemCount,
+        };
+      }),
+    );
+
+    const totalItemCount = libraryStats.reduce(
+      (sum, lib) => sum + lib.itemCount,
+      0,
+    );
+
+    return {
+      configured: true,
+      serverType,
+      serverName,
+      reachable: true,
+      error: null,
+      libraries: libraryStats,
+      totalItemCount,
+    };
   }
 
   private async buildCollectionSummary(): Promise<StorageCollectionSummary> {

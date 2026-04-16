@@ -1,4 +1,5 @@
 import type { MediaItemType } from '../media-server/enums'
+import type { MediaServerType } from '../media-server/enums'
 
 export type StorageInstanceType = 'radarr' | 'sonarr'
 
@@ -27,6 +28,7 @@ export interface StorageTotals {
   totalSpace: number
   usedSpace: number
   mountCount: number
+  accurateMountCount: number
   accurateTotalSpace: boolean
 }
 
@@ -51,11 +53,29 @@ export interface StorageTopCollection {
   isActive: boolean
 }
 
+export interface StorageMediaServerLibrary {
+  id: string
+  title: string
+  type: 'movie' | 'show'
+  itemCount: number
+}
+
+export interface StorageMediaServerInfo {
+  configured: boolean
+  serverType: MediaServerType | null
+  serverName: string | null
+  reachable: boolean
+  error: string | null
+  libraries: StorageMediaServerLibrary[]
+  totalItemCount: number
+}
+
 export interface StorageMetricsResponse {
   generatedAt: string
   totals: StorageTotals
   mounts: StorageDiskspaceEntry[]
   instances: StorageInstanceStatus[]
+  mediaServer: StorageMediaServerInfo
   collectionSummary: StorageCollectionSummary
   topCollections: StorageTopCollection[]
 }
