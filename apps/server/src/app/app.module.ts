@@ -26,6 +26,7 @@ import { OverlaysModule } from '../modules/overlays/overlays.module';
 import { RulesModule } from '../modules/rules/rules.module';
 import { SettingsModule } from '../modules/settings/settings.module';
 import { SettingsService } from '../modules/settings/settings.service';
+import { StorageMetricsModule } from '../modules/storage-metrics/storage-metrics.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import ormConfig from './config/typeOrmConfig';
@@ -52,6 +53,7 @@ import ormConfig from './config/typeOrmConfig';
     NotificationsModule,
     EventsModule,
     OverlaysModule,
+    StorageMetricsModule,
     ServeStaticModule.forRootAsync({
       useFactory: () => {
         if (process.env.NODE_ENV !== 'production') {

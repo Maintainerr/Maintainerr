@@ -58,6 +58,9 @@ const collectionExclusionsRoute = createLazyRoute(
   () => import('./pages/CollectionExclusionsPage'),
 )
 const calendarRoute = createLazyRoute(() => import('./pages/CalendarPage'))
+const storageMetricsRoute = createLazyRoute(
+  () => import('./pages/StorageMetricsPage'),
+)
 const collectionInfoRoute = createLazyRoute(
   () => import('./pages/CollectionInfoPage'),
 )
@@ -168,6 +171,11 @@ const appRoutes: AppRoute[] = [
         path: 'calendar',
         lazy: calendarRoute.lazy,
         preload: calendarRoute.preload,
+      },
+      {
+        path: 'storage-metrics',
+        lazy: storageMetricsRoute.lazy,
+        preload: storageMetricsRoute.preload,
       },
       {
         path: 'overlays',
