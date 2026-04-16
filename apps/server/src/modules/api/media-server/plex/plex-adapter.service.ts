@@ -96,6 +96,10 @@ export class PlexAdapterService implements IMediaServerService {
       .map(PlexMapper.toMediaLibrary);
   }
 
+  async getLibrariesStorage(): Promise<Map<string, number>> {
+    return this.plexApi.getLibrariesStorage();
+  }
+
   async getLibraryContents(
     libraryId: string,
     options?: LibraryQueryOptions,

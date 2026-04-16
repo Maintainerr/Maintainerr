@@ -452,6 +452,46 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Uses GET /System/Storage (added in Jellyfin 10.11.0, admin-only).
+   * Returns an empty map when the endpoint is missing (older server) or the
+   * configured user is not an administrator.
+   */
+  async getLibrariesStorage(): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (!this.api) return result;
+
+    try {
+      const response = await getSystemApi(this.api).getSystemStorage();
+      for (const library of response.data.Libraries ?? []) {
+        if (!library.Id) continue;
+        const usedAcrossFolders =
+          library.Folders?.reduce(
+            (sum, folder) => sum + (folder.UsedSpace ?? 0),
+            0,
+          ) ?? 0;
+        if (usedAcrossFolders > 0) {
+          result.set(library.Id, usedAcrossFolders);
+        }
+      }
+    } catch (error) {
+      const status =
+        error instanceof AxiosError ? error.response?.status : undefined;
+      if (status === 404) {
+        this.logger.debug(
+          'Jellyfin /System/Storage not available — server is older than 10.11',
+        );
+      } else if (status === 401 || status === 403) {
+        this.logger.debug(
+          'Jellyfin /System/Storage denied — the configured user is not an administrator',
+        );
+      } else {
+        this.logger.debug(error);
+      }
+    }
+    return result;
+  }
+
   private async itemIsInLibrary(
     itemId: string,
     libraryId: string,

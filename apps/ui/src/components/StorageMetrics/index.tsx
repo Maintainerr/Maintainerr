@@ -386,8 +386,15 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
                 <div className="mt-1 text-lg font-semibold text-white">
                   {library.itemCount.toLocaleString()}
                 </div>
-                <div className="text-xs capitalize text-zinc-400">
-                  {library.type === 'movie' ? 'Movies' : 'Shows'}
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span className="capitalize">
+                    {library.type === 'movie' ? 'Movies' : 'Shows'}
+                  </span>
+                  {library.sizeBytes != null ? (
+                    <span title="Size on disk reported by the media server">
+                      {formatBytes(library.sizeBytes)}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             ))}

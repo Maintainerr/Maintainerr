@@ -58,6 +58,7 @@ export interface StorageMediaServerLibrary {
   title: string
   type: 'movie' | 'show'
   itemCount: number
+  sizeBytes: number | null
 }
 
 export interface StorageMediaServerInfo {

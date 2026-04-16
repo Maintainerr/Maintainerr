@@ -275,6 +275,15 @@ export class StorageMetricsService {
       };
     }
 
+    let storageByLibrary = new Map<string, number>();
+    if (service.getLibrariesStorage) {
+      try {
+        storageByLibrary = await service.getLibrariesStorage();
+      } catch (error) {
+        this.logger.debug(error);
+      }
+    }
+
     const libraryStats: StorageMediaServerLibrary[] = await Promise.all(
       libraries.map(async (library) => {
         let itemCount = 0;
@@ -283,11 +292,13 @@ export class StorageMetricsService {
         } catch (error) {
           this.logger.debug(error);
         }
+        const storedBytes = storageByLibrary.get(library.id);
         return {
           id: library.id,
           title: library.title,
           type: library.type,
           itemCount,
+          sizeBytes: storedBytes ?? null,
         };
       }),
     );
