@@ -19,7 +19,8 @@ jest.mock('fs', () => {
   return { ...actual, existsSync: jest.fn(actual.existsSync) };
 });
 
-const realExistsSync = jest.requireActual('fs').existsSync as typeof fs.existsSync;
+const realExistsSync = jest.requireActual('fs')
+  .existsSync as typeof fs.existsSync;
 const mockedExistsSync = fs.existsSync as jest.MockedFunction<
   typeof fs.existsSync
 >;

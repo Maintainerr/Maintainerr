@@ -30,14 +30,16 @@ describe('OverlayTemplateService', () => {
     ];
 
     const repo = {
-      find: jest.fn().mockImplementation(async ({ where }) =>
-        rows
-          .filter(
-            (row) =>
-              row.mode === where.mode && row.isDefault === where.isDefault,
-          )
-          .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
-      ),
+      find: jest
+        .fn()
+        .mockImplementation(async ({ where }) =>
+          rows
+            .filter(
+              (row) =>
+                row.mode === where.mode && row.isDefault === where.isDefault,
+            )
+            .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+        ),
       update: jest
         .fn()
         .mockImplementation(async (criteria, partial: Partial<Row>) => {
