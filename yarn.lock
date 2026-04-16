@@ -3027,7 +3027,7 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     globals: "npm:^17.5.0"
     nestjs-zod: "npm:^5.3.0"
-    prettier: "npm:^3.8.2"
+    prettier: "npm:^3.8.3"
     reflect-metadata: "npm:^0.2.2"
     rxjs: "npm:^7.8.2"
     typescript: "npm:^5.9.3"
@@ -3091,7 +3091,7 @@ __metadata:
     nodemailer: "npm:8.0.5"
     octokit: "npm:^3.2.2"
     openpgp: "npm:^6.3.0"
-    prettier: "npm:^3.8.2"
+    prettier: "npm:^3.8.3"
     read-last-lines: "npm:^1.8.0"
     reflect-metadata: "npm:^0.2.2"
     rxjs: "npm:^7.8.2"
@@ -3149,7 +3149,7 @@ __metadata:
     lodash-es: "npm:^4.18.1"
     monaco-editor: "npm:0.55.1"
     postcss: "npm:^8.5.10"
-    prettier: "npm:^3.8.2"
+    prettier: "npm:^3.8.3"
     prettier-plugin-tailwindcss: "npm:^0.7.2"
     react: "npm:^19.2.5"
     react-dom: "npm:^19.2.5"
@@ -17426,12 +17426,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.8.2":
-  version: 3.8.2
-  resolution: "prettier@npm:3.8.2"
+"prettier@npm:^3.8.3":
+  version: 3.8.3
+  resolution: "prettier@npm:3.8.3"
   bin:
     prettier: bin/prettier.cjs
-  checksum: 10c0/2d64bd01d269c8dd6d8c423a2a2e1fb88230a53aac523204b327de40059ccf8bd8e6fe70b8ce6154b97ed4442e9fd878504ff8a5330f3a4f64bd13d1576f7652
+  checksum: 10c0/754816fd7593eb80f6376d7476d463e832c38a12f32775a82683adb6e35b772b1f484d65f19401507b983a8c8a7cd5a4a9f12006bd56491e8f35503473f77473
   languageName: node
   linkType: hard
 
