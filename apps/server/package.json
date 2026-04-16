@@ -70,7 +70,7 @@
     "@eslint/js": "^9.39.2",
     "@faker-js/faker": "^9.9.0",
     "@nestjs/cli": "^11.0.21",
-    "@nestjs/schematics": "^11.0.10",
+    "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "^11.1.19",
     "@suites/di.nestjs": "^3.0.1",
     "@suites/doubles.jest": "^3.0.1",
