@@ -186,6 +186,155 @@ describe('PlexAdapterService', () => {
         'show',
       ]);
     });
+
+    it('computes accurate library sizes by traversing Plex movies and show children', async () => {
+      plexApi.getLibraries.mockResolvedValue([
+        createPlexLibrary({
+          key: 'movie-lib',
+          title: 'Movies',
+          type: 'movie',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+        createPlexLibrary({
+          key: 'show-lib',
+          title: 'Shows',
+          type: 'show',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+      ]);
+      plexApi.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [
+            createPlexLibraryItem('movie', {
+              ratingKey: 'movie-1',
+              librarySectionID: 1,
+              librarySectionKey: 'movie-lib',
+              librarySectionTitle: 'Movies',
+              Media: [
+                {
+                  id: 1,
+                  duration: 100,
+                  bitrate: 100,
+                  width: 1920,
+                  height: 1080,
+                  aspectRatio: 1.78,
+                  audioChannels: 2,
+                  audioCodec: 'aac',
+                  videoCodec: 'h264',
+                  videoResolution: '1080',
+                  container: 'mp4',
+                  videoFrameRate: '24p',
+                  videoProfile: 'high',
+                  Part: [{ id: 1, size: 400, container: 'mp4' }],
+                },
+              ],
+            }),
+          ],
+          totalSize: 1,
+        })
+        .mockResolvedValueOnce({
+          items: [
+            createPlexLibraryItem('show', {
+              ratingKey: 'show-1',
+              librarySectionID: 2,
+              librarySectionKey: 'show-lib',
+              librarySectionTitle: 'Shows',
+            }),
+          ],
+          totalSize: 1,
+        });
+      plexApi.getChildrenMetadata
+        .mockResolvedValueOnce([
+          createPlexMetadata({
+            ratingKey: 'season-1',
+            type: 'season',
+            Media: [],
+          }),
+        ])
+        .mockResolvedValueOnce([
+          createPlexMetadata({
+            ratingKey: 'episode-1',
+            type: 'episode',
+            Media: [
+              {
+                id: 2,
+                duration: 50,
+                bitrate: 50,
+                width: 1920,
+                height: 1080,
+                aspectRatio: 1.78,
+                audioChannels: 2,
+                audioCodec: 'aac',
+                videoCodec: 'h264',
+                videoResolution: '1080',
+                container: 'mp4',
+                videoFrameRate: '24p',
+                videoProfile: 'high',
+                Part: [{ id: 2, size: 250, container: 'mp4' }],
+              },
+            ],
+          }),
+        ]);
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([
+          ['movie-lib', 400],
+          ['show-lib', 250],
+        ]),
+      );
+    });
+
+    it('falls back to metadata lookups when Plex library items omit media sizes', async () => {
+      plexApi.getLibraries.mockResolvedValue([
+        createPlexLibrary({
+          key: 'movie-lib',
+          title: 'Movies',
+          type: 'movie',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+      ]);
+      plexApi.getLibraryContents.mockResolvedValue({
+        items: [
+          createPlexLibraryItem('movie', {
+            ratingKey: 'movie-1',
+            librarySectionID: 1,
+            librarySectionKey: 'movie-lib',
+            librarySectionTitle: 'Movies',
+            Media: [],
+          }),
+        ],
+        totalSize: 1,
+      });
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          Media: [
+            {
+              id: 1,
+              duration: 100,
+              bitrate: 100,
+              width: 1920,
+              height: 1080,
+              aspectRatio: 1.78,
+              audioChannels: 2,
+              audioCodec: 'aac',
+              videoCodec: 'h264',
+              videoResolution: '1080',
+              container: 'mp4',
+              videoFrameRate: '24p',
+              videoProfile: 'high',
+              Part: [{ id: 1, size: 321, container: 'mp4' }],
+            },
+          ],
+        }),
+      );
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([['movie-lib', 321]]),
+      );
+      expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1');
+    });
   });
 
   describe('getLibraryContents', () => {

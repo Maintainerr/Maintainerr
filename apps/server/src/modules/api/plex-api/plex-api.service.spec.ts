@@ -255,6 +255,15 @@ describe('PlexApiService.getMetadata', () => {
       'Plex auth token is required for validation',
     );
   });
+
+  it('returns an empty cheap storage map without querying undocumented endpoints', async () => {
+    const queryAll = jest.fn();
+
+    (service as any).plexClient = { queryAll };
+
+    await expect(service.getLibrariesStorage()).resolves.toEqual(new Map());
+    expect(queryAll).not.toHaveBeenCalled();
+  });
 });
 
 describe('PlexApiService.initialize', () => {

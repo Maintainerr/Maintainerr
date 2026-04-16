@@ -14,7 +14,11 @@ import {
   StorageTopCollection,
   StorageTotals,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -113,17 +117,7 @@ export class StorageMetricsService {
       };
     }
 
-    let service: IMediaServerService;
-    try {
-      service = await this.mediaServerFactory.getService();
-    } catch (error) {
-      this.logger.debug(error);
-      return { generatedAt: new Date().toISOString(), sizeBytesByLibrary: {} };
-    }
-
-    if (!service.isSetup()) {
-      return { generatedAt: new Date().toISOString(), sizeBytesByLibrary: {} };
-    }
+    const service = await this.getConfiguredMediaServer();
 
     let sizes = new Map<string, number>();
     try {
@@ -131,6 +125,9 @@ export class StorageMetricsService {
     } catch (error) {
       this.logger.warn('Failed to compute media server library sizes');
       this.logger.debug(error);
+      throw new InternalServerErrorException(
+        'Failed to compute media server library sizes.',
+      );
     }
 
     const sizeBytesByLibrary: Record<string, number> = {};
@@ -278,6 +275,41 @@ export class StorageMetricsService {
     return `${key.host}||${key.path}`;
   }
 
+  private async getConfiguredMediaServer(): Promise<IMediaServerService> {
+    let service: IMediaServerService;
+
+    try {
+      service = await this.mediaServerFactory.getService();
+    } catch (error) {
+      this.logger.debug(error);
+      throw this.toMediaServerUnavailableError(error);
+    }
+
+    if (!service.isSetup()) {
+      throw new ServiceUnavailableException(
+        'Media server is not configured or reachable.',
+      );
+    }
+
+    return service;
+  }
+
+  private toMediaServerUnavailableError(
+    error: unknown,
+  ): ServiceUnavailableException {
+    const message = error instanceof Error ? error.message : '';
+
+    if (message === 'No media server type configured') {
+      return new ServiceUnavailableException(
+        'Configure a media server before computing library sizes.',
+      );
+    }
+
+    return new ServiceUnavailableException(
+      message || 'Media server unavailable',
+    );
+  }
+
   private async buildMediaServerInfo(): Promise<StorageMediaServerInfo> {
     const empty: StorageMediaServerInfo = {
       configured: false,
@@ -336,12 +368,10 @@ export class StorageMetricsService {
     }
 
     let storageByLibrary = new Map<string, number>();
-    if (service.getLibrariesStorage) {
-      try {
-        storageByLibrary = await service.getLibrariesStorage();
-      } catch (error) {
-        this.logger.debug(error);
-      }
+    try {
+      storageByLibrary = await service.getLibrariesStorage();
+    } catch (error) {
+      this.logger.debug(error);
     }
 
     const libraryStats: StorageMediaServerLibrary[] = await Promise.all(

@@ -461,43 +461,11 @@ export class PlexApiService {
   }
 
   /**
-   * Query `/media/providers?includeStorage=1`, which exposes a `storageTotal`
-   * (bytes) per library Directory. Returns a map of library key → bytes.
-   * Returns an empty map on failure or if the server doesn't expose storage.
+   * Plex does not expose a documented native per-library storage total in the
+   * official API. Callers that need accurate sizes must enumerate items.
    */
   public async getLibrariesStorage(): Promise<Map<string, number>> {
-    const result = new Map<string, number>();
-    try {
-      const response = await this.plexClient.queryAll<{
-        MediaContainer?: {
-          MediaProvider?: Array<{
-            Feature?: Array<{
-              Directory?: Array<{
-                id?: string | number;
-                storageTotal?: number;
-              }>;
-            }>;
-          }>;
-        };
-      }>({
-        uri: '/media/providers?includeStorage=1',
-      });
-
-      const providers = response.MediaContainer?.MediaProvider ?? [];
-      for (const provider of providers) {
-        for (const feature of provider.Feature ?? []) {
-          for (const directory of feature.Directory ?? []) {
-            if (directory.id == null || directory.storageTotal == null) {
-              continue;
-            }
-            result.set(String(directory.id), Number(directory.storageTotal));
-          }
-        }
-      }
-    } catch (error) {
-      this.logger.debug(error);
-    }
-    return result;
+    return new Map<string, number>();
   }
 
   public async getLibraryContentCount(

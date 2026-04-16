@@ -453,11 +453,12 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Uses GET /System/Storage (added in Jellyfin 10.11.0, admin-only).
+   * Uses Jellyfin's system storage endpoint (GET /System/Info/Storage,
+   * added in Jellyfin 10.11.0, admin-only).
    * Returns an empty map when the endpoint is missing (older server) or the
-   * configured user is not an administrator. Note that for libraries sharing
-   * the same disk the reported UsedSpace is the drive's used space — accurate
-   * per-library sizes require iterating items (computeLibraryStorageSizes).
+   * configured user is not an administrator. The reported UsedSpace is
+   * device-level usage, so accurate per-library sizes still require
+   * iterating items (computeLibraryStorageSizes).
    */
   async getLibrariesStorage(): Promise<Map<string, number>> {
     const result = new Map<string, number>();
@@ -467,11 +468,22 @@ export class JellyfinAdapterService implements IMediaServerService {
       const response = await getSystemApi(this.api).getSystemStorage();
       for (const library of response.data.Libraries ?? []) {
         if (!library.Id) continue;
-        const usedAcrossFolders =
-          library.Folders?.reduce(
-            (sum, folder) => sum + (folder.UsedSpace ?? 0),
-            0,
-          ) ?? 0;
+        const usedByDevice = new Map<string, number>();
+
+        for (const folder of library.Folders ?? []) {
+          const deviceKey = folder.DeviceId ?? folder.Path;
+          if (!deviceKey || usedByDevice.has(deviceKey)) {
+            continue;
+          }
+
+          usedByDevice.set(deviceKey, folder.UsedSpace ?? 0);
+        }
+
+        const usedAcrossFolders = Array.from(usedByDevice.values()).reduce(
+          (sum, usedSpace) => sum + usedSpace,
+          0,
+        );
+
         if (usedAcrossFolders > 0) {
           result.set(library.Id, usedAcrossFolders);
         }
@@ -481,11 +493,11 @@ export class JellyfinAdapterService implements IMediaServerService {
         error instanceof AxiosError ? error.response?.status : undefined;
       if (status === 404) {
         this.logger.debug(
-          'Jellyfin /System/Storage not available — server is older than 10.11',
+          'Jellyfin /System/Info/Storage not available — server is older than 10.11',
         );
       } else if (status === 401 || status === 403) {
         this.logger.debug(
-          'Jellyfin /System/Storage denied — the configured user is not an administrator',
+          'Jellyfin /System/Info/Storage denied — the configured user is not an administrator',
         );
       } else {
         this.logger.debug(error);

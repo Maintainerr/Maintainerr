@@ -17,6 +17,7 @@ import type {
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler from '../../utils/ApiHandler'
+import { getApiErrorMessage } from '../../utils/ApiError'
 import { formatBytes, formatPercent } from '../../utils/formatBytes'
 import Button from '../Common/Button'
 import LoadingSpinner, { SmallLoadingSpinner } from '../Common/LoadingSpinner'
@@ -346,9 +347,12 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         '/storage-metrics/library-sizes',
       )
       onLibrarySizesComputed(response.sizeBytesByLibrary)
-    } catch {
+    } catch (error) {
       setComputeError(
-        'Failed to compute library sizes. Check that Maintainerr can reach your media server.',
+        getApiErrorMessage(
+          error,
+          'Failed to compute library sizes. Check that Maintainerr can reach your media server.',
+        ),
       )
     } finally {
       setIsComputing(false)

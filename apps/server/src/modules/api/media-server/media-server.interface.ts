@@ -27,7 +27,6 @@ export interface MediaWatchState {
  * Both Plex and Jellyfin adapters must implement this interface.
  *
  * Design notes:
- * - Methods that differ significantly between servers have optional variants
  * - All async methods should handle errors gracefully and log appropriately
  * - Cache management is implementation-specific but exposed via resetMetadataCache
  *
@@ -92,7 +91,7 @@ export interface IMediaServerService {
    * exposes that data. Libraries missing from the map have no size info.
    * Implementations that don't support storage stats return an empty map.
    */
-  getLibrariesStorage?(): Promise<Map<string, number>>;
+  getLibrariesStorage(): Promise<Map<string, number>>;
 
   /**
    * Compute per-library size on disk by enumerating items. Potentially slow
