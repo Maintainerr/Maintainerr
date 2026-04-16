@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler from '../../utils/ApiHandler'
 import { formatBytes, formatPercent } from '../../utils/formatBytes'
 import Button from '../Common/Button'
-import LoadingSpinner from '../Common/LoadingSpinner'
+import LoadingSpinner, { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import Modal from '../Common/Modal'
 import StorageUsageBar from './StorageUsageBar'
 
@@ -338,6 +338,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   const [computeError, setComputeError] = useState<string | null>(null)
 
   const handleConfirm = async () => {
+    setIsConfirmOpen(false)
     setIsComputing(true)
     setComputeError(null)
     try {
@@ -345,7 +346,6 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         '/storage-metrics/library-sizes',
       )
       onLibrarySizesComputed(response.sizeBytesByLibrary)
-      setIsConfirmOpen(false)
     } catch {
       setComputeError(
         'Failed to compute library sizes. Check that Maintainerr can reach your media server.',
@@ -356,9 +356,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   }
 
   const closeConfirm = () => {
-    if (isComputing) return
     setIsConfirmOpen(false)
-    setComputeError(null)
   }
 
   if (!mediaServer.configured) {
@@ -384,8 +382,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
       <h2 className="sm-heading">Media server</h2>
       <p className="description">
         Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees
-        through the server API. Use Compute library sizes for an accurate
-        per-library total — it can take a while.
+        through the server API.
       </p>
 
       <div className="transparent-glass-bg mt-3 rounded-lg border border-zinc-700 p-4">
@@ -401,10 +398,14 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
           <div className="flex items-center gap-3">
             {mediaServer.reachable && mediaServer.libraries.length > 0 ? (
               <Button
-                buttonType="default"
+                buttonType="success"
                 buttonSize="sm"
                 onClick={() => setIsConfirmOpen(true)}
+                disabled={isComputing}
               >
+                {isComputing ? (
+                  <SmallLoadingSpinner className="mr-2 h-4 w-4" />
+                ) : null}
                 Compute library sizes
               </Button>
             ) : null}
@@ -427,38 +428,43 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
             refresh.
           </p>
         ) : (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {mediaServer.libraries.map((library) => (
-              <div
-                key={library.id}
-                className="rounded border border-zinc-800 bg-zinc-900/40 p-3"
-              >
-                <div className="flex items-center gap-2 text-sm text-zinc-200">
-                  {library.type === 'movie' ? (
-                    <FilmIcon className="h-4 w-4 text-maintainerr-500" />
-                  ) : (
-                    <DesktopComputerIcon className="h-4 w-4 text-maintainerrdark-500" />
-                  )}
-                  <span className="truncate" title={library.title}>
-                    {library.title}
-                  </span>
-                </div>
-                <div className="mt-1 text-lg font-semibold text-white">
-                  {library.itemCount.toLocaleString()}
-                </div>
-                <div className="flex items-center justify-between text-xs text-zinc-400">
-                  <span className="capitalize">
-                    {library.type === 'movie' ? 'Movies' : 'Shows'}
-                  </span>
-                  {library.sizeBytes != null ? (
-                    <span title="Size on disk reported by the media server">
-                      {formatBytes(library.sizeBytes)}
+          <>
+            {computeError ? (
+              <p className="mt-2 text-sm text-error-200">{computeError}</p>
+            ) : null}
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {mediaServer.libraries.map((library) => (
+                <div
+                  key={library.id}
+                  className="rounded border border-zinc-800 bg-zinc-900/40 p-3"
+                >
+                  <div className="flex items-center gap-2 text-sm text-zinc-200">
+                    {library.type === 'movie' ? (
+                      <FilmIcon className="h-4 w-4 text-maintainerr-500" />
+                    ) : (
+                      <DesktopComputerIcon className="h-4 w-4 text-maintainerrdark-500" />
+                    )}
+                    <span className="truncate" title={library.title}>
+                      {library.title}
                     </span>
-                  ) : null}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-white">
+                    {library.itemCount.toLocaleString()}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-zinc-400">
+                    <span className="capitalize">
+                      {library.type === 'movie' ? 'Movies' : 'Shows'}
+                    </span>
+                    {library.sizeBytes != null ? (
+                      <span title="Size on disk reported by the media server">
+                        {formatBytes(library.sizeBytes)}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -466,32 +472,24 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         <Modal
           title="Compute library sizes"
           size="md"
-          backgroundClickable={!isComputing}
           onCancel={closeConfirm}
           cancelText="Cancel"
-          loading={isComputing}
           footerActions={
             <Button
               buttonType="primary"
               onClick={() => {
                 void handleConfirm()
               }}
-              disabled={isComputing}
             >
               Run scan
             </Button>
           }
         >
-          <div className="space-y-3">
-            <p>
-              Maintainerr will iterate every movie and episode in your{' '}
-              {typeLabel} libraries to compute an accurate size on disk. This
-              can take a while on large libraries.
-            </p>
-            {computeError ? (
-              <p className="text-sm text-error-200">{computeError}</p>
-            ) : null}
-          </div>
+          <p>
+            Maintainerr will iterate every movie and episode in your {typeLabel}{' '}
+            libraries to compute an accurate size on disk. This can take a while
+            on large libraries.
+          </p>
         </Modal>
       ) : null}
     </section>
