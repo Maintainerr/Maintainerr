@@ -452,6 +452,117 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Uses Jellyfin's system storage endpoint (GET /System/Info/Storage,
+   * added in Jellyfin 10.11.0, admin-only).
+   * Returns an empty map when the endpoint is missing (older server) or the
+   * configured user is not an administrator. The reported UsedSpace is
+   * device-level usage, so accurate per-library sizes still require
+   * iterating items (computeLibraryStorageSizes).
+   */
+  async getLibrariesStorage(): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (!this.api) return result;
+
+    try {
+      const response = await getSystemApi(this.api).getSystemStorage();
+      for (const library of response.data.Libraries ?? []) {
+        if (!library.Id) continue;
+        const usedByDevice = new Map<string, number>();
+
+        for (const folder of library.Folders ?? []) {
+          const deviceKey = folder.DeviceId ?? folder.Path;
+          if (!deviceKey || usedByDevice.has(deviceKey)) {
+            continue;
+          }
+
+          usedByDevice.set(deviceKey, folder.UsedSpace ?? 0);
+        }
+
+        const usedAcrossFolders = Array.from(usedByDevice.values()).reduce(
+          (sum, usedSpace) => sum + usedSpace,
+          0,
+        );
+
+        if (usedAcrossFolders > 0) {
+          result.set(library.Id, usedAcrossFolders);
+        }
+      }
+    } catch (error) {
+      const status =
+        error instanceof AxiosError ? error.response?.status : undefined;
+      if (status === 404) {
+        this.logger.debug(
+          'Jellyfin /System/Info/Storage not available — server is older than 10.11',
+        );
+      } else if (status === 401 || status === 403) {
+        this.logger.debug(
+          'Jellyfin /System/Info/Storage denied — the configured user is not an administrator',
+        );
+      } else {
+        this.logger.debug(error);
+      }
+    }
+    return result;
+  }
+
+  async computeLibraryStorageSizes(): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (!this.api) return result;
+
+    const userId = await this.getUserId();
+    if (!userId) return result;
+
+    const libraries = await this.getLibraries();
+    for (const library of libraries) {
+      result.set(library.id, await this.sumLibraryItemSizes(userId, library));
+    }
+    return result;
+  }
+
+  private async sumLibraryItemSizes(
+    userId: string,
+    library: MediaLibrary,
+  ): Promise<number> {
+    const includeItemTypes =
+      library.type === 'show' ? [BaseItemKind.Episode] : [BaseItemKind.Movie];
+
+    let total = 0;
+    let startIndex = 0;
+    const pageSize = JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE;
+
+    while (true) {
+      let page: Awaited<ReturnType<ReturnType<typeof getItemsApi>['getItems']>>;
+      try {
+        page = await getItemsApi(this.api!).getItems({
+          userId,
+          parentId: library.id,
+          recursive: true,
+          includeItemTypes,
+          fields: [ItemFields.MediaSources],
+          startIndex,
+          limit: pageSize,
+        });
+      } catch (error) {
+        this.logLibraryError(library.id, 'compute library size', error);
+        return total;
+      }
+
+      const items = page.data.Items ?? [];
+      for (const item of items) {
+        for (const source of item.MediaSources ?? []) {
+          total += source.Size ?? 0;
+        }
+      }
+
+      const totalRecordCount = page.data.TotalRecordCount ?? items.length;
+      startIndex += items.length;
+      if (items.length < pageSize || startIndex >= totalRecordCount) break;
+    }
+
+    return total;
+  }
+
   private async itemIsInLibrary(
     itemId: string,
     libraryId: string,

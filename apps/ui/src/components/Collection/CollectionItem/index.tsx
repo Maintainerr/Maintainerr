@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ICollection } from '..'
 import { useLibraryDisplay } from '../../../hooks/useLibraryDisplay'
 import GetApiHandler from '../../../utils/ApiHandler'
+import { formatSizeCompact } from '../../../utils/formatBytes'
 import {
   buildMetadataImagePath,
   isAbsoluteUrl,
@@ -12,15 +13,6 @@ import {
 interface ICollectionItem {
   collection: ICollection
   onClick?: (collection: ICollection) => void
-}
-
-function formatSize(bytes: number | null | undefined): string {
-  if (bytes == null) return 'N/A'
-  const gb = bytes / 1073741824
-  if (gb >= 1) return `${gb.toFixed(1)} GB`
-  const mb = bytes / 1048576
-  if (mb >= 1) return `${mb.toFixed(0)} MB`
-  return '< 1 MB'
 }
 
 const CollectionItem = (props: ICollectionItem) => {
@@ -207,7 +199,7 @@ const CollectionItem = (props: ICollectionItem) => {
               Size
             </p>
             <p className="text-maintainerr">
-              {formatSize(props.collection.totalSizeBytes)}
+              {formatSizeCompact(props.collection.totalSizeBytes)}
             </p>
           </div>
 
