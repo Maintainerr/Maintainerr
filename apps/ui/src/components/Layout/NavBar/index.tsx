@@ -76,7 +76,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         key: '6',
         href: '/storage-metrics',
         svgIcon: <ChartBarIcon className="mr-3 h-6 w-6" />,
-        name: 'Storage Metrics',
+        name: 'Storage',
         matchPattern: /^\/storage-metrics(?:\/.*)?$/,
       },
       {
