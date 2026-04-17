@@ -326,6 +326,10 @@ export class PlexAdapterService implements IMediaServerService {
   }
 
   private async sumLibraryItemSizes(library: MediaLibrary): Promise<number> {
+    if (library.type === 'show') {
+      return this.sumShowLibraryItemSizes(library.id);
+    }
+
     const limit = PLEX_PAGE_SIZE.DEFAULT;
     let offset = 0;
     let total = 0;
@@ -360,14 +364,32 @@ export class PlexAdapterService implements IMediaServerService {
     return total;
   }
 
+  private async sumShowLibraryItemSizes(libraryId: string): Promise<number> {
+    const leaves = await this.plexApi.getLibraryLeaves(libraryId);
+    if (!leaves) {
+      this.logger.warn(
+        `Failed to compute Plex show library size via allLeaves for library ${libraryId}`,
+      );
+      return 0;
+    }
+
+    return this.sumMediaItems(leaves.map(PlexMapper.toMediaItem));
+  }
+
+  private async sumMediaItems(items: MediaItem[]): Promise<number> {
+    let total = 0;
+
+    for (const item of items) {
+      total += await this.sumMediaItemSizes(item);
+    }
+
+    return total;
+  }
+
   private async sumMediaItemSizes(item: MediaItem): Promise<number> {
     const directSize = this.sumMediaSources(item);
     if (directSize > 0) {
       return directSize;
-    }
-
-    if (item.type === 'show' || item.type === 'season') {
-      return this.sumChildMediaItemSizes(item.id);
     }
 
     if (item.type === 'movie' || item.type === 'episode') {
@@ -375,41 +397,6 @@ export class PlexAdapterService implements IMediaServerService {
     }
 
     return 0;
-  }
-
-  private async sumChildMediaItemSizes(parentId: string): Promise<number> {
-    let children: MediaItem[];
-
-    try {
-      children = await this.getChildrenMetadata(parentId);
-    } catch (error) {
-      this.logger.warn(
-        `Failed to load Plex children while computing size for ${parentId}`,
-      );
-      this.logger.debug(error);
-      return 0;
-    }
-
-    let total = 0;
-
-    for (const child of children) {
-      const directSize = this.sumMediaSources(child);
-      if (directSize > 0) {
-        total += directSize;
-        continue;
-      }
-
-      if (child.type === 'show' || child.type === 'season') {
-        total += await this.sumChildMediaItemSizes(child.id);
-        continue;
-      }
-
-      if (child.type === 'movie' || child.type === 'episode') {
-        total += await this.sumMetadataMediaSources(child.id);
-      }
-    }
-
-    return total;
   }
 
   private async sumMetadataMediaSources(itemId: string): Promise<number> {

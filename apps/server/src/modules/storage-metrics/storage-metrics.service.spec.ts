@@ -8,6 +8,18 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { MaintainerrLogger } from '../logging/logs.service';
 import { StorageMetricsService } from './storage-metrics.service';
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+};
+
 describe('StorageMetricsService', () => {
   let service: StorageMetricsService;
   let mediaServerFactory: Mocked<MediaServerFactory>;
@@ -75,6 +87,37 @@ describe('StorageMetricsService', () => {
 
       expect(mediaServer.computeLibraryStorageSizes).toHaveBeenCalledTimes(1);
       expect(second).toEqual(first);
+    });
+
+    it('reuses the in-flight computation for concurrent requests', async () => {
+      const serviceDeferred = createDeferred<IMediaServerService>();
+      mediaServerFactory.getService.mockImplementation(
+        async () => await serviceDeferred.promise,
+      );
+      mediaServer.computeLibraryStorageSizes.mockResolvedValue(
+        new Map([['library-1', 789]]),
+      );
+
+      const first = service.computeMediaServerLibrarySizes();
+      const second = service.computeMediaServerLibrarySizes();
+
+      expect(mediaServerFactory.getService).toHaveBeenCalledTimes(1);
+
+      serviceDeferred.resolve(mediaServer);
+
+      await expect(first).resolves.toEqual(
+        expect.objectContaining({
+          sizeBytesByLibrary: { 'library-1': 789 },
+        }),
+      );
+      await expect(second).resolves.toEqual(
+        expect.objectContaining({
+          sizeBytesByLibrary: { 'library-1': 789 },
+        }),
+      );
+
+      expect(mediaServerFactory.getService).toHaveBeenCalledTimes(1);
+      expect(mediaServer.computeLibraryStorageSizes).toHaveBeenCalledTimes(1);
     });
   });
 });

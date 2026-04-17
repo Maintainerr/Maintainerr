@@ -113,7 +113,6 @@ describe('PlexAdapterService', () => {
       expect(status).toBeDefined();
       expect(status?.machineId).toBe('machine123');
       expect(status?.version).toBe('1.25.0');
-      // Note: name is passed separately to the mapper and is undefined in adapter
       expect(status?.name).toBeUndefined();
     });
   });
@@ -187,7 +186,7 @@ describe('PlexAdapterService', () => {
       ]);
     });
 
-    it('computes accurate library sizes by traversing Plex movies and show children', async () => {
+    it('computes accurate library sizes via section allLeaves for show libraries', async () => {
       plexApi.getLibraries.mockResolvedValue([
         createPlexLibrary({
           key: 'movie-lib',
@@ -234,47 +233,44 @@ describe('PlexAdapterService', () => {
         })
         .mockResolvedValueOnce({
           items: [
-            createPlexLibraryItem('show', {
-              ratingKey: 'show-1',
+            createPlexLibraryItem('movie', {
+              ratingKey: 'unexpected-show-list-item',
               librarySectionID: 2,
               librarySectionKey: 'show-lib',
               librarySectionTitle: 'Shows',
+              Media: [],
             }),
           ],
           totalSize: 1,
         });
-      plexApi.getChildrenMetadata
-        .mockResolvedValueOnce([
-          createPlexMetadata({
-            ratingKey: 'season-1',
-            type: 'season',
-            Media: [],
-          }),
-        ])
-        .mockResolvedValueOnce([
-          createPlexMetadata({
-            ratingKey: 'episode-1',
-            type: 'episode',
-            Media: [
-              {
-                id: 2,
-                duration: 50,
-                bitrate: 50,
-                width: 1920,
-                height: 1080,
-                aspectRatio: 1.78,
-                audioChannels: 2,
-                audioCodec: 'aac',
-                videoCodec: 'h264',
-                videoResolution: '1080',
-                container: 'mp4',
-                videoFrameRate: '24p',
-                videoProfile: 'high',
-                Part: [{ id: 2, size: 250, container: 'mp4' }],
-              },
-            ],
-          }),
-        ]);
+      plexApi.getLibraryLeaves.mockResolvedValue([
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-1',
+          librarySectionID: 2,
+          librarySectionKey: 'show-lib',
+          librarySectionTitle: 'Shows',
+          parentRatingKey: 'season-1',
+          grandparentRatingKey: 'show-1',
+          Media: [
+            {
+              id: 2,
+              duration: 50,
+              bitrate: 50,
+              width: 1920,
+              height: 1080,
+              aspectRatio: 1.78,
+              audioChannels: 2,
+              audioCodec: 'aac',
+              videoCodec: 'h264',
+              videoResolution: '1080',
+              container: 'mp4',
+              videoFrameRate: '24p',
+              videoProfile: 'high',
+              Part: [{ id: 2, size: 250, container: 'mp4' }],
+            },
+          ],
+        }),
+      ]);
 
       await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
         new Map([
@@ -282,6 +278,29 @@ describe('PlexAdapterService', () => {
           ['show-lib', 250],
         ]),
       );
+      expect(plexApi.getLibraryLeaves).toHaveBeenCalledWith('show-lib');
+      expect(plexApi.getChildrenMetadata).not.toHaveBeenCalled();
+    });
+
+    it('returns 0 for a show library when section allLeaves is unavailable', async () => {
+      plexApi.getLibraries.mockResolvedValue([
+        createPlexLibrary({
+          key: 'show-lib',
+          title: 'Shows',
+          type: 'show',
+          agent: 'tv.plex.agents.series',
+        }),
+      ]);
+      plexApi.getLibraryLeaves.mockResolvedValue(undefined);
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([['show-lib', 0]]),
+      );
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to compute Plex show library size via allLeaves for library show-lib',
+      );
+      expect(plexApi.getLibraryContents).not.toHaveBeenCalled();
+      expect(plexApi.getChildrenMetadata).not.toHaveBeenCalled();
     });
 
     it('falls back to metadata lookups when Plex library items omit media sizes', async () => {

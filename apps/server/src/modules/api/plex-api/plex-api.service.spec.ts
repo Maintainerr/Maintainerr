@@ -264,6 +264,23 @@ describe('PlexApiService.getMetadata', () => {
     await expect(service.getLibrariesStorage()).resolves.toEqual(new Map());
     expect(queryAll).not.toHaveBeenCalled();
   });
+
+  it('requests section allLeaves when retrieving Plex show library leaves', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [] },
+    });
+
+    (service as any).plexClient = { queryAll };
+
+    await service.getLibraryLeaves('7');
+
+    expect(queryAll).toHaveBeenCalledWith(
+      {
+        uri: '/library/sections/7/allLeaves?includeGuids=1',
+      },
+      true,
+    );
+  });
 });
 
 describe('PlexApiService.initialize', () => {

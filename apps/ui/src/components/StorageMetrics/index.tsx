@@ -16,8 +16,9 @@ import type {
   StorageTopCollection,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
-import GetApiHandler from '../../utils/ApiHandler'
+import { Link } from 'react-router-dom'
 import { getApiErrorMessage } from '../../utils/ApiError'
+import GetApiHandler from '../../utils/ApiHandler'
 import { formatBytes, formatPercent } from '../../utils/formatBytes'
 import Button from '../Common/Button'
 import LoadingSpinner, { SmallLoadingSpinner } from '../Common/LoadingSpinner'
@@ -421,6 +422,13 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
           </div>
         </div>
 
+        {mediaServer.reachable && mediaServer.libraries.length > 0 ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            Sizes approximate on-disk bytes and may not fully reflect hardlinks,
+            sparse files, or filesystem snapshots.
+          </p>
+        ) : null}
+
         {!mediaServer.reachable ? (
           <p className="mt-2 text-sm text-error-200">
             {mediaServer.error ??
@@ -491,8 +499,12 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         >
           <p>
             Maintainerr will iterate every movie and episode in your {typeLabel}{' '}
-            libraries to compute an accurate size on disk. This can take a while
-            on large libraries.
+            libraries to estimate size on disk. This can take a while on large
+            libraries.
+          </p>
+          <p className="mt-3 text-sm text-zinc-300">
+            Sizes approximate on-disk bytes and may not fully reflect hardlinks,
+            sparse files, or filesystem snapshots.
           </p>
         </Modal>
       ) : null}
@@ -602,12 +614,12 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
           {collections.map((collection) => (
             <tr key={collection.id}>
               <td className="px-3 py-2">
-                <a
+                <Link
                   className="text-maintainerr-500 hover:text-maintainerrdark-500 hover:underline"
-                  href={`/collections/${collection.id}`}
+                  to={`/collections/${collection.id}`}
                 >
                   {collection.title}
-                </a>
+                </Link>
               </td>
               <td className="px-3 py-2 capitalize text-zinc-300">
                 {collection.type}

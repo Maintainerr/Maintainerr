@@ -30,8 +30,23 @@ export const formatSizeCompact = (bytes: number | null | undefined): string => {
   return '< 1 MB'
 }
 
+export const getPercentValue = (
+  value: number,
+  total: number,
+  { clamp = false }: { clamp?: boolean } = {},
+): number | null => {
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
+    return null
+  }
+
+  const percent = (value / total) * 100
+  if (!clamp) return percent
+
+  return Math.min(Math.max(percent, 0), 100)
+}
+
 export const formatPercent = (used: number, total: number): string => {
-  if (total <= 0) return '—'
-  const percent = (used / total) * 100
+  const percent = getPercentValue(used, total)
+  if (percent === null) return '—'
   return `${percent.toFixed(1)}%`
 }

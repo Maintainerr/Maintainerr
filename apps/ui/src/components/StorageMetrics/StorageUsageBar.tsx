@@ -1,4 +1,8 @@
-import { formatBytes, formatPercent } from '../../utils/formatBytes'
+import {
+  formatBytes,
+  formatPercent,
+  getPercentValue,
+} from '../../utils/formatBytes'
 
 interface StorageUsageBarProps {
   used: number
@@ -13,8 +17,7 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
   free,
   accurateTotalSpace,
 }) => {
-  const ratio = total > 0 ? Math.min(used / total, 1) : 0
-  const percent = ratio * 100
+  const percent = getPercentValue(used, total, { clamp: true }) ?? 0
   const barColor =
     percent >= 90
       ? 'bg-error-500'

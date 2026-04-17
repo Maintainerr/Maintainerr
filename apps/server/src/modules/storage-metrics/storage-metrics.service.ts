@@ -46,6 +46,8 @@ interface LibrarySizesCacheEntry {
 @Injectable()
 export class StorageMetricsService {
   private librarySizesCache: LibrarySizesCacheEntry | null = null;
+  private librarySizesComputation: Promise<StorageLibrarySizesResponse> | null =
+    null;
 
   constructor(
     private readonly servarrService: ServarrService,
@@ -117,32 +119,47 @@ export class StorageMetricsService {
       };
     }
 
-    const service = await this.getConfiguredMediaServer();
+    if (this.librarySizesComputation !== null) {
+      return this.librarySizesComputation;
+    }
 
-    let sizes = new Map<string, number>();
+    this.librarySizesComputation =
+      this.computeAndCacheMediaServerLibrarySizes();
+
+    return this.librarySizesComputation;
+  }
+
+  private async computeAndCacheMediaServerLibrarySizes(): Promise<StorageLibrarySizesResponse> {
     try {
-      sizes = await service.computeLibraryStorageSizes();
-    } catch (error) {
-      this.logger.warn('Failed to compute media server library sizes');
-      this.logger.debug(error);
-      throw new InternalServerErrorException(
-        'Failed to compute media server library sizes.',
-      );
+      const service = await this.getConfiguredMediaServer();
+
+      let sizes = new Map<string, number>();
+      try {
+        sizes = await service.computeLibraryStorageSizes();
+      } catch (error) {
+        this.logger.warn('Failed to compute media server library sizes');
+        this.logger.debug(error);
+        throw new InternalServerErrorException(
+          'Failed to compute media server library sizes.',
+        );
+      }
+
+      const sizeBytesByLibrary: Record<string, number> = {};
+      for (const [id, bytes] of sizes) {
+        sizeBytesByLibrary[id] = bytes;
+      }
+
+      const generatedAt = new Date().toISOString();
+      this.librarySizesCache = {
+        generatedAt,
+        sizeBytesByLibrary,
+        expiresAt: Date.now() + LIBRARY_SIZES_CACHE_TTL_MS,
+      };
+
+      return { generatedAt, sizeBytesByLibrary };
+    } finally {
+      this.librarySizesComputation = null;
     }
-
-    const sizeBytesByLibrary: Record<string, number> = {};
-    for (const [id, bytes] of sizes) {
-      sizeBytesByLibrary[id] = bytes;
-    }
-
-    const generatedAt = new Date().toISOString();
-    this.librarySizesCache = {
-      generatedAt,
-      sizeBytesByLibrary,
-      expiresAt: now + LIBRARY_SIZES_CACHE_TTL_MS,
-    };
-
-    return { generatedAt, sizeBytesByLibrary };
   }
 
   private async fetchInstanceMounts(

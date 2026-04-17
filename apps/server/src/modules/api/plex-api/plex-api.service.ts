@@ -529,6 +529,28 @@ export class PlexApiService {
     }
   }
 
+  public async getLibraryLeaves(
+    id: string,
+    useCache: boolean = true,
+  ): Promise<PlexLibraryItem[]> {
+    try {
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${id}/allLeaves?includeGuids=1`,
+        },
+        useCache,
+      );
+
+      return (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [];
+    } catch (error) {
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   public async searchLibraryContents(
     id: string,
     query: string,
