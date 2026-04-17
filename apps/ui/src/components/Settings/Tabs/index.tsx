@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { prefetchRoute } from '../../../router'
+import { Select } from '../../Forms/Select'
 import { showMediaServerSetupRequiredToast } from '../../Layout/MediaServerSetupGuard'
 
 export interface SettingsRoute {
@@ -113,7 +114,7 @@ const SettingsTabs: React.FC<{
         <label htmlFor="tabs" className="sr-only">
           Select a Tab
         </label>
-        <select
+        <Select
           value={currentRoute}
           onFocus={() => {
             if (currentRoute) {
@@ -158,7 +159,7 @@ const SettingsTabs: React.FC<{
               {route.text}
             </SettingsLink>
           ))}
-        </select>
+        </Select>
       </div>
       {tabType === 'button' ? (
         <div className="hidden sm:block">

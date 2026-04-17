@@ -1,6 +1,7 @@
 import { type MediaItem } from '@maintainerr/contracts'
 import { useCallback } from 'react'
 import { ICollection } from '../..'
+import CollectionDetailControlRow from '../CollectionDetailControlRow'
 import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import {
@@ -13,6 +14,8 @@ import OverviewContent from '../../../Overview/Content'
 interface ICollectionExclusions {
   collection: ICollection
   libraryId: string
+  canTestMedia: boolean
+  onOpenTestMedia: () => void
 }
 
 export interface IExclusionMedia {
@@ -97,7 +100,10 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
 
   return (
     <div className="w-full">
-      <div className="mb-5 w-full sm:max-w-sm">
+      <CollectionDetailControlRow
+        canTestMedia={props.canTestMedia}
+        onOpenTestMedia={props.onOpenTestMedia}
+      >
         <MediaLibrarySortControl
           ariaLabel="Sort collection exclusions"
           options={sortConfig.options}
@@ -105,7 +111,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
           onSortChange={handleSortChange}
           isLoading={showRefreshing}
         />
-      </div>
+      </CollectionDetailControlRow>
 
       <OverviewContent
         dataFinished={true}
@@ -125,4 +131,5 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     </div>
   )
 }
+
 export default CollectionExcludions

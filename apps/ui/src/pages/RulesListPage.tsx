@@ -8,6 +8,7 @@ import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
 import LibrarySwitcher from '../components/Common/LibrarySwitcher'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import PageControlRow from '../components/Common/PageControlRow'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
 import { useRequestGeneration } from '../hooks/useRequestGeneration'
@@ -91,42 +92,48 @@ const RulesListPage = () => {
   return (
     <>
       <title>Rules - Maintainerr</title>
-      <div className="w-full">
-        <LibrarySwitcher
-          onLibraryChange={onSwitchLibrary}
-          selectedLibraryId={selectedLibrary}
-          libraries={libraries}
-          librariesLoading={librariesLoading}
-          librariesError={!!librariesError}
-        />
-
-        <div className="m-auto mb-3 flex">
-          <div className="ml-auto sm:ml-0">
-            <AddButton onClick={() => navigate('/rules/new')} text="New Rule" />
-          </div>
-          <div className="ml-2 mr-auto sm:mr-0">
-            <ExecuteButton
-              onClick={() => {
-                if (ruleHandlerRunning) {
-                  stopAllExecution()
-                } else {
-                  sync()
-                }
-              }}
-              text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
-              executing={ruleHandlerRunning}
+      <div className="w-full px-4">
+        <PageControlRow
+          actions={
+            <>
+              <AddButton
+                onClick={() => navigate('/rules/new')}
+                text="New Rule"
+              />
+              <ExecuteButton
+                onClick={() => {
+                  if (ruleHandlerRunning) {
+                    stopAllExecution()
+                  } else {
+                    sync()
+                  }
+                }}
+                text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
+                executing={ruleHandlerRunning}
+              />
+            </>
+          }
+          controls={
+            <LibrarySwitcher
+              containerClassName="mb-0"
+              formClassName="max-w-none"
+              onLibraryChange={onSwitchLibrary}
+              selectedLibraryId={selectedLibrary}
+              libraries={libraries}
+              librariesLoading={librariesLoading}
+              librariesError={!!librariesError}
             />
-          </div>
-        </div>
+          }
+        />
         <h1 className="mb-3 text-lg font-bold text-zinc-200">Rules</h1>
         {isLoading ? (
           <LoadingSpinner />
         ) : (
-          <ul className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] xs:gap-4">
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
             {data.map((el) => (
               <li
                 key={el.id}
-                className="collection relative mb-5 flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
+                className="collection relative flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
               >
                 <RuleGroup
                   onDelete={refreshData}

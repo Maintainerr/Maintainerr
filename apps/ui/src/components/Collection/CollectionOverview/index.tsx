@@ -6,6 +6,7 @@ import LibrarySwitcher from '../../Common/LibrarySwitcher'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
+import PageControlRow from '../../Common/PageControlRow'
 import CollectionItem from '../CollectionItem'
 
 interface ICollectionOverview {
@@ -30,25 +31,28 @@ const CollectionOverview = (props: ICollectionOverview) => {
   const showRefreshing = props.isLoading && hasCollections
 
   return (
-    <div>
-      <LibrarySwitcher
-        onLibraryChange={props.onSwitchLibrary}
-        selectedLibraryId={props.selectedLibraryId}
-        libraries={libraries}
-        librariesLoading={librariesLoading}
-        librariesError={!!librariesError}
-      />
-
-      <div className="m-auto mb-3 flex">
-        <div className="m-auto sm:m-0">
+    <div className="w-full px-4">
+      <PageControlRow
+        actions={
           <ExecuteButton
             onClick={props.doActions}
             text="Handle Collections"
             executing={collectionHandlerRunning}
             disabled={collectionHandlerRunning}
           />
-        </div>
-      </div>
+        }
+        controls={
+          <LibrarySwitcher
+            containerClassName="mb-0"
+            formClassName="max-w-none"
+            onLibraryChange={props.onSwitchLibrary}
+            selectedLibraryId={props.selectedLibraryId}
+            libraries={libraries}
+            librariesLoading={librariesLoading}
+            librariesError={!!librariesError}
+          />
+        }
+      />
 
       <div className="w-full">
         <div className="m-auto mb-3 flex items-center justify-between gap-3">
@@ -68,12 +72,12 @@ const CollectionOverview = (props: ICollectionOverview) => {
         ) : hasCollections ? (
           <ul
             aria-busy={props.isLoading}
-            className="xs:grid xs:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] xs:gap-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))]"
           >
             {props.collections?.map((col, index) => (
               <li
                 key={col.id ?? index}
-                className="collection relative mb-5 flex h-fit transform-gpu flex-col overflow-hidden rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700 xs:w-full sm:mb-0 sm:mr-5"
+                className="collection relative flex h-fit transform-gpu flex-col overflow-hidden rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
               >
                 <CollectionItem
                   collection={col}

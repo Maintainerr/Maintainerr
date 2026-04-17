@@ -1,36 +1,74 @@
+import { ChevronDownIcon } from '@heroicons/react/solid'
 import clsx from 'clsx'
 import { ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
+
+const selectClassNames = {
+  base: 'block h-10 w-full min-w-0 flex-1 appearance-none rounded-md border border-zinc-600 bg-zinc-600 px-3 text-left text-white shadow-none transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
+  leadingAdornment:
+    'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-600 bg-zinc-600 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
+  joinedLeft: 'rounded-l-only rounded-r-none border-r-0',
+  joinedRight: 'rounded-r-only border-l-0',
+} as const
 
 export type SelectProps = {
   children?: ReactNode
   className?: string
   error?: boolean
+  join?: 'left' | 'right'
 } & SelectHTMLAttributes<HTMLSelectElement>
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, children, error, required, ...props }: SelectProps, ref) => {
+  (
+    { className, children, error, join, required, ...props }: SelectProps,
+    ref,
+  ) => {
+    const showChevron = !props.multiple && props.size == null
+
     return (
-      <select
-        {...props}
-        ref={ref}
-        className={clsx(
-          'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm transition duration-150 ease-in-out disabled:opacity-50 sm:text-sm sm:leading-5',
-          {
-            '!border-error-500 outline-error-500 focus:border-error-500 focus:outline-none focus:ring-0':
-              !props.disabled && error,
+      <div className="relative w-full">
+        <select
+          {...props}
+          ref={ref}
+          className={clsx(
+            selectClassNames.base,
+            showChevron && 'pr-9',
+            join === 'left' && selectClassNames.joinedLeft,
+            join === 'right' && selectClassNames.joinedRight,
+            !props.disabled &&
+              error &&
+              '!border-error-500 outline-error-500 focus:border-error-500 focus:ring-0',
             className,
-          },
-        )}
-        aria-required={required}
-        aria-invalid={error}
-      >
-        {children}
-      </select>
+          )}
+          aria-required={required}
+          aria-invalid={error}
+        >
+          {children}
+        </select>
+        {showChevron ? (
+          <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+        ) : null}
+      </div>
     )
   },
 )
 
 Select.displayName = 'Select'
+
+type SelectAdornmentProps = {
+  children?: ReactNode
+  className?: string
+}
+
+export const SelectAdornment = ({
+  children,
+  className,
+}: SelectAdornmentProps) => {
+  return (
+    <span className={clsx(selectClassNames.leadingAdornment, className)}>
+      {children}
+    </span>
+  )
+}
 
 type SelectGroupProps = {
   name: string

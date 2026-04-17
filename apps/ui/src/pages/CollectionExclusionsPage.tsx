@@ -1,18 +1,17 @@
 import { useOutletContext } from 'react-router-dom'
-import { ICollection } from '../components/Collection'
 import CollectionExclusions from '../components/Collection/CollectionDetail/Exclusions'
-
-interface CollectionContextType {
-  collection: ICollection
-}
+import type { CollectionDetailOutletContext } from './CollectionDetailPage'
 
 const CollectionExclusionsPage = () => {
-  const { collection } = useOutletContext<CollectionContextType>()
+  const { collection, canTestMedia, openMediaTestModal } =
+    useOutletContext<CollectionDetailOutletContext>()
 
   return (
     <CollectionExclusions
       collection={collection}
       libraryId={collection.libraryId}
+      canTestMedia={canTestMedia}
+      onOpenTestMedia={openMediaTestModal}
     />
   )
 }

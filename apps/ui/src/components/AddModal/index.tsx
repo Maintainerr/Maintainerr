@@ -1,13 +1,16 @@
 import { MediaItemType } from '@maintainerr/contracts'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import Alert from '../Common/Alert'
 import Button from '../Common/Button'
 import FormItem from '../Common/FormItem'
 import Modal from '../Common/Modal'
+import { Select } from '../Forms/Select'
 import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 
 const AddModal = (props: IAddModal) => {
+  const queryClient = useQueryClient()
   const [selectedCollection, setSelectedCollection] = useState<
     number | string
   >()
@@ -90,6 +93,10 @@ const AddModal = (props: IAddModal) => {
             collectionId: currentCollectionId,
             action: selectedAction,
           })
+
+          await queryClient.invalidateQueries({
+            queryKey: ['calendar', 'collections', 'overlay-data'],
+          })
         } else {
           await PostApiHandler('/rules/exclusion', {
             mediaId: props.mediaServerId,
@@ -120,6 +127,10 @@ const AddModal = (props: IAddModal) => {
           context: { id: -1, type: props.type },
           collectionId: undefined,
           action: 1,
+        })
+
+        await queryClient.invalidateQueries({
+          queryKey: ['calendar', 'collections', 'overlay-data'],
         })
       }
       props.onSubmit()
@@ -260,7 +271,7 @@ const AddModal = (props: IAddModal) => {
 
         <div className="mt-6">
           <FormItem label="Action">
-            <select
+            <Select
               name={`Action-field`}
               id={`Action-field`}
               value={selectedAction}
@@ -270,13 +281,13 @@ const AddModal = (props: IAddModal) => {
             >
               <option value={0}>Add</option>
               <option value={1}>Remove</option>
-            </select>
+            </Select>
           </FormItem>
 
           {/* For shows */}
           {props.type === 'show' ? (
             <FormItem label="Seasons">
-              <select
+              <Select
                 name={`Seasons-field`}
                 id={`Seasons-field`}
                 value={selectedSeasons}
@@ -300,13 +311,13 @@ const AddModal = (props: IAddModal) => {
                     </option>
                   )
                 })}
-              </select>
+              </Select>
             </FormItem>
           ) : undefined}
           {/* For shows and specific seasons */}
           {props.type === 'show' && selectedSeasons !== -1 ? (
             <FormItem label="Episodes">
-              <select
+              <Select
                 name={`Episodes-field`}
                 id={`Episodes-field`}
                 value={selectedEpisodes}
@@ -323,12 +334,12 @@ const AddModal = (props: IAddModal) => {
                     </option>
                   )
                 })}
-              </select>
+              </Select>
             </FormItem>
           ) : undefined}
 
           <FormItem label="Collection">
-            <select
+            <Select
               name={`Collection-field`}
               id={`Collection-field`}
               value={currentCollectionId}
@@ -343,7 +354,7 @@ const AddModal = (props: IAddModal) => {
                   </option>
                 )
               })}
-            </select>
+            </Select>
           </FormItem>
         </div>
 

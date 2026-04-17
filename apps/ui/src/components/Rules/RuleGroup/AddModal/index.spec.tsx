@@ -15,6 +15,8 @@ describe('ruleGroupFormSchema', () => {
       tautulliWatchedPercentOverride: undefined,
       showRecommended: true,
       showHome: true,
+      overlayEnabled: false,
+      overlayTemplateId: null,
       listExclusions: true,
       forceSeerr: false,
       manualCollection: false,
@@ -44,6 +46,8 @@ describe('ruleGroupFormSchema', () => {
       tautulliWatchedPercentOverride: undefined,
       showRecommended: true,
       showHome: true,
+      overlayEnabled: false,
+      overlayTemplateId: null,
       listExclusions: true,
       forceSeerr: false,
       manualCollection: false,
@@ -64,9 +68,9 @@ describe('ruleGroupFormSchema', () => {
       return
     }
 
-    expect(result.error.flatten().fieldErrors.radarrQualityProfileId).toContain(
+    expect(result.error.flatten().fieldErrors.radarrQualityProfileId).toEqual([
       'Quality profile is required for this action',
-    )
+    ])
   })
 
   it('does not show the stored-library fallback while libraries are still loading', () => {

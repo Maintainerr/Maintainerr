@@ -14,16 +14,18 @@ import {
   Application,
   MediaItemType,
   MediaLibrary,
+  OverlayTemplate,
   ServarrAction,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
-import { lazy, useState, useSyncExternalStore } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { lazy, useEffect, useState, useSyncExternalStore } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { z } from 'zod'
 import { IRuleGroup } from '..'
 import { useMediaServerLibraries } from '../../../../api/media-server'
+import { getOverlayTemplates } from '../../../../api/overlays'
 import {
   RuleGroupCreatePayload,
   useCreateRuleGroup,
@@ -38,6 +40,8 @@ import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import { Input } from '../../../Forms/Input'
+import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
@@ -284,6 +288,8 @@ export const ruleGroupFormSchema = z
       .optional(),
     showRecommended: z.boolean(),
     showHome: z.boolean(),
+    overlayEnabled: z.boolean(),
+    overlayTemplateId: z.number().int().nullable().optional(),
     listExclusions: z.boolean(),
     forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
@@ -364,6 +370,8 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     editData?.collection?.tautulliWatchedPercentOverride ?? undefined,
   showRecommended: editData?.collection?.visibleOnRecommended ?? true,
   showHome: editData?.collection?.visibleOnHome ?? true,
+  overlayEnabled: editData?.collection?.overlayEnabled ?? false,
+  overlayTemplateId: editData?.collection?.overlayTemplateId ?? null,
   listExclusions: editData?.collection?.listExclusions ?? true,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
@@ -434,6 +442,11 @@ const AddModal = (props: AddModal) => {
     control,
     name: 'manualCollection',
   })
+  const overlayEnabled = useWatch({ control, name: 'overlayEnabled' })
+  const overlayTemplateId = useWatch({
+    control,
+    name: 'overlayTemplateId',
+  }) as number | null | undefined
   const useRulesEnabled = useWatch({ control, name: 'useRules' })
   const arrActionValue = useWatch({ control, name: 'arrAction' }) as
     | number
@@ -475,6 +488,15 @@ const AddModal = (props: AddModal) => {
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
+  const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>(
+    [],
+  )
+
+  const overlayTemplateMode =
+    selectedType === 'episode' ? 'titlecard' : 'poster'
+  const availableOverlayTemplates = overlayTemplates.filter(
+    (template) => template.mode === overlayTemplateMode,
+  )
 
   const {
     data: libraries,
@@ -494,6 +516,28 @@ const AddModal = (props: AddModal) => {
   )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
+
+  useEffect(() => {
+    void getOverlayTemplates().then((templates) => {
+      if (templates) {
+        setOverlayTemplates(templates)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (overlayTemplateId == null) {
+      return
+    }
+
+    const hasMatchingTemplate = availableOverlayTemplates.some(
+      (template) => template.id === overlayTemplateId,
+    )
+
+    if (!hasMatchingTemplate) {
+      setValue('overlayTemplateId', null)
+    }
+  }, [availableOverlayTemplates, overlayTemplateId, setValue])
 
   // Scroll detection without useEffect
   const atBottom = useSyncExternalStore(
@@ -706,6 +750,8 @@ const AddModal = (props: AddModal) => {
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
+        overlayEnabled: data.overlayEnabled,
+        overlayTemplateId: data.overlayTemplateId ?? null,
         deleteAfterDays:
           data.arrAction === undefined ||
           data.arrAction === ServarrAction.DO_NOTHING ||
@@ -826,11 +872,7 @@ const AddModal = (props: AddModal) => {
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
-                        <input
-                          id="name"
-                          type="text"
-                          {...register('name')}
-                        ></input>
+                        <Input id="name" type="text" {...register('name')} />
                       </div>
                       {errors.name && (
                         <p className="mt-1 text-xs text-error-400">
@@ -864,7 +906,7 @@ const AddModal = (props: AddModal) => {
                         {(() => {
                           const field = register('libraryId')
                           return (
-                            <select
+                            <Select
                               id="library"
                               {...field}
                               onChange={(event) => {
@@ -887,7 +929,7 @@ const AddModal = (props: AddModal) => {
                                   </option>
                                 )
                               })}
-                            </select>
+                            </Select>
                           )
                         })()}
                       </div>
@@ -952,7 +994,7 @@ const AddModal = (props: AddModal) => {
                             {(() => {
                               const field = register('dataType')
                               return (
-                                <select
+                                <Select
                                   id="type"
                                   {...field}
                                   onChange={(event) => {
@@ -970,7 +1012,7 @@ const AddModal = (props: AddModal) => {
                                       </option>
                                     ),
                                   )}
-                                </select>
+                                </Select>
                               )
                             })()}
                           </div>
@@ -1041,7 +1083,7 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field">
-                            <input
+                            <Input
                               type="number"
                               id="collection_deleteDays"
                               {...register('deleteAfterDays')}
@@ -1134,6 +1176,84 @@ const AddModal = (props: AddModal) => {
                             </div>
                           </div>
                         </div>
+
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="overlay_enabled"
+                            className="text-label"
+                          >
+                            Enable overlays
+                            <p className="text-xs font-normal">
+                              Apply date overlays to posters in this{' '}
+                              {collectionTerm}
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="overlay_enabled"
+                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                {...register('overlayEnabled')}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {overlayEnabled && (
+                          <div className="form-row items-center">
+                            <label
+                              htmlFor="overlay_template_id"
+                              className="text-label"
+                            >
+                              Overlay template
+                              <p className="text-xs font-normal">
+                                Leave unset to use the default{' '}
+                                {overlayTemplateMode === 'titlecard'
+                                  ? 'title card'
+                                  : 'poster'}{' '}
+                                template
+                              </p>
+                            </label>
+                            <div className="form-input">
+                              <div className="form-input-field">
+                                <Controller
+                                  name="overlayTemplateId"
+                                  control={control}
+                                  render={({ field }) => (
+                                    <select
+                                      id="overlay_template_id"
+                                      value={field.value ?? ''}
+                                      onChange={(event) => {
+                                        const value = event.target.value
+                                        field.onChange(
+                                          value === '' ? null : Number(value),
+                                        )
+                                      }}
+                                    >
+                                      <option value="">
+                                        Default {overlayTemplateMode} template
+                                      </option>
+                                      {availableOverlayTemplates.map(
+                                        (template) => (
+                                          <option
+                                            key={template.id}
+                                            value={template.id}
+                                          >
+                                            {template.name}
+                                            {template.isDefault
+                                              ? ' (default)'
+                                              : ''}
+                                          </option>
+                                        ),
+                                      )}
+                                    </select>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -1248,7 +1368,7 @@ const AddModal = (props: AddModal) => {
 
                       <div className="py-2">
                         <div className="form-input-field">
-                          <input
+                          <Input
                             type="text"
                             id="manual_collection_name"
                             placeholder={`My custom ${collectionTerm}`}
@@ -1308,7 +1428,7 @@ const AddModal = (props: AddModal) => {
                       </label>
                       <div className="form-input">
                         <div className="form-input-field flex w-32 flex-col">
-                          <input
+                          <Input
                             type="number"
                             id="collection_logs_months"
                             min={0}
@@ -1336,7 +1456,7 @@ const AddModal = (props: AddModal) => {
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-full">
-                          <input
+                          <Input
                             type="text"
                             id="sort_title"
                             placeholder={`e.g., 001 My ${collectionTermCapitalized}`}
@@ -1361,7 +1481,7 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field flex w-32 flex-col">
-                            <input
+                            <Input
                               type="number"
                               min={0}
                               max={100}
@@ -1398,7 +1518,7 @@ const AddModal = (props: AddModal) => {
                       </label>
                       <div className="form-input">
                         <div className="form-input-field flex w-32 flex-col">
-                          <input
+                          <Input
                             type="text"
                             id="rule_handler_cron_schedule"
                             {...register('ruleHandlerCronSchedule')}

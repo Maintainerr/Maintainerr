@@ -1,4 +1,5 @@
 import { useQualityProfiles } from '../../../../api/servarr'
+import { Select } from '../../../Forms/Select'
 
 interface QualityProfileSelectorProps {
   type: 'Radarr' | 'Sonarr'
@@ -27,7 +28,7 @@ const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
       </label>
       <div className="form-input">
         <div className="form-input-field">
-          <select
+          <Select
             name={`${props.type}-quality-profile`}
             id={`${props.type}-quality-profile`}
             value={selectedProfile}
@@ -51,7 +52,7 @@ const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
                 Loading profiles...
               </option>
             )}
-          </select>
+          </Select>
         </div>
         {props.error && (
           <p className="mt-1 text-xs text-error-400">{props.error}</p>

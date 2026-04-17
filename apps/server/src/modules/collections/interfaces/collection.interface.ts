@@ -32,4 +32,6 @@ export interface ICollection {
   radarrQualityProfileId?: number;
   sonarrQualityProfileId?: number;
   sortTitle?: string;
+  overlayEnabled?: boolean;
+  overlayTemplateId?: number | null;
 }

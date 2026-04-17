@@ -5,6 +5,18 @@ FROM base AS builder
 
 WORKDIR /app
 
+# Native dependencies for node-canvas (cairo) and sharp (vips)
+RUN apk add --no-cache \
+    build-base \
+    python3 \
+    pkgconfig \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    pixman-dev \
+    librsvg-dev
+
 RUN corepack enable
 
 # Copy only files needed to resolve/install dependencies first (better Docker layer caching)
@@ -48,6 +60,9 @@ COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/node_modules 
 # copy UI output to API to be served statically
 COPY --from=builder --chmod=777 --chown=node:node /app/apps/ui/dist ./apps/server/dist/ui
 
+# Copy bundled fonts for overlay rendering
+COPY --from=builder --chmod=777 --chown=node:node /app/apps/server/assets ./apps/server/dist/assets
+
 # Copy packages/contracts
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/package.json ./packages/contracts/package.json
@@ -63,7 +78,15 @@ RUN mkdir -m 777 /opt/data && \
 # This is required for docker user directive to work
 RUN chmod 777 /opt/app/start.sh
 
-RUN apk --update --no-cache add curl
+# Runtime dependencies for node-canvas (cairo) and sharp (vips)
+RUN apk --update --no-cache add \
+    curl \
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    pixman \
+    librsvg
 
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}

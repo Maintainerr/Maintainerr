@@ -5,6 +5,7 @@ import { detectRequiredServices } from '../../../../../utils/CommunityRuleMaps'
 import Alert from '../../../../Common/Alert'
 import Button from '../../../../Common/Button'
 import Modal from '../../../../Common/Modal'
+import { Input } from '../../../../Forms/Input'
 interface ICommunityRuleUpload {
   rules: IRule[]
   type: 'movie' | 'show'
@@ -86,13 +87,13 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
               </label>
               <div className="form-input">
                 <div className="form-input-field">
-                  <input
+                  <Input
                     className="!bg-zinc-800"
                     name="name"
                     id="name"
                     type="text"
                     ref={nameRef}
-                  ></input>
+                  />
                 </div>
               </div>
             </div>
@@ -120,7 +121,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
               </label>
               <div className="form-input">
                 <div className="form-input-field items-center">
-                  <input
+                  <Input
                     className="!bg-zinc-800"
                     name="uploadedBy"
                     id="uploadedBy"
@@ -128,7 +129,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
                     maxLength={20}
                     placeholder="Max 20 characters"
                     ref={uploadedByRef}
-                  ></input>
+                  />
                 </div>
               </div>
             </div>

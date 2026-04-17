@@ -126,16 +126,17 @@ class WebhookAgent implements NotificationAgent {
 
       return 'Success';
     } catch (error) {
+      const err = error as Error & { response?: { data?: unknown } };
       this.logger.error(
         `Error sending Webhook notification. Details: ${JSON.stringify({
           type: NotificationType[type],
           subject: payload.subject,
-          response: error.response?.data,
+          response: err.response?.data,
         })}`,
         error,
       );
 
-      return `Failure: ${error.message}`;
+      return `Failure: ${err.message}`;
     }
   }
 }

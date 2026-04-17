@@ -9,6 +9,8 @@ export interface ICollection {
   isActive: boolean
   visibleOnRecommended?: boolean
   visibleOnHome?: boolean
+  overlayEnabled?: boolean
+  overlayTemplateId?: number | null
   deleteAfterDays?: number
   listExclusions?: boolean
   forceSeerr?: boolean

@@ -1,4 +1,5 @@
 import { ChangeEvent, useState } from 'react'
+import { Input } from '../../Forms/Input'
 
 interface ISearchBar {
   placeholder?: string
@@ -36,7 +37,7 @@ const SearchBar = (props: ISearchBar) => {
           ></path>
         </svg>
       </div>
-      <input
+      <Input
         type="search"
         name="search"
         onChange={(e) => inputHandler(e)}

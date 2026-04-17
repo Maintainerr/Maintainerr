@@ -22,9 +22,11 @@ import { LogsModule } from '../modules/logging/logs.module';
 import { MetadataModule } from '../modules/metadata/metadata.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { NotificationService } from '../modules/notifications/notifications.service';
+import { OverlaysModule } from '../modules/overlays/overlays.module';
 import { RulesModule } from '../modules/rules/rules.module';
 import { SettingsModule } from '../modules/settings/settings.module';
 import { SettingsService } from '../modules/settings/settings.service';
+import { StorageMetricsModule } from '../modules/storage-metrics/storage-metrics.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import ormConfig from './config/typeOrmConfig';
@@ -50,6 +52,8 @@ import ormConfig from './config/typeOrmConfig';
     CollectionsModule,
     NotificationsModule,
     EventsModule,
+    OverlaysModule,
+    StorageMetricsModule,
     ServeStaticModule.forRootAsync({
       useFactory: () => {
         if (process.env.NODE_ENV !== 'production') {

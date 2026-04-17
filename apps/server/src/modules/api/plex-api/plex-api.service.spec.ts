@@ -255,6 +255,32 @@ describe('PlexApiService.getMetadata', () => {
       'Plex auth token is required for validation',
     );
   });
+
+  it('returns an empty cheap storage map without querying undocumented endpoints', async () => {
+    const queryAll = jest.fn();
+
+    (service as any).plexClient = { queryAll };
+
+    await expect(service.getLibrariesStorage()).resolves.toEqual(new Map());
+    expect(queryAll).not.toHaveBeenCalled();
+  });
+
+  it('requests section allLeaves when retrieving Plex show library leaves', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [] },
+    });
+
+    (service as any).plexClient = { queryAll };
+
+    await service.getLibraryLeaves('7');
+
+    expect(queryAll).toHaveBeenCalledWith(
+      {
+        uri: '/library/sections/7/allLeaves?includeGuids=1',
+      },
+      true,
+    );
+  });
 });
 
 describe('PlexApiService.initialize', () => {
@@ -337,5 +363,39 @@ describe('PlexApiService.initialize', () => {
 
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith('Plex status probe failed');
+  });
+});
+
+describe('PlexApiService overlay helpers', () => {
+  let service: PlexApiService;
+  let logger: Mocked<MaintainerrLogger>;
+  let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+
+    service = unit;
+    logger = unitRef.get(MaintainerrLogger);
+    loggerFactory = unitRef.get(MaintainerrLoggerFactory);
+
+    loggerFactory.createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as any);
+  });
+
+  it('returns an empty library list when the Plex client is not initialized', async () => {
+    await expect(service.getLibraries()).resolves.toEqual([]);
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Plex client not initialized, skipping getLibraries',
+    );
+  });
+
+  it('returns no overlay sections when Plex is not initialized', async () => {
+    await expect(service.getOverlayLibrarySections()).resolves.toEqual([]);
   });
 });

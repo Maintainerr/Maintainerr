@@ -68,6 +68,8 @@ export type UseRuleGroupForCollectionResult = ReturnType<
 export interface RuleGroupCollectionPayload {
   visibleOnRecommended: boolean
   visibleOnHome: boolean
+  overlayEnabled?: boolean
+  overlayTemplateId?: number | null
   deleteAfterDays?: number
   manualCollection?: boolean
   manualCollectionName?: string
@@ -214,6 +216,9 @@ type UseCreateRuleGroupOptions = Omit<
 >
 
 export const useCreateRuleGroup = (options?: UseCreateRuleGroupOptions) => {
+  const queryClient = useQueryClient()
+  const { onSuccess, ...mutationOptions } = options ?? {}
+
   return useMutation<BasicResponseDto, Error, RuleGroupCreatePayload>({
     mutationKey: ['rules', 'groups', 'create'],
     mutationFn: async (payload) => {
@@ -225,7 +230,16 @@ export const useCreateRuleGroup = (options?: UseCreateRuleGroupOptions) => {
 
       return response
     },
-    ...options,
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['calendar', 'collections', 'overlay-data'],
+      })
+
+      if (onSuccess) {
+        await onSuccess(data, variables, context, mutation)
+      }
+    },
+    ...mutationOptions,
   })
 }
 
@@ -233,11 +247,12 @@ export type UseCreateRuleGroupResult = ReturnType<typeof useCreateRuleGroup>
 
 type UseUpdateRuleGroupOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, RuleGroupUpdatePayload>,
-  'mutationFn' | 'mutationKey' | 'onSuccess'
+  'mutationFn' | 'mutationKey'
 >
 
 export const useUpdateRuleGroup = (options?: UseUpdateRuleGroupOptions) => {
   const queryClient = useQueryClient()
+  const { onSuccess, ...mutationOptions } = options ?? {}
 
   return useMutation<BasicResponseDto, Error, RuleGroupUpdatePayload>({
     mutationKey: ['rules', 'groups', 'update'],
@@ -250,16 +265,24 @@ export const useUpdateRuleGroup = (options?: UseUpdateRuleGroupOptions) => {
 
       return response
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
         queryKey: [
           'rules',
           'group',
           String(variables.id),
         ] satisfies UseRuleGroupQueryKey,
       })
+
+      await queryClient.invalidateQueries({
+        queryKey: ['calendar', 'collections', 'overlay-data'],
+      })
+
+      if (onSuccess) {
+        await onSuccess(data, variables, context, mutation)
+      }
     },
-    ...options,
+    ...mutationOptions,
   })
 }
 

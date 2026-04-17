@@ -10,6 +10,7 @@ import FormItem from '../../../Common/FormItem'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import Modal from '../../../Common/Modal'
 import SearchMediaItem, { IMediaOptions } from '../../../Common/SearchMediaITem'
+import { Select } from '../../../Forms/Select'
 
 interface ITestMediaItem {
   onCancel: () => void
@@ -245,7 +246,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
             {ruleGroup.dataType === 'season' ||
             ruleGroup.dataType === 'episode' ? (
               <FormItem label="Season">
-                <select
+                <Select
                   name={`Seasons-field`}
                   id={`Seasons-field`}
                   value={selectedSeasons}
@@ -261,14 +262,14 @@ const TestMediaItem = (props: ITestMediaItem) => {
                       </option>
                     )
                   })}
-                </select>
+                </Select>
               </FormItem>
             ) : undefined}
 
             {ruleGroup.dataType === 'episode' ? (
               // episodes
               <FormItem label="Episode">
-                <select
+                <Select
                   name={`episode-field`}
                   id={`episode-field`}
                   value={selectedEpisodes}
@@ -284,7 +285,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
                       </option>
                     )
                   })}
-                </select>
+                </Select>
               </FormItem>
             ) : undefined}
           </div>

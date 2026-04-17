@@ -19,4 +19,9 @@ export enum MaintainerrEvent {
   RuleGroup_Deleted = 'rulegroup.deleted',
   Settings_Updated = 'settings.updated',
   RuleHandlerQueue_StatusUpdated = 'rule_handler_queue.status_updated',
+  OverlayHandler_Started = 'overlay_handler.started',
+  OverlayHandler_Finished = 'overlay_handler.finished',
+  OverlayHandler_Failed = 'overlay_handler.failed',
+  Overlay_Applied = 'overlay.applied',
+  Overlay_Reverted = 'overlay.reverted',
 }

@@ -14,6 +14,7 @@ import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 
 const jellyfinApiMocks = {
   getPublicSystemInfo: jest.fn(),
+  getSystemStorage: jest.fn(),
   getMediaFolders: jest.fn(),
   getAncestors: jest.fn(),
   deleteItem: jest.fn(),
@@ -99,6 +100,8 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getSystemApi: jest.fn().mockImplementation(() => ({
     getPublicSystemInfo: (...args: unknown[]) =>
       jellyfinApiMocks.getPublicSystemInfo(...args),
+    getSystemStorage: (...args: unknown[]) =>
+      jellyfinApiMocks.getSystemStorage(...args),
   })),
   getConfigurationApi: jest.fn().mockImplementation(() => ({
     getConfiguration: (...args: unknown[]) =>
@@ -184,6 +187,9 @@ describe('JellyfinAdapterService', () => {
         Version: '10.11.0',
         OperatingSystem: 'Linux',
       },
+    });
+    jellyfinApiMocks.getSystemStorage.mockResolvedValue({
+      data: { Libraries: [] },
     });
     jellyfinApiMocks.getMediaFolders.mockResolvedValue({ data: { Items: [] } });
     jellyfinApiMocks.getAncestors.mockResolvedValue({ data: [] });
@@ -515,6 +521,39 @@ describe('JellyfinAdapterService', () => {
           type: 'movie',
         },
       ]);
+    });
+
+    it('deduplicates device-level UsedSpace when a library has multiple folders on the same drive', async () => {
+      jellyfinApiMocks.getSystemStorage.mockResolvedValue({
+        data: {
+          Libraries: [
+            {
+              Id: 'library-1',
+              Folders: [
+                {
+                  DeviceId: 'disk-1',
+                  Path: '/mnt/media/movies-a',
+                  UsedSpace: 100,
+                },
+                {
+                  DeviceId: 'disk-1',
+                  Path: '/mnt/media/movies-b',
+                  UsedSpace: 100,
+                },
+                {
+                  DeviceId: 'disk-2',
+                  Path: '/mnt/archive/movies',
+                  UsedSpace: 50,
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      await expect(service.getLibrariesStorage()).resolves.toEqual(
+        new Map([['library-1', 150]]),
+      );
     });
   });
 

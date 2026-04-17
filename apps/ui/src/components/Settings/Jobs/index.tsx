@@ -1,8 +1,15 @@
 import { isValidCron } from 'cron-validator'
+import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
+import {
+  getOverlaySettings,
+  updateOverlaySettings,
+} from '../../../api/overlays'
 import { usePatchSettings } from '../../../api/settings'
+import { SmallLoadingSpinner } from '../../Common/LoadingSpinner'
 import SaveButton from '../../Common/SaveButton'
+import { Input } from '../../Forms/Input'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -23,6 +30,7 @@ const isValidCronExpression = (value: string) => {
 interface JobSettingsFormValues {
   rules_handler_job_cron: string
   collection_handler_job_cron: string
+  overlay_handler_job_cron: string
 }
 
 const JobSettings = () => {
@@ -31,29 +39,57 @@ const JobSettings = () => {
     useSettingsFeedback('Job settings')
   const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
     usePatchSettings()
+  const [overlayLoaded, setOverlayLoaded] = useState(false)
+  const [overlayPending, setOverlayPending] = useState(false)
   const { register, handleSubmit, setValue, reset, control } =
     useForm<JobSettingsFormValues>({
       defaultValues: {
         rules_handler_job_cron: settings.rules_handler_job_cron ?? '',
         collection_handler_job_cron: settings.collection_handler_job_cron ?? '',
+        overlay_handler_job_cron: '',
       },
     })
+
+  useEffect(() => {
+    let cancelled = false
+    getOverlaySettings()
+      .then((overlay) => {
+        if (cancelled) return
+        setValue('overlay_handler_job_cron', overlay?.cronSchedule ?? '', {
+          shouldDirty: false,
+        })
+        setOverlayLoaded(true)
+      })
+      .catch(() => {
+        if (!cancelled) setOverlayLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [setValue])
 
   const ruleHandlerCron =
     useWatch({ control, name: 'rules_handler_job_cron' }) ?? ''
   const collectionHandlerCron =
     useWatch({ control, name: 'collection_handler_job_cron' }) ?? ''
+  const overlayHandlerCron =
+    useWatch({ control, name: 'overlay_handler_job_cron' }) ?? ''
   const firstCronValid =
     ruleHandlerCron === '' || isValidCronExpression(ruleHandlerCron)
   const secondCronValid =
     collectionHandlerCron === '' || isValidCronExpression(collectionHandlerCron)
+  const overlayCronValid =
+    overlayHandlerCron === '' || isValidCronExpression(overlayHandlerCron)
 
   const canSave =
+    overlayLoaded &&
     ruleHandlerCron !== '' &&
     collectionHandlerCron !== '' &&
     firstCronValid &&
     secondCronValid &&
-    !updateSettingsPending
+    overlayCronValid &&
+    !updateSettingsPending &&
+    !overlayPending
 
   const handleRuleHandlerChange = (nextValue: string) => {
     clearError()
@@ -83,8 +119,26 @@ const JobSettings = () => {
     })
   }
 
+  const handleOverlayHandlerChange = (nextValue: string) => {
+    clearError()
+    setValue('overlay_handler_job_cron', nextValue, {
+      shouldDirty: true,
+    })
+  }
+
+  const normalizeOverlayHandler = () => {
+    const normalizedValue = normalizeCronExpression(overlayHandlerCron)
+    setValue('overlay_handler_job_cron', normalizedValue, {
+      shouldDirty: true,
+    })
+  }
+
   const submit = async (data: JobSettingsFormValues) => {
     clearError()
+
+    if (!overlayLoaded) {
+      return
+    }
 
     const normalizedRuleHandlerCron = normalizeCronExpression(
       data.rules_handler_job_cron,
@@ -92,25 +146,39 @@ const JobSettings = () => {
     const normalizedCollectionHandlerCron = normalizeCronExpression(
       data.collection_handler_job_cron,
     )
+    const normalizedOverlayHandlerCron = normalizeCronExpression(
+      data.overlay_handler_job_cron,
+    )
 
     if (
       normalizedRuleHandlerCron !== '' &&
       normalizedCollectionHandlerCron !== '' &&
       isValidCronExpression(normalizedRuleHandlerCron) &&
-      isValidCronExpression(normalizedCollectionHandlerCron)
+      isValidCronExpression(normalizedCollectionHandlerCron) &&
+      (normalizedOverlayHandlerCron === '' ||
+        isValidCronExpression(normalizedOverlayHandlerCron))
     ) {
       try {
-        await updateSettings({
-          collection_handler_job_cron: normalizedCollectionHandlerCron,
-          rules_handler_job_cron: normalizedRuleHandlerCron,
-        })
+        setOverlayPending(true)
+        const [, overlayUpdated] = await Promise.all([
+          updateSettings({
+            collection_handler_job_cron: normalizedCollectionHandlerCron,
+            rules_handler_job_cron: normalizedRuleHandlerCron,
+          }),
+          updateOverlaySettings({
+            cronSchedule: normalizedOverlayHandlerCron || null,
+          }),
+        ])
         reset({
           collection_handler_job_cron: normalizedCollectionHandlerCron,
           rules_handler_job_cron: normalizedRuleHandlerCron,
+          overlay_handler_job_cron: overlayUpdated?.cronSchedule ?? '',
         })
         showUpdated()
       } catch {
         showUpdateError()
+      } finally {
+        setOverlayPending(false)
       }
     } else {
       showError('Please make sure all values are valid')
@@ -147,21 +215,23 @@ const JobSettings = () => {
               </label>
               <div className="form-input">
                 <div className="form-input-field">
-                  <input
+                  <Input
                     {...register('rules_handler_job_cron')}
                     id="rules_handler_job_cron"
+                    name="rules_handler_job_cron"
                     type="text"
                     value={ruleHandlerCron}
+                    error={!firstCronValid}
                     className={
                       !firstCronValid
-                        ? '!border-error-700 focus:!border-error-700 focus:outline-none focus:!ring-0'
+                        ? '!border-error-700 focus:!border-error-700'
                         : undefined
                     }
                     onBlur={normalizeRuleHandler}
                     onChange={(event) => {
                       handleRuleHandlerChange(event.target.value)
                     }}
-                  ></input>
+                  />
                 </div>
               </div>
             </div>
@@ -187,21 +257,71 @@ const JobSettings = () => {
 
               <div className="form-input">
                 <div className="form-input-field">
-                  <input
+                  <Input
                     {...register('collection_handler_job_cron')}
                     id="collection_handler_job_cron"
+                    name="collection_handler_job_cron"
                     type="text"
                     value={collectionHandlerCron}
+                    error={!secondCronValid}
                     className={
                       !secondCronValid
-                        ? '!border-error-700 focus:!border-error-700 focus:outline-none focus:!ring-0'
+                        ? '!border-error-700 focus:!border-error-700'
                         : undefined
                     }
                     onBlur={normalizeCollectionHandler}
                     onChange={(event) => {
                       handleCollectionHandlerChange(event.target.value)
                     }}
-                  ></input>
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <label htmlFor="overlay_handler_job_cron" className="text-label">
+                Overlay Handler
+                <p className="text-xs font-normal">
+                  Supports all standard{' '}
+                  <a
+                    href="http://crontab.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    cron
+                  </a>{' '}
+                  patterns. Leave empty to disable scheduled overlay runs.
+                </p>
+              </label>
+
+              <div className="form-input">
+                <div className="form-input-field">
+                  <Input
+                    {...register('overlay_handler_job_cron')}
+                    id="overlay_handler_job_cron"
+                    name="overlay_handler_job_cron"
+                    type="text"
+                    value={overlayHandlerCron}
+                    disabled={!overlayLoaded}
+                    error={!overlayCronValid}
+                    className={
+                      !overlayCronValid
+                        ? '!border-error-700 focus:!border-error-700'
+                        : undefined
+                    }
+                    onBlur={normalizeOverlayHandler}
+                    onChange={(event) => {
+                      handleOverlayHandlerChange(event.target.value)
+                    }}
+                  />
+                </div>
+                <div className="mt-2 min-h-5">
+                  {!overlayLoaded ? (
+                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                      <SmallLoadingSpinner className="h-4 w-4" />
+                      <span>Loading current overlay schedule...</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -212,7 +332,7 @@ const JobSettings = () => {
                   <SaveButton
                     type="submit"
                     disabled={!canSave}
-                    isPending={updateSettingsPending}
+                    isPending={updateSettingsPending || overlayPending}
                   />
                 </span>
               </div>

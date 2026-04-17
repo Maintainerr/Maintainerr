@@ -11,25 +11,23 @@ import {
 } from '@maintainerr/contracts'
 import { useRef, useState } from 'react'
 import { useEvent } from '../../contexts/events-context'
+import { getPercentValue } from '../../utils/formatBytes'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 
 const toProgressWidth = (
   processed: number | undefined,
   total: number | undefined,
 ) => {
-  if (
-    processed == null ||
-    total == null ||
-    !Number.isFinite(processed) ||
-    !Number.isFinite(total) ||
-    total <= 0
-  ) {
+  if (processed == null || total == null) {
     return '0%'
   }
 
-  const ratio = Math.min(Math.max(processed / total, 0), 1)
+  const percent = getPercentValue(processed, total, { clamp: true })
+  if (percent === null) {
+    return '0%'
+  }
 
-  return `${ratio * 100}%`
+  return `${percent}%`
 }
 
 const isStartedOrFinishedEvent = (

@@ -19,7 +19,7 @@ import { logClientError } from '../../../utils/ClientLogger'
 import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import Table from '../../Common/Table'
-import { InputGroup } from '../../Forms/Input'
+import { Input, InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
 import {
   SettingsFeedbackAlert,
@@ -251,7 +251,7 @@ export const Logs = () => {
         <div className="mb-4 flex flex-col-reverse justify-between gap-4 sm:flex-row">
           <div className="form-input grow !p-0">
             <div className="form-input-field">
-              <input
+              <Input
                 name="logFilter"
                 placeholder="Log filter"
                 type="text"

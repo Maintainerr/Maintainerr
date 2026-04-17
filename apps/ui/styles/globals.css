@@ -185,7 +185,13 @@
   }
 
   ul.cards-vertical {
-    grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 440px) {
+    ul.cards-vertical {
+      grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
+    }
   }
 
   ul.cards-horizontal {

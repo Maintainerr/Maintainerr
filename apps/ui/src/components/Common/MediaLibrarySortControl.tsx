@@ -254,28 +254,29 @@ export const MediaLibrarySortControl = ({
   isLoading = false,
 }: MediaLibrarySortControlProps) => {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1">
-        <Select
-          aria-label={ariaLabel}
-          name="sort"
-          value={value}
-          onChange={(event) => onSortChange(event.target.value)}
+    <div className="relative w-full">
+      <Select
+        aria-label={ariaLabel}
+        name="sort"
+        value={value}
+        onChange={(event) => onSortChange(event.target.value)}
+        className={isLoading ? 'pr-14' : undefined}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+      {isLoading ? (
+        <div
+          role="status"
+          aria-label="Loading sorted items"
+          className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2"
         >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex min-h-6 min-w-6 items-center justify-end">
-        {isLoading ? (
-          <div role="status" aria-label="Loading sorted items">
-            <SmallLoadingSpinner className="h-6 w-6" />
-          </div>
-        ) : null}
-      </div>
+          <SmallLoadingSpinner className="h-4 w-4" />
+        </div>
+      ) : null}
     </div>
   )
 }

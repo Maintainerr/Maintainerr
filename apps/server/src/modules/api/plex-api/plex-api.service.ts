@@ -445,6 +445,11 @@ export class PlexApiService {
   }
 
   public async getLibraries(): Promise<PlexLibrary[]> {
+    if (!this.isPlexSetup()) {
+      this.logger.debug('Plex client not initialized, skipping getLibraries');
+      return [];
+    }
+
     try {
       const response = await this.plexClient.queryAll<PlexLibrariesResponse>({
         uri: '/library/sections',
@@ -458,6 +463,14 @@ export class PlexApiService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  /**
+   * Plex does not expose a documented native per-library storage total in the
+   * official API. Callers that need accurate sizes must enumerate items.
+   */
+  public async getLibrariesStorage(): Promise<Map<string, number>> {
+    return new Map<string, number>();
   }
 
   public async getLibraryContentCount(
@@ -512,6 +525,28 @@ export class PlexApiService {
         totalSize: response.MediaContainer.totalSize,
         items: (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [],
       };
+    } catch (error) {
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  public async getLibraryLeaves(
+    id: string,
+    useCache: boolean = true,
+  ): Promise<PlexLibraryItem[]> {
+    try {
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${id}/allLeaves?includeGuids=1`,
+        },
+        useCache,
+      );
+
+      return (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [];
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
@@ -1435,6 +1470,374 @@ export class PlexApiService {
   private async forceMachineId() {
     if (!this.machineId) {
       await this.setMachineId();
+    }
+  }
+
+  // ── Overlay poster helpers ────────────────────────────────────────────────
+
+  /**
+   * Returns the thumb path for a Plex item (e.g. /library/metadata/12345/thumb/67890).
+   * The caller uses this path with `downloadPoster()` to fetch the actual image.
+   */
+  public async getBestPosterUrl(plexId: string): Promise<string | null> {
+    try {
+      const response = await this.plexClient.query<PlexMetadataResponse>(
+        `/library/metadata/${plexId}`,
+        false,
+      );
+
+      const mc = response?.MediaContainer;
+      if (!mc) return null;
+
+      const candidates = [mc.Metadata].flat().filter(Boolean) as Array<{
+        thumb?: string;
+      }>;
+
+      for (const item of candidates) {
+        if (item.thumb) return item.thumb;
+      }
+      return null;
+    } catch (err) {
+      this.logger.debug(`getBestPosterUrl(${plexId}) failed: ${err}`);
+      return null;
+    }
+  }
+
+  /**
+   * Downloads a poster image from Plex given a thumb path.
+   * Returns the raw image Buffer.
+   */
+  public async downloadPoster(thumbPath: string): Promise<Buffer> {
+    const settings = this.getDbSettings();
+    const baseUrl =
+      (settings.useSsl ? 'https://' : 'http://') +
+      settings.ip +
+      ':' +
+      settings.port;
+    const url = thumbPath.startsWith('http')
+      ? thumbPath
+      : `${baseUrl}${thumbPath}`;
+
+    const { data } = await axios.get<ArrayBuffer>(url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'X-Plex-Token': settings.auth_token,
+        Accept: '*/*',
+      },
+      timeout: 60000,
+    });
+
+    const buf = Buffer.from(data);
+    if (buf.length < 1024) {
+      throw new Error(`Downloaded poster too small (${buf.length} bytes)`);
+    }
+    return buf;
+  }
+
+  /**
+   * Lists all posters for a Plex item. Returns the raw Metadata/Photo array.
+   */
+  public async getPosters(
+    plexId: string,
+  ): Promise<Array<{ ratingKey?: string; key?: string; selected?: boolean }>> {
+    try {
+      const response = await this.plexClient.query<{
+        MediaContainer?: { Metadata?: unknown[]; Photo?: unknown[] };
+      }>(`/library/metadata/${plexId}/posters`, false);
+
+      const mc = response?.MediaContainer;
+      const photos = (mc?.Metadata ?? mc?.Photo) as
+        | Array<{ ratingKey?: string; key?: string; selected?: boolean }>
+        | undefined;
+
+      return photos ? (Array.isArray(photos) ? photos : [photos]) : [];
+    } catch (err) {
+      this.logger.debug(`getPosters(${plexId}) failed: ${err}`);
+      return [];
+    }
+  }
+
+  /**
+   * Uploads a poster image buffer for a Plex item.
+   */
+  public async uploadPoster(
+    plexId: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    const settings = this.getDbSettings();
+    const baseUrl =
+      (settings.useSsl ? 'https://' : 'http://') +
+      settings.ip +
+      ':' +
+      settings.port;
+
+    await axios.post(`${baseUrl}/library/metadata/${plexId}/posters`, buffer, {
+      headers: {
+        'X-Plex-Token': settings.auth_token,
+        'Content-Type': contentType,
+      },
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 120000,
+    });
+  }
+
+  /**
+   * Selects an uploaded poster as the active poster for a Plex item.
+   */
+  public async selectPoster(
+    plexId: string,
+    uploadId: string,
+  ): Promise<boolean> {
+    try {
+      const settings = this.getDbSettings();
+      const baseUrl =
+        (settings.useSsl ? 'https://' : 'http://') +
+        settings.ip +
+        ':' +
+        settings.port;
+
+      await axios.put(`${baseUrl}/library/metadata/${plexId}/poster`, null, {
+        params: { url: `upload://posters/${uploadId}` },
+        headers: { 'X-Plex-Token': settings.auth_token },
+        timeout: 30000,
+      });
+      return true;
+    } catch (err) {
+      this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`);
+      this.logger.debug(err);
+      return false;
+    }
+  }
+
+  /**
+   * Extracts the upload poster ID from a poster entry's ratingKey or key field.
+   */
+  private extractUploadPosterId(p: {
+    ratingKey?: string;
+    key?: string;
+  }): string | null {
+    const rk = p.ratingKey ?? '';
+    if (rk.startsWith('upload://posters/'))
+      return rk.slice('upload://posters/'.length);
+
+    const k = p.key ?? '';
+    if (k.startsWith('upload://posters/'))
+      return k.slice('upload://posters/'.length);
+
+    if (k.includes('upload') && k.includes('posters')) {
+      const qIdx = k.indexOf('?');
+      if (qIdx >= 0) {
+        const urlParam = new URLSearchParams(k.slice(qIdx + 1)).get('url');
+        if (urlParam) {
+          const decoded = decodeURIComponent(urlParam);
+          if (decoded.startsWith('upload://posters/'))
+            return decoded.slice('upload://posters/'.length);
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Uploads a poster buffer, finds the new upload ID via diff, and selects it.
+   * Handles Plex eventual consistency with retry logic.
+   */
+  public async setThumb(
+    plexId: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    const beforePosters = await this.getPosters(plexId);
+    const beforeIds = new Set(
+      beforePosters
+        .map((p) => this.extractUploadPosterId(p))
+        .filter((id): id is string => id !== null),
+    );
+
+    await this.uploadPoster(plexId, buffer, contentType);
+
+    // Retry diff to handle Plex eventual consistency
+    let newId: string | null = null;
+    let afterPosters: typeof beforePosters = [];
+    for (let attempt = 0; attempt < 3 && newId === null; attempt++) {
+      if (attempt > 0)
+        await new Promise<void>((r) => setTimeout(r, 300 * attempt));
+
+      afterPosters = await this.getPosters(plexId);
+      newId =
+        afterPosters
+          .map((p) => this.extractUploadPosterId(p))
+          .filter((id): id is string => id !== null)
+          .find((id) => !beforeIds.has(id)) ?? null;
+    }
+
+    if (newId) {
+      await this.selectPoster(plexId, newId);
+    } else {
+      // Plex content-addressed the upload to an existing blob
+      const alreadySelected = afterPosters.find(
+        (p) => this.extractUploadPosterId(p) !== null && p.selected,
+      );
+      if (!alreadySelected) {
+        const allUploadIds = afterPosters
+          .map((p) => this.extractUploadPosterId(p))
+          .filter((id): id is string => id !== null);
+
+        if (allUploadIds.length > 0) {
+          await this.selectPoster(plexId, allUploadIds[0]);
+        } else {
+          this.logger.warn(
+            `setThumb: could not find or select upload poster for item ${plexId}`,
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns the Plex media type for an item ('movie', 'show', 'season', 'episode', etc.)
+   */
+  public async getItemType(plexId: string): Promise<string | null> {
+    try {
+      const response = await this.plexClient.query<PlexMetadataResponse>(
+        `/library/metadata/${plexId}`,
+        false,
+      );
+      const item = response?.MediaContainer?.Metadata?.[0];
+      return (item as { type?: string })?.type ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Returns all movie/show library sections (for overlay preview section picker).
+   */
+  public async getOverlayLibrarySections(): Promise<
+    Array<{ key: string; title: string; type: string }>
+  > {
+    try {
+      const libs = await this.getLibraries();
+      return libs
+        .filter((l) => l.type === 'movie' || l.type === 'show')
+        .map((l) => ({ key: String(l.key), title: l.title, type: l.type }));
+    } catch (err) {
+      this.logger.debug(`getOverlayLibrarySections failed: ${err}`);
+      return [];
+    }
+  }
+
+  /**
+   * Returns a random item from Plex library sections (for overlay preview).
+   */
+  public async getRandomLibraryItem(
+    sectionKeys?: string[],
+  ): Promise<{ plexId: string; title: string } | null> {
+    try {
+      const libs = await this.getLibraries();
+      const mediaSections = libs.filter(
+        (s) =>
+          (s.type === 'movie' || s.type === 'show') &&
+          (!sectionKeys?.length || sectionKeys.includes(String(s.key))),
+      );
+      if (!mediaSections.length) return null;
+
+      const section =
+        mediaSections[Math.floor(Math.random() * mediaSections.length)];
+      const response = await this.plexClient.query<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${section.key}/all`,
+          extraHeaders: {
+            'X-Plex-Container-Start': '0',
+            'X-Plex-Container-Size': '50',
+          },
+        },
+        false,
+      );
+
+      const items = (response?.MediaContainer?.Metadata ?? []) as Array<{
+        ratingKey?: string;
+        title?: string;
+        thumb?: string;
+      }>;
+      const withThumb = items.filter((i) => i.thumb);
+      if (!withThumb.length) return null;
+
+      const item = withThumb[Math.floor(Math.random() * withThumb.length)];
+      return {
+        plexId: String(item.ratingKey),
+        title: item.title ?? String(item.ratingKey),
+      };
+    } catch (err) {
+      this.logger.debug(`getRandomLibraryItem failed: ${err}`);
+      return null;
+    }
+  }
+
+  /**
+   * Returns a random episode item from Plex (for title card overlay preview).
+   */
+  public async getRandomEpisodeItem(
+    sectionKeys?: string[],
+  ): Promise<{ plexId: string; title: string } | null> {
+    try {
+      const libs = await this.getLibraries();
+      const showSections = libs.filter(
+        (s) =>
+          s.type === 'show' &&
+          (!sectionKeys?.length || sectionKeys.includes(String(s.key))),
+      );
+      if (!showSections.length) return null;
+
+      const section =
+        showSections[Math.floor(Math.random() * showSections.length)];
+
+      const settings = this.getDbSettings();
+      const baseUrl =
+        (settings.useSsl ? 'https://' : 'http://') +
+        settings.ip +
+        ':' +
+        settings.port;
+
+      // type=4 fetches episodes directly
+      const { data } = await axios.get(
+        `${baseUrl}/library/sections/${section.key}/all`,
+        {
+          params: {
+            type: 4,
+            'X-Plex-Container-Start': 0,
+            'X-Plex-Container-Size': 50,
+          },
+          headers: {
+            Accept: 'application/json',
+            'X-Plex-Token': settings.auth_token,
+          },
+          timeout: 30000,
+        },
+      );
+
+      const mc = data?.MediaContainer;
+      const episodes: Array<{
+        ratingKey: string;
+        title?: string;
+        thumb?: string;
+        grandparentTitle?: string;
+      }> = mc?.Metadata ?? mc?.Video ?? [];
+
+      const withThumb = episodes.filter((e) => e.thumb);
+      if (!withThumb.length) return null;
+
+      const episode = withThumb[Math.floor(Math.random() * withThumb.length)];
+      const displayTitle = episode.grandparentTitle
+        ? `${episode.grandparentTitle} — ${episode.title ?? episode.ratingKey}`
+        : (episode.title ?? String(episode.ratingKey));
+
+      return { plexId: String(episode.ratingKey), title: displayTitle };
+    } catch (err) {
+      this.logger.debug(`getRandomEpisodeItem failed: ${err}`);
+      return null;
     }
   }
 }
