@@ -211,10 +211,10 @@ const RuleCreator = (props: iRuleCreator) => {
         )}
         renderItem={({ value: section, props: itemProps, index }) => {
           const sectionNumber = (index ?? 0) + 1
-          const { key: itemKey, style: itemStyle, ...itemRest } = itemProps
+          const { key: _itemKey, style: itemStyle, ...itemRest } = itemProps
           return (
             <div
-              key={itemKey}
+              key={section.uid}
               {...itemRest}
               style={{ ...itemStyle, listStyle: 'none' }}
               className="mb-4"
@@ -225,7 +225,7 @@ const RuleCreator = (props: iRuleCreator) => {
                     type="button"
                     data-movable-handle
                     tabIndex={-1}
-                    className="mr-2 flex h-6 w-6 cursor-grab items-center justify-center rounded text-zinc-400 hover:bg-zinc-600 hover:text-zinc-100 active:cursor-grabbing"
+                    className="mr-2 flex h-10 w-10 cursor-grab items-center justify-center rounded text-zinc-400 hover:bg-zinc-600 hover:text-zinc-100 active:cursor-grabbing md:h-6 md:w-6"
                     title="Drag to reorder section"
                     aria-label={`Drag handle for section ${sectionNumber}`}
                   >
@@ -259,13 +259,13 @@ const RuleCreator = (props: iRuleCreator) => {
                     const absoluteId = ++absoluteCounter
                     const isNew = newRuleUids.has(slot.uid)
                     const {
-                      key: ruleKey,
+                      key: _ruleKey,
                       style: ruleStyle,
                       ...ruleRest
                     } = ruleProps
                     return (
                       <div
-                        key={ruleKey}
+                        key={slot.uid}
                         {...ruleRest}
                         style={{ ...ruleStyle, listStyle: 'none' }}
                       >
@@ -274,7 +274,7 @@ const RuleCreator = (props: iRuleCreator) => {
                             type="button"
                             data-movable-handle
                             tabIndex={-1}
-                            className="mr-2 mt-5 flex h-6 w-6 shrink-0 cursor-grab items-center justify-center rounded text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 active:cursor-grabbing"
+                            className="mr-2 mt-3 flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 active:cursor-grabbing md:mt-5 md:h-6 md:w-6"
                             title="Drag to reorder rule"
                             aria-label={`Drag handle for rule ${tagId} in section ${sectionNumber}`}
                           >
