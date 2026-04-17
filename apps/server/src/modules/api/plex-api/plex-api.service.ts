@@ -445,6 +445,11 @@ export class PlexApiService {
   }
 
   public async getLibraries(): Promise<PlexLibrary[]> {
+    if (!this.isPlexSetup()) {
+      this.logger.debug('Plex client not initialized, skipping getLibraries');
+      return [];
+    }
+
     try {
       const response = await this.plexClient.queryAll<PlexLibrariesResponse>({
         uri: '/library/sections',

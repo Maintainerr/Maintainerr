@@ -117,12 +117,18 @@ export class OverlayTemplateService implements OnModuleInit {
   async findDefault(
     mode: OverlayTemplateMode,
   ): Promise<OverlayTemplate | null> {
-    const entity =
-      (await this.repo.findOne({
-        where: { mode, isDefault: true },
-        order: { updatedAt: 'DESC', id: 'DESC' },
-      })) ?? (await this.ensureDefault(mode));
-    return entity ? this.toDto(entity) : null;
+    const entity = await this.repo.findOne({
+      where: { mode, isDefault: true },
+      order: { updatedAt: 'DESC', id: 'DESC' },
+    });
+    if (entity) {
+      return this.toDto(entity);
+    }
+
+    // Self-heal missing defaults by promoting the best fallback once, so
+    // future reads can continue as a plain lookup.
+    const fallback = await this.assignFallbackDefault(mode);
+    return fallback ? this.toDto(fallback) : null;
   }
 
   /**
@@ -199,7 +205,7 @@ export class OverlayTemplateService implements OnModuleInit {
     await this.repo.remove(entity);
 
     if (wasDefault) {
-      await this.ensureDefault(mode);
+      await this.assignFallbackDefault(mode);
     }
 
     this.logger.log(`Deleted template "${entity.name}" (id=${id})`);
@@ -279,14 +285,9 @@ export class OverlayTemplateService implements OnModuleInit {
     await this.repo.update({ mode, isDefault: true }, { isDefault: false });
   }
 
-  private async ensureDefault(
+  private async assignFallbackDefault(
     mode: OverlayTemplateMode,
   ): Promise<OverlayTemplateEntity | null> {
-    const existingDefault = await this.repo.findOne({
-      where: { mode, isDefault: true },
-    });
-    if (existingDefault) return existingDefault;
-
     const fallback = await this.repo.findOne({
       where: { mode },
       order: { isPreset: 'DESC', id: 'ASC' },

@@ -365,3 +365,37 @@ describe('PlexApiService.initialize', () => {
     expect(logger.debug).toHaveBeenCalledWith('Plex status probe failed');
   });
 });
+
+describe('PlexApiService overlay helpers', () => {
+  let service: PlexApiService;
+  let logger: Mocked<MaintainerrLogger>;
+  let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+
+    service = unit;
+    logger = unitRef.get(MaintainerrLogger);
+    loggerFactory = unitRef.get(MaintainerrLoggerFactory);
+
+    loggerFactory.createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as any);
+  });
+
+  it('returns an empty library list when the Plex client is not initialized', async () => {
+    await expect(service.getLibraries()).resolves.toEqual([]);
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Plex client not initialized, skipping getLibraries',
+    );
+  });
+
+  it('returns no overlay sections when Plex is not initialized', async () => {
+    await expect(service.getOverlayLibrarySections()).resolves.toEqual([]);
+  });
+});

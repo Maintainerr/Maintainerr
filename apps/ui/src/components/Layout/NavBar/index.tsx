@@ -12,6 +12,7 @@ import {
 import { ReactNode, useContext, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
+import { useMediaServerType } from '../../../hooks/useMediaServerType'
 import { prefetchRoute } from '../../../router'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
@@ -35,13 +36,14 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const SearchCtx = useContext(SearchContext)
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
+  const { isPlex } = useMediaServerType()
   const { isRouteBlocked, showBlockedNavigationToast } =
     useMediaServerSetupNavigationGuard()
   // Keep variable for potential future customization
   const collectionsLabel = 'Collections'
 
-  const navBarItems: NavBarLink[] = useMemo(
-    () => [
+  const navBarItems: NavBarLink[] = useMemo(() => {
+    const items: NavBarLink[] = [
       {
         key: '0',
         href: '/overview',
@@ -78,22 +80,26 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         matchPattern: /^\/storage-metrics(?:\/.*)?$/,
       },
       {
-        key: '5',
-        href: '/overlays',
-        svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
-        name: 'Overlays',
-        matchPattern: /^\/overlays(?:\/.*)?$/,
-      },
-      {
         key: '3',
         href: '/settings',
         svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
         name: 'Settings',
         matchPattern: /^\/settings(?:\/.*)?$/,
       },
-    ],
-    [collectionsLabel],
-  )
+    ]
+
+    if (isPlex) {
+      items.splice(5, 0, {
+        key: '5',
+        href: '/overlays',
+        svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
+        name: 'Overlays',
+        matchPattern: /^\/overlays(?:\/.*)?$/,
+      })
+    }
+
+    return items
+  }, [collectionsLabel, isPlex])
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {

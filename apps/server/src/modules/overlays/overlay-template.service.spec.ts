@@ -30,16 +30,22 @@ describe('OverlayTemplateService', () => {
     ];
 
     const repo = {
-      find: jest
-        .fn()
-        .mockImplementation(async ({ where }) =>
-          rows
-            .filter(
-              (row) =>
-                row.mode === where.mode && row.isDefault === where.isDefault,
-            )
-            .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
-        ),
+      find: jest.fn().mockImplementation(async ({ where }) =>
+        rows
+          .filter(
+            (row) =>
+              row.mode === where.mode && row.isDefault === where.isDefault,
+          )
+          .sort((a, b) => {
+            const updatedAtDelta =
+              b.updatedAt.getTime() - a.updatedAt.getTime();
+            if (updatedAtDelta !== 0) {
+              return updatedAtDelta;
+            }
+
+            return b.id - a.id;
+          }),
+      ),
       update: jest
         .fn()
         .mockImplementation(async (criteria, partial: Partial<Row>) => {
@@ -89,7 +95,6 @@ describe('OverlayTemplateService', () => {
         isPreset: false,
         isDefault: true,
       })
-      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
         id: 1,
         name: 'Poster preset',
@@ -106,6 +111,52 @@ describe('OverlayTemplateService', () => {
     );
     expect(repo.save).toHaveBeenCalledWith(
       expect.objectContaining({ id: 1, isDefault: true }),
+    );
+  });
+
+  it('promotes a fallback default when no default exists for the mode', async () => {
+    const repo = {
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 3,
+          name: 'Poster preset',
+          description: 'preset',
+          mode: 'poster',
+          canvasWidth: 1000,
+          canvasHeight: 1500,
+          elements: [],
+          isPreset: true,
+          isDefault: false,
+          createdAt: new Date('2026-04-17T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+        }),
+      save: jest.fn().mockImplementation(async (entity) => entity),
+      find: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+    };
+
+    const service = new OverlayTemplateService(repo as any, createMockLogger());
+
+    const result = await service.findDefault('poster');
+
+    expect(repo.findOne).toHaveBeenNthCalledWith(1, {
+      where: { mode: 'poster', isDefault: true },
+      order: { updatedAt: 'DESC', id: 'DESC' },
+    });
+    expect(repo.findOne).toHaveBeenNthCalledWith(2, {
+      where: { mode: 'poster' },
+      order: { isPreset: 'DESC', id: 'ASC' },
+    });
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3, isDefault: true }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({ id: 3, isDefault: true, mode: 'poster' }),
     );
   });
 });
