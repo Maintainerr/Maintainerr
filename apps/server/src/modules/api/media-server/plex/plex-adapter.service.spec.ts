@@ -113,7 +113,6 @@ describe('PlexAdapterService', () => {
       expect(status).toBeDefined();
       expect(status?.machineId).toBe('machine123');
       expect(status?.version).toBe('1.25.0');
-      // Note: name is passed separately to the mapper and is undefined in adapter
       expect(status?.name).toBeUndefined();
     });
   });
@@ -185,6 +184,175 @@ describe('PlexAdapterService', () => {
         'movie',
         'show',
       ]);
+    });
+
+    it('computes accurate library sizes via section allLeaves for show libraries', async () => {
+      plexApi.getLibraries.mockResolvedValue([
+        createPlexLibrary({
+          key: 'movie-lib',
+          title: 'Movies',
+          type: 'movie',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+        createPlexLibrary({
+          key: 'show-lib',
+          title: 'Shows',
+          type: 'show',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+      ]);
+      plexApi.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [
+            createPlexLibraryItem('movie', {
+              ratingKey: 'movie-1',
+              librarySectionID: 1,
+              librarySectionKey: 'movie-lib',
+              librarySectionTitle: 'Movies',
+              Media: [
+                {
+                  id: 1,
+                  duration: 100,
+                  bitrate: 100,
+                  width: 1920,
+                  height: 1080,
+                  aspectRatio: 1.78,
+                  audioChannels: 2,
+                  audioCodec: 'aac',
+                  videoCodec: 'h264',
+                  videoResolution: '1080',
+                  container: 'mp4',
+                  videoFrameRate: '24p',
+                  videoProfile: 'high',
+                  Part: [{ id: 1, size: 400, container: 'mp4' }],
+                },
+              ],
+            }),
+          ],
+          totalSize: 1,
+        })
+        .mockResolvedValueOnce({
+          items: [
+            createPlexLibraryItem('movie', {
+              ratingKey: 'unexpected-show-list-item',
+              librarySectionID: 2,
+              librarySectionKey: 'show-lib',
+              librarySectionTitle: 'Shows',
+              Media: [],
+            }),
+          ],
+          totalSize: 1,
+        });
+      plexApi.getLibraryLeaves.mockResolvedValue([
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-1',
+          librarySectionID: 2,
+          librarySectionKey: 'show-lib',
+          librarySectionTitle: 'Shows',
+          parentRatingKey: 'season-1',
+          grandparentRatingKey: 'show-1',
+          Media: [
+            {
+              id: 2,
+              duration: 50,
+              bitrate: 50,
+              width: 1920,
+              height: 1080,
+              aspectRatio: 1.78,
+              audioChannels: 2,
+              audioCodec: 'aac',
+              videoCodec: 'h264',
+              videoResolution: '1080',
+              container: 'mp4',
+              videoFrameRate: '24p',
+              videoProfile: 'high',
+              Part: [{ id: 2, size: 250, container: 'mp4' }],
+            },
+          ],
+        }),
+      ]);
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([
+          ['movie-lib', 400],
+          ['show-lib', 250],
+        ]),
+      );
+      expect(plexApi.getLibraryLeaves).toHaveBeenCalledWith('show-lib');
+      expect(plexApi.getChildrenMetadata).not.toHaveBeenCalled();
+    });
+
+    it('returns 0 for a show library when section allLeaves is unavailable', async () => {
+      plexApi.getLibraries.mockResolvedValue([
+        createPlexLibrary({
+          key: 'show-lib',
+          title: 'Shows',
+          type: 'show',
+          agent: 'tv.plex.agents.series',
+        }),
+      ]);
+      plexApi.getLibraryLeaves.mockResolvedValue(undefined);
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([['show-lib', 0]]),
+      );
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Failed to compute Plex show library size via allLeaves for library show-lib',
+      );
+      expect(plexApi.getLibraryContents).not.toHaveBeenCalled();
+      expect(plexApi.getChildrenMetadata).not.toHaveBeenCalled();
+    });
+
+    it('falls back to metadata lookups when Plex library items omit media sizes', async () => {
+      plexApi.getLibraries.mockResolvedValue([
+        createPlexLibrary({
+          key: 'movie-lib',
+          title: 'Movies',
+          type: 'movie',
+          agent: 'com.plexapp.agents.imdb',
+        }),
+      ]);
+      plexApi.getLibraryContents.mockResolvedValue({
+        items: [
+          createPlexLibraryItem('movie', {
+            ratingKey: 'movie-1',
+            librarySectionID: 1,
+            librarySectionKey: 'movie-lib',
+            librarySectionTitle: 'Movies',
+            Media: [],
+          }),
+        ],
+        totalSize: 1,
+      });
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          Media: [
+            {
+              id: 1,
+              duration: 100,
+              bitrate: 100,
+              width: 1920,
+              height: 1080,
+              aspectRatio: 1.78,
+              audioChannels: 2,
+              audioCodec: 'aac',
+              videoCodec: 'h264',
+              videoResolution: '1080',
+              container: 'mp4',
+              videoFrameRate: '24p',
+              videoProfile: 'high',
+              Part: [{ id: 1, size: 321, container: 'mp4' }],
+            },
+          ],
+        }),
+      );
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([['movie-lib', 321]]),
+      );
+      expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1');
     });
   });
 

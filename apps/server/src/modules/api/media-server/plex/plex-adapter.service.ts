@@ -96,6 +96,24 @@ export class PlexAdapterService implements IMediaServerService {
       .map(PlexMapper.toMediaLibrary);
   }
 
+  async getLibrariesStorage(): Promise<Map<string, number>> {
+    return this.plexApi.getLibrariesStorage();
+  }
+
+  async computeLibraryStorageSizes(): Promise<Map<string, number>> {
+    const sizeBytesByLibrary = new Map<string, number>();
+    const libraries = await this.getLibraries();
+
+    for (const library of libraries) {
+      sizeBytesByLibrary.set(
+        library.id,
+        await this.sumLibraryItemSizes(library),
+      );
+    }
+
+    return sizeBytesByLibrary;
+  }
+
   async getLibraryContents(
     libraryId: string,
     options?: LibraryQueryOptions,
@@ -305,6 +323,104 @@ export class PlexAdapterService implements IMediaServerService {
       this.logger.debug(error);
       throw error;
     }
+  }
+
+  private async sumLibraryItemSizes(library: MediaLibrary): Promise<number> {
+    if (library.type === 'show') {
+      return this.sumShowLibraryItemSizes(library.id);
+    }
+
+    const limit = PLEX_PAGE_SIZE.DEFAULT;
+    let offset = 0;
+    let total = 0;
+
+    while (true) {
+      let page: PagedResult<MediaItem>;
+
+      try {
+        page = await this.getLibraryContents(library.id, {
+          offset,
+          limit,
+          type: library.type,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to compute Plex library size for library ${library.id}`,
+        );
+        this.logger.debug(error);
+        return total;
+      }
+
+      for (const item of page.items) {
+        total += await this.sumMediaItemSizes(item);
+      }
+
+      offset += page.items.length;
+      if (page.items.length === 0 || offset >= page.totalSize) {
+        break;
+      }
+    }
+
+    return total;
+  }
+
+  private async sumShowLibraryItemSizes(libraryId: string): Promise<number> {
+    const leaves = await this.plexApi.getLibraryLeaves(libraryId);
+    if (!leaves) {
+      this.logger.warn(
+        `Failed to compute Plex show library size via allLeaves for library ${libraryId}`,
+      );
+      return 0;
+    }
+
+    return this.sumMediaItems(leaves.map(PlexMapper.toMediaItem));
+  }
+
+  private async sumMediaItems(items: MediaItem[]): Promise<number> {
+    let total = 0;
+
+    for (const item of items) {
+      total += await this.sumMediaItemSizes(item);
+    }
+
+    return total;
+  }
+
+  private async sumMediaItemSizes(item: MediaItem): Promise<number> {
+    const directSize = this.sumMediaSources(item);
+    if (directSize > 0) {
+      return directSize;
+    }
+
+    if (item.type === 'movie' || item.type === 'episode') {
+      return this.sumMetadataMediaSources(item.id);
+    }
+
+    return 0;
+  }
+
+  private async sumMetadataMediaSources(itemId: string): Promise<number> {
+    try {
+      const metadata = await this.getMetadata(itemId);
+      return this.sumMediaSources(metadata);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load Plex metadata while computing size for ${itemId}`,
+      );
+      this.logger.debug(error);
+      return 0;
+    }
+  }
+
+  private sumMediaSources(item: MediaItem | undefined): number {
+    if (!item?.mediaSources?.length) {
+      return 0;
+    }
+
+    return item.mediaSources.reduce(
+      (sum, source) => sum + (source.sizeBytes ?? 0),
+      0,
+    );
   }
 
   private hasUsableProviderIds(mediaItem: MediaItem | undefined): boolean {

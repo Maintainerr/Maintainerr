@@ -1,6 +1,7 @@
 import { Transition, TransitionChild } from '@headlessui/react'
 import {
   CalendarIcon,
+  ChartBarIcon,
   ClipboardCheckIcon,
   CogIcon,
   CollectionIcon,
@@ -68,6 +69,13 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         svgIcon: <CalendarIcon className="mr-3 h-6 w-6" />,
         name: 'Calendar',
         matchPattern: /^\/calendar(?:\/.*)?$/,
+      },
+      {
+        key: '6',
+        href: '/storage-metrics',
+        svgIcon: <ChartBarIcon className="mr-3 h-6 w-6" />,
+        name: 'Storage Metrics',
+        matchPattern: /^\/storage-metrics(?:\/.*)?$/,
       },
       {
         key: '5',

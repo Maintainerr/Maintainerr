@@ -460,6 +460,14 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * Plex does not expose a documented native per-library storage total in the
+   * official API. Callers that need accurate sizes must enumerate items.
+   */
+  public async getLibrariesStorage(): Promise<Map<string, number>> {
+    return new Map<string, number>();
+  }
+
   public async getLibraryContentCount(
     id: string | number,
     datatype?: EPlexDataType,
@@ -512,6 +520,28 @@ export class PlexApiService {
         totalSize: response.MediaContainer.totalSize,
         items: (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [],
       };
+    } catch (error) {
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  public async getLibraryLeaves(
+    id: string,
+    useCache: boolean = true,
+  ): Promise<PlexLibraryItem[]> {
+    try {
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${id}/allLeaves?includeGuids=1`,
+        },
+        useCache,
+      );
+
+      return (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [];
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
