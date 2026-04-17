@@ -3,6 +3,11 @@ import { useRef, useState } from 'react'
 import ColorPickerModal from '../Common/ColorPickerModal'
 import { Input } from '../Forms/Input'
 import { Select } from '../Forms/Select'
+import {
+  findOverlayFont,
+  getOverlayFontFamily,
+  type OverlayEditorFont,
+} from './editorFonts'
 
 interface PropertiesPanelProps {
   element: OverlayElement
@@ -434,17 +439,17 @@ function FontFields<
 }: {
   el: T
   update: <K extends keyof T>(key: K, value: T[K]) => void
-  fonts: { name: string; path: string }[]
-  onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
+  fonts: OverlayEditorFont[]
+  onUploadFont: (file: File) => Promise<OverlayEditorFont | null>
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
-  const currentFont = fonts.find((f) => f.name === el.fontPath)
+  const currentFont = findOverlayFont(fonts, el.fontPath)
   const selectValue = currentFont ? currentFont.name : ''
 
   const handleFontSelect = (fontName: string) => {
-    const font = fonts.find((f) => f.name === fontName)
+    const font = findOverlayFont(fonts, fontName)
     if (font) {
-      const family = font.name.replace(/\.[^.]+$/, '')
+      const family = getOverlayFontFamily(font.name)
       update('fontFamily', family as T['fontFamily'])
       update('fontPath', font.name as T['fontPath'])
     }
@@ -455,7 +460,7 @@ function FontFields<
     if (!file) return
     const uploaded = await onUploadFont(file)
     if (uploaded) {
-      const family = uploaded.name.replace(/\.[^.]+$/, '')
+      const family = getOverlayFontFamily(uploaded.name)
       update('fontFamily', family as T['fontFamily'])
       update('fontPath', uploaded.name as T['fontPath'])
     }

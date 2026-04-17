@@ -1,11 +1,12 @@
 import {
+  isSafeFilename,
   OverlaySettings,
   OverlaySettingsUpdate,
-  OverlayTemplateCreate,
-  OverlayTemplateUpdate,
   overlaySettingsUpdateSchema,
+  OverlayTemplateCreate,
   overlayTemplateCreateSchema,
   overlayTemplateExportSchema,
+  OverlayTemplateUpdate,
   overlayTemplateUpdateSchema,
   sanitizeFilenameChars,
 } from '@maintainerr/contracts';
@@ -43,6 +44,11 @@ import { OverlayTemplateService } from './overlay-template.service';
 @Controller('api/overlays')
 export class OverlaysController {
   private readonly fontsDir: string;
+  private readonly fontContentTypes = new Map<string, string>([
+    ['.ttf', 'font/ttf'],
+    ['.otf', 'font/otf'],
+    ['.woff', 'font/woff'],
+  ]);
 
   constructor(
     private readonly settingsService: OverlaySettingsService,
@@ -193,29 +199,74 @@ export class OverlaysController {
 
   // ── Fonts ───────────────────────────────────────────────────────────────
 
-  @Get('fonts')
-  listFonts() {
-    const dirs = [this.fontsDir];
+  private resolveFontContentType(fileName: string): string | undefined {
+    return this.fontContentTypes.get(path.extname(fileName).toLowerCase());
+  }
 
-    // Also check user-uploaded fonts directory
-    const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
-    if (fs.existsSync(userFontsDir)) {
-      dirs.push(userFontsDir);
-    }
+  private isSupportedFontFile(fileName: string): boolean {
+    return this.resolveFontContentType(fileName) !== undefined;
+  }
 
-    const fonts: { name: string; path: string }[] = [];
-    for (const dir of dirs) {
-      if (!fs.existsSync(dir)) continue;
-      const files = fs.readdirSync(dir).filter((f) => {
-        const ext = path.extname(f).toLowerCase();
-        return ext === '.ttf' || ext === '.otf' || ext === '.woff';
-      });
-      for (const file of files) {
-        fonts.push({ name: file, path: path.join(dir, file) });
+  private findFontPath(
+    name: string,
+  ): { path: string; contentType: string } | null {
+    const candidates = [
+      path.join(configDataDir, 'overlays', 'fonts', name),
+      path.join(this.fontsDir, name),
+    ];
+
+    for (const candidate of candidates) {
+      const contentType = this.resolveFontContentType(candidate);
+      if (fs.existsSync(candidate) && contentType) {
+        return { path: candidate, contentType };
       }
     }
 
-    return fonts;
+    return null;
+  }
+
+  @Get('fonts')
+  listFonts() {
+    // User-uploaded fonts take precedence over bundled fonts when names
+    // collide, so the dropdown and the served file agree on a single source.
+    const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
+    const dirs = [userFontsDir, this.fontsDir];
+
+    const byName = new Map<string, { name: string; path: string }>();
+    for (const dir of dirs) {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs
+        .readdirSync(dir)
+        .filter((f) => this.isSupportedFontFile(f));
+      for (const file of files) {
+        if (!byName.has(file)) {
+          byName.set(file, { name: file, path: path.join(dir, file) });
+        }
+      }
+    }
+
+    return Array.from(byName.values());
+  }
+
+  @Get('fonts/:name')
+  getFont(
+    @Param('name') name: string,
+    @Res({ passthrough: true }) res: Response,
+  ): StreamableFile {
+    if (!isSafeFilename(name)) {
+      throw new HttpException('Invalid font name', HttpStatus.BAD_REQUEST);
+    }
+
+    // Mirror `listFonts`: user-uploaded fonts win on name collisions.
+    const font = this.findFontPath(name);
+
+    if (!font) {
+      throw new HttpException('Font not found', HttpStatus.NOT_FOUND);
+    }
+
+    res.setHeader('Content-Type', font.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return new StreamableFile(fs.createReadStream(font.path));
   }
 
   @Post('fonts')
@@ -227,8 +278,7 @@ export class OverlaysController {
       throw new HttpException('No font file uploaded', HttpStatus.BAD_REQUEST);
     }
 
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (ext !== '.ttf' && ext !== '.otf' && ext !== '.woff') {
+    if (!this.isSupportedFontFile(file.originalname)) {
       throw new HttpException(
         'Only .ttf, .otf, and .woff font files are supported',
         HttpStatus.BAD_REQUEST,

@@ -1,37 +1,49 @@
-import { useMemo } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useMediaServerType } from '../../hooks/useMediaServerType'
+import Alert from '../Common/Alert'
+import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from '../Settings/Tabs'
 
+const overlayRoutes: SettingsRoute[] = [
+  {
+    text: 'Settings',
+    route: '/overlays/settings',
+    regex: /^\/overlays\/settings$/,
+  },
+  {
+    text: 'Existing Templates',
+    route: '/overlays/templates',
+    regex: /^\/overlays\/templates$/,
+    activeRegex: /^\/overlays\/templates(?:\/(?!new$).+)?$/,
+  },
+  {
+    text: 'New Template',
+    route: '/overlays/templates/new',
+    regex: /^\/overlays\/templates\/new$/,
+  },
+]
+
 const OverlaysWrapper = () => {
-  const routes: SettingsRoute[] = useMemo(
-    () => [
-      {
-        text: 'Settings',
-        route: '/overlays/settings',
-        regex: /^\/overlays\/settings$/,
-      },
-      {
-        text: 'Existing Templates',
-        route: '/overlays/templates',
-        regex: /^\/overlays\/templates$/,
-        activeRegex: /^\/overlays\/templates(?:\/(?!new$).+)?$/,
-      },
-      {
-        text: 'New Template',
-        route: '/overlays/templates/new',
-        regex: /^\/overlays\/templates\/new$/,
-      },
-    ],
-    [],
-  )
+  const { isLoading, isPlex } = useMediaServerType()
 
   return (
     <>
-      <div className="mt-6">
-        <SettingsTabs settingsRoutes={routes} allEnabled />
+      <div
+        className={`mt-6 ${!isPlex ? 'pointer-events-none opacity-50' : ''}`}
+      >
+        <SettingsTabs settingsRoutes={overlayRoutes} allEnabled={isPlex} />
       </div>
-      <div className="mt-10 text-white">
-        <Outlet />
+      <div className="mt-10 min-h-[16rem] text-white">
+        {isLoading ? (
+          <LoadingSpinner containerClassName="min-h-[16rem]" />
+        ) : !isPlex ? (
+          <Alert type="info" title="Overlays currently require Plex">
+            Switch the media server to Plex to configure overlay settings and
+            templates.
+          </Alert>
+        ) : (
+          <Outlet />
+        )}
       </div>
     </>
   )

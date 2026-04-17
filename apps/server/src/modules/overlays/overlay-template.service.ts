@@ -7,12 +7,13 @@ import {
   type OverlayTemplateUpdate,
   overlayTemplateCreateSchema,
   overlayTemplateExportSchema,
+  overlayTemplateModeValues,
   overlayTemplateUpdateSchema,
   PRESET_TEMPLATES,
 } from '@maintainerr/contracts';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { OverlayTemplateEntity } from './entities/overlay-template.entities';
 
@@ -28,6 +29,32 @@ export class OverlayTemplateService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.seedPresets();
+    await this.pruneDuplicateDefaults();
+  }
+
+  /**
+   * One-shot cleanup: if a mode ever ends up with multiple `isDefault=true`
+   * rows (e.g. from older installs that set a user template as default
+   * without clearing a preset default), keep the most recently updated and
+   * clear the rest. Runs on boot so `findDefault` can stay a simple lookup.
+   */
+  private async pruneDuplicateDefaults(): Promise<void> {
+    for (const mode of overlayTemplateModeValues) {
+      const defaults = await this.repo.find({
+        where: { mode, isDefault: true },
+        order: { updatedAt: 'DESC', id: 'DESC' },
+      });
+      if (defaults.length <= 1) continue;
+
+      const [keep, ...duplicates] = defaults;
+      await this.repo.update(
+        { id: In(duplicates.map((entity) => entity.id)) },
+        { isDefault: false },
+      );
+      this.logger.warn(
+        `Cleared ${duplicates.length} duplicate default ${mode} template(s); kept id=${keep.id}`,
+      );
+    }
   }
 
   // ── Preset seeding ──────────────────────────────────────────────────────
@@ -92,8 +119,16 @@ export class OverlayTemplateService implements OnModuleInit {
   ): Promise<OverlayTemplate | null> {
     const entity = await this.repo.findOne({
       where: { mode, isDefault: true },
+      order: { updatedAt: 'DESC', id: 'DESC' },
     });
-    return entity ? this.toDto(entity) : null;
+    if (entity) {
+      return this.toDto(entity);
+    }
+
+    // Self-heal missing defaults by promoting the best fallback once, so
+    // future reads can continue as a plain lookup.
+    const fallback = await this.assignFallbackDefault(mode);
+    return fallback ? this.toDto(fallback) : null;
   }
 
   /**
@@ -170,7 +205,7 @@ export class OverlayTemplateService implements OnModuleInit {
     await this.repo.remove(entity);
 
     if (wasDefault) {
-      await this.ensureDefault(mode);
+      await this.assignFallbackDefault(mode);
     }
 
     this.logger.log(`Deleted template "${entity.name}" (id=${id})`);
@@ -250,29 +285,21 @@ export class OverlayTemplateService implements OnModuleInit {
     await this.repo.update({ mode, isDefault: true }, { isDefault: false });
   }
 
-  private async ensureDefault(mode: OverlayTemplateMode): Promise<void> {
-    const existingDefault = await this.repo.findOne({
-      where: { mode, isDefault: true },
-    });
-
-    if (existingDefault) {
-      return;
-    }
-
+  private async assignFallbackDefault(
+    mode: OverlayTemplateMode,
+  ): Promise<OverlayTemplateEntity | null> {
     const fallback = await this.repo.findOne({
       where: { mode },
       order: { isPreset: 'DESC', id: 'ASC' },
     });
-
-    if (!fallback) {
-      return;
-    }
+    if (!fallback) return null;
 
     fallback.isDefault = true;
-    await this.repo.save(fallback);
+    const saved = await this.repo.save(fallback);
     this.logger.log(
-      `Assigned fallback default template "${fallback.name}" for ${mode}`,
+      `Assigned fallback default template "${saved.name}" for ${mode}`,
     );
+    return saved;
   }
 
   private toDto(entity: OverlayTemplateEntity): OverlayTemplate {
