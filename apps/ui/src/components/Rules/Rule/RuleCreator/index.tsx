@@ -337,9 +337,10 @@ const RuleCreator = (props: iRuleCreator) => {
       />
 
       {!hasIncompleteRule ? (
-        <div className="mb-3 mt-3 flex w-full">
-          <div className="m-auto xl:m-0">
+        <div className="mb-3 mt-3 flex w-full justify-start pl-6">
+          <div>
             <AddButton
+              className="mx-0"
               onClick={addSection}
               title="Add a new section"
               text="New Section"
