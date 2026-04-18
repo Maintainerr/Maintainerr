@@ -1,6 +1,5 @@
 import { CloudDownloadIcon } from '@heroicons/react/outline'
 import {
-  BanIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   DocumentDuplicateIcon,
@@ -1671,17 +1670,15 @@ const AddModal = (props: AddModal) => {
                 disabled={isCreatePending || isUpdatePending}
                 type="submit"
               />
-              <button
-                className="ml-auto flex h-10 rounded bg-maintainerrdark text-zinc-900 shadow-md hover:bg-maintainerrdark-800"
+              <Button
+                buttonType="default"
+                className="ml-auto"
                 onClick={cancel}
                 type="button"
                 disabled={isCreatePending || isUpdatePending}
               >
-                {<BanIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
-                <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
-                  Cancel
-                </p>
-              </button>
+                Cancel
+              </Button>
             </div>
           </div>
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
@@ -1696,15 +1693,15 @@ const AddModal = (props: AddModal) => {
                 type="submit"
               />
 
-              <button
-                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-maintainerrdark text-zinc-900 shadow-md hover:bg-maintainerrdark-800 disabled:opacity-60"
+              <Button
+                buttonType="default"
+                className="w-full max-w-[160px] justify-center"
                 type="button"
                 onClick={cancel}
                 disabled={isCreatePending || isUpdatePending}
               >
-                <BanIcon className="h-5 w-5 text-zinc-200" />
-                <span className="ml-2 text-zinc-100">Cancel</span>
-              </button>
+                Cancel
+              </Button>
             </div>
           </div>
 
