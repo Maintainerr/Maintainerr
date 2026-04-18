@@ -4,7 +4,14 @@ import {
   MenuIcon,
 } from '@heroicons/react/solid'
 import { type MediaItemType, MediaType } from '@maintainerr/contracts'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { isEqual } from 'lodash-es'
+import {
+  type KeyboardEvent,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react'
 import { arrayMove, List } from 'react-movable'
 import Alert from '../../../Common/Alert'
 import SectionHeading from '../../../Common/SectionHeading'
@@ -40,6 +47,14 @@ type SectionSlot = { uid: string; rules: RuleSlot[] }
 
 let uidCounter = 0
 const newUid = (prefix: string) => `${prefix}-${++uidCounter}`
+
+const DRAG_KEYS = new Set([' ', 'ArrowUp', 'ArrowDown', 'j', 'k', 'Escape'])
+const stopDragKeyPropagation = (
+  inner: ((e: KeyboardEvent) => void) | undefined,
+) => (e: KeyboardEvent) => {
+  inner?.(e)
+  if (DRAG_KEYS.has(e.key)) e.stopPropagation()
+}
 
 const buildInitialSections = (
   editData: { rules: IRule[] } | undefined,
@@ -84,12 +99,17 @@ const RuleCreator = (props: iRuleCreator) => {
     buildInitialSections(props.editData),
   )
   const [newRuleUids, setNewRuleUids] = useState<Set<string>>(new Set())
+  const didMountRef = useRef(false)
 
   const emitUpdate = useEffectEvent(() => {
     props.onUpdate(flattenSections(sections))
   })
 
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
     emitUpdate()
   }, [sections])
 
@@ -103,14 +123,19 @@ const RuleCreator = (props: iRuleCreator) => {
   }
 
   const handleCommit = (uid: string) => (_id: number, rule: IRule) => {
-    setSections((prev) =>
-      prev.map((section) => ({
+    setSections((prev) => {
+      let changed = false
+      const next = prev.map((section) => ({
         ...section,
-        rules: section.rules.map((slot) =>
-          slot.uid === uid ? { ...slot, rule } : slot,
-        ),
-      })),
-    )
+        rules: section.rules.map((slot) => {
+          if (slot.uid !== uid) return slot
+          if (slot.rule && isEqual(slot.rule, rule)) return slot
+          changed = true
+          return { ...slot, rule }
+        }),
+      }))
+      return changed ? next : prev
+    })
     clearNewRuleUid(uid)
   }
 
@@ -261,12 +286,14 @@ const RuleCreator = (props: iRuleCreator) => {
                     const {
                       key: _ruleKey,
                       style: ruleStyle,
+                      onKeyDown: ruleOnKeyDown,
                       ...ruleRest
                     } = ruleProps
                     return (
                       <div
                         key={slot.uid}
                         {...ruleRest}
+                        onKeyDown={stopDragKeyPropagation(ruleOnKeyDown)}
                         style={{ ...ruleStyle, listStyle: 'none' }}
                       >
                         <div className="flex w-full items-start">
