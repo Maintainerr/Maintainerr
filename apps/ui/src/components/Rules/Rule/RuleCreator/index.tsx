@@ -4,8 +4,16 @@ import {
   MenuIcon,
 } from '@heroicons/react/solid'
 import { type MediaItemType, MediaType } from '@maintainerr/contracts'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { isEqual } from 'lodash-es'
+import {
+  type KeyboardEvent,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react'
 import { arrayMove, List } from 'react-movable'
+import AddButton from '../../../Common/AddButton'
 import Alert from '../../../Common/Alert'
 import SectionHeading from '../../../Common/SectionHeading'
 import RuleInput from './RuleInput'
@@ -40,6 +48,13 @@ type SectionSlot = { uid: string; rules: RuleSlot[] }
 
 let uidCounter = 0
 const newUid = (prefix: string) => `${prefix}-${++uidCounter}`
+
+const DRAG_KEYS = new Set([' ', 'ArrowUp', 'ArrowDown', 'j', 'k', 'Escape'])
+const stopDragKeyPropagation =
+  (inner: ((e: KeyboardEvent) => void) | undefined) => (e: KeyboardEvent) => {
+    inner?.(e)
+    if (DRAG_KEYS.has(e.key)) e.stopPropagation()
+  }
 
 const buildInitialSections = (
   editData: { rules: IRule[] } | undefined,
@@ -83,35 +98,34 @@ const RuleCreator = (props: iRuleCreator) => {
   const [sections, setSections] = useState<SectionSlot[]>(() =>
     buildInitialSections(props.editData),
   )
-  const [newRuleUids, setNewRuleUids] = useState<Set<string>>(new Set())
+  const didMountRef = useRef(false)
 
   const emitUpdate = useEffectEvent(() => {
     props.onUpdate(flattenSections(sections))
   })
 
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
     emitUpdate()
   }, [sections])
 
-  const clearNewRuleUid = (uid: string) => {
-    setNewRuleUids((prev) => {
-      if (!prev.has(uid)) return prev
-      const next = new Set(prev)
-      next.delete(uid)
-      return next
-    })
-  }
-
   const handleCommit = (uid: string) => (_id: number, rule: IRule) => {
-    setSections((prev) =>
-      prev.map((section) => ({
+    setSections((prev) => {
+      let changed = false
+      const next = prev.map((section) => ({
         ...section,
-        rules: section.rules.map((slot) =>
-          slot.uid === uid ? { ...slot, rule } : slot,
-        ),
-      })),
-    )
-    clearNewRuleUid(uid)
+        rules: section.rules.map((slot) => {
+          if (slot.uid !== uid) return slot
+          if (slot.rule && isEqual(slot.rule, rule)) return slot
+          changed = true
+          return { ...slot, rule }
+        }),
+      }))
+      return changed ? next : prev
+    })
   }
 
   const handleIncomplete = (uid: string) => () => {
@@ -145,12 +159,10 @@ const RuleCreator = (props: iRuleCreator) => {
         ? next
         : [{ uid: newUid('s'), rules: [{ uid: newUid('r'), rule: null }] }]
     })
-    clearNewRuleUid(ruleUid)
   }
 
   const addRule = (sectionUid: string) => {
     const uid = newUid('r')
-    setNewRuleUids((prev) => new Set(prev).add(uid))
     setSections((prev) =>
       prev.map((section) =>
         section.uid !== sectionUid
@@ -162,7 +174,6 @@ const RuleCreator = (props: iRuleCreator) => {
 
   const addSection = () => {
     const ruleUid = newUid('r')
-    setNewRuleUids((prev) => new Set(prev).add(ruleUid))
     setSections((prev) => [
       ...prev,
       { uid: newUid('s'), rules: [{ uid: ruleUid, rule: null }] },
@@ -196,7 +207,9 @@ const RuleCreator = (props: iRuleCreator) => {
     0,
   )
   const allowDelete = totalRules > 1
-  const hasPendingAdd = newRuleUids.size > 0
+  const hasIncompleteRule = sections.some((section) =>
+    section.rules.some((slot) => slot.rule === null),
+  )
 
   return (
     <div className="text-zinc-100">
@@ -207,7 +220,9 @@ const RuleCreator = (props: iRuleCreator) => {
           reorderSections(oldIndex, newIndex)
         }
         renderList={({ children, props: listProps }) => (
-          <div ref={listProps.ref}>{children}</div>
+          <div ref={listProps.ref} className="flex flex-col space-y-4">
+            {children}
+          </div>
         )}
         renderItem={({ value: section, props: itemProps, index }) => {
           const sectionNumber = (index ?? 0) + 1
@@ -217,7 +232,6 @@ const RuleCreator = (props: iRuleCreator) => {
               key={section.uid}
               {...itemRest}
               style={{ ...itemStyle, listStyle: 'none' }}
-              className="mb-4"
             >
               <div className="rounded-lg bg-zinc-700 px-6 py-0.5 shadow-md">
                 <div className="flex items-center">
@@ -257,16 +271,17 @@ const RuleCreator = (props: iRuleCreator) => {
                   }) => {
                     const tagId = (ruleIndex ?? 0) + 1
                     const absoluteId = ++absoluteCounter
-                    const isNew = newRuleUids.has(slot.uid)
                     const {
                       key: _ruleKey,
                       style: ruleStyle,
+                      onKeyDown: ruleOnKeyDown,
                       ...ruleRest
                     } = ruleProps
                     return (
                       <div
                         key={slot.uid}
                         {...ruleRest}
+                        onKeyDown={stopDragKeyPropagation(ruleOnKeyDown)}
                         style={{ ...ruleStyle, listStyle: 'none' }}
                       >
                         <div className="flex w-full items-start">
@@ -286,9 +301,7 @@ const RuleCreator = (props: iRuleCreator) => {
                               tagId={tagId}
                               section={sectionNumber}
                               editData={
-                                !isNew && slot.rule
-                                  ? { rule: slot.rule }
-                                  : undefined
+                                slot.rule ? { rule: slot.rule } : undefined
                               }
                               mediaType={props.mediaType}
                               dataType={props.dataType}
@@ -306,19 +319,16 @@ const RuleCreator = (props: iRuleCreator) => {
                   }}
                 />
 
-                {!hasPendingAdd ? (
-                  <div className="mb-2 flex w-full justify-end">
-                    <button
-                      type="button"
-                      className="flex h-8 rounded bg-maintainerr-600 text-zinc-200 shadow-md hover:bg-maintainerr"
+                {!hasIncompleteRule ? (
+                  <div className="flex w-full justify-start py-2">
+                    <AddButton
+                      className="mx-0"
                       onClick={() => addRule(section.uid)}
                       title={`Add a new rule to Section ${sectionNumber}`}
-                    >
-                      <DocumentAddIcon className="m-auto ml-5 h-5" />
-                      <p className="button-text m-auto ml-1 mr-5 text-zinc-200">
-                        Add Rule
-                      </p>
-                    </button>
+                      text="Add Rule"
+                      icon={<DocumentAddIcon className="h-5 w-5" />}
+                      buttonSize="sm"
+                    />
                   </div>
                 ) : null}
               </div>
@@ -327,20 +337,17 @@ const RuleCreator = (props: iRuleCreator) => {
         }}
       />
 
-      {!hasPendingAdd ? (
-        <div className="mb-3 mt-3 flex w-full">
-          <div className="m-auto xl:m-0">
-            <button
-              type="button"
-              className="flex h-8 rounded bg-maintainerr-600 text-zinc-200 shadow-md hover:bg-maintainerr"
+      {!hasIncompleteRule ? (
+        <div className="flex w-full justify-start py-2 pl-6">
+          <div>
+            <AddButton
+              className="mx-0"
               onClick={addSection}
               title="Add a new section"
-            >
-              <ClipboardListIcon className="m-auto ml-5 h-5" />
-              <p className="button-text m-auto ml-1 mr-5 text-zinc-200">
-                New Section
-              </p>
-            </button>
+              text="New Section"
+              icon={<ClipboardListIcon className="h-5 w-5" />}
+              buttonSize="sm"
+            />
           </div>
         </div>
       ) : null}
