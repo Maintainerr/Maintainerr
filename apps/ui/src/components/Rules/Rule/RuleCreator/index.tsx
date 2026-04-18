@@ -319,7 +319,7 @@ const RuleCreator = (props: iRuleCreator) => {
                 />
 
                 {!hasIncompleteRule ? (
-                  <div className="mb-2 flex w-full justify-start">
+                  <div className="flex w-full justify-start py-2">
                     <AddButton
                       className="mx-0"
                       onClick={() => addRule(section.uid)}
@@ -337,7 +337,7 @@ const RuleCreator = (props: iRuleCreator) => {
       />
 
       {!hasIncompleteRule ? (
-        <div className="mb-3 mt-3 flex w-full justify-start pl-6">
+        <div className="flex w-full justify-start py-2 pl-6">
           <div>
             <AddButton
               className="mx-0"
