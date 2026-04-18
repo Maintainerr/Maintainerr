@@ -220,7 +220,9 @@ const RuleCreator = (props: iRuleCreator) => {
           reorderSections(oldIndex, newIndex)
         }
         renderList={({ children, props: listProps }) => (
-          <div ref={listProps.ref}>{children}</div>
+          <div ref={listProps.ref} className="flex flex-col space-y-4">
+            {children}
+          </div>
         )}
         renderItem={({ value: section, props: itemProps, index }) => {
           const sectionNumber = (index ?? 0) + 1
@@ -230,7 +232,6 @@ const RuleCreator = (props: iRuleCreator) => {
               key={section.uid}
               {...itemRest}
               style={{ ...itemStyle, listStyle: 'none' }}
-              className="mb-4"
             >
               <div className="rounded-lg bg-zinc-700 px-6 py-0.5 shadow-md">
                 <div className="flex items-center">
