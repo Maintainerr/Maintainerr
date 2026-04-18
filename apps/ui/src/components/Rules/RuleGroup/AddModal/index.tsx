@@ -6,7 +6,6 @@ import {
   DocumentDuplicateIcon,
   DownloadIcon,
   QuestionMarkCircleIcon,
-  SaveIcon,
   UploadIcon,
 } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -40,6 +39,7 @@ import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import SaveButton from '../../../Common/SaveButton'
 import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
@@ -1663,16 +1663,14 @@ const AddModal = (props: AddModal) => {
           </div>
           <div className="mt-5 hidden h-full w-full md:flex">
             <div className="m-auto flex xl:m-0">
-              <button
-                className="ml-auto mr-3 flex h-10 rounded bg-maintainerr-600 text-zinc-900 shadow-md hover:bg-maintainerr"
-                type="submit"
+              <SaveButton
+                label="Save"
+                pendingLabel="Save"
+                className="ml-auto mr-3"
+                isPending={isCreatePending || isUpdatePending}
                 disabled={isCreatePending || isUpdatePending}
-              >
-                {<SaveIcon className="m-auto ml-5 h-6 w-6 text-zinc-200" />}
-                <p className="button-text m-auto ml-1 mr-5 text-zinc-100">
-                  Save
-                </p>
-              </button>
+                type="submit"
+              />
               <button
                 className="ml-auto flex h-10 rounded bg-maintainerrdark text-zinc-900 shadow-md hover:bg-maintainerrdark-800"
                 onClick={cancel}
@@ -1688,14 +1686,15 @@ const AddModal = (props: AddModal) => {
           </div>
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
             <div className="flex justify-center gap-3">
-              <button
-                className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-maintainerr-600 text-zinc-900 shadow-md hover:bg-maintainerr disabled:opacity-60"
-                type="submit"
+              <SaveButton
+                label="Save"
+                pendingLabel="Save"
+                contentSize="compact"
+                className="w-full max-w-[160px]"
+                isPending={isCreatePending || isUpdatePending}
                 disabled={isCreatePending || isUpdatePending}
-              >
-                <SaveIcon className="h-5 w-5 text-zinc-200" />
-                <span className="ml-2 text-zinc-100">Save</span>
-              </button>
+                type="submit"
+              />
 
               <button
                 className="flex h-10 w-full max-w-[160px] items-center justify-center rounded bg-maintainerrdark text-zinc-900 shadow-md hover:bg-maintainerrdark-800 disabled:opacity-60"
