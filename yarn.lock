@@ -3156,6 +3156,7 @@ __metadata:
     react-hook-form: "npm:^7.72.1"
     react-konva: "npm:^19.2.3"
     react-markdown: "npm:10.1.0"
+    react-movable: "npm:^3.4.1"
     react-router-dom: "npm:^7.14.1"
     react-select: "npm:^5.10.2"
     react-toastify: "npm:^11.0.5"
@@ -17907,6 +17908,16 @@ __metadata:
     "@types/react": ">=18"
     react: ">=18"
   checksum: 10c0/4a5dc7d15ca6d05e9ee95318c1904f83b111a76f7588c44f50f1d54d4c97193b84e4f64c4b592057c989228238a2590306cedd0c4d398e75da49262b2b5ae1bf
+  languageName: node
+  linkType: hard
+
+"react-movable@npm:^3.4.1":
+  version: 3.4.1
+  resolution: "react-movable@npm:3.4.1"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+  checksum: 10c0/ddb4aa3586f28a82d33fba30c82cbf7f5b45a936a702fd5b60f7c1654ca97b05b889734b756aa21f35d7f93c12591e7d48d24806464f569d7b2f26a6fdbf910c
   languageName: node
   linkType: hard
 
