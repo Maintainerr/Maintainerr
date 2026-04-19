@@ -179,9 +179,15 @@ export class OverlayTemplateService implements OnModuleInit {
     const parsed = overlayTemplateUpdateSchema.parse(dto);
 
     // If setting as default, unset others in the same mode
-    if (parsed.isDefault) {
-      const mode = parsed.mode ?? entity.mode;
-      await this.unsetDefaults(mode);
+    // If isDefault is not provided in the update, preserve the existing value
+    if (parsed.isDefault !== undefined) {
+      if (parsed.isDefault) {
+        const mode = parsed.mode ?? entity.mode;
+        await this.unsetDefaults(mode);
+      }
+    } else {
+      // Preserve existing isDefault when not explicitly set in the update
+      parsed.isDefault = entity.isDefault;
     }
 
     Object.assign(entity, parsed);
