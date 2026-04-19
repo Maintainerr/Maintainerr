@@ -347,6 +347,158 @@ describe('StorageMetricsService', () => {
       expect(totals.mountCount).toBe(1);
       expect(totals.accurateMountCount).toBe(0);
       expect(totals.accurateTotalSpace).toBe(false);
+      expect(totals.freeSpace).toBe(180);
+    });
+
+    it('aggregates freeSpace from /rootfolder-supplemented mounts even without accurate totals', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/tv',
+            freeSpace: 500,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/movies',
+            freeSpace: 300,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+        ],
+        { 'sonarr||1': ['/tv'], 'radarr||1': ['/movies'] },
+        { 'sonarr||1': 'sonarr.local', 'radarr||1': 'radarr.local' },
+      );
+
+      expect(totals.freeSpace).toBe(800);
+      expect(totals.totalSpace).toBe(0);
+      expect(totals.accurateMountCount).toBe(0);
+      expect(totals.mountCount).toBe(2);
+      expect(totals.accurateTotalSpace).toBe(false);
+    });
+
+    it('credits an accurate ancestor /diskspace mount for a deeper root folder', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/',
+            freeSpace: 300,
+            totalSpace: 500,
+          }),
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/tv',
+            freeSpace: 280,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+        ],
+        { 'sonarr||1': ['/tv'] },
+        { 'sonarr||1': 'arr.local' },
+      );
+
+      expect(totals.totalSpace).toBe(500);
+      expect(totals.freeSpace).toBe(300);
+      expect(totals.accurateMountCount).toBe(1);
+      expect(totals.mountCount).toBe(1);
+    });
+
+    it('prefers the longest-prefix accurate ancestor when multiple are candidates', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/',
+            freeSpace: 100,
+            totalSpace: 200,
+          }),
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data',
+            freeSpace: 900,
+            totalSpace: 1000,
+          }),
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data/movies',
+            freeSpace: 850,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+        ],
+        { 'radarr||1': ['/data/movies'] },
+        { 'radarr||1': 'arr.local' },
+      );
+
+      expect(totals.totalSpace).toBe(1000);
+      expect(totals.freeSpace).toBe(900);
+      expect(totals.mountCount).toBe(1);
+    });
+
+    it('counts a shared accurate ancestor once across multiple root folders', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data',
+            freeSpace: 900,
+            totalSpace: 1000,
+          }),
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data/movies',
+            freeSpace: 850,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data/shows',
+            freeSpace: 850,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+        ],
+        { 'radarr||1': ['/data/movies', '/data/shows'] },
+        { 'radarr||1': 'arr.local' },
+      );
+
+      expect(totals.totalSpace).toBe(1000);
+      expect(totals.mountCount).toBe(1);
+    });
+
+    it('falls back to the synthesized root-folder mount when no ancestor exists', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/tv',
+            freeSpace: 400,
+            totalSpace: 0,
+            hasAccurateTotalSpace: false,
+          }),
+        ],
+        { 'sonarr||1': ['/tv'] },
+        { 'sonarr||1': 'arr.local' },
+      );
+
+      expect(totals.freeSpace).toBe(400);
+      expect(totals.totalSpace).toBe(0);
+      expect(totals.mountCount).toBe(1);
     });
 
     it('counts every mount when no root folders are reported for the instance', () => {

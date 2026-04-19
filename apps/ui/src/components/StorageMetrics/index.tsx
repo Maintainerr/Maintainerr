@@ -138,8 +138,12 @@ const StorageMetrics: React.FC = () => {
   const hasCollectionData = metrics.collectionSummary.totalCollectionCount > 0
   const { totals } = metrics
   const hasAnyTotal = totals.totalSpace > 0
+  const hasAnyFree = totals.freeSpace > 0 || totals.mountCount > 0
   const mountLabel = (count: number) =>
     `${count} mount${count === 1 ? '' : 's'}`
+  const noTotalSubtitle = hasAnyFree
+    ? 'Free space only — Sonarr/Radarr do not report total size for NFS/CIFS mounts'
+    : 'No instance reports total capacity'
 
   return (
     <>
@@ -159,7 +163,7 @@ const StorageMetrics: React.FC = () => {
             value={hasAnyTotal ? formatBytes(totals.totalSpace) : '—'}
             subtitle={
               !hasAnyTotal
-                ? 'No instance reports total capacity'
+                ? noTotalSubtitle
                 : totals.accurateTotalSpace
                   ? mountLabel(totals.mountCount)
                   : `${totals.accurateMountCount} of ${totals.mountCount} mounts report total capacity`
@@ -179,7 +183,7 @@ const StorageMetrics: React.FC = () => {
           <SummaryCard
             title="Free"
             value={formatBytes(totals.freeSpace)}
-            subtitle={`Aggregated across ${mountLabel(totals.accurateMountCount)}`}
+            subtitle={`Aggregated across ${mountLabel(totals.mountCount)}`}
             icon={<ChartBarIcon className="h-5 w-5" />}
           />
           <SummaryCard
