@@ -30,17 +30,18 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 
-interface DedupKey {
-  host: string;
-  path: string;
-}
-
 const LIBRARY_SIZES_CACHE_TTL_MS = 15 * 60 * 1000;
 
 interface LibrarySizesCacheEntry {
   generatedAt: string;
   sizeBytesByLibrary: Record<string, number>;
   expiresAt: number;
+}
+
+interface InstanceMountResult {
+  status: StorageInstanceStatus;
+  mounts: StorageDiskspaceEntry[];
+  rootFolderPaths: Set<string>;
 }
 
 @Injectable()
@@ -82,16 +83,21 @@ export class StorageMetricsService {
 
     const mounts: StorageDiskspaceEntry[] = [];
     const instances: StorageInstanceStatus[] = [];
+    const rootFolderPathsByInstance = new Map<string, Set<string>>();
 
     for (const result of mountResults) {
       instances.push(result.status);
       mounts.push(...result.mounts);
+
+      if (result.rootFolderPaths.size > 0) {
+        rootFolderPathsByInstance.set(
+          this.buildInstanceKey(result.status.type, result.status.id),
+          result.rootFolderPaths,
+        );
+      }
     }
 
-    const totals = this.computeTotals(mounts, [
-      ...radarrSettings,
-      ...sonarrSettings,
-    ]);
+    const totals = this.computeTotals(mounts, rootFolderPathsByInstance);
 
     const [collectionSummary, topCollections, mediaServer] = await Promise.all([
       this.buildCollectionSummary(),
@@ -165,10 +171,7 @@ export class StorageMetricsService {
   private async fetchInstanceMounts(
     setting: RadarrSettings | SonarrSettings,
     type: 'radarr' | 'sonarr',
-  ): Promise<{
-    status: StorageInstanceStatus;
-    mounts: StorageDiskspaceEntry[];
-  }> {
+  ): Promise<InstanceMountResult> {
     const baseStatus: StorageInstanceStatus = {
       id: setting.id,
       name: setting.serverName,
@@ -191,10 +194,17 @@ export class StorageMetricsService {
           ? await this.servarrService.getRadarrApiClient(setting.id)
           : await this.servarrService.getSonarrApiClient(setting.id);
 
-      const diskspace: ArrDiskspaceResource[] =
-        (await client.getDiskspaceWithRootFolders()) ?? [];
+      const [diskspace, rootFolders] = await Promise.all([
+        client.getDiskspaceWithRootFolders(),
+        client.getRootFolders(),
+      ]);
+      const rootFolderPaths = new Set(
+        (rootFolders ?? [])
+          .filter((folder) => folder.path)
+          .map((folder) => normalizeDiskPath(folder.path)),
+      );
 
-      const mounts: StorageDiskspaceEntry[] = diskspace.map((entry) => ({
+      const mounts: StorageDiskspaceEntry[] = (diskspace ?? []).map((entry) => ({
         instanceId: setting.id,
         instanceType: type,
         instanceName: setting.serverName,
@@ -208,6 +218,7 @@ export class StorageMetricsService {
       return {
         status: { ...baseStatus, ok: true, mountCount: mounts.length },
         mounts,
+        rootFolderPaths,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -218,29 +229,24 @@ export class StorageMetricsService {
       return {
         status: { ...baseStatus, error: message },
         mounts: [],
+        rootFolderPaths: new Set<string>(),
       };
     }
   }
 
   private computeTotals(
     mounts: StorageDiskspaceEntry[],
-    settings: Array<RadarrSettings | SonarrSettings>,
+    rootFolderPathsByInstance: Map<string, Set<string>>,
   ): StorageTotals {
-    const hostByInstance = new Map<number, string>();
-    for (const setting of settings) {
-      hostByInstance.set(setting.id, this.extractHost(setting.url));
-    }
-
     const seen = new Map<string, StorageDiskspaceEntry>();
 
-    for (const mount of mounts) {
+    for (const mount of this.selectMountsForTotals(
+      mounts,
+      rootFolderPathsByInstance,
+    )) {
       if (!mount.path) continue;
 
-      const host = hostByInstance.get(mount.instanceId) ?? '';
-      const key = this.buildDedupKey({
-        host,
-        path: normalizeDiskPath(mount.path),
-      });
+      const key = this.buildDedupKey(mount);
 
       const existing = seen.get(key);
       if (!existing) {
@@ -279,17 +285,60 @@ export class StorageMetricsService {
     };
   }
 
-  private extractHost(url: string | undefined): string {
-    if (!url) return '';
-    try {
-      return new URL(url).hostname.toLowerCase();
-    } catch {
-      return url.toLowerCase();
+  private selectMountsForTotals(
+    mounts: StorageDiskspaceEntry[],
+    rootFolderPathsByInstance: Map<string, Set<string>>,
+  ): StorageDiskspaceEntry[] {
+    const mountsByInstance = new Map<string, StorageDiskspaceEntry[]>();
+
+    for (const mount of mounts) {
+      const key = this.buildInstanceKey(mount.instanceType, mount.instanceId);
+      const instanceMounts = mountsByInstance.get(key) ?? [];
+      instanceMounts.push(mount);
+      mountsByInstance.set(key, instanceMounts);
     }
+
+    const selected: StorageDiskspaceEntry[] = [];
+
+    for (const [instanceKey, instanceMounts] of mountsByInstance) {
+      const rootFolderPaths = rootFolderPathsByInstance.get(instanceKey);
+      if (!rootFolderPaths || rootFolderPaths.size === 0) {
+        selected.push(...instanceMounts);
+        continue;
+      }
+
+      const rootFolderMounts = instanceMounts.filter(
+        (mount) =>
+          !!mount.path && rootFolderPaths.has(normalizeDiskPath(mount.path)),
+      );
+
+      selected.push(
+        ...(rootFolderMounts.length > 0 ? rootFolderMounts : instanceMounts),
+      );
+    }
+
+    return selected;
   }
 
-  private buildDedupKey(key: DedupKey): string {
-    return `${key.host}||${key.path}`;
+  private buildInstanceKey(type: 'radarr' | 'sonarr', id: number): string {
+    return `${type}||${id}`;
+  }
+
+  private buildDedupKey(mount: StorageDiskspaceEntry): string {
+    if (mount.hasAccurateTotalSpace) {
+      const label = mount.label?.trim().toLowerCase();
+
+      if (label) {
+        return `accurate-label||${label}||${mount.totalSpace}||${mount.freeSpace}`;
+      }
+
+      // Arr APIs do not expose a stable filesystem identifier, so for
+      // accurate totals we fall back to a capacity signature to avoid
+      // double-counting the same filesystem mounted at multiple paths.
+      return `accurate-capacity||${mount.totalSpace}||${mount.freeSpace}`;
+    }
+
+    return `path||${normalizeDiskPath(mount.path ?? '')}`;
   }
 
   private async getConfiguredMediaServer(): Promise<IMediaServerService> {

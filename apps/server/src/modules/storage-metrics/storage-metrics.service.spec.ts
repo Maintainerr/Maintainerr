@@ -120,4 +120,110 @@ describe('StorageMetricsService', () => {
       expect(mediaServer.computeLibraryStorageSizes).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('computeTotals', () => {
+    it('prefers root folder mounts and avoids double-counting the same filesystem', () => {
+      const mounts = [
+        {
+          instanceId: 1,
+          instanceType: 'radarr',
+          instanceName: 'Radarr',
+          path: '/',
+          label: '',
+          freeSpace: 50,
+          totalSpace: 100,
+          hasAccurateTotalSpace: true,
+        },
+        {
+          instanceId: 1,
+          instanceType: 'radarr',
+          instanceName: 'Radarr',
+          path: '/movies',
+          label: '',
+          freeSpace: 180,
+          totalSpace: 200,
+          hasAccurateTotalSpace: true,
+        },
+        {
+          instanceId: 1,
+          instanceType: 'radarr',
+          instanceName: 'Radarr',
+          path: '/downloads',
+          label: '',
+          freeSpace: 180,
+          totalSpace: 200,
+          hasAccurateTotalSpace: true,
+        },
+        {
+          instanceId: 1,
+          instanceType: 'sonarr',
+          instanceName: 'Sonarr',
+          path: '/tv',
+          label: '',
+          freeSpace: 180,
+          totalSpace: 200,
+          hasAccurateTotalSpace: true,
+        },
+      ];
+
+      const totals = (service as any).computeTotals(
+        mounts,
+        new Map([
+          ['radarr||1', new Set(['/movies'])],
+          ['sonarr||1', new Set(['/tv'])],
+        ]),
+      );
+
+      expect(totals).toEqual({
+        freeSpace: 180,
+        totalSpace: 200,
+        usedSpace: 20,
+        mountCount: 1,
+        accurateMountCount: 1,
+        accurateTotalSpace: true,
+      });
+    });
+
+    it('uses instance type when mapping root folders for overlapping instance ids', () => {
+      const mounts = [
+        {
+          instanceId: 1,
+          instanceType: 'radarr',
+          instanceName: 'Radarr',
+          path: '/movies',
+          label: '',
+          freeSpace: 180,
+          totalSpace: 200,
+          hasAccurateTotalSpace: true,
+        },
+        {
+          instanceId: 1,
+          instanceType: 'sonarr',
+          instanceName: 'Sonarr',
+          path: '/tv',
+          label: '',
+          freeSpace: 80,
+          totalSpace: 100,
+          hasAccurateTotalSpace: true,
+        },
+      ];
+
+      const totals = (service as any).computeTotals(
+        mounts,
+        new Map([
+          ['radarr||1', new Set(['/movies'])],
+          ['sonarr||1', new Set(['/tv'])],
+        ]),
+      );
+
+      expect(totals).toEqual({
+        freeSpace: 260,
+        totalSpace: 300,
+        usedSpace: 40,
+        mountCount: 2,
+        accurateMountCount: 2,
+        accurateTotalSpace: true,
+      });
+    });
+  });
 });
