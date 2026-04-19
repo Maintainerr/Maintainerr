@@ -30,7 +30,14 @@ export const overlayTemplateCreateSchema = overlayTemplateSchema.omit({
   isPreset: true,
 })
 
-export const overlayTemplateUpdateSchema = overlayTemplateCreateSchema.partial()
+// For updates: make isDefault and description optional (without applying defaults).
+// This allows the service to distinguish between "not provided" (undefined) and "explicitly set to false".
+export const overlayTemplateUpdateSchema = overlayTemplateCreateSchema
+  .partial()
+  .extend({
+    isDefault: z.boolean().optional(), // override: no default
+    description: z.string().max(500).optional(), // override: no default
+  })
 
 export type OverlayTemplate = z.infer<typeof overlayTemplateSchema> & {
   id: number
