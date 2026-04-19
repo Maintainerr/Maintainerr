@@ -185,6 +185,7 @@ export class StorageMetricsService {
       return {
         status: { ...baseStatus, error: 'Instance is not fully configured' },
         mounts: [],
+        rootFolderPaths: new Set<string>(),
       };
     }
 
