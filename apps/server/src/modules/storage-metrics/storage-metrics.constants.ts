@@ -1,0 +1,2 @@
+export const LIBRARY_SIZES_CACHE_TTL_MS = 15 * 60 * 1000;
+export const FREE_SPACE_BUCKET_BYTES = 1024 * 1024;

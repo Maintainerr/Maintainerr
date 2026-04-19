@@ -1,5 +1,4 @@
 import {
-  ArrDiskspaceResource,
   MediaItemType,
   MediaLibrary,
   MediaServerType,
@@ -29,13 +28,23 @@ import { CollectionMedia } from '../collections/entities/collection_media.entiti
 import { MaintainerrLogger } from '../logging/logs.service';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
+import {
+  FREE_SPACE_BUCKET_BYTES,
+  LIBRARY_SIZES_CACHE_TTL_MS,
+} from './storage-metrics.constants';
 
-interface DedupKey {
-  host: string;
-  path: string;
+/**
+ * Returns true when `parent` is the same normalized path as `child` or an
+ * ancestor directory of it. Handles POSIX roots (`/`) and Windows drive roots
+ * (`C:/`, `C:\`) where the normalized form already ends in a separator.
+ */
+function isPathPrefix(parent: string, child: string): boolean {
+  if (parent === child) return true;
+  if (parent.endsWith('/') || parent.endsWith('\\')) {
+    return child.startsWith(parent);
+  }
+  return child.startsWith(parent + '/') || child.startsWith(parent + '\\');
 }
-
-const LIBRARY_SIZES_CACHE_TTL_MS = 15 * 60 * 1000;
 
 interface LibrarySizesCacheEntry {
   generatedAt: string;
@@ -82,16 +91,24 @@ export class StorageMetricsService {
 
     const mounts: StorageDiskspaceEntry[] = [];
     const instances: StorageInstanceStatus[] = [];
+    const rootFolderPathsByInstance = new Map<string, Set<string>>();
+    const hostByInstance = new Map<string, string>();
 
     for (const result of mountResults) {
       instances.push(result.status);
       mounts.push(...result.mounts);
+      const instanceKey = `${result.status.type}||${result.status.id}`;
+      hostByInstance.set(instanceKey, result.host);
+      if (result.rootFolderPaths.size > 0) {
+        rootFolderPathsByInstance.set(instanceKey, result.rootFolderPaths);
+      }
     }
 
-    const totals = this.computeTotals(mounts, [
-      ...radarrSettings,
-      ...sonarrSettings,
-    ]);
+    const totals = this.computeTotals(
+      mounts,
+      rootFolderPathsByInstance,
+      hostByInstance,
+    );
 
     const [collectionSummary, topCollections, mediaServer] = await Promise.all([
       this.buildCollectionSummary(),
@@ -168,6 +185,8 @@ export class StorageMetricsService {
   ): Promise<{
     status: StorageInstanceStatus;
     mounts: StorageDiskspaceEntry[];
+    rootFolderPaths: Set<string>;
+    host: string;
   }> {
     const baseStatus: StorageInstanceStatus = {
       id: setting.id,
@@ -177,11 +196,13 @@ export class StorageMetricsService {
       error: null,
       mountCount: 0,
     };
+    const host = this.extractHost(setting.url);
+    const empty = { mounts: [], rootFolderPaths: new Set<string>(), host };
 
     if (!setting.url || !setting.apiKey) {
       return {
         status: { ...baseStatus, error: 'Instance is not fully configured' },
-        mounts: [],
+        ...empty,
       };
     }
 
@@ -191,8 +212,8 @@ export class StorageMetricsService {
           ? await this.servarrService.getRadarrApiClient(setting.id)
           : await this.servarrService.getSonarrApiClient(setting.id);
 
-      const diskspace: ArrDiskspaceResource[] =
-        (await client.getDiskspaceWithRootFolders()) ?? [];
+      const { mounts: diskspace, rootFolderPaths } =
+        await client.getDiskspaceAndRootFolders();
 
       const mounts: StorageDiskspaceEntry[] = diskspace.map((entry) => ({
         instanceId: setting.id,
@@ -208,6 +229,8 @@ export class StorageMetricsService {
       return {
         status: { ...baseStatus, ok: true, mountCount: mounts.length },
         mounts,
+        rootFolderPaths,
+        host,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -215,68 +238,149 @@ export class StorageMetricsService {
         `Failed to retrieve disk space for ${type} instance "${setting.serverName}"`,
       );
       this.logger.debug(error);
-      return {
-        status: { ...baseStatus, error: message },
-        mounts: [],
-      };
+      return { status: { ...baseStatus, error: message }, ...empty };
     }
   }
 
   private computeTotals(
     mounts: StorageDiskspaceEntry[],
-    settings: Array<RadarrSettings | SonarrSettings>,
+    rootFolderPathsByInstance: Map<string, Set<string>>,
+    hostByInstance: Map<string, string>,
   ): StorageTotals {
-    const hostByInstance = new Map<number, string>();
-    for (const setting of settings) {
-      hostByInstance.set(setting.id, this.extractHost(setting.url));
-    }
-
+    const countedPathsByInstance = this.resolveCountedMountPaths(
+      mounts,
+      rootFolderPathsByInstance,
+    );
     const seen = new Map<string, StorageDiskspaceEntry>();
 
     for (const mount of mounts) {
       if (!mount.path) continue;
 
-      const host = hostByInstance.get(mount.instanceId) ?? '';
-      const key = this.buildDedupKey({
-        host,
-        path: normalizeDiskPath(mount.path),
-      });
+      const instanceKey = `${mount.instanceType}||${mount.instanceId}`;
+      const rootPaths = rootFolderPathsByInstance.get(instanceKey);
+      // When the instance exposes root folders, only count root-folder-backed
+      // mounts in the headline totals. Other /diskspace entries (e.g. download
+      // paths) remain visible in the per-instance mount list.
+      if (rootPaths?.size) {
+        const counted = countedPathsByInstance.get(instanceKey);
+        if (!counted?.has(normalizeDiskPath(mount.path))) continue;
+      }
+
+      const host = hostByInstance.get(instanceKey) ?? '';
+      const key = this.buildTotalsDedupKey(mount, host);
 
       const existing = seen.get(key);
-      if (!existing) {
-        seen.set(key, mount);
-      } else if (
-        !existing.hasAccurateTotalSpace &&
-        mount.hasAccurateTotalSpace
+      if (
+        !existing ||
+        (!existing.hasAccurateTotalSpace && mount.hasAccurateTotalSpace)
       ) {
         seen.set(key, mount);
       }
     }
 
+    // Sonarr's /diskspace excludes DriveType.Network, so NFS/CIFS mounts
+    // commonly arrive via /rootfolder, which reports freeSpace but not
+    // totalSpace. Sum freeSpace across every deduped mount so the Free card
+    // stays honest; gate totalSpace on hasAccurateTotalSpace so the Total card
+    // only reflects filesystems whose capacity we actually know.
     let freeSpace = 0;
     let totalSpace = 0;
     let accurateMountCount = 0;
 
     for (const mount of seen.values()) {
+      freeSpace += mount.freeSpace;
       if (mount.hasAccurateTotalSpace) {
         totalSpace += mount.totalSpace;
-        freeSpace += mount.freeSpace;
         accurateMountCount += 1;
       }
     }
 
-    const usedSpace = Math.max(totalSpace - freeSpace, 0);
-    const accurateTotalSpace =
-      seen.size > 0 && accurateMountCount === seen.size && totalSpace > 0;
-
     return {
       freeSpace,
       totalSpace,
-      usedSpace,
+      usedSpace: Math.max(totalSpace - freeSpace, 0),
       mountCount: seen.size,
       accurateMountCount,
-      accurateTotalSpace,
+      accurateTotalSpace:
+        seen.size > 0 && accurateMountCount === seen.size && totalSpace > 0,
     };
+  }
+
+  /**
+   * For each instance with root folders, resolve which mount paths should be
+   * counted in headline totals. Prefers the longest-prefix accurate ancestor
+   * (e.g. `/` or `/data` in /diskspace when root folder is `/data/movies`)
+   * so we don't discard capacity data in favour of a synthesized root-folder
+   * entry without a trustworthy total. Falls back to the longest-prefix mount
+   * of any accuracy when no accurate ancestor exists.
+   */
+  private resolveCountedMountPaths(
+    mounts: StorageDiskspaceEntry[],
+    rootFolderPathsByInstance: Map<string, Set<string>>,
+  ): Map<string, Set<string>> {
+    const mountsByInstance = new Map<string, StorageDiskspaceEntry[]>();
+    for (const mount of mounts) {
+      if (!mount.path) continue;
+      const instanceKey = `${mount.instanceType}||${mount.instanceId}`;
+      const list = mountsByInstance.get(instanceKey) ?? [];
+      list.push(mount);
+      mountsByInstance.set(instanceKey, list);
+    }
+
+    const result = new Map<string, Set<string>>();
+    for (const [instanceKey, rootPaths] of rootFolderPathsByInstance) {
+      if (!rootPaths.size) continue;
+      const instanceMounts = mountsByInstance.get(instanceKey) ?? [];
+      const counted = new Set<string>();
+
+      for (const rootPath of rootPaths) {
+        let bestAccurate: { path: string; len: number } | null = null;
+        let bestFallback: { path: string; len: number } | null = null;
+
+        for (const mount of instanceMounts) {
+          const normalized = normalizeDiskPath(mount.path!);
+          if (!isPathPrefix(normalized, rootPath)) continue;
+          const candidate = { path: normalized, len: normalized.length };
+          if (mount.hasAccurateTotalSpace) {
+            if (!bestAccurate || candidate.len > bestAccurate.len) {
+              bestAccurate = candidate;
+            }
+          } else if (!bestFallback || candidate.len > bestFallback.len) {
+            bestFallback = candidate;
+          }
+        }
+
+        const chosen = bestAccurate ?? bestFallback;
+        if (chosen) counted.add(chosen.path);
+      }
+
+      result.set(instanceKey, counted);
+    }
+
+    return result;
+  }
+
+  private buildTotalsDedupKey(
+    mount: StorageDiskspaceEntry,
+    host: string,
+  ): string {
+    if (!mount.hasAccurateTotalSpace) {
+      return `${host}||path||${normalizeDiskPath(mount.path ?? '')}`;
+    }
+
+    const label = mount.label?.trim().toLowerCase();
+    if (label) {
+      return `${host}||label||${label}||${mount.totalSpace}`;
+    }
+
+    // Arr APIs do not expose a stable filesystem identifier. For accurate
+    // totals without a volume label, include a coarse free-space bucket so
+    // small cross-instance drift still merges while same-size disks with
+    // materially different usage stay distinct.
+    const freeSpaceBucket = Math.floor(
+      mount.freeSpace / FREE_SPACE_BUCKET_BYTES,
+    );
+    return `${host}||cap||${mount.totalSpace}||${freeSpaceBucket}`;
   }
 
   private extractHost(url: string | undefined): string {
@@ -286,10 +390,6 @@ export class StorageMetricsService {
     } catch {
       return url.toLowerCase();
     }
-  }
-
-  private buildDedupKey(key: DedupKey): string {
-    return `${key.host}||${key.path}`;
   }
 
   private async getConfiguredMediaServer(): Promise<IMediaServerService> {
