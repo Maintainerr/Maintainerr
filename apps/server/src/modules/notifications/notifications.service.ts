@@ -16,6 +16,7 @@ import {
   CollectionMediaHandledDto,
   CollectionMediaRemovedDto,
   OverlayAppliedDto,
+  OverlayRevertedDto,
   RuleHandlerFailedDto,
 } from '../events/events.dto';
 import {
@@ -928,6 +929,18 @@ export class NotificationService implements OnModuleInit {
   private async overlayApplied(data: OverlayAppliedDto) {
     await this.handleNotification(
       NotificationType.OVERLAY_APPLIED,
+      data.mediaItems,
+      data.collectionName,
+      undefined,
+      undefined,
+      data.identifier,
+    );
+  }
+
+  @OnEvent(MaintainerrEvent.Overlay_Reverted)
+  private async overlayReverted(data: OverlayRevertedDto) {
+    await this.handleNotification(
+      NotificationType.OVERLAY_REVERTED,
       data.mediaItems,
       data.collectionName,
       undefined,

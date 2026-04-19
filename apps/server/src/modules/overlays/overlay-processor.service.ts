@@ -12,7 +12,7 @@ import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { OverlayAppliedDto } from '../events/events.dto';
+import { OverlayAppliedDto, OverlayRevertedDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
   OverlayRenderService,
@@ -104,10 +104,12 @@ export class OverlayProcessorService {
     if (!this.plexApi.isPlexSetup()) return;
 
     const originalBuf = this.loadOriginalPoster(mediaServerId);
+    let restored = false;
     if (originalBuf) {
       try {
         await this.plexApi.setThumb(mediaServerId, originalBuf, 'image/jpeg');
         this.logger.log(`Restored original poster for item ${mediaServerId}`);
+        restored = true;
       } catch (err) {
         this.logger.warn(
           `Failed to restore original poster for ${mediaServerId}`,
@@ -122,6 +124,20 @@ export class OverlayProcessorService {
 
     this.deleteOriginalPoster(mediaServerId);
     await this.stateService.removeState(collectionId, mediaServerId);
+
+    if (restored) {
+      const collection =
+        await this.collectionsService.getCollection(collectionId);
+      if (collection) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.Overlay_Reverted,
+          new OverlayRevertedDto([{ mediaServerId }], collection.title, {
+            type: 'collection',
+            value: collectionId,
+          }),
+        );
+      }
+    }
   }
 
   async revertCollection(collectionId: number): Promise<number> {
