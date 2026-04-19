@@ -65,10 +65,7 @@ export class OverlayRenderService {
     return c === 'none' || c === 'transparent' || c === 'rgba(0,0,0,0)';
   }
 
-  private getFontFamily(
-    fontPath: string,
-    explicitFamily?: string,
-  ): string {
+  private getFontFamily(fontPath: string, explicitFamily?: string): string {
     // Use explicit family if provided (matches frontend preview)
     if (explicitFamily) {
       // Register the font with the explicit family name for node-canvas
