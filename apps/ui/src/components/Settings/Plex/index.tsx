@@ -343,6 +343,8 @@ const PlexSettings = () => {
     }
   }
 
+  const clientId = settings?.clientId
+  const storedAuthToken = settings?.plex_auth_token
   const verifyToken = useCallback(
     async (token?: string) => {
       setTokenValidationPending(true)
@@ -354,7 +356,7 @@ const PlexSettings = () => {
             headers: {
               'X-Plex-Product': 'Maintainerr',
               'X-Plex-Version': '2.0',
-              'X-Plex-Client-Identifier': settings?.clientId ?? '',
+              'X-Plex-Client-Identifier': clientId ?? '',
               'X-Plex-Token': token,
             },
           })
@@ -371,7 +373,7 @@ const PlexSettings = () => {
               }
         }
 
-        if (settings?.plex_auth_token) {
+        if (storedAuthToken) {
           // Existing token (masked in settings) — verify via server-side auth endpoint
           const result = await GetApiHandler<{
             status: string
@@ -412,7 +414,7 @@ const PlexSettings = () => {
         setTokenValidationPending(false)
       }
     },
-    [settings?.clientId, settings?.plex_auth_token],
+    [clientId, storedAuthToken],
   )
 
   useEffect(() => {
