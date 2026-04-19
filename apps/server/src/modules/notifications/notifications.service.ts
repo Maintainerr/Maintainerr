@@ -3,7 +3,7 @@ import {
   MaintainerrEvent,
   MediaItem,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
@@ -15,6 +15,7 @@ import {
   CollectionMediaAddedDto,
   CollectionMediaHandledDto,
   CollectionMediaRemovedDto,
+  OverlayAppliedDto,
   RuleHandlerFailedDto,
 } from '../events/events.dto';
 import {
@@ -57,7 +58,7 @@ export const hasNotificationType = (
 };
 
 @Injectable()
-export class NotificationService {
+export class NotificationService implements OnModuleInit {
   private activeAgents: NotificationAgent[] = [];
 
   constructor(
@@ -72,6 +73,10 @@ export class NotificationService {
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
     logger.setContext(NotificationService.name);
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.registerConfiguredAgents();
   }
 
   private async getMediaServer(): Promise<IMediaServerService> {
@@ -911,6 +916,18 @@ export class NotificationService {
   private async collectionMediaHandled(data: CollectionMediaHandledDto) {
     await this.handleNotification(
       NotificationType.MEDIA_HANDLED,
+      data.mediaItems,
+      data.collectionName,
+      undefined,
+      undefined,
+      data.identifier,
+    );
+  }
+
+  @OnEvent(MaintainerrEvent.Overlay_Applied)
+  private async overlayApplied(data: OverlayAppliedDto) {
+    await this.handleNotification(
+      NotificationType.OVERLAY_APPLIED,
       data.mediaItems,
       data.collectionName,
       undefined,

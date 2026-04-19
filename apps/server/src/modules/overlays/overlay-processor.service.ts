@@ -12,6 +12,7 @@ import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { OverlayAppliedDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
   OverlayRenderService,
@@ -211,6 +212,15 @@ export class OverlayProcessorService {
         );
         if (success) {
           result.processed++;
+          // Emit notification event for successful overlay application
+          this.eventEmitter.emit(
+            MaintainerrEvent.Overlay_Applied,
+            new OverlayAppliedDto(
+              [{ mediaServerId: plexId }],
+              collection.title,
+              { type: 'collection', value: collection.id },
+            ),
+          );
         } else {
           result.errors++;
         }
