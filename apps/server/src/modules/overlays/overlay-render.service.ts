@@ -29,6 +29,9 @@ export interface TemplateRenderContext {
 
 @Injectable()
 export class OverlayRenderService {
+  // node-canvas font registration is process-global. If a bundled font name is
+  // registered before a user uploads a colliding filename, the new upload does
+  // not reliably replace that family until the process restarts.
   private registeredFonts = new Map<string, string>();
   private readonly bundledFontsDir: string;
 
@@ -77,8 +80,8 @@ export class OverlayRenderService {
     const bundledBase = path.resolve(this.bundledFontsDir);
     const userBase = path.resolve(configDataDir, 'overlays', 'fonts');
     const candidates = [
-      path.resolve(bundledBase, fontPath),
       path.resolve(userBase, fontPath),
+      path.resolve(bundledBase, fontPath),
     ];
 
     let resolvedPath: string | null = null;
