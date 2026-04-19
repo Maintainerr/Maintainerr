@@ -258,7 +258,8 @@ const StorageMetrics: React.FC = () => {
           <h2 className="sm-heading">Mounts by instance</h2>
           <p className="description">
             Disk space reported by each configured Radarr or Sonarr instance.
-            Mounts are deduplicated by host + path for the totals above.
+            Headline totals count only root-folder-backed mounts and merge
+            shared filesystems per host.
           </p>
 
           {!hasInstances ? (
