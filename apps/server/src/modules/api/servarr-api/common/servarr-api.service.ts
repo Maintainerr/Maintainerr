@@ -114,26 +114,29 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
    * These merged entries are safe for remaining-space calculations and for the
    * UI path picker. Total-space rule evaluation must use raw /diskspace data.
    */
-  public getDiskspaceWithRootFolders = async (): Promise<
-    DiskSpaceResource[]
-  > => {
+  public getDiskspaceAndRootFolders = async (): Promise<{
+    mounts: DiskSpaceResource[];
+    rootFolderPaths: Set<string>;
+  }> => {
     const [diskspace, rootFolders] = await Promise.all([
       this.getDiskspace(),
       this.getRootFolders(),
     ]);
 
-    const results: DiskSpaceResource[] = [...(diskspace ?? [])];
+    const mounts: DiskSpaceResource[] = [...(diskspace ?? [])];
     const existingPaths = new Set(
-      results.filter((d) => d.path).map((d) => normalizeDiskPath(d.path!)),
+      mounts.filter((d) => d.path).map((d) => normalizeDiskPath(d.path!)),
     );
+    const rootFolderPaths = new Set<string>();
 
     for (const folder of rootFolders ?? []) {
       if (!folder.path) continue;
 
       const normalized = normalizeDiskPath(folder.path);
+      rootFolderPaths.add(normalized);
       if (!existingPaths.has(normalized)) {
         existingPaths.add(normalized);
-        results.push({
+        mounts.push({
           id: folder.id,
           path: folder.path,
           label: null,
@@ -144,7 +147,14 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       }
     }
 
-    return results;
+    return { mounts, rootFolderPaths };
+  };
+
+  public getDiskspaceWithRootFolders = async (): Promise<
+    DiskSpaceResource[]
+  > => {
+    const { mounts } = await this.getDiskspaceAndRootFolders();
+    return mounts;
   };
 
   public getQueue = async (): Promise<(QueueItem & QueueItemAppendT)[]> => {

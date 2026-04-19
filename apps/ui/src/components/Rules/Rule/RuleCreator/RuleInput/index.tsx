@@ -54,7 +54,6 @@ interface IRuleInput {
   mediaType?: MediaType
   dataType?: MediaItemType
   section?: number
-  newlyAdded?: number[]
   editData?: { rule: IRule }
   onCommit: (id: number, rule: IRule) => void
   onIncomplete: (id: number) => void
@@ -200,8 +199,7 @@ interface InitialRuleState {
 }
 
 const getInitialRuleState = (props: IRuleInput): InitialRuleState => {
-  const isNewlyAdded = props.id && props.newlyAdded?.includes(props.id)
-  const rule = isNewlyAdded ? undefined : props.editData?.rule
+  const rule = props.editData?.rule
 
   if (!rule) {
     return {
