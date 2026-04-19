@@ -172,6 +172,10 @@ describe('StorageMetricsService', () => {
           ['radarr||1', new Set(['/movies'])],
           ['sonarr||1', new Set(['/tv'])],
         ]),
+        new Map([
+          ['radarr||1', 'arr.local'],
+          ['sonarr||1', 'arr.local'],
+        ]),
       );
 
       expect(totals).toEqual({
@@ -214,11 +218,61 @@ describe('StorageMetricsService', () => {
           ['radarr||1', new Set(['/movies'])],
           ['sonarr||1', new Set(['/tv'])],
         ]),
+        new Map([
+          ['radarr||1', 'radarr.local'],
+          ['sonarr||1', 'sonarr.local'],
+        ]),
       );
 
       expect(totals).toEqual({
         freeSpace: 260,
         totalSpace: 300,
+        usedSpace: 40,
+        mountCount: 2,
+        accurateMountCount: 2,
+        accurateTotalSpace: true,
+      });
+    });
+
+    it('does not merge identical signatures across different hosts', () => {
+      const mounts = [
+        {
+          instanceId: 1,
+          instanceType: 'radarr',
+          instanceName: 'Radarr',
+          path: '/movies',
+          label: '',
+          freeSpace: 180,
+          totalSpace: 200,
+          hasAccurateTotalSpace: true,
+        },
+        {
+          instanceId: 1,
+          instanceType: 'sonarr',
+          instanceName: 'Sonarr',
+          path: '/tv',
+          label: '',
+          freeSpace: 180,
+          totalSpace: 200,
+          hasAccurateTotalSpace: true,
+        },
+      ];
+
+      const totals = (service as any).computeTotals(
+        mounts,
+        new Map([
+          ['radarr||1', new Set(['/movies'])],
+          ['sonarr||1', new Set(['/tv'])],
+        ]),
+        new Map([
+          ['radarr||1', 'radarr-a.local'],
+          ['sonarr||1', 'sonarr-b.local'],
+        ]),
+      );
+
+      expect(totals).toEqual({
+        freeSpace: 360,
+        totalSpace: 400,
         usedSpace: 40,
         mountCount: 2,
         accurateMountCount: 2,

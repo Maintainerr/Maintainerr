@@ -84,6 +84,21 @@ export class StorageMetricsService {
     const mounts: StorageDiskspaceEntry[] = [];
     const instances: StorageInstanceStatus[] = [];
     const rootFolderPathsByInstance = new Map<string, Set<string>>();
+    const hostByInstance = new Map<string, string>();
+
+    for (const setting of radarrSettings) {
+      hostByInstance.set(
+        this.buildInstanceKey('radarr', setting.id),
+        this.extractHost(setting.url),
+      );
+    }
+
+    for (const setting of sonarrSettings) {
+      hostByInstance.set(
+        this.buildInstanceKey('sonarr', setting.id),
+        this.extractHost(setting.url),
+      );
+    }
 
     for (const result of mountResults) {
       instances.push(result.status);
@@ -97,7 +112,11 @@ export class StorageMetricsService {
       }
     }
 
-    const totals = this.computeTotals(mounts, rootFolderPathsByInstance);
+    const totals = this.computeTotals(
+      mounts,
+      rootFolderPathsByInstance,
+      hostByInstance,
+    );
 
     const [collectionSummary, topCollections, mediaServer] = await Promise.all([
       this.buildCollectionSummary(),
@@ -238,6 +257,7 @@ export class StorageMetricsService {
   private computeTotals(
     mounts: StorageDiskspaceEntry[],
     rootFolderPathsByInstance: Map<string, Set<string>>,
+    hostByInstance: Map<string, string>,
   ): StorageTotals {
     const seen = new Map<string, StorageDiskspaceEntry>();
 
@@ -247,7 +267,11 @@ export class StorageMetricsService {
     )) {
       if (!mount.path) continue;
 
-      const key = this.buildDedupKey(mount);
+      const instanceKey = this.buildInstanceKey(
+        mount.instanceType,
+        mount.instanceId,
+      );
+      const key = this.buildDedupKey(mount, hostByInstance.get(instanceKey));
 
       const existing = seen.get(key);
       if (!existing) {
@@ -325,21 +349,34 @@ export class StorageMetricsService {
     return `${type}||${id}`;
   }
 
-  private buildDedupKey(mount: StorageDiskspaceEntry): string {
+  private buildDedupKey(
+    mount: StorageDiskspaceEntry,
+    host: string | undefined,
+  ): string {
     if (mount.hasAccurateTotalSpace) {
       const label = mount.label?.trim().toLowerCase();
 
       if (label) {
-        return `accurate-label||${label}||${mount.totalSpace}||${mount.freeSpace}`;
+        return `${host ?? ''}||accurate-label||${label}||${mount.totalSpace}||${mount.freeSpace}`;
       }
 
       // Arr APIs do not expose a stable filesystem identifier, so for
       // accurate totals we fall back to a capacity signature to avoid
       // double-counting the same filesystem mounted at multiple paths.
-      return `accurate-capacity||${mount.totalSpace}||${mount.freeSpace}`;
+      return `${host ?? ''}||accurate-capacity||${mount.totalSpace}||${mount.freeSpace}`;
     }
 
-    return `path||${normalizeDiskPath(mount.path ?? '')}`;
+    return `${host ?? ''}||path||${normalizeDiskPath(mount.path ?? '')}`;
+  }
+
+  private extractHost(url: string | undefined): string {
+    if (!url) return '';
+
+    try {
+      return new URL(url).hostname.toLowerCase();
+    } catch {
+      return url.toLowerCase();
+    }
   }
 
   private async getConfiguredMediaServer(): Promise<IMediaServerService> {
