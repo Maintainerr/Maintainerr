@@ -11,11 +11,13 @@ import {
 } from '@maintainerr/contracts';
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
   HttpException,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -26,6 +28,9 @@ import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
+import { ExecutionLockService } from '../tasks/execution-lock.service';
+import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
 import {
@@ -38,12 +43,23 @@ const collectionMediaSortQuerySchema = z
   .optional();
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
+const handleCollectionMediaBodySchema = z.object({
+  collectionId: z.number().int(),
+  mediaId: z.string().min(1),
+});
+
+type HandleCollectionMediaBody = z.infer<
+  typeof handleCollectionMediaBodySchema
+>;
 
 @Controller('api/collections')
 export class CollectionsController {
   constructor(
     private readonly collectionService: CollectionsService,
     private readonly collectionWorkerService: CollectionWorkerService,
+    private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
+    private readonly executionLock: ExecutionLockService,
+    private readonly collectionHandler: CollectionHandler,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(CollectionsController.name);
@@ -184,6 +200,63 @@ export class CollectionsController {
       request.action === 0 ? 'add' : 'remove',
     );
   }
+
+  @Post('/media/handle')
+  async handleCollectionMedia(
+    @Body(new ZodValidationPipe(handleCollectionMediaBodySchema))
+    request: HandleCollectionMediaBody,
+  ) {
+    if (
+      this.collectionWorkerService.isRunning() ||
+      this.ruleExecutorJobManagerService.isProcessing()
+    ) {
+      throw new ConflictException(
+        'Collection handling is already running. Try again when the current collection or rule execution finishes.',
+      );
+    }
+
+    const collection = await this.collectionService.getCollectionRecord(
+      request.collectionId,
+    );
+
+    if (!collection) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    const collectionMedia =
+      await this.collectionService.getCollectionMediaRecord(
+        request.collectionId,
+        request.mediaId,
+      );
+
+    if (!collectionMedia) {
+      throw new NotFoundException('Media not found in collection');
+    }
+
+    const release = this.executionLock.tryAcquire('rules-collections-lock');
+
+    if (!release) {
+      throw new ConflictException(
+        'Collection handling is already running. Try again when the current collection or rule execution finishes.',
+      );
+    }
+
+    try {
+      const handled = await this.collectionHandler.handleMedia(
+        collection,
+        collectionMedia,
+      );
+
+      if (!handled) {
+        throw new ConflictException(
+          'The collection action could not be executed for this item',
+        );
+      }
+    } finally {
+      release();
+    }
+  }
+
   @Delete('/media')
   deleteMediaFromCollection(
     @Query('mediaId') mediaId: string,
