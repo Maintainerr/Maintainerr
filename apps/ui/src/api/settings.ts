@@ -16,6 +16,8 @@ import {
   UseQueryOptions,
 } from '@tanstack/react-query'
 import axios from 'axios'
+import type { IRadarrSetting } from '../components/Settings/Radarr'
+import type { ISonarrSetting } from '../components/Settings/Sonarr'
 import GetApiHandler, {
   API_BASE_PATH,
   DeleteApiHandler,
@@ -116,6 +118,13 @@ export const usePatchSettings = (options?: UsePatchSettingsOptions) => {
 export type UsePatchSettingsResult = ReturnType<typeof usePatchSettings>
 
 type UsePlexServersQueryKey = ['settings', 'plexServers']
+type UsePlexAuthValidationQueryKey = ['settings', 'plexAuthValidation']
+type UseServarrSettingsQueryKey = ['settings', 'servarr', 'radarr' | 'sonarr']
+
+export interface PlexAuthValidationResult {
+  valid: boolean
+  errorMessage?: string
+}
 
 type UseDeletePlexAuthOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, void>,
@@ -133,6 +142,12 @@ export const useDeletePlexAuth = (options?: UseDeletePlexAuthOptions) => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+      queryClient.removeQueries({
+        queryKey: [
+          'settings',
+          'plexAuthValidation',
+        ] satisfies UsePlexAuthValidationQueryKey,
       })
       queryClient.removeQueries({
         queryKey: ['settings', 'plexServers'] satisfies UsePlexServersQueryKey,
@@ -194,6 +209,12 @@ export const useUpdatePlexAuth = (options?: UseUpdatePlexAuthOptions) => {
         queryKey: ['settings'] satisfies UseSettingsQueryKey,
       })
       queryClient.removeQueries({
+        queryKey: [
+          'settings',
+          'plexAuthValidation',
+        ] satisfies UsePlexAuthValidationQueryKey,
+      })
+      queryClient.removeQueries({
         queryKey: ['settings', 'plexServers'] satisfies UsePlexServersQueryKey,
       })
     },
@@ -202,6 +223,49 @@ export const useUpdatePlexAuth = (options?: UseUpdatePlexAuthOptions) => {
 }
 
 export type UseUpdatePlexAuthResult = ReturnType<typeof useUpdatePlexAuth>
+
+type UsePlexAuthValidationOptions = Omit<
+  UseQueryOptions<
+    PlexAuthValidationResult,
+    Error,
+    PlexAuthValidationResult,
+    UsePlexAuthValidationQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const usePlexAuthValidation = (
+  options?: UsePlexAuthValidationOptions,
+) => {
+  return useQuery<
+    PlexAuthValidationResult,
+    Error,
+    PlexAuthValidationResult,
+    UsePlexAuthValidationQueryKey
+  >({
+    queryKey: ['settings', 'plexAuthValidation'],
+    queryFn: async () => {
+      const result = await GetApiHandler<{
+        status: string
+        code: number
+        message: string
+      }>('/settings/test/plex/auth')
+
+      if (result.status === 'OK') {
+        return { valid: true }
+      }
+
+      return {
+        valid: false,
+        errorMessage:
+          result.message ||
+          'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+      }
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
 
 export interface PlexConnection {
   protocol: string
@@ -252,6 +316,27 @@ export const usePlexServers = (options?: UsePlexServersOptions) => {
     queryKey: ['settings', 'plexServers'],
     queryFn: async () =>
       GetApiHandler<PlexDevice[]>('/settings/plex/devices/servers'),
+    staleTime: 0,
+    ...options,
+  })
+}
+
+type UseServarrSettingsOptions<TSetting> = Omit<
+  UseQueryOptions<TSetting[], Error, TSetting[], UseServarrSettingsQueryKey>,
+  'queryKey' | 'queryFn'
+>
+
+export const useServarrSettings = <
+  TSetting extends IRadarrSetting | ISonarrSetting,
+>(
+  type: 'radarr' | 'sonarr',
+  options?: UseServarrSettingsOptions<TSetting>,
+) => {
+  return useQuery<TSetting[], Error, TSetting[], UseServarrSettingsQueryKey>({
+    queryKey: ['settings', 'servarr', type],
+    queryFn: async () => {
+      return await GetApiHandler<TSetting[]>(`/settings/${type}`)
+    },
     staleTime: 0,
     ...options,
   })

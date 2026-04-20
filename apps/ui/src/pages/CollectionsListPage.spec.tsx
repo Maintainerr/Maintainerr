@@ -5,26 +5,32 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fetchCollections, useCollections } from '../api/collections'
 import CollectionsListPage from './CollectionsListPage'
-import GetApiHandler from '../utils/ApiHandler'
 
 const navigate = vi.fn()
-const invalidate = vi.fn()
+const fetchQuery = vi.fn()
 
-vi.mock('../utils/ApiHandler', () => ({
-  default: vi.fn(),
-  PostApiHandler: vi.fn(),
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>(
+    '@tanstack/react-query',
+  )
+
+  return {
+    ...actual,
+    useQueryClient: vi.fn(),
+  }
+})
+
+vi.mock('../api/collections', () => ({
+  useCollections: vi.fn(),
+  fetchCollections: vi.fn(),
 }))
 
-vi.mock('../hooks/useRequestGeneration', () => ({
-  useRequestGeneration: () => ({
-    invalidate,
-    guardedFetch: async (fetcher: () => Promise<unknown>) => ({
-      status: 'success' as const,
-      data: await fetcher(),
-    }),
-  }),
+vi.mock('../utils/ApiHandler', () => ({
+  PostApiHandler: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -63,13 +69,29 @@ vi.mock('../components/Collection/CollectionOverview', () => ({
 }))
 
 describe('CollectionsListPage', () => {
-  const getApiHandlerMock = vi.mocked(GetApiHandler)
+  const useCollectionsMock = vi.mocked(useCollections)
+  const fetchCollectionsMock = vi.mocked(fetchCollections)
+  const useQueryClientMock = vi.mocked(useQueryClient)
 
   beforeEach(() => {
     cleanup()
     navigate.mockReset()
-    invalidate.mockReset()
-    getApiHandlerMock.mockReset()
+    fetchQuery.mockReset()
+    fetchCollectionsMock.mockReset()
+    useCollectionsMock.mockReset()
+    useQueryClientMock.mockReturnValue({
+      fetchQuery,
+    } as ReturnType<typeof useQueryClient>)
+
+    useCollectionsMock.mockReturnValue({
+      data: [
+        {
+          id: 1,
+          title: 'Action',
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useCollections>)
   })
 
   afterEach(() => {
@@ -77,14 +99,7 @@ describe('CollectionsListPage', () => {
   })
 
   it('restores the previous library selection if a library switch request fails', async () => {
-    getApiHandlerMock
-      .mockResolvedValueOnce([
-        {
-          id: 1,
-          title: 'Action',
-        },
-      ] as any)
-      .mockRejectedValueOnce(new Error('request failed'))
+    fetchQuery.mockRejectedValueOnce(new Error('request failed'))
 
     render(<CollectionsListPage />)
 
@@ -102,5 +117,6 @@ describe('CollectionsListPage', () => {
 
     expect(screen.getByText('Action')).toBeTruthy()
     expect(screen.getByTestId('loading-state').textContent).toBe('false')
+    expect(fetchCollectionsMock).not.toHaveBeenCalled()
   })
 })

@@ -1,76 +1,52 @@
 import { AxiosError } from 'axios'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { fetchCollections, useCollections } from '../api/collections'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
 import useLibrarySelection from '../hooks/useLibrarySelection'
-import { useRequestGeneration } from '../hooks/useRequestGeneration'
-import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
-
-type FetchCollectionsStatus = 'success' | 'error' | 'stale'
+import { PostApiHandler } from '../utils/ApiHandler'
 
 const CollectionsListPage = () => {
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(true)
-  const [collections, setCollections] = useState<ICollection[]>([])
+  const queryClient = useQueryClient()
+  const [isSwitchingLibrary, setIsSwitchingLibrary] = useState(false)
   const {
     selectedLibrary,
     selectedLibraryRef,
     applySelectedLibrary,
     shouldSkipLibrarySwitch,
   } = useLibrarySelection({ initialLibraryId: 'all' })
-  const { invalidate, guardedFetch } = useRequestGeneration()
+  const activeLibraryId =
+    selectedLibrary !== 'all' ? selectedLibrary : undefined
+  const { data: collections = [], isLoading } = useCollections(activeLibraryId)
 
-  const fetchData = async (
-    libraryId?: string,
-  ): Promise<FetchCollectionsStatus> => {
-    try {
-      const result = await guardedFetch<ICollection[]>(() =>
-        libraryId
-          ? GetApiHandler(`/collections?libraryId=${libraryId}`)
-          : GetApiHandler('/collections'),
-      )
-
-      if (result.status === 'success') {
-        setCollections(result.data)
-        setIsLoading(false)
-        return 'success'
-      }
-
-      return 'stale'
-    } catch {
-      setIsLoading(false)
-      return 'error'
-    }
-  }
-
-  const loadInitialCollections = useEffectEvent(() => {
-    void fetchData()
-  })
-
-  useEffect(() => {
-    loadInitialCollections()
-  }, [])
-
-  const onSwitchLibrary = (id: string) => {
+  const onSwitchLibrary = async (id: string) => {
     if (shouldSkipLibrarySwitch(id)) {
       return
     }
 
-    const previousLibrary = selectedLibraryRef.current ?? 'all'
+    const nextLibraryId = id !== 'all' ? id : undefined
 
-    invalidate()
-    applySelectedLibrary(id)
-    setIsLoading(true)
+    setIsSwitchingLibrary(true)
 
-    void (async () => {
-      const result = await fetchData(id !== 'all' ? id : undefined)
+    try {
+      await queryClient.fetchQuery({
+        queryKey: ['collections', nextLibraryId ?? 'all'],
+        queryFn: async () => {
+          return await fetchCollections(nextLibraryId)
+        },
+        staleTime: 0,
+      })
 
-      if (result === 'error') {
-        applySelectedLibrary(previousLibrary)
-      }
-    })()
+      applySelectedLibrary(id)
+    } catch {
+      applySelectedLibrary(selectedLibraryRef.current ?? 'all')
+    } finally {
+      setIsSwitchingLibrary(false)
+    }
   }
 
   const doActions = async () => {
@@ -101,7 +77,7 @@ const CollectionsListPage = () => {
         <CollectionOverview
           onSwitchLibrary={onSwitchLibrary}
           selectedLibraryId={selectedLibrary}
-          isLoading={isLoading}
+          isLoading={isLoading || isSwitchingLibrary}
           collections={collections}
           doActions={doActions}
           openDetail={openDetail}
