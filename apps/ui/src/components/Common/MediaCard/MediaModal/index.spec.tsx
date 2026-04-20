@@ -13,7 +13,7 @@ import GetApiHandler from '../../../../utils/ApiHandler'
 import { clearMaintainerrStatusDetailsCache } from '../maintainerrStatus'
 import MediaModal from './index'
 
-vi.mock('../../../Collection/CollectionDetail/TriggerRuleActionBtn', () => ({
+vi.mock('../../../Collection/CollectionDetail/TriggerRuleButton', () => ({
   default: () => <div>trigger-rule-action</div>,
 }))
 
@@ -46,8 +46,6 @@ describe('MediaModal', () => {
       isMediaServerTypeSelected: false,
       isSetupComplete: false,
       isNotConfigured: true,
-      isMediaServerTypeSelected: false,
-      isSetupComplete: false,
     })
   })
 

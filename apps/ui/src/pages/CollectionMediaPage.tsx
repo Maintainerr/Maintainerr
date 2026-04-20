@@ -13,6 +13,21 @@ import useInfinitePaginatedList from '../hooks/useInfinitePaginatedList'
 import type { CollectionDetailOutletContext } from './CollectionDetailPage'
 import GetApiHandler from '../utils/ApiHandler'
 
+export const mapCollectionMediaItemsToMediaData = (
+  items: ICollectionMedia[],
+) => {
+  return items.map((item) => {
+    if (!item.mediaData) {
+      return {} as MediaItem
+    }
+
+    return {
+      ...item.mediaData,
+      maintainerrIsManual: item.isManual ?? false,
+    }
+  })
+}
+
 const CollectionMediaPage = () => {
   const { collection, canTestMedia, openMediaTestModal } =
     useOutletContext<CollectionDetailOutletContext>()
@@ -48,15 +63,10 @@ const CollectionMediaPage = () => {
     setMedia([])
   }, [])
 
-  const mapCollectionMediaItems = useCallback((items: ICollectionMedia[]) => {
-    return items.map((item) => {
-      if (item.mediaData) {
-        item.mediaData.maintainerrIsManual = item.isManual ?? false
-      }
-
-      return item.mediaData ? item.mediaData : ({} as MediaItem)
-    })
-  }, [])
+  const mapCollectionMediaItems = useCallback(
+    (items: ICollectionMedia[]) => mapCollectionMediaItemsToMediaData(items),
+    [],
+  )
 
   const fetchCollectionMediaPage = useCallback(
     async (page: number, requestSortParams = sortParams) => {

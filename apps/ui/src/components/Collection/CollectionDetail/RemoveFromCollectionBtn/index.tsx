@@ -19,9 +19,7 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
   const [removing, setRemoving] = useState<boolean>(false)
   const isCreatingExclusion = !props.exclusionId
   const actionLabel = isCreatingExclusion ? 'Exclude' : 'Remove'
-  const confirmLabel = isCreatingExclusion
-    ? 'Exclude from collection?'
-    : 'Are you sure?'
+  const confirmLabel = isCreatingExclusion ? 'Exclude?' : 'Remove?'
   const inProgressLabel = isCreatingExclusion ? 'Excluding...' : 'Removing...'
 
   const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {

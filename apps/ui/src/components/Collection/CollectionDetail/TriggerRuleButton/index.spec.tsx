@@ -10,7 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { triggerCollectionItemAction } from '../../../../api/collections'
 import { logClientError } from '../../../../utils/ClientLogger'
-import TriggerRuleActionBtn from './index'
+import TriggerRuleButton from './index'
 
 vi.mock('../../../../api/collections', () => ({
   triggerCollectionItemAction: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock('../../../../utils/ClientLogger', () => ({
   logClientError: vi.fn(),
 }))
 
-describe('TriggerRuleActionBtn', () => {
+describe('TriggerRuleButton', () => {
   const triggerCollectionItemActionMock = vi.mocked(triggerCollectionItemAction)
   const logClientErrorMock = vi.mocked(logClientError)
 
@@ -39,7 +39,7 @@ describe('TriggerRuleActionBtn', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <TriggerRuleActionBtn
+        <TriggerRuleButton
           collection={{
             id: 7,
             title: 'Testing',

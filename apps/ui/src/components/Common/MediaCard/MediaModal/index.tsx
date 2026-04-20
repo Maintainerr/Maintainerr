@@ -23,7 +23,7 @@ import {
   rememberMaintainerrStatusDetails,
 } from '../maintainerrStatus'
 import type { ICollection } from '../../../Collection'
-import TriggerRuleActionBtn from '../../../Collection/CollectionDetail/TriggerRuleActionBtn'
+import TriggerRuleButton from '../../../Collection/CollectionDetail/TriggerRuleButton'
 
 interface ModalContentProps {
   onClose: () => void
@@ -719,7 +719,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                 )}
               <div className="ml-auto flex space-x-3">
                 {canTriggerRuleAction ? (
-                  <TriggerRuleActionBtn
+                  <TriggerRuleButton
                     collection={collection}
                     mediaServerId={id}
                     onHandled={onCollectionItemRemoved}
