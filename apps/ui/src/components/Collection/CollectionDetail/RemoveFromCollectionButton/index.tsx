@@ -5,14 +5,14 @@ import { DeleteApiHandler, PostApiHandler } from '../../../../utils/ApiHandler'
 import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
 
-interface IRemoveFromCollectionBtn {
+interface IRemoveFromCollectionButton {
   mediaServerId: number | string
   collectionId: number
   exclusionId?: number
   popup?: boolean
   onRemove: () => void
 }
-const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
+const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
   const queryClient = useQueryClient()
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setppopup] = useState<boolean>(false)
@@ -126,4 +126,4 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
     </div>
   )
 }
-export default RemoveFromCollectionBtn
+export default RemoveFromCollectionButton

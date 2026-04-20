@@ -11,7 +11,7 @@ import Modal from '../../../Common/Modal'
 import PendingButton from '../../../Common/PendingButton'
 import type { ICollection } from '../../index'
 
-interface TriggerRuleActionBtnProps {
+interface TriggerRuleActionButtonProps {
   collection: ICollection
   mediaServerId: number | string
   onHandled?: () => void
@@ -45,12 +45,12 @@ const getActionSummary = (collection: ICollection) => {
   }
 }
 
-const TriggerRuleActionBtn = ({
+const TriggerRuleActionButton = ({
   collection,
   mediaServerId,
   onHandled,
   buttonLabel = 'Trigger Rule Action',
-}: TriggerRuleActionBtnProps) => {
+}: TriggerRuleActionButtonProps) => {
   const queryClient = useQueryClient()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
@@ -82,7 +82,7 @@ const TriggerRuleActionBtn = ({
       void logClientError(
         'Failed to trigger the collection action for this item.',
         error,
-        'TriggerRuleActionBtn.handleTriggerAction',
+        'TriggerRuleActionButton.handleTriggerAction',
       )
 
       setError(
@@ -148,4 +148,4 @@ const TriggerRuleActionBtn = ({
   )
 }
 
-export default TriggerRuleActionBtn
+export default TriggerRuleActionButton

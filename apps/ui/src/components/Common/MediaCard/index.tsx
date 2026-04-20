@@ -1,16 +1,11 @@
 import { Transition } from '@headlessui/react'
 import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
-import {
-  MediaItemType,
-  ServarrAction,
-  type MediaProviderIds,
-} from '@maintainerr/contracts'
+import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddModal from '../../AddModal'
 import type { ICollection } from '../../Collection'
-import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
-import TriggerRuleButton from '../../Collection/CollectionDetail/TriggerRuleButton'
+import RemoveFromCollectionButton from '../../Collection/CollectionDetail/RemoveFromCollectionButton'
 import Button from '../Button'
 import PosterCard from '../Poster/PosterCard'
 import MediaModalContent from './MediaModal'
@@ -85,12 +80,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [showMediaModal, setShowMediaModal] = useState(false)
   const [statusShouldRefetch, setStatusShouldRefetch] = useState(false)
   const displayYear = year && mediaType !== 'episode' ? year.slice(0, 4) : year
-  const canTriggerRuleAction =
-    collectionPage &&
-    collection != null &&
-    collection.arrAction !== ServarrAction.DO_NOTHING &&
-    !isManual &&
-    exclusionType == null
 
   const handleStatusLink = (targetPath: string) => {
     if (!targetPath) {
@@ -265,23 +254,13 @@ const MediaCard: React.FC<IMediaCard> = ({
                         </Button>
                       </div>
                     ) : (
-                      <>
-                        {canTriggerRuleAction ? (
-                          <TriggerRuleButton
-                            collection={collection}
-                            mediaServerId={id}
-                            onHandled={() => onRemove(id.toString())}
-                            buttonLabel="Run"
-                          />
-                        ) : null}
-                        <RemoveFromCollectionBtn
-                          mediaServerId={id}
-                          popup={exclusionType && exclusionType === 'global'}
-                          onRemove={() => onRemove(id.toString())}
-                          collectionId={collectionId}
-                          exclusionId={exclusionId}
-                        />
-                      </>
+                      <RemoveFromCollectionButton
+                        mediaServerId={id}
+                        popup={exclusionType && exclusionType === 'global'}
+                        onRemove={() => onRemove(id.toString())}
+                        collectionId={collectionId}
+                        exclusionId={exclusionId}
+                      />
                     )}
                   </div>
                 </div>
