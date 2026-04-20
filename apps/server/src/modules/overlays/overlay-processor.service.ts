@@ -39,6 +39,17 @@ export class OverlayProcessorService {
 
   private readonly dataDir: string;
 
+  private addUniqueMediaItem(
+    items: { mediaServerId: string }[],
+    mediaServerId: string,
+  ): void {
+    if (items.some((item) => item.mediaServerId === mediaServerId)) {
+      return;
+    }
+
+    items.push({ mediaServerId });
+  }
+
   constructor(
     private readonly plexApi: PlexApiService,
     private readonly collectionsService: CollectionsService,
@@ -101,6 +112,14 @@ export class OverlayProcessorService {
   // ── Revert ────────────────────────────────────────────────────────────────
 
   async revertItem(collectionId: number, mediaServerId: string): Promise<void> {
+    await this.revertItemInternal(collectionId, mediaServerId);
+  }
+
+  private async revertItemInternal(
+    collectionId: number,
+    mediaServerId: string,
+    revertedMediaItems?: { mediaServerId: string }[],
+  ): Promise<void> {
     if (!this.plexApi.isPlexSetup()) return;
 
     const originalBuf = this.loadOriginalPoster(mediaServerId);
@@ -126,6 +145,11 @@ export class OverlayProcessorService {
     await this.stateService.removeState(collectionId, mediaServerId);
 
     if (restored) {
+      if (revertedMediaItems) {
+        this.addUniqueMediaItem(revertedMediaItems, mediaServerId);
+        return;
+      }
+
       const collection =
         await this.collectionsService.getCollection(collectionId);
       if (collection) {
@@ -158,6 +182,7 @@ export class OverlayProcessorService {
 
   async processCollection(
     collection: Collection & { collectionMedia: CollectionMedia[] },
+    appliedMediaItems?: { mediaServerId: string }[],
   ): Promise<ProcessorRunResult> {
     const result: ProcessorRunResult = {
       processed: 0,
@@ -165,6 +190,7 @@ export class OverlayProcessorService {
       skipped: 0,
       errors: 0,
     };
+    const processedMediaItems = appliedMediaItems ?? [];
 
     if (collection.deleteAfterDays == null) {
       this.logger.debug(
@@ -228,21 +254,23 @@ export class OverlayProcessorService {
         );
         if (success) {
           result.processed++;
-          // Emit notification event for successful overlay application
-          this.eventEmitter.emit(
-            MaintainerrEvent.Overlay_Applied,
-            new OverlayAppliedDto(
-              [{ mediaServerId: plexId }],
-              collection.title,
-              { type: 'collection', value: collection.id },
-            ),
-          );
+          this.addUniqueMediaItem(processedMediaItems, plexId);
         } else {
           result.errors++;
         }
       } else {
         result.skipped++;
       }
+    }
+
+    if (!appliedMediaItems && processedMediaItems.length > 0) {
+      this.eventEmitter.emit(
+        MaintainerrEvent.Overlay_Applied,
+        new OverlayAppliedDto(processedMediaItems, collection.title, {
+          type: 'collection',
+          value: collection.id,
+        }),
+      );
     }
 
     return result;
@@ -263,6 +291,8 @@ export class OverlayProcessorService {
       skipped: 0,
       errors: 0,
     };
+    const appliedMediaItems: { mediaServerId: string }[] = [];
+    const revertedMediaItems: { mediaServerId: string }[] = [];
 
     try {
       const settings = await this.settingsService.getSettings();
@@ -310,7 +340,11 @@ export class OverlayProcessorService {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
-          await this.revertItem(state.collectionId, state.mediaServerId);
+          await this.revertItemInternal(
+            state.collectionId,
+            state.mediaServerId,
+            revertedMediaItems,
+          );
           totalResult.reverted++;
         }
       }
@@ -320,11 +354,28 @@ export class OverlayProcessorService {
         this.logger.log(
           `--- Processing: "${coll.title}" (${coll.collectionMedia.length} items) ---`,
         );
-        const collResult = await this.processCollection(coll);
+        const collResult = await this.processCollection(
+          coll,
+          appliedMediaItems,
+        );
         totalResult.processed += collResult.processed;
         totalResult.reverted += collResult.reverted;
         totalResult.skipped += collResult.skipped;
         totalResult.errors += collResult.errors;
+      }
+
+      if (appliedMediaItems.length > 0) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.Overlay_Applied,
+          new OverlayAppliedDto(appliedMediaItems, 'All Collections'),
+        );
+      }
+
+      if (revertedMediaItems.length > 0) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.Overlay_Reverted,
+          new OverlayRevertedDto(revertedMediaItems, 'All Collections'),
+        );
       }
 
       this.logger.log(
@@ -354,11 +405,24 @@ export class OverlayProcessorService {
     this.logger.warn('Resetting all overlays...');
 
     const allStates = await this.stateService.getAllStates();
+    const revertedMediaItems: { mediaServerId: string }[] = [];
     for (const state of allStates) {
-      await this.revertItem(state.collectionId, state.mediaServerId);
+      await this.revertItemInternal(
+        state.collectionId,
+        state.mediaServerId,
+        revertedMediaItems,
+      );
     }
 
     await this.stateService.clearAllStates();
+
+    if (revertedMediaItems.length > 0) {
+      this.eventEmitter.emit(
+        MaintainerrEvent.Overlay_Reverted,
+        new OverlayRevertedDto(revertedMediaItems, 'All Collections'),
+      );
+    }
+
     this.logger.log('All overlays reset and state cleared');
   }
 

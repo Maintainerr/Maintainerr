@@ -46,7 +46,7 @@ export class OverlayAppliedDto {
   constructor(
     public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
-    public identifier: { type: string; value: number },
+    public identifier?: { type: string; value: number },
   ) {}
 }
 
@@ -54,6 +54,6 @@ export class OverlayRevertedDto {
   constructor(
     public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
-    public identifier: { type: string; value: number },
+    public identifier?: { type: string; value: number },
   ) {}
 }

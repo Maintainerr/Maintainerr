@@ -755,6 +755,16 @@ export class NotificationService implements OnModuleInit {
           message =
             "✅ '{media_title}' has been handled by '{collection_name}'.";
           break;
+        case NotificationType.OVERLAY_APPLIED:
+          subject = 'Overlay Applied';
+          message =
+            "🖼️ Overlay has been applied to '{media_title}' in '{collection_name}'.";
+          break;
+        case NotificationType.OVERLAY_REVERTED:
+          subject = 'Overlay Reverted';
+          message =
+            "↩️ Overlay has been reverted for '{media_title}' in '{collection_name}'.";
+          break;
       }
     } else {
       switch (type) {
@@ -787,6 +797,16 @@ export class NotificationService implements OnModuleInit {
           subject = 'Media Handled';
           message =
             "✅ These media items have been handled by '{collection_name}'.\n\n{media_items}";
+          break;
+        case NotificationType.OVERLAY_APPLIED:
+          subject = 'Overlay Applied';
+          message =
+            "🖼️ Overlays have been applied to these media items in '{collection_name}'.\n\n{media_items}";
+          break;
+        case NotificationType.OVERLAY_REVERTED:
+          subject = 'Overlay Reverted';
+          message =
+            "↩️ Overlays have been reverted for these media items in '{collection_name}'.\n\n{media_items}";
           break;
       }
     }
