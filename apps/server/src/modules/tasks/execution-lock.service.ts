@@ -8,6 +8,30 @@ import { Injectable } from '@nestjs/common';
 export class ExecutionLockService {
   private readonly locks = new Map<string, Promise<void>>();
 
+  public tryAcquire(key: string): (() => void) | null {
+    if (this.locks.has(key)) {
+      return null;
+    }
+
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    this.locks.set(key, current);
+
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      release();
+
+      if (this.locks.get(key) === current) {
+        this.locks.delete(key);
+      }
+    };
+  }
+
   public async acquire(key: string): Promise<() => void> {
     const prior = this.locks.get(key) ?? Promise.resolve();
 

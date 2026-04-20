@@ -1,6 +1,6 @@
 import { ServarrAction } from '@maintainerr/contracts'
-import { useEffect, useEffectEvent, useState } from 'react'
-import GetApiHandler from '../../../../../utils/ApiHandler'
+import { useEffect } from 'react'
+import { useServarrSettings } from '../../../../../api/settings'
 import { Select } from '../../../../Forms/Select'
 import { IRadarrSetting } from '../../../../Settings/Radarr'
 import { ISonarrSetting } from '../../../../Settings/Sonarr'
@@ -24,47 +24,48 @@ interface Option {
 }
 
 const ArrAction = (props: ArrActionProps) => {
-  const selectedSetting = props.settingId?.toString() ?? ''
-  const [settings, setSettings] = useState<(IRadarrSetting | ISonarrSetting)[]>(
-    [],
+  const {
+    type,
+    arrAction,
+    settingId,
+    options: providedOptions,
+    onUpdate,
+    accActionError,
+    settingIdError,
+    mediaServerName,
+  } = props
+  const selectedSetting = settingId?.toString() ?? ''
+  const {
+    data: settings,
+    isLoading: loading,
+    isFetching,
+  } = useServarrSettings<IRadarrSetting | ISonarrSetting>(
+    type.toLowerCase() as 'radarr' | 'sonarr',
   )
-  const [loading, setLoading] = useState<boolean>(true)
-  const action = props.arrAction ?? 0
+  const settingsList = settings ?? []
+  const action = arrAction ?? 0
 
   const handleSelectedSettingIdChange = (id?: number | null) => {
     const actionUpdate = id == null ? 0 : action
-    props.onUpdate(actionUpdate, id)
+    onUpdate(actionUpdate, id)
   }
 
   const handleActionChange = (value: number) => {
-    props.onUpdate(value, props.settingId)
+    onUpdate(value, settingId)
   }
-
-  const loadArrSettings = async (type: ArrType) => {
-    setLoading(true)
-    setSettings([])
-    const settingsResponse = await GetApiHandler<IRadarrSetting[]>(
-      `/settings/${type.toLowerCase()}`,
-    )
-    setSettings(settingsResponse)
-    setLoading(false)
-
-    // The selected server does not exist anymore (old client data potentially) so deselect
-    if (
-      props.settingId &&
-      settingsResponse.find((x) => x.id === props.settingId) == null
-    ) {
-      handleSelectedSettingIdChange(undefined)
-    }
-  }
-
-  const syncArrSettings = useEffectEvent((type: ArrType) => {
-    void loadArrSettings(type)
-  })
 
   useEffect(() => {
-    syncArrSettings(props.type)
-  }, [props.type])
+    if (!settings) {
+      return
+    }
+
+    if (
+      settingId &&
+      settings.find((setting) => setting.id === settingId) == null
+    ) {
+      onUpdate(0, undefined)
+    }
+  }, [onUpdate, settingId, settings])
 
   const noneServerSelected = selectedSetting === ''
 
@@ -79,19 +80,19 @@ const ArrAction = (props: ArrActionProps) => {
           name: 'Do nothing',
         },
       ]
-    : props.options
+    : providedOptions
 
   return (
     <div>
       <div className="form-row items-center">
-        <label htmlFor={`${props.type}-server`} className="text-label">
-          {props.type} server *
+        <label htmlFor={`${type}-server`} className="text-label">
+          {type} server *
         </label>
         <div className="form-input">
           <div className="form-input-field">
             <Select
-              name={`${props.type}-server`}
-              id={`${props.type}-server`}
+              name={`${type}-server`}
+              id={`${type}-server`}
               value={selectedSetting}
               onChange={(e) => {
                 handleSelectedSettingIdChange(
@@ -100,39 +101,34 @@ const ArrAction = (props: ArrActionProps) => {
               }}
             >
               <option value="">None</option>
-              {settings.map((e) => {
+              {(loading || (isFetching && settingsList.length === 0)) && (
+                <option value="" disabled>
+                  Loading servers...
+                </option>
+              )}
+              {settingsList.map((e) => {
                 return (
                   <option key={e.id} value={e.id}>
                     {e.serverName}
                   </option>
                 )
               })}
-              {loading && (
-                <option value="" disabled>
-                  Loading servers...
-                </option>
-              )}
             </Select>
           </div>
-          {props.settingIdError ? (
-            <p className="mt-1 text-xs text-error-400">
-              {props.settingIdError}
-            </p>
+          {settingIdError ? (
+            <p className="mt-1 text-xs text-error-400">{settingIdError}</p>
           ) : undefined}
         </div>
       </div>
       <div className="form-row items-center">
-        <label htmlFor={`${props.type}-action`} className="text-label">
-          {noneServerSelected
-            ? props.mediaServerName || 'Media server'
-            : props.type}{' '}
-          action
+        <label htmlFor={`${type}-action`} className="text-label">
+          {noneServerSelected ? mediaServerName || 'Media server' : type} action
         </label>
         <div className="form-input">
           <div className="form-input-field">
             <Select
-              name={`${props.type}-action`}
-              id={`${props.type}-action`}
+              name={`${type}-action`}
+              id={`${type}-action`}
               value={action}
               onChange={(e) => {
                 handleActionChange(+e.target.value)
@@ -147,10 +143,8 @@ const ArrAction = (props: ArrActionProps) => {
               })}
             </Select>
           </div>
-          {props.accActionError ? (
-            <p className="mt-1 text-xs text-error-400">
-              {props.accActionError}
-            </p>
+          {accActionError ? (
+            <p className="mt-1 text-xs text-error-400">{accActionError}</p>
           ) : undefined}
         </div>
       </div>

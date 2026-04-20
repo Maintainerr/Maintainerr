@@ -168,10 +168,18 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   onCancel,
 }: ServarrSettingsModalProps<TSetting>) => {
   const initialState = useMemo(() => buildInitialState(settings), [settings])
+  const savedConnectionState = settings
+    ? toConnectionState(initialState)
+    : undefined
+  const settingsKey =
+    settings?.id != null
+      ? `${settings.id}:${settings.url}:${settings.apiKey}`
+      : '__new__'
   const [errorMessage, setErrorMessage] = useState<string>()
-  const [testedConnectionState, setTestedConnectionState] = useState<
-    ServarrConnectionState | undefined
-  >(settings ? toConnectionState(initialState) : undefined)
+  const [testedConnectionState, setTestedConnectionState] =
+    useState<ServarrConnectionState>()
+  const [testedConnectionStateKey, setTestedConnectionStateKey] =
+    useState<string>()
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
@@ -201,11 +209,13 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     () => toConnectionState(currentState),
     [currentState],
   )
+  const activeTestedConnectionState =
+    testedConnectionStateKey === settingsKey
+      ? testedConnectionState
+      : savedConnectionState
+
   useEffect(() => {
     reset(initialState)
-    setTestedConnectionState(
-      settings ? toConnectionState(initialState) : undefined,
-    )
   }, [initialState, reset, settings])
 
   const isClearingExistingSetting =
@@ -218,7 +228,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     !saving && (isClearingExistingSetting || hasCompleteRequiredFields)
   const testFeedbackStatus = areMatchingConnectionStates(
     currentConnectionState,
-    testedConnectionState,
+    activeTestedConnectionState,
   )
     ? testResult?.status
     : undefined
@@ -311,6 +321,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
         if (response.code === 1) {
           setTestedConnectionState(toConnectionState({ ...values, port }))
+          setTestedConnectionStateKey(settingsKey)
         }
       })
       .catch((error: unknown) => {

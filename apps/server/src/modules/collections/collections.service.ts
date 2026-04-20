@@ -133,6 +133,10 @@ export class CollectionsService {
     }
   }
 
+  async getCollectionRecord(id: number) {
+    return await this.collectionRepo.findOne({ where: { id } });
+  }
+
   async getCollectionMedia(id: number) {
     try {
       return await this.CollectionMediaRepo.find({
@@ -143,6 +147,15 @@ export class CollectionsService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  async getCollectionMediaRecord(collectionId: number, mediaServerId: string) {
+    return await this.CollectionMediaRepo.findOne({
+      where: {
+        collectionId,
+        mediaServerId,
+      },
+    });
   }
 
   public async getCollectionsByMediaServerId(
