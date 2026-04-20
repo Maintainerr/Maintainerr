@@ -11,6 +11,7 @@ import {
   Text,
   Transformer,
 } from 'react-konva'
+import { getOverlayPreviewFontFamily } from './editorFonts'
 
 interface OverlayCanvasProps {
   elements: OverlayElement[]
@@ -20,6 +21,7 @@ interface OverlayCanvasProps {
   onSelect: (id: string | null) => void
   onUpdate: (el: OverlayElement) => void
   backgroundUrl?: string | null
+  fontLoadVersion?: number
 }
 
 const MAX_DISPLAY_HEIGHT = 600
@@ -33,6 +35,7 @@ export function OverlayCanvas({
   onSelect,
   onUpdate,
   backgroundUrl,
+  fontLoadVersion = 0,
 }: OverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
@@ -117,6 +120,10 @@ export function OverlayCanvas({
     trRef.current.nodes([])
     trRef.current.getLayer()?.batchDraw()
   }, [selectedId, elements])
+
+  useEffect(() => {
+    stageRef.current?.batchDraw()
+  }, [fontLoadVersion])
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -281,6 +288,10 @@ function ElementRenderer({
   switch (el.type) {
     case 'text': {
       const textValue = el.uppercase ? el.text.toUpperCase() : el.text
+      const previewFontFamily = getOverlayPreviewFontFamily(
+        el.fontPath,
+        el.fontFamily,
+      )
       return (
         <Group {...commonProps}>
           {el.backgroundColor && (
@@ -296,7 +307,7 @@ function ElementRenderer({
             height={h}
             text={textValue}
             fontSize={el.fontSize * scale}
-            fontFamily={el.fontFamily}
+            fontFamily={previewFontFamily}
             fontStyle={el.fontWeight}
             fill={el.fontColor}
             align={el.textAlign}
@@ -313,13 +324,16 @@ function ElementRenderer({
     }
 
     case 'variable': {
-      // Show placeholder text in editor
       const placeholder = el.segments
         .map((s) => (s.type === 'text' ? s.value : `{${s.field}}`))
         .join('')
       const variableValue = el.uppercase
         ? placeholder.toUpperCase()
         : placeholder
+      const previewFontFamily = getOverlayPreviewFontFamily(
+        el.fontPath,
+        el.fontFamily,
+      )
       return (
         <Group {...commonProps}>
           {el.backgroundColor && (
@@ -335,7 +349,7 @@ function ElementRenderer({
             height={h}
             text={variableValue}
             fontSize={el.fontSize * scale}
-            fontFamily={el.fontFamily}
+            fontFamily={previewFontFamily}
             fontStyle={el.fontWeight}
             fill={el.fontColor}
             align={el.textAlign}

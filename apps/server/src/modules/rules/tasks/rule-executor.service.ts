@@ -791,6 +791,7 @@ export class RuleExecutorService {
                 type: 'rulegroup',
                 value: rulegroup.id,
               },
+              collection.id,
               collection.deleteAfterDays,
             ),
           );
@@ -803,6 +804,7 @@ export class RuleExecutorService {
               addedToCollection,
               collection.title,
               { type: 'rulegroup', value: rulegroup.id },
+              collection.id,
               collection.deleteAfterDays,
             ),
           );

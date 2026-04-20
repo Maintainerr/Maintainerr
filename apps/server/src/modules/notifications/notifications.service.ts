@@ -3,7 +3,7 @@ import {
   MaintainerrEvent,
   MediaItem,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
@@ -15,6 +15,8 @@ import {
   CollectionMediaAddedDto,
   CollectionMediaHandledDto,
   CollectionMediaRemovedDto,
+  OverlayAppliedDto,
+  OverlayRevertedDto,
   RuleHandlerFailedDto,
 } from '../events/events.dto';
 import {
@@ -57,7 +59,7 @@ export const hasNotificationType = (
 };
 
 @Injectable()
-export class NotificationService {
+export class NotificationService implements OnModuleInit {
   private activeAgents: NotificationAgent[] = [];
 
   constructor(
@@ -72,6 +74,10 @@ export class NotificationService {
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {
     logger.setContext(NotificationService.name);
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.registerConfiguredAgents();
   }
 
   private async getMediaServer(): Promise<IMediaServerService> {
@@ -749,6 +755,16 @@ export class NotificationService {
           message =
             "✅ '{media_title}' has been handled by '{collection_name}'.";
           break;
+        case NotificationType.OVERLAY_APPLIED:
+          subject = 'Overlay Applied';
+          message =
+            "🖼️ Overlay has been applied to '{media_title}' in '{collection_name}'.";
+          break;
+        case NotificationType.OVERLAY_REVERTED:
+          subject = 'Overlay Reverted';
+          message =
+            "↩️ Overlay has been reverted for '{media_title}' in '{collection_name}'.";
+          break;
       }
     } else {
       switch (type) {
@@ -781,6 +797,16 @@ export class NotificationService {
           subject = 'Media Handled';
           message =
             "✅ These media items have been handled by '{collection_name}'.\n\n{media_items}";
+          break;
+        case NotificationType.OVERLAY_APPLIED:
+          subject = 'Overlay Applied';
+          message =
+            "🖼️ Overlays have been applied to these media items in '{collection_name}'.\n\n{media_items}";
+          break;
+        case NotificationType.OVERLAY_REVERTED:
+          subject = 'Overlay Reverted';
+          message =
+            "↩️ Overlays have been reverted for these media items in '{collection_name}'.\n\n{media_items}";
           break;
       }
     }
@@ -911,6 +937,30 @@ export class NotificationService {
   private async collectionMediaHandled(data: CollectionMediaHandledDto) {
     await this.handleNotification(
       NotificationType.MEDIA_HANDLED,
+      data.mediaItems,
+      data.collectionName,
+      undefined,
+      undefined,
+      data.identifier,
+    );
+  }
+
+  @OnEvent(MaintainerrEvent.Overlay_Applied)
+  private async overlayApplied(data: OverlayAppliedDto) {
+    await this.handleNotification(
+      NotificationType.OVERLAY_APPLIED,
+      data.mediaItems,
+      data.collectionName,
+      undefined,
+      undefined,
+      data.identifier,
+    );
+  }
+
+  @OnEvent(MaintainerrEvent.Overlay_Reverted)
+  private async overlayReverted(data: OverlayRevertedDto) {
+    await this.handleNotification(
+      NotificationType.OVERLAY_REVERTED,
       data.mediaItems,
       data.collectionName,
       undefined,

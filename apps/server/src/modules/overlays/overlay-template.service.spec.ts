@@ -159,4 +159,102 @@ describe('OverlayTemplateService', () => {
       expect.objectContaining({ id: 3, isDefault: true, mode: 'poster' }),
     );
   });
+
+  it('preserves isDefault flag when updating a template without explicitly changing it', async () => {
+    const entity = {
+      id: 5,
+      name: 'Custom Default',
+      description: 'Original description',
+      mode: 'poster',
+      canvasWidth: 1000,
+      canvasHeight: 1500,
+      elements: [],
+      isDefault: true,
+      isPreset: false,
+      createdAt: new Date('2026-04-17T10:00:00.000Z'),
+      updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+    };
+
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(entity),
+      save: jest.fn().mockImplementation(async (e) => e),
+      find: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+    };
+
+    const service = new OverlayTemplateService(repo as any, createMockLogger());
+
+    // Update only the description, without touching isDefault
+    const result = await service.update(5, {
+      description: 'Updated description',
+    });
+
+    // Verify isDefault was preserved as true
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 5,
+        description: 'Updated description',
+        isDefault: true,
+        name: 'Custom Default',
+      }),
+    );
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 5,
+        isDefault: true,
+        description: 'Updated description',
+      }),
+    );
+  });
+
+  it('respects explicit isDefault changes when updating a template', async () => {
+    const entity = {
+      id: 6,
+      name: 'Another Template',
+      description: 'Original description',
+      mode: 'poster',
+      canvasWidth: 1000,
+      canvasHeight: 1500,
+      elements: [],
+      isDefault: false,
+      isPreset: false,
+      createdAt: new Date('2026-04-17T10:00:00.000Z'),
+      updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+    };
+
+    const repo = {
+      findOne: jest.fn().mockResolvedValue(entity),
+      save: jest.fn().mockImplementation(async (e) => e),
+      update: jest.fn(),
+      find: jest.fn(),
+      remove: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+    };
+
+    const service = new OverlayTemplateService(repo as any, createMockLogger());
+
+    // Update and explicitly set isDefault to true
+    const result = await service.update(6, {
+      description: 'Updated',
+      isDefault: true,
+    });
+
+    // Verify unsetDefaults was called to clear other defaults
+    expect(repo.update).toHaveBeenCalledWith(
+      { mode: 'poster', isDefault: true },
+      { isDefault: false },
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 6,
+        description: 'Updated',
+        isDefault: true,
+      }),
+    );
+  });
 });

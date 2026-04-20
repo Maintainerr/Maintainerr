@@ -30,7 +30,18 @@ export const overlayTemplateCreateSchema = overlayTemplateSchema.omit({
   isPreset: true,
 })
 
-export const overlayTemplateUpdateSchema = overlayTemplateCreateSchema.partial()
+// For updates: make isDefault and description optional *without* applying defaults.
+// Zod v4's `.partial()` preserves `.default()` on each field, so an omitted key
+// would still parse to `false` / `''` — silently clobbering the stored value.
+// Overriding these two fields here yields `undefined` when omitted, which lets
+// the service distinguish "not provided" from "explicitly set to false/empty".
+// Keep this list in sync with any new defaulted fields added above.
+export const overlayTemplateUpdateSchema = overlayTemplateCreateSchema
+  .partial()
+  .extend({
+    isDefault: z.boolean().optional(),
+    description: z.string().max(500).optional(),
+  })
 
 export type OverlayTemplate = z.infer<typeof overlayTemplateSchema> & {
   id: number
