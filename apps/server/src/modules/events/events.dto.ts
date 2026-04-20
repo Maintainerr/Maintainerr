@@ -20,6 +20,7 @@ export class CollectionMediaRemovedDto {
     public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
+    public collectionId: number,
     public dayAmount?: number,
   ) {}
 }
@@ -29,6 +30,7 @@ export class CollectionMediaAddedDto {
     public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
+    public collectionId: number,
     public dayAmount?: number,
   ) {}
 }

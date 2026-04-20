@@ -1837,6 +1837,7 @@ export class CollectionsService {
               newMedia,
               collection.title,
               { type: 'collection', value: collection.id },
+              collection.id,
               collection.deleteAfterDays,
             ),
           );
@@ -1982,6 +1983,7 @@ export class CollectionsService {
               childrenMedia.filter((m) => removedItemIds.has(m.mediaServerId)),
               collection.title,
               { type: 'collection', value: collection.id },
+              collection.id,
               collection.deleteAfterDays,
             ),
           );

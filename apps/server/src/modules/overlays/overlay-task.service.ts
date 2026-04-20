@@ -136,32 +136,34 @@ export class OverlayTaskService extends TaskBase {
 
       const collections =
         await this.collectionsService.getCollectionsWithOverlayEnabled();
+      const collectionId = payload.collectionId;
+      const toRevert: { mediaServerId: string }[] = [];
 
       for (const item of payload.mediaItems) {
-        // Only revert if the item is not in any other overlay-enabled collection
-        const stillInOverlayCollection = collections.some((c) =>
+        const stillTracked = collections.some((c) =>
           c.collectionMedia.some(
             (cm) => cm.mediaServerId === item.mediaServerId,
           ),
         );
-
-        if (stillInOverlayCollection) {
-          await this.stateService.removeState(
-            payload.identifier.value,
-            item.mediaServerId,
-          );
+        if (stillTracked) {
+          await this.stateService.removeState(collectionId, item.mediaServerId);
           this.logger.debug(
             `Item ${item.mediaServerId} still in another overlay collection, cleared stale state without reverting`,
           );
           continue;
         }
+        toRevert.push(item);
+      }
 
-        // Revert from whichever collection had the overlay state
-        const collectionId = payload.identifier.value;
+      if (toRevert.length > 0) {
         this.logger.log(
-          `Reverting overlay for item ${item.mediaServerId} (removed from "${payload.collectionName}")`,
+          `Reverting ${toRevert.length} overlay(s) removed from "${payload.collectionName}"`,
         );
-        await this.processor.revertItem(collectionId, item.mediaServerId);
+        await this.processor.revertMultipleItems(
+          collectionId,
+          toRevert,
+          payload.collectionName,
+        );
       }
     } catch (err) {
       this.logger.warn('Error handling CollectionMedia_Removed for overlays');

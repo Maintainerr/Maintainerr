@@ -335,4 +335,200 @@ describe('OverlayProcessorService', () => {
       }),
     );
   });
+
+  it('emits one aggregated overlay reverted notification for revertCollection', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([
+          { mediaServerId: 'media-1' },
+          { mediaServerId: 'media-2' },
+        ]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const plexApi = {
+      isPlexSetup: jest.fn().mockReturnValue(true),
+      setThumb: jest.fn().mockResolvedValue(undefined),
+    };
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest
+        .fn()
+        .mockResolvedValue({ title: 'Target collection' }),
+    };
+
+    const service = new OverlayProcessorService(
+      plexApi as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    const count = await service.revertCollection(7);
+
+    expect(count).toBe(2);
+    const revertEmits = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === MaintainerrEvent.Overlay_Reverted,
+    );
+    expect(revertEmits).toHaveLength(1);
+    expect(revertEmits[0][1]).toEqual(
+      expect.objectContaining({
+        mediaItems: [
+          { mediaServerId: 'media-1' },
+          { mediaServerId: 'media-2' },
+        ],
+        collectionName: 'Target collection',
+        identifier: { type: 'collection', value: 7 },
+      }),
+    );
+  });
+
+  it('emits one aggregated overlay reverted notification for revertMultipleItems', async () => {
+    const stateService = {
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const plexApi = {
+      isPlexSetup: jest.fn().mockReturnValue(true),
+      setThumb: jest.fn().mockResolvedValue(undefined),
+    };
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest.fn(),
+    };
+
+    const service = new OverlayProcessorService(
+      plexApi as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertMultipleItems(
+      42,
+      [
+        { mediaServerId: 'media-1' },
+        { mediaServerId: 'media-2' },
+        { mediaServerId: 'media-3' },
+      ],
+      'Batch revert',
+    );
+
+    const revertEmits = eventEmitter.emit.mock.calls.filter(
+      ([eventName]) => eventName === MaintainerrEvent.Overlay_Reverted,
+    );
+    expect(revertEmits).toHaveLength(1);
+    expect(revertEmits[0][1]).toEqual(
+      expect.objectContaining({
+        mediaItems: [
+          { mediaServerId: 'media-1' },
+          { mediaServerId: 'media-2' },
+          { mediaServerId: 'media-3' },
+        ],
+        collectionName: 'Batch revert',
+        identifier: { type: 'collection', value: 42 },
+      }),
+    );
+    expect(collectionsService.getCollection).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the collection title when revertMultipleItems receives no name', async () => {
+    const stateService = {
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const plexApi = {
+      isPlexSetup: jest.fn().mockReturnValue(true),
+      setThumb: jest.fn().mockResolvedValue(undefined),
+    };
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest.fn().mockResolvedValue({ title: 'Stored title' }),
+    };
+
+    const service = new OverlayProcessorService(
+      plexApi as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertMultipleItems(42, [{ mediaServerId: 'media-1' }]);
+
+    expect(collectionsService.getCollection).toHaveBeenCalledWith(42);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.Overlay_Reverted,
+      expect.objectContaining({
+        mediaItems: [{ mediaServerId: 'media-1' }],
+        collectionName: 'Stored title',
+      }),
+    );
+  });
+
+  it('does not emit when revertMultipleItems has no successful reverts', async () => {
+    const stateService = {
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const plexApi = {
+      isPlexSetup: jest.fn().mockReturnValue(true),
+      setThumb: jest.fn().mockResolvedValue(undefined),
+    };
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      plexApi as any,
+      { getCollection: jest.fn() } as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    // No original poster stored → revertItemInternal reports no restore
+    jest.spyOn(service as any, 'loadOriginalPoster').mockReturnValue(null);
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertMultipleItems(
+      42,
+      [{ mediaServerId: 'media-1' }],
+      'Batch',
+    );
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
 });

@@ -41,14 +41,8 @@ export const getOverlayFonts = () =>
   GetApiHandler<{ name: string; path: string }[]>('/overlays/fonts')
 
 export const buildOverlayFontUrl = (fontName: string, cacheBust?: number) => {
-  const params = new URLSearchParams()
-  if (cacheBust !== undefined) {
-    params.set('v', String(cacheBust))
-  }
-
-  const query = params.toString()
   const base = `${API_BASE_PATH}/api/overlays/fonts/${encodeURIComponent(fontName)}`
-  return query ? `${base}?${query}` : base
+  return cacheBust !== undefined ? `${base}?v=${cacheBust}` : base
 }
 
 export const uploadFont = async (file: File) => {

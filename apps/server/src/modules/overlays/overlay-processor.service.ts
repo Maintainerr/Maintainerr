@@ -111,16 +111,15 @@ export class OverlayProcessorService {
 
   // ── Revert ────────────────────────────────────────────────────────────────
 
-  async revertItem(collectionId: number, mediaServerId: string): Promise<void> {
-    await this.revertItemInternal(collectionId, mediaServerId);
-  }
-
+  /**
+   * Revert one item. Returns `true` when the original poster was restored,
+   * so callers can decide whether to emit an event and/or aggregate.
+   */
   private async revertItemInternal(
     collectionId: number,
     mediaServerId: string,
-    revertedMediaItems?: { mediaServerId: string }[],
-  ): Promise<void> {
-    if (!this.plexApi.isPlexSetup()) return;
+  ): Promise<boolean> {
+    if (!this.plexApi.isPlexSetup()) return false;
 
     const originalBuf = this.loadOriginalPoster(mediaServerId);
     let restored = false;
@@ -143,37 +142,49 @@ export class OverlayProcessorService {
 
     this.deleteOriginalPoster(mediaServerId);
     await this.stateService.removeState(collectionId, mediaServerId);
-
-    if (restored) {
-      if (revertedMediaItems) {
-        this.addUniqueMediaItem(revertedMediaItems, mediaServerId);
-        return;
-      }
-
-      const collection =
-        await this.collectionsService.getCollection(collectionId);
-      if (collection) {
-        this.eventEmitter.emit(
-          MaintainerrEvent.Overlay_Reverted,
-          new OverlayRevertedDto([{ mediaServerId }], collection.title, {
-            type: 'collection',
-            value: collectionId,
-          }),
-        );
-      }
-    }
+    return restored;
   }
 
   async revertCollection(collectionId: number): Promise<number> {
     const states = await this.stateService.getCollectionStates(collectionId);
-    let reverted = 0;
+    await this.revertMultipleItems(collectionId, states);
+    return states.length;
+  }
 
-    for (const state of states) {
-      await this.revertItem(collectionId, state.mediaServerId);
-      reverted++;
+  /**
+   * Revert overlays for multiple items in the same collection. Aggregates
+   * successful reverts into a single Overlay_Reverted event so callers don't
+   * spam notifications when acting on a batch (bulk revert, CollectionMedia
+   * removed events, etc.).
+   */
+  async revertMultipleItems(
+    collectionId: number,
+    mediaItems: { mediaServerId: string }[],
+    collectionName?: string,
+  ): Promise<void> {
+    if (mediaItems.length === 0) return;
+
+    const reverted: { mediaServerId: string }[] = [];
+    for (const item of mediaItems) {
+      if (await this.revertItemInternal(collectionId, item.mediaServerId)) {
+        reverted.push({ mediaServerId: item.mediaServerId });
+      }
     }
 
-    return reverted;
+    if (reverted.length === 0) return;
+
+    const name =
+      collectionName ??
+      (await this.collectionsService.getCollection(collectionId))?.title;
+    if (!name) return;
+
+    this.eventEmitter.emit(
+      MaintainerrEvent.Overlay_Reverted,
+      new OverlayRevertedDto(reverted, name, {
+        type: 'collection',
+        value: collectionId,
+      }),
+    );
   }
 
   // ── Apply overlay to single item ──────────────────────────────────────────
@@ -340,11 +351,13 @@ export class OverlayProcessorService {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
-          await this.revertItemInternal(
+          const restored = await this.revertItemInternal(
             state.collectionId,
             state.mediaServerId,
-            revertedMediaItems,
           );
+          if (restored) {
+            this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+          }
           totalResult.reverted++;
         }
       }
@@ -407,11 +420,13 @@ export class OverlayProcessorService {
     const allStates = await this.stateService.getAllStates();
     const revertedMediaItems: { mediaServerId: string }[] = [];
     for (const state of allStates) {
-      await this.revertItemInternal(
+      const restored = await this.revertItemInternal(
         state.collectionId,
         state.mediaServerId,
-        revertedMediaItems,
       );
+      if (restored) {
+        this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+      }
     }
 
     await this.stateService.clearAllStates();

@@ -65,46 +65,7 @@ export class OverlayRenderService {
     return c === 'none' || c === 'transparent' || c === 'rgba(0,0,0,0)';
   }
 
-  private getFontFamily(fontPath: string, explicitFamily?: string): string {
-    // Use explicit family if provided (matches frontend preview)
-    if (explicitFamily) {
-      // Register the font with the explicit family name for node-canvas
-      if (!isSafeFilename(fontPath)) {
-        this.logger.warn(
-          `Rejected unsafe font path: ${JSON.stringify(fontPath)}`,
-        );
-        return explicitFamily;
-      }
-
-      const bundledBase = path.resolve(this.bundledFontsDir);
-      const userBase = path.resolve(configDataDir, 'overlays', 'fonts');
-      const candidates = [
-        path.resolve(userBase, fontPath),
-        path.resolve(bundledBase, fontPath),
-      ];
-
-      for (const candidate of candidates) {
-        const withinBundled = candidate.startsWith(bundledBase + path.sep);
-        const withinUser = candidate.startsWith(userBase + path.sep);
-        if ((withinBundled || withinUser) && fs.existsSync(candidate)) {
-          try {
-            // Register with explicit family name to match frontend
-            registerFont(candidate, { family: explicitFamily });
-            this.registeredFonts.set(fontPath, explicitFamily);
-            return explicitFamily;
-          } catch (err) {
-            this.logger.warn(
-              `Failed to register font ${fontPath} with family ${explicitFamily}`,
-            );
-            this.logger.debug(err);
-          }
-        }
-      }
-      this.logger.warn(`Font file not found: ${JSON.stringify(fontPath)}`);
-      return explicitFamily;
-    }
-
-    // Legacy behavior: derive family from fontPath filename
+  private getFontFamily(fontPath: string): string {
     if (this.registeredFonts.has(fontPath)) {
       return this.registeredFonts.get(fontPath)!;
     }
@@ -638,7 +599,7 @@ export class OverlayRenderService {
     }
 
     // Text
-    const fontFamily = this.getFontFamily(el.fontPath, el.fontFamily);
+    const fontFamily = this.getFontFamily(el.fontPath);
     const pointSize = Math.max(1, Math.round(el.fontSize * scale));
     const renderedText = el.uppercase ? el.text.toUpperCase() : el.text;
     const padY = Math.round((el.backgroundPadding ?? 0) * scale);
@@ -720,7 +681,7 @@ export class OverlayRenderService {
       }
     }
 
-    const fontFamily = this.getFontFamily(el.fontPath, el.fontFamily);
+    const fontFamily = this.getFontFamily(el.fontPath);
     const pointSize = Math.max(1, Math.round(el.fontSize * scale));
     const padY = Math.round((el.backgroundPadding ?? 0) * scale);
     ctx.fillStyle = this.parseColor(el.fontColor);
