@@ -1,5 +1,6 @@
 import {
   MediaItem,
+  ServarrAction,
   type MaintainerrMediaStatusDetails,
   type MaintainerrMediaStatusEntry,
   type MediaProviderIds,
@@ -21,6 +22,8 @@ import {
   loadMaintainerrStatusDetails,
   rememberMaintainerrStatusDetails,
 } from '../maintainerrStatus'
+import type { ICollection } from '../../../Collection'
+import TriggerRuleActionBtn from '../../../Collection/CollectionDetail/TriggerRuleActionBtn'
 
 interface ModalContentProps {
   onClose: () => void
@@ -31,9 +34,11 @@ interface ModalContentProps {
   title: string
   providerIds?: MediaProviderIds
   exclusionType?: 'global' | 'specific'
+  collection?: ICollection
   isManual?: boolean
   forceStatusLoad?: boolean
   onStatusLink?: (targetPath: string) => void
+  onCollectionItemRemoved?: () => void
 }
 
 const mergeProviderIds = (
@@ -137,9 +142,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     title,
     providerIds: fallbackProviderIds,
     exclusionType,
+    collection,
     isManual = false,
     forceStatusLoad = false,
     onStatusLink,
+    onCollectionItemRemoved,
   }) => {
     useLockBodyScroll(true)
 
@@ -196,6 +203,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       : manuallyAddedToEntries.length > 0
     const showMaintainerrDetails =
       shouldShowExcludedDetails || shouldShowManualDetails
+    const canTriggerRuleAction =
+      collection != null &&
+      collection.arrAction !== ServarrAction.DO_NOTHING &&
+      !isManual &&
+      exclusionType == null
     const providerIds = useMemo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
       [metadata?.providerIds, fallbackProviderIds],
@@ -706,6 +718,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
+                {canTriggerRuleAction ? (
+                  <TriggerRuleActionBtn
+                    collection={collection}
+                    mediaServerId={id}
+                    onHandled={onCollectionItemRemoved}
+                  />
+                ) : null}
                 <Button buttonType="default" onClick={onClose}>
                   Close
                 </Button>

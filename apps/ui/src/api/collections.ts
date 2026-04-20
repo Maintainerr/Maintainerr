@@ -1,6 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import type { ICollection } from '../components/Collection'
-import GetApiHandler from '../utils/ApiHandler'
+import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
 
 type UseCollectionsQueryKey = ['collections', string]
 type UseCollectionQueryKey = ['collections', 'detail', string]
@@ -44,6 +44,16 @@ export const fetchCollection = async (collectionId: string | number) => {
   return await GetApiHandler<ICollection>(
     `/collections/collection/${collectionId}`,
   )
+}
+
+export const triggerCollectionItemAction = async (
+  collectionId: number,
+  mediaId: string | number,
+) => {
+  return await PostApiHandler('/collections/media/handle', {
+    collectionId,
+    mediaId: String(mediaId),
+  })
 }
 
 export const useCollection = (

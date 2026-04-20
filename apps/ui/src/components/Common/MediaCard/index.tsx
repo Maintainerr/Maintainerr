@@ -4,6 +4,7 @@ import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AddModal from '../../AddModal'
+import type { ICollection } from '../../Collection'
 import RemoveFromCollectionBtn from '../../Collection/CollectionDetail/RemoveFromCollectionBtn'
 import Button from '../Button'
 import PosterCard from '../Poster/PosterCard'
@@ -49,6 +50,7 @@ interface IMediaCard {
   exclusionId?: number
   exclusionType?: 'global' | 'specific' | undefined
   collectionId?: number
+  collection?: ICollection
   isManual?: boolean
   onRemove?: (id: string) => void
 }
@@ -67,6 +69,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   providerIds = undefined,
   collectionPage = false,
   exclusionType = undefined,
+  collection = undefined,
   isManual = false,
   onRemove = () => {},
 }) => {
@@ -276,9 +279,14 @@ const MediaCard: React.FC<IMediaCard> = ({
           providerIds={providerIds}
           year={displayYear}
           exclusionType={exclusionType}
+          collection={collection}
           isManual={isManual}
           forceStatusLoad={statusShouldRefetch}
           onStatusLink={handleStatusLink}
+          onCollectionItemRemoved={() => {
+            onRemove(id.toString())
+            setShowMediaModal(false)
+          }}
         />
       )}
     </div>

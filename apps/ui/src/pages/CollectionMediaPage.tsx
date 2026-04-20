@@ -130,6 +130,7 @@ const CollectionMediaPage = () => {
         loading={isLoading}
         data={data}
         libraryId={collection.libraryId}
+        collection={collection}
         collectionPage={true}
         extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
         onRemove={(id: string) => {
@@ -140,13 +141,7 @@ const CollectionMediaPage = () => {
             currentMedia.filter((item) => item.mediaServerId !== id),
           )
         }}
-        collectionInfo={media.map((item) => ({
-          ...item,
-          collection: {
-            ...collection,
-            media: [],
-          },
-        }))}
+        collectionInfo={media}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { TrashIcon } from '@heroicons/react/solid'
+import { DocumentRemoveIcon, TrashIcon } from '@heroicons/react/solid'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { DeleteApiHandler, PostApiHandler } from '../../../../utils/ApiHandler'
@@ -17,6 +17,12 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setppopup] = useState<boolean>(false)
   const [removing, setRemoving] = useState<boolean>(false)
+  const isCreatingExclusion = !props.exclusionId
+  const actionLabel = isCreatingExclusion ? 'Exclude' : 'Remove'
+  const confirmLabel = isCreatingExclusion
+    ? 'Exclude from collection?'
+    : 'Are you sure?'
+  const inProgressLabel = isCreatingExclusion ? 'Excluding...' : 'Removing...'
 
   const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {
     e?.stopPropagation()
@@ -63,13 +69,20 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
           buttonType="primary"
           buttonSize="md"
           className="mb-1 mt-2 h-6 w-full text-zinc-200 shadow-md"
+          title={
+            isCreatingExclusion ? 'Exclude from collection' : 'Remove exclusion'
+          }
           onClick={(e) => {
             e.stopPropagation() // Stops the MediaModal from also showing when clicked.
             setSure(true)
           }}
         >
-          {<TrashIcon className="m-auto ml-3 h-3" />}{' '}
-          <p className="rules-button-text m-auto mr-2">{'Remove'}</p>
+          {isCreatingExclusion ? (
+            <DocumentRemoveIcon className="m-auto ml-3 h-3" />
+          ) : (
+            <TrashIcon className="m-auto ml-3 h-3" />
+          )}{' '}
+          <p className="rules-button-text m-auto mr-2">{actionLabel}</p>
         </Button>
       ) : (
         <Button
@@ -86,7 +99,7 @@ const RemoveFromCollectionBtn = (props: IRemoveFromCollectionBtn) => {
           }}
         >
           <p className="rules-button-text m-auto mr-2">
-            {removing ? 'Removing...' : 'Are you sure?'}
+            {removing ? inProgressLabel : confirmLabel}
           </p>
         </Button>
       )}
