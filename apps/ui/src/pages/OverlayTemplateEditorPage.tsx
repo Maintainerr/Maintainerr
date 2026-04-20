@@ -29,7 +29,10 @@ import { ElementToolbox } from '../components/OverlayEditor/ElementToolbox'
 import { LayerPanel } from '../components/OverlayEditor/LayerPanel'
 import { OverlayCanvas } from '../components/OverlayEditor/OverlayCanvas'
 import { PropertiesPanel } from '../components/OverlayEditor/PropertiesPanel'
-import { loadOverlayEditorFonts } from '../components/OverlayEditor/editorFonts'
+import {
+  invalidateOverlayEditorFont,
+  loadOverlayEditorFonts,
+} from '../components/OverlayEditor/editorFonts'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -57,6 +60,7 @@ const OverlayTemplateEditorPage = () => {
   const [selectedSection, setSelectedSection] = useState('')
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null)
   const [fonts, setFonts] = useState<{ name: string; path: string }[]>([])
+  const [fontLoadVersion, setFontLoadVersion] = useState(0)
   const [mobileTab, setMobileTab] = useState<'tools' | 'layers' | 'properties'>(
     'layers',
   )
@@ -117,7 +121,21 @@ const OverlayTemplateEditorPage = () => {
   }, [])
 
   useEffect(() => {
+    if (fonts.length === 0) return
+
+    let cancelled = false
+
     void loadOverlayEditorFonts(fonts)
+      .catch(() => undefined)
+      .then(() => {
+        if (!cancelled) {
+          setFontLoadVersion((current) => current + 1)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [fonts])
 
   const handleUploadFont = useCallback(
@@ -125,6 +143,7 @@ const OverlayTemplateEditorPage = () => {
       try {
         const result = await uploadFont(file)
         if (result) {
+          invalidateOverlayEditorFont(result.name)
           const updated = await getOverlayFonts()
           if (updated) setFonts(updated)
           showSuccess(`Font "${result.name}" uploaded`)
@@ -398,6 +417,7 @@ const OverlayTemplateEditorPage = () => {
                   onSelect={setSelectedId}
                   onUpdate={handleUpdateElement}
                   backgroundUrl={backgroundUrl}
+                  fontLoadVersion={fontLoadVersion}
                 />
               </div>
 
