@@ -76,10 +76,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
   const [statusShouldRefetch, setStatusShouldRefetch] = useState(false)
-
-  if (year && mediaType !== 'episode') {
-    year = year.slice(0, 4)
-  }
+  const displayYear = year && mediaType !== 'episode' ? year.slice(0, 4) : year
 
   const handleStatusLink = (targetPath: string) => {
     if (!targetPath) {
@@ -191,7 +188,9 @@ const MediaCard: React.FC<IMediaCard> = ({
               >
                 <div className="flex h-full w-full items-end">
                   <div className={`w-full px-2 pb-1 text-zinc-200`}>
-                    {year && <div className="text-sm font-medium">{year}</div>}
+                    {displayYear && (
+                      <div className="text-sm font-medium">{displayYear}</div>
+                    )}
 
                     <h1
                       className="w-full whitespace-normal text-sm font-bold leading-tight"
@@ -275,7 +274,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           summary={summary || 'No description available.'}
           mediaType={mediaType}
           providerIds={providerIds}
-          year={year}
+          year={displayYear}
           exclusionType={exclusionType}
           isManual={isManual}
           forceStatusLoad={statusShouldRefetch}

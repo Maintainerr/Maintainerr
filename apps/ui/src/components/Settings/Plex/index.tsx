@@ -2,11 +2,12 @@ import { RefreshIcon } from '@heroicons/react/outline'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import {
   useDeletePlexAuth,
   usePatchSettings,
+  usePlexAuthValidation,
   usePlexServers,
   useUpdatePlexAuth,
 } from '../../../api/settings'
@@ -54,6 +55,17 @@ interface SelectedServer {
   latency?: number
 }
 
+interface PlexAdvancedDraft {
+  hostname: string
+  port: string
+  ssl: boolean
+}
+
+interface TokenValidationOverride {
+  pending: boolean
+  valid: boolean
+}
+
 const normalizePlexHostname = (hostname?: string) =>
   hostname?.replace('http://', '').replace('https://', '') ?? ''
 
@@ -96,27 +108,26 @@ export const hasUnsavedPlexServerChanges = (
 
 const PlexSettings = () => {
   const { settings } = useSettingsOutletContext()
-  const [tokenValid, setTokenValid] = useState<boolean>(false)
-  const [tokenValidationPending, setTokenValidationPending] =
-    useState<boolean>(false)
+  const [tokenValidationOverride, setTokenValidationOverride] =
+    useState<TokenValidationOverride>()
   const [clearTokenClicked, setClearTokenClicked] = useState<boolean>(false)
-  const [selectedServer, setSelectedServer] = useState<SelectedServer | null>(
-    null,
-  )
+  const [selectedServerOverride, setSelectedServerOverride] = useState<
+    SelectedServer | null | undefined
+  >(undefined)
+  const [manualModeOverride, setManualModeOverride] = useState<
+    boolean | undefined
+  >(undefined)
+  const [advancedDraftOverride, setAdvancedDraftOverride] = useState<
+    PlexAdvancedDraft | undefined
+  >(undefined)
   const [testBanner, setTestbanner] = useState<{
     status: boolean
     version: string
   }>({ status: false, version: '' })
   const [testing, setTesting] = useState(false)
-  const [manualMode, setManualMode] = useState(
-    () => settings?.plex_manual_mode === 1,
-  )
   const [advancedOpen, setAdvancedOpen] = useState(
     () => settings?.plex_manual_mode === 1,
   )
-  const [advancedHostname, setAdvancedHostname] = useState('')
-  const [advancedPort, setAdvancedPort] = useState('')
-  const [advancedSsl, setAdvancedSsl] = useState(false)
   const {
     feedback,
     showInfo,
@@ -133,7 +144,60 @@ const PlexSettings = () => {
   const { mutateAsync: updatePlexAuth, isPending: updatePlexAuthPending } =
     useUpdatePlexAuth()
   const hasStoredPlexToken = Boolean(settings?.plex_auth_token)
+  const savedSelectedServer: SelectedServer | null =
+    settings?.plex_name && settings?.plex_hostname && settings.plex_port != null
+      ? {
+          name: settings.plex_name,
+          hostname: normalizePlexHostname(settings.plex_hostname),
+          port: String(settings.plex_port),
+          ssl: Boolean(settings.plex_ssl),
+        }
+      : null
+  const savedAdvancedDraft: PlexAdvancedDraft = {
+    hostname: normalizePlexHostname(settings?.plex_hostname) || '',
+    port: settings?.plex_port != null ? String(settings.plex_port) : '32400',
+    ssl: Boolean(settings?.plex_ssl),
+  }
+  const selectedServer =
+    selectedServerOverride === undefined
+      ? savedSelectedServer
+      : selectedServerOverride
+  const manualMode = manualModeOverride ?? settings?.plex_manual_mode === 1
+  const advancedHostname =
+    advancedDraftOverride?.hostname ?? savedAdvancedDraft.hostname
+  const advancedPort = advancedDraftOverride?.port ?? savedAdvancedDraft.port
+  const advancedSsl = advancedDraftOverride?.ssl ?? savedAdvancedDraft.ssl
+  const storedAuthToken = settings?.plex_auth_token
+  const {
+    data: storedTokenValidation,
+    isFetching: isStoredTokenValidationPending,
+  } = usePlexAuthValidation({
+    enabled: Boolean(storedAuthToken) && tokenValidationOverride == null,
+  })
+  const tokenValidationPending =
+    tokenValidationOverride?.pending ??
+    (hasStoredPlexToken ? isStoredTokenValidationPending : false)
+  const tokenValid =
+    tokenValidationOverride?.valid ??
+    (hasStoredPlexToken ? storedTokenValidation?.valid === true : false)
+  const storedTokenValidationError =
+    tokenValidationOverride == null &&
+    hasStoredPlexToken &&
+    !tokenValidationPending &&
+    storedTokenValidation?.valid === false
+      ? storedTokenValidation.errorMessage
+      : undefined
   const isAuthenticated = tokenValid
+
+  useEffect(() => {
+    if (!storedTokenValidationError) {
+      return
+    }
+
+    // TanStack Query v5 removed query-level onError; route this back through
+    // shared settings feedback so Plex follows the same inline feedback pattern.
+    showError(storedTokenValidationError)
+  }, [showError, storedTokenValidationError])
 
   const {
     data: availableServers,
@@ -155,48 +219,16 @@ const PlexSettings = () => {
     hasUnsavedPlexServerChanges(selectedServer, savedServer)
   const hasSelectedServer = selectedServer != null
 
-  useEffect(() => {
-    if (
-      settings?.plex_name &&
-      settings?.plex_hostname &&
-      settings?.plex_port != null
-    ) {
-      setSelectedServer({
-        name: settings.plex_name,
-        hostname: normalizePlexHostname(settings.plex_hostname),
-        port: String(settings.plex_port),
-        ssl: Boolean(settings.plex_ssl),
-      })
-    }
-  }, [
-    settings?.plex_hostname,
-    settings?.plex_name,
-    settings?.plex_port,
-    settings?.plex_ssl,
-  ])
-
-  // Pre-fill advanced fields from current settings when manual mode is enabled
-  useEffect(() => {
-    if (manualMode && settings) {
-      setAdvancedHostname(normalizePlexHostname(settings.plex_hostname) || '')
-      setAdvancedPort(
-        settings.plex_port != null ? String(settings.plex_port) : '32400',
-      )
-      setAdvancedSsl(Boolean(settings.plex_ssl))
-    }
-  }, [manualMode, settings])
-
   // Track whether the user has edited the advanced fields since last save
   const hasUnsavedAdvancedChanges =
     manualMode &&
-    (advancedHostname !== normalizePlexHostname(settings?.plex_hostname) ||
-      advancedPort !==
-        (settings?.plex_port != null ? String(settings.plex_port) : '32400') ||
-      advancedSsl !== Boolean(settings?.plex_ssl))
+    (advancedHostname !== savedAdvancedDraft.hostname ||
+      advancedPort !== savedAdvancedDraft.port ||
+      advancedSsl !== savedAdvancedDraft.ssl)
 
-  const clearTestBanner = useCallback(() => {
+  const clearTestBanner = () => {
     setTestbanner({ status: false, version: '' })
-  }, [])
+  }
 
   const submit = async () => {
     clearError()
@@ -250,6 +282,10 @@ const PlexSettings = () => {
           plex_manual_mode: 0,
         })
       }
+
+      setSelectedServerOverride(undefined)
+      setManualModeOverride(undefined)
+      setAdvancedDraftOverride(undefined)
       clearTestBanner()
       showUpdated()
     } catch {
@@ -303,17 +339,19 @@ const PlexSettings = () => {
   const persistToken = async (token: string) => {
     clearError()
     clearTestBanner()
-    setTokenValid(false)
+    setTokenValidationOverride({ pending: true, valid: false })
 
     const didPersistToken = await submitPlexToken({ plex_auth_token: token })
 
     if (!didPersistToken) {
+      setTokenValidationOverride(undefined)
       return
     }
 
-    const { valid, errorMessage } = await verifyToken(token)
+    const { valid, errorMessage } = await validateFreshToken(token)
 
     if (valid) {
+      setSelectedServerOverride(undefined)
       showUpdated()
       return
     }
@@ -332,10 +370,11 @@ const PlexSettings = () => {
 
     try {
       await deletePlexAuth()
-      setTokenValid(false)
-      setTokenValidationPending(false)
+      setTokenValidationOverride(undefined)
       setClearTokenClicked(false)
-      setSelectedServer(null)
+      setSelectedServerOverride(null)
+      setManualModeOverride(false)
+      setAdvancedDraftOverride(undefined)
       clearTestBanner()
       showUpdated()
     } catch {
@@ -344,98 +383,38 @@ const PlexSettings = () => {
   }
 
   const clientId = settings?.clientId
-  const storedAuthToken = settings?.plex_auth_token
-  const verifyToken = useCallback(
-    async (token?: string) => {
-      setTokenValidationPending(true)
+  const validateFreshToken = async (token: string) => {
+    try {
+      const response = await axios.get('https://plex.tv/api/v2/user', {
+        headers: {
+          'X-Plex-Product': 'Maintainerr',
+          'X-Plex-Version': '2.0',
+          'X-Plex-Client-Identifier': clientId ?? '',
+          'X-Plex-Token': token,
+        },
+      })
 
-      try {
-        if (token) {
-          // Fresh token from Plex OAuth — verify directly with plex.tv
-          const response = await axios.get('https://plex.tv/api/v2/user', {
-            headers: {
-              'X-Plex-Product': 'Maintainerr',
-              'X-Plex-Version': '2.0',
-              'X-Plex-Client-Identifier': clientId ?? '',
-              'X-Plex-Token': token,
-            },
-          })
+      const valid = response.status === 200
+      setTokenValidationOverride({ pending: false, valid })
 
-          const valid = response.status === 200
-          setTokenValid(valid)
-
-          return valid
-            ? { valid: true as const }
-            : {
-                valid: false as const,
-                errorMessage:
-                  'Plex authentication could not be verified. Please try again.',
-              }
-        }
-
-        if (storedAuthToken) {
-          // Existing token (masked in settings) — verify via server-side auth endpoint
-          const result = await GetApiHandler<{
-            status: string
-            code: number
-            message: string
-          }>('/settings/test/plex/auth')
-
-          const valid = result.status === 'OK'
-          setTokenValid(valid)
-
-          return valid
-            ? { valid: true as const }
-            : {
-                valid: false as const,
-                errorMessage:
-                  result.message ||
-                  'Stored Plex credentials are invalid. Re-authenticate with Plex.',
-              }
-        }
-
-        setTokenValid(false)
-        return {
-          valid: false as const,
-          errorMessage: 'Authenticate with Plex to continue.',
-        }
-      } catch (error) {
-        setTokenValid(false)
-        return {
-          valid: false as const,
-          errorMessage: getApiErrorMessage(
-            error,
-            token
-              ? 'Plex authentication could not be verified. Please try again.'
-              : 'Stored Plex credentials could not be validated. Re-authenticate with Plex.',
-          ),
-        }
-      } finally {
-        setTokenValidationPending(false)
+      return valid
+        ? { valid: true as const }
+        : {
+            valid: false as const,
+            errorMessage:
+              'Plex authentication could not be verified. Please try again.',
+          }
+    } catch (error) {
+      setTokenValidationOverride({ pending: false, valid: false })
+      return {
+        valid: false as const,
+        errorMessage: getApiErrorMessage(
+          error,
+          'Plex authentication could not be verified. Please try again.',
+        ),
       }
-    },
-    [clientId, storedAuthToken],
-  )
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (!settings?.plex_auth_token) {
-      setTokenValid(false)
-      setTokenValidationPending(false)
-      return
     }
-
-    void verifyToken().then((result) => {
-      if (!cancelled && !result.valid && result.errorMessage) {
-        showError(result.errorMessage)
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [settings?.plex_auth_token, showError, verifyToken])
+  }
 
   const performTest = async () => {
     if (testing) return
@@ -498,7 +477,7 @@ const PlexSettings = () => {
         ) : null}
 
         <SettingsAlertSlot>
-          {feedback || testBanner.version ? (
+          {feedback || testBanner.version || storedTokenValidationError ? (
             <div className="space-y-4">
               {feedback ? (
                 <Alert type={feedback.type} title={feedback.title} />
@@ -607,8 +586,9 @@ const PlexSettings = () => {
                           type="button"
                           buttonType="default"
                           onClick={() => {
-                            setSelectedServer(null)
-                            setManualMode(false)
+                            setSelectedServerOverride(null)
+                            setManualModeOverride(false)
+                            setAdvancedDraftOverride(undefined)
                             setAdvancedOpen(false)
                             clearError()
                             clearTestBanner()
@@ -629,7 +609,7 @@ const PlexSettings = () => {
                             const preset =
                               availablePresets[Number(e.target.value)]
                             if (preset) {
-                              setSelectedServer({
+                              setSelectedServerOverride({
                                 name: preset.name,
                                 hostname: preset.address,
                                 port: String(preset.port),
@@ -637,7 +617,8 @@ const PlexSettings = () => {
                                 local: preset.local,
                                 latency: preset.latency,
                               })
-                              setManualMode(false)
+                              setManualModeOverride(false)
+                              setAdvancedDraftOverride(undefined)
                               setAdvancedOpen(false)
                               clearError()
                               clearTestBanner()
@@ -729,14 +710,14 @@ const PlexSettings = () => {
                               type="checkbox"
                               checked={manualMode}
                               onChange={(e) => {
-                                setManualMode(e.target.checked)
+                                setManualModeOverride(e.target.checked)
                                 // When disabling manual mode while it's the saved state,
                                 // clear server selection to force re-discovery from plex.tv
                                 if (
                                   !e.target.checked &&
                                   settings?.plex_manual_mode === 1
                                 ) {
-                                  setSelectedServer(null)
+                                  setSelectedServerOverride(null)
                                   clearTestBanner()
                                 }
                               }}
@@ -773,9 +754,12 @@ const PlexSettings = () => {
                                 name="advanced-hostname"
                                 type="text"
                                 value={advancedHostname}
-                                onChange={(e) =>
-                                  setAdvancedHostname(e.target.value)
-                                }
+                                onChange={(e) => {
+                                  setAdvancedDraftOverride((currentDraft) => ({
+                                    ...(currentDraft ?? savedAdvancedDraft),
+                                    hostname: e.target.value,
+                                  }))
+                                }}
                                 placeholder={
                                   normalizePlexHostname(
                                     settings?.plex_hostname,
@@ -797,9 +781,12 @@ const PlexSettings = () => {
                                 name="advanced-port"
                                 type="number"
                                 value={advancedPort}
-                                onChange={(e) =>
-                                  setAdvancedPort(e.target.value)
-                                }
+                                onChange={(e) => {
+                                  setAdvancedDraftOverride((currentDraft) => ({
+                                    ...(currentDraft ?? savedAdvancedDraft),
+                                    port: e.target.value,
+                                  }))
+                                }}
                                 placeholder="32400"
                               />
                             </div>
@@ -818,9 +805,14 @@ const PlexSettings = () => {
                                   name="advanced-ssl"
                                   type="checkbox"
                                   checked={advancedSsl}
-                                  onChange={(e) =>
-                                    setAdvancedSsl(e.target.checked)
-                                  }
+                                  onChange={(e) => {
+                                    setAdvancedDraftOverride(
+                                      (currentDraft) => ({
+                                        ...(currentDraft ?? savedAdvancedDraft),
+                                        ssl: e.target.checked,
+                                      }),
+                                    )
+                                  }}
                                   className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
                                 />
                                 <span className="text-sm text-zinc-300">

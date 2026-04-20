@@ -1,9 +1,9 @@
 import { AxiosError } from 'axios'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useMediaServerLibraries } from '../api/media-server'
-import { useStopAllRuleExecution } from '../api/rules'
+import { useRuleGroups, useStopAllRuleExecution } from '../api/rules'
 import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
 import LibrarySwitcher from '../components/Common/LibrarySwitcher'
@@ -11,20 +11,16 @@ import LoadingSpinner from '../components/Common/LoadingSpinner'
 import PageControlRow from '../components/Common/PageControlRow'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
-import { useRequestGeneration } from '../hooks/useRequestGeneration'
-import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
+import { PostApiHandler } from '../utils/ApiHandler'
 
 const RulesListPage = () => {
   const navigate = useNavigate()
-  const [data, setData] = useState<IRuleGroup[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
-  const [isLoading, setIsLoading] = useState(true)
   const {
     data: libraries,
     error: librariesError,
     isLoading: librariesLoading,
   } = useMediaServerLibraries()
-  const { invalidate, guardedFetch } = useRequestGeneration()
   const { ruleHandlerRunning } = useTaskStatusContext()
   const { mutate: stopAllExecution } = useStopAllRuleExecution({
     onSuccess() {
@@ -34,42 +30,14 @@ const RulesListPage = () => {
       toast.error('Failed to request stop of all rule executions.')
     },
   })
-
-  const fetchData = async (libraryId: string) => {
-    try {
-      const result = await guardedFetch<IRuleGroup[]>(() =>
-        libraryId === 'all'
-          ? GetApiHandler('/rules')
-          : GetApiHandler(`/rules?libraryId=${libraryId}`),
-      )
-
-      if (result.status === 'success') {
-        setData(result.data)
-        setIsLoading(false)
-      }
-    } catch {
-      setIsLoading(false)
-    }
-  }
-
-  const syncRulesForLibrary = useEffectEvent((libraryId: string) => {
-    void fetchData(libraryId)
-  })
-
-  useEffect(() => {
-    syncRulesForLibrary(selectedLibrary)
-  }, [selectedLibrary])
+  const { data = [], isLoading, refetch } = useRuleGroups(selectedLibrary)
 
   const onSwitchLibrary = (libraryId: string) => {
-    invalidate()
     setSelectedLibrary(libraryId)
-    setIsLoading(true)
-    setData([])
   }
 
   const refreshData = (): void => {
-    invalidate()
-    void fetchData(selectedLibrary)
+    void refetch()
   }
 
   const editHandler = (group: IRuleGroup): void => {

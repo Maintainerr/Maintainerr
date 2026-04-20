@@ -12,23 +12,15 @@ import {
   ECollectionLogType,
   isMetaActionedByRule,
 } from '@maintainerr/contracts'
-import { debounce } from 'lodash-es'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
+import CollectionLogsTable from './CollectionLogsTable'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
-import { useRequestGeneration } from '../../../../hooks/useRequestGeneration'
-import GetApiHandler from '../../../../utils/ApiHandler'
-import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../../utils/uiBehavior'
 import Alert from '../../../Common/Alert'
-import Badge from '../../../Common/Badge'
 import Button from '../../../Common/Button'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
-import LoadingSpinner, {
-  SmallLoadingSpinner,
-} from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
-import Table from '../../../Common/Table'
 import { FieldJoin, Input, InputAdornment } from '../../../Forms/Input'
 import { Select, SelectAdornment } from '../../../Forms/Select'
 
@@ -36,23 +28,7 @@ interface ICollectionInfo {
   collection: ICollection
 }
 
-interface ICollectionInfoLogApiResponse {
-  totalSize: number
-  items: CollectionLogDto[]
-}
-
 const CollectionInfo = (props: ICollectionInfo) => {
-  const [data, setData] = useState<CollectionLogDto[]>([])
-  const [page, setPage] = useState(0)
-  const pageData = useRef<number>(0)
-  const refetchTimerRef = useRef<number | undefined>(undefined)
-  const [totalSize, setTotalSize] = useState<number>(999)
-  const totalSizeRef = useRef<number>(999)
-  const dataRef = useRef<CollectionLogDto[]>([])
-  const loadingRef = useRef<boolean>(true)
-  const loadingExtraRef = useRef<boolean>(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingExtra, setIsLoadingExtra] = useState(false)
   const [searchFilter, debouncedSearchFilter, setSearchFilter] =
     useDebouncedState('')
   const [currentSort, setCurrentSort] = useState<'ASC' | 'DESC'>('DESC')
@@ -61,168 +37,6 @@ const CollectionInfo = (props: ICollectionInfo) => {
   )
   const [showMeta, setShowMeta] =
     useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
-  const { invalidate, guardedFetch } = useRequestGeneration()
-
-  const fetchAmount = 25
-
-  const setLoading = (value: boolean) => {
-    loadingRef.current = value
-    setIsLoading(value)
-  }
-
-  const setLoadingExtra = (value: boolean) => {
-    loadingExtraRef.current = value
-    setIsLoadingExtra(value)
-  }
-
-  const resetAll = () => {
-    setLoading(true)
-    setLoadingExtra(false)
-
-    pageData.current = 0
-    setPage(0)
-    totalSizeRef.current = 999
-    setTotalSize(999)
-    dataRef.current = []
-    setData([])
-  }
-
-  const fetchData = useCallback(async () => {
-    if (!loadingRef.current) {
-      setLoadingExtra(true)
-    }
-
-    try {
-      const result = await guardedFetch<ICollectionInfoLogApiResponse>(() =>
-        GetApiHandler(
-          `/collections/logs/${props.collection.id}/content/${pageData.current}?size=${fetchAmount}${
-            debouncedSearchFilter ? `&search=${debouncedSearchFilter}` : ''
-          }${currentSort ? `&sort=${currentSort}` : ''}${currentFilter !== -1 ? `&filter=${currentFilter}` : ''}`,
-        ),
-      )
-
-      if (result.status === 'success') {
-        setTotalSize(result.data.totalSize)
-        setData([...dataRef.current, ...result.data.items])
-        setLoading(false)
-        setLoadingExtra(false)
-      }
-    } catch {
-      setLoading(false)
-      setLoadingExtra(false)
-    }
-  }, [
-    currentFilter,
-    currentSort,
-    debouncedSearchFilter,
-    guardedFetch,
-    props.collection.id,
-  ])
-
-  const loadInitialPage = useEffectEvent(() => {
-    setPage(1)
-  })
-
-  const syncFilteredLogs = useEffectEvent(() => {
-    invalidate()
-    resetAll()
-
-    if (refetchTimerRef.current !== undefined) {
-      window.clearTimeout(refetchTimerRef.current)
-    }
-
-    refetchTimerRef.current = window.setTimeout(() => {
-      setPage(1)
-    }, 500)
-  })
-
-  const loadCurrentPage = useEffectEvent((currentPage: number) => {
-    if (currentPage === 0) {
-      return
-    }
-
-    pageData.current = pageData.current + 1
-    void fetchData()
-  })
-
-  const handleScroll = useEffectEvent(() => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight *
-          DEFAULT_INFINITE_SCROLL_THRESHOLD &&
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage(pageData.current + 1)
-    }
-  })
-
-  const fillPageIfViewportHasSpace = useEffectEvent(() => {
-    if (
-      !loadingRef.current &&
-      !loadingExtraRef.current &&
-      window.innerHeight + document.documentElement.scrollTop >=
-        document.documentElement.scrollHeight *
-          DEFAULT_INFINITE_SCROLL_THRESHOLD &&
-      !(fetchAmount * (pageData.current - 1) >= totalSizeRef.current)
-    ) {
-      setPage((currentPage) => currentPage + 1)
-    }
-  })
-
-  useEffect(() => {
-    // Initial first fetch
-    loadInitialPage()
-
-    // Cleanup on unmount
-    return () => {
-      if (refetchTimerRef.current !== undefined) {
-        window.clearTimeout(refetchTimerRef.current)
-      }
-
-      invalidate()
-
-      // Clear all data to prevent memory leaks
-      setData([])
-      dataRef.current = []
-      totalSizeRef.current = 999
-      pageData.current = 0
-    }
-  }, [invalidate])
-
-  useEffect(() => {
-    syncFilteredLogs()
-
-    return () => {
-      if (refetchTimerRef.current !== undefined) {
-        window.clearTimeout(refetchTimerRef.current)
-      }
-    }
-  }, [currentFilter, currentSort, debouncedSearchFilter])
-
-  useEffect(() => {
-    loadCurrentPage(page)
-  }, [page])
-
-  useEffect(() => {
-    const debouncedScroll = debounce(handleScroll, 200)
-    window.addEventListener('scroll', debouncedScroll)
-    return () => {
-      window.removeEventListener('scroll', debouncedScroll)
-      debouncedScroll.cancel() // Cancel pending debounced calls
-    }
-  }, [])
-
-  useEffect(() => {
-    dataRef.current = data
-
-    fillPageIfViewportHasSpace()
-  }, [data])
-
-  useEffect(() => {
-    totalSizeRef.current = totalSize
-  }, [totalSize])
 
   return (
     <>
@@ -348,100 +162,14 @@ const CollectionInfo = (props: ICollectionInfo) => {
           </div>
 
           {/* data */}
-          <Table>
-            <thead>
-              <tr>
-                <Table.TH>{'DATE'}</Table.TH>
-                <Table.TH>{'LABEL'}</Table.TH>
-                <Table.TH>{'EVENT'}</Table.TH>
-                <Table.TH></Table.TH>
-              </tr>
-            </thead>
-            <Table.TBody>
-              {isLoading ? (
-                <tr>
-                  <Table.TD colSpan={4} noPadding>
-                    <LoadingSpinner />
-                  </Table.TD>
-                </tr>
-              ) : (
-                <>
-                  {data.map((row: CollectionLogDto, index: number) => {
-                    return (
-                      <tr key={`log-list-${index}`}>
-                        {/* timestamp */}
-                        <Table.TD className="text-gray-300">
-                          {new Date(row.timestamp).toLocaleString()}
-                        </Table.TD>
-
-                        {/* label */}
-                        <Table.TD className="text-gray-300">
-                          <Badge
-                            badgeType={
-                              row.type === ECollectionLogType.COLLECTION
-                                ? 'danger'
-                                : row.type === ECollectionLogType.MEDIA
-                                  ? 'warning'
-                                  : row.type === ECollectionLogType.RULES
-                                    ? 'success'
-                                    : 'default'
-                            }
-                          >
-                            {ECollectionLogType[row.type].toUpperCase()}
-                          </Badge>
-                        </Table.TD>
-
-                        {/* message */}
-                        <Table.TD className="text-gray-300">
-                          {row.message}
-                          {row.meta && row.type == ECollectionLogType.MEDIA && (
-                            <>
-                              {' '}
-                              {[
-                                'media_added_manually',
-                                'media_removed_manually',
-                              ].includes(row.meta.type) && (
-                                <span className="text-gray-400">(manual)</span>
-                              )}
-                            </>
-                          )}
-                        </Table.TD>
-                        <Table.TD className="text-right">
-                          {row.meta &&
-                            row.type == ECollectionLogType.MEDIA &&
-                            isMetaActionedByRule(row.meta) && (
-                              <button
-                                type="button"
-                                className="rounded bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
-                                title="View Metadata"
-                                onClick={() => {
-                                  if (!isMetaActionedByRule(row.meta)) return
-
-                                  setShowMeta({
-                                    meta: row.meta,
-                                    title: row.message,
-                                  })
-                                }}
-                              >
-                                <DocumentTextIcon className="h-5 w-5" />
-                              </button>
-                            )}
-                        </Table.TD>
-                      </tr>
-                    )
-                  })}
-
-                  {isLoadingExtra ? (
-                    <tr>
-                      <Table.TD colSpan={2} noPadding>
-                        <SmallLoadingSpinner className="m-auto mb-2 mt-2 w-8" />
-                      </Table.TD>
-                    </tr>
-                  ) : undefined}
-                </>
-              )}
-            </Table.TBody>
-          </Table>
+          <CollectionLogsTable
+            key={`${props.collection.id}:${currentSort}:${currentFilter}:${debouncedSearchFilter}`}
+            collection={props.collection}
+            searchFilter={debouncedSearchFilter}
+            currentSort={currentSort}
+            currentFilter={currentFilter}
+            onShowMeta={setShowMeta}
+          />
         </div>
       </div>
       {showMeta ? (
