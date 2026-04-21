@@ -135,6 +135,16 @@ const TestMediaItem = (props: ITestMediaItem) => {
     clearEditor()
   }
 
+  const selectedMediaId = useMemo(() => {
+    if (mediaItem) {
+      return selectedEpisodes !== -1
+        ? selectedEpisodes
+        : selectedSeasons !== -1
+          ? selectedSeasons
+          : mediaItem?.id
+    }
+  }, [selectedSeasons, selectedEpisodes, mediaItem])
+
   const onSubmit = async () => {
     setComparisonResult(undefined)
 
@@ -147,16 +157,6 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
     setComparisonResult(result)
   }
-
-  const selectedMediaId = useMemo(() => {
-    if (mediaItem) {
-      return selectedEpisodes !== -1
-        ? selectedEpisodes
-        : selectedSeasons !== -1
-          ? selectedSeasons
-          : mediaItem?.id
-    }
-  }, [selectedSeasons, selectedEpisodes, mediaItem])
 
   if (ruleGroupQuery.isLoading || !ruleGroup) {
     return null

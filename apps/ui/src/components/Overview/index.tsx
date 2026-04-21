@@ -86,10 +86,13 @@ const Overview = () => {
   const SearchCtx = useContext(SearchContext)
 
   const defaultLibraryId = libraries?.[0]?.id
+  const effectiveSelectedLibraryId =
+    selectedLibrary &&
+    libraries?.some((library) => library.id === selectedLibrary)
+      ? selectedLibrary
+      : defaultLibraryId
   const currentLibraryType = libraries?.find(
-    (library) =>
-      library.id ===
-      (selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId),
+    (library) => library.id === effectiveSelectedLibraryId,
   )?.type
   const sortConfig = useMemo(
     () => getMediaLibrarySortConfig(currentLibraryType),
@@ -179,7 +182,7 @@ const Overview = () => {
 
   const fetchData = useCallback(
     async (
-      libraryId = selectedLibraryRef.current,
+      libraryId = selectedLibraryRef.current ?? effectiveSelectedLibraryId,
       requestSortParams = sortParams,
       options?: {
         replaceExisting?: boolean
@@ -249,6 +252,7 @@ const Overview = () => {
     },
     [
       SearchCtx.search.text,
+      effectiveSelectedLibraryId,
       guardedFetch,
       libraries,
       selectedLibraryRef,
@@ -290,7 +294,7 @@ const Overview = () => {
       }
 
       const nextLibraryId =
-        libraryId ?? selectedLibraryRef.current ?? selectedLibrary
+        libraryId ?? selectedLibraryRef.current ?? effectiveSelectedLibraryId
       const hasExistingData = dataRef.current.length > 0
       const preservedPageCount =
         !searchUsed && hasExistingData ? Math.max(pageData.current, 1) : 1
@@ -326,7 +330,7 @@ const Overview = () => {
       guardedFetch,
       invalidateFetches,
       searchUsed,
-      selectedLibrary,
+      effectiveSelectedLibraryId,
       selectedLibraryRef,
       sortParams,
     ],
@@ -353,13 +357,13 @@ const Overview = () => {
       return
     }
 
-    if (!selectedLibraryRef.current && !defaultLibraryId) {
+    if (!effectiveSelectedLibraryId) {
       void fetchBootstrapData(nextSortState.sortParams)
       return
     }
 
     void performOverviewSync(
-      selectedLibraryRef.current ?? selectedLibrary ?? defaultLibraryId,
+      effectiveSelectedLibraryId,
       nextSortState.sortParams,
     )
   }
@@ -377,11 +381,7 @@ const Overview = () => {
   }, [invalidateFetches, selectedLibraryRef])
 
   useEffect(() => {
-    if (
-      SearchCtx.search.text === '' &&
-      !selectedLibraryRef.current &&
-      !defaultLibraryId
-    ) {
+    if (SearchCtx.search.text === '' && !effectiveSelectedLibraryId) {
       if (!bootstrapRequestedRef.current) {
         void fetchBootstrapData()
       }
@@ -389,7 +389,7 @@ const Overview = () => {
       return
     }
 
-    const nextLibraryId = selectedLibraryRef.current ?? defaultLibraryId
+    const nextLibraryId = effectiveSelectedLibraryId
     const nextSyncKey =
       SearchCtx.search.text !== ''
         ? `search:${SearchCtx.search.text}`
@@ -403,19 +403,14 @@ const Overview = () => {
 
     lastAutoSyncKeyRef.current = nextSyncKey
     void syncOverviewData(nextLibraryId)
-  }, [
-    SearchCtx.search.text,
-    defaultLibraryId,
-    fetchBootstrapData,
-    selectedLibraryRef,
-  ])
+  }, [SearchCtx.search.text, effectiveSelectedLibraryId, fetchBootstrapData])
 
   useEffect(() => {
-    if (!libraries?.length || !selectedLibraryRef.current) {
+    if (!selectedLibraryRef.current) {
       return
     }
 
-    const isSelectedLibraryAvailable = libraries.some(
+    const isSelectedLibraryAvailable = libraries?.some(
       (library) => library.id === selectedLibraryRef.current,
     )
 
@@ -424,19 +419,9 @@ const Overview = () => {
     }
 
     lastAutoSyncKeyRef.current = undefined
-    applySelectedLibrary(undefined)
     bootstrapRequestedRef.current = false
-
-    if (defaultLibraryId) {
-      void performOverviewSync(defaultLibraryId)
-    }
-  }, [
-    applySelectedLibrary,
-    defaultLibraryId,
-    libraries,
-    performOverviewSync,
-    selectedLibraryRef,
-  ])
+    applySelectedLibrary(undefined)
+  }, [applySelectedLibrary, libraries, selectedLibraryRef])
 
   useEffect(() => {
     dataRef.current = data
@@ -447,7 +432,7 @@ const Overview = () => {
   }, [totalSize])
 
   const hasData = data.length > 0
-  const resolvedLibraryId = selectedLibrary ?? defaultLibraryId
+  const resolvedLibraryId = effectiveSelectedLibraryId
   const canRequestLibraryContent = Boolean(resolvedLibraryId)
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
@@ -475,7 +460,7 @@ const Overview = () => {
                     shouldShowAllOption={false}
                     containerClassName="mb-0"
                     onLibraryChange={onSwitchLibrary}
-                    selectedLibraryId={selectedLibrary ?? defaultLibraryId}
+                    selectedLibraryId={effectiveSelectedLibraryId}
                     formClassName="max-w-none"
                     libraries={libraries}
                     librariesLoading={librariesLoading}

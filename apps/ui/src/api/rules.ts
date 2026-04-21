@@ -131,6 +131,36 @@ export const useRuleGroup = (
 
 export type UseRuleGroupResult = ReturnType<typeof useRuleGroup>
 
+type UseRuleGroupsQueryKey = ['rules', 'groups', string]
+
+type UseRuleGroupsOptions = Omit<
+  UseQueryOptions<IRuleGroup[], Error, IRuleGroup[], UseRuleGroupsQueryKey>,
+  'queryKey' | 'queryFn'
+>
+
+export const fetchRuleGroups = async (libraryId?: string) => {
+  return await GetApiHandler<IRuleGroup[]>(
+    libraryId && libraryId !== 'all'
+      ? `/rules?libraryId=${libraryId}`
+      : '/rules',
+  )
+}
+
+export const useRuleGroups = (
+  libraryId: string,
+  options?: UseRuleGroupsOptions,
+) => {
+  return useQuery<IRuleGroup[], Error, IRuleGroup[], UseRuleGroupsQueryKey>({
+    queryKey: ['rules', 'groups', libraryId],
+    queryFn: async () => {
+      return await fetchRuleGroups(libraryId)
+    },
+    staleTime: 0,
+    retry: 1,
+    ...options,
+  })
+}
+
 type UseRuleConstantsQueryKey = ['rules', 'constants']
 
 type UseRuleConstantsOptions = Omit<

@@ -6,7 +6,10 @@ import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { ExecutionLockService } from '../../tasks/execution-lock.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../../tasks/execution-lock.service';
 import {
   RuleExecutorService,
   type RuleExecutionResult,
@@ -208,7 +211,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
 
     try {
       const release = await this.executionLock.acquire(
-        'rules-collections-lock',
+        RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
       );
       this.executingRuleGroupId = request.ruleGroupId;
       this.emitStatusUpdate();

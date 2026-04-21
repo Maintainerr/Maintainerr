@@ -159,6 +159,7 @@ describe('JellyfinMapper', () => {
         ],
         ChildCount: 10,
         IndexNumber: 1,
+        IndexNumberEnd: 2,
         ParentIndexNumber: 1,
         Tags: ['HD', '4K'],
       } as BaseItemDto;
@@ -233,6 +234,19 @@ describe('JellyfinMapper', () => {
         const result = JellyfinMapper.toMediaItem(episodeItem);
 
         expect(result.labels).toEqual(['HD', '4K']);
+      });
+
+      it('should preserve zero-valued and end indices', () => {
+        const result = JellyfinMapper.toMediaItem({
+          ...episodeItem,
+          IndexNumber: 0,
+          IndexNumberEnd: 1,
+          ParentIndexNumber: 0,
+        });
+
+        expect(result.index).toBe(0);
+        expect(result.indexEnd).toBe(1);
+        expect(result.parentIndex).toBe(0);
       });
 
       it('should convert ratings correctly', () => {

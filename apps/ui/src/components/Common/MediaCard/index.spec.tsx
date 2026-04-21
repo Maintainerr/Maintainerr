@@ -11,7 +11,7 @@ vi.mock('../../AddModal', () => ({
   default: () => null,
 }))
 
-vi.mock('../../Collection/CollectionDetail/RemoveFromCollectionBtn', () => ({
+vi.mock('../../Collection/CollectionDetail/RemoveFromCollectionButton', () => ({
   default: () => null,
 }))
 

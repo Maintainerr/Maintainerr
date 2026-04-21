@@ -6,6 +6,7 @@ export interface OverlayEditorFont {
 }
 
 const loadedOverlayFonts = new Map<string, Promise<void>>()
+const overlayFontVersions = new Map<string, number>()
 
 const normalizeFontKey = (value: string) => {
   const segments = value.replace(/\\/g, '/').split('/')
@@ -14,6 +15,30 @@ const normalizeFontKey = (value: string) => {
 
 export const getOverlayFontFamily = (fontName: string) =>
   fontName.replace(/\.[^.]+$/, '')
+
+export const getOverlayPreviewFontFamily = (
+  fontPath: string,
+  fontFamily: string,
+) => (fontPath ? getOverlayFontFamily(fontPath) : fontFamily)
+
+const getOverlayFontVersion = (fontName: string) =>
+  overlayFontVersions.get(normalizeFontKey(fontName)) ?? 0
+
+const getOverlayFontCacheKey = (fontName: string) => {
+  const normalized = normalizeFontKey(fontName)
+  return `${normalized}?v=${getOverlayFontVersion(fontName)}`
+}
+
+export const invalidateOverlayEditorFont = (fontName: string) => {
+  const normalized = normalizeFontKey(fontName)
+  overlayFontVersions.set(normalized, getOverlayFontVersion(fontName) + 1)
+
+  for (const cacheKey of loadedOverlayFonts.keys()) {
+    if (cacheKey.startsWith(`${normalized}?`)) {
+      loadedOverlayFonts.delete(cacheKey)
+    }
+  }
+}
 
 export const findOverlayFont = (
   fonts: OverlayEditorFont[],
@@ -33,7 +58,7 @@ const loadOverlayFont = async (font: OverlayEditorFont) => {
     return
   }
 
-  const cacheKey = normalizeFontKey(font.name)
+  const cacheKey = getOverlayFontCacheKey(font.name)
   const existing = loadedOverlayFonts.get(cacheKey)
   if (existing) {
     return existing
@@ -41,7 +66,10 @@ const loadOverlayFont = async (font: OverlayEditorFont) => {
 
   const loadPromise = (async () => {
     const family = getOverlayFontFamily(font.name)
-    const face = new FontFace(family, `url(${buildOverlayFontUrl(font.name)})`)
+    const face = new FontFace(
+      family,
+      `url(${buildOverlayFontUrl(font.name, getOverlayFontVersion(font.name))})`,
+    )
     const loadedFace = await face.load()
     document.fonts.add(loadedFace)
   })()

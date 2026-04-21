@@ -14,6 +14,11 @@ Treat full `LoadingSpinner` as delayed, `SmallLoadingSpinner` as immediate, and 
 
 When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.), read the official API documentation to confirm behaviour. Do not guess or assume — facts only, based on current documentation.
 
+### API documentation references
+
+- Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
+- Jellyfin: https://api.jellyfin.org/
+
 ## Rules
 
 1. DRY: avoid one-off logic or duplicated feedback/loading patterns.

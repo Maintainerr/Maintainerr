@@ -37,7 +37,6 @@ The overlay feature automatically applies visual overlays to Plex media posters 
 - **Live preview** — server-side rendering of templates onto actual Plex posters
 - **Plex poster background** — the visual editor can display a real poster as the canvas background
 - **Cron scheduling** — periodic updates to refresh day-countdown labels
-- **Event-driven** — immediate overlay application when media is added to a collection
 - **Original poster backup** — saved to disk so overlays can be cleanly reverted
 - **Import/Export** — templates can be shared as JSON files between instances
 
@@ -63,7 +62,7 @@ User creates/edits template in visual editor
   → OverlayTemplateService.create()/update()
   → Template elements stored as JSON in overlay_templates table
 
-Cron fires (or "Run Now" clicked, or media added event)
+Cron fires (or "Run Now" clicked)
   → OverlayProcessorService.processAllCollections()
   → For each overlay-enabled collection:
       → Resolve template: collection.overlayTemplateId → default for mode → skip
@@ -196,7 +195,6 @@ Dynamic text with date/countdown substitution. Extends all text element fields p
 | ----------------------- | -------------------- | ------- | -------------------------------------------- |
 | `enabled`               | `boolean`            | `false` | Master switch for overlay processing         |
 | `cronSchedule`          | `string\|null`       | `null`  | Cron expression for scheduled runs           |
-| `applyOnAdd`            | `boolean`            | `true`  | Apply overlays immediately on collection add |
 | `posterOverlayText`     | `OverlayTextConfig`  | —       | Legacy poster text config                    |
 | `posterOverlayStyle`    | `OverlayStyleConfig` | —       | Legacy poster style config                   |
 | `posterFrame`           | `FrameConfig`        | —       | Legacy poster frame config                   |
@@ -225,7 +223,6 @@ Creates overlay settings and state tables, adds overlay column to collections.
 | `titleCardOverlayStyle` | TEXT (JSON) | Serialized `OverlayStyleConfig` (legacy) |
 | `titleCardFrame`        | TEXT (JSON) | Serialized `FrameConfig` (legacy)        |
 | `cronSchedule`          | VARCHAR     | Nullable                                 |
-| `applyOnAdd`            | BOOLEAN     | Default `true`                           |
 
 #### `overlay_item_state` table
 
@@ -299,7 +296,7 @@ Manages overlay templates — CRUD, preset seeding, import/export, defaults.
 
 ### OverlaySettingsService
 
-Manages the singleton settings row (general settings: enabled, cron, applyOnAdd).
+Manages the singleton settings row (general settings: enabled, cron).
 
 | Method                | Description                                      |
 | --------------------- | ------------------------------------------------ |
@@ -342,14 +339,13 @@ Orchestrates the template-based apply/revert workflow.
 
 ### OverlayTaskService
 
-Extends `TaskBase` for cron scheduling and event handling.
+Extends `TaskBase` for cron scheduling.
 
-| Method                                      | Description                                                          |
-| ------------------------------------------- | -------------------------------------------------------------------- |
-| `onBootstrapHook()`                         | Reads settings on startup, sets cron schedule                        |
-| `executeTask(abortSignal)`                  | Called by cron — runs `processAllCollections()` if enabled           |
-| `updateCronSchedule(cronSchedule, enabled)` | Hot-update the cron job                                              |
-| `handleCollectionMediaAdded(payload)`       | `@OnEvent` listener — applies overlays immediately on collection add |
+| Method                                      | Description                                                |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| `onBootstrapHook()`                         | Reads settings on startup, sets cron schedule              |
+| `executeTask(abortSignal)`                  | Called by cron — runs `processAllCollections()` if enabled |
+| `updateCronSchedule(cronSchedule, enabled)` | Hot-update the cron job                                    |
 
 ---
 
@@ -492,19 +488,6 @@ The `getFontFamily(fontPath)` method resolves font files:
 - When settings are saved with a new `cronSchedule`, `updateCronSchedule()` hot-updates the job
 - When the cron fires, `executeTask()` calls `processAllCollections()`
 
-### Event-Driven Processing
-
-The overlay system listens for the `CollectionMedia_Added` event (`'collection_media.added'`):
-
-```
-Rule Executor adds media to collection
-  → Emits MaintainerrEvent.CollectionMedia_Added
-  → OverlayTaskService.handleCollectionMediaAdded()
-      → Checks settings.enabled && settings.applyOnAdd
-      → Finds overlay-enabled collections containing the added items
-      → Processes matching collections immediately
-```
-
 ### Emitted Events
 
 | Event                     | When                             |
@@ -541,7 +524,7 @@ The main entry point for the overlay feature. Combines template management with 
 │  Overlay Templates    [Settings ▾] [Import] [+] │
 └─────────────────────────────────────────────────┘
 ┌─ Collapsible Settings Panel ────────────────────┐
-│  [x] Enable overlays  [x] Apply on add          │
+│  [x] Enable overlays                             │
 │  Cron schedule: [________________]               │
 │  [Save Settings] [Run Now] [Reset All]           │
 └─────────────────────────────────────────────────┘
@@ -565,7 +548,7 @@ The main entry point for the overlay feature. Combines template management with 
 #### Key Behaviors
 
 - **Settings panel** — collapsed by default, toggled via "Settings" button with gear icon
-- **Settings form** — React Hook Form with `zodResolver(overlaySettingsSchema)` for `enabled`, `applyOnAdd`, `cronSchedule`
+- **Settings form** — React Hook Form with `zodResolver(overlaySettingsSchema)` for `enabled`, `cronSchedule`
 - **Template cards** — grouped by mode (poster/titlecard), showing name, description, element count, canvas dimensions, default/preset badges
 - **Actions per card** — Edit (or View for presets), Duplicate, Set Default, Export, Delete
 - **Import** — hidden file input accepting `.json` files parsed as `OverlayTemplateExport`

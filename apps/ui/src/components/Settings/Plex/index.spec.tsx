@@ -15,12 +15,20 @@ const deletePlexAuth = vi.fn()
 const updatePlexAuth = vi.fn()
 const refetchServers = vi.fn()
 const usePlexServersMock = vi.fn()
+const usePlexAuthValidationMock = vi.fn()
 
 let updateSettingsPending = false
 let deletePlexAuthPending = false
 let updatePlexAuthPending = false
 const axiosGet = vi.fn()
 let loginErrorMessage: string | null = null
+let storedTokenValidationResponse:
+  | {
+      valid: boolean
+      errorMessage?: string
+    }
+  | undefined
+let storedTokenValidationFetching = false
 let plexServersResponse: {
   data: Array<unknown> | undefined
   isFetching: boolean
@@ -50,6 +58,13 @@ vi.mock('../../../api/settings', () => ({
     mutateAsync: updatePlexAuth,
     isPending: updatePlexAuthPending,
   }),
+  usePlexAuthValidation: (options: unknown) => {
+    usePlexAuthValidationMock(options)
+    return {
+      data: storedTokenValidationResponse,
+      isFetching: storedTokenValidationFetching,
+    }
+  },
   usePlexServers: (options: unknown) => {
     usePlexServersMock(options)
     return plexServersResponse
@@ -118,6 +133,8 @@ beforeEach(() => {
   deletePlexAuthPending = false
   updatePlexAuthPending = false
   loginErrorMessage = null
+  storedTokenValidationResponse = { valid: true }
+  storedTokenValidationFetching = false
   plexServersResponse = {
     data: undefined,
     isFetching: false,
@@ -131,6 +148,7 @@ beforeEach(() => {
   updatePlexAuth.mockReset()
   axiosGet.mockReset()
   refetchServers.mockReset()
+  usePlexAuthValidationMock.mockReset()
   usePlexServersMock.mockReset()
   axiosGet.mockResolvedValue({ status: 200 })
 
@@ -211,6 +229,7 @@ describe('hasUnsavedPlexServerChanges', () => {
 describe('PlexSettings', () => {
   it('keeps save and test actions unavailable until Plex credentials exist', () => {
     currentSettings.plex_auth_token = undefined
+    storedTokenValidationResponse = undefined
 
     render(<PlexSettings />)
 
@@ -274,6 +293,7 @@ describe('PlexSettings', () => {
     const authRequest = createDeferred<void>()
 
     currentSettings.plex_auth_token = undefined
+    storedTokenValidationResponse = undefined
 
     updatePlexAuth.mockImplementation(() => {
       updatePlexAuthPending = true
@@ -304,33 +324,27 @@ describe('PlexSettings', () => {
     currentSettings.plex_port = undefined
     currentSettings.plex_name = undefined
 
-    const validationRequest = createDeferred<{
-      status: string
-      code: number
-      message: string
-    }>()
+    storedTokenValidationFetching = true
+    storedTokenValidationResponse = undefined
 
-    getApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/test/plex/auth') {
-        return validationRequest.promise
-      }
+    const { rerender } = render(<PlexSettings />)
 
-      throw new Error(`Unexpected request: ${url}`)
-    })
-
-    render(<PlexSettings />)
+    expect(usePlexAuthValidationMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: true }),
+    )
 
     expect(usePlexServersMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ enabled: false }),
     )
 
-    validationRequest.resolve({
-      status: 'OK',
-      code: 1,
-      message: '1.0.0',
-    })
+    storedTokenValidationFetching = false
+    storedTokenValidationResponse = { valid: true }
+    rerender(<PlexSettings />)
 
     await waitFor(() => {
+      expect(usePlexAuthValidationMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ enabled: true }),
+      )
       expect(usePlexServersMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ enabled: true }),
       )
@@ -338,10 +352,14 @@ describe('PlexSettings', () => {
   })
 
   it('re-validates stored Plex tokens through the auth-only endpoint', async () => {
+    storedTokenValidationResponse = { valid: false }
+
     render(<PlexSettings />)
 
     await waitFor(() => {
-      expect(getApiHandler).toHaveBeenCalledWith('/settings/test/plex/auth')
+      expect(usePlexAuthValidationMock).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: true }),
+      )
     })
   })
 
@@ -350,20 +368,7 @@ describe('PlexSettings', () => {
     currentSettings.plex_hostname = undefined
     currentSettings.plex_port = undefined
     currentSettings.plex_name = undefined
-
-    const authValidationRequest = createDeferred<{
-      status: string
-      code: number
-      message: string
-    }>()
-
-    getApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/test/plex/auth') {
-        return authValidationRequest.promise
-      }
-
-      throw new Error(`Unexpected request: ${url}`)
-    })
+    storedTokenValidationResponse = undefined
 
     const { rerender } = render(<PlexSettings />)
 
@@ -378,21 +383,15 @@ describe('PlexSettings', () => {
       expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
     })
 
+    expect(usePlexAuthValidationMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false }),
+    )
+
     expect(
       screen.queryByText(
         'Stored Plex credentials are invalid. Re-authenticate with Plex.',
       ),
     ).toBeNull()
-
-    authValidationRequest.resolve({
-      status: 'OK',
-      code: 1,
-      message: 'Success',
-    })
-
-    await waitFor(() => {
-      expect(getApiHandler).toHaveBeenCalledWith('/settings/test/plex/auth')
-    })
 
     expect(
       screen.queryByText(

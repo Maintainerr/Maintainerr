@@ -155,20 +155,6 @@ const OverlaySettings = () => {
               )}
             />
 
-            <Controller
-              name="applyOnAdd"
-              control={control}
-              render={({ field }) => (
-                <ToggleField
-                  name="applyOnAdd"
-                  label="Apply on collection add"
-                  checked={field.value}
-                  onChange={field.onChange}
-                  helpText="Automatically apply overlays when media is added to a collection"
-                />
-              )}
-            />
-
             {/* Actions */}
             <div className="actions mt-5 w-full">
               <PageControlRow
