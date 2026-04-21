@@ -12,6 +12,7 @@ import PlexCommunityApi, {
   PlexCommunityWatchList,
   PlexCommunityWatchListResponse,
 } from '../../api/lib/plexCommunityApi';
+import { PlexTvUser } from '../../api/lib/plextvApi';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -61,6 +62,14 @@ type PlexApiSettings = SettingsService &
     | 'plex_machine_id'
     | 'plex_manual_mode'
   >;
+
+type PlexDiscoverUserState = Record<string, unknown>;
+
+type PlexDiscoverUserStateResponse = {
+  MediaContainer: {
+    UserState: PlexDiscoverUserState;
+  };
+};
 
 @Injectable()
 export class PlexApiService {
@@ -629,11 +638,11 @@ export class PlexApiService {
 
   public async getDiscoverDataUserState(
     metaDataRatingKey: string,
-  ): Promise<any> {
+  ): Promise<PlexDiscoverUserState | undefined> {
     const settings = this.getDbSettings();
 
     try {
-      const response = await axios.get(
+      const response = await axios.get<PlexDiscoverUserStateResponse>(
         `https://discover.provider.plex.tv/library/metadata/${metaDataRatingKey}/userState`,
         {
           headers: {
@@ -653,7 +662,7 @@ export class PlexApiService {
     }
   }
 
-  public async getUserDataFromPlexTv(): Promise<any> {
+  public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {
     try {
       const response = await this.plexTvClient.getUsers();
       return response.MediaContainer.User;
@@ -1422,7 +1431,7 @@ export class PlexApiService {
     const owner = await this.getOwnerDataFromPlexTv();
 
     return (await this.getUsers()).map((el) => {
-      const plextv = plexTvUsers?.find((tvEl) => tvEl.$?.id == el.id);
+      const plextv = plexTvUsers?.find((tvEl) => Number(tvEl.$.id) === el.id);
       const ownerUser = owner?.username === el.name ? owner : undefined;
 
       // use the username from plex.tv if available, since Overseerr also does this
