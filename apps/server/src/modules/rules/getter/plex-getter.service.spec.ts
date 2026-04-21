@@ -160,4 +160,131 @@ describe('PlexGetterService', () => {
       includeExternalMedia: true,
     });
   });
+
+  describe('collection_siblings_lastViewedAt (id 44)', () => {
+    const COLLECTION_SIBLINGS_PROP_ID = 44;
+
+    it('returns the newest viewedAt across siblings, aggregating per-user history', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          Collection: [{ tag: 'Franchise A Collection' }],
+        }),
+      );
+      plexApi.getCollections.mockResolvedValue([
+        { ratingKey: 'coll-1', title: 'Franchise A Collection' } as any,
+        { ratingKey: 'coll-2', title: 'Unrelated Collection' } as any,
+      ]);
+      plexApi.getCollectionChildren.mockResolvedValue([
+        { ratingKey: '12345' } as any,
+        { ratingKey: 'sibling-a' } as any,
+        { ratingKey: 'sibling-b' } as any,
+      ]);
+      plexApi.getWatchHistory.mockImplementation(async (rk) => {
+        if (rk === '12345') {
+          return [{ viewedAt: 1_700_000_000, accountID: 1 } as any];
+        }
+        if (rk === 'sibling-a') {
+          // A non-admin user watched this sibling — only visible via history.
+          return [{ viewedAt: 1_710_000_000, accountID: 2 } as any];
+        }
+        return [];
+      });
+
+      const libItem = createMediaItem({ type: 'movie' });
+      const ruleGroup = createRulesDto({
+        dataType: 'movie',
+        libraryId: 'lib-1',
+        name: 'My cleanup group',
+      });
+
+      const result = await service.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        libItem,
+        'movie',
+        ruleGroup,
+      );
+
+      expect(result).toEqual(new Date(1_710_000_000 * 1000));
+      expect(plexApi.getCollections).toHaveBeenCalledWith('lib-1', 'movie');
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledTimes(1);
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('coll-1');
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('sibling-a');
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('sibling-b');
+    });
+
+    it('returns null when the movie is in no collections', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata({ Collection: [] }));
+
+      const result = await service.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+        'movie',
+        createRulesDto({ dataType: 'movie', libraryId: 'lib-1' }),
+      );
+
+      expect(result).toBeNull();
+      expect(plexApi.getCollections).not.toHaveBeenCalled();
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+    });
+
+    it('returns null when no sibling has any watch history', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ Collection: [{ tag: 'Franchise B Collection' }] }),
+      );
+      plexApi.getCollections.mockResolvedValue([
+        { ratingKey: 'coll-fb', title: 'Franchise B Collection' } as any,
+      ]);
+      plexApi.getCollectionChildren.mockResolvedValue([
+        { ratingKey: '12345' } as any,
+        { ratingKey: 'sibling-a' } as any,
+      ]);
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const result = await service.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+        'movie',
+        createRulesDto({ dataType: 'movie', libraryId: 'lib-1' }),
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it("ignores the rule group's own managed collection", async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          Collection: [
+            { tag: 'Franchise A Collection' },
+            { tag: 'My cleanup group' },
+          ],
+        }),
+      );
+      plexApi.getCollections.mockResolvedValue([
+        { ratingKey: 'coll-1', title: 'Franchise A Collection' } as any,
+        { ratingKey: 'coll-own', title: 'My cleanup group' } as any,
+      ]);
+      plexApi.getCollectionChildren.mockResolvedValue([
+        { ratingKey: '12345' } as any,
+      ]);
+      plexApi.getWatchHistory.mockResolvedValue([
+        { viewedAt: 1_690_000_000, accountID: 1 } as any,
+      ]);
+
+      const result = await service.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+        'movie',
+        createRulesDto({
+          dataType: 'movie',
+          libraryId: 'lib-1',
+          name: 'My cleanup group',
+        }),
+      );
+
+      expect(result).toEqual(new Date(1_690_000_000 * 1000));
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledTimes(1);
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('coll-1');
+    });
+  });
 });

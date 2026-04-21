@@ -21,7 +21,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
-    "@tanstack/react-query": "^5.99.0",
+    "@tanstack/react-query": "^5.99.2",
     "axios": "^1.15.0",
     "bowser": "^2.14.1",
     "clsx": "^2.1.1",
@@ -78,7 +78,7 @@
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vite": "^8.0.9",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   },
   "optionalDependencies": {
     "rolldown": "^1.0.0-rc.16"
