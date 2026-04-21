@@ -1220,4 +1220,155 @@ describe('JellyfinGetterService', () => {
       expect(response).toBeNull();
     });
   });
+
+  describe('collection_siblings_lastViewedAt (id 45)', () => {
+    const COLLECTION_SIBLINGS_PROP_ID = 45;
+    const ITEM_ID = 'jellyfin-item-123';
+
+    const makeChild = (id: string): MediaItem =>
+      createMediaItem({ id, type: 'movie' });
+
+    it('returns the newest watched date across siblings in a shared collection', async () => {
+      const libItem = createMediaItem({ id: ITEM_ID, type: 'movie' });
+      jellyfinAdapter.getMetadata.mockResolvedValue(libItem);
+
+      jellyfinAdapter.getCollections.mockResolvedValue([
+        {
+          id: 'coll-franchise-a',
+          title: 'Franchise A Collection',
+          childCount: 8,
+        },
+        { id: 'coll-other', title: 'Unrelated', childCount: 2 },
+      ]);
+
+      jellyfinAdapter.getCollectionChildren.mockImplementation(async (cid) => {
+        if (cid === 'coll-franchise-a') {
+          return [makeChild(ITEM_ID), makeChild('sibling-a')];
+        }
+        return [makeChild('other-1'), makeChild('other-2')];
+      });
+
+      jellyfinAdapter.getWatchHistory.mockImplementation(async (itemId) => {
+        if (itemId === ITEM_ID) {
+          return [
+            {
+              userId: 'u1',
+              itemId,
+              watchedAt: new Date('2026-01-01T00:00:00Z'),
+            },
+          ];
+        }
+        if (itemId === 'sibling-a') {
+          return [
+            {
+              userId: 'u2',
+              itemId,
+              watchedAt: new Date('2026-03-01T00:00:00Z'),
+            },
+          ];
+        }
+        return [];
+      });
+
+      const result = await jellyfinGetterService.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        libItem,
+        'movie',
+        createRulesDto({
+          dataType: 'movie',
+          libraryId: libItem.library.id,
+          name: 'Movie cleanup',
+        }),
+      );
+
+      expect(result).toEqual(new Date('2026-03-01T00:00:00Z'));
+      // Membership is discovered by walking every non-excluded collection
+      // (Jellyfin has no reverse lookup), but only the matching collection's
+      // siblings contribute to the watch-history aggregation.
+      expect(jellyfinAdapter.getCollectionChildren).toHaveBeenCalledWith(
+        'coll-franchise-a',
+      );
+      expect(jellyfinAdapter.getWatchHistory).toHaveBeenCalledWith(ITEM_ID);
+      expect(jellyfinAdapter.getWatchHistory).toHaveBeenCalledWith('sibling-a');
+      expect(jellyfinAdapter.getWatchHistory).not.toHaveBeenCalledWith(
+        'other-1',
+      );
+      expect(jellyfinAdapter.getWatchHistory).not.toHaveBeenCalledWith(
+        'other-2',
+      );
+    });
+
+    it('returns null when no collection contains the item', async () => {
+      const libItem = createMediaItem({ id: ITEM_ID, type: 'movie' });
+      jellyfinAdapter.getMetadata.mockResolvedValue(libItem);
+
+      jellyfinAdapter.getCollections.mockResolvedValue([
+        { id: 'coll-x', title: 'Something Else', childCount: 1 },
+      ]);
+      jellyfinAdapter.getCollectionChildren.mockResolvedValue([
+        makeChild('not-me'),
+      ]);
+
+      const result = await jellyfinGetterService.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        libItem,
+        'movie',
+        createRulesDto({ dataType: 'movie', libraryId: libItem.library.id }),
+      );
+
+      expect(result).toBeNull();
+      expect(jellyfinAdapter.getWatchHistory).not.toHaveBeenCalled();
+    });
+
+    it("ignores the rule group's own managed collection", async () => {
+      const libItem = createMediaItem({ id: ITEM_ID, type: 'movie' });
+      jellyfinAdapter.getMetadata.mockResolvedValue(libItem);
+
+      jellyfinAdapter.getCollections.mockResolvedValue([
+        { id: 'coll-own', title: 'Movie cleanup', childCount: 5 },
+        {
+          id: 'coll-franchise-a',
+          title: 'Franchise A Collection',
+          childCount: 8,
+        },
+      ]);
+      jellyfinAdapter.getCollectionChildren.mockImplementation(async (cid) => {
+        if (cid === 'coll-franchise-a') {
+          return [makeChild(ITEM_ID), makeChild('sibling-a')];
+        }
+        if (cid === 'coll-own') {
+          // own-collection also contains the item, but must be skipped
+          return [makeChild(ITEM_ID)];
+        }
+        return [];
+      });
+      jellyfinAdapter.getWatchHistory.mockImplementation(async (itemId) =>
+        itemId === 'sibling-a'
+          ? [
+              {
+                userId: 'u1',
+                itemId,
+                watchedAt: new Date('2026-02-14T00:00:00Z'),
+              },
+            ]
+          : [],
+      );
+
+      const result = await jellyfinGetterService.get(
+        COLLECTION_SIBLINGS_PROP_ID,
+        libItem,
+        'movie',
+        createRulesDto({
+          dataType: 'movie',
+          libraryId: libItem.library.id,
+          name: 'Movie cleanup',
+        }),
+      );
+
+      expect(result).toEqual(new Date('2026-02-14T00:00:00Z'));
+      expect(jellyfinAdapter.getCollectionChildren).not.toHaveBeenCalledWith(
+        'coll-own',
+      );
+    });
+  });
 });

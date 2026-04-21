@@ -429,6 +429,18 @@ export class JellyfinGetterService {
           return await this.getSeasonLastEpisodeAiredAt(parent.id);
         }
 
+        case 'collection_siblings_lastViewedAt': {
+          // Aggregate "last view date" across every movie that shares a Jellyfin
+          // BoxSet (collection) with this item. Mirrors the Plex implementation:
+          // one recently-watched sibling keeps the whole set from being deleted
+          // together.
+          return await this.getCollectionSiblingsLastViewedAt(
+            metadata.id,
+            metadata.library.id,
+            ruleGroup,
+          );
+        }
+
         default: {
           this.logger.warn(`Unhandled Jellyfin property: ${prop.name}`);
           return null;
@@ -896,6 +908,43 @@ export class JellyfinGetterService {
     }
 
     return Array.from(collectionNames);
+  }
+
+  private async getCollectionSiblingsLastViewedAt(
+    itemId: string,
+    libraryId: string,
+    ruleGroup?: RulesDto,
+  ): Promise<Date | null> {
+    const collections = await this.jellyfinAdapter.getCollections(libraryId);
+    const excludeNames = buildCollectionExcludeNames(ruleGroup);
+
+    let latestMs = 0;
+    for (const collection of collections) {
+      if (excludeNames.includes(collection.title.toLowerCase().trim())) {
+        continue;
+      }
+
+      const children = await this.jellyfinAdapter.getCollectionChildren(
+        collection.id,
+      );
+      if (!children.some((child) => child.id === itemId)) {
+        continue;
+      }
+
+      for (const child of children) {
+        // getWatchHistory aggregates LastPlayedDate across all Jellyfin users
+        // (unlike child.lastViewedAt which is scoped to the admin user).
+        const history = await this.jellyfinAdapter.getWatchHistory(child.id);
+        for (const record of history) {
+          const watchedMs = record.watchedAt?.getTime() ?? 0;
+          if (watchedMs > latestMs) {
+            latestMs = watchedMs;
+          }
+        }
+      }
+    }
+
+    return latestMs > 0 ? new Date(latestMs) : null;
   }
 
   private async getLastEpisodeAiredAt(
