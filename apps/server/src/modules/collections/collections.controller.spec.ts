@@ -31,6 +31,7 @@ describe('CollectionsController', () => {
   const collectionsService = {
     getCollectionRecord: jest.fn(),
     getCollectionMediaRecord: jest.fn(),
+    MediaCollectionActionWithContext: jest.fn(),
   } as unknown as jest.Mocked<CollectionsService>;
 
   const collectionWorkerService = {
@@ -165,6 +166,33 @@ describe('CollectionsController', () => {
         data: '',
       }),
     ).toThrow('Validation failed');
+  });
+
+  it('allows manual removal actions without a collection id', async () => {
+    collectionsService.MediaCollectionActionWithContext.mockResolvedValue(
+      createCollection(),
+    );
+
+    await controller.ManualActionOnCollection({
+      mediaId: '10',
+      context: {
+        id: 1,
+        type: 'movie',
+      },
+      action: 1,
+    });
+
+    expect(
+      collectionsService.MediaCollectionActionWithContext,
+    ).toHaveBeenCalledWith(
+      undefined,
+      {
+        id: 1,
+        type: 'movie',
+      },
+      { mediaServerId: '10' },
+      'remove',
+    );
   });
 
   it('handles a collection item with the configured collection action', async () => {

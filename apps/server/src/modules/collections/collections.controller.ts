@@ -128,7 +128,7 @@ export const manualCollectionActionBodySchema = z.object({
     parentIndex: z.coerce.number().int().optional(),
     type: z.enum(MediaItemTypes),
   }),
-  collectionId: z.coerce.number().int(),
+  collectionId: z.coerce.number().int().optional(),
   action: z.union([z.literal(0), z.literal(1)]),
 });
 export const handleCollectionMediaBodySchema = z.object({

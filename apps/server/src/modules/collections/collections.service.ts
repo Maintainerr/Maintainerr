@@ -1583,7 +1583,7 @@ export class CollectionsService {
   }
 
   async MediaCollectionActionWithContext(
-    collectionDbId: number,
+    collectionDbId: number | undefined,
     context: AlterableMediaContext,
     media: CollectionMediaChange,
     action: 'add' | 'remove',
