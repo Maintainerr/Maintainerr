@@ -1,10 +1,12 @@
 import {
+  CollectionLogMeta,
   CollectionMediaSortField,
   ECollectionLogType,
   MediaItemType,
   MediaItemTypes,
   MediaLibrarySortField,
   MediaSortOrder,
+  ServarrAction,
   collectionMediaSortFields,
   mediaLibrarySortFields,
   mediaSortOrders,
@@ -33,21 +35,115 @@ import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
-import {
-  AlterableMediaContext,
-  CollectionMediaChange,
-} from './interfaces/collection-media.interface';
 
 const collectionMediaSortQuerySchema = z
   .enum(collectionMediaSortFields)
   .optional();
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
-const handleCollectionMediaBodySchema = z.object({
+const collectionLogMetaSchema = z.custom<CollectionLogMeta>(
+  (value) => {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    const { type } = value as { type?: unknown };
+    if (
+      type === 'media_added_manually' ||
+      type === 'media_removed_manually'
+    ) {
+      return true;
+    }
+
+    if (
+      type === 'media_added_by_rule' ||
+      type === 'media_removed_by_rule'
+    ) {
+      return 'data' in value;
+    }
+
+    return false;
+  },
+  {
+    message: 'Invalid collection log metadata',
+  },
+);
+const collectionMediaChangeSchema = z.object({
+  mediaServerId: z.string().min(1),
+  reason: collectionLogMetaSchema.optional(),
+});
+export const collectionBodySchema = z
+  .object({
+    id: z.coerce.number().int().optional(),
+    type: z.enum(MediaItemTypes),
+    mediaServerId: z.string().min(1).optional().nullable(),
+    libraryId: z.string().min(1),
+    title: z.string().min(1),
+    description: z.string().optional().nullable(),
+    isActive: z.boolean(),
+    arrAction: z.nativeEnum(ServarrAction),
+    visibleOnRecommended: z.boolean().optional(),
+    visibleOnHome: z.boolean().optional(),
+    listExclusions: z.boolean().optional(),
+    forceSeerr: z.boolean().optional(),
+    deleteAfterDays: z.coerce.number().int().optional(),
+    manualCollection: z.boolean().optional(),
+    manualCollectionName: z.string().optional().nullable(),
+    keepLogsForMonths: z.coerce.number().int().optional(),
+    tautulliWatchedPercentOverride: z.coerce.number().int().optional().nullable(),
+    radarrSettingsId: z.coerce.number().int().optional().nullable(),
+    sonarrSettingsId: z.coerce.number().int().optional().nullable(),
+    radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+    sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+    sortTitle: z.string().optional().nullable(),
+    overlayEnabled: z.boolean().optional(),
+    overlayTemplateId: z.coerce.number().int().optional().nullable(),
+  })
+  .passthrough();
+export const createCollectionBodySchema = z.object({
+  collection: collectionBodySchema,
+  media: z.array(collectionMediaChangeSchema).optional(),
+});
+export const addToCollectionBodySchema = z.object({
+  collectionId: z.coerce.number().int(),
+  media: z.array(collectionMediaChangeSchema),
+  manual: z.boolean().optional(),
+});
+export const removeFromCollectionBodySchema = z.object({
+  collectionId: z.coerce.number().int(),
+  media: z.array(collectionMediaChangeSchema),
+});
+export const removeCollectionBodySchema = z.object({
+  collectionId: z.coerce.number().int(),
+});
+export const updateScheduleBodySchema = z.object({
+  schedule: z.string().min(1),
+});
+export const manualCollectionActionBodySchema = z.object({
+  mediaId: z.string().min(1),
+  context: z.object({
+    id: z.coerce.number().int(),
+    index: z.coerce.number().int().optional(),
+    parentIndex: z.coerce.number().int().optional(),
+    type: z.enum(MediaItemTypes),
+  }),
+  collectionId: z.coerce.number().int(),
+  action: z.union([z.literal(0), z.literal(1)]),
+});
+export const handleCollectionMediaBodySchema = z.object({
   collectionId: z.number().int(),
   mediaId: z.string().min(1),
 });
 
+type CreateCollectionBody = z.infer<typeof createCollectionBodySchema>;
+type AddToCollectionBody = z.infer<typeof addToCollectionBodySchema>;
+type RemoveFromCollectionBody = z.infer<typeof removeFromCollectionBodySchema>;
+type RemoveCollectionBody = z.infer<typeof removeCollectionBodySchema>;
+type UpdateCollectionBody = z.infer<typeof collectionBodySchema>;
+type UpdateScheduleBody = z.infer<typeof updateScheduleBodySchema>;
+type ManualCollectionActionBody = z.infer<
+  typeof manualCollectionActionBodySchema
+>;
 type HandleCollectionMediaBody = z.infer<
   typeof handleCollectionMediaBodySchema
 >;
@@ -65,7 +161,10 @@ export class CollectionsController {
     this.logger.setContext(CollectionsController.name);
   }
   @Post()
-  async createCollection(@Body() request: any) {
+  async createCollection(
+    @Body(new ZodValidationPipe(createCollectionBodySchema))
+    request: CreateCollectionBody,
+  ) {
     await this.collectionService.createCollectionWithChildren(
       request.collection,
       request.media,
@@ -73,33 +172,38 @@ export class CollectionsController {
   }
   @Post('/add')
   async addToCollection(
-    @Body()
-    request: {
-      collectionId: number;
-      media: CollectionMediaChange[];
-      manual?: boolean;
-    },
+    @Body(new ZodValidationPipe(addToCollectionBodySchema))
+    request: AddToCollectionBody,
   ) {
     await this.collectionService.addToCollection(
       request.collectionId,
       request.media,
-      request.manual ? request.manual : false,
+      request.manual ?? false,
     );
   }
   @Post('/remove')
-  async removeFromCollection(@Body() request: any) {
+  async removeFromCollection(
+    @Body(new ZodValidationPipe(removeFromCollectionBodySchema))
+    request: RemoveFromCollectionBody,
+  ) {
     await this.collectionService.removeFromCollection(
       request.collectionId,
       request.media,
     );
   }
   @Post('/removeCollection')
-  removeCollection(@Body() request: any) {
+  removeCollection(
+    @Body(new ZodValidationPipe(removeCollectionBodySchema))
+    request: RemoveCollectionBody,
+  ) {
     return this.collectionService.deleteCollection(request.collectionId);
   }
 
   @Put()
-  updateCollection(@Body() request: any) {
+  updateCollection(
+    @Body(new ZodValidationPipe(collectionBodySchema))
+    request: UpdateCollectionBody,
+  ) {
     return this.collectionService.updateCollection(request);
   }
 
@@ -123,7 +227,10 @@ export class CollectionsController {
   }
 
   @Put('/schedule/update')
-  updateSchedule(@Body() request: { schedule: string }) {
+  updateSchedule(
+    @Body(new ZodValidationPipe(updateScheduleBodySchema))
+    request: UpdateScheduleBody,
+  ) {
     return this.collectionWorkerService.updateJob(request.schedule);
   }
 
@@ -185,13 +292,8 @@ export class CollectionsController {
 
   @Post('/media/add')
   ManualActionOnCollection(
-    @Body()
-    request: {
-      mediaId: string;
-      context: AlterableMediaContext;
-      collectionId: number;
-      action: 0 | 1;
-    },
+    @Body(new ZodValidationPipe(manualCollectionActionBodySchema))
+    request: ManualCollectionActionBody,
   ) {
     return this.collectionService.MediaCollectionActionWithContext(
       request.collectionId,

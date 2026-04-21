@@ -10,7 +10,16 @@ import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
-import { CollectionsController } from './collections.controller';
+import {
+  addToCollectionBodySchema,
+  collectionBodySchema,
+  CollectionsController,
+  createCollectionBodySchema,
+  manualCollectionActionBodySchema,
+  removeCollectionBodySchema,
+  removeFromCollectionBodySchema,
+  updateScheduleBodySchema,
+} from './collections.controller';
 import { CollectionsService } from './collections.service';
 
 describe('CollectionsController', () => {
@@ -78,6 +87,80 @@ describe('CollectionsController', () => {
           data: '',
         },
       ),
+    ).toThrow('Validation failed');
+  });
+
+  it.each([
+    [
+      'create collection body',
+      createCollectionBodySchema,
+      {
+        collection: {
+          ...createCollection(),
+          title: '',
+        },
+      },
+    ],
+    [
+      'add to collection body',
+      addToCollectionBodySchema,
+      {
+        collectionId: 'not-a-number',
+        media: [{ mediaServerId: '123' }],
+      },
+    ],
+    [
+      'remove from collection body',
+      removeFromCollectionBodySchema,
+      {
+        collectionId: 7,
+        media: [{ mediaServerId: '' }],
+      },
+    ],
+    [
+      'remove collection body',
+      removeCollectionBodySchema,
+      {
+        collectionId: 'not-a-number',
+      },
+    ],
+    [
+      'update collection body',
+      collectionBodySchema,
+      {
+        ...createCollection(),
+        title: '',
+      },
+    ],
+    [
+      'update schedule body',
+      updateScheduleBodySchema,
+      {
+        schedule: '',
+      },
+    ],
+    [
+      'manual collection action body',
+      manualCollectionActionBodySchema,
+      {
+        collectionId: 1,
+        mediaId: '10',
+        context: {
+          id: 1,
+          type: 'movie',
+        },
+        action: 2,
+      },
+    ],
+  ])('rejects invalid %s payloads', (_name, schema, payload) => {
+    const pipe = new ZodValidationPipe(schema);
+
+    expect(() =>
+      pipe.transform(payload, {
+        type: 'body',
+        metatype: Object,
+        data: '',
+      }),
     ).toThrow('Validation failed');
   });
 
