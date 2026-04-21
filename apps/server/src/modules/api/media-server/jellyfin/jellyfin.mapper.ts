@@ -216,8 +216,9 @@ export class JellyfinMapper {
             (item.ChildCount || 0) * (item.UserData.PlayedPercentage / 100),
           )
         : undefined,
-      index: item.IndexNumber || undefined,
-      parentIndex: item.ParentIndexNumber || undefined,
+      index: item.IndexNumber ?? undefined,
+      indexEnd: item.IndexNumberEnd ?? undefined,
+      parentIndex: item.ParentIndexNumber ?? undefined,
       collections: undefined, // Need to query separately
       labels: item.Tags || undefined,
     };

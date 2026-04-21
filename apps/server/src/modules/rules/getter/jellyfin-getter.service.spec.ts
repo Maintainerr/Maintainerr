@@ -595,6 +595,279 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('sw_lastWatched (id: 13) - Newest episode view date', () => {
+    it('should return the view date of the highest-numbered watched episode for a show', async () => {
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+      });
+      const season1 = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        index: 1,
+      });
+      const season2 = createMediaItem({
+        id: 'season-2',
+        type: 'season' as MediaItemType,
+        index: 2,
+      });
+      const s2e1 = createMediaItem({
+        id: 'ep-s2e1',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        parentIndex: 2,
+      });
+      const s2e2 = createMediaItem({
+        id: 'ep-s2e2',
+        type: 'episode' as MediaItemType,
+        index: 2,
+        parentIndex: 2,
+      });
+      const s1e1 = createMediaItem({
+        id: 'ep-s1e1',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        parentIndex: 1,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-1' && childType === 'season') {
+            return [season1, season2];
+          }
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [s1e1];
+          }
+          if (parentId === 'season-2' && childType === 'episode') {
+            return [s2e1, s2e2];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockImplementation(
+        async (itemId: string) => {
+          // S1E1 rewatched most recently, but we should still prefer S2E2
+          if (itemId === 'ep-s1e1') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-04-20') }),
+            ];
+          }
+          if (itemId === 'ep-s2e1') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
+            ];
+          }
+          if (itemId === 'ep-s2e2') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-06') }),
+            ];
+          }
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        13,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-06'));
+    });
+
+    it('should return the view date of the highest-numbered watched episode for a season', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        index: 1,
+      });
+      const ep1 = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        parentIndex: 1,
+      });
+      const ep2 = createMediaItem({
+        id: 'ep-2',
+        type: 'episode' as MediaItemType,
+        index: 2,
+        parentIndex: 1,
+      });
+      const ep3 = createMediaItem({
+        id: 'ep-3',
+        type: 'episode' as MediaItemType,
+        index: 3,
+        parentIndex: 1,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [ep1, ep2, ep3];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-04-10') }),
+            ];
+          }
+          if (itemId === 'ep-2') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
+            ];
+          }
+          // ep-3 (the latest episode) has never been watched
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        13,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      // ep-2 is the highest-numbered watched episode; its rewatch wins.
+      expect(response).toEqual(new Date('2026-03-01'));
+    });
+
+    it('should return null when no episode has been watched', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        index: 1,
+      });
+      const ep1 = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        parentIndex: 1,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [ep1];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockResolvedValue([]);
+
+      const response = await jellyfinGetterService.get(
+        13,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toBeNull();
+    });
+
+    it('should keep watched specials in season 0 eligible for newest episode selection', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-specials',
+        type: 'season' as MediaItemType,
+        index: 0,
+      });
+      const special = createMediaItem({
+        id: 'ep-special-1',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        parentIndex: 0,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'season-specials' && childType === 'episode') {
+            return [special];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockResolvedValue([
+        createWatchRecord({
+          itemId: 'ep-special-1',
+          watchedAt: new Date('2026-02-01'),
+        }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        13,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-02-01'));
+    });
+
+    it('should rank multi-episode items by their ending episode number', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        index: 1,
+      });
+      const ep1 = createMediaItem({
+        id: 'ep-1',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        parentIndex: 1,
+      });
+      const ep1e2 = createMediaItem({
+        id: 'ep-1-2',
+        type: 'episode' as MediaItemType,
+        index: 1,
+        indexEnd: 2,
+        parentIndex: 1,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [ep1, ep1e2];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getWatchHistory.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-04-10') }),
+            ];
+          }
+          if (itemId === 'ep-1-2') {
+            return [
+              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
+            ];
+          }
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        13,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-01'));
+    });
+  });
+
   describe('sw_viewedEpisodes (id: 15) - Amount of watched episodes', () => {
     it('should return count of episodes that have been watched by any user for a show', async () => {
       const showItem = createMediaItem({ type: 'show' as MediaItemType });

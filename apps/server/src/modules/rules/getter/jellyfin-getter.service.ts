@@ -224,7 +224,10 @@ export class JellyfinGetterService {
         }
 
         case 'sw_lastWatched': {
-          return await this.getLastWatchedShowDate(metadata.id, metadata.type);
+          return await this.getNewestWatchedEpisodeDate(
+            metadata.id,
+            metadata.type,
+          );
         }
 
         case 'sw_episodes': {
@@ -503,6 +506,68 @@ export class JellyfinGetterService {
     return usersWhoWatchedAll.map((id) => userMap.get(id) || id);
   }
 
+  /**
+   * Return the view date of the highest-numbered episode that has been
+   * watched within the highest-numbered season that has any watches, or
+   * null when nothing has been watched. Matches the Plex/Tautulli
+   * `sw_lastWatched` semantic: "view date of the newest watched episode".
+   */
+  private async getNewestWatchedEpisodeDate(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<Date | null> {
+    const seasons: Array<{ id: string }> =
+      type === 'season'
+        ? [{ id: itemId }]
+        : await this.jellyfinAdapter.getChildrenMetadata(itemId, 'season');
+
+    const watched: Array<{
+      parentIndex: number;
+      index: number;
+      viewedAt: Date;
+    }> = [];
+
+    for (const season of seasons) {
+      const episodes = await this.jellyfinAdapter.getChildrenMetadata(
+        season.id,
+        'episode',
+      );
+      for (const episode of episodes) {
+        const episodeOrder = episode.indexEnd ?? episode.index;
+
+        if (episodeOrder === undefined || episode.parentIndex === undefined) {
+          continue;
+        }
+        const viewedAt = await this.getLastViewedAt(episode.id);
+        if (!viewedAt) continue;
+        watched.push({
+          parentIndex: episode.parentIndex,
+          index: episodeOrder,
+          viewedAt,
+        });
+      }
+    }
+
+    if (watched.length === 0) return null;
+
+    watched.sort((a, b) =>
+      b.parentIndex !== a.parentIndex
+        ? b.parentIndex - a.parentIndex
+        : b.index - a.index,
+    );
+
+    return watched[0].viewedAt;
+  }
+
+  /**
+   * Return the most recent `LastPlayedDate` found across every episode of a
+   * show or season, or null when nothing has been watched. Jellyfin does not
+   * expose a watched timestamp on the parent item, so the only way to derive
+   * a "last watched" signal for shows/seasons is to walk the children and
+   * take the max. This is an aggregate — it is not the view date of the
+   * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
+   * getters compute it. Used by the `lastViewedAt` rule only.
+   */
   private async getLastWatchedShowDate(
     itemId: string,
     type: MediaItemType,

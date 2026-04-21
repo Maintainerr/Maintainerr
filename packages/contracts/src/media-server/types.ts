@@ -93,6 +93,7 @@ export interface MediaItem {
   childCount?: number
   watchedChildCount?: number
   index?: number
+  indexEnd?: number
   parentIndex?: number
   collections?: string[]
   labels?: string[]
