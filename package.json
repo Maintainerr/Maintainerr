@@ -43,7 +43,6 @@
   "release": {
     "plugins": [
       "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
       [
         "@semantic-release/changelog",
         {
@@ -54,6 +53,7 @@
       [
         "@semantic-release/exec",
         {
+          "generateNotesCmd": "node tools/generate-release-notes.mjs",
           "prepareCmd": "yarn --cwd apps/server version ${nextRelease.version} && yarn --cwd apps/ui version ${nextRelease.version}"
         }
       ],

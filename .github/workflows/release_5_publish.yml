@@ -52,6 +52,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      models: read
     steps:
       - name: Create GitHub App token
         id: app-token
@@ -80,6 +81,7 @@ jobs:
       - name: Release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry-run-semantic-release }}
         run: |
           if [ "$DRY_RUN" == "true" ]; then
