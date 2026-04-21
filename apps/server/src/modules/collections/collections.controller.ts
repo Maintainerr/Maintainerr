@@ -31,7 +31,10 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
-import { ExecutionLockService } from '../tasks/execution-lock.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
@@ -335,7 +338,9 @@ export class CollectionsController {
       throw new NotFoundException('Media not found in collection');
     }
 
-    const release = this.executionLock.tryAcquire('rules-collections-lock');
+    const release = this.executionLock.tryAcquire(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+    );
 
     if (!release) {
       throw new ConflictException(

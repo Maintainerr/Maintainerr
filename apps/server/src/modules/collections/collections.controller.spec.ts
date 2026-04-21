@@ -7,7 +7,10 @@ import {
 } from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
-import { ExecutionLockService } from '../tasks/execution-lock.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import {
@@ -189,6 +192,9 @@ describe('CollectionsController', () => {
     expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
       collection,
       media,
+    );
+    expect(executionLock.tryAcquire).toHaveBeenCalledWith(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
     );
   });
 
