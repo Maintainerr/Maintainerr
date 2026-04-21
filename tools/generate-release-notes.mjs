@@ -9,6 +9,7 @@ const MAX_ORPHAN_BODY_CHARS = 300;
 const MIGRATION_PATH_PREFIX = 'apps/server/src/database/migrations/';
 const MODELS_ENDPOINT = 'https://models.github.ai/inference/chat/completions';
 const DEP_SUBJECT_RE = /^build\(deps(?:-dev)?\):/i;
+const CHORE_SUBJECT_RE = /^chore(?:\([^)]*\))?!?:/i;
 const SYNC_SUBJECT_RE = /^chore:\s*sync\s+development\s+to\s+main/i;
 const DEP_PKG_RE = /bump\s+([^\s]+)/i;
 
@@ -173,13 +174,15 @@ const fetchPrMeta = (commits) => {
 const partitionCommits = (commits) => {
   const deps = [];
   const syncs = [];
+  const chores = [];
   const main = [];
   for (const c of commits) {
     if (DEP_SUBJECT_RE.test(c.subject)) deps.push(c);
     else if (SYNC_SUBJECT_RE.test(c.subject)) syncs.push(c);
+    else if (CHORE_SUBJECT_RE.test(c.subject)) chores.push(c);
     else main.push(c);
   }
-  return { deps, syncs, main };
+  return { deps, syncs, chores, main };
 };
 
 const depSummary = (deps) => {
@@ -198,7 +201,6 @@ const fallbackNotes = (commits, migrations) => {
     fix: [],
     perf: [],
     refactor: [],
-    chore: [],
     docs: [],
     test: [],
     other: [],
@@ -218,7 +220,7 @@ const fallbackNotes = (commits, migrations) => {
     section('Fixes', groups.fix),
     section('Performance', groups.perf),
     section('Refactors', groups.refactor),
-    section('Other', [...groups.chore, ...groups.docs, ...groups.test, ...groups.other]),
+    section('Other', [...groups.docs, ...groups.test, ...groups.other]),
   ];
   if (deps.length) {
     const d = depSummary(deps);
