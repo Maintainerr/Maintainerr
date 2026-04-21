@@ -27,7 +27,6 @@ const {
 } = process.env;
 
 const modelToken = GITHUB_TOKEN || GH_TOKEN || '';
-const range = lastTag ? `${lastTag}..${nextHead}` : nextHead;
 
 const log = (msg) => process.stderr.write(`[release-notes] ${msg}\n`);
 
@@ -38,12 +37,30 @@ const runGh = (args) => {
   try {
     return execFileSync('gh', args, {
       encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
       maxBuffer: 16 * 1024 * 1024,
     });
   } catch {
     return '';
   }
 };
+
+const resolveLastTag = () => {
+  if (lastTag) return lastTag;
+  try {
+    const tag = runGit(['describe', '--tags', '--abbrev=0', nextHead]).trim();
+    if (tag) {
+      log(`LAST_RELEASE_GITTAG not provided; using ${tag} from git describe`);
+      return tag;
+    }
+  } catch {
+    log('no prior tag found; range will walk full history (capped by MAX_COMMITS)');
+  }
+  return '';
+};
+
+const effectiveLastTag = resolveLastTag();
+const range = effectiveLastTag ? `${effectiveLastTag}..${nextHead}` : nextHead;
 
 const cleanCommitBody = (raw) => {
   return raw
