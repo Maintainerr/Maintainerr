@@ -7,10 +7,22 @@ import {
 } from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
-import { ExecutionLockService } from '../tasks/execution-lock.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
-import { CollectionsController } from './collections.controller';
+import {
+  addToCollectionBodySchema,
+  collectionBodySchema,
+  CollectionsController,
+  createCollectionBodySchema,
+  manualCollectionActionBodySchema,
+  removeCollectionBodySchema,
+  removeFromCollectionBodySchema,
+  updateScheduleBodySchema,
+} from './collections.controller';
 import { CollectionsService } from './collections.service';
 
 describe('CollectionsController', () => {
@@ -19,6 +31,7 @@ describe('CollectionsController', () => {
   const collectionsService = {
     getCollectionRecord: jest.fn(),
     getCollectionMediaRecord: jest.fn(),
+    MediaCollectionActionWithContext: jest.fn(),
   } as unknown as jest.Mocked<CollectionsService>;
 
   const collectionWorkerService = {
@@ -81,6 +94,119 @@ describe('CollectionsController', () => {
     ).toThrow('Validation failed');
   });
 
+  it.each([
+    [
+      'create collection body',
+      createCollectionBodySchema,
+      {
+        collection: {
+          ...createCollection(),
+          title: '',
+        },
+      },
+    ],
+    [
+      'add to collection body',
+      addToCollectionBodySchema,
+      {
+        collectionId: 'not-a-number',
+        media: [{ mediaServerId: '123' }],
+      },
+    ],
+    [
+      'remove from collection body',
+      removeFromCollectionBodySchema,
+      {
+        collectionId: 7,
+        media: [{ mediaServerId: '' }],
+      },
+    ],
+    [
+      'remove collection body',
+      removeCollectionBodySchema,
+      {
+        collectionId: 'not-a-number',
+      },
+    ],
+    [
+      'update collection body',
+      collectionBodySchema,
+      {
+        ...createCollection(),
+        title: '',
+      },
+    ],
+    [
+      'update schedule body',
+      updateScheduleBodySchema,
+      {
+        schedule: '',
+      },
+    ],
+    [
+      'manual collection action body',
+      manualCollectionActionBodySchema,
+      {
+        collectionId: 1,
+        mediaId: '10',
+        context: {
+          id: 1,
+          type: 'movie',
+        },
+        action: 2,
+      },
+    ],
+    [
+      'manual collection add action without collectionId',
+      manualCollectionActionBodySchema,
+      {
+        mediaId: '10',
+        context: {
+          id: 1,
+          type: 'movie',
+        },
+        action: 0,
+      },
+    ],
+  ])('rejects invalid %s payloads', (_name, schema, payload) => {
+    const pipe = new ZodValidationPipe(schema);
+
+    expect(() =>
+      pipe.transform(payload, {
+        type: 'body',
+        metatype: Object,
+        data: '',
+      }),
+    ).toThrow('Validation failed');
+  });
+
+  it('allows manual removal actions without a collection id', async () => {
+    collectionsService.MediaCollectionActionWithContext.mockResolvedValue(
+      createCollection(),
+    );
+
+    await controller.ManualActionOnCollection({
+      mediaId: '10',
+      context: {
+        id: 1,
+        type: 'movie',
+      },
+      action: 1,
+    });
+
+    expect(
+      collectionsService.MediaCollectionActionWithContext,
+    ).toHaveBeenCalledWith(
+      undefined,
+      {
+        id: 1,
+        type: 'movie',
+      },
+      { mediaServerId: '10' },
+      'remove',
+    );
+  });
+
   it('handles a collection item with the configured collection action', async () => {
     const collection = createCollection();
     const media = createCollectionMedia(collection);
@@ -106,6 +232,9 @@ describe('CollectionsController', () => {
     expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
       collection,
       media,
+    );
+    expect(executionLock.tryAcquire).toHaveBeenCalledWith(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
     );
   });
 

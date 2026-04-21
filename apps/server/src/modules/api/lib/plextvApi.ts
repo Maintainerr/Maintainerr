@@ -81,18 +81,20 @@ interface ServerResponse {
   };
 }
 
+export interface PlexTvUser {
+  $: {
+    id: string;
+    title: string;
+    username: string;
+    email: string;
+    thumb: string;
+  };
+  Server: ServerResponse[];
+}
+
 interface UsersResponse {
   MediaContainer: {
-    User: {
-      $: {
-        id: string;
-        title: string;
-        username: string;
-        email: string;
-        thumb: string;
-      };
-      Server: ServerResponse[];
-    }[];
+    User: PlexTvUser[];
   };
 }
 

@@ -43,7 +43,6 @@ export class OverlaySettingsService {
       titleCardOverlayStyle: entity.titleCardOverlayStyle,
       titleCardFrame: entity.titleCardFrame,
       cronSchedule: entity.cronSchedule,
-      applyOnAdd: entity.applyOnAdd,
     };
   }
 

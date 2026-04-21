@@ -1205,9 +1205,12 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
-  ): Promise<{
-    dbCollection: addCollectionDbResponse;
-  }> {
+  ): Promise<
+    | {
+        dbCollection: addCollectionDbResponse;
+      }
+    | undefined
+  > {
     try {
       const mediaServer = await this.getMediaServer();
       let mediaCollection: MediaCollection;
@@ -1291,9 +1294,12 @@ export class CollectionsService {
   async createCollectionWithChildren(
     collection: ICollection,
     media?: CollectionMediaChange[],
-  ): Promise<{
-    dbCollection: addCollectionDbResponse;
-  }> {
+  ): Promise<
+    | {
+        dbCollection: addCollectionDbResponse;
+      }
+    | undefined
+  > {
     try {
       const createdCollection = await this.createCollection(collection, false);
 
@@ -1324,9 +1330,9 @@ export class CollectionsService {
     }
   }
 
-  async updateCollection(collection: ICollection): Promise<{
-    dbCollection?: ICollection;
-  }> {
+  async updateCollection(
+    collection: ICollection,
+  ): Promise<{ dbCollection?: ICollection } | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
       const dbCollection = await this.collectionRepo.findOne({
@@ -1577,11 +1583,11 @@ export class CollectionsService {
   }
 
   async MediaCollectionActionWithContext(
-    collectionDbId: number,
+    collectionDbId: number | undefined,
     context: AlterableMediaContext,
     media: CollectionMediaChange,
     action: 'add' | 'remove',
-  ): Promise<Collection> {
+  ): Promise<Collection | undefined> {
     const mediaServer = await this.getMediaServer();
     const collection =
       collectionDbId !== -1 && collectionDbId !== undefined
@@ -1896,7 +1902,7 @@ export class CollectionsService {
     collectionDbId: number,
     media: CollectionMediaChange[],
     removalScope: CollectionMediaRemovalScope = 'all',
-  ) {
+  ): Promise<Collection | undefined> {
     return this.removeFromCollectionInternal(
       collectionDbId,
       media,
@@ -1909,7 +1915,7 @@ export class CollectionsService {
     collection: Collection,
     media: CollectionMediaChange[],
     removalScope: CollectionMediaRemovalScope = 'all',
-  ) {
+  ): Promise<Collection | undefined> {
     if (!collection) return undefined;
     return this.removeFromCollectionInternal(
       collection.id,
@@ -1924,7 +1930,7 @@ export class CollectionsService {
     media: CollectionMediaChange[],
     skipAutomaticLinkCheck = false,
     removalScope: CollectionMediaRemovalScope = 'all',
-  ) {
+  ): Promise<Collection | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({

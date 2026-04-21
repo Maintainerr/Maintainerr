@@ -33,7 +33,4 @@ export class OverlaySettingsEntity {
 
   @Column({ type: 'varchar', nullable: true })
   cronSchedule: string | null;
-
-  @Column({ default: true })
-  applyOnAdd: boolean;
 }

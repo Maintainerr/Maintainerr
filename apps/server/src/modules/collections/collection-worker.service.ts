@@ -14,7 +14,10 @@ import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionMediaHandledDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsService } from '../settings/settings.service';
-import { ExecutionLockService } from '../tasks/execution-lock.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
@@ -60,7 +63,9 @@ export class CollectionWorkerService extends TaskBase {
     );
 
     // Acquire shared lock to avoid overlap with rule execution
-    const release = await this.executionLock.acquire('rules-collections-lock');
+    const release = await this.executionLock.acquire(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+    );
     let failed = false;
 
     try {
