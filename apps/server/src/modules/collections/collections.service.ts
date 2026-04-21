@@ -1205,9 +1205,12 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
-  ): Promise<{
-    dbCollection: addCollectionDbResponse;
-  } | undefined> {
+  ): Promise<
+    | {
+        dbCollection: addCollectionDbResponse;
+      }
+    | undefined
+  > {
     try {
       const mediaServer = await this.getMediaServer();
       let mediaCollection: MediaCollection;
@@ -1291,9 +1294,12 @@ export class CollectionsService {
   async createCollectionWithChildren(
     collection: ICollection,
     media?: CollectionMediaChange[],
-  ): Promise<{
-    dbCollection: addCollectionDbResponse;
-  } | undefined> {
+  ): Promise<
+    | {
+        dbCollection: addCollectionDbResponse;
+      }
+    | undefined
+  > {
     try {
       const createdCollection = await this.createCollection(collection, false);
 

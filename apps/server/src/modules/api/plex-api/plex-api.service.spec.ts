@@ -189,7 +189,9 @@ describe('PlexApiService.getMetadata', () => {
 
     (service as any).plexClient = { deleteQuery };
 
-    await expect(service.deleteChildFromCollection('55', '99')).resolves.toEqual(
+    await expect(
+      service.deleteChildFromCollection('55', '99'),
+    ).resolves.toEqual(
       expect.objectContaining({
         status: 'OK',
         code: 1,

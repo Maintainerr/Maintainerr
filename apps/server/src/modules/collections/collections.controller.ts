@@ -51,17 +51,11 @@ const collectionLogMetaSchema = z.custom<CollectionLogMeta>(
     }
 
     const { type } = value as { type?: unknown };
-    if (
-      type === 'media_added_manually' ||
-      type === 'media_removed_manually'
-    ) {
+    if (type === 'media_added_manually' || type === 'media_removed_manually') {
       return true;
     }
 
-    if (
-      type === 'media_added_by_rule' ||
-      type === 'media_removed_by_rule'
-    ) {
+    if (type === 'media_added_by_rule' || type === 'media_removed_by_rule') {
       return 'data' in value;
     }
 
@@ -93,7 +87,11 @@ export const collectionBodySchema = z
     manualCollection: z.boolean().optional(),
     manualCollectionName: z.string().optional().nullable(),
     keepLogsForMonths: z.coerce.number().int().optional(),
-    tautulliWatchedPercentOverride: z.coerce.number().int().optional().nullable(),
+    tautulliWatchedPercentOverride: z.coerce
+      .number()
+      .int()
+      .optional()
+      .nullable(),
     radarrSettingsId: z.coerce.number().int().optional().nullable(),
     sonarrSettingsId: z.coerce.number().int().optional().nullable(),
     radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
