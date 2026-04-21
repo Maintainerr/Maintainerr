@@ -184,6 +184,23 @@ describe('PlexApiService.getMetadata', () => {
     expect(logger.debug).not.toHaveBeenCalled();
   });
 
+  it('uses the canonical Plex items path when deleting a collection child', async () => {
+    const deleteQuery = jest.fn().mockResolvedValue(undefined);
+
+    (service as any).plexClient = { deleteQuery };
+
+    await expect(service.deleteChildFromCollection('55', '99')).resolves.toEqual(
+      expect.objectContaining({
+        status: 'OK',
+        code: 1,
+      }),
+    );
+
+    expect(deleteQuery).toHaveBeenCalledWith({
+      uri: '/library/collections/55/items/99',
+    });
+  });
+
   it('keeps network failures distinct from HTTP request failures', async () => {
     const putQuery = jest
       .fn()
