@@ -1,6 +1,6 @@
 import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { isIP } from 'net';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
@@ -227,8 +227,6 @@ export class PlexApiService {
         port: settingsPlex.port,
         https: settingsPlex.useSsl,
         token: plexToken,
-        clientId: this.settings.clientId,
-        appVersion: this.settings.appVersion(),
       });
 
       const machineId = await this.setMachineId();
@@ -305,8 +303,6 @@ export class PlexApiService {
           https: conn.protocol === 'https',
           timeout: CONNECTION_TEST_TIMEOUT_MS,
           token: plexToken,
-          clientId: this.settings.clientId,
-          appVersion: this.settings.appVersion(),
         });
 
         const ok = await testClient.getStatus();
@@ -318,8 +314,6 @@ export class PlexApiService {
           port: conn.port,
           https: conn.protocol === 'https',
           token: plexToken,
-          clientId: this.settings.clientId,
-          appVersion: this.settings.appVersion(),
         });
 
         await this.settings.updatePlexConnectionDetails({
@@ -988,9 +982,6 @@ export class PlexApiService {
       } else {
         this.logger.error(failure.message);
       }
-      if (failure.responseBody) {
-        this.logger.debug(`Plex response body: ${failure.responseBody}`);
-      }
       this.logger.debug(error);
       return {
         status: 'NOK',
@@ -1031,14 +1022,7 @@ export class PlexApiService {
 
       if (failure.logLevel === 'error') {
         this.logger.error(failure.message);
-        if (failure.responseBody) {
-          this.logger.debug(`Plex response body: ${failure.responseBody}`);
-        }
         this.logger.debug(error);
-      } else if (failure.responseBody) {
-        // 4xx on batched mutation — adapter will fall back to per-item,
-        // so keep the visible log quiet but expose the body for debugging.
-        this.logger.debug(`Plex response body: ${failure.responseBody}`);
       }
 
       return {
@@ -1053,21 +1037,20 @@ export class PlexApiService {
     code: number;
     logLevel: 'warn' | 'error';
     message: string;
-    responseBody?: string;
   } {
-    const axiosError = this.unwrapAxiosError(error);
-    if (axiosError?.response?.status) {
-      const responseBody = this.stringifyResponseBody(axiosError.response.data);
-      const statusMessage = `Plex request failed with ${axiosError.response.status}${axiosError.response.statusText ? ` ${axiosError.response.statusText}` : ''}`;
+    if (axios.isAxiosError(error) && error.response?.status) {
+      const responseBody = this.stringifyResponseBody(error.response.data);
+      const statusMessage = `Plex request failed with ${error.response.status}${error.response.statusText ? ` ${error.response.statusText}` : ''}`;
 
       return {
-        code: axiosError.response.status,
+        code: error.response.status,
         logLevel:
-          axiosError.response.status >= 400 && axiosError.response.status < 500
+          error.response.status >= 400 && error.response.status < 500
             ? 'warn'
             : 'error',
-        message: `${statusMessage}.`,
-        responseBody,
+        message: responseBody
+          ? `${statusMessage}. Response body: ${responseBody}`
+          : `${statusMessage}.`,
       };
     }
 
@@ -1079,17 +1062,6 @@ export class PlexApiService {
         'Plex api communication failure.. Is the application running?',
       ),
     };
-  }
-
-  private unwrapAxiosError(error: unknown): AxiosError | undefined {
-    if (axios.isAxiosError(error)) {
-      return error;
-    }
-    const cause = (error as { cause?: unknown })?.cause;
-    if (axios.isAxiosError(cause)) {
-      return cause;
-    }
-    return undefined;
   }
 
   private stringifyResponseBody(body: unknown): string | undefined {
@@ -1114,7 +1086,7 @@ export class PlexApiService {
   ): Promise<BasicResponseDto> {
     try {
       await this.plexClient.deleteQuery({
-        uri: `/library/collections/${collectionId}/items/${childId}`,
+        uri: `/library/collections/${collectionId}/children/${childId}`,
       });
       return {
         status: 'OK',
@@ -1194,8 +1166,6 @@ export class PlexApiService {
                   https: connection.protocol === 'https',
                   timeout: CONNECTION_TEST_TIMEOUT_MS,
                   token: settings.plex_auth_token,
-                  clientId: this.settings.clientId,
-                  appVersion: this.settings.appVersion(),
                 });
 
                 const start = Date.now();

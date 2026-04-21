@@ -175,45 +175,13 @@ describe('PlexApiService.getMetadata', () => {
       expect.objectContaining({
         status: 'NOK',
         code: 400,
-        message: 'Plex request failed with 400 Bad Request.',
+        message:
+          'Plex request failed with 400 Bad Request. Response body: {"error":"duplicate items"}',
       }),
     );
     expect(logger.warn).not.toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Plex response body: {"error":"duplicate items"}',
-    );
-  });
-
-  it('unwraps wrapped axios errors so the 400 body reaches the debug log', async () => {
-    const axiosError = Object.assign(new Error('axios failure'), {
-      isAxiosError: true,
-      response: {
-        status: 400,
-        statusText: 'Bad Request',
-        data: { error: 'bad uri' },
-      },
-    });
-    const wrapped = new Error('PUT /library/collections/55/items failed', {
-      cause: axiosError,
-    });
-    const putQuery = jest.fn().mockRejectedValue(wrapped);
-
-    (service as any).machineId = 'machine123';
-    (service as any).plexClient = { putQuery };
-
-    const result = await service.addChildrenToCollection('55', ['1', '2']);
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        status: 'NOK',
-        code: 400,
-        message: 'Plex request failed with 400 Bad Request.',
-      }),
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Plex response body: {"error":"bad uri"}',
-    );
+    expect(logger.debug).not.toHaveBeenCalled();
   });
 
   it('keeps network failures distinct from HTTP request failures', async () => {
