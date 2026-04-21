@@ -27,6 +27,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { isValidCron } from 'cron-validator';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -44,65 +45,105 @@ const collectionMediaSortQuerySchema = z
   .optional();
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
+
+const ruleValueSchema = z.union([
+  z.number(),
+  z.string(),
+  z.boolean(),
+  z.date(),
+  z.array(z.number()),
+  z.array(z.string()),
+  z.null(),
+]);
+
+const ruleComparisonResultSchema = z.object({
+  firstValueName: z.string(),
+  firstValue: ruleValueSchema,
+  firstValueReason: z.string().optional(),
+  secondValueName: z.string().optional(),
+  secondValue: ruleValueSchema.optional(),
+  secondValueReason: z.string().optional(),
+  action: z.string(),
+  operator: z.string().optional(),
+  result: z.boolean(),
+});
+
+const sectionComparisonResultsSchema = z.object({
+  id: z.number(),
+  result: z.boolean(),
+  operator: z.string().optional(),
+  ruleResults: z.array(ruleComparisonResultSchema),
+});
+
+const comparisonStatisticsSchema = z.object({
+  mediaServerId: z.string(),
+  result: z.boolean(),
+  sectionResults: z.array(sectionComparisonResultsSchema),
+});
+
+const collectionLogMetaInnerSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('media_added_manually'),
+  }),
+  z.object({
+    type: z.literal('media_removed_manually'),
+  }),
+  z.object({
+    type: z.literal('media_added_by_rule'),
+    data: comparisonStatisticsSchema,
+  }),
+  z.object({
+    type: z.literal('media_removed_by_rule'),
+    data: comparisonStatisticsSchema,
+  }),
+]);
+
 const collectionLogMetaSchema = z.custom<CollectionLogMeta>(
-  (value) => {
-    if (!value || typeof value !== 'object') {
-      return false;
-    }
-
-    const { type } = value as { type?: unknown };
-    if (type === 'media_added_manually' || type === 'media_removed_manually') {
-      return true;
-    }
-
-    if (type === 'media_added_by_rule' || type === 'media_removed_by_rule') {
-      return 'data' in value;
-    }
-
-    return false;
-  },
-  {
-    message: 'Invalid collection log metadata',
-  },
+  (value) => collectionLogMetaInnerSchema.safeParse(value).success,
+  { message: 'Invalid collection log metadata' },
 );
+
 const collectionMediaChangeSchema = z.object({
   mediaServerId: z.string().min(1),
   reason: collectionLogMetaSchema.optional(),
 });
-export const collectionBodySchema = z
-  .object({
-    id: z.coerce.number().int().optional(),
-    type: z.enum(MediaItemTypes),
-    mediaServerId: z.string().min(1).optional().nullable(),
-    libraryId: z.string().min(1),
-    title: z.string().min(1),
-    description: z.string().optional().nullable(),
-    isActive: z.boolean(),
-    arrAction: z.nativeEnum(ServarrAction),
-    visibleOnRecommended: z.boolean().optional(),
-    visibleOnHome: z.boolean().optional(),
-    listExclusions: z.boolean().optional(),
-    forceSeerr: z.boolean().optional(),
-    deleteAfterDays: z.coerce.number().int().optional(),
-    manualCollection: z.boolean().optional(),
-    manualCollectionName: z.string().optional().nullable(),
-    keepLogsForMonths: z.coerce.number().int().optional(),
-    tautulliWatchedPercentOverride: z.coerce
-      .number()
-      .int()
-      .optional()
-      .nullable(),
-    radarrSettingsId: z.coerce.number().int().optional().nullable(),
-    sonarrSettingsId: z.coerce.number().int().optional().nullable(),
-    radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
-    sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
-    sortTitle: z.string().optional().nullable(),
-    overlayEnabled: z.boolean().optional(),
-    overlayTemplateId: z.coerce.number().int().optional().nullable(),
-  })
-  .passthrough();
+
+const collectionBaseShape = {
+  type: z.enum(MediaItemTypes),
+  mediaServerId: z.string().min(1).optional().nullable(),
+  libraryId: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  isActive: z.boolean(),
+  arrAction: z.nativeEnum(ServarrAction),
+  visibleOnRecommended: z.boolean().optional(),
+  visibleOnHome: z.boolean().optional(),
+  listExclusions: z.boolean().optional(),
+  forceSeerr: z.boolean().optional(),
+  deleteAfterDays: z.coerce.number().int().optional(),
+  manualCollection: z.boolean().optional(),
+  manualCollectionName: z.string().optional().nullable(),
+  keepLogsForMonths: z.coerce.number().int().optional(),
+  tautulliWatchedPercentOverride: z.coerce.number().int().optional().nullable(),
+  radarrSettingsId: z.coerce.number().int().optional().nullable(),
+  sonarrSettingsId: z.coerce.number().int().optional().nullable(),
+  radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+  sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+  sortTitle: z.string().optional().nullable(),
+  overlayEnabled: z.boolean().optional(),
+  overlayTemplateId: z.coerce.number().int().optional().nullable(),
+};
+
+export const collectionBodySchema = z.object({
+  ...collectionBaseShape,
+  id: z.coerce.number().int(),
+});
+const newCollectionBodySchema = z.object({
+  ...collectionBaseShape,
+  id: z.coerce.number().int().optional(),
+});
 export const createCollectionBodySchema = z.object({
-  collection: collectionBodySchema,
+  collection: newCollectionBodySchema,
   media: z.array(collectionMediaChangeSchema).optional(),
 });
 export const addToCollectionBodySchema = z.object({
@@ -118,19 +159,33 @@ export const removeCollectionBodySchema = z.object({
   collectionId: z.coerce.number().int(),
 });
 export const updateScheduleBodySchema = z.object({
-  schedule: z.string().min(1),
+  schedule: z
+    .string()
+    .min(1)
+    .refine((value) => isValidCron(value), {
+      message: 'Invalid cron expression',
+    }),
 });
-export const manualCollectionActionBodySchema = z.object({
-  mediaId: z.string().min(1),
-  context: z.object({
-    id: z.coerce.number().int(),
-    index: z.coerce.number().int().optional(),
-    parentIndex: z.coerce.number().int().optional(),
-    type: z.enum(MediaItemTypes),
+const manualCollectionContextSchema = z.object({
+  id: z.coerce.number().int(),
+  index: z.coerce.number().int().optional(),
+  parentIndex: z.coerce.number().int().optional(),
+  type: z.enum(MediaItemTypes),
+});
+export const manualCollectionActionBodySchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal(0),
+    mediaId: z.string().min(1),
+    context: manualCollectionContextSchema,
+    collectionId: z.coerce.number().int(),
   }),
-  collectionId: z.coerce.number().int().optional(),
-  action: z.union([z.literal(0), z.literal(1)]),
-});
+  z.object({
+    action: z.literal(1),
+    mediaId: z.string().min(1),
+    context: manualCollectionContextSchema,
+    collectionId: z.coerce.number().int().optional(),
+  }),
+]);
 export const handleCollectionMediaBodySchema = z.object({
   collectionId: z.number().int(),
   mediaId: z.string().min(1),

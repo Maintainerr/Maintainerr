@@ -1587,7 +1587,7 @@ export class CollectionsService {
     context: AlterableMediaContext,
     media: CollectionMediaChange,
     action: 'add' | 'remove',
-  ): Promise<Collection> {
+  ): Promise<Collection | undefined> {
     const mediaServer = await this.getMediaServer();
     const collection =
       collectionDbId !== -1 && collectionDbId !== undefined

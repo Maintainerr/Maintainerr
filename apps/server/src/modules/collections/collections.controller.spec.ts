@@ -156,6 +156,18 @@ describe('CollectionsController', () => {
         action: 2,
       },
     ],
+    [
+      'manual collection add action without collectionId',
+      manualCollectionActionBodySchema,
+      {
+        mediaId: '10',
+        context: {
+          id: 1,
+          type: 'movie',
+        },
+        action: 0,
+      },
+    ],
   ])('rejects invalid %s payloads', (_name, schema, payload) => {
     const pipe = new ZodValidationPipe(schema);
 

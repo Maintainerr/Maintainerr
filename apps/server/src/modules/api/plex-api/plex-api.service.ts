@@ -1431,7 +1431,7 @@ export class PlexApiService {
     const owner = await this.getOwnerDataFromPlexTv();
 
     return (await this.getUsers()).map((el) => {
-      const plextv = plexTvUsers?.find((tvEl) => Number(tvEl.$.id) === el.id);
+      const plextv = plexTvUsers?.find((tvEl) => Number(tvEl.$?.id) === el.id);
       const ownerUser = owner?.username === el.name ? owner : undefined;
 
       // use the username from plex.tv if available, since Overseerr also does this
