@@ -129,8 +129,13 @@ const fetchPrMeta = (commits) => {
     if (!raw) continue;
     try {
       const parsed = JSON.parse(raw);
-      const body = (parsed.body || '')
-        .replace(/<!--[\s\S]*?-->/g, '')
+      let body = parsed.body || '';
+      let prev;
+      do {
+        prev = body;
+        body = body.replace(/<!--[\s\S]*?-->/g, '');
+      } while (body !== prev);
+      body = body
         .replace(/\r\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
