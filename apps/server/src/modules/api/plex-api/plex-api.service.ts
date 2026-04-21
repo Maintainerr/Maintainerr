@@ -1086,7 +1086,7 @@ export class PlexApiService {
   ): Promise<BasicResponseDto> {
     try {
       await this.plexClient.deleteQuery({
-        uri: `/library/collections/${collectionId}/children/${childId}`,
+        uri: `/library/collections/${collectionId}/items/${childId}`,
       });
       return {
         status: 'OK',
