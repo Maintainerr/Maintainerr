@@ -18,7 +18,7 @@ on:
         required: false
         default: false
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [closed]
     branches: [main]
 
 concurrency:
@@ -47,7 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.ref == 'development' &&
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.ref == 'development' &&
        github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Create GitHub App token
