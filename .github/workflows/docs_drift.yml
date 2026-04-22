@@ -1,0 +1,211 @@
+name: "Docs drift report"
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Git ref to compare against (e.g. v3.7.0, v3.6.0, origin/main). Default: origin/main"
+        required: false
+        default: ""
+      open_issue:
+        description: "Open/update the drift tracking issue on Maintainerr_docs"
+        type: boolean
+        required: false
+        default: false
+      create_pr:
+        description: "Open a draft PR on Maintainerr_docs (empty branch to push edits to, report as body)"
+        type: boolean
+        required: false
+        default: false
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+concurrency:
+  group: docs-drift-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  models: read
+
+jobs:
+  drift:
+    name: Generate docs drift report
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.ref == 'development' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
+      - name: Checkout Maintainerr
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout Maintainerr_docs
+        uses: actions/checkout@v6
+        with:
+          repository: Maintainerr/Maintainerr_docs
+          ref: main
+          path: .maintainerr_docs
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Resolve base ref
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          DISPATCH_BASE: ${{ inputs.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            ref="origin/${PR_BASE}"
+          elif [ -n "$DISPATCH_BASE" ]; then
+            if [[ ! "$DISPATCH_BASE" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+              echo "Invalid base_ref input: $DISPATCH_BASE"
+              exit 1
+            fi
+            ref="$DISPATCH_BASE"
+          else
+            ref="origin/main"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Resolved base ref: $ref"
+
+      - name: Generate drift report
+        env:
+          DOCS_ROOT: ${{ github.workspace }}/.maintainerr_docs
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          OUTPUT_PATH: ${{ github.workspace }}/.drift-report.md
+        run: node tools/docs-drift.mjs
+
+      - name: Append AI suggestions for documentation-labeled PRs
+        continue-on-error: true
+        env:
+          DOCS_ROOT: ${{ github.workspace }}/.maintainerr_docs
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          OUTPUT_PATH: ${{ github.workspace }}/.drift-report.md
+        run: node tools/docs-drift-ai.mjs
+
+      - name: Append report to step summary
+        run: cat .drift-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Find existing sticky comment
+        if: github.event_name == 'pull_request'
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: "<!-- maintainerr-docs-drift -->"
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Upsert drift comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: .drift-report.md
+          edit-mode: replace
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Read drift metadata
+        id: drift-meta
+        run: |
+          has_drift=$(node -e 'console.log(require("./.drift-report.md.meta.json").hasDrift)')
+          echo "has_drift=$has_drift" >> "$GITHUB_OUTPUT"
+          echo "Has drift: $has_drift"
+
+      - name: Upsert docs drift issue on Maintainerr_docs
+        if: >-
+          steps.drift-meta.outputs.has_drift == 'true' &&
+          (github.event_name == 'pull_request' ||
+           (github.event_name == 'workflow_dispatch' && inputs.open_issue))
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          DOCS_REPO: Maintainerr/Maintainerr_docs
+          MARKER: maintainerr-docs-drift
+        run: |
+          issue_num=$(gh issue list --repo "$DOCS_REPO" --state open \
+            --search "\"$MARKER\" in:body" --json number --jq '.[0].number // empty')
+          if [ -n "$issue_num" ]; then
+            gh issue edit "$issue_num" --repo "$DOCS_REPO" --body-file .drift-report.md
+            echo "Updated $DOCS_REPO#$issue_num"
+            echo "- Updated drift issue: [$DOCS_REPO#$issue_num](https://github.com/$DOCS_REPO/issues/$issue_num)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            created=$(gh issue create --repo "$DOCS_REPO" \
+              --title "Docs drift — updates needed for the next Maintainerr release" \
+              --body-file .drift-report.md)
+            echo "Created: $created"
+            echo "- Created drift issue: $created" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open draft PR on Maintainerr_docs
+        if: >-
+          steps.drift-meta.outputs.has_drift == 'true' &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.create_pr
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          DOCS_REPO: Maintainerr/Maintainerr_docs
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -e
+          branch="docs-drift/${RUN_ID}"
+          pushd .maintainerr_docs > /dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${DOCS_REPO}.git"
+          git checkout -b "$branch"
+          git commit --allow-empty -m "chore: open docs drift PR for Maintainerr ${BASE_REF}..HEAD"
+          git push -u origin "$branch"
+          popd > /dev/null
+          pr_url=$(gh pr create --repo "$DOCS_REPO" \
+            --base main --head "$branch" \
+            --title "Docs drift — updates needed (${BASE_REF}..HEAD)" \
+            --body-file .drift-report.md \
+            --draft)
+          echo "PR: $pr_url"
+          echo "- Draft PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close docs drift issue if clean
+        if: >-
+          steps.drift-meta.outputs.has_drift == 'false' &&
+          (github.event_name == 'pull_request' ||
+           (github.event_name == 'workflow_dispatch' && inputs.open_issue))
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          DOCS_REPO: Maintainerr/Maintainerr_docs
+          MARKER: maintainerr-docs-drift
+        run: |
+          issue_num=$(gh issue list --repo "$DOCS_REPO" --state open \
+            --search "\"$MARKER\" in:body" --json number --jq '.[0].number // empty')
+          if [ -n "$issue_num" ]; then
+            gh issue comment "$issue_num" --repo "$DOCS_REPO" \
+              --body "All docs drift checks pass for the latest run. Closing."
+            gh issue close "$issue_num" --repo "$DOCS_REPO"
+            echo "Closed $DOCS_REPO#$issue_num"
+            echo "- Closed drift issue: [$DOCS_REPO#$issue_num](https://github.com/$DOCS_REPO/issues/$issue_num)" >> "$GITHUB_STEP_SUMMARY"
+          fi
