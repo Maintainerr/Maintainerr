@@ -315,7 +315,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
-  async getUsers(): Promise<MediaUser[]> {
+  async getUsers(throwOnError = false): Promise<MediaUser[]> {
     if (!this.api) return [];
 
     try {
@@ -338,11 +338,18 @@ export class JellyfinAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.error('Failed to get Jellyfin users');
       this.logger.debug(error);
+
+      if (throwOnError) {
+        throw error;
+      }
+
       return [];
     }
   }
 
-  private async getPlayedCompletionThreshold(): Promise<number | undefined> {
+  private async getPlayedCompletionThreshold(
+    throwOnError = false,
+  ): Promise<number | undefined> {
     if (!this.api) return undefined;
 
     if (this.cache.data.has(JELLYFIN_CACHE_KEYS.PLAYED_THRESHOLD)) {
@@ -369,6 +376,11 @@ export class JellyfinAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.warn('Failed to get Jellyfin MaxResumePct');
       this.logger.debug(error);
+
+      if (throwOnError) {
+        throw error;
+      }
+
       return undefined;
     }
   }
@@ -848,43 +860,41 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     if (!this.api) return [];
 
-    try {
-      const playedCompletionThreshold =
-        await this.getPlayedCompletionThreshold();
-      const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:${itemId}`;
-      if (this.cache.data.has(cacheKey)) {
-        return this.cache.data.get<WatchRecord[]>(cacheKey) || [];
+    // Errors must propagate so callers can distinguish a real outage from a
+    // confirmed empty history. Returning [] here would misclassify failures as
+    // "never watched", which leaks into NOT_EXISTS checks and missing-value
+    // diagnostics in the rules layer.
+    const playedCompletionThreshold =
+      await this.getPlayedCompletionThreshold(true);
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:${itemId}`;
+    if (this.cache.data.has(cacheKey)) {
+      return this.cache.data.get<WatchRecord[]>(cacheKey) || [];
+    }
+
+    const records: WatchRecord[] = [];
+
+    // Jellyfin watch state is user-scoped, so we aggregate item user data
+    // across all users and build a normalized watch history from that.
+    const userDataEntries = await this.getAllUserItemData(itemId, true);
+    userDataEntries.forEach(({ user, userData }) => {
+      if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+        return;
       }
 
-      const records: WatchRecord[] = [];
+      records.push(
+        JellyfinMapper.toWatchRecord(
+          user.id,
+          itemId,
+          userData?.LastPlayedDate
+            ? new Date(userData.LastPlayedDate)
+            : undefined,
+          userData?.PlayedPercentage ?? undefined,
+        ),
+      );
+    });
 
-      // Jellyfin watch state is user-scoped, so we aggregate item user data
-      // across all users and build a normalized watch history from that.
-      const userDataEntries = await this.getAllUserItemData(itemId);
-      userDataEntries.forEach(({ user, userData }) => {
-        if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
-          return;
-        }
-
-        records.push(
-          JellyfinMapper.toWatchRecord(
-            user.id,
-            itemId,
-            userData?.LastPlayedDate
-              ? new Date(userData.LastPlayedDate)
-              : undefined,
-            userData?.PlayedPercentage ?? undefined,
-          ),
-        );
-      });
-
-      this.cache.data.set(cacheKey, records, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
-      return records;
-    } catch (error) {
-      this.logger.error(`Failed to get watch history for ${itemId}`);
-      this.logger.debug(error);
-      return [];
-    }
+    this.cache.data.set(cacheKey, records, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
+    return records;
   }
 
   async getWatchState(itemId: string): Promise<MediaWatchState> {
@@ -1028,8 +1038,9 @@ export class JellyfinAdapterService implements IMediaServerService {
    */
   private async mapUsersBatched<T>(
     fn: (user: MediaUser) => Promise<T>,
+    throwOnUserLookupError = false,
   ): Promise<T[]> {
-    const users = await this.getUsers();
+    const users = await this.getUsers(throwOnUserLookupError);
     const entries: T[] = [];
 
     for (
@@ -1060,11 +1071,15 @@ export class JellyfinAdapterService implements IMediaServerService {
    */
   private async getAllUserItemData(
     itemId: string,
+    throwOnUserLookupError = false,
   ): Promise<Array<{ user: MediaUser; userData?: UserItemDataDto }>> {
-    return this.mapUsersBatched(async (user) => ({
-      user,
-      userData: await this.getItemUserData(itemId, user.id),
-    }));
+    return this.mapUsersBatched(
+      async (user) => ({
+        user,
+        userData: await this.getItemUserData(itemId, user.id),
+      }),
+      throwOnUserLookupError,
+    );
   }
 
   /**

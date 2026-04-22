@@ -766,7 +766,7 @@ describe('JellyfinAdapterService', () => {
       expect(debugSpy).toHaveBeenNthCalledWith(2, expect.any(Error));
     });
 
-    it('should fall back to Jellyfin played state when threshold cannot be loaded', async () => {
+    it('should re-throw when the played threshold cannot be loaded', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [{ Id: 'user-1', Name: 'Alice' }],
       });
@@ -787,9 +787,22 @@ describe('JellyfinAdapterService', () => {
         },
       });
 
-      const history = await service.getWatchHistory('item123');
+      await expect(service.getWatchHistory('item123')).rejects.toThrow(
+        'Configuration unavailable',
+      );
+    });
 
-      expect(history).toEqual([]);
+    it('should re-throw when the Jellyfin users lookup fails', async () => {
+      jellyfinApiMocks.getUsers.mockRejectedValue(
+        new Error('Users unavailable'),
+      );
+      jellyfinApiMocks.getConfiguration.mockResolvedValue({
+        data: { MaxResumePct: 95 },
+      });
+
+      await expect(service.getWatchHistory('item123')).rejects.toThrow(
+        'Users unavailable',
+      );
     });
 
     it('should keep Jellyfin played items when no percentage is available', async () => {
