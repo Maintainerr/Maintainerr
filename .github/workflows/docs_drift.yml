@@ -32,7 +32,17 @@ permissions:
   models: read
 
 jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: docs drift manual run
+
   drift:
+    needs: guard_manual_run
     name: Generate docs drift report
     runs-on: ubuntu-latest
     if: >-
@@ -96,6 +106,7 @@ jobs:
         run: node tools/docs-drift.mjs
 
       - name: Append AI suggestions for documentation-labeled PRs
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         env:
           DOCS_ROOT: ${{ github.workspace }}/.maintainerr_docs
