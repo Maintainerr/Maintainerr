@@ -482,6 +482,24 @@ describe('JellyfinGetterService', () => {
       expect(response).toBeNull();
     });
 
+    it('should return undefined when watch history lookup fails', async () => {
+      const mediaItem = createMediaItem();
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getWatchHistory.mockRejectedValue(
+        new Error('Jellyfin unavailable'),
+      );
+
+      const response = await jellyfinGetterService.get(
+        7,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBeUndefined();
+    });
+
     it('should aggregate the latest watched episode date for a show', async () => {
       const showItem = createMediaItem({
         id: 'show-1',
