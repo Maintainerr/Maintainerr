@@ -248,23 +248,19 @@ export class PlexGetterService {
             : null;
         }
         case 'lastViewedAt': {
-          return await this.plexApi
-            .getWatchHistory(metadata.ratingKey)
-            .then((seenby) => {
-              if (seenby.length > 0) {
-                return new Date(
-                  +seenby
-                    .map((el) => el.viewedAt)
-                    .sort()
-                    .reverse()[0] * 1000,
-                );
-              } else {
-                return null;
-              }
-            })
-            .catch(() => {
-              return null;
-            });
+          // Errors must surface so the outer catch returns `undefined` for an
+          // unknown watch state instead of collapsing the failure into a
+          // confirmed never-watched `null`.
+          const seenby = await this.plexApi.getWatchHistory(metadata.ratingKey);
+          if (seenby && seenby.length > 0) {
+            return new Date(
+              +seenby
+                .map((el) => el.viewedAt)
+                .sort()
+                .reverse()[0] * 1000,
+            );
+          }
+          return null;
         }
         case 'fileVideoResolution': {
           return metadata.Media[0].videoResolution
