@@ -91,6 +91,31 @@ describe('useLockBodyScroll', () => {
     expect(document.body.style.overflow).toBe('hidden')
   })
 
+  it('restores a pre-existing inline overflow value after the final release', () => {
+    document.body.style.overflow = 'scroll'
+
+    const { unmount } = renderHook(() => useLockBodyScroll(true))
+    expect(document.body.style.overflow).toBe('hidden')
+
+    unmount()
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
+  it('captures the pre-existing value only on the 0→1 transition, not on nested acquires', () => {
+    document.body.style.overflow = 'scroll'
+
+    // After the first mount, body becomes 'hidden'. If the nested acquire
+    // re-snapshotted that value, the final restore would leak 'hidden'
+    // instead of the 'scroll' captured at the 0→1 boundary.
+    const { unmount: unmountA } = renderHook(() => useLockBodyScroll(true))
+    const { unmount: unmountB } = renderHook(() => useLockBodyScroll(true))
+
+    unmountA()
+    unmountB()
+
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
   it('toggling isLocked true→false releases the lock without unmounting', () => {
     const { rerender } = renderHook(
       ({ locked }: { locked: boolean }) => useLockBodyScroll(locked),

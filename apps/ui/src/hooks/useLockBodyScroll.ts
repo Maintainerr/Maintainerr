@@ -1,20 +1,20 @@
 import { useEffect } from 'react'
 
 /**
- * Module-level reference counter for active scroll locks.
- *
- * Using a counter (rather than snapshotting and restoring the previous
- * overflow value) avoids a race condition that occurs when multiple
- * simultaneously-mounted modals all unmount in the same React batch:
- * the last cleanup to run would restore whatever overflow value it
- * captured at mount time, which could be 'hidden' (captured while a
- * parent lock was already active), leaving the body scroll locked after
- * all modals have closed.
+ * Module-level state. A single counter tracks how many consumers want the
+ * body locked; the inline overflow value that was present before the first
+ * lock is captured once on the 0→1 transition and restored once on the 1→0
+ * transition. This preserves the hook's original "restore the previous
+ * overflow" contract while avoiding the per-consumer snapshot race that
+ * left the body locked when sibling/parent modals unmounted in the same
+ * React batch.
  */
 let lockCount = 0
+let previousOverflow: string | null = null
 
 const acquire = (): void => {
   if (lockCount === 0) {
+    previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
   }
   lockCount++
@@ -23,18 +23,19 @@ const acquire = (): void => {
 const release = (): void => {
   lockCount = Math.max(0, lockCount - 1)
   if (lockCount === 0) {
-    document.body.style.overflow = ''
+    document.body.style.overflow = previousOverflow ?? ''
+    previousOverflow = null
   }
 }
 
 /**
  * Resets the module-level counter and clears the body overflow style.
- * Intended for test teardown only — tests that unmount via RTL's cleanup()
- * rely on this to avoid leaking counter state across cases when a test
- * throws mid-assertion before its hooks are tracked.
+ * Intended for test teardown only — keeps counter leaks from propagating
+ * across cases if a test throws before its hooks are tracked by RTL.
  */
 export const __resetLockBodyScrollForTests = (): void => {
   lockCount = 0
+  previousOverflow = null
   document.body.style.overflow = ''
 }
 
