@@ -1219,7 +1219,7 @@ const AddModal = (props: AddModal) => {
                               name="overlayTemplateId"
                               control={control}
                               render={({ field }) => (
-                                <select
+                                <Select
                                   id="overlay_template_id"
                                   value={field.value ?? ''}
                                   onChange={(event) => {
@@ -1241,7 +1241,7 @@ const AddModal = (props: AddModal) => {
                                       {template.isDefault ? ' (default)' : ''}
                                     </option>
                                   ))}
-                                </select>
+                                </Select>
                               )}
                             />
                           </div>
