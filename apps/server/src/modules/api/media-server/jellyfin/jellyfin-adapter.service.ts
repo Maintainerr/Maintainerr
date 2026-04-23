@@ -68,7 +68,6 @@ import {
   JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES,
 } from './jellyfin.constants';
 import { JellyfinMapper } from './jellyfin.mapper';
-import * as fs from 'fs';
 import { buffer } from 'stream/consumers';
 const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   // The Jellyfin SDK enum does not expose every server-supported sort key,
