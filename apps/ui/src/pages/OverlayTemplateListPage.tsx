@@ -52,8 +52,15 @@ const OverlayTemplateListPage = () => {
   }, [])
 
   useEffect(() => {
-    void fetchTemplates()
-  }, [fetchTemplates])
+    // Surface load failures through the shared feedback hook so the user
+    // gets the same inline alert style used for follow-up actions on this
+    // page, instead of a silent empty state. Keeping the .catch at the
+    // call site (rather than inside fetchTemplates) avoids adding a
+    // setState branch that react-hooks/set-state-in-effect flags.
+    fetchTemplates().catch(() => {
+      showError('Failed to load overlay templates')
+    })
+  }, [fetchTemplates, showError])
 
   const handleEdit = (id: number) => {
     navigate(`/overlays/templates/${id}`)

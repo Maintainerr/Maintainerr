@@ -64,7 +64,7 @@ const OverlayTemplateEditorPage = () => {
   const [mobileTab, setMobileTab] = useState<'tools' | 'layers' | 'properties'>(
     'layers',
   )
-  const { feedback, showSuccess, showError } =
+  const { feedback, showSuccess, showError, showWarning } =
     useSettingsFeedback('Overlay template')
 
   const canvasDefaults = defaults(mode)
@@ -106,19 +106,36 @@ const OverlayTemplateEditorPage = () => {
     })
   }, [id, isNew, navigate, resetElements, showError])
 
-  // Load media server library sections for poster background
+  // Load media server library sections for poster background. A failure
+  // here makes the background picker look inert (no options to choose
+  // from), so surface it through the shared feedback hook instead of
+  // silently degrading.
   useEffect(() => {
-    void getOverlaySections().then((s) => {
-      if (s) setSections(s)
-    })
-  }, [])
+    void getOverlaySections()
+      .then((s) => {
+        if (s) setSections(s)
+      })
+      .catch(() => {
+        showWarning(
+          'Could not load library sections. The preview background picker will be empty.',
+        )
+      })
+  }, [showWarning])
 
-  // Load available fonts
+  // Load available fonts. A failure here leaves the font dropdown empty
+  // and text elements fall back to the editor default; surface it so the
+  // user knows why the font list isn't populating.
   useEffect(() => {
-    void getOverlayFonts().then((f) => {
-      if (f) setFonts(f)
-    })
-  }, [])
+    void getOverlayFonts()
+      .then((f) => {
+        if (f) setFonts(f)
+      })
+      .catch(() => {
+        showWarning(
+          'Could not load font list. Text elements will fall back to the default font.',
+        )
+      })
+  }, [showWarning])
 
   useEffect(() => {
     if (fonts.length === 0) return
