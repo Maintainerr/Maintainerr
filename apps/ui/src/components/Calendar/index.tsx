@@ -8,6 +8,7 @@ import {
   type CalendarDay,
   type CalendarEntry,
 } from '../../api/calendar'
+import Badge from '../Common/Badge'
 import Button from '../Common/Button'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import Modal from '../Common/Modal'
@@ -412,9 +413,9 @@ const Calendar = () => {
                   </div>
 
                   {totalScheduledCount > 0 && (
-                    <div className="rounded-md bg-maintainerrdark px-2 py-1 text-[10px] font-semibold text-white">
+                    <Badge badgeType="maintainerrdark">
                       {totalScheduledCount} scheduled
-                    </div>
+                    </Badge>
                   )}
                 </div>
 
