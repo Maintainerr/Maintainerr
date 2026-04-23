@@ -88,18 +88,16 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
       },
     ]
 
-    if (isPlex) {
-      items.splice(5, 0, {
-        key: '5',
-        href: '/overlays',
-        svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
-        name: 'Overlays',
-        matchPattern: /^\/overlays(?:\/.*)?$/,
-      })
-    }
+    items.splice(5, 0, {
+      key: '5',
+      href: '/overlays',
+      svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
+      name: 'Overlays',
+      matchPattern: /^\/overlays(?:\/.*)?$/,
+    })
 
     return items
-  }, [collectionsLabel, isPlex])
+  }, [collectionsLabel])
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {

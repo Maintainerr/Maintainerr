@@ -1,6 +1,5 @@
 import { Outlet } from 'react-router-dom'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
-import Alert from '../Common/Alert'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from '../Settings/Tabs'
 
@@ -36,11 +35,6 @@ const OverlaysWrapper = () => {
       <div className="mt-10 min-h-[16rem] text-white">
         {isLoading ? (
           <LoadingSpinner containerClassName="min-h-[16rem]" />
-        ) : !isPlex ? (
-          <Alert type="info" title="Overlays currently require Plex">
-            Switch the media server to Plex to configure overlay settings and
-            templates.
-          </Alert>
         ) : (
           <Outlet />
         )}

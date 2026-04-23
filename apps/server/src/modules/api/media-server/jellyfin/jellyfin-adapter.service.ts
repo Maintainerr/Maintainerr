@@ -10,6 +10,7 @@ import {
 import {
   getCollectionApi,
   getConfigurationApi,
+  getImageApi,
   getItemRefreshApi,
   getItemsApi,
   getItemUpdateApi,
@@ -23,6 +24,7 @@ import {
 import {
   MediaServerFeature,
   MediaServerType,
+  OverlayResult,
   type CollectionVisibilitySettings,
   type CreateCollectionParams,
   type LibraryQueryOptions,
@@ -66,7 +68,8 @@ import {
   JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES,
 } from './jellyfin.constants';
 import { JellyfinMapper } from './jellyfin.mapper';
-
+import * as fs from 'fs';
+import { buffer } from 'stream/consumers';
 const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   // The Jellyfin SDK enum does not expose every server-supported sort key,
   // so use the documented raw values and narrow them for the request model.
@@ -119,6 +122,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   ) {
     this.cache = cacheManager.getCache('jellyfin');
     this.logger.setContext(JellyfinAdapterService.name);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getWatchlistForUser?(userId: string): Promise<string[]> {
+    throw new Error('Method not implemented.');
   }
 
   /**
@@ -372,6 +380,50 @@ export class JellyfinAdapterService implements IMediaServerService {
       return undefined;
     }
   }
+
+async  getPoster(mediaServerItemId: string): Promise<Buffer> {
+  try {
+      const response = await getImageApi(this.api).getItemImage(
+    { itemId: mediaServerItemId, imageType: "Primary" },
+    { responseType: "arraybuffer" },
+  );
+  return Buffer.from(response.data as unknown as ArrayBuffer);
+  }catch (error){
+       // todo: proper handling
+      console.log(error);
+  }
+
+}
+
+ async setPoster(
+  mediaServerItemId: string,
+  poster: OverlayResult,
+): Promise<void> {
+  const buffer = Buffer.from(poster.buffer);
+
+  try {
+    await getImageApi(this.api).setItemImage(
+      {
+        itemId: mediaServerItemId,
+        imageType: "Primary",
+        body: buffer.toString("base64") as unknown as File,
+      },
+      {
+        headers: {
+          "Content-Type": poster.contentType || "application/octet-stream",
+        },
+      },
+    );
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      const e = error as AxiosError;
+      console.log(
+        `setPoster HTTP ${e.response?.status}: ${JSON.stringify(e.response?.data)}`,
+      );
+    }
+    throw error;
+  }
+}
 
   private isCompletedWatch(
     userData:

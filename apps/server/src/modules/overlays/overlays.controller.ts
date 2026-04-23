@@ -40,6 +40,7 @@ import { OverlayProcessorService } from './overlay-processor.service';
 import { OverlaySettingsService } from './overlay-settings.service';
 import { OverlayTaskService } from './overlay-task.service';
 import { OverlayTemplateService } from './overlay-template.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
 
 @Controller('api/overlays')
 export class OverlaysController {
@@ -55,6 +56,7 @@ export class OverlaysController {
     private readonly processorService: OverlayProcessorService,
     private readonly taskService: OverlayTaskService,
     private readonly templateService: OverlayTemplateService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly plexApi: PlexApiService,
     private readonly collectionsService: CollectionsService,
     private readonly logger: MaintainerrLogger,
@@ -114,23 +116,18 @@ export class OverlaysController {
     return this.plexApi.getRandomEpisodeItem([sectionId]);
   }
 
-  @Get('poster')
-  async getPoster(
-    @Query('plexId') plexId: string,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<StreamableFile> {
-    if (!plexId) {
-      throw new HttpException('plexId is required', HttpStatus.BAD_REQUEST);
-    }
-    const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
-    if (!thumbPath) {
-      throw new HttpException('Poster not found', HttpStatus.NOT_FOUND);
-    }
-    const buf = await this.plexApi.downloadPoster(thumbPath);
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    return new StreamableFile(buf);
-  }
+ @Get('poster')
+async getPoster(
+  @Query('mediaId') mediaId: string,  // renamed from plexId
+  @Res({ passthrough: true }) res: Response,
+): Promise<StreamableFile> {
+  if (!mediaId) throw new HttpException('mediaId is required', HttpStatus.BAD_REQUEST);
+  const service = await this.mediaServerFactory.getService();
+  const buf = await service.getPoster(mediaId);
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return new StreamableFile(buf);
+}
 
   // ── Processing ──────────────────────────────────────────────────────────
 

@@ -20,6 +20,8 @@ import {
 import { OverlaySettingsService } from './overlay-settings.service';
 import { OverlayStateService } from './overlay-state.service';
 import { OverlayTemplateService } from './overlay-template.service';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+
 
 export type ProcessorStatus = 'idle' | 'running' | 'error';
 
@@ -40,6 +42,7 @@ export class OverlayProcessorService {
 
   constructor(
     private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly collectionsService: CollectionsService,
     private readonly settingsService: OverlaySettingsService,
     private readonly stateService: OverlayStateService,
@@ -72,40 +75,45 @@ export class OverlayProcessorService {
 
   // ── Poster backup helpers ─────────────────────────────────────────────────
 
-  private getOriginalPosterPath(plexId: string): string {
-    return path.join(this.dataDir, 'overlays', 'originals', `${plexId}.jpg`);
+  private getOriginalPosterPath(mediaServerId: string): string {
+    return path.join(
+      this.dataDir,
+      'overlays',
+      'originals',
+      `${mediaServerId}.jpg`,
+    );
   }
 
   private async saveOriginalPoster(
-    plexId: string,
+    mediaServerId: string,
     buffer: Buffer,
   ): Promise<string> {
-    const filePath = this.getOriginalPosterPath(plexId);
+    const filePath = this.getOriginalPosterPath(mediaServerId);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, buffer);
     return filePath;
   }
 
-  private loadOriginalPoster(plexId: string): Buffer | null {
-    const p = this.getOriginalPosterPath(plexId);
+  private loadOriginalPoster(mediaServerId: string): Buffer | null {
+    const p = this.getOriginalPosterPath(mediaServerId);
     if (fs.existsSync(p)) return fs.readFileSync(p);
     return null;
   }
 
-  private deleteOriginalPoster(plexId: string): void {
-    const p = this.getOriginalPosterPath(plexId);
+  private deleteOriginalPoster(mediaServerId: string): void {
+    const p = this.getOriginalPosterPath(mediaServerId);
     if (fs.existsSync(p)) fs.unlinkSync(p);
   }
 
   // ── Revert ────────────────────────────────────────────────────────────────
 
   async revertItem(collectionId: number, mediaServerId: string): Promise<void> {
-    if (!this.plexApi.isPlexSetup()) return;
-
     const originalBuf = this.loadOriginalPoster(mediaServerId);
     if (originalBuf) {
       try {
-        await this.plexApi.setThumb(mediaServerId, originalBuf, 'image/jpeg');
+        const service = await this.mediaServerFactory.getService();
+        const posterobject: OverlayResult = { buffer: originalBuf, contentType: 'image/jpeg' };
+        await service.setPoster(mediaServerId, posterobject);
         this.logger.log(`Restored original poster for item ${mediaServerId}`);
       } catch (err) {
         this.logger.warn(
@@ -182,7 +190,7 @@ export class OverlayProcessorService {
     );
 
     for (const mediaItem of collection.collectionMedia) {
-      const plexId = mediaItem.mediaServerId;
+      const mediaServerId = mediaItem.mediaServerId;
       const deleteDate = this.getDeleteDate(
         mediaItem.addDate,
         collection.deleteAfterDays,
@@ -192,7 +200,7 @@ export class OverlayProcessorService {
       const daysLeft = this.getDaysLeft(deleteDate);
       const existingState = await this.stateService.getItemState(
         collection.id,
-        plexId,
+        mediaServerId,
       );
 
       // Re-apply if not yet processed or if days-left changed
@@ -201,10 +209,10 @@ export class OverlayProcessorService {
 
       if (shouldApply) {
         this.logger.log(
-          `Applying template overlay to item ${plexId} — ${daysLeft} day(s) left`,
+          `Applying template overlay to item ${mediaServerId} — ${daysLeft} day(s) left`,
         );
         const success = await this.applyTemplateOverlay(
-          plexId,
+          mediaServerId,
           collection.id,
           deleteDate,
           template,
@@ -246,12 +254,6 @@ export class OverlayProcessorService {
         return totalResult;
       }
 
-      if (!this.plexApi.isPlexSetup()) {
-        this.logger.warn('Plex is not configured, aborting overlay run');
-        this.status = 'error';
-        return totalResult;
-      }
-
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Started);
       this.logger.log('=== Overlay processor started ===');
 
@@ -269,18 +271,18 @@ export class OverlayProcessorService {
         `Processing ${collections.length} overlay-enabled collection(s)`,
       );
 
-      // Build set of all current plexIds across overlay-enabled collections
-      const allCurrentPlexIds = new Set<string>();
+      // Build set of all current mediaServerIds across overlay-enabled collections
+      const allCurrentmediaServerIds = new Set<string>();
       for (const coll of collections) {
         for (const item of coll.collectionMedia) {
-          allCurrentPlexIds.add(item.mediaServerId);
+          allCurrentmediaServerIds.add(item.mediaServerId);
         }
       }
 
       // Revert items no longer in any overlay-enabled collection
       const allStates = await this.stateService.getAllStates();
       for (const state of allStates) {
-        if (!allCurrentPlexIds.has(state.mediaServerId)) {
+        if (!allCurrentmediaServerIds.has(state.mediaServerId)) {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
@@ -339,36 +341,35 @@ export class OverlayProcessorService {
   // ── Template-based overlay application ────────────────────────────────────
 
   /**
-   * Apply a template-based overlay to a single Plex item.
+   * Apply a template-based overlay to a single Media-server item.
    */
   async applyTemplateOverlay(
-    plexId: string,
+    mediaServerItemId: string,
     collectionId: number,
     deleteDate: Date,
     template: OverlayTemplate,
   ): Promise<boolean> {
-    // Get poster
-    const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
-    if (!thumbPath) {
-      this.logger.warn(
-        `Could not find poster URL for item ${plexId}, skipping`,
-      );
-      return false;
-    }
-
     let posterBuf: Buffer;
-    const savedOriginal = this.loadOriginalPoster(plexId);
+    const savedOriginal = this.loadOriginalPoster(mediaServerItemId);
     if (savedOriginal) {
       posterBuf = savedOriginal;
     } else {
       try {
-        posterBuf = await this.plexApi.downloadPoster(thumbPath);
+        posterBuf = await (
+          await this.mediaServerFactory.getService()
+        ).getPoster(mediaServerItemId);
+        if (!posterBuf) {
+          this.logger.warn(
+            `Could not find poster URL for item ${mediaServerItemId}, skipping`,
+          );
+          return false;
+        }
       } catch (err) {
-        this.logger.warn(`Failed to download poster for ${plexId}`);
+        this.logger.warn(`Failed to download poster for ${mediaServerItemId}`);
         this.logger.debug(err);
         return false;
       }
-      await this.saveOriginalPoster(plexId, posterBuf);
+      await this.saveOriginalPoster(mediaServerItemId, posterBuf);
     }
 
     // Build render context — raw data; per-element formatting is done by the render service
@@ -389,27 +390,29 @@ export class OverlayProcessorService {
       );
     } catch (err) {
       this.logger.warn(
-        `Template overlay rendering failed for ${plexId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Template overlay rendering failed for ${mediaServerItemId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       this.logger.debug(err);
       return false;
     }
 
     try {
-      await this.plexApi.setThumb(
-        plexId,
-        Buffer.from(result.buffer),
-        result.contentType,
-      );
+      await this.saveOriginalPoster('test', Buffer.from(result.buffer));
+      await (
+        await this.mediaServerFactory.getService()
+      ).setPoster(mediaServerItemId, result);
+
       await this.stateService.markProcessed(
         collectionId,
-        plexId,
-        this.getOriginalPosterPath(plexId),
+        mediaServerItemId,
+        this.getOriginalPosterPath(mediaServerItemId),
         daysLeft,
       );
       return true;
     } catch (err) {
-      this.logger.warn(`Failed to apply template overlay for ${plexId}`);
+      this.logger.warn(
+        `Failed to apply template overlay for ${mediaServerItemId}`,
+      );
       this.logger.debug(err);
       return false;
     }
@@ -419,12 +422,12 @@ export class OverlayProcessorService {
    * Generate a preview image using a template's elements.
    */
   async generateTemplatePreview(
-    plexId: string,
+    mediaServerId: string,
     template: OverlayTemplate,
   ): Promise<OverlayResult> {
-    const thumbPath = await this.plexApi.getBestPosterUrl(plexId);
+    const thumbPath = await this.plexApi.getBestPosterUrl(mediaServerId);
     if (!thumbPath) {
-      throw new Error(`Could not find poster for Plex item ${plexId}`);
+      throw new Error(`Could not find poster for Plex item ${mediaServerId}`);
     }
     const posterBuf = await this.plexApi.downloadPoster(thumbPath);
 

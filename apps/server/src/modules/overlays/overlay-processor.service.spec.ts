@@ -35,6 +35,7 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       {} as any,
       {} as any,
+      {} as any,
       settingsService as any,
       stateService as any,
       {} as any,

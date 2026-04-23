@@ -1176,84 +1176,85 @@ const AddModal = (props: AddModal) => {
                           </div>
                         </div>
 
-                        <div className="flex flex-row items-center justify-between py-4">
-                          <label
-                            htmlFor="overlay_enabled"
-                            className="text-label"
-                          >
-                            Enable overlays
-                            <p className="text-xs font-normal">
-                              Apply date overlays to posters in this{' '}
-                              {collectionTerm}
-                            </p>
-                          </label>
-                          <div className="form-input">
-                            <div className="form-input-field">
-                              <input
-                                type="checkbox"
-                                id="overlay_enabled"
-                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
-                                {...register('overlayEnabled')}
-                              />
-                            </div>
+                      </>
+                    )}
+
+                    <div className="flex flex-row items-center justify-between py-4">
+                      <label
+                        htmlFor="overlay_enabled"
+                        className="text-label"
+                      >
+                        Enable overlays
+                        <p className="text-xs font-normal">
+                          Apply date overlays to posters in this{' '}
+                          {collectionTerm}
+                        </p>
+                      </label>
+                      <div className="form-input">
+                        <div className="form-input-field">
+                          <input
+                            type="checkbox"
+                            id="overlay_enabled"
+                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                            {...register('overlayEnabled')}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {overlayEnabled && (
+                      <div className="form-row items-center">
+                        <label
+                          htmlFor="overlay_template_id"
+                          className="text-label"
+                        >
+                          Overlay template
+                          <p className="text-xs font-normal">
+                            Leave unset to use the default{' '}
+                            {overlayTemplateMode === 'titlecard'
+                              ? 'title card'
+                              : 'poster'}{' '}
+                            template
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <Controller
+                              name="overlayTemplateId"
+                              control={control}
+                              render={({ field }) => (
+                                <select
+                                  id="overlay_template_id"
+                                  value={field.value ?? ''}
+                                  onChange={(event) => {
+                                    const value = event.target.value
+                                    field.onChange(
+                                      value === '' ? null : Number(value),
+                                    )
+                                  }}
+                                >
+                                  <option value="">
+                                    Default {overlayTemplateMode} template
+                                  </option>
+                                  {availableOverlayTemplates.map(
+                                    (template) => (
+                                      <option
+                                        key={template.id}
+                                        value={template.id}
+                                      >
+                                        {template.name}
+                                        {template.isDefault
+                                          ? ' (default)'
+                                          : ''}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                              )}
+                            />
                           </div>
                         </div>
-
-                        {overlayEnabled && (
-                          <div className="form-row items-center">
-                            <label
-                              htmlFor="overlay_template_id"
-                              className="text-label"
-                            >
-                              Overlay template
-                              <p className="text-xs font-normal">
-                                Leave unset to use the default{' '}
-                                {overlayTemplateMode === 'titlecard'
-                                  ? 'title card'
-                                  : 'poster'}{' '}
-                                template
-                              </p>
-                            </label>
-                            <div className="form-input">
-                              <div className="form-input-field">
-                                <Controller
-                                  name="overlayTemplateId"
-                                  control={control}
-                                  render={({ field }) => (
-                                    <select
-                                      id="overlay_template_id"
-                                      value={field.value ?? ''}
-                                      onChange={(event) => {
-                                        const value = event.target.value
-                                        field.onChange(
-                                          value === '' ? null : Number(value),
-                                        )
-                                      }}
-                                    >
-                                      <option value="">
-                                        Default {overlayTemplateMode} template
-                                      </option>
-                                      {availableOverlayTemplates.map(
-                                        (template) => (
-                                          <option
-                                            key={template.id}
-                                            value={template.id}
-                                          >
-                                            {template.name}
-                                            {template.isDefault
-                                              ? ' (default)'
-                                              : ''}
-                                          </option>
-                                        ),
-                                      )}
-                                    </select>
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </>
+                      </div>
                     )}
 
                     {(radarrSettingsId != null ||

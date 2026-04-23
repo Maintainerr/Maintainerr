@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MediaServerModule } from '../api/media-server/media-server.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { CollectionsModule } from '../collections/collections.module';
 import { LogsModule } from '../logging/logs.module';
@@ -22,6 +23,7 @@ import { OverlaysController } from './overlays.controller';
       OverlayItemStateEntity,
       OverlayTemplateEntity,
     ]),
+    MediaServerModule,
     PlexApiModule,
     CollectionsModule,
     TasksModule,

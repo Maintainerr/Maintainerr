@@ -11,6 +11,7 @@ import {
   MediaServerStatus,
   MediaServerType,
   MediaUser,
+  OverlayResult,
   PagedResult,
   RecentlyAddedOptions,
   UpdateCollectionParams,
@@ -49,6 +50,20 @@ export class PlexAdapterService implements IMediaServerService {
   ) {
     this.logger.setContext(PlexAdapterService.name);
   }
+  async setPoster(
+    mediaServerItemId: string,
+    result: OverlayResult,
+  ): Promise<void> {
+    
+    const buffer = Buffer.from(result.buffer);
+    const contentType = result.contentType;
+
+    await this.plexApi.setThumb(
+      mediaServerItemId,
+      Buffer.from(buffer),
+      contentType,
+    );
+  }
 
   async initialize(): Promise<void> {
     await this.plexApi.initialize();
@@ -80,6 +95,11 @@ export class PlexAdapterService implements IMediaServerService {
     const users = await this.plexApi.getUsers();
     if (!users) return [];
     return users.map(PlexMapper.toMediaUser);
+  }
+
+  async getPoster(itemId: string): Promise<Buffer> {
+    const posterUrl = await this.plexApi.getBestPosterUrl(itemId);
+    return this.plexApi.downloadPoster(posterUrl);
   }
 
   async getUser(id: string): Promise<MediaUser | undefined> {
