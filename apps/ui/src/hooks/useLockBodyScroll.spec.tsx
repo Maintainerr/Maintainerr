@@ -4,14 +4,11 @@ import { useLockBodyScroll } from './useLockBodyScroll'
 
 describe('useLockBodyScroll', () => {
   beforeEach(() => {
-    // Reset body overflow before each test so tests are independent.
     document.body.style.overflow = ''
   })
 
   afterEach(() => {
-    // Unmount all hooks, which triggers release() for any active locks.
     cleanup()
-    // Ensure the DOM is clean regardless of test outcome.
     document.body.style.overflow = ''
   })
 
