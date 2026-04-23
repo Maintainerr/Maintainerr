@@ -291,6 +291,44 @@ describe('MetadataSettings', () => {
     ).toBe(false)
   })
 
+  it('uses stacked full-width action buttons on mobile and keeps inline buttons on larger screens', async () => {
+    const { container } = render(<MetadataSettings />)
+
+    await screen.findAllByLabelText('API Key')
+
+    const actionButtons = [
+      ...screen.getAllByRole('button', { name: 'Test Connection' }),
+      ...screen.getAllByRole('button', { name: 'Save Changes' }),
+    ]
+
+    expect(actionButtons).toHaveLength(4)
+
+    actionButtons.forEach((button) => {
+      expect(button.className).toContain('w-full')
+      expect(button.className).toContain('sm:w-auto')
+
+      const wrapper = button.parentElement
+
+      expect(wrapper).toBeTruthy()
+      expect(wrapper?.className).toContain('w-full')
+      expect(wrapper?.className).toContain('sm:w-auto')
+    })
+
+    const actionRows = Array.from(container.querySelectorAll('div')).filter(
+      (element) =>
+        element.className.includes('flex-col') &&
+        element.className.includes('sm:flex-row') &&
+        element.className.includes('sm:justify-end'),
+    )
+
+    expect(actionRows).toHaveLength(2)
+    actionRows.forEach((row) => {
+      expect(row.className).toContain('flex-col')
+      expect(row.className).toContain('sm:flex-row')
+      expect(row.className).toContain('gap-3')
+    })
+  })
+
   it('allows clearing a saved API key and saving the empty value', async () => {
     getApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/tmdb') {
