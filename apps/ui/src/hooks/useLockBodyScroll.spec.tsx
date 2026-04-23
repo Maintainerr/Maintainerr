@@ -1,7 +1,11 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useLockBodyScroll } from './useLockBodyScroll'
 
+// The hook relies on a module-level lock counter. Tests rely on RTL's
+// cleanup() to unmount every renderHook result between tests, which drives
+// the counter back to 0 via the hook's own release path. The manual overflow
+// reset is a belt-and-braces safety net in case a test fails mid-assertion.
 describe('useLockBodyScroll', () => {
   beforeEach(() => {
     document.body.style.overflow = ''
@@ -75,9 +79,7 @@ describe('useLockBodyScroll', () => {
 
     expect(document.body.style.overflow).toBe('hidden')
 
-    act(() => {
-      rerender({ locked: false })
-    })
+    rerender({ locked: false })
 
     expect(document.body.style.overflow).toBe('')
   })
@@ -90,9 +92,7 @@ describe('useLockBodyScroll', () => {
 
     expect(document.body.style.overflow).toBe('')
 
-    act(() => {
-      rerender({ locked: true })
-    })
+    rerender({ locked: true })
 
     expect(document.body.style.overflow).toBe('hidden')
   })
@@ -106,9 +106,7 @@ describe('useLockBodyScroll', () => {
 
     expect(document.body.style.overflow).toBe('hidden')
 
-    act(() => {
-      rerender({ disabled: true })
-    })
+    rerender({ disabled: true })
 
     expect(document.body.style.overflow).toBe('')
   })
