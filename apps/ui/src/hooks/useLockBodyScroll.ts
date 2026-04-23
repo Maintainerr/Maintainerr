@@ -28,6 +28,17 @@ const release = (): void => {
 }
 
 /**
+ * Resets the module-level counter and clears the body overflow style.
+ * Intended for test teardown only — tests that unmount via RTL's cleanup()
+ * rely on this to avoid leaking counter state across cases when a test
+ * throws mid-assertion before its hooks are tracked.
+ */
+export const __resetLockBodyScrollForTests = (): void => {
+  lockCount = 0
+  document.body.style.overflow = ''
+}
+
+/**
  * Hook to lock the body scroll whenever a component is mounted or
  * whenever isLocked is set to true.
  *

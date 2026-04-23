@@ -1,19 +1,14 @@
 import { cleanup, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { useLockBodyScroll } from './useLockBodyScroll'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  __resetLockBodyScrollForTests,
+  useLockBodyScroll,
+} from './useLockBodyScroll'
 
-// The hook relies on a module-level lock counter. Tests rely on RTL's
-// cleanup() to unmount every renderHook result between tests, which drives
-// the counter back to 0 via the hook's own release path. The manual overflow
-// reset is a belt-and-braces safety net in case a test fails mid-assertion.
 describe('useLockBodyScroll', () => {
-  beforeEach(() => {
-    document.body.style.overflow = ''
-  })
-
   afterEach(() => {
     cleanup()
-    document.body.style.overflow = ''
+    __resetLockBodyScrollForTests()
   })
 
   it('locks body overflow when mounted with isLocked=true', () => {
@@ -69,6 +64,31 @@ describe('useLockBodyScroll', () => {
 
     unmountC()
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('release order does not affect final overflow (covers the parent→child vs child→parent race)', () => {
+    const { unmount: unmountParent } = renderHook(() => useLockBodyScroll(true))
+    const { unmount: unmountChild } = renderHook(() => useLockBodyScroll(true))
+
+    expect(document.body.style.overflow).toBe('hidden')
+
+    // Parent (mounted first) releases before child — the scenario from #2748.
+    // The old snapshot-restore implementation would leave overflow='hidden'
+    // here because the child had captured 'hidden' as its "original" value.
+    unmountParent()
+    expect(document.body.style.overflow).toBe('hidden')
+
+    unmountChild()
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('re-acquiring a lock after full release locks again', () => {
+    const { unmount: unmountFirst } = renderHook(() => useLockBodyScroll(true))
+    unmountFirst()
+    expect(document.body.style.overflow).toBe('')
+
+    renderHook(() => useLockBodyScroll(true))
+    expect(document.body.style.overflow).toBe('hidden')
   })
 
   it('toggling isLocked true→false releases the lock without unmounting', () => {
