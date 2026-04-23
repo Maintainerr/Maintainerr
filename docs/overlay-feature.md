@@ -445,8 +445,8 @@ Wraps four public helpers on `JellyfinAdapterService`:
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `findRandomItem(sectionIds, kinds)`                             | `getItems` with `ItemSortBy.Random`, configurable `BaseItemKind[]`, Virtual locations excluded   |
 | `findRandomEpisode(sectionIds)`                                 | Same with `includeItemTypes: [Episode]`                                                          |
-| `getItemImageBuffer(itemId, imageType)`                         | `getItemImage` with `responseType: 'arraybuffer'`, 404 → `null`                                  |
-| `setItemImage(itemId, imageType, buffer, contentType)`          | `setItemImage` with base64 body + explicit `Content-Type` (workaround for jellyfin/jellyfin#12447) |
+| `getItemImageBuffer(itemId, imageType)`                         | `getItemImage` with `format: Jpg` + `responseType: 'arraybuffer'`, 404 → `null`                  |
+| `setItemImage(itemId, imageType, buffer, contentType)`          | `setItemImage` with raw Buffer body + explicit `Content-Type` (matches OpenAPI `image/*` binary contract) |
 
 Mode → `ImageType` mapping lives only in `JellyfinOverlayProvider.imageTypeFor()`:
 
