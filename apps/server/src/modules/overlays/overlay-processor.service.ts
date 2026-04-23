@@ -122,9 +122,12 @@ export class OverlayProcessorService {
    * Revert one item. Returns `true` when the original poster was restored,
    * so callers can decide whether to emit an event and/or aggregate.
    *
-   * State and backup files are always cleaned up, even when the restore call
-   * to the media server fails — otherwise a stuck backup would silently
-   * pollute future runs.
+   * Failure handling:
+   *  - No backup on disk → nothing we can do; clear state so we stop tracking.
+   *  - Backup on disk, upload fails → keep both backup and state so a later
+   *    run can retry cleanly. Destroying the only recovery data on a
+   *    transient media-server outage would strand the item overlaid forever.
+   *  - Backup on disk, upload succeeds → clear backup and state (revert done).
    */
   private async revertItemInternal(
     collectionId: number,
@@ -133,32 +136,34 @@ export class OverlayProcessorService {
     provider: IOverlayProvider,
   ): Promise<boolean> {
     const originalBuf = this.loadOriginalPoster(mediaServerId);
-    let restored = false;
-    if (originalBuf) {
-      try {
-        await provider.uploadImage(
-          mediaServerId,
-          mode,
-          originalBuf,
-          'image/jpeg',
-        );
-        this.logger.log(`Restored original poster for item ${mediaServerId}`);
-        restored = true;
-      } catch (err) {
-        this.logger.warn(
-          `Failed to restore original poster for ${mediaServerId}`,
-        );
-        this.logger.debug(err);
-      }
-    } else {
+
+    if (!originalBuf) {
       this.logger.warn(
         `No saved original poster for ${mediaServerId}, cannot restore`,
       );
+      await this.stateService.removeState(collectionId, mediaServerId);
+      return false;
     }
 
+    try {
+      await provider.uploadImage(
+        mediaServerId,
+        mode,
+        originalBuf,
+        'image/jpeg',
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to restore original poster for ${mediaServerId}; keeping backup for retry`,
+      );
+      this.logger.debug(error);
+      return false;
+    }
+
+    this.logger.log(`Restored original poster for item ${mediaServerId}`);
     this.deleteOriginalPoster(mediaServerId);
     await this.stateService.removeState(collectionId, mediaServerId);
-    return restored;
+    return true;
   }
 
   async revertCollection(collectionId: number): Promise<number> {
@@ -454,11 +459,11 @@ export class OverlayProcessorService {
 
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Finished);
       this.status = 'idle';
-    } catch (err) {
+    } catch (error) {
       this.logger.error(
-        `Unhandled error in overlay processor run: ${err instanceof Error ? err.message : String(err)}`,
+        `Unhandled error in overlay processor run: ${error instanceof Error ? error.message : String(error)}`,
       );
-      this.logger.debug(err);
+      this.logger.debug(error);
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Failed);
       this.status = 'error';
     } finally {
@@ -536,9 +541,9 @@ export class OverlayProcessorService {
           return false;
         }
         posterBuf = downloaded;
-      } catch (err) {
+      } catch (error) {
         this.logger.warn(`Failed to download poster for ${itemId}`);
-        this.logger.debug(err);
+        this.logger.debug(error);
         return false;
       }
       await this.saveOriginalPoster(itemId, posterBuf);
@@ -560,11 +565,11 @@ export class OverlayProcessorService {
         template.canvasHeight,
         context,
       );
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(
-        `Template overlay rendering failed for ${itemId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Template overlay rendering failed for ${itemId}: ${error instanceof Error ? error.message : String(error)}`,
       );
-      this.logger.debug(err);
+      this.logger.debug(error);
       return false;
     }
 
@@ -582,9 +587,9 @@ export class OverlayProcessorService {
         daysLeft,
       );
       return true;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(`Failed to apply template overlay for ${itemId}`);
-      this.logger.debug(err);
+      this.logger.debug(error);
       return false;
     }
   }

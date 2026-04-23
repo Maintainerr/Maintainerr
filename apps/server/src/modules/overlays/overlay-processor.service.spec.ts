@@ -503,6 +503,92 @@ describe('OverlayProcessorService', () => {
     );
   });
 
+  it('preserves the backup and state when the upload fails during revert', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = makeProvider({
+      uploadImage: jest.fn().mockRejectedValue(new Error('Server unreachable')),
+    });
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest
+        .fn()
+        .mockResolvedValue({ type: 'movie', title: 'Flaky collection' }),
+    };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    const deleteSpy = jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertCollection(42);
+
+    // Backup file must not be deleted on failure — we still need it for retry.
+    expect(deleteSpy).not.toHaveBeenCalled();
+    // State must not be cleared on failure — next run reattempts the revert.
+    expect(stateService.removeState).not.toHaveBeenCalled();
+    // No reverted event should be emitted because nothing was actually reverted.
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('clears state (but does not delete a non-existent backup) when no backup is saved', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
+    };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest.spyOn(service as any, 'loadOriginalPoster').mockReturnValue(null);
+    const deleteSpy = jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertCollection(42);
+
+    // Nothing to restore → upload never called.
+    expect(provider.uploadImage).not.toHaveBeenCalled();
+    // No backup on disk → nothing to delete.
+    expect(deleteSpy).not.toHaveBeenCalled();
+    // Clear state so we stop tracking this item.
+    expect(stateService.removeState).toHaveBeenCalledWith(42, 'media-1');
+  });
+
   it('reverts with titlecard mode when the collection is episode type', async () => {
     const stateService = {
       getCollectionStates: jest

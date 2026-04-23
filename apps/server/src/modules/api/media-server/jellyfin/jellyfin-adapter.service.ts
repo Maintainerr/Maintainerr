@@ -1,6 +1,7 @@
 import { Jellyfin, type Api } from '@jellyfin/sdk';
 import {
   BaseItemKind,
+  ImageFormat,
   ImageType,
   ItemFields,
   ItemSortBy,
@@ -446,8 +447,10 @@ export class JellyfinAdapterService implements IMediaServerService {
   /**
    * Download the raw bytes of a specific image for an item. The `imageType`
    * is the caller's choice — `Primary` for movie/show posters, `Thumb` for
-   * episode title-card stills. Returns null when the item has no image of
-   * that type (Jellyfin responds 404) or any other request failure.
+   * episode title-card stills. Forces JPEG so callers can rely on a known
+   * Content-Type (the overlay editor's /poster proxy hard-codes image/jpeg;
+   * the render pipeline also emits JPEG). Returns null when the item has no
+   * image of that type (Jellyfin responds 404) or any other request failure.
    */
   async getItemImageBuffer(
     itemId: string,
@@ -457,7 +460,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const response = await getImageApi(this.api).getItemImage(
-        { itemId, imageType },
+        { itemId, imageType, format: ImageFormat.Jpg },
         { responseType: 'arraybuffer' },
       );
       return Buffer.from(response.data as unknown as ArrayBuffer);
@@ -474,10 +477,12 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Replace the given image type on an item. Jellyfin's set-image endpoint
-   * expects the body as a base64-encoded string (see jellyfin/jellyfin#12447);
-   * raw binary is rejected on recent server versions. Throws on failure so
-   * the processor can count it as a per-item error.
+   * Replace the given image type on an item. Sends the image as raw binary
+   * per the Jellyfin OpenAPI contract (`POST /Items/{itemId}/Images/{imageType}`
+   * declares an `image/*` binary body). The SDK's default serializer passes
+   * non-JSON payloads through unchanged, so axios writes the Buffer directly
+   * on the wire. Throws on failure so the processor counts it as a per-item
+   * error.
    */
   async setItemImage(
     itemId: string,
@@ -489,13 +494,14 @@ export class JellyfinAdapterService implements IMediaServerService {
       throw new Error('Jellyfin API not initialized');
     }
 
-    const base64Body = buffer.toString('base64');
-
     await getImageApi(this.api).setItemImage(
       {
         itemId,
         imageType,
-        body: base64Body as unknown as File,
+        // SDK request typing is `File` (browser-centric). In Node, passing a
+        // Buffer makes axios send raw binary bytes, which is what the
+        // Jellyfin server expects for image/* payloads.
+        body: buffer as unknown as File,
       },
       {
         headers: { 'Content-Type': contentType },

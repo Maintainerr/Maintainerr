@@ -101,6 +101,11 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
     Thumb: 'Thumb',
     Backdrop: 'Backdrop',
   },
+  ImageFormat: {
+    Jpg: 'Jpg',
+    Png: 'Png',
+    Webp: 'Webp',
+  },
 }));
 
 jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
@@ -1719,7 +1724,7 @@ describe('JellyfinAdapterService', () => {
         expect(buf).toBeInstanceOf(Buffer);
         expect(buf?.length).toBe(3);
         expect(jellyfinApiMocks.getItemImage).toHaveBeenCalledWith(
-          { itemId: '42', imageType: 'Primary' },
+          { itemId: '42', imageType: 'Primary', format: 'Jpg' },
           { responseType: 'arraybuffer' },
         );
       });
@@ -1733,7 +1738,7 @@ describe('JellyfinAdapterService', () => {
         await service.getItemImageBuffer('42', 'Thumb' as any);
 
         expect(jellyfinApiMocks.getItemImage).toHaveBeenCalledWith(
-          { itemId: '42', imageType: 'Thumb' },
+          { itemId: '42', imageType: 'Thumb', format: 'Jpg' },
           { responseType: 'arraybuffer' },
         );
       });
@@ -1763,7 +1768,7 @@ describe('JellyfinAdapterService', () => {
     });
 
     describe('setItemImage', () => {
-      it('POSTs the image as base64 with the given Content-Type', async () => {
+      it('POSTs the raw image buffer with the given Content-Type', async () => {
         await initializeAdapter();
         const buf = Buffer.from('jpeg-bytes');
 
@@ -1773,7 +1778,7 @@ describe('JellyfinAdapterService', () => {
           {
             itemId: '42',
             imageType: 'Primary',
-            body: buf.toString('base64'),
+            body: buf,
           },
           { headers: { 'Content-Type': 'image/jpeg' } },
         );
