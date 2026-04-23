@@ -1,7 +1,6 @@
 import {
   DownloadIcon,
   DuplicateIcon,
-  ExclamationIcon,
   PencilAltIcon,
   StarIcon,
   TrashIcon,
@@ -208,7 +207,6 @@ const OverlayTemplateListPage = () => {
         <Modal
           title="Delete template?"
           size="sm"
-          iconSvg={<ExclamationIcon />}
           onCancel={() => setTemplateToDelete(null)}
           footerActions={
             <Button

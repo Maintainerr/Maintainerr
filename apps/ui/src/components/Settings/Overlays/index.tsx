@@ -1,4 +1,4 @@
-import { ExclamationIcon, RefreshIcon } from '@heroicons/react/solid'
+import { RefreshIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   overlaySettingsSchema,
@@ -212,7 +212,6 @@ const OverlaySettings = () => {
         <Modal
           title="Reset all overlays?"
           size="sm"
-          iconSvg={<ExclamationIcon />}
           onCancel={() => setConfirmResetOpen(false)}
           footerActions={
             <Button
