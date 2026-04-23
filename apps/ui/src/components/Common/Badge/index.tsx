@@ -10,6 +10,8 @@ interface BadgeProps {
     | 'success'
     | 'dark'
     | 'light'
+    | 'maintainerr'
+    | 'maintainerrdark'
   className?: string
   href?: string
   children: React.ReactNode
@@ -64,6 +66,18 @@ const Badge = (
       badgeStyle.push('bg-gray-700 !text-gray-300')
       if (href) {
         badgeStyle.push('hover:bg-gray-600')
+      }
+      break
+    case 'maintainerr':
+      badgeStyle.push('bg-maintainerr-600 !text-white')
+      if (href) {
+        badgeStyle.push('hover:bg-maintainerr')
+      }
+      break
+    case 'maintainerrdark':
+      badgeStyle.push('bg-maintainerrdark !text-white')
+      if (href) {
+        badgeStyle.push('hover:bg-maintainerrdark-800')
       }
       break
     default:

@@ -8,6 +8,7 @@ import {
   type CalendarDay,
   type CalendarEntry,
 } from '../../api/calendar'
+import Badge from '../Common/Badge'
 import Button from '../Common/Button'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import Modal from '../Common/Modal'
@@ -412,9 +413,9 @@ const Calendar = () => {
                   </div>
 
                   {totalScheduledCount > 0 && (
-                    <div className="rounded-md border border-maintainerr-500/20 bg-maintainerr-500/10 px-2 py-1 text-[10px] font-semibold text-maintainerr-100">
+                    <Badge badgeType="maintainerrdark">
                       {totalScheduledCount} scheduled
-                    </div>
+                    </Badge>
                   )}
                 </div>
 
@@ -427,7 +428,7 @@ const Calendar = () => {
                     visibleItems.map((item) => (
                       <button
                         key={item.id}
-                        className="truncate rounded-md border border-zinc-600/60 bg-zinc-700/40 px-2 py-1 text-left text-xs text-zinc-100 hover:border-maintainerr-500/40"
+                        className="truncate rounded-md bg-maintainerr-600 px-2 py-1 text-left text-xs text-white hover:bg-maintainerr"
                         title={item.title}
                         type="button"
                         onClick={() => openEntryModal(item, date)}
