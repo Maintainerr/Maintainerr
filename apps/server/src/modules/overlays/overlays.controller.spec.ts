@@ -45,7 +45,6 @@ describe('OverlaysController', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
       createMockLogger(),
     );
 

@@ -12,7 +12,6 @@ import {
 import { ReactNode, useContext, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
-import { useMediaServerType } from '../../../hooks/useMediaServerType'
 import { prefetchRoute } from '../../../router'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
@@ -36,7 +35,6 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const SearchCtx = useContext(SearchContext)
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
-  const { isPlex } = useMediaServerType()
   const { isRouteBlocked, showBlockedNavigationToast } =
     useMediaServerSetupNavigationGuard()
   // Keep variable for potential future customization

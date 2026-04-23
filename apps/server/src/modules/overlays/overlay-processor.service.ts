@@ -2,13 +2,13 @@ import {
   MaintainerrEvent,
   OverlayResult,
   OverlayTemplate,
+  OverlayTemplateMode,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as fs from 'fs';
 import * as path from 'path';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -21,8 +21,8 @@ import {
 import { OverlaySettingsService } from './overlay-settings.service';
 import { OverlayStateService } from './overlay-state.service';
 import { OverlayTemplateService } from './overlay-template.service';
-import { MediaServerFactory } from '../api/media-server/media-server.factory';
-
+import { OverlayProviderFactory } from './providers/overlay-provider.factory';
+import { IOverlayProvider } from './providers/overlay-provider.interface';
 
 export type ProcessorStatus = 'idle' | 'running' | 'error';
 
@@ -53,8 +53,7 @@ export class OverlayProcessorService {
   }
 
   constructor(
-    private readonly plexApi: PlexApiService,
-    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly providerFactory: OverlayProviderFactory,
     private readonly collectionsService: CollectionsService,
     private readonly settingsService: OverlaySettingsService,
     private readonly stateService: OverlayStateService,
@@ -122,19 +121,27 @@ export class OverlayProcessorService {
   /**
    * Revert one item. Returns `true` when the original poster was restored,
    * so callers can decide whether to emit an event and/or aggregate.
+   *
+   * State and backup files are always cleaned up, even when the restore call
+   * to the media server fails — otherwise a stuck backup would silently
+   * pollute future runs.
    */
   private async revertItemInternal(
     collectionId: number,
     mediaServerId: string,
+    mode: OverlayTemplateMode,
+    provider: IOverlayProvider,
   ): Promise<boolean> {
-    
     const originalBuf = this.loadOriginalPoster(mediaServerId);
     let restored = false;
     if (originalBuf) {
       try {
-        const service = await this.mediaServerFactory.getService();
-        const posterobject: OverlayResult = { buffer: originalBuf, contentType: 'image/jpeg' };
-        await service.setPoster(mediaServerId, posterobject);
+        await provider.uploadImage(
+          mediaServerId,
+          mode,
+          originalBuf,
+          'image/jpeg',
+        );
         this.logger.log(`Restored original poster for item ${mediaServerId}`);
         restored = true;
       } catch (err) {
@@ -173,9 +180,29 @@ export class OverlayProcessorService {
   ): Promise<void> {
     if (mediaItems.length === 0) return;
 
+    const provider = await this.providerFactory.getProvider();
+    if (!provider) {
+      this.logger.warn(
+        'Cannot revert overlays: no overlay provider for configured media server',
+      );
+      return;
+    }
+
+    // Mode is derived from the collection so Jellyfin reverts to the correct
+    // image kind (Thumb for episodes, Primary for movies/shows). We resolve
+    // once per batch because all items belong to the same collection.
+    const mode = await this.resolveMode(collectionId);
+
     const reverted: { mediaServerId: string }[] = [];
     for (const item of mediaItems) {
-      if (await this.revertItemInternal(collectionId, item.mediaServerId)) {
+      if (
+        await this.revertItemInternal(
+          collectionId,
+          item.mediaServerId,
+          mode,
+          provider,
+        )
+      ) {
         reverted.push({ mediaServerId: item.mediaServerId });
       }
     }
@@ -196,7 +223,12 @@ export class OverlayProcessorService {
     );
   }
 
-  // ── Apply overlay to single item ──────────────────────────────────────────
+  private async resolveMode(
+    collectionId: number,
+  ): Promise<OverlayTemplateMode> {
+    const coll = await this.collectionsService.getCollection(collectionId);
+    return coll?.type === 'episode' ? 'titlecard' : 'poster';
+  }
 
   // ── Process single collection ─────────────────────────────────────────────
 
@@ -222,9 +254,17 @@ export class OverlayProcessorService {
     const settings = await this.settingsService.getSettings();
     if (!settings.enabled) return result;
 
+    const provider = await this.providerFactory.getProvider();
+    if (!provider) {
+      this.logger.warn(
+        `No overlay provider for configured media server; skipping collection "${collection.title}"`,
+      );
+      return result;
+    }
+
     // Auto-detect title card vs poster based on collection type
-    const isTitleCard = collection.type === 'episode';
-    const mode = isTitleCard ? 'titlecard' : 'poster';
+    const mode: OverlayTemplateMode =
+      collection.type === 'episode' ? 'titlecard' : 'poster';
 
     // Resolve the template: collection override → default for mode → null
     const template = await this.templateService.resolveForCollection(
@@ -245,7 +285,7 @@ export class OverlayProcessorService {
     );
 
     for (const mediaItem of collection.collectionMedia) {
-      const mediaServerId = mediaItem.mediaServerId;
+      const itemId = mediaItem.mediaServerId;
       const deleteDate = this.getDeleteDate(
         mediaItem.addDate,
         collection.deleteAfterDays,
@@ -255,7 +295,7 @@ export class OverlayProcessorService {
       const daysLeft = this.getDaysLeft(deleteDate);
       const existingState = await this.stateService.getItemState(
         collection.id,
-        mediaServerId,
+        itemId,
       );
 
       // Re-apply if not yet processed or if days-left changed
@@ -264,17 +304,19 @@ export class OverlayProcessorService {
 
       if (shouldApply) {
         this.logger.log(
-          `Applying template overlay to item ${mediaServerId} — ${daysLeft} day(s) left`,
+          `Applying template overlay to item ${itemId} — ${daysLeft} day(s) left`,
         );
         const success = await this.applyTemplateOverlay(
-          mediaServerId,
+          itemId,
           collection.id,
           deleteDate,
           template,
+          mode,
+          provider,
         );
         if (success) {
           result.processed++;
-          this.addUniqueMediaItem(processedMediaItems, mediaServerId);
+          this.addUniqueMediaItem(processedMediaItems, itemId);
         } else {
           result.errors++;
         }
@@ -322,6 +364,15 @@ export class OverlayProcessorService {
         return totalResult;
       }
 
+      const provider = await this.providerFactory.getProvider();
+      if (!provider || !(await provider.isAvailable())) {
+        this.logger.warn(
+          'Overlay processing skipped: no overlay provider available for the configured media server',
+        );
+        this.status = 'idle';
+        return totalResult;
+      }
+
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Started);
       this.logger.log('=== Overlay processor started ===');
 
@@ -339,24 +390,27 @@ export class OverlayProcessorService {
         `Processing ${collections.length} overlay-enabled collection(s)`,
       );
 
-      // Build set of all current mediaServerIds across overlay-enabled collections
-      const allCurrentmediaServerIds = new Set<string>();
+      // Build set of all current item ids across overlay-enabled collections
+      const allCurrentItemIds = new Set<string>();
       for (const coll of collections) {
         for (const item of coll.collectionMedia) {
-          allCurrentmediaServerIds.add(item.mediaServerId);
+          allCurrentItemIds.add(item.mediaServerId);
         }
       }
 
       // Revert items no longer in any overlay-enabled collection
       const allStates = await this.stateService.getAllStates();
       for (const state of allStates) {
-        if (!allCurrentmediaServerIds.has(state.mediaServerId)) {
+        if (!allCurrentItemIds.has(state.mediaServerId)) {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
+          const mode = await this.resolveMode(state.collectionId);
           const restored = await this.revertItemInternal(
             state.collectionId,
             state.mediaServerId,
+            mode,
+            provider,
           );
           if (restored) {
             this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
@@ -420,12 +474,23 @@ export class OverlayProcessorService {
   async resetAllOverlays(): Promise<void> {
     this.logger.warn('Resetting all overlays...');
 
+    const provider = await this.providerFactory.getProvider();
+    if (!provider) {
+      this.logger.warn(
+        'Cannot reset overlays: no overlay provider for configured media server',
+      );
+      return;
+    }
+
     const allStates = await this.stateService.getAllStates();
     const revertedMediaItems: { mediaServerId: string }[] = [];
     for (const state of allStates) {
+      const mode = await this.resolveMode(state.collectionId);
       const restored = await this.revertItemInternal(
         state.collectionId,
         state.mediaServerId,
+        mode,
+        provider,
       );
       if (restored) {
         this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
@@ -447,35 +512,36 @@ export class OverlayProcessorService {
   // ── Template-based overlay application ────────────────────────────────────
 
   /**
-   * Apply a template-based overlay to a single Media-server item.
+   * Apply a template-based overlay to a single media-server item.
    */
   async applyTemplateOverlay(
-    mediaServerItemId: string,
+    itemId: string,
     collectionId: number,
     deleteDate: Date,
     template: OverlayTemplate,
+    mode: OverlayTemplateMode,
+    provider: IOverlayProvider,
   ): Promise<boolean> {
     let posterBuf: Buffer;
-    const savedOriginal = this.loadOriginalPoster(mediaServerItemId);
+    const savedOriginal = this.loadOriginalPoster(itemId);
     if (savedOriginal) {
       posterBuf = savedOriginal;
     } else {
       try {
-        posterBuf = await (
-          await this.mediaServerFactory.getService()
-        ).getPoster(mediaServerItemId);
-        if (!posterBuf) {
+        const downloaded = await provider.downloadImage(itemId, mode);
+        if (!downloaded) {
           this.logger.warn(
-            `Could not find poster URL for item ${mediaServerItemId}, skipping`,
+            `No ${mode} artwork available for item ${itemId}, skipping`,
           );
           return false;
         }
+        posterBuf = downloaded;
       } catch (err) {
-        this.logger.warn(`Failed to download poster for ${mediaServerItemId}`);
+        this.logger.warn(`Failed to download poster for ${itemId}`);
         this.logger.debug(err);
         return false;
       }
-      await this.saveOriginalPoster(mediaServerItemId, posterBuf);
+      await this.saveOriginalPoster(itemId, posterBuf);
     }
 
     // Build render context — raw data; per-element formatting is done by the render service
@@ -496,46 +562,55 @@ export class OverlayProcessorService {
       );
     } catch (err) {
       this.logger.warn(
-        `Template overlay rendering failed for ${mediaServerItemId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Template overlay rendering failed for ${itemId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       this.logger.debug(err);
       return false;
     }
 
     try {
-      await this.saveOriginalPoster('test', Buffer.from(result.buffer));
-      await (
-        await this.mediaServerFactory.getService()
-      ).setPoster(mediaServerItemId, result);
-
+      await provider.uploadImage(
+        itemId,
+        mode,
+        Buffer.from(result.buffer),
+        result.contentType,
+      );
       await this.stateService.markProcessed(
         collectionId,
-        mediaServerItemId,
-        this.getOriginalPosterPath(mediaServerItemId),
+        itemId,
+        this.getOriginalPosterPath(itemId),
         daysLeft,
       );
       return true;
     } catch (err) {
-      this.logger.warn(
-        `Failed to apply template overlay for ${mediaServerItemId}`,
-      );
+      this.logger.warn(`Failed to apply template overlay for ${itemId}`);
       this.logger.debug(err);
       return false;
     }
   }
 
   /**
-   * Generate a preview image using a template's elements.
+   * Generate a preview image using a template's elements. Renders onto the
+   * artwork kind that matches the template's mode (poster → Primary, title
+   * card → Thumb) so Jellyfin previews pull the correct image.
    */
   async generateTemplatePreview(
-    mediaServerId: string,
+    itemId: string,
     template: OverlayTemplate,
   ): Promise<OverlayResult> {
-    const thumbPath = await this.plexApi.getBestPosterUrl(mediaServerId);
-    if (!thumbPath) {
-      throw new Error(`Could not find poster for Plex item ${mediaServerId}`);
+    const provider = await this.providerFactory.getProvider();
+    if (!provider) {
+      throw new Error(
+        'Cannot generate preview: no overlay provider for configured media server',
+      );
     }
-    const posterBuf = await this.plexApi.downloadPoster(thumbPath);
+
+    const posterBuf = await provider.downloadImage(itemId, template.mode);
+    if (!posterBuf) {
+      throw new Error(
+        `Could not find ${template.mode} artwork for item ${itemId}`,
+      );
+    }
 
     // Sample context: 14 days in the future
     const sampleDate = new Date();

@@ -6,6 +6,39 @@ import {
 } from '../../../test/utils/data';
 import { OverlayProcessorService } from './overlay-processor.service';
 
+const makeTemplate = (
+  overrides: Partial<OverlayTemplate> = {},
+): OverlayTemplate => ({
+  id: 1,
+  name: 'Default poster',
+  description: '',
+  mode: 'poster',
+  canvasWidth: 1000,
+  canvasHeight: 1500,
+  elements: [],
+  isDefault: true,
+  isPreset: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
+
+const makeProvider = (overrides: Partial<Record<string, jest.Mock>> = {}) => ({
+  isAvailable: jest.fn().mockResolvedValue(true),
+  getSections: jest.fn(),
+  getRandomItem: jest.fn(),
+  getRandomEpisode: jest.fn(),
+  downloadImage: jest.fn(),
+  uploadImage: jest.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
+
+const makeProviderFactory = (
+  provider: ReturnType<typeof makeProvider> | null,
+) => ({
+  getProvider: jest.fn().mockResolvedValue(provider),
+});
+
 describe('OverlayProcessorService', () => {
   it('processes collections with deleteAfterDays equal to zero', async () => {
     const settingsService = {
@@ -14,34 +47,22 @@ describe('OverlayProcessorService', () => {
     const stateService = {
       getItemState: jest.fn().mockResolvedValue(null),
     };
-    const template: OverlayTemplate = {
-      id: 1,
-      name: 'Default poster',
-      description: '',
-      mode: 'poster',
-      canvasWidth: 1000,
-      canvasHeight: 1500,
-      elements: [],
-      isDefault: true,
-      isPreset: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const template = makeTemplate();
     const templateService = {
       resolveForCollection: jest.fn().mockResolvedValue(template),
     };
-    const logger = createMockLogger();
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
 
     const service = new OverlayProcessorService(
-      {} as any,
-      {} as any,
+      providerFactory as any,
       {} as any,
       settingsService as any,
       stateService as any,
       {} as any,
       templateService as any,
       { emit: jest.fn() } as any,
-      logger,
+      createMockLogger(),
     );
 
     const collection = createCollection({
@@ -67,8 +88,63 @@ describe('OverlayProcessorService', () => {
       collection.id,
       expect.any(Date),
       template,
+      'poster',
+      provider,
     );
     expect(result.processed).toBe(1);
+  });
+
+  it('passes titlecard mode when the collection is of type episode', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getItemState: jest.fn().mockResolvedValue(null),
+    };
+    const template = makeTemplate({ mode: 'titlecard' });
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    const collection = createCollection({
+      id: 1,
+      title: 'Episode overlays',
+      type: 'episode',
+      deleteAfterDays: 7,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'ep-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
+
+    await service.processCollection(collection as any);
+
+    expect(service.applyTemplateOverlay).toHaveBeenCalledWith(
+      'ep-1',
+      collection.id,
+      expect.any(Date),
+      template,
+      'titlecard',
+      provider,
+    );
   });
 
   it('emits one aggregated overlay applied notification for process-all runs', async () => {
@@ -79,19 +155,7 @@ describe('OverlayProcessorService', () => {
       getAllStates: jest.fn().mockResolvedValue([]),
       getItemState: jest.fn().mockResolvedValue(null),
     };
-    const template: OverlayTemplate = {
-      id: 1,
-      name: 'Default poster',
-      description: '',
-      mode: 'poster',
-      canvasWidth: 1000,
-      canvasHeight: 1500,
-      elements: [],
-      isDefault: true,
-      isPreset: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const template = makeTemplate();
     const templateService = {
       resolveForCollection: jest.fn().mockResolvedValue(template),
     };
@@ -117,13 +181,12 @@ describe('OverlayProcessorService', () => {
         .fn()
         .mockResolvedValue([collection]),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
+      providerFactory as any,
       collectionsService as any,
       settingsService as any,
       stateService as any,
@@ -164,19 +227,7 @@ describe('OverlayProcessorService', () => {
       getAllStates: jest.fn().mockResolvedValue([]),
       getItemState: jest.fn().mockResolvedValue(null),
     };
-    const template: OverlayTemplate = {
-      id: 1,
-      name: 'Default poster',
-      description: '',
-      mode: 'poster',
-      canvasWidth: 1000,
-      canvasHeight: 1500,
-      elements: [],
-      isDefault: true,
-      isPreset: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const template = makeTemplate();
     const templateService = {
       resolveForCollection: jest.fn().mockResolvedValue(template),
     };
@@ -211,13 +262,12 @@ describe('OverlayProcessorService', () => {
         .fn()
         .mockResolvedValue([firstCollection, secondCollection]),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
+      providerFactory as any,
       collectionsService as any,
       settingsService as any,
       stateService as any,
@@ -240,6 +290,64 @@ describe('OverlayProcessorService', () => {
     );
   });
 
+  it('aborts processAllCollections cleanly when no overlay provider is available', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const providerFactory = makeProviderFactory(null);
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    const result = await service.processAllCollections();
+
+    expect(result).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 0,
+      errors: 0,
+    });
+    expect(service.status).toBe('idle');
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('aborts processAllCollections when the provider reports unavailable', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const provider = makeProvider({
+      isAvailable: jest.fn().mockResolvedValue(false),
+    });
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    const result = await service.processAllCollections();
+
+    expect(result.processed).toBe(0);
+    expect(service.status).toBe('idle');
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
   it('emits one aggregated overlay reverted notification for reset-all runs', async () => {
     const stateService = {
       getAllStates: jest.fn().mockResolvedValue([
@@ -249,15 +357,16 @@ describe('OverlayProcessorService', () => {
       clearAllStates: jest.fn().mockResolvedValue(undefined),
       removeState: jest.fn().mockResolvedValue(undefined),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-      setThumb: jest.fn().mockResolvedValue(undefined),
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+    const collectionsService = {
+      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
     };
     const eventEmitter = { emit: jest.fn() };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
-      { getCollection: jest.fn() } as any,
+      providerFactory as any,
+      collectionsService as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -302,15 +411,16 @@ describe('OverlayProcessorService', () => {
       clearAllStates: jest.fn().mockResolvedValue(undefined),
       removeState: jest.fn().mockResolvedValue(undefined),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-      setThumb: jest.fn().mockResolvedValue(undefined),
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+    const collectionsService = {
+      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
     };
     const eventEmitter = { emit: jest.fn() };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
-      { getCollection: jest.fn() } as any,
+      providerFactory as any,
+      collectionsService as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -347,19 +457,17 @@ describe('OverlayProcessorService', () => {
         ]),
       removeState: jest.fn().mockResolvedValue(undefined),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-      setThumb: jest.fn().mockResolvedValue(undefined),
-    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
     const collectionsService = {
       getCollection: jest
         .fn()
-        .mockResolvedValue({ title: 'Target collection' }),
+        .mockResolvedValue({ type: 'movie', title: 'Target collection' }),
     };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
+      providerFactory as any,
       collectionsService as any,
       {} as any,
       stateService as any,
@@ -395,21 +503,63 @@ describe('OverlayProcessorService', () => {
     );
   });
 
+  it('reverts with titlecard mode when the collection is episode type', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'ep-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest
+        .fn()
+        .mockResolvedValue({ type: 'episode', title: 'Ep revert' }),
+    };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertCollection(99);
+
+    expect(provider.uploadImage).toHaveBeenCalledWith(
+      'ep-1',
+      'titlecard',
+      expect.any(Buffer),
+      'image/jpeg',
+    );
+  });
+
   it('emits one aggregated overlay reverted notification for revertMultipleItems', async () => {
     const stateService = {
       removeState: jest.fn().mockResolvedValue(undefined),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-      setThumb: jest.fn().mockResolvedValue(undefined),
-    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
     const collectionsService = {
-      getCollection: jest.fn(),
+      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
     };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
+      providerFactory as any,
       collectionsService as any,
       {} as any,
       stateService as any,
@@ -451,24 +601,23 @@ describe('OverlayProcessorService', () => {
         identifier: { type: 'collection', value: 42 },
       }),
     );
-    expect(collectionsService.getCollection).not.toHaveBeenCalled();
   });
 
   it('falls back to the collection title when revertMultipleItems receives no name', async () => {
     const stateService = {
       removeState: jest.fn().mockResolvedValue(undefined),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-      setThumb: jest.fn().mockResolvedValue(undefined),
-    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
     const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ title: 'Stored title' }),
+      getCollection: jest
+        .fn()
+        .mockResolvedValue({ type: 'movie', title: 'Stored title' }),
     };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
+      providerFactory as any,
       collectionsService as any,
       {} as any,
       stateService as any,
@@ -501,15 +650,16 @@ describe('OverlayProcessorService', () => {
     const stateService = {
       removeState: jest.fn().mockResolvedValue(undefined),
     };
-    const plexApi = {
-      isPlexSetup: jest.fn().mockReturnValue(true),
-      setThumb: jest.fn().mockResolvedValue(undefined),
-    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
+    };
 
     const service = new OverlayProcessorService(
-      plexApi as any,
-      { getCollection: jest.fn() } as any,
+      providerFactory as any,
+      collectionsService as any,
       {} as any,
       stateService as any,
       {} as any,

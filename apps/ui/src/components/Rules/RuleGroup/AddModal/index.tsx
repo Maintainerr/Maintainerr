@@ -1175,15 +1175,11 @@ const AddModal = (props: AddModal) => {
                             </div>
                           </div>
                         </div>
-
                       </>
                     )}
 
                     <div className="flex flex-row items-center justify-between py-4">
-                      <label
-                        htmlFor="overlay_enabled"
-                        className="text-label"
-                      >
+                      <label htmlFor="overlay_enabled" className="text-label">
                         Enable overlays
                         <p className="text-xs font-normal">
                           Apply date overlays to posters in this{' '}
@@ -1236,19 +1232,15 @@ const AddModal = (props: AddModal) => {
                                   <option value="">
                                     Default {overlayTemplateMode} template
                                   </option>
-                                  {availableOverlayTemplates.map(
-                                    (template) => (
-                                      <option
-                                        key={template.id}
-                                        value={template.id}
-                                      >
-                                        {template.name}
-                                        {template.isDefault
-                                          ? ' (default)'
-                                          : ''}
-                                      </option>
-                                    ),
-                                  )}
+                                  {availableOverlayTemplates.map((template) => (
+                                    <option
+                                      key={template.id}
+                                      value={template.id}
+                                    >
+                                      {template.name}
+                                      {template.isDefault ? ' (default)' : ''}
+                                    </option>
+                                  ))}
                                 </select>
                               )}
                             />

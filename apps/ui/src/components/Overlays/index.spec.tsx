@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import OverlaysWrapper from './index'
 
 const useMediaServerType = vi.fn()
@@ -10,21 +10,6 @@ vi.mock('../../hooks/useMediaServerType', () => ({
 
 vi.mock('../Common/LoadingSpinner', () => ({
   default: () => <div>loading</div>,
-}))
-
-vi.mock('../Common/Alert', () => ({
-  default: ({
-    title,
-    children,
-  }: {
-    title?: string
-    children?: React.ReactNode
-  }) => (
-    <div>
-      {title ? <div>{title}</div> : null}
-      {children ? <div>{children}</div> : null}
-    </div>
-  ),
 }))
 
 vi.mock('../Settings/Tabs', () => ({
@@ -42,36 +27,27 @@ vi.mock('react-router-dom', async () => {
 })
 
 describe('OverlaysWrapper', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it('keeps the tabs shell visible while the media server type is unresolved', () => {
-    useMediaServerType.mockReturnValue({ isLoading: true, isPlex: false })
+    useMediaServerType.mockReturnValue({ isLoading: true })
 
     render(<OverlaysWrapper />)
 
     expect(screen.getAllByTestId('settings-tabs').length).toBeGreaterThan(0)
     expect(screen.getByText('loading')).toBeTruthy()
-  })
-
-  it('shows an inline unsupported-state message for non-Plex media servers', () => {
-    useMediaServerType.mockReturnValue({ isLoading: false, isPlex: false })
-
-    render(<OverlaysWrapper />)
-
-    expect(screen.getAllByTestId('settings-tabs').length).toBeGreaterThan(0)
-    expect(screen.getByText('Overlays currently require Plex')).toBeTruthy()
-    expect(
-      screen.getByText(
-        'Switch the media server to Plex to configure overlay settings and templates.',
-      ),
-    )
     expect(screen.queryByTestId('outlet')).toBeNull()
   })
 
-  it('renders overlay tabs and outlet for Plex', () => {
-    useMediaServerType.mockReturnValue({ isLoading: false, isPlex: true })
+  it('renders overlay tabs and outlet once the media server type resolves', () => {
+    useMediaServerType.mockReturnValue({ isLoading: false })
 
     render(<OverlaysWrapper />)
 
     expect(screen.getAllByTestId('settings-tabs').length).toBeGreaterThan(0)
     expect(screen.getByTestId('outlet')).toBeTruthy()
+    expect(screen.queryByText('loading')).toBeNull()
   })
 })

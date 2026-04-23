@@ -9,7 +9,7 @@ import { POSTER_CANVAS, TITLECARD_CANVAS } from '@maintainerr/contracts'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  buildPosterUrl,
+  buildItemImageUrl,
   createOverlayTemplate,
   getOverlayFonts,
   getOverlaySections,
@@ -106,7 +106,7 @@ const OverlayTemplateEditorPage = () => {
     })
   }, [id, isNew, navigate, resetElements, showError])
 
-  // Load Plex library sections for poster background
+  // Load media server library sections for poster background
   useEffect(() => {
     void getOverlaySections().then((s) => {
       if (s) setSections(s)
@@ -162,7 +162,7 @@ const OverlayTemplateEditorPage = () => {
     const fetcher = mode === 'titlecard' ? getRandomEpisode : getRandomItem
     const item = await fetcher(selectedSection)
     if (item) {
-      setBackgroundUrl(buildPosterUrl(item.plexId))
+      setBackgroundUrl(buildItemImageUrl(item.itemId, mode))
     }
   }, [mode, selectedSection])
 
@@ -181,7 +181,7 @@ const OverlayTemplateEditorPage = () => {
     let cancelled = false
     void fetcher(selectedSection).then((item) => {
       if (cancelled || !item) return
-      setBackgroundUrl(buildPosterUrl(item.plexId))
+      setBackgroundUrl(buildItemImageUrl(item.itemId, mode))
     })
     return () => {
       cancelled = true

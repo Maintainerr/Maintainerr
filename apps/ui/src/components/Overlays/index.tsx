@@ -22,15 +22,17 @@ const overlayRoutes: SettingsRoute[] = [
   },
 ]
 
+// Overlays are supported on both Plex and Jellyfin. The router-level
+// MediaServerSetupGuard keeps unconfigured users out entirely, so we only
+// need to handle the short loading window before the server-type hook
+// resolves.
 const OverlaysWrapper = () => {
-  const { isLoading, isPlex } = useMediaServerType()
+  const { isLoading } = useMediaServerType()
 
   return (
     <>
-      <div
-        className={`mt-6 ${!isPlex ? 'pointer-events-none opacity-50' : ''}`}
-      >
-        <SettingsTabs settingsRoutes={overlayRoutes} allEnabled={isPlex} />
+      <div className="mt-6">
+        <SettingsTabs settingsRoutes={overlayRoutes} allEnabled />
       </div>
       <div className="mt-10 min-h-[16rem] text-white">
         {isLoading ? (

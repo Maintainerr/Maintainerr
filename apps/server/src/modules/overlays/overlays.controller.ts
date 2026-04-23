@@ -1,11 +1,15 @@
 import {
   isSafeFilename,
+  OverlayLibrarySection,
+  OverlayPreviewItem,
   OverlaySettings,
   OverlaySettingsUpdate,
   overlaySettingsUpdateSchema,
   OverlayTemplateCreate,
   overlayTemplateCreateSchema,
   overlayTemplateExportSchema,
+  OverlayTemplateMode,
+  overlayTemplateModeValues,
   OverlayTemplateUpdate,
   overlayTemplateUpdateSchema,
   sanitizeFilenameChars,
@@ -23,8 +27,10 @@ import {
   Put,
   Query,
   Res,
+  ServiceUnavailableException,
   StreamableFile,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -32,17 +38,22 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
+import { z } from 'zod';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
-import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { MediaServerSetupGuard } from '../api/media-server/guards/media-server-setup.guard';
 import { CollectionsService } from '../collections/collections.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { OverlayProcessorService } from './overlay-processor.service';
 import { OverlaySettingsService } from './overlay-settings.service';
 import { OverlayTaskService } from './overlay-task.service';
 import { OverlayTemplateService } from './overlay-template.service';
-import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IOverlayProvider } from './providers/overlay-provider.interface';
+import { OverlayProviderFactory } from './providers/overlay-provider.factory';
+
+const overlayModeQuerySchema = z.enum(overlayTemplateModeValues);
 
 @Controller('api/overlays')
+@UseGuards(MediaServerSetupGuard)
 export class OverlaysController {
   private readonly fontsDir: string;
   private readonly fontContentTypes = new Map<string, string>([
@@ -56,8 +67,7 @@ export class OverlaysController {
     private readonly processorService: OverlayProcessorService,
     private readonly taskService: OverlayTaskService,
     private readonly templateService: OverlayTemplateService,
-    private readonly mediaServerFactory: MediaServerFactory,
-    private readonly plexApi: PlexApiService,
+    private readonly providerFactory: OverlayProviderFactory,
     private readonly collectionsService: CollectionsService,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -66,6 +76,21 @@ export class OverlaysController {
     const distFonts = path.join(__dirname, '..', '..', 'assets', 'fonts');
     const srcFonts = path.join(__dirname, '..', '..', '..', 'assets', 'fonts');
     this.fontsDir = fs.existsSync(distFonts) ? distFonts : srcFonts;
+  }
+
+  /**
+   * Resolve the overlay provider for the configured media server. The class
+   * is gated by MediaServerSetupGuard so the happy path always finds one;
+   * the null branch is defence-in-depth for a race with a server switch.
+   */
+  private async requireProvider(): Promise<IOverlayProvider> {
+    const provider = await this.providerFactory.getProvider();
+    if (!provider) {
+      throw new ServiceUnavailableException(
+        'Overlays are not available right now.',
+      );
+    }
+    return provider;
   }
 
   // ── Settings ────────────────────────────────────────────────────────────
@@ -93,41 +118,62 @@ export class OverlaysController {
     return updated;
   }
 
-  // ── Plex helpers (for preview UI) ─────────────────────────────────────
+  // ── Media server helpers (for preview UI) ───────────────────────────────
 
   @Get('sections')
-  async getSections() {
-    return this.plexApi.getOverlayLibrarySections();
+  async getSections(): Promise<OverlayLibrarySection[]> {
+    const provider = await this.requireProvider();
+    return provider.getSections();
   }
 
   @Get('random-item')
-  async getRandomItem(@Query('sectionId') sectionId: string) {
+  async getRandomItem(
+    @Query('sectionId') sectionId: string,
+  ): Promise<OverlayPreviewItem | null> {
     if (!sectionId) {
       throw new HttpException('sectionId is required', HttpStatus.BAD_REQUEST);
     }
-    return this.plexApi.getRandomLibraryItem([sectionId]);
+    const provider = await this.requireProvider();
+    return provider.getRandomItem([sectionId]);
   }
 
   @Get('random-episode')
-  async getRandomEpisode(@Query('sectionId') sectionId: string) {
+  async getRandomEpisode(
+    @Query('sectionId') sectionId: string,
+  ): Promise<OverlayPreviewItem | null> {
     if (!sectionId) {
       throw new HttpException('sectionId is required', HttpStatus.BAD_REQUEST);
     }
-    return this.plexApi.getRandomEpisodeItem([sectionId]);
+    const provider = await this.requireProvider();
+    return provider.getRandomEpisode([sectionId]);
   }
 
- @Get('poster')
-async getPoster(
-  @Query('mediaId') mediaId: string,  // renamed from plexId
-  @Res({ passthrough: true }) res: Response,
-): Promise<StreamableFile> {
-  if (!mediaId) throw new HttpException('mediaId is required', HttpStatus.BAD_REQUEST);
-  const service = await this.mediaServerFactory.getService();
-  const buf = await service.getPoster(mediaId);
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  return new StreamableFile(buf);
-}
+  @Get('poster')
+  async getPoster(
+    @Query('itemId') itemId: string,
+    @Query('mode') modeParam: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    if (!itemId) {
+      throw new HttpException('itemId is required', HttpStatus.BAD_REQUEST);
+    }
+    const parsedMode = overlayModeQuerySchema.safeParse(modeParam);
+    if (!parsedMode.success) {
+      throw new HttpException(
+        "mode must be 'poster' or 'titlecard'",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const mode: OverlayTemplateMode = parsedMode.data;
+    const provider = await this.requireProvider();
+    const buf = await provider.downloadImage(itemId, mode);
+    if (!buf) {
+      throw new HttpException('Poster not found', HttpStatus.NOT_FOUND);
+    }
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return new StreamableFile(buf);
+  }
 
   // ── Processing ──────────────────────────────────────────────────────────
 
@@ -381,18 +427,18 @@ async getPoster(
   @Post('templates/:id/preview')
   async previewTemplate(
     @Param('id', ParseIntPipe) id: number,
-    @Query('plexId') plexId: string,
+    @Query('itemId') itemId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    if (!plexId) {
-      throw new HttpException('plexId is required', HttpStatus.BAD_REQUEST);
+    if (!itemId) {
+      throw new HttpException('itemId is required', HttpStatus.BAD_REQUEST);
     }
     const template = await this.templateService.findById(id);
     if (!template) {
       throw new HttpException('Template not found', HttpStatus.NOT_FOUND);
     }
     const result = await this.processorService.generateTemplatePreview(
-      plexId,
+      itemId,
       template,
     );
     res.setHeader('Content-Type', result.contentType);

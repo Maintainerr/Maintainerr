@@ -11,7 +11,6 @@ import {
   MediaServerStatus,
   MediaServerType,
   MediaUser,
-  OverlayResult,
   PagedResult,
   RecentlyAddedOptions,
   UpdateCollectionParams,
@@ -37,7 +36,6 @@ export interface MediaWatchState {
  * - This allows callers to safely iterate over read results while catching write failures
  */
 export interface IMediaServerService {
-  setPoster(mediaServerItemId: string, poster: OverlayResult): Promise<void>;
   /**
    * Initialize the connection to the media server.
    * Should validate connection and cache server info.
@@ -131,13 +129,6 @@ export interface IMediaServerService {
    * Get detailed metadata for a specific item.
    */
   getMetadata(itemId: string): Promise<MediaItem | undefined>;
-
-
-  /**
-   * gets the poster for the specific item
-   * @param itemId the id of the item that we want the poster of
-   */
-  getPoster(itemId: string): Promise<Buffer>;
 
   /**
    * Get child items (seasons for shows, episodes for seasons).
