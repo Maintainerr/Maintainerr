@@ -1768,7 +1768,7 @@ describe('JellyfinAdapterService', () => {
     });
 
     describe('setItemImage', () => {
-      it('POSTs the raw image buffer with the given Content-Type', async () => {
+      it('POSTs the image as base64 with the given Content-Type', async () => {
         await initializeAdapter();
         const buf = Buffer.from('jpeg-bytes');
 
@@ -1778,7 +1778,7 @@ describe('JellyfinAdapterService', () => {
           {
             itemId: '42',
             imageType: 'Primary',
-            body: buf,
+            body: buf.toString('base64'),
           },
           { headers: { 'Content-Type': 'image/jpeg' } },
         );

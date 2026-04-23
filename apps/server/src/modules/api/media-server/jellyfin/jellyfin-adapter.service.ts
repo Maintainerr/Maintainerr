@@ -477,12 +477,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Replace the given image type on an item. Sends the image as raw binary
-   * per the Jellyfin OpenAPI contract (`POST /Items/{itemId}/Images/{imageType}`
-   * declares an `image/*` binary body). The SDK's default serializer passes
-   * non-JSON payloads through unchanged, so axios writes the Buffer directly
-   * on the wire. Throws on failure so the processor counts it as a per-item
-   * error.
+   * Replace the given image type on an item. Sends the image as a
+   * base64-encoded string body — the Jellyfin server (at least through the
+   * versions this project targets) rejects raw binary payloads on this
+   * endpoint with a 500, despite the OpenAPI description hinting at
+   * `image/*` binary. Base64 is the empirically-verified working path; see
+   * the discussion in jellyfin/jellyfin#12447. Throws on failure so the
+   * processor counts it as a per-item error.
    */
   async setItemImage(
     itemId: string,
@@ -494,14 +495,13 @@ export class JellyfinAdapterService implements IMediaServerService {
       throw new Error('Jellyfin API not initialized');
     }
 
+    const base64Body = buffer.toString('base64');
+
     await getImageApi(this.api).setItemImage(
       {
         itemId,
         imageType,
-        // SDK request typing is `File` (browser-centric). In Node, passing a
-        // Buffer makes axios send raw binary bytes, which is what the
-        // Jellyfin server expects for image/* payloads.
-        body: buffer as unknown as File,
+        body: base64Body as unknown as File,
       },
       {
         headers: { 'Content-Type': contentType },
