@@ -1,6 +1,7 @@
 import {
   DownloadIcon,
   DuplicateIcon,
+  ExclamationIcon,
   PencilAltIcon,
   StarIcon,
   TrashIcon,
@@ -22,6 +23,7 @@ import {
 } from '../api/overlays'
 import Button from '../components/Common/Button'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import Modal from '../components/Common/Modal'
 import PageControlRow from '../components/Common/PageControlRow'
 import {
   SettingsFeedbackAlert,
@@ -32,6 +34,10 @@ const OverlayTemplateListPage = () => {
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<OverlayTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [templateToDelete, setTemplateToDelete] = useState<{
+    id: number
+    name: string
+  } | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const { feedback, showSuccess, showError } =
     useSettingsFeedback('Overlay templates')
@@ -63,8 +69,14 @@ const OverlayTemplateListPage = () => {
     }
   }
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`Delete template "${name}"?`)) return
+  const handleDelete = (id: number, name: string) => {
+    setTemplateToDelete({ id, name })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!templateToDelete) return
+    const { id } = templateToDelete
+    setTemplateToDelete(null)
     const result = await deleteOverlayTemplate(id)
     if (result?.success) {
       showSuccess('Template deleted')
@@ -184,6 +196,32 @@ const OverlayTemplateListPage = () => {
           </>
         )}
       </div>
+
+      {templateToDelete && (
+        <Modal
+          title="Delete template?"
+          size="sm"
+          iconSvg={<ExclamationIcon />}
+          onCancel={() => setTemplateToDelete(null)}
+          footerActions={
+            <Button
+              buttonType="danger"
+              className="ml-3"
+              onClick={() => void handleDeleteConfirm()}
+            >
+              Delete
+            </Button>
+          }
+        >
+          <p>
+            Delete template{' '}
+            <span className="font-semibold">
+              &ldquo;{templateToDelete.name}&rdquo;
+            </span>
+            ? This action cannot be undone.
+          </p>
+        </Modal>
+      )}
     </>
   )
 }
