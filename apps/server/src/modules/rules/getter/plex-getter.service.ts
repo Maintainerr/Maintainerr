@@ -248,23 +248,19 @@ export class PlexGetterService {
             : null;
         }
         case 'lastViewedAt': {
-          return await this.plexApi
-            .getWatchHistory(metadata.ratingKey)
-            .then((seenby) => {
-              if (seenby.length > 0) {
-                return new Date(
-                  +seenby
-                    .map((el) => el.viewedAt)
-                    .sort()
-                    .reverse()[0] * 1000,
-                );
-              } else {
-                return null;
-              }
-            })
-            .catch(() => {
-              return null;
-            });
+          // Errors must surface so the outer catch returns `undefined` for an
+          // unknown watch state instead of collapsing the failure into a
+          // confirmed never-watched `null`.
+          const seenby = await this.plexApi.getWatchHistory(metadata.ratingKey);
+          if (seenby && seenby.length > 0) {
+            return new Date(
+              +seenby
+                .map((el) => el.viewedAt)
+                .sort()
+                .reverse()[0] * 1000,
+            );
+          }
+          return null;
         }
         case 'fileVideoResolution': {
           return metadata.Media[0].videoResolution
@@ -782,6 +778,54 @@ export class PlexGetterService {
           ]);
 
           return Array.from(combinedCollections).map((el) => el.trim());
+        }
+        case 'collection_siblings_lastViewedAt': {
+          // Aggregate "last view date" across every movie that shares a Plex
+          // collection with this item, so one recently-watched sibling keeps
+          // the whole set out of the delete pool.
+          //
+          // We use getWatchHistory (/status/sessions/history/all) — not the
+          // per-child lastViewedAt field — because library metadata is scoped
+          // to the calling account (admin-only), while the history endpoint
+          // returns every user's entries when called with an admin token.
+          // Same pattern as the existing lastViewedAt rule (prop id 7).
+          const excludeNames = buildCollectionExcludeNames(ruleGroup);
+          const memberTags = (metadata.Collection ?? [])
+            .map((el) => el.tag.trim())
+            .filter((tag) => !excludeNames.includes(tag.toLowerCase()));
+
+          if (memberTags.length === 0 || !ruleGroup?.libraryId) {
+            return null;
+          }
+
+          const memberTagSet = new Set(memberTags.map((t) => t.toLowerCase()));
+          const libraryCollections = await this.plexApi.getCollections(
+            ruleGroup.libraryId,
+            metadata.type === 'movie' ? 'movie' : undefined,
+          );
+          const matching = (libraryCollections ?? []).filter((c) =>
+            memberTagSet.has(c.title.trim().toLowerCase()),
+          );
+
+          let latest = 0;
+          for (const coll of matching) {
+            const children = await this.plexApi.getCollectionChildren(
+              coll.ratingKey,
+            );
+            for (const child of children ?? []) {
+              const history = await this.plexApi
+                .getWatchHistory(child.ratingKey)
+                .catch(() => null);
+              if (!history) continue;
+              for (const entry of history) {
+                if (entry.viewedAt && +entry.viewedAt > latest) {
+                  latest = +entry.viewedAt;
+                }
+              }
+            }
+          }
+
+          return latest > 0 ? new Date(latest * 1000) : null;
         }
         default: {
           return null;

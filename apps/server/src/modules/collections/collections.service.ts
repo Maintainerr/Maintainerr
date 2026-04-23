@@ -133,6 +133,10 @@ export class CollectionsService {
     }
   }
 
+  async getCollectionRecord(id: number) {
+    return await this.collectionRepo.findOne({ where: { id } });
+  }
+
   async getCollectionMedia(id: number) {
     try {
       return await this.CollectionMediaRepo.find({
@@ -143,6 +147,15 @@ export class CollectionsService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  async getCollectionMediaRecord(collectionId: number, mediaServerId: string) {
+    return await this.CollectionMediaRepo.findOne({
+      where: {
+        collectionId,
+        mediaServerId,
+      },
+    });
   }
 
   public async getCollectionsByMediaServerId(
@@ -1192,9 +1205,12 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
-  ): Promise<{
-    dbCollection: addCollectionDbResponse;
-  }> {
+  ): Promise<
+    | {
+        dbCollection: addCollectionDbResponse;
+      }
+    | undefined
+  > {
     try {
       const mediaServer = await this.getMediaServer();
       let mediaCollection: MediaCollection;
@@ -1278,9 +1294,12 @@ export class CollectionsService {
   async createCollectionWithChildren(
     collection: ICollection,
     media?: CollectionMediaChange[],
-  ): Promise<{
-    dbCollection: addCollectionDbResponse;
-  }> {
+  ): Promise<
+    | {
+        dbCollection: addCollectionDbResponse;
+      }
+    | undefined
+  > {
     try {
       const createdCollection = await this.createCollection(collection, false);
 
@@ -1311,9 +1330,9 @@ export class CollectionsService {
     }
   }
 
-  async updateCollection(collection: ICollection): Promise<{
-    dbCollection?: ICollection;
-  }> {
+  async updateCollection(
+    collection: ICollection,
+  ): Promise<{ dbCollection?: ICollection } | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
       const dbCollection = await this.collectionRepo.findOne({
@@ -1564,11 +1583,11 @@ export class CollectionsService {
   }
 
   async MediaCollectionActionWithContext(
-    collectionDbId: number,
+    collectionDbId: number | undefined,
     context: AlterableMediaContext,
     media: CollectionMediaChange,
     action: 'add' | 'remove',
-  ): Promise<Collection> {
+  ): Promise<Collection | undefined> {
     const mediaServer = await this.getMediaServer();
     const collection =
       collectionDbId !== -1 && collectionDbId !== undefined
@@ -1837,6 +1856,7 @@ export class CollectionsService {
               newMedia,
               collection.title,
               { type: 'collection', value: collection.id },
+              collection.id,
               collection.deleteAfterDays,
             ),
           );
@@ -1882,7 +1902,7 @@ export class CollectionsService {
     collectionDbId: number,
     media: CollectionMediaChange[],
     removalScope: CollectionMediaRemovalScope = 'all',
-  ) {
+  ): Promise<Collection | undefined> {
     return this.removeFromCollectionInternal(
       collectionDbId,
       media,
@@ -1895,7 +1915,7 @@ export class CollectionsService {
     collection: Collection,
     media: CollectionMediaChange[],
     removalScope: CollectionMediaRemovalScope = 'all',
-  ) {
+  ): Promise<Collection | undefined> {
     if (!collection) return undefined;
     return this.removeFromCollectionInternal(
       collection.id,
@@ -1910,7 +1930,7 @@ export class CollectionsService {
     media: CollectionMediaChange[],
     skipAutomaticLinkCheck = false,
     removalScope: CollectionMediaRemovalScope = 'all',
-  ) {
+  ): Promise<Collection | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -1982,6 +2002,7 @@ export class CollectionsService {
               childrenMedia.filter((m) => removedItemIds.has(m.mediaServerId)),
               collection.title,
               { type: 'collection', value: collection.id },
+              collection.id,
               collection.deleteAfterDays,
             ),
           );

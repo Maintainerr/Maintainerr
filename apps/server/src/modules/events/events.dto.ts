@@ -20,6 +20,7 @@ export class CollectionMediaRemovedDto {
     public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
+    public collectionId: number,
     public dayAmount?: number,
   ) {}
 }
@@ -29,6 +30,7 @@ export class CollectionMediaAddedDto {
     public mediaItems: { mediaServerId: string }[],
     public collectionName: string,
     public identifier: { type: string; value: number },
+    public collectionId: number,
     public dayAmount?: number,
   ) {}
 }
@@ -38,6 +40,22 @@ export class CollectionHandlerFailedDto {
     public mediaItems: { mediaServerId: string }[],
     public collectionName?: string,
     public dayAmount?: number,
+    public identifier?: { type: string; value: number },
+  ) {}
+}
+
+export class OverlayAppliedDto {
+  constructor(
+    public mediaItems: { mediaServerId: string }[],
+    public collectionName: string,
+    public identifier?: { type: string; value: number },
+  ) {}
+}
+
+export class OverlayRevertedDto {
+  constructor(
+    public mediaItems: { mediaServerId: string }[],
+    public collectionName: string,
     public identifier?: { type: string; value: number },
   ) {}
 }

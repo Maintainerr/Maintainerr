@@ -1,53 +1,108 @@
-import { CollectionMediaRemovedDto } from '../events/events.dto';
-import { createCollection, createMockLogger } from '../../../test/utils/data';
+import { createMockLogger } from '../../../test/utils/data';
 import { OverlayTaskService } from './overlay-task.service';
 
 describe('OverlayTaskService', () => {
-  it('clears stale state instead of reverting when an item remains in another overlay collection', async () => {
+  const buildTaskService = (
+    overrides: {
+      processor?: Partial<Record<string, jest.Mock>>;
+      settings?: { enabled: boolean; cronSchedule?: string | null };
+    } = {},
+  ) => {
     const processor = {
-      revertItem: jest.fn(),
-      processAllCollections: jest.fn(),
+      revertMultipleItems: jest.fn().mockResolvedValue(undefined),
+      processAllCollections: jest.fn().mockResolvedValue(undefined),
       processCollection: jest.fn(),
+      ...(overrides.processor ?? {}),
     };
     const settingsService = {
-      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+      getSettings: jest
+        .fn()
+        .mockResolvedValue(
+          overrides.settings ?? { enabled: true, cronSchedule: '0 0 * * *' },
+        ),
     };
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest.fn().mockResolvedValue([
-        {
-          ...createCollection({ id: 99, overlayEnabled: true }),
-          collectionMedia: [{ mediaServerId: 'media-1' }],
-        },
-      ]),
-    };
-    const stateService = {
-      removeState: jest.fn().mockResolvedValue(undefined),
+    const taskService = {
+      createJob: jest.fn(),
+      updateJob: jest.fn().mockResolvedValue(undefined),
+      isRunning: jest.fn().mockReturnValue(false),
+      setRunning: jest.fn(),
+      clearRunning: jest.fn(),
     };
 
     const service = new OverlayTaskService(
-      {
-        createJob: jest.fn(),
-        updateJob: jest.fn(),
-        isRunning: jest.fn().mockReturnValue(false),
-        setRunning: jest.fn(),
-        clearRunning: jest.fn(),
-      } as any,
+      taskService as any,
       createMockLogger(),
       processor as any,
       settingsService as any,
-      collectionsService as any,
-      stateService as any,
     );
 
-    await service.handleCollectionMediaRemoved(
-      new CollectionMediaRemovedDto(
-        [{ mediaServerId: 'media-1' }],
-        'Collection A',
-        { type: 'collection', value: 42 },
-      ),
-    );
+    return { service, processor, taskService };
+  };
 
-    expect(stateService.removeState).toHaveBeenCalledWith(42, 'media-1');
-    expect(processor.revertItem).not.toHaveBeenCalled();
+  it('runs the scheduled overlay processor when overlays are enabled', async () => {
+    const { service, processor } = buildTaskService();
+
+    await (service as any).executeTask(new AbortController().signal);
+
+    expect(processor.processAllCollections).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the scheduled overlay processor when overlays are disabled', async () => {
+    const { service, processor } = buildTaskService({
+      settings: { enabled: false, cronSchedule: '0 0 * * *' },
+    });
+
+    await (service as any).executeTask(new AbortController().signal);
+
+    expect(processor.processAllCollections).not.toHaveBeenCalled();
+  });
+
+  it('updates the cron schedule when overlays are enabled', async () => {
+    const { service, taskService } = buildTaskService();
+
+    await service.updateCronSchedule('0 12 * * *', true);
+
+    expect(taskService.updateJob).toHaveBeenCalledWith(
+      'Overlay Handler',
+      '0 12 * * *',
+    );
+  });
+
+  it('disables the cron schedule when overlays are disabled', async () => {
+    const { service, taskService } = buildTaskService();
+
+    await service.updateCronSchedule(null, false);
+
+    expect(taskService.updateJob).toHaveBeenCalledWith(
+      'Overlay Handler',
+      '0 0 0 1 1 *',
+    );
+  });
+
+  it('configures the cron schedule from settings on bootstrap', async () => {
+    const { service, taskService } = buildTaskService({
+      settings: { enabled: true, cronSchedule: '0 6 * * *' },
+    });
+
+    await (service as any).onBootstrapHook();
+
+    await Promise.resolve();
+
+    expect(taskService.updateJob).toHaveBeenCalledWith(
+      'Overlay Handler',
+      '0 6 * * *',
+    );
+  });
+
+  it('does not configure a cron schedule on bootstrap when overlays are disabled', async () => {
+    const { service, taskService } = buildTaskService({
+      settings: { enabled: false, cronSchedule: '0 6 * * *' },
+    });
+
+    await (service as any).onBootstrapHook();
+
+    await Promise.resolve();
+
+    expect(taskService.updateJob).not.toHaveBeenCalled();
   });
 });

@@ -18,7 +18,6 @@ export const overlaySettingsSchema = z.object({
   titleCardOverlayStyle: overlayStyleConfigSchema,
   titleCardFrame: frameConfigSchema,
   cronSchedule: z.string().nullable(),
-  applyOnAdd: z.boolean(),
 })
 
 export const overlaySettingsUpdateSchema = overlaySettingsSchema.partial()
@@ -35,7 +34,6 @@ export const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
   titleCardOverlayStyle: DEFAULT_OVERLAY_STYLE_CONFIG,
   titleCardFrame: DEFAULT_FRAME_CONFIG,
   cronSchedule: null,
-  applyOnAdd: true,
 }
 
 export const overlayExportSchema = z.object({

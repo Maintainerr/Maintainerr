@@ -10,7 +10,6 @@ import {
   RulePossibility,
   RulePossibilityTranslations,
 } from '@maintainerr/contracts'
-import { cloneDeep } from 'lodash-es'
 import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { IRule } from '../'
 import {
@@ -280,21 +279,76 @@ const RuleInput = (props: IRuleInput) => {
     initialRuleState.arrDiskPath,
   )
 
-  const [possibilities, setPossibilities] = useState<RulePossibility[]>([])
-  const [ruleType, setRuleType] = useState<RuleType>(initialRuleState.ruleType)
-
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
   const { isPlex, isJellyfin } = useMediaServerType()
 
+  const availableApplications = useMemo(() => {
+    return (
+      constants?.applications
+        ?.filter(
+          (app) =>
+            !shouldFilterApplication(
+              app.id,
+              props.radarrSettingsId,
+              props.sonarrSettingsId,
+              isPlex,
+              isJellyfin,
+            ) &&
+            (app.mediaType === MediaType.BOTH ||
+              props.mediaType === app.mediaType),
+        )
+        .map((app) => ({
+          ...app,
+          props: app.props.filter(
+            (prop) =>
+              (prop.mediaType === MediaType.BOTH ||
+                props.mediaType === prop.mediaType) &&
+              (props.mediaType === MediaType.MOVIE ||
+                prop.showType === undefined ||
+                prop.showType.includes(props.dataType!)),
+          ),
+        })) ?? []
+    )
+  }, [
+    constants?.applications,
+    isJellyfin,
+    isPlex,
+    props.dataType,
+    props.mediaType,
+    props.radarrSettingsId,
+    props.sonarrSettingsId,
+  ])
+
+  const validFirstVal = useMemo(() => {
+    if (!firstval) {
+      return undefined
+    }
+
+    // Keep the raw saved selection in state so edit flows can recover it if later inputs make it valid again.
+    const [applicationId, propertyId] = JSON.parse(firstval) as [number, number]
+    const application = availableApplications.find(
+      (currentApplication) => currentApplication.id === +applicationId,
+    )
+
+    return application?.props.find((prop) => prop.id === +propertyId)
+      ? firstval
+      : undefined
+  }, [availableApplications, firstval])
+
   const firstValueTuple = useMemo<[number, number] | undefined>(() => {
-    if (!firstval) return undefined
-    return JSON.parse(firstval) as [number, number]
-  }, [firstval])
+    if (!validFirstVal) return undefined
+    return JSON.parse(validFirstVal) as [number, number]
+  }, [validFirstVal])
 
   const selectedFirstValueAppId = firstValueTuple?.[0]
-  const selectedFirstValueProp = firstval
-    ? getPropFromTuple(firstval, constants)
+  const selectedFirstValueProp = validFirstVal
+    ? getPropFromTuple(validFirstVal, constants)
     : undefined
+  const ruleType =
+    selectedFirstValueProp?.type.key != null
+      ? (+selectedFirstValueProp.type.key as RuleType)
+      : initialRuleState.ruleType
+  const possibilities = selectedFirstValueProp?.type.possibilities ?? []
   const isSelectedArrDiskspaceRule =
     (selectedFirstValueAppId === Application.RADARR ||
       selectedFirstValueAppId === Application.SONARR) &&
@@ -350,6 +404,7 @@ const RuleInput = (props: IRuleInput) => {
       return undefined
     }
 
+    // Preserve a saved path label while current ARR diskspace options are temporarily filtered or refetching.
     const normalizedPath = normalizeDiskPath(arrDiskPath)
     const hasMatchingOption = arrDiskspaceOptions.some(
       (option) => option.value === normalizedPath,
@@ -373,16 +428,29 @@ const RuleInput = (props: IRuleInput) => {
   )
 
   const updateFirstValue = (event: { target: { value: string } }) => {
-    if (event.target.value === '') {
+    const nextFirstValue = event.target.value || undefined
+
+    if (!nextFirstValue) {
       setFirstVal(undefined)
       setArrDiskPath('')
-    } else {
-      setFirstVal(event.target.value)
+      return
+    }
 
-      const nextProp = getPropFromTuple(event.target.value, constants)
-      if (!isArrDiskspaceProperty(nextProp)) {
-        setArrDiskPath('')
-      }
+    const nextProp = getPropFromTuple(nextFirstValue, constants)
+    const nextRuleType =
+      nextProp?.type.key != null
+        ? (+nextProp.type.key as RuleType)
+        : initialRuleState.ruleType
+
+    setFirstVal(nextFirstValue)
+
+    if (nextRuleType !== ruleType) {
+      setSecondVal(undefined)
+      setCustomVal('')
+    }
+
+    if (!isArrDiskspaceProperty(nextProp)) {
+      setArrDiskPath('')
     }
   }
 
@@ -455,13 +523,13 @@ const RuleInput = (props: IRuleInput) => {
       secondVal !== CustomParams.CUSTOM_BOOLEAN
 
     if (
-      firstval &&
+      validFirstVal &&
       action != null &&
       (!requiresSecondValue || hasSecondValue || !!customVal)
     ) {
       const ruleValues = {
         operator: operator ? operator : null,
-        firstVal: JSON.parse(firstval),
+        firstVal: JSON.parse(validFirstVal),
         action,
         section: props.section ? props.section - 1 : 0,
         ...(isSelectedArrDiskspaceRule && arrDiskPath ? { arrDiskPath } : {}),
@@ -506,59 +574,6 @@ const RuleInput = (props: IRuleInput) => {
     commitCurrentRule()
   })
 
-  const syncFirstValueAvailability = useEffectEvent(() => {
-    if (!constants || !firstval) {
-      return
-    }
-
-    const apps = cloneDeep(constants.applications)?.map((app) => {
-      app.props = app.props.filter((prop) => {
-        return (
-          (prop.mediaType === MediaType.BOTH ||
-            props.mediaType === prop.mediaType) &&
-          (props.mediaType === MediaType.MOVIE ||
-            prop.showType === undefined ||
-            prop.showType.includes(props.dataType!))
-        )
-      })
-      return app
-    })
-
-    const val = JSON.parse(firstval)
-    const appId = +val[0]
-    const app = apps?.find((currentApp) => currentApp.id === appId)
-
-    if (!app?.props.find((prop) => prop.id === +val[1])) {
-      setFirstVal(undefined)
-      setArrDiskPath('')
-    }
-  })
-
-  const syncRuleTypeSelection = useEffectEvent(() => {
-    if (!firstval) {
-      return
-    }
-
-    const prop = getPropFromTuple(firstval, constants)
-
-    if (!prop?.type.key) {
-      return
-    }
-
-    if (possibilities.length <= 0) {
-      setRuleType(+prop.type.key)
-      setPossibilities(prop.type.possibilities)
-      return
-    }
-
-    if (+prop.type.key !== ruleType) {
-      setSecondVal(undefined)
-      setCustomVal('')
-      setRuleType(+prop.type.key)
-      setPossibilities(prop.type.possibilities)
-    }
-  })
-
   const submit = (e: FormEvent | null) => {
     e?.preventDefault()
     commitCurrentRule()
@@ -570,20 +585,12 @@ const RuleInput = (props: IRuleInput) => {
     action,
     arrDiskPath,
     customVal,
-    firstval,
+    validFirstVal,
     isSelectedArrDiskspaceRule,
     operator,
     ruleType,
     secondVal,
   ])
-
-  useEffect(() => {
-    syncFirstValueAvailability()
-  }, [props.dataType, props.mediaType, constants, firstval])
-
-  useEffect(() => {
-    syncRuleTypeSelection()
-  }, [constants, firstval, possibilities.length, ruleType])
 
   if (!constants || constantsLoading) {
     return <LoadingSpinner />
@@ -661,43 +668,25 @@ const RuleInput = (props: IRuleInput) => {
             name="first_val"
             id="first_val"
             onChange={updateFirstValue}
-            value={firstval}
+            value={validFirstVal}
           >
             <option value="" className="text-maintainerr-600">
               Select First Value...
             </option>
-            {constants.applications
-              ?.filter(
-                (app) =>
-                  !shouldFilterApplication(
-                    app.id,
-                    props.radarrSettingsId,
-                    props.sonarrSettingsId,
-                    isPlex,
-                    isJellyfin,
-                  ),
-              )
-              .map((app) =>
-                app.mediaType === MediaType.BOTH ||
-                props.mediaType === app.mediaType ? (
-                  <optgroup key={app.id} label={app.name}>
-                    {app.props.map((prop) =>
-                      (prop.mediaType === MediaType.BOTH ||
-                        props.mediaType === prop.mediaType) &&
-                      (props.mediaType === MediaType.MOVIE ||
-                        prop.showType === undefined ||
-                        prop.showType.includes(props.dataType!)) ? (
-                        <option
-                          key={`${app.id}-${prop.id}`}
-                          value={JSON.stringify([app.id, prop.id])}
-                        >
-                          {`${app.name} - ${prop.humanName}`}
-                        </option>
-                      ) : null,
-                    )}
-                  </optgroup>
-                ) : null,
-              )}
+            {availableApplications.map((app) =>
+              app.props.length > 0 ? (
+                <optgroup key={app.id} label={app.name}>
+                  {app.props.map((prop) => (
+                    <option
+                      key={`${app.id}-${prop.id}`}
+                      value={JSON.stringify([app.id, prop.id])}
+                    >
+                      {`${app.name} - ${prop.humanName}`}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null,
+            )}
           </Select>
         </div>
 
@@ -766,44 +755,33 @@ const RuleInput = (props: IRuleInput) => {
                 ) : undefined}
                 <MaybeTextListOptions ruleType={ruleType} action={action} />
               </optgroup>
-              {constants.applications
-                ?.filter(
-                  (app) =>
-                    !shouldFilterApplication(
-                      app.id,
-                      props.radarrSettingsId,
-                      props.sonarrSettingsId,
-                      isPlex,
-                      isJellyfin,
-                    ),
-                )
-                .map((app) => {
-                  return (app.mediaType === MediaType.BOTH ||
-                    props.mediaType === app.mediaType) &&
-                    action != null &&
-                    action !== RulePossibility.IN_LAST &&
-                    action !== RulePossibility.IN_NEXT ? (
-                    <optgroup key={app.id} label={app.name}>
-                      {app.props.map((prop) => {
-                        const secondValueTypes = getSecondValueTypes(ruleType)
-                        for (const type of secondValueTypes) {
-                          if (+prop.type.key === type) {
-                            return (prop.mediaType === MediaType.BOTH ||
-                              props.mediaType === prop.mediaType) &&
-                              (props.mediaType === MediaType.MOVIE ||
-                                prop.showType === undefined ||
-                                prop.showType.includes(props.dataType!)) ? (
-                              <option
-                                key={app.id + 10 + prop.id}
-                                value={JSON.stringify([app.id, prop.id])}
-                              >{`${app.name} - ${prop.humanName}`}</option>
-                            ) : undefined
-                          }
+              {availableApplications.map((app) => {
+                return (app.mediaType === MediaType.BOTH ||
+                  props.mediaType === app.mediaType) &&
+                  action != null &&
+                  action !== RulePossibility.IN_LAST &&
+                  action !== RulePossibility.IN_NEXT ? (
+                  <optgroup key={app.id} label={app.name}>
+                    {app.props.map((prop) => {
+                      const secondValueTypes = getSecondValueTypes(ruleType)
+                      for (const type of secondValueTypes) {
+                        if (+prop.type.key === type) {
+                          return (prop.mediaType === MediaType.BOTH ||
+                            props.mediaType === prop.mediaType) &&
+                            (props.mediaType === MediaType.MOVIE ||
+                              prop.showType === undefined ||
+                              prop.showType.includes(props.dataType!)) ? (
+                            <option
+                              key={app.id + 10 + prop.id}
+                              value={JSON.stringify([app.id, prop.id])}
+                            >{`${app.name} - ${prop.humanName}`}</option>
+                          ) : undefined
                         }
-                      })}
-                    </optgroup>
-                  ) : undefined
-                })}
+                      }
+                    })}
+                  </optgroup>
+                ) : undefined
+              })}
             </Select>
           </div>
         ) : null}

@@ -1,21 +1,25 @@
 import {
+  CollectionLogMeta,
   CollectionMediaSortField,
   ECollectionLogType,
   MediaItemType,
   MediaItemTypes,
   MediaLibrarySortField,
   MediaSortOrder,
+  ServarrAction,
   collectionMediaSortFields,
   mediaLibrarySortFields,
   mediaSortOrders,
 } from '@maintainerr/contracts';
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
   HttpException,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -23,15 +27,18 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { isValidCron } from 'cron-validator';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
+import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
-import {
-  AlterableMediaContext,
-  CollectionMediaChange,
-} from './interfaces/collection-media.interface';
 
 const collectionMediaSortQuerySchema = z
   .enum(collectionMediaSortFields)
@@ -39,17 +46,181 @@ const collectionMediaSortQuerySchema = z
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 
+const ruleValueSchema = z.union([
+  z.number(),
+  z.string(),
+  z.boolean(),
+  z.date(),
+  z.array(z.number()),
+  z.array(z.string()),
+  z.null(),
+]);
+
+const ruleComparisonResultSchema = z.object({
+  firstValueName: z.string(),
+  firstValue: ruleValueSchema,
+  firstValueReason: z.string().optional(),
+  secondValueName: z.string().optional(),
+  secondValue: ruleValueSchema.optional(),
+  secondValueReason: z.string().optional(),
+  action: z.string(),
+  operator: z.string().optional(),
+  result: z.boolean(),
+});
+
+const sectionComparisonResultsSchema = z.object({
+  id: z.number(),
+  result: z.boolean(),
+  operator: z.string().optional(),
+  ruleResults: z.array(ruleComparisonResultSchema),
+});
+
+const comparisonStatisticsSchema = z.object({
+  mediaServerId: z.string(),
+  result: z.boolean(),
+  sectionResults: z.array(sectionComparisonResultsSchema),
+});
+
+const collectionLogMetaInnerSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('media_added_manually'),
+  }),
+  z.object({
+    type: z.literal('media_removed_manually'),
+  }),
+  z.object({
+    type: z.literal('media_added_by_rule'),
+    data: comparisonStatisticsSchema,
+  }),
+  z.object({
+    type: z.literal('media_removed_by_rule'),
+    data: comparisonStatisticsSchema,
+  }),
+]);
+
+const collectionLogMetaSchema = z.custom<CollectionLogMeta>(
+  (value) => collectionLogMetaInnerSchema.safeParse(value).success,
+  { message: 'Invalid collection log metadata' },
+);
+
+const collectionMediaChangeSchema = z.object({
+  mediaServerId: z.string().min(1),
+  reason: collectionLogMetaSchema.optional(),
+});
+
+const collectionBaseShape = {
+  type: z.enum(MediaItemTypes),
+  mediaServerId: z.string().min(1).optional().nullable(),
+  libraryId: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  isActive: z.boolean(),
+  arrAction: z.nativeEnum(ServarrAction),
+  visibleOnRecommended: z.boolean().optional(),
+  visibleOnHome: z.boolean().optional(),
+  listExclusions: z.boolean().optional(),
+  forceSeerr: z.boolean().optional(),
+  deleteAfterDays: z.coerce.number().int().optional(),
+  manualCollection: z.boolean().optional(),
+  manualCollectionName: z.string().optional().nullable(),
+  keepLogsForMonths: z.coerce.number().int().optional(),
+  tautulliWatchedPercentOverride: z.coerce.number().int().optional().nullable(),
+  radarrSettingsId: z.coerce.number().int().optional().nullable(),
+  sonarrSettingsId: z.coerce.number().int().optional().nullable(),
+  radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+  sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+  sortTitle: z.string().optional().nullable(),
+  overlayEnabled: z.boolean().optional(),
+  overlayTemplateId: z.coerce.number().int().optional().nullable(),
+};
+
+export const collectionBodySchema = z.object({
+  ...collectionBaseShape,
+  id: z.coerce.number().int(),
+});
+const newCollectionBodySchema = z.object({
+  ...collectionBaseShape,
+  id: z.coerce.number().int().optional(),
+});
+export const createCollectionBodySchema = z.object({
+  collection: newCollectionBodySchema,
+  media: z.array(collectionMediaChangeSchema).optional(),
+});
+export const addToCollectionBodySchema = z.object({
+  collectionId: z.coerce.number().int(),
+  media: z.array(collectionMediaChangeSchema),
+  manual: z.boolean().optional(),
+});
+export const removeFromCollectionBodySchema = z.object({
+  collectionId: z.coerce.number().int(),
+  media: z.array(collectionMediaChangeSchema),
+});
+export const removeCollectionBodySchema = z.object({
+  collectionId: z.coerce.number().int(),
+});
+export const updateScheduleBodySchema = z.object({
+  schedule: z
+    .string()
+    .min(1)
+    .refine((value) => isValidCron(value), {
+      message: 'Invalid cron expression',
+    }),
+});
+const manualCollectionContextSchema = z.object({
+  id: z.coerce.number().int(),
+  index: z.coerce.number().int().optional(),
+  parentIndex: z.coerce.number().int().optional(),
+  type: z.enum(MediaItemTypes),
+});
+export const manualCollectionActionBodySchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal(0),
+    mediaId: z.string().min(1),
+    context: manualCollectionContextSchema,
+    collectionId: z.coerce.number().int(),
+  }),
+  z.object({
+    action: z.literal(1),
+    mediaId: z.string().min(1),
+    context: manualCollectionContextSchema,
+    collectionId: z.coerce.number().int().optional(),
+  }),
+]);
+export const handleCollectionMediaBodySchema = z.object({
+  collectionId: z.number().int(),
+  mediaId: z.string().min(1),
+});
+
+type CreateCollectionBody = z.infer<typeof createCollectionBodySchema>;
+type AddToCollectionBody = z.infer<typeof addToCollectionBodySchema>;
+type RemoveFromCollectionBody = z.infer<typeof removeFromCollectionBodySchema>;
+type RemoveCollectionBody = z.infer<typeof removeCollectionBodySchema>;
+type UpdateCollectionBody = z.infer<typeof collectionBodySchema>;
+type UpdateScheduleBody = z.infer<typeof updateScheduleBodySchema>;
+type ManualCollectionActionBody = z.infer<
+  typeof manualCollectionActionBodySchema
+>;
+type HandleCollectionMediaBody = z.infer<
+  typeof handleCollectionMediaBodySchema
+>;
+
 @Controller('api/collections')
 export class CollectionsController {
   constructor(
     private readonly collectionService: CollectionsService,
     private readonly collectionWorkerService: CollectionWorkerService,
+    private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
+    private readonly executionLock: ExecutionLockService,
+    private readonly collectionHandler: CollectionHandler,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(CollectionsController.name);
   }
   @Post()
-  async createCollection(@Body() request: any) {
+  async createCollection(
+    @Body(new ZodValidationPipe(createCollectionBodySchema))
+    request: CreateCollectionBody,
+  ) {
     await this.collectionService.createCollectionWithChildren(
       request.collection,
       request.media,
@@ -57,33 +228,38 @@ export class CollectionsController {
   }
   @Post('/add')
   async addToCollection(
-    @Body()
-    request: {
-      collectionId: number;
-      media: CollectionMediaChange[];
-      manual?: boolean;
-    },
+    @Body(new ZodValidationPipe(addToCollectionBodySchema))
+    request: AddToCollectionBody,
   ) {
     await this.collectionService.addToCollection(
       request.collectionId,
       request.media,
-      request.manual ? request.manual : false,
+      request.manual ?? false,
     );
   }
   @Post('/remove')
-  async removeFromCollection(@Body() request: any) {
+  async removeFromCollection(
+    @Body(new ZodValidationPipe(removeFromCollectionBodySchema))
+    request: RemoveFromCollectionBody,
+  ) {
     await this.collectionService.removeFromCollection(
       request.collectionId,
       request.media,
     );
   }
   @Post('/removeCollection')
-  removeCollection(@Body() request: any) {
+  removeCollection(
+    @Body(new ZodValidationPipe(removeCollectionBodySchema))
+    request: RemoveCollectionBody,
+  ) {
     return this.collectionService.deleteCollection(request.collectionId);
   }
 
   @Put()
-  updateCollection(@Body() request: any) {
+  updateCollection(
+    @Body(new ZodValidationPipe(collectionBodySchema))
+    request: UpdateCollectionBody,
+  ) {
     return this.collectionService.updateCollection(request);
   }
 
@@ -107,7 +283,10 @@ export class CollectionsController {
   }
 
   @Put('/schedule/update')
-  updateSchedule(@Body() request: { schedule: string }) {
+  updateSchedule(
+    @Body(new ZodValidationPipe(updateScheduleBodySchema))
+    request: UpdateScheduleBody,
+  ) {
     return this.collectionWorkerService.updateJob(request.schedule);
   }
 
@@ -169,13 +348,8 @@ export class CollectionsController {
 
   @Post('/media/add')
   ManualActionOnCollection(
-    @Body()
-    request: {
-      mediaId: string;
-      context: AlterableMediaContext;
-      collectionId: number;
-      action: 0 | 1;
-    },
+    @Body(new ZodValidationPipe(manualCollectionActionBodySchema))
+    request: ManualCollectionActionBody,
   ) {
     return this.collectionService.MediaCollectionActionWithContext(
       request.collectionId,
@@ -184,6 +358,65 @@ export class CollectionsController {
       request.action === 0 ? 'add' : 'remove',
     );
   }
+
+  @Post('/media/handle')
+  async handleCollectionMedia(
+    @Body(new ZodValidationPipe(handleCollectionMediaBodySchema))
+    request: HandleCollectionMediaBody,
+  ) {
+    if (
+      this.collectionWorkerService.isRunning() ||
+      this.ruleExecutorJobManagerService.isProcessing()
+    ) {
+      throw new ConflictException(
+        'Collection handling is already running. Try again when the current collection or rule execution finishes.',
+      );
+    }
+
+    const collection = await this.collectionService.getCollectionRecord(
+      request.collectionId,
+    );
+
+    if (!collection) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    const collectionMedia =
+      await this.collectionService.getCollectionMediaRecord(
+        request.collectionId,
+        request.mediaId,
+      );
+
+    if (!collectionMedia) {
+      throw new NotFoundException('Media not found in collection');
+    }
+
+    const release = this.executionLock.tryAcquire(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+    );
+
+    if (!release) {
+      throw new ConflictException(
+        'Collection handling is already running. Try again when the current collection or rule execution finishes.',
+      );
+    }
+
+    try {
+      const handled = await this.collectionHandler.handleMedia(
+        collection,
+        collectionMedia,
+      );
+
+      if (!handled) {
+        throw new ConflictException(
+          'The collection action could not be executed for this item',
+        );
+      }
+    } finally {
+      release();
+    }
+  }
+
   @Delete('/media')
   deleteMediaFromCollection(
     @Query('mediaId') mediaId: string,

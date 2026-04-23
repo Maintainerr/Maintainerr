@@ -1,15 +1,14 @@
-import { lazy, useEffect, useEffectEvent, useState } from 'react'
+import { lazy, useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
 import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
 import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
-import { useRequestGeneration } from '../hooks/useRequestGeneration'
 import { prefetchRoute } from '../router'
-import GetApiHandler from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
 
 const TestMediaItem = lazy(
@@ -26,10 +25,7 @@ const CollectionDetailPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { id } = useParams<{ id: string }>()
-  const [collection, setCollection] = useState<ICollection | undefined>()
-  const [isLoading, setIsLoading] = useState(true)
   const [mediaTestModalOpen, setMediaTestModalOpen] = useState<boolean>(false)
-  const { invalidate, guardedFetch } = useRequestGeneration()
 
   // Determine current tab from URL path
   const getCurrentTab = () => {
@@ -44,37 +40,24 @@ const CollectionDetailPage = () => {
   const { data: ruleGroup, isLoading: ruleGroupLoading } =
     useRuleGroupForCollection(id)
 
-  const fetchData = async (collectionId: string) => {
-    try {
-      const result = await guardedFetch(() =>
-        GetApiHandler(`/collections/collection/${collectionId}`),
-      )
-
-      if (result.status === 'success') {
-        setCollection(result.data)
-        setIsLoading(false)
-      }
-    } catch (error) {
-      void logClientError(
-        'Failed to load collection',
-        error,
-        'CollectionDetailPage.fetchData',
-      )
-      toast.error('Failed to load collection. Check logs for details.')
-      setIsLoading(false)
-    }
-  }
-
-  const loadCollection = useEffectEvent((collectionId: string) => {
-    invalidate()
-    void fetchData(collectionId)
-  })
+  const {
+    data: collection,
+    error: collectionError,
+    isLoading,
+  } = useCollection(id)
 
   useEffect(() => {
-    if (id) {
-      loadCollection(id)
+    if (!collectionError) {
+      return
     }
-  }, [id])
+
+    void logClientError(
+      'Failed to load collection',
+      collectionError,
+      'CollectionDetailPage.fetchData',
+    )
+    toast.error('Failed to load collection. Check logs for details.')
+  }, [collectionError])
 
   const tabbedRoutes: TabbedRoute[] = [
     {
@@ -110,6 +93,10 @@ const CollectionDetailPage = () => {
     }
 
     void prefetchRoute(`/collections/${id}/${tab}`)
+  }
+
+  if (collectionError) {
+    return null
   }
 
   if (isLoading || !collection || ruleGroupLoading) {

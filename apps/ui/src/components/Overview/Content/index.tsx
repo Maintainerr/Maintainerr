@@ -6,7 +6,7 @@ import {
 import { debounce } from 'lodash-es'
 import { useEffect, useEffectEvent } from 'react'
 import { DEFAULT_INFINITE_SCROLL_THRESHOLD } from '../../../utils/uiBehavior'
-import { ICollectionMedia } from '../../Collection'
+import { ICollection, ICollectionMedia } from '../../Collection'
 import LoadingSpinner, {
   SmallLoadingSpinner,
 } from '../../Common/LoadingSpinner'
@@ -23,6 +23,7 @@ interface IOverviewContent {
   collectionPage?: boolean
   collectionInfo?: ICollectionMedia[]
   collectionId?: number
+  collection?: ICollection
 }
 
 function extractProviderIds(
@@ -81,26 +82,27 @@ const OverviewContent = (props: IOverviewContent) => {
   }, [data, dataFinished, extrasLoading, fetchData, loading])
 
   const getDaysLeft = (mediaId: string) => {
-    if (props.collectionInfo) {
-      const collectionData = props.collectionInfo.find(
-        (colEl) => colEl.mediaServerId === mediaId,
-      )
-      if (collectionData && collectionData.collection) {
-        if (collectionData.collection.deleteAfterDays == null) {
-          return undefined
-        }
-
-        const date = new Date(collectionData.addDate)
-        const today = new Date()
-
-        date.setDate(date.getDate() + collectionData.collection.deleteAfterDays)
-
-        const diffTime = date.getTime() - today.getTime()
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        return diffDays
-      }
+    if (!props.collectionInfo) {
+      return undefined
     }
-    return undefined
+
+    const collectionData = props.collectionInfo.find(
+      (colEl) => colEl.mediaServerId === mediaId,
+    )
+    if (!collectionData) {
+      return undefined
+    }
+
+    const resolvedCollection = props.collection ?? collectionData.collection
+    if (resolvedCollection?.deleteAfterDays == null) {
+      return undefined
+    }
+
+    const date = new Date(collectionData.addDate)
+    date.setDate(date.getDate() + resolvedCollection.deleteAfterDays)
+
+    const diffTime = date.getTime() - new Date().getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
   /**
@@ -169,6 +171,12 @@ const OverviewContent = (props: IOverviewContent) => {
                 exclusionType={el.maintainerrExclusionType}
                 onRemove={props.onRemove}
                 collectionId={props.collectionId}
+                collection={
+                  props.collection ??
+                  props.collectionInfo?.find(
+                    (colEl) => colEl.mediaServerId === el.id,
+                  )?.collection
+                }
                 isManual={
                   el.maintainerrIsManual ? el.maintainerrIsManual : false
                 }

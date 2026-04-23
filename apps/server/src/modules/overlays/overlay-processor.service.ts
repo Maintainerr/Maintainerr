@@ -12,6 +12,7 @@ import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { OverlayAppliedDto, OverlayRevertedDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
   OverlayRenderService,
@@ -39,6 +40,17 @@ export class OverlayProcessorService {
   public lastResult: ProcessorRunResult | null = null;
 
   private readonly dataDir: string;
+
+  private addUniqueMediaItem(
+    items: { mediaServerId: string }[],
+    mediaServerId: string,
+  ): void {
+    if (items.some((item) => item.mediaServerId === mediaServerId)) {
+      return;
+    }
+
+    items.push({ mediaServerId });
+  }
 
   constructor(
     private readonly plexApi: PlexApiService,
@@ -107,14 +119,24 @@ export class OverlayProcessorService {
 
   // ── Revert ────────────────────────────────────────────────────────────────
 
-  async revertItem(collectionId: number, mediaServerId: string): Promise<void> {
+  /**
+   * Revert one item. Returns `true` when the original poster was restored,
+   * so callers can decide whether to emit an event and/or aggregate.
+   */
+  private async revertItemInternal(
+    collectionId: number,
+    mediaServerId: string,
+  ): Promise<boolean> {
+    
     const originalBuf = this.loadOriginalPoster(mediaServerId);
+    let restored = false;
     if (originalBuf) {
       try {
         const service = await this.mediaServerFactory.getService();
         const posterobject: OverlayResult = { buffer: originalBuf, contentType: 'image/jpeg' };
         await service.setPoster(mediaServerId, posterobject);
         this.logger.log(`Restored original poster for item ${mediaServerId}`);
+        restored = true;
       } catch (err) {
         this.logger.warn(
           `Failed to restore original poster for ${mediaServerId}`,
@@ -129,18 +151,49 @@ export class OverlayProcessorService {
 
     this.deleteOriginalPoster(mediaServerId);
     await this.stateService.removeState(collectionId, mediaServerId);
+    return restored;
   }
 
   async revertCollection(collectionId: number): Promise<number> {
     const states = await this.stateService.getCollectionStates(collectionId);
-    let reverted = 0;
+    await this.revertMultipleItems(collectionId, states);
+    return states.length;
+  }
 
-    for (const state of states) {
-      await this.revertItem(collectionId, state.mediaServerId);
-      reverted++;
+  /**
+   * Revert overlays for multiple items in the same collection. Aggregates
+   * successful reverts into a single Overlay_Reverted event so callers don't
+   * spam notifications when acting on a batch (bulk revert, CollectionMedia
+   * removed events, etc.).
+   */
+  async revertMultipleItems(
+    collectionId: number,
+    mediaItems: { mediaServerId: string }[],
+    collectionName?: string,
+  ): Promise<void> {
+    if (mediaItems.length === 0) return;
+
+    const reverted: { mediaServerId: string }[] = [];
+    for (const item of mediaItems) {
+      if (await this.revertItemInternal(collectionId, item.mediaServerId)) {
+        reverted.push({ mediaServerId: item.mediaServerId });
+      }
     }
 
-    return reverted;
+    if (reverted.length === 0) return;
+
+    const name =
+      collectionName ??
+      (await this.collectionsService.getCollection(collectionId))?.title;
+    if (!name) return;
+
+    this.eventEmitter.emit(
+      MaintainerrEvent.Overlay_Reverted,
+      new OverlayRevertedDto(reverted, name, {
+        type: 'collection',
+        value: collectionId,
+      }),
+    );
   }
 
   // ── Apply overlay to single item ──────────────────────────────────────────
@@ -149,6 +202,7 @@ export class OverlayProcessorService {
 
   async processCollection(
     collection: Collection & { collectionMedia: CollectionMedia[] },
+    appliedMediaItems?: { mediaServerId: string }[],
   ): Promise<ProcessorRunResult> {
     const result: ProcessorRunResult = {
       processed: 0,
@@ -156,6 +210,7 @@ export class OverlayProcessorService {
       skipped: 0,
       errors: 0,
     };
+    const processedMediaItems = appliedMediaItems ?? [];
 
     if (collection.deleteAfterDays == null) {
       this.logger.debug(
@@ -219,12 +274,23 @@ export class OverlayProcessorService {
         );
         if (success) {
           result.processed++;
+          this.addUniqueMediaItem(processedMediaItems, mediaServerId);
         } else {
           result.errors++;
         }
       } else {
         result.skipped++;
       }
+    }
+
+    if (!appliedMediaItems && processedMediaItems.length > 0) {
+      this.eventEmitter.emit(
+        MaintainerrEvent.Overlay_Applied,
+        new OverlayAppliedDto(processedMediaItems, collection.title, {
+          type: 'collection',
+          value: collection.id,
+        }),
+      );
     }
 
     return result;
@@ -245,6 +311,8 @@ export class OverlayProcessorService {
       skipped: 0,
       errors: 0,
     };
+    const appliedMediaItems: { mediaServerId: string }[] = [];
+    const revertedMediaItems: { mediaServerId: string }[] = [];
 
     try {
       const settings = await this.settingsService.getSettings();
@@ -286,7 +354,13 @@ export class OverlayProcessorService {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
-          await this.revertItem(state.collectionId, state.mediaServerId);
+          const restored = await this.revertItemInternal(
+            state.collectionId,
+            state.mediaServerId,
+          );
+          if (restored) {
+            this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+          }
           totalResult.reverted++;
         }
       }
@@ -296,11 +370,28 @@ export class OverlayProcessorService {
         this.logger.log(
           `--- Processing: "${coll.title}" (${coll.collectionMedia.length} items) ---`,
         );
-        const collResult = await this.processCollection(coll);
+        const collResult = await this.processCollection(
+          coll,
+          appliedMediaItems,
+        );
         totalResult.processed += collResult.processed;
         totalResult.reverted += collResult.reverted;
         totalResult.skipped += collResult.skipped;
         totalResult.errors += collResult.errors;
+      }
+
+      if (appliedMediaItems.length > 0) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.Overlay_Applied,
+          new OverlayAppliedDto(appliedMediaItems, 'All Collections'),
+        );
+      }
+
+      if (revertedMediaItems.length > 0) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.Overlay_Reverted,
+          new OverlayRevertedDto(revertedMediaItems, 'All Collections'),
+        );
       }
 
       this.logger.log(
@@ -330,11 +421,26 @@ export class OverlayProcessorService {
     this.logger.warn('Resetting all overlays...');
 
     const allStates = await this.stateService.getAllStates();
+    const revertedMediaItems: { mediaServerId: string }[] = [];
     for (const state of allStates) {
-      await this.revertItem(state.collectionId, state.mediaServerId);
+      const restored = await this.revertItemInternal(
+        state.collectionId,
+        state.mediaServerId,
+      );
+      if (restored) {
+        this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+      }
     }
 
     await this.stateService.clearAllStates();
+
+    if (revertedMediaItems.length > 0) {
+      this.eventEmitter.emit(
+        MaintainerrEvent.Overlay_Reverted,
+        new OverlayRevertedDto(revertedMediaItems, 'All Collections'),
+      );
+    }
+
     this.logger.log('All overlays reset and state cleared');
   }
 

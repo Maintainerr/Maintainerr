@@ -52,12 +52,13 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      models: read
     steps:
       - name: Create GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.MERGE_APP_ID }}
+          client-id: ${{ secrets.MERGE_APP_ID }}
           private-key: ${{ secrets.MERGE_APP_KEY }}
 
       - name: Checkout
@@ -80,6 +81,7 @@ jobs:
       - name: Release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry-run-semantic-release }}
         run: |
           if [ "$DRY_RUN" == "true" ]; then

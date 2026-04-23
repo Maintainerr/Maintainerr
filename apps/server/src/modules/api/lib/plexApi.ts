@@ -10,8 +10,6 @@ type PlexApiOptions = {
   https?: boolean;
   token: string;
   timeout?: number;
-  clientId?: string;
-  appVersion?: string;
 };
 
 type RequestOptions = {
@@ -23,24 +21,6 @@ class PlexApi {
   private cache: Cache;
   private options: PlexApiOptions;
   private axios: AxiosInstance;
-
-  private static buildIdentityHeaders(
-    options: PlexApiOptions,
-  ): Record<string, string> {
-    const headers: Record<string, string> = {
-      'X-Plex-Product': 'Maintainerr',
-      'X-Plex-Version': options.appVersion ?? '0.0.0',
-      'X-Plex-Platform': 'Node.js',
-      'X-Plex-Platform-Version': process.versions.node,
-      'X-Plex-Device': 'Maintainerr',
-      'X-Plex-Device-Name': 'Maintainerr',
-      'X-Plex-Provides': 'controller',
-    };
-    if (options.clientId) {
-      headers['X-Plex-Client-Identifier'] = options.clientId;
-    }
-    return headers;
-  }
 
   constructor(options: PlexApiOptions) {
     this.options = options;
@@ -55,7 +35,6 @@ class PlexApi {
       headers: {
         Accept: 'application/json',
         'X-Plex-Token': this.options.token,
-        ...PlexApi.buildIdentityHeaders(options),
       },
     });
     axiosRetry(this.axios, {

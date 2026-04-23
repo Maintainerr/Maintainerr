@@ -669,6 +669,25 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('returns undefined without adding media when collection creation fails', async () => {
+    const collection = createCollection({
+      id: 5,
+      libraryId: 'library-1',
+      title: 'Failed Collection With Children',
+    });
+    const media = [{ mediaServerId: 'item-1' }];
+    const addChildrenToCollectionSpy = jest
+      .spyOn(service as any, 'addChildrenToCollection')
+      .mockResolvedValue(undefined);
+
+    jest.spyOn(service, 'createCollection').mockResolvedValue(undefined);
+
+    await expect(
+      service.createCollectionWithChildren(collection, media),
+    ).resolves.toBeUndefined();
+    expect(addChildrenToCollectionSpy).not.toHaveBeenCalled();
+  });
+
   it('hydrates collection media from collection children and deduplicates parent lookups', async () => {
     const collection = createCollection({
       id: 6,

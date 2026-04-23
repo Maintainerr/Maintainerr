@@ -506,11 +506,11 @@ function ProviderSection({
         </div>
 
         <div className="mt-auto pt-4">
-          <div className="flex w-full justify-end gap-3">
-            <span className="inline-flex rounded-md shadow-sm">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
+            <span className="inline-flex w-full rounded-md shadow-sm sm:w-auto">
               <TestingButton
                 buttonType="success"
-                className="h-10"
+                className="h-10 w-full sm:w-auto"
                 type="button"
                 onClick={performTest}
                 disabled={testing || isGoingToRemove || loadError || isLoading}
@@ -519,9 +519,9 @@ function ProviderSection({
                 feedbackStatus={testStatus}
               />
             </span>
-            <span className="inline-flex rounded-md shadow-sm">
+            <span className="inline-flex w-full rounded-md shadow-sm sm:w-auto">
               <SaveButton
-                className="h-10"
+                className="h-10 w-full sm:w-auto"
                 type="submit"
                 disabled={!canSave}
                 isPending={isSubmitting}

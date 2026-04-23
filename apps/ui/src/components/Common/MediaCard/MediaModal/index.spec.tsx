@@ -13,6 +13,10 @@ import GetApiHandler from '../../../../utils/ApiHandler'
 import { clearMaintainerrStatusDetailsCache } from '../maintainerrStatus'
 import MediaModal from './index'
 
+vi.mock('../../../Collection/CollectionDetail/TriggerRuleButton', () => ({
+  default: () => <div>trigger-rule-action</div>,
+}))
+
 vi.mock('../../../../hooks/useMediaServerType', () => ({
   useMediaServerType: vi.fn(),
 }))
@@ -42,8 +46,6 @@ describe('MediaModal', () => {
       isMediaServerTypeSelected: false,
       isSetupComplete: false,
       isNotConfigured: true,
-      isMediaServerTypeSelected: false,
-      isSetupComplete: false,
     })
   })
 
@@ -504,5 +506,104 @@ describe('MediaModal', () => {
 
     const detailsGrid = container.querySelector('.mt-4.grid')
     expect(detailsGrid?.className).toContain('grid-cols-2')
+  })
+
+  it('shows the trigger rule action control for actionable collection items', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/91') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={91}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        collection={{
+          id: 8,
+          title: 'Collection',
+          libraryId: '1',
+          type: 'movie',
+          isActive: true,
+          arrAction: 0,
+          media: [],
+          manualCollection: false,
+          manualCollectionName: '',
+          addDate: new Date(),
+          handledMediaAmount: 0,
+          lastDurationInSeconds: 0,
+          keepLogsForMonths: 6,
+        }}
+      />,
+    )
+
+    expect(await screen.findByText('trigger-rule-action')).toBeTruthy()
+  })
+
+  it('hides the trigger rule action control for excluded collection items', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/92') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/media-server/meta/92/maintainerr-status') {
+        return Promise.resolve({
+          excludedFrom: [],
+          manuallyAddedTo: [],
+        })
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={92}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+        exclusionType="specific"
+        collection={{
+          id: 8,
+          title: 'Collection',
+          libraryId: '1',
+          type: 'movie',
+          isActive: true,
+          arrAction: 0,
+          media: [],
+          manualCollection: false,
+          manualCollectionName: '',
+          addDate: new Date(),
+          handledMediaAmount: 0,
+          lastDurationInSeconds: 0,
+          keepLogsForMonths: 6,
+        }}
+      />,
+    )
+
+    await screen.findByText('Excluded From')
+    expect(screen.queryByText('trigger-rule-action')).toBeNull()
   })
 })

@@ -29,8 +29,7 @@ export class OverlaySchemaGenerated1776053413074 implements MigrationInterface {
                 "titleCardOverlayText" text NOT NULL,
                 "titleCardOverlayStyle" text NOT NULL,
                 "titleCardFrame" text NOT NULL,
-                "cronSchedule" varchar,
-                "applyOnAdd" boolean NOT NULL DEFAULT (1)
+                "cronSchedule" varchar
             )
         `);
     await queryRunner.query(`

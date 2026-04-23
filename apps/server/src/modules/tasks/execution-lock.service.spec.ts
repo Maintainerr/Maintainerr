@@ -49,6 +49,22 @@ describe('ExecutionLockService', () => {
     releaseSecond();
   });
 
+  it('returns null from tryAcquire when the key is already locked', async () => {
+    const release = await service.acquire('shared');
+
+    expect(service.tryAcquire('shared')).toBeNull();
+
+    release();
+  });
+
+  it('acquires immediately with tryAcquire when the key is free', async () => {
+    const release = service.tryAcquire('shared');
+
+    expect(release).toBeInstanceOf(Function);
+
+    release?.();
+  });
+
   it('does not block subsequent acquires after release', async () => {
     const release = await service.acquire('shared');
     release();

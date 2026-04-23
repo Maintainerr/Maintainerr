@@ -21,7 +21,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
-    "@tanstack/react-query": "^5.99.0",
+    "@tanstack/react-query": "^5.99.2",
     "axios": "^1.15.0",
     "bowser": "^2.14.1",
     "clsx": "^2.1.1",
@@ -35,9 +35,9 @@
     "react-konva": "^19.2.3",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
-    "react-router-dom": "^7.14.1",
+    "react-router-dom": "^7.14.2",
     "react-select": "^5.10.2",
-    "react-toastify": "^11.0.5",
+    "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
@@ -77,10 +77,10 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
-    "vite": "^8.0.8",
-    "vitest": "^4.1.4"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
   },
   "optionalDependencies": {
-    "rolldown": "^1.0.0-rc.16"
+    "rolldown": "^1.0.0-rc.17"
   }
 }
