@@ -13,19 +13,14 @@ import { IOverlayProvider } from './overlay-provider.interface';
 /**
  * Jellyfin implementation of IOverlayProvider.
  *
- * Maps overlay modes to Jellyfin's `ImageType` — poster → Primary,
- * titlecard → Thumb. This is the single place that bridges the two
- * taxonomies, so JellyfinAdapterService stays SDK-generic (it accepts
- * any ImageType) and the overlay module stays mode-generic (it only
- * knows about OverlayTemplateMode).
+ * Reads/writes only the `Primary` image: movies and shows have their poster
+ * there, and episodes have their still there (Jellyfin's `Thumb` is mostly
+ * unpopulated for episodes and shows a 16:9 series banner for
+ * continue-watching fallback — neither is what an overlay should target).
  */
 @Injectable()
 export class JellyfinOverlayProvider implements IOverlayProvider {
   constructor(private readonly jf: JellyfinAdapterService) {}
-
-  private imageTypeFor(): ImageType {
-    return ImageType.Primary;
-  }
 
   async isAvailable(): Promise<boolean> {
     return this.jf.isSetup();
@@ -64,7 +59,7 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
   }
 
   async downloadImage(itemId: string): Promise<Buffer | null> {
-    return this.jf.getItemImageBuffer(itemId, this.imageTypeFor());
+    return this.jf.getItemImageBuffer(itemId, ImageType.Primary);
   }
 
   async uploadImage(
@@ -72,11 +67,6 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
     buffer: Buffer,
     contentType: string,
   ): Promise<void> {
-    await this.jf.setItemImage(
-      itemId,
-      this.imageTypeFor(),
-      buffer,
-      contentType,
-    );
+    await this.jf.setItemImage(itemId, ImageType.Primary, buffer, contentType);
   }
 }

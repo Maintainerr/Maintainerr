@@ -1,7 +1,6 @@
 import {
   OverlayLibrarySection,
   OverlayPreviewItem,
-  OverlayTemplateMode,
 } from '@maintainerr/contracts';
 
 /**
@@ -42,27 +41,21 @@ export interface IOverlayProvider {
   getRandomEpisode(sectionKeys?: string[]): Promise<OverlayPreviewItem | null>;
 
   /**
-   * Download the artwork that `mode` targets:
-   *   - 'poster'    → movie / show primary poster
-   *   - 'titlecard' → episode title-card still (16:9)
-   *
-   * Providers map the mode to the server-native image kind internally.
-   * Returns null when no artwork of that kind exists for the item.
+   * Download the artwork for `itemId`. Both Plex and Jellyfin expose the
+   * correct image on the item itself — poster for movies/shows, still for
+   * episodes — so providers don't need a kind hint. Returns null when no
+   * artwork exists for the item.
    */
-  downloadImage(
-    itemId: string,
-    mode: OverlayTemplateMode,
-  ): Promise<Buffer | null>;
+  downloadImage(itemId: string): Promise<Buffer | null>;
 
   /**
-   * Replace the artwork targeted by `mode`. Upload semantics are a provider
-   * detail (Plex: upload + diff + select with content-addressed dedup;
+   * Replace the item's artwork. Upload semantics are a provider detail
+   * (Plex: upload + diff + select with content-addressed dedup;
    * Jellyfin: atomic single-call replace).
    */
   uploadImage(
     itemId: string,
     buffer: Buffer,
     contentType: string,
-    mode?: OverlayTemplateMode,
   ): Promise<void>;
 }

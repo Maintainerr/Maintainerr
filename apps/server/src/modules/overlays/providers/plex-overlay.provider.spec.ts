@@ -82,20 +82,12 @@ describe('PlexOverlayProvider', () => {
   });
 
   describe('downloadImage', () => {
-    it('chains getBestPosterUrl → downloadPoster and ignores mode', async () => {
+    it('chains getBestPosterUrl → downloadPoster', async () => {
       plexApi.getBestPosterUrl.mockResolvedValue('/library/metadata/42/thumb');
       const buf = Buffer.from('jpeg-bytes');
       plexApi.downloadPoster.mockResolvedValue(buf);
 
-      const resultPoster = await provider.downloadImage('42', 'poster');
-      const resultTitleCard = await provider.downloadImage('42', 'titlecard');
-
-      expect(resultPoster).toBe(buf);
-      expect(resultTitleCard).toBe(buf);
-      // Both modes use the same underlying getBestPosterUrl + downloadPoster
-      // path — on Plex the item's thumb is the right artwork regardless.
-      expect(plexApi.getBestPosterUrl).toHaveBeenCalledTimes(2);
-      expect(plexApi.downloadPoster).toHaveBeenCalledTimes(2);
+      await expect(provider.downloadImage('42')).resolves.toBe(buf);
       expect(plexApi.downloadPoster).toHaveBeenCalledWith(
         '/library/metadata/42/thumb',
       );
@@ -103,17 +95,17 @@ describe('PlexOverlayProvider', () => {
 
     it('returns null when the item has no thumb URL', async () => {
       plexApi.getBestPosterUrl.mockResolvedValue(null);
-      await expect(provider.downloadImage('42', 'poster')).resolves.toBeNull();
+      await expect(provider.downloadImage('42')).resolves.toBeNull();
       expect(plexApi.downloadPoster).not.toHaveBeenCalled();
     });
   });
 
   describe('uploadImage', () => {
-    it('delegates to setThumb and ignores mode', async () => {
+    it('delegates to setThumb', async () => {
       const buf = Buffer.from('jpeg-bytes');
       plexApi.setThumb.mockResolvedValue(undefined);
 
-      await provider.uploadImage('42', buf, 'image/jpeg', 'titlecard');
+      await provider.uploadImage('42', buf, 'image/jpeg');
 
       expect(plexApi.setThumb).toHaveBeenCalledWith('42', buf, 'image/jpeg');
     });

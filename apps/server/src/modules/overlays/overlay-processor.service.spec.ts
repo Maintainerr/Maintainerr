@@ -88,13 +88,16 @@ describe('OverlayProcessorService', () => {
       collection.id,
       expect.any(Date),
       template,
-      'poster',
       provider,
+    );
+    expect(templateService.resolveForCollection).toHaveBeenCalledWith(
+      null,
+      'poster',
     );
     expect(result.processed).toBe(1);
   });
 
-  it('passes titlecard mode when the collection is of type episode', async () => {
+  it('resolves a titlecard template when the collection is of type episode', async () => {
     const settingsService = {
       getSettings: jest.fn().mockResolvedValue({ enabled: true }),
     };
@@ -137,12 +140,15 @@ describe('OverlayProcessorService', () => {
 
     await service.processCollection(collection as any);
 
+    expect(templateService.resolveForCollection).toHaveBeenCalledWith(
+      null,
+      'titlecard',
+    );
     expect(service.applyTemplateOverlay).toHaveBeenCalledWith(
       'ep-1',
       collection.id,
       expect.any(Date),
       template,
-      'titlecard',
       provider,
     );
   });
@@ -587,50 +593,6 @@ describe('OverlayProcessorService', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
     // Clear state so we stop tracking this item.
     expect(stateService.removeState).toHaveBeenCalledWith(42, 'media-1');
-  });
-
-  it('reverts with titlecard mode when the collection is episode type', async () => {
-    const stateService = {
-      getCollectionStates: jest
-        .fn()
-        .mockResolvedValue([{ mediaServerId: 'ep-1' }]),
-      removeState: jest.fn().mockResolvedValue(undefined),
-    };
-    const provider = makeProvider();
-    const providerFactory = makeProviderFactory(provider);
-    const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest
-        .fn()
-        .mockResolvedValue({ type: 'episode', title: 'Ep revert' }),
-    };
-
-    const service = new OverlayProcessorService(
-      providerFactory as any,
-      collectionsService as any,
-      {} as any,
-      stateService as any,
-      {} as any,
-      {} as any,
-      eventEmitter as any,
-      createMockLogger(),
-    );
-
-    jest
-      .spyOn(service as any, 'loadOriginalPoster')
-      .mockReturnValue(Buffer.from('poster'));
-    jest
-      .spyOn(service as any, 'deleteOriginalPoster')
-      .mockImplementation(() => {});
-
-    await service.revertCollection(99);
-
-    expect(provider.uploadImage).toHaveBeenCalledWith(
-      'ep-1',
-      expect.any(Buffer),
-      'image/jpeg',
-      'titlecard',
-    );
   });
 
   it('emits one aggregated overlay reverted notification for revertMultipleItems', async () => {

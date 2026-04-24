@@ -132,7 +132,6 @@ export class OverlayProcessorService {
   private async revertItemInternal(
     collectionId: number,
     mediaServerId: string,
-    mode: OverlayTemplateMode,
     provider: IOverlayProvider,
   ): Promise<boolean> {
     const originalBuf = this.loadOriginalPoster(mediaServerId);
@@ -146,12 +145,7 @@ export class OverlayProcessorService {
     }
 
     try {
-      await provider.uploadImage(
-        mediaServerId,
-        originalBuf,
-        'image/jpeg',
-        mode,
-      );
+      await provider.uploadImage(mediaServerId, originalBuf, 'image/jpeg');
     } catch (error) {
       this.logger.warn(
         `Failed to restore original poster for ${mediaServerId}; keeping backup for retry`,
@@ -193,18 +187,12 @@ export class OverlayProcessorService {
       return;
     }
 
-    // Mode is derived from the collection so Jellyfin reverts to the correct
-    // image kind (Thumb for episodes, Primary for movies/shows). We resolve
-    // once per batch because all items belong to the same collection.
-    const mode = await this.resolveMode(collectionId);
-
     const reverted: { mediaServerId: string }[] = [];
     for (const item of mediaItems) {
       if (
         await this.revertItemInternal(
           collectionId,
           item.mediaServerId,
-          mode,
           provider,
         )
       ) {
@@ -226,13 +214,6 @@ export class OverlayProcessorService {
         value: collectionId,
       }),
     );
-  }
-
-  private async resolveMode(
-    collectionId: number,
-  ): Promise<OverlayTemplateMode> {
-    const coll = await this.collectionsService.getCollection(collectionId);
-    return coll?.type === 'episode' ? 'titlecard' : 'poster';
   }
 
   // ── Process single collection ─────────────────────────────────────────────
@@ -316,7 +297,6 @@ export class OverlayProcessorService {
           collection.id,
           deleteDate,
           template,
-          mode,
           provider,
         );
         if (success) {
@@ -410,11 +390,9 @@ export class OverlayProcessorService {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
-          const mode = await this.resolveMode(state.collectionId);
           const restored = await this.revertItemInternal(
             state.collectionId,
             state.mediaServerId,
-            mode,
             provider,
           );
           if (restored) {
@@ -490,11 +468,9 @@ export class OverlayProcessorService {
     const allStates = await this.stateService.getAllStates();
     const revertedMediaItems: { mediaServerId: string }[] = [];
     for (const state of allStates) {
-      const mode = await this.resolveMode(state.collectionId);
       const restored = await this.revertItemInternal(
         state.collectionId,
         state.mediaServerId,
-        mode,
         provider,
       );
       if (restored) {
@@ -524,7 +500,6 @@ export class OverlayProcessorService {
     collectionId: number,
     deleteDate: Date,
     template: OverlayTemplate,
-    mode: OverlayTemplateMode,
     provider: IOverlayProvider,
   ): Promise<boolean> {
     let posterBuf: Buffer;
@@ -533,10 +508,10 @@ export class OverlayProcessorService {
       posterBuf = savedOriginal;
     } else {
       try {
-        const downloaded = await provider.downloadImage(itemId, mode);
+        const downloaded = await provider.downloadImage(itemId);
         if (!downloaded) {
           this.logger.warn(
-            `No ${mode} artwork available for item ${itemId}, skipping`,
+            `No ${template.mode} artwork available for item ${itemId}, skipping`,
           );
           return false;
         }
@@ -578,7 +553,6 @@ export class OverlayProcessorService {
         itemId,
         Buffer.from(result.buffer),
         result.contentType,
-        mode,
       );
       await this.stateService.markProcessed(
         collectionId,
@@ -595,9 +569,9 @@ export class OverlayProcessorService {
   }
 
   /**
-   * Generate a preview image using a template's elements. Renders onto the
-   * artwork kind that matches the template's mode (poster → Primary, title
-   * card → Thumb) so Jellyfin previews pull the correct image.
+   * Generate a preview image using a template's elements. The provider
+   * returns the item's own artwork (poster for movies/shows, still for
+   * episodes) which is what every template renders onto.
    */
   async generateTemplatePreview(
     itemId: string,
@@ -610,7 +584,7 @@ export class OverlayProcessorService {
       );
     }
 
-    const posterBuf = await provider.downloadImage(itemId, template.mode);
+    const posterBuf = await provider.downloadImage(itemId);
     if (!posterBuf) {
       throw new Error(
         `Could not find ${template.mode} artwork for item ${itemId}`,

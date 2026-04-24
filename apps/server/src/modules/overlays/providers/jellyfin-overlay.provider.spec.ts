@@ -99,8 +99,8 @@ describe('JellyfinOverlayProvider', () => {
     });
   });
 
-  describe('mode → ImageType mapping', () => {
-    it('maps poster → Primary on downloadImage', async () => {
+  describe('Primary image I/O', () => {
+    it('reads the Primary image on downloadImage', async () => {
       const buf = Buffer.from('jpeg');
       jf.getItemImageBuffer.mockResolvedValue(buf);
 
@@ -111,32 +111,7 @@ describe('JellyfinOverlayProvider', () => {
       );
     });
 
-    it('maps titlecard → Thumb on downloadImage', async () => {
-      const buf = Buffer.from('jpeg');
-      jf.getItemImageBuffer.mockResolvedValue(buf);
-
-      await expect(provider.downloadImage('42')).resolves.toBe(buf);
-      expect(jf.getItemImageBuffer).toHaveBeenCalledWith(
-        '42',
-        ImageType.Primary,
-      );
-    });
-
-    it('maps poster → Primary on uploadImage', async () => {
-      const buf = Buffer.from('jpeg');
-      jf.setItemImage.mockResolvedValue(undefined);
-
-      await provider.uploadImage('42', buf, 'image/jpeg');
-
-      expect(jf.setItemImage).toHaveBeenCalledWith(
-        '42',
-        ImageType.Primary,
-        buf,
-        'image/jpeg',
-      );
-    });
-
-    it('maps titlecard → Thumb on uploadImage', async () => {
+    it('writes the Primary image on uploadImage', async () => {
       const buf = Buffer.from('jpeg');
       jf.setItemImage.mockResolvedValue(undefined);
 

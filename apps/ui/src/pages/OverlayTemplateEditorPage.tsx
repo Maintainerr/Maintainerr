@@ -179,7 +179,7 @@ const OverlayTemplateEditorPage = () => {
     const fetcher = mode === 'titlecard' ? getRandomEpisode : getRandomItem
     const item = await fetcher(selectedSection)
     if (item) {
-      setBackgroundUrl(buildItemImageUrl(item.itemId, mode))
+      setBackgroundUrl(buildItemImageUrl(item.itemId))
     }
   }, [mode, selectedSection])
 
@@ -198,7 +198,7 @@ const OverlayTemplateEditorPage = () => {
     let cancelled = false
     void fetcher(selectedSection).then((item) => {
       if (cancelled || !item) return
-      setBackgroundUrl(buildItemImageUrl(item.itemId, mode))
+      setBackgroundUrl(buildItemImageUrl(item.itemId))
     })
     return () => {
       cancelled = true
