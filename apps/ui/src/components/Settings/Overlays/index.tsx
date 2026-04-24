@@ -14,6 +14,7 @@ import {
   updateOverlaySettings,
 } from '../../../api/overlays'
 import Button from '../../Common/Button'
+import Modal from '../../Common/Modal'
 import PageControlRow from '../../Common/PageControlRow'
 import PendingButton from '../../Common/PendingButton'
 import SaveButton from '../../Common/SaveButton'
@@ -64,6 +65,7 @@ function ToggleField({
 const OverlaySettings = () => {
   const [processing, setProcessing] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
 
   const {
     feedback,
@@ -111,10 +113,12 @@ const OverlaySettings = () => {
     }
   }
 
-  const handleResetAll = async () => {
-    if (!window.confirm('Reset all overlays? This will revert all posters.')) {
-      return
-    }
+  const handleResetAllRequest = () => {
+    setConfirmResetOpen(true)
+  }
+
+  const handleResetAllConfirm = async () => {
+    setConfirmResetOpen(false)
     setResetting(true)
     try {
       await resetAllOverlays()
@@ -178,7 +182,7 @@ const OverlaySettings = () => {
                       <Button
                         buttonType="danger"
                         type="button"
-                        onClick={handleResetAll}
+                        onClick={handleResetAllRequest}
                         disabled={resetting}
                       >
                         <span>
@@ -203,6 +207,28 @@ const OverlaySettings = () => {
           </form>
         </div>
       </div>
+
+      {confirmResetOpen && (
+        <Modal
+          title="Reset all overlays?"
+          size="sm"
+          onCancel={() => setConfirmResetOpen(false)}
+          footerActions={
+            <Button
+              buttonType="danger"
+              className="ml-3"
+              onClick={() => void handleResetAllConfirm()}
+            >
+              Reset
+            </Button>
+          }
+        >
+          <p>
+            This will revert every applied overlay and restore the original
+            posters for all collections.
+          </p>
+        </Modal>
+      )}
     </>
   )
 }

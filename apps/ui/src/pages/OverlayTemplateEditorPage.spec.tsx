@@ -16,7 +16,7 @@ const overlayCanvas = vi.fn(
 let routeId = '42'
 
 vi.mock('../api/overlays', () => ({
-  buildPosterUrl: vi.fn(),
+  buildItemImageUrl: vi.fn(),
   createOverlayTemplate: vi.fn(),
   getOverlayFonts: () => getOverlayFonts(),
   getOverlaySections: () => getOverlaySections(),

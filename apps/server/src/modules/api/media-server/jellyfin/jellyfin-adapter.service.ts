@@ -1,15 +1,19 @@
 import { Jellyfin, type Api } from '@jellyfin/sdk';
 import {
   BaseItemKind,
+  ImageFormat,
+  ImageType,
   ItemFields,
   ItemSortBy,
   LocationType,
   SortOrder,
+  type BaseItemDto,
   type UserItemDataDto,
 } from '@jellyfin/sdk/lib/generated-client/models';
 import {
   getCollectionApi,
   getConfigurationApi,
+  getImageApi,
   getItemRefreshApi,
   getItemsApi,
   getItemUpdateApi,
@@ -383,6 +387,126 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       return undefined;
     }
+  }
+
+  // ── Overlay helpers ───────────────────────────────────────────────────────
+  //
+  // These methods are consumed exclusively by JellyfinOverlayProvider in the
+  // overlays module. They are public on the adapter (not on IMediaServerService)
+  // so Jellyfin SDK types do not leak outside the jellyfin/ folder.
+
+  /**
+   * Pick a single random media item (movie or series, configurable) from the
+   * given section ids. When no section ids are provided, picks across all
+   * supported libraries. Uses Jellyfin's native `ItemSortBy.Random` so the
+   * server does the randomisation — no client-side sampling needed.
+   */
+  async findRandomItem(
+    sectionIds: string[] | undefined,
+    kinds: BaseItemKind[],
+  ): Promise<BaseItemDto | null> {
+    if (!this.api) return null;
+
+    try {
+      const userId = await this.getUserId();
+      // The overlay editor UI passes a single section key; for "all sections"
+      // the caller omits the param. Anything else is unsupported — the
+      // recursive getItems call spans the selected parent or the whole server.
+      const parentId = sectionIds?.[0];
+      const response = await getItemsApi(this.api).getItems({
+        userId,
+        parentId,
+        includeItemTypes: kinds,
+        recursive: true,
+        sortBy: [ItemSortBy.Random],
+        sortOrder: [SortOrder.Ascending],
+        limit: 1,
+        excludeLocationTypes: [LocationType.Virtual],
+        imageTypeLimit: 1,
+      });
+
+      return response.data.Items?.[0] ?? null;
+    } catch (error) {
+      this.logger.warn('Failed to pick random Jellyfin item');
+      this.logger.debug(error);
+      return null;
+    }
+  }
+
+  /**
+   * Pick a single random episode from the given show library sections (or
+   * across all of them). Skips unaired placeholders via Virtual location
+   * exclusion so the preview never lands on a missing file.
+   */
+  async findRandomEpisode(
+    sectionIds: string[] | undefined,
+  ): Promise<BaseItemDto | null> {
+    return this.findRandomItem(sectionIds, [BaseItemKind.Episode]);
+  }
+
+  /**
+   * Download the raw bytes of a specific image for an item. The `imageType`
+   * is the caller's choice — `Primary` for movie/show posters, `Thumb` for
+   * episode title-card stills. Forces JPEG so callers can rely on a known
+   * Content-Type (the overlay editor's /poster proxy hard-codes image/jpeg;
+   * the render pipeline also emits JPEG). Returns null when the item has no
+   * image of that type (Jellyfin responds 404) or any other request failure.
+   */
+  async getItemImageBuffer(
+    itemId: string,
+    imageType: ImageType,
+  ): Promise<Buffer | null> {
+    if (!this.api) return null;
+
+    try {
+      const response = await getImageApi(this.api).getItemImage(
+        { itemId, imageType, format: ImageFormat.Jpg },
+        { responseType: 'arraybuffer' },
+      );
+      return Buffer.from(response.data as unknown as ArrayBuffer);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return null;
+      }
+      this.logger.warn(
+        `Failed to download ${imageType} image for item ${itemId}`,
+      );
+      this.logger.debug(error);
+      return null;
+    }
+  }
+
+  /**
+   * Replace the given image type on an item. Sends the image as a
+   * base64-encoded string body — the Jellyfin server (at least through the
+   * versions this project targets) rejects raw binary payloads on this
+   * endpoint with a 500, despite the OpenAPI description hinting at
+   * `image/*` binary. Base64 is the empirically-verified working path; see
+   * the discussion in jellyfin/jellyfin#12447. Throws on failure so the
+   * processor counts it as a per-item error.
+   */
+  async setItemImage(
+    itemId: string,
+    imageType: ImageType,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    if (!this.api) {
+      throw new Error('Jellyfin API not initialized');
+    }
+
+    const base64Body = buffer.toString('base64');
+
+    await getImageApi(this.api).setItemImage(
+      {
+        itemId,
+        imageType,
+        body: base64Body as unknown as File,
+      },
+      {
+        headers: { 'Content-Type': contentType },
+      },
+    );
   }
 
   private isCompletedWatch(

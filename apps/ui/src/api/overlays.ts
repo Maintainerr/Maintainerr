@@ -1,4 +1,6 @@
 import type {
+  OverlayLibrarySection,
+  OverlayPreviewItem,
   OverlaySettings,
   OverlaySettingsUpdate,
   OverlayTemplate,
@@ -20,22 +22,20 @@ export const updateOverlaySettings = (data: OverlaySettingsUpdate) =>
   PutApiHandler<OverlaySettings>('/overlays/settings', data)
 
 export const getOverlaySections = () =>
-  GetApiHandler<{ key: string; title: string; type: string }[]>(
-    '/overlays/sections',
-  )
+  GetApiHandler<OverlayLibrarySection[]>('/overlays/sections')
 
 export const getRandomItem = (sectionId: string) =>
-  GetApiHandler<{ plexId: string; title: string } | null>(
+  GetApiHandler<OverlayPreviewItem | null>(
     `/overlays/random-item?sectionId=${encodeURIComponent(sectionId)}`,
   )
 
 export const getRandomEpisode = (sectionId: string) =>
-  GetApiHandler<{ plexId: string; title: string } | null>(
+  GetApiHandler<OverlayPreviewItem | null>(
     `/overlays/random-episode?sectionId=${encodeURIComponent(sectionId)}`,
   )
 
-export const buildPosterUrl = (plexId: string) =>
-  `${API_BASE_PATH}/api/overlays/poster?plexId=${encodeURIComponent(plexId)}`
+export const buildItemImageUrl = (itemId: string) =>
+  `${API_BASE_PATH}/api/overlays/poster?itemId=${encodeURIComponent(itemId)}`
 
 export const getOverlayFonts = () =>
   GetApiHandler<{ name: string; path: string }[]>('/overlays/fonts')
@@ -108,10 +108,10 @@ export const importOverlayTemplate = (data: OverlayTemplateExport) =>
 
 export const buildTemplatePreviewUrl = (
   templateId: number,
-  plexId: string,
+  itemId: string,
   cacheBust?: number,
 ) => {
-  const params = new URLSearchParams({ plexId })
+  const params = new URLSearchParams({ itemId })
   if (cacheBust) params.set('_t', String(cacheBust))
   return `${API_BASE_PATH}/api/overlays/templates/${templateId}/preview?${params.toString()}`
 }

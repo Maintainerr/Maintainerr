@@ -22,6 +22,7 @@ import {
 } from '../api/overlays'
 import Button from '../components/Common/Button'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import Modal from '../components/Common/Modal'
 import PageControlRow from '../components/Common/PageControlRow'
 import {
   SettingsFeedbackAlert,
@@ -32,6 +33,10 @@ const OverlayTemplateListPage = () => {
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<OverlayTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [templateToDelete, setTemplateToDelete] = useState<{
+    id: number
+    name: string
+  } | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const { feedback, showSuccess, showError } =
     useSettingsFeedback('Overlay templates')
@@ -46,8 +51,15 @@ const OverlayTemplateListPage = () => {
   }, [])
 
   useEffect(() => {
-    void fetchTemplates()
-  }, [fetchTemplates])
+    // Surface load failures through the shared feedback hook so the user
+    // gets the same inline alert style used for follow-up actions on this
+    // page, instead of a silent empty state. Keeping the .catch at the
+    // call site (rather than inside fetchTemplates) avoids adding a
+    // setState branch that react-hooks/set-state-in-effect flags.
+    fetchTemplates().catch(() => {
+      showError('Failed to load overlay templates')
+    })
+  }, [fetchTemplates, showError])
 
   const handleEdit = (id: number) => {
     navigate(`/overlays/templates/${id}`)
@@ -63,8 +75,14 @@ const OverlayTemplateListPage = () => {
     }
   }
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`Delete template "${name}"?`)) return
+  const handleDelete = (id: number, name: string) => {
+    setTemplateToDelete({ id, name })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!templateToDelete) return
+    const { id } = templateToDelete
+    setTemplateToDelete(null)
     const result = await deleteOverlayTemplate(id)
     if (result?.success) {
       showSuccess('Template deleted')
@@ -184,6 +202,31 @@ const OverlayTemplateListPage = () => {
           </>
         )}
       </div>
+
+      {templateToDelete && (
+        <Modal
+          title="Delete template?"
+          size="sm"
+          onCancel={() => setTemplateToDelete(null)}
+          footerActions={
+            <Button
+              buttonType="danger"
+              className="ml-3"
+              onClick={() => void handleDeleteConfirm()}
+            >
+              Delete
+            </Button>
+          }
+        >
+          <p>
+            Delete template{' '}
+            <span className="font-semibold">
+              &ldquo;{templateToDelete.name}&rdquo;
+            </span>
+            ? This action cannot be undone.
+          </p>
+        </Modal>
+      )}
     </>
   )
 }
