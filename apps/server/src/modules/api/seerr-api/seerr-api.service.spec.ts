@@ -165,4 +165,46 @@ describe('SeerrApiService', () => {
       undefined,
     );
   });
+
+  it('should return false when the show has no Seerr mediaInfo', async () => {
+    jest.spyOn(service, 'getShow').mockResolvedValue({
+      id: 1,
+      firstAirDate: new Date('2020-01-01'),
+    });
+
+    await expect(service.hasRemainingSeasonRequests(100, 1)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('should return false when the show has mediaInfo but no requests', async () => {
+    jest.spyOn(service, 'getShow').mockResolvedValue({
+      id: 1,
+      mediaInfo: {
+        id: 1,
+        tmdbId: 100,
+        tvdbId: 200,
+        status: 1,
+        updatedAt: '2026-03-14T00:00:00.000Z',
+        mediaAddedAt: '2026-03-14T00:00:00.000Z',
+        externalServiceId: 1,
+        externalServiceId4k: 1,
+        mediaType: 'tv',
+        requests: [],
+      },
+      firstAirDate: new Date('2020-01-01'),
+    });
+
+    await expect(service.hasRemainingSeasonRequests(100, 1)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('should return undefined when getShow returns undefined (communication failure)', async () => {
+    jest.spyOn(service, 'getShow').mockResolvedValue(undefined);
+
+    await expect(service.hasRemainingSeasonRequests(100, 1)).resolves.toBe(
+      undefined,
+    );
+  });
 });
