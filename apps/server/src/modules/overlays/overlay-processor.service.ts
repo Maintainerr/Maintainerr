@@ -148,9 +148,9 @@ export class OverlayProcessorService {
     try {
       await provider.uploadImage(
         mediaServerId,
-        mode,
         originalBuf,
         'image/jpeg',
+         mode,
       );
     } catch (error) {
       this.logger.warn(
@@ -576,9 +576,9 @@ export class OverlayProcessorService {
     try {
       await provider.uploadImage(
         itemId,
-        mode,
         Buffer.from(result.buffer),
         result.contentType,
+         mode,
       );
       await this.stateService.markProcessed(
         collectionId,

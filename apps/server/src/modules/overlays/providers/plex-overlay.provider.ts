@@ -68,9 +68,9 @@ export class PlexOverlayProvider implements IOverlayProvider {
 
   async uploadImage(
     itemId: string,
-    mode: OverlayTemplateMode,
     buffer: Buffer,
     contentType: string,
+     mode: OverlayTemplateMode,
   ): Promise<void> {
     void mode;
     await this.plex.setThumb(itemId, buffer, contentType);

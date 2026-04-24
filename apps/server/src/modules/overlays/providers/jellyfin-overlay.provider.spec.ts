@@ -104,7 +104,7 @@ describe('JellyfinOverlayProvider', () => {
       const buf = Buffer.from('jpeg');
       jf.getItemImageBuffer.mockResolvedValue(buf);
 
-      await expect(provider.downloadImage('42', 'poster')).resolves.toBe(buf);
+      await expect(provider.downloadImage('42')).resolves.toBe(buf);
       expect(jf.getItemImageBuffer).toHaveBeenCalledWith(
         '42',
         ImageType.Primary,
@@ -115,17 +115,17 @@ describe('JellyfinOverlayProvider', () => {
       const buf = Buffer.from('jpeg');
       jf.getItemImageBuffer.mockResolvedValue(buf);
 
-      await expect(provider.downloadImage('42', 'titlecard')).resolves.toBe(
+      await expect(provider.downloadImage('42')).resolves.toBe(
         buf,
       );
-      expect(jf.getItemImageBuffer).toHaveBeenCalledWith('42', ImageType.Thumb);
+      expect(jf.getItemImageBuffer).toHaveBeenCalledWith('42', ImageType.Primary);
     });
 
     it('maps poster → Primary on uploadImage', async () => {
       const buf = Buffer.from('jpeg');
       jf.setItemImage.mockResolvedValue(undefined);
 
-      await provider.uploadImage('42', 'poster', buf, 'image/jpeg');
+      await provider.uploadImage('42', buf, 'image/jpeg');
 
       expect(jf.setItemImage).toHaveBeenCalledWith(
         '42',
@@ -139,11 +139,11 @@ describe('JellyfinOverlayProvider', () => {
       const buf = Buffer.from('jpeg');
       jf.setItemImage.mockResolvedValue(undefined);
 
-      await provider.uploadImage('42', 'titlecard', buf, 'image/jpeg');
+      await provider.uploadImage('42', buf, 'image/jpeg');
 
       expect(jf.setItemImage).toHaveBeenCalledWith(
         '42',
-        ImageType.Thumb,
+        ImageType.Primary,
         buf,
         'image/jpeg',
       );

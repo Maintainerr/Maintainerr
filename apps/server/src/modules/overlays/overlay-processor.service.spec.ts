@@ -627,9 +627,9 @@ describe('OverlayProcessorService', () => {
 
     expect(provider.uploadImage).toHaveBeenCalledWith(
       'ep-1',
-      'titlecard',
       expect.any(Buffer),
       'image/jpeg',
+      'titlecard',
     );
   });
 

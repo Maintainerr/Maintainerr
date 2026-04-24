@@ -61,8 +61,8 @@ export interface IOverlayProvider {
    */
   uploadImage(
     itemId: string,
-    mode: OverlayTemplateMode,
     buffer: Buffer,
     contentType: string,
+    mode?: OverlayTemplateMode,
   ): Promise<void>;
 }

@@ -5,7 +5,6 @@ import {
 import {
   OverlayLibrarySection,
   OverlayPreviewItem,
-  OverlayTemplateMode,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
@@ -24,8 +23,9 @@ import { IOverlayProvider } from './overlay-provider.interface';
 export class JellyfinOverlayProvider implements IOverlayProvider {
   constructor(private readonly jf: JellyfinAdapterService) {}
 
-  private imageTypeFor(mode: OverlayTemplateMode): ImageType {
-    return mode === 'titlecard' ? ImageType.Thumb : ImageType.Primary;
+  
+  private imageTypeFor(): ImageType {
+    return ImageType.Primary;
   }
 
   async isAvailable(): Promise<boolean> {
@@ -66,20 +66,18 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
 
   async downloadImage(
     itemId: string,
-    mode: OverlayTemplateMode,
   ): Promise<Buffer | null> {
-    return this.jf.getItemImageBuffer(itemId, this.imageTypeFor(mode));
+    return this.jf.getItemImageBuffer(itemId, this.imageTypeFor());
   }
 
   async uploadImage(
     itemId: string,
-    mode: OverlayTemplateMode,
     buffer: Buffer,
     contentType: string,
   ): Promise<void> {
     await this.jf.setItemImage(
       itemId,
-      this.imageTypeFor(mode),
+      this.imageTypeFor(),
       buffer,
       contentType,
     );

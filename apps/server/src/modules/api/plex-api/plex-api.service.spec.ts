@@ -334,6 +334,9 @@ describe('PlexApiService.initialize', () => {
       error: jest.fn(),
       debug: jest.fn(),
     } as any);
+
+    // Prevent real network calls from plexClient.query inside getStatus
+    jest.spyOn(service, 'getStatus').mockResolvedValue(undefined);
   });
 
   it('clears plexClient when primary connection and rediscovery both fail', async () => {
@@ -374,6 +377,7 @@ describe('PlexApiService.initialize', () => {
   });
 
   it('returns undefined from getStatus without logging an error when Plex is unreachable', async () => {
+    jest.restoreAllMocks();
     (service as any).plexClient = {
       query: jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')),
     };

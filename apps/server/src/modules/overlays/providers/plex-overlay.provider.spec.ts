@@ -113,7 +113,7 @@ describe('PlexOverlayProvider', () => {
       const buf = Buffer.from('jpeg-bytes');
       plexApi.setThumb.mockResolvedValue(undefined);
 
-      await provider.uploadImage('42', 'titlecard', buf, 'image/jpeg');
+      await provider.uploadImage('42', buf, 'image/jpeg', 'titlecard');
 
       expect(plexApi.setThumb).toHaveBeenCalledWith('42', buf, 'image/jpeg');
     });
