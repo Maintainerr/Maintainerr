@@ -58,6 +58,15 @@ jobs:
           client-id: ${{ secrets.MERGE_APP_ID }}
           private-key: ${{ secrets.MERGE_APP_KEY }}
 
+      - name: Create docs bot App token
+        id: docs-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.DOCS_APP_ID }}
+          private-key: ${{ secrets.DOCS_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: Maintainerr_docs
+
       - name: Checkout Maintainerr
         uses: actions/checkout@v6
         with:
@@ -153,7 +162,7 @@ jobs:
            (github.event_name == 'workflow_dispatch' && inputs.open_issue))
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
           DOCS_REPO: Maintainerr/Maintainerr_docs
           MARKER: maintainerr-docs-drift
         run: |
@@ -178,7 +187,7 @@ jobs:
           inputs.create_pr
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
           DOCS_REPO: Maintainerr/Maintainerr_docs
           BASE_REF: ${{ steps.base.outputs.ref }}
           RUN_ID: ${{ github.run_id }}
@@ -208,7 +217,7 @@ jobs:
            (github.event_name == 'workflow_dispatch' && inputs.open_issue))
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
           DOCS_REPO: Maintainerr/Maintainerr_docs
           MARKER: maintainerr-docs-drift
         run: |
