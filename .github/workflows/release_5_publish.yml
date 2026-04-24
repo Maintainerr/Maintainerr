@@ -288,11 +288,10 @@ jobs:
 
       - name: Create docs bot App token
         id: docs-app-token
-        continue-on-error: true
         if: ${{ steps.package-version.outputs.current-version != '' }}
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.DOCS_APP_ID }}
+          client-id: ${{ secrets.DOCS_APP_ID }}
           private-key: ${{ secrets.DOCS_APP_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: Maintainerr_docs
