@@ -25,6 +25,8 @@ const jellyfinApiMocks = {
   getItem: jest.fn(),
   getItemUserData: jest.fn(),
   refreshItem: jest.fn(),
+  getItemImage: jest.fn(),
+  setItemImage: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -88,10 +90,21 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
   ItemSortBy: {
     SortName: 'SortName',
     DateCreated: 'DateCreated',
+    Random: 'Random',
   },
   SortOrder: {
     Ascending: 'Ascending',
     Descending: 'Descending',
+  },
+  ImageType: {
+    Primary: 'Primary',
+    Thumb: 'Thumb',
+    Backdrop: 'Backdrop',
+  },
+  ImageFormat: {
+    Jpg: 'Jpg',
+    Png: 'Png',
+    Webp: 'Webp',
   },
 }));
 
@@ -136,6 +149,12 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   })),
   getItemRefreshApi: jest.fn().mockImplementation(() => ({
     refreshItem: (...args: unknown[]) => jellyfinApiMocks.refreshItem(...args),
+  })),
+  getImageApi: jest.fn().mockImplementation(() => ({
+    getItemImage: (...args: unknown[]) =>
+      jellyfinApiMocks.getItemImage(...args),
+    setItemImage: (...args: unknown[]) =>
+      jellyfinApiMocks.setItemImage(...args),
   })),
   getSearchApi: jest.fn(),
   getPlaylistsApi: jest.fn(),
@@ -208,6 +227,10 @@ describe('JellyfinAdapterService', () => {
     collectionApiMocks.addToCollection.mockResolvedValue(undefined);
     collectionApiMocks.removeFromCollection.mockResolvedValue(undefined);
     jellyfinApiMocks.getItemUserData.mockResolvedValue({ data: undefined });
+    jellyfinApiMocks.getItemImage.mockResolvedValue({
+      data: new ArrayBuffer(0),
+    });
+    jellyfinApiMocks.setItemImage.mockResolvedValue(undefined);
     jellyfinCacheMocks.data.has.mockReturnValue(false);
     jellyfinCacheMocks.data.get.mockReturnValue(undefined);
     jellyfinCacheMocks.data.keys.mockReturnValue([]);
@@ -1606,6 +1629,182 @@ describe('JellyfinAdapterService', () => {
       });
       expect(jellyfinApiMocks.deleteItem).toHaveBeenCalledWith({
         itemId: 'collection-1',
+      });
+    });
+  });
+
+  describe('overlay helpers', () => {
+    const initializeAdapter = async () => {
+      settingsService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    };
+
+    describe('findRandomItem', () => {
+      it('queries getItems with Random sort and returns the first item', async () => {
+        await initializeAdapter();
+
+        jellyfinApiMocks.getItems.mockResolvedValue({
+          data: { Items: [{ Id: 'jf-42', Name: 'Random Item' }] },
+        });
+
+        const item = await service.findRandomItem(
+          ['lib-1'],
+          ['Movie' as any, 'Series' as any],
+        );
+
+        expect(item).toEqual({ Id: 'jf-42', Name: 'Random Item' });
+        expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({
+            parentId: 'lib-1',
+            sortBy: ['Random'],
+            limit: 1,
+            recursive: true,
+            excludeLocationTypes: ['Virtual'],
+          }),
+        );
+      });
+
+      it('returns null when no items match', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+
+        await expect(
+          service.findRandomItem(undefined, ['Movie' as any]),
+        ).resolves.toBeNull();
+      });
+
+      it('returns null when the adapter is not initialised', async () => {
+        await expect(
+          service.findRandomItem(['lib-1'], ['Movie' as any]),
+        ).resolves.toBeNull();
+        expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('findRandomEpisode', () => {
+      it('queries getItems with Episode kind and Random sort', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItems.mockResolvedValue({
+          data: {
+            Items: [
+              {
+                Id: 'ep-1',
+                Name: 'Episode One',
+                SeriesName: 'Series Name',
+              },
+            ],
+          },
+        });
+
+        const ep = await service.findRandomEpisode(['lib-shows']);
+
+        expect(ep).toMatchObject({ Id: 'ep-1', Name: 'Episode One' });
+        expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({
+            parentId: 'lib-shows',
+            includeItemTypes: ['Episode'],
+            sortBy: ['Random'],
+          }),
+        );
+      });
+    });
+
+    describe('getItemImageBuffer', () => {
+      it('requests the given image type as arraybuffer and wraps in Buffer', async () => {
+        await initializeAdapter();
+        const payload = new Uint8Array([0xff, 0xd8, 0xff]).buffer;
+        jellyfinApiMocks.getItemImage.mockResolvedValue({ data: payload });
+
+        const buf = await service.getItemImageBuffer('42', 'Primary' as any);
+
+        expect(buf).toBeInstanceOf(Buffer);
+        expect(buf?.length).toBe(3);
+        expect(jellyfinApiMocks.getItemImage).toHaveBeenCalledWith(
+          { itemId: '42', imageType: 'Primary', format: 'Jpg' },
+          { responseType: 'arraybuffer' },
+        );
+      });
+
+      it('passes Thumb through when requested', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItemImage.mockResolvedValue({
+          data: new ArrayBuffer(1),
+        });
+
+        await service.getItemImageBuffer('42', 'Thumb' as any);
+
+        expect(jellyfinApiMocks.getItemImage).toHaveBeenCalledWith(
+          { itemId: '42', imageType: 'Thumb', format: 'Jpg' },
+          { responseType: 'arraybuffer' },
+        );
+      });
+
+      it('returns null on 404', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItemImage.mockRejectedValue(
+          createResponseError(404),
+        );
+
+        await expect(
+          service.getItemImageBuffer('42', 'Primary' as any),
+        ).resolves.toBeNull();
+      });
+
+      it('returns null and logs on non-404 errors', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItemImage.mockRejectedValue(
+          createResponseError(500),
+        );
+
+        await expect(
+          service.getItemImageBuffer('42', 'Primary' as any),
+        ).resolves.toBeNull();
+        expect(logger.warn).toHaveBeenCalled();
+      });
+    });
+
+    describe('setItemImage', () => {
+      it('POSTs the image as base64 with the given Content-Type', async () => {
+        await initializeAdapter();
+        const buf = Buffer.from('jpeg-bytes');
+
+        await service.setItemImage('42', 'Primary' as any, buf, 'image/jpeg');
+
+        expect(jellyfinApiMocks.setItemImage).toHaveBeenCalledWith(
+          {
+            itemId: '42',
+            imageType: 'Primary',
+            body: buf.toString('base64'),
+          },
+          { headers: { 'Content-Type': 'image/jpeg' } },
+        );
+      });
+
+      it('passes Thumb through unchanged when requested', async () => {
+        await initializeAdapter();
+        const buf = Buffer.from('tc');
+
+        await service.setItemImage('42', 'Thumb' as any, buf, 'image/jpeg');
+
+        expect(jellyfinApiMocks.setItemImage).toHaveBeenCalledWith(
+          expect.objectContaining({ imageType: 'Thumb' }),
+          expect.any(Object),
+        );
+      });
+
+      it('throws when the adapter is not initialised', async () => {
+        await expect(
+          service.setItemImage(
+            '42',
+            'Primary' as any,
+            Buffer.from('x'),
+            'image/jpeg',
+          ),
+        ).rejects.toThrow('Jellyfin API not initialized');
       });
     });
   });

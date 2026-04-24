@@ -5,12 +5,6 @@ import { MemoryRouter } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import NavBar from './index'
 
-const useMediaServerType = vi.fn()
-
-vi.mock('../../../hooks/useMediaServerType', () => ({
-  useMediaServerType: () => useMediaServerType(),
-}))
-
 vi.mock('../../../router', () => ({
   prefetchRoute: vi.fn(),
 }))
@@ -51,17 +45,10 @@ const renderNavBar = () =>
   )
 
 describe('NavBar', () => {
-  it('hides the overlays navigation entry for Jellyfin', () => {
-    useMediaServerType.mockReturnValue({ isPlex: false })
-
-    renderNavBar()
-
-    expect(screen.queryByText('Overlays')).toBeNull()
-  })
-
-  it('shows the overlays navigation entry for Plex', () => {
-    useMediaServerType.mockReturnValue({ isPlex: true })
-
+  it('renders the overlays navigation entry unconditionally', () => {
+    // The router-level MediaServerSetupGuard keeps unconfigured users out of
+    // the nav entirely, so the overlay link shows for any configured server
+    // (Plex or Jellyfin). One instance in the desktop nav, one in mobile.
     renderNavBar()
 
     expect(screen.getAllByText('Overlays')).toHaveLength(2)

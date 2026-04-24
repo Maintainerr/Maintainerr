@@ -7,6 +7,9 @@ on:
         type: boolean
         description: Build release candidate image
         default: false
+  push:
+    branches:
+      - development
 
 concurrency:
   group: release-prepare-pr-${{ github.ref_name || github.run_id }}
@@ -103,13 +106,38 @@ jobs:
         id: release-pr
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           existing_number="$(gh pr list --base "$MAIN_BRANCH" --head "$DEVELOPMENT_BRANCH" --state open --json number --jq '.[0].number // empty')"
+
+          if [ -z "$existing_number" ] && [ "$EVENT_NAME" = "push" ]; then
+            echo "No open release PR; skipping body refresh on push event."
+            {
+              echo "## Release PR"
+              echo
+              echo "No open release PR; nothing to refresh."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          body_file="$(mktemp)"
+          cp "$RELEASE_PR_TEMPLATE" "$body_file"
+
+          changes="$(git log "origin/${MAIN_BRANCH}..origin/${DEVELOPMENT_BRANCH}" --pretty=format:'%s' \
+            | awk '{ key=$0; sub(/ \(#[0-9]+\)$/, "", key); if (!seen[key]++) print }' \
+            | { grep -vE '^chore(\([^)]*\))?!?:' || true; } \
+            | sed 's/^/- /')"
+
+          if [ -n "$changes" ]; then
+            printf '\n%s\n' "$changes" >> "$body_file"
+          else
+            printf '\n_No non-chore commits._\n' >> "$body_file"
+          fi
 
           if [ -n "$existing_number" ]; then
             gh pr edit "$existing_number" \
               --title "$RELEASE_PR_TITLE" \
-              --body-file "$RELEASE_PR_TEMPLATE"
+              --body-file "$body_file"
 
             pr_url="$(gh pr view "$existing_number" --json url --jq '.url')"
             echo "pr_number=${existing_number}" >> "$GITHUB_OUTPUT"
@@ -124,7 +152,7 @@ jobs:
               --base "$MAIN_BRANCH" \
               --head "$DEVELOPMENT_BRANCH" \
               --title "$RELEASE_PR_TITLE" \
-              --body-file "$RELEASE_PR_TEMPLATE")"
+              --body-file "$body_file")"
 
             pr_number="$(gh pr view "$pr_url" --json number --jq '.number')"
             echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
@@ -137,6 +165,7 @@ jobs:
           fi
 
       - name: Manage docker-build label on release PR
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ steps.release-pr.outputs.pr_number }}

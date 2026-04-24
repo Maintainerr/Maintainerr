@@ -25,7 +25,7 @@ This document describes the overlay functionality added to Maintainerr, covering
 
 ## Overview
 
-The overlay feature automatically applies visual overlays to Plex media posters and title cards for items in Maintainerr collections. Overlays are defined by **templates** — reusable, visually-editable compositions of text, variable, shape, and image elements. It supports:
+The overlay feature automatically applies visual overlays to media-server posters and title cards for items in Maintainerr collections. Overlays are defined by **templates** — reusable, visually-editable compositions of text, variable, shape, and image elements. Works on both Plex and Jellyfin via the `IOverlayProvider` abstraction. It supports:
 
 - **Template-based design** — a visual Konva.js canvas editor for composing overlay elements
 - **Four element types** — static text, variable text (date/countdown), shapes (rectangle/ellipse), and images
@@ -34,8 +34,8 @@ The overlay feature automatically applies visual overlays to Plex media posters 
 - **Per-element formatting** — each variable element carries its own date format, locale, and countdown text templates
 - **Built-in presets** — 4 preset templates seeded on first run (Classic Pill, Countdown Bar, Corner Badge, Title Card Pill)
 - **Template resolution** — per-collection template override → default template for mode → skip
-- **Live preview** — server-side rendering of templates onto actual Plex posters
-- **Plex poster background** — the visual editor can display a real poster as the canvas background
+- **Live preview** — server-side rendering of templates onto actual media-server artwork
+- **Preview background** — the visual editor can display a real item poster or title card as the canvas background
 - **Cron scheduling** — periodic updates to refresh day-countdown labels
 - **Original poster backup** — saved to disk so overlays can be cleanly reverted
 - **Import/Export** — templates can be shared as JSON files between instances
@@ -45,14 +45,18 @@ The overlay feature automatically applies visual overlays to Plex media posters 
 ## Architecture
 
 ```
-packages/contracts/src/overlays/     ← Zod schemas, TypeScript types, element/template definitions
-apps/server/src/modules/overlays/    ← NestJS module (controller, services, entities)
-apps/server/src/modules/api/plex-api/ ← Plex poster download/upload methods
-apps/server/assets/fonts/            ← Bundled .ttf font files
-apps/ui/src/pages/                   ← OverlayTemplateListPage, OverlayTemplateEditorPage
-apps/ui/src/components/OverlayEditor/ ← OverlayCanvas, ElementToolbox, LayerPanel, PropertiesPanel
-apps/ui/src/api/overlays.ts          ← Frontend API functions
+packages/contracts/src/overlays/                      ← Zod schemas, TypeScript types, provider DTOs
+apps/server/src/modules/overlays/                     ← NestJS module (controller, services, entities)
+apps/server/src/modules/overlays/providers/           ← IOverlayProvider abstraction + per-server impls
+apps/server/src/modules/api/plex-api/                 ← Plex-specific helpers (used by PlexOverlayProvider)
+apps/server/src/modules/api/media-server/jellyfin/    ← Jellyfin adapter + overlay helpers
+apps/server/assets/fonts/                             ← Bundled .ttf font files
+apps/ui/src/pages/                                    ← OverlayTemplateListPage, OverlayTemplateEditorPage
+apps/ui/src/components/OverlayEditor/                 ← OverlayCanvas, ElementToolbox, LayerPanel, PropertiesPanel
+apps/ui/src/api/overlays.ts                           ← Frontend API functions
 ```
+
+The overlay module depends only on `IOverlayProvider`. Server-specific code stays in the providers and their underlying services (`PlexApiService`, `JellyfinAdapterService`); nothing in `modules/overlays/` outside `providers/` imports Plex or Jellyfin types directly.
 
 ### Data Flow
 
@@ -64,13 +68,15 @@ User creates/edits template in visual editor
 
 Cron fires (or "Run Now" clicked)
   → OverlayProcessorService.processAllCollections()
+  → Resolve IOverlayProvider from OverlayProviderFactory (Plex or Jellyfin)
   → For each overlay-enabled collection:
+      → mode = collection.type === 'episode' ? 'titlecard' : 'poster'
       → Resolve template: collection.overlayTemplateId → default for mode → skip
       → For each media item:
-          → Download poster from Plex (or load saved original)
+          → provider.downloadImage(itemId) (or load saved original)
           → Build TemplateRenderContext { deleteDate, daysLeft }
           → OverlayRenderService.renderFromTemplate() ← canvas + sharp
-          → Upload composited image back to Plex via setThumb()
+          → provider.uploadImage(itemId, buffer, contentType)
           → Save state in overlay_item_state table
 ```
 
@@ -329,8 +335,8 @@ Orchestrates the template-based apply/revert workflow.
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `processCollection(collection)`                                    | Resolve template via `templateService.resolveForCollection()`, iterate media, apply overlays. Skips items where `daysLeft` hasn't changed. |
 | `processAllCollections()`                                          | Process all overlay-enabled collections. Reverts orphaned items (no longer in any overlay collection). Emits start/finish/fail events.     |
-| `applyTemplateOverlay(plexId, collectionId, deleteDate, template)` | Download poster (or load saved original), build `TemplateRenderContext`, call `renderFromTemplate()`, upload to Plex, record state         |
-| `generateTemplatePreview(plexId, template)`                        | Render preview using sample date (14 days in future)                                                                                       |
+| `applyTemplateOverlay(itemId, collectionId, deleteDate, template, mode, provider)` | Download artwork (or load saved original) via `provider.downloadImage`, render, upload via `provider.uploadImage`, record state |
+| `generateTemplatePreview(itemId, template)`                        | Resolve the active provider, download the artwork matching `template.mode`, render with a 14-day sample context                            |
 | `revertItem(collectionId, mediaServerId)`                          | Restore original poster for one item                                                                                                       |
 | `revertCollection(collectionId)`                                   | Revert all items in a collection                                                                                                           |
 | `resetAllOverlays()`                                               | Revert everything, clear all state                                                                                                         |
@@ -365,9 +371,9 @@ All endpoints are under `@Controller('api/overlays')`.
 | Method | Path              | Params      | Response                    | Description                                     |
 | ------ | ----------------- | ----------- | --------------------------- | ----------------------------------------------- |
 | GET    | `/sections`       | —           | `Array<{key, title, type}>` | List Plex library sections                      |
-| GET    | `/random-item`    | `sectionId` | `{plexId, title}\|null`     | Random movie/show from section                  |
-| GET    | `/random-episode` | `sectionId` | `{plexId, title}\|null`     | Random episode from section                     |
-| GET    | `/poster`         | `plexId`    | `StreamableFile` (JPEG)     | Proxy Plex poster image (for editor background) |
+| GET    | `/random-item`    | `sectionId`         | `OverlayPreviewItem \| null` | Random movie/show from section                                  |
+| GET    | `/random-episode` | `sectionId`         | `OverlayPreviewItem \| null` | Random episode from section                                     |
+| GET    | `/poster`         | `itemId, mode`      | `StreamableFile` (JPEG)     | Proxy the item's artwork for the given mode (editor background) |
 
 ### Processing
 
@@ -399,26 +405,60 @@ All endpoints are under `@Controller('api/overlays')`.
 | POST   | `/templates/:id/default`   | —                       | `OverlayTemplate`       | Set as default for its mode                |
 | POST   | `/templates/:id/export`    | —                       | `OverlayTemplateExport` | Export template as JSON                    |
 | POST   | `/templates/import`        | `OverlayTemplateExport` | `OverlayTemplate`       | Import template from JSON                  |
-| POST   | `/templates/:id/preview`   | `query: plexId`         | `StreamableFile` (JPEG) | Render template preview onto actual poster |
+| POST   | `/templates/:id/preview`   | `query: itemId`         | `StreamableFile` (JPEG) | Render template preview onto actual artwork |
 
 ---
 
-## Plex API Integration
+## Media Server Integration
 
-New methods added to `PlexApiService`:
+The overlay module consumes media servers through a dedicated `IOverlayProvider` abstraction (`apps/server/src/modules/overlays/providers/`). `OverlayProviderFactory` resolves the active provider from the configured media-server type; both Plex and Jellyfin ship implementations.
 
-| Method                                      | Description                                                                                                                                                                          |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `getBestPosterUrl(plexId)`                  | Gets the `thumb` path from Plex metadata                                                                                                                                             |
-| `downloadPoster(thumbPath)`                 | Downloads poster image as Buffer (validates ≥1024 bytes)                                                                                                                             |
-| `getPosters(plexId)`                        | Lists all poster variants via `/library/metadata/{id}/posters`                                                                                                                       |
-| `uploadPoster(plexId, buffer, contentType)` | POSTs image buffer to Plex                                                                                                                                                           |
-| `selectPoster(plexId, uploadId)`            | Sets the active poster via PUT                                                                                                                                                       |
-| `setThumb(plexId, buffer, contentType)`     | **Orchestrator**: gets before-posters → uploads → diffs to find new poster ID (3 retry attempts for Plex eventual consistency) → selects it. Handles Plex's content-addressed dedup. |
-| `getItemType(plexId)`                       | Returns Plex item type string                                                                                                                                                        |
-| `getOverlayLibrarySections()`               | Returns movie + show sections for the preview picker                                                                                                                                 |
-| `getRandomLibraryItem(sectionKeys?)`        | Picks a random item with a thumb from a library section                                                                                                                              |
-| `getRandomEpisodeItem(sectionKeys?)`        | Same for episodes (Plex type=4), includes show title in display                                                                                                                      |
+### `IOverlayProvider` surface
+
+| Method                                             | Purpose                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `isAvailable()`                                    | Reports whether the underlying server is ready                                 |
+| `getSections()`                                    | Lists movie/show libraries for the editor's section picker                     |
+| `getRandomItem(sectionKeys?)`                      | Random movie or show for poster previews                                       |
+| `getRandomEpisode(sectionKeys?)`           | Random episode for title-card previews                                                |
+| `downloadImage(itemId)`                    | Bytes of the item's own artwork (poster for movies/shows, still for episodes); `null` if none |
+| `uploadImage(itemId, buffer, contentType)` | Atomically replaces the item's artwork                                                |
+
+### PlexOverlayProvider
+
+Delegates to existing helpers on `PlexApiService` — no new Plex logic. Both provider methods operate on the item's own `thumb`, which is the correct artwork for any template mode (movies/shows use the poster `thumb`; episodes use the title-card `thumb`).
+
+| Interface method                   | Underlying call                                           |
+| ---------------------------------- | --------------------------------------------------------- |
+| `isAvailable`                      | `PlexApiService.isPlexSetup`                              |
+| `getSections`                      | `PlexApiService.getOverlayLibrarySections`                |
+| `getRandomItem`                    | `PlexApiService.getRandomLibraryItem`                     |
+| `getRandomEpisode`                 | `PlexApiService.getRandomEpisodeItem`                     |
+| `downloadImage(itemId)`            | `getBestPosterUrl` → `downloadPoster`                     |
+| `uploadImage(itemId, buf, ct)`     | `setThumb` (upload → diff → select with dedup/retry loop) |
+
+### JellyfinOverlayProvider
+
+Wraps four public helpers on `JellyfinAdapterService`:
+
+| Adapter method                                                  | Purpose                                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `findRandomItem(sectionIds, kinds)`                             | `getItems` with `ItemSortBy.Random`, configurable `BaseItemKind[]`, Virtual locations excluded   |
+| `findRandomEpisode(sectionIds)`                                 | Same with `includeItemTypes: [Episode]`                                                          |
+| `getItemImageBuffer(itemId, imageType)`                         | `getItemImage` with `format: Jpg` + `responseType: 'arraybuffer'`, 404 → `null`                  |
+| `setItemImage(itemId, imageType, buffer, contentType)`          | `setItemImage` with base64 body + explicit `Content-Type` (empirical workaround; Jellyfin rejects raw binary with 500 — see jellyfin/jellyfin#12447) |
+
+Both provider methods target `ImageType.Primary` exclusively:
+
+- Movies and shows carry their poster on `Primary`.
+- Episodes carry their still/screenshot on `Primary` — Jellyfin's `Thumb` is mostly unpopulated on episodes by default and serves as a 16:9 continue-watching banner at the series level, neither of which is the correct target for a titlecard overlay.
+
+Keeping the `ImageType` constant inside the provider (not leaked to `IOverlayProvider` or `JellyfinAdapterService`) preserves the rule that Jellyfin SDK types don't escape `jellyfin/`.
+
+### Server differences hidden behind the interface
+
+- **Upload semantics.** Plex uses upload → diff → select with content-addressed dedup and retries. Jellyfin replaces the image atomically with one request.
+- **Artwork taxonomy.** Both servers expose the correct per-item artwork as a single image kind — Plex on the item's `thumb`, Jellyfin on `ImageType.Primary` — so the provider interface is mode-free.
 
 ---
 
@@ -582,7 +622,7 @@ A visual canvas editor for designing overlay templates.
 #### Key Behaviors
 
 - **Top bar** — template name input, mode selector (poster/titlecard, new templates only), Plex poster background picker, undo/redo, save
-- **Plex poster background** — section dropdown loads library sections via `getOverlaySections()`, selecting a section auto-fetches a random poster via `getRandomItem()`/`getRandomEpisode()`. Refresh button loads a different poster. Image is proxied through `GET /api/overlays/poster?plexId=...`
+- **Preview background** — section dropdown loads library sections via `getOverlaySections()`, selecting a section auto-fetches a random item via `getRandomItem()`/`getRandomEpisode()` (the latter for titlecard-mode templates). Refresh button loads a different one. Image is proxied through `GET /api/overlays/poster?itemId=...`
 - **Canvas** — Konva.js `Stage` with interactive drag/transform; scales template canvas to fit display (max 600px height)
 - **Element toolbox** — buttons to add text, variable, shape, or image elements with sensible defaults
 - **Layer panel** — ordered layer list with visibility toggle, reorder (move up/down by swapping `layerOrder`), delete
@@ -620,7 +660,7 @@ All functions in `apps/ui/src/api/overlays.ts`:
 | `getOverlaySections()`        | `GET /overlays/sections`       | List Plex library sections        |
 | `getRandomItem(sectionId)`    | `GET /overlays/random-item`    | Random movie/show for preview     |
 | `getRandomEpisode(sectionId)` | `GET /overlays/random-episode` | Random episode for preview        |
-| `buildPosterUrl(plexId)`      | —                              | Construct poster proxy URL string |
+| `buildItemImageUrl(itemId, mode)` | —                              | Construct artwork proxy URL string for the given mode |
 
 ### Processing
 
@@ -649,7 +689,7 @@ All functions in `apps/ui/src/api/overlays.ts`:
 | `setDefaultOverlayTemplate(id)`                   | `POST /overlays/templates/:id/default`   | Set as default        |
 | `exportOverlayTemplate(id)`                       | `POST /overlays/templates/:id/export`    | Export as JSON        |
 | `importOverlayTemplate(data)`                     | `POST /overlays/templates/import`        | Import from JSON      |
-| `buildTemplatePreviewUrl(id, plexId, cacheBust?)` | —                                        | Construct preview URL |
+| `buildTemplatePreviewUrl(id, itemId, cacheBust?)` | —                                        | Construct preview URL |
 
 ---
 
@@ -753,9 +793,9 @@ Users can upload additional fonts (.ttf, .otf, .woff) via `POST /api/overlays/fo
 
 When an overlay is first applied to an item:
 
-1. The original poster is downloaded from Plex
-2. Saved to `{DATA_DIR}/overlays/originals/{plexId}.jpg`
+1. The original artwork is downloaded via the active `IOverlayProvider.downloadImage()`
+2. Saved to `{DATA_DIR}/overlays/originals/{mediaServerId}.jpg`
 3. On subsequent re-applications (e.g. countdown day change), the saved original is used as the base to prevent overlay stacking
-4. On revert, the saved original is uploaded back to Plex and the backup file is deleted
+4. On revert, the saved original is uploaded back via `IOverlayProvider.uploadImage()` and the backup file is deleted
 
-This ensures overlays are always cleanly reversible.
+This ensures overlays are always cleanly reversible on both Plex and Jellyfin.
