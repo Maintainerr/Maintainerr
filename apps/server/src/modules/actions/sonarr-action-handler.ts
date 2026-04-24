@@ -434,7 +434,17 @@ export class SonarrActionHandler {
   ): Promise<void> {
     const series = await this.refetchSeries(sonarrApiClient, lookupCandidate);
 
-    if (!series?.id || !this.isShowEmpty(series, 'files')) {
+    if (!series?.id) {
+      this.logger.debug(
+        `[Sonarr] Skipping empty-show cleanup: series refetch returned no result for ${lookupCandidate.providerKey} id ${lookupCandidate.id}`,
+      );
+      return;
+    }
+
+    if (!this.isShowEmpty(series, 'files')) {
+      this.logger.debug(
+        `[Sonarr] Show '${series.title}' still has ${series.statistics?.episodeFileCount ?? 0} episode file(s) - skipping show deletion`,
+      );
       return;
     }
 
@@ -448,8 +458,17 @@ export class SonarrActionHandler {
           removedSeasonNumber,
         );
 
-      // Bail on true (remaining requests) or undefined (Seerr lookup failed) — only delete on explicit false
-      if (hasRemainingRequests !== false) {
+      if (hasRemainingRequests === true) {
+        this.logger.debug(
+          `[Sonarr] Show '${series.title}' has other active Seerr season requests - skipping show deletion`,
+        );
+        return;
+      }
+
+      if (hasRemainingRequests === undefined) {
+        this.logger.debug(
+          `[Sonarr] Show '${series.title}' Seerr state could not be determined - skipping show deletion`,
+        );
         return;
       }
 
@@ -461,6 +480,9 @@ export class SonarrActionHandler {
     }
 
     if (!this.isShowEmptyAndEnded(series, 'monitored')) {
+      this.logger.debug(
+        `[Sonarr] Show '${series.title}' is not ended with all seasons unmonitored (status=${series.status}) - skipping show deletion`,
+      );
       return;
     }
 
@@ -476,7 +498,17 @@ export class SonarrActionHandler {
   ): Promise<void> {
     const series = await this.refetchSeries(sonarrApiClient, lookupCandidate);
 
-    if (!series || !this.isShowEmptyAndEnded(series, 'monitored')) {
+    if (!series) {
+      this.logger.debug(
+        `[Sonarr] Skipping empty-show unmonitor: series refetch returned no result for ${lookupCandidate.providerKey} id ${lookupCandidate.id}`,
+      );
+      return;
+    }
+
+    if (!this.isShowEmptyAndEnded(series, 'monitored')) {
+      this.logger.debug(
+        `[Sonarr] Show '${series.title}' is not ended with all seasons unmonitored (status=${series.status}) - skipping show unmonitor`,
+      );
       return;
     }
 
