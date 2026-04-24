@@ -150,7 +150,7 @@ export class OverlayProcessorService {
         mediaServerId,
         originalBuf,
         'image/jpeg',
-         mode,
+        mode,
       );
     } catch (error) {
       this.logger.warn(
@@ -578,7 +578,7 @@ export class OverlayProcessorService {
         itemId,
         Buffer.from(result.buffer),
         result.contentType,
-         mode,
+        mode,
       );
       await this.stateService.markProcessed(
         collectionId,

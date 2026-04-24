@@ -23,7 +23,6 @@ import { IOverlayProvider } from './overlay-provider.interface';
 export class JellyfinOverlayProvider implements IOverlayProvider {
   constructor(private readonly jf: JellyfinAdapterService) {}
 
-  
   private imageTypeFor(): ImageType {
     return ImageType.Primary;
   }
@@ -64,9 +63,7 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
     return { itemId: ep.Id, title };
   }
 
-  async downloadImage(
-    itemId: string,
-  ): Promise<Buffer | null> {
+  async downloadImage(itemId: string): Promise<Buffer | null> {
     return this.jf.getItemImageBuffer(itemId, this.imageTypeFor());
   }
 

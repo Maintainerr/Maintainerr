@@ -70,7 +70,7 @@ export class PlexOverlayProvider implements IOverlayProvider {
     itemId: string,
     buffer: Buffer,
     contentType: string,
-     mode: OverlayTemplateMode,
+    mode: OverlayTemplateMode,
   ): Promise<void> {
     void mode;
     await this.plex.setThumb(itemId, buffer, contentType);
