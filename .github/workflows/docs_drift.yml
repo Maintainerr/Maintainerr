@@ -81,6 +81,7 @@ jobs:
           ref: main
           path: .maintainerr_docs
           fetch-depth: 1
+          token: ${{ steps.docs-app-token.outputs.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -197,7 +198,6 @@ jobs:
           pushd .maintainerr_docs > /dev/null
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${DOCS_REPO}.git"
           git checkout -b "$branch"
           git commit --allow-empty -m "chore: open docs drift PR for Maintainerr ${BASE_REF}..HEAD"
           git push -u origin "$branch"
