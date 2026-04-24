@@ -73,10 +73,10 @@ Cron fires (or "Run Now" clicked)
       → mode = collection.type === 'episode' ? 'titlecard' : 'poster'
       → Resolve template: collection.overlayTemplateId → default for mode → skip
       → For each media item:
-          → provider.downloadImage(itemId, mode) (or load saved original)
+          → provider.downloadImage(itemId) (or load saved original)
           → Build TemplateRenderContext { deleteDate, daysLeft }
           → OverlayRenderService.renderFromTemplate() ← canvas + sharp
-          → provider.uploadImage(itemId, mode, buffer, contentType)
+          → provider.uploadImage(itemId, buffer, contentType)
           → Save state in overlay_item_state table
 ```
 
@@ -420,22 +420,22 @@ The overlay module consumes media servers through a dedicated `IOverlayProvider`
 | `isAvailable()`                                    | Reports whether the underlying server is ready                                 |
 | `getSections()`                                    | Lists movie/show libraries for the editor's section picker                     |
 | `getRandomItem(sectionKeys?)`                      | Random movie or show for poster previews                                       |
-| `getRandomEpisode(sectionKeys?)`                   | Random episode for title-card previews                                         |
-| `downloadImage(itemId, mode)`                      | Bytes of the artwork the mode targets (`poster` or `titlecard`); `null` if none |
-| `uploadImage(itemId, mode, buffer, contentType)`   | Atomically replaces the artwork for the mode                                    |
+| `getRandomEpisode(sectionKeys?)`           | Random episode for title-card previews                                                |
+| `downloadImage(itemId)`                    | Bytes of the item's own artwork (poster for movies/shows, still for episodes); `null` if none |
+| `uploadImage(itemId, buffer, contentType)` | Atomically replaces the item's artwork                                                |
 
 ### PlexOverlayProvider
 
-Delegates to existing helpers on `PlexApiService` — no new Plex logic. The `mode` parameter is intentionally unused: a Plex item's own `thumb` is the correct artwork for any mode (movies/shows use the poster `thumb`; episodes use the title-card `thumb`).
+Delegates to existing helpers on `PlexApiService` — no new Plex logic. Both provider methods operate on the item's own `thumb`, which is the correct artwork for any template mode (movies/shows use the poster `thumb`; episodes use the title-card `thumb`).
 
-| Interface method                  | Underlying call                                           |
-| --------------------------------- | --------------------------------------------------------- |
-| `isAvailable`                     | `PlexApiService.isPlexSetup`                              |
-| `getSections`                     | `PlexApiService.getOverlayLibrarySections`                |
-| `getRandomItem`                   | `PlexApiService.getRandomLibraryItem`                     |
-| `getRandomEpisode`                | `PlexApiService.getRandomEpisodeItem`                     |
-| `downloadImage(_, _mode)`         | `getBestPosterUrl` → `downloadPoster`                     |
-| `uploadImage(_, _mode, buf, ct)`  | `setThumb` (upload → diff → select with dedup/retry loop) |
+| Interface method                   | Underlying call                                           |
+| ---------------------------------- | --------------------------------------------------------- |
+| `isAvailable`                      | `PlexApiService.isPlexSetup`                              |
+| `getSections`                      | `PlexApiService.getOverlayLibrarySections`                |
+| `getRandomItem`                    | `PlexApiService.getRandomLibraryItem`                     |
+| `getRandomEpisode`                 | `PlexApiService.getRandomEpisodeItem`                     |
+| `downloadImage(itemId)`            | `getBestPosterUrl` → `downloadPoster`                     |
+| `uploadImage(itemId, buf, ct)`     | `setThumb` (upload → diff → select with dedup/retry loop) |
 
 ### JellyfinOverlayProvider
 
@@ -448,17 +448,17 @@ Wraps four public helpers on `JellyfinAdapterService`:
 | `getItemImageBuffer(itemId, imageType)`                         | `getItemImage` with `format: Jpg` + `responseType: 'arraybuffer'`, 404 → `null`                  |
 | `setItemImage(itemId, imageType, buffer, contentType)`          | `setItemImage` with base64 body + explicit `Content-Type` (empirical workaround; Jellyfin rejects raw binary with 500 — see jellyfin/jellyfin#12447) |
 
-Mode → `ImageType` mapping lives only in `JellyfinOverlayProvider.imageTypeFor()`:
+Both provider methods target `ImageType.Primary` exclusively:
 
-- `poster` → `ImageType.Primary`
-- `titlecard` → `ImageType.Thumb`
+- Movies and shows carry their poster on `Primary`.
+- Episodes carry their still/screenshot on `Primary` — Jellyfin's `Thumb` is mostly unpopulated on episodes by default and serves as a 16:9 continue-watching banner at the series level, neither of which is the correct target for a titlecard overlay.
 
-Keeping the `ImageType` parameter at the adapter layer (not at `IOverlayProvider`) preserves the rule that Jellyfin SDK types don't leak outside `jellyfin/`.
+Keeping the `ImageType` constant inside the provider (not leaked to `IOverlayProvider` or `JellyfinAdapterService`) preserves the rule that Jellyfin SDK types don't escape `jellyfin/`.
 
 ### Server differences hidden behind the interface
 
 - **Upload semantics.** Plex uses upload → diff → select with content-addressed dedup and retries. Jellyfin replaces the image atomically with one request.
-- **Artwork taxonomy.** Plex's item `thumb` covers both modes. Jellyfin splits by `ImageType`; the provider does the mapping.
+- **Artwork taxonomy.** Both servers expose the correct per-item artwork as a single image kind — Plex on the item's `thumb`, Jellyfin on `ImageType.Primary` — so the provider interface is mode-free.
 
 ---
 
@@ -622,7 +622,7 @@ A visual canvas editor for designing overlay templates.
 #### Key Behaviors
 
 - **Top bar** — template name input, mode selector (poster/titlecard, new templates only), Plex poster background picker, undo/redo, save
-- **Preview background** — section dropdown loads library sections via `getOverlaySections()`, selecting a section auto-fetches a random item via `getRandomItem()`/`getRandomEpisode()`. Refresh button loads a different one. Image is proxied through `GET /api/overlays/poster?itemId=...&mode=poster|titlecard`
+- **Preview background** — section dropdown loads library sections via `getOverlaySections()`, selecting a section auto-fetches a random item via `getRandomItem()`/`getRandomEpisode()` (the latter for titlecard-mode templates). Refresh button loads a different one. Image is proxied through `GET /api/overlays/poster?itemId=...`
 - **Canvas** — Konva.js `Stage` with interactive drag/transform; scales template canvas to fit display (max 600px height)
 - **Element toolbox** — buttons to add text, variable, shape, or image elements with sensible defaults
 - **Layer panel** — ordered layer list with visibility toggle, reorder (move up/down by swapping `layerOrder`), delete
