@@ -342,14 +342,24 @@ export class SeerrApiService {
     try {
       const media = await this.getShow(tmdbid);
 
-      if (!media?.mediaInfo) {
+      // getShow returns undefined only on communication failure or falsy id;
+      // the show being untracked still yields a response with mediaInfo == null.
+      if (!media) {
         return undefined;
+      }
+
+      if (!media.mediaInfo) {
+        return false;
       }
 
       const requests = media.mediaInfo.requests ?? [];
 
       return requests
-        .filter((request) => request.status !== SeerrRequestStatus.DECLINED)
+        .filter(
+          (request) =>
+            request.status !== SeerrRequestStatus.DECLINED &&
+            request.status !== SeerrRequestStatus.COMPLETED,
+        )
         .some((request) =>
           request.seasons.some(
             (season) =>
