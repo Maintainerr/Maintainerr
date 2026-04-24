@@ -12,11 +12,6 @@ on:
         type: boolean
         required: false
         default: false
-      create_pr:
-        description: "Open a draft PR on Maintainerr_docs (empty branch to push edits to, report as body)"
-        type: boolean
-        required: false
-        default: false
   pull_request:
     types: [closed]
     branches: [main]
@@ -180,35 +175,6 @@ jobs:
             echo "Created: $created"
             echo "- Created drift issue: $created" >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Open draft PR on Maintainerr_docs
-        if: >-
-          steps.drift-meta.outputs.has_drift == 'true' &&
-          github.event_name == 'workflow_dispatch' &&
-          inputs.create_pr
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
-          DOCS_REPO: Maintainerr/Maintainerr_docs
-          BASE_REF: ${{ steps.base.outputs.ref }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          set -e
-          branch="docs-drift/${RUN_ID}"
-          pushd .maintainerr_docs > /dev/null
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
-          git commit --allow-empty -m "chore: open docs drift PR for Maintainerr ${BASE_REF}..HEAD"
-          git push -u origin "$branch"
-          popd > /dev/null
-          pr_url=$(gh pr create --repo "$DOCS_REPO" \
-            --base main --head "$branch" \
-            --title "Docs drift — updates needed (${BASE_REF}..HEAD)" \
-            --body-file .drift-report.md \
-            --draft)
-          echo "PR: $pr_url"
-          echo "- Draft PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Close docs drift issue if clean
         if: >-
