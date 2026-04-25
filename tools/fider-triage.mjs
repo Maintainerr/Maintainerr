@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { buildMentionPrefix, createFider, ensureTags as ensureFiderTags, postHasTag } from './fider-shared.mjs';
+import { createFider, ensureTags as ensureFiderTags, notifyDiscord, postHasTag } from './fider-shared.mjs';
 
 const {
   FIDER_HOST,
@@ -10,14 +10,13 @@ const {
   DRY_RUN = 'false',
   FORCE_REEVAL = 'false',
   CHECK_PRE_EXISTING = 'false',
-  // Comma-separated list of usernames to @-mention on every bot comment if the
-  // /api/v1/users endpoint is unavailable to the bot's role. The bot's own
-  // name is always excluded automatically.
-  FIDER_MENTION_USERS_FALLBACK = '',
-  // Bot's own Fider display name, used to exclude itself from the mention
-  // list. Fider's public v1 API has no documented self-identity endpoint so
-  // we resolve this from config rather than discovery.
-  FIDER_BOT_USERNAME = 'maintainerr-fider-bot',
+  // Optional Discord webhook for maintainer notifications. Silent no-op when
+  // unset — the bot's Fider work still happens, just nothing posted to chat.
+  DISCORD_FIDER_BOT_WEBHOOK = '',
+  // Optional Discord role ID (snowflake) to @-mention in notifications.
+  // Empty = embed-only, no ping. Configure as a repo variable rather than
+  // a secret since role IDs aren't sensitive.
+  DISCORD_PING_ROLE_ID = '',
 } = process.env;
 
 const dryRun = DRY_RUN === 'true';
@@ -81,11 +80,6 @@ const requireEnv = () => {
 
 const fider = createFider({ host: FIDER_HOST, apiKey: FIDER_API_KEY });
 
-// Resolved once at startup by buildMentionPrefix and prepended to every bot
-// comment so maintainers see a "cc: @user1 @user2" line. Stays empty if the
-// user list isn't fetchable and FIDER_MENTION_USERS_FALLBACK isn't set.
-let mentionPrefix = '';
-const withMentionPrefix = (body) => (mentionPrefix ? `${mentionPrefix}\n\n${body}` : body);
 
 const ensureTags = () =>
   ensureFiderTags({
@@ -199,7 +193,7 @@ const buildCompletedComment = (verdict, candidate) => {
 
 const commentOnPost = async (post, verdict, candidates) => {
   const candidate = candidates.find((c) => c.url === verdict.evidence_url);
-  const content = withMentionPrefix(buildCompletedComment(verdict, candidate));
+  const content = buildCompletedComment(verdict, candidate);
   await upsertBotComment(post, COMMENT_MARKER_COMPLETED, content, `cites ${verdict.evidence_url}`);
 };
 
@@ -222,7 +216,7 @@ const buildDuplicateComment = (original, verdict) => {
 };
 
 const commentOnDuplicate = async (post, verdict, original) => {
-  const content = withMentionPrefix(buildDuplicateComment(original, verdict));
+  const content = buildDuplicateComment(original, verdict);
   await upsertBotComment(post, COMMENT_MARKER_DUPLICATE, content, `flagged as duplicate of #${original.number}`);
 };
 
@@ -245,7 +239,7 @@ const buildPreExistingComment = (verdict, candidate) => {
 
 const commentOnPreExisting = async (post, verdict, candidates) => {
   const candidate = candidates.find((c) => c.url === verdict.evidence_url);
-  const content = withMentionPrefix(buildPreExistingComment(verdict, candidate));
+  const content = buildPreExistingComment(verdict, candidate);
   await upsertBotComment(post, COMMENT_MARKER_PRE_EXISTING, content, `cites pre-existing ${verdict.evidence_url}`);
 };
 
@@ -717,12 +711,6 @@ const main = async () => {
   requireEnv();
   log(`dryRun=${dryRun} forceReeval=${forceReeval} checkPreExisting=${checkPreExisting} repo=${repo} model=${FIDER_TRIAGE_MODEL}`);
   await ensureTags();
-  mentionPrefix = await buildMentionPrefix({
-    fider,
-    log,
-    botUsername: FIDER_BOT_USERNAME,
-    fallback: FIDER_MENTION_USERS_FALLBACK,
-  });
   const allOpen = await fetchOpenPosts();
   // Drop already-processed posts BEFORE capping so the budget reaches new
   // posts instead of being eaten by the already-handled most-wanted backlog.
@@ -742,14 +730,41 @@ const main = async () => {
       if (result.verdict?.status === 'completed' && result.verdict.confidence === 'high') {
         completedCount += 1;
         log(`#${post.number} '${post.title}' → possibly-completed: ${result.verdict.evidence_url}`);
+        await notifyDiscord({
+          webhookUrl: DISCORD_FIDER_BOT_WEBHOOK,
+          pingRoleId: DISCORD_PING_ROLE_ID,
+          log,
+          host: FIDER_HOST,
+          kind: 'possibly-completed',
+          post,
+          fields: { 'Cited PR': result.verdict.evidence_url, Quote: result.verdict.quote },
+        });
         consecutiveModelFailures = 0;
       } else if (result.verdict?.status === 'pre_existing' && result.verdict.confidence === 'high') {
         preExistingCount += 1;
         log(`#${post.number} '${post.title}' → possibly-pre-existing: ${result.verdict.evidence_url}`);
+        await notifyDiscord({
+          webhookUrl: DISCORD_FIDER_BOT_WEBHOOK,
+          pingRoleId: DISCORD_PING_ROLE_ID,
+          log,
+          host: FIDER_HOST,
+          kind: 'possibly-pre-existing',
+          post,
+          fields: { 'Existing PR': result.verdict.evidence_url, Quote: result.verdict.quote },
+        });
         consecutiveModelFailures = 0;
       } else if (result.verdict?.status === 'duplicate' && result.verdict.confidence === 'high') {
         duplicateCount += 1;
         log(`#${post.number} '${post.title}' → possibly-duplicate of #${result.verdict.original_number}`);
+        await notifyDiscord({
+          webhookUrl: DISCORD_FIDER_BOT_WEBHOOK,
+          pingRoleId: DISCORD_PING_ROLE_ID,
+          log,
+          host: FIDER_HOST,
+          kind: 'possibly-duplicate',
+          post,
+          fields: { 'Duplicate of': `#${result.verdict.original_number}`, Quote: result.verdict.quote },
+        });
         consecutiveModelFailures = 0;
       } else if (result.skipped) {
         log(`#${post.number} '${post.title}' → skipped (${result.skipped})`);

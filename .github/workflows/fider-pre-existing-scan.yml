@@ -61,4 +61,6 @@ jobs:
           FORCE_REEVAL: ${{ inputs.force_reeval }}
           CHECK_PRE_EXISTING: 'true'
           FIDER_TRIAGE_MODEL: openai/gpt-4.1-mini
+          DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
+          DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}
         run: node tools/fider-triage.mjs

@@ -1,13 +1,14 @@
-import { buildMentionPrefix, createFider, ensureTags, postHasTag } from './fider-shared.mjs';
+import { createFider, ensureTags, notifyDiscord, postHasTag } from './fider-shared.mjs';
 
 const {
   FIDER_HOST,
   FIDER_API_KEY,
   DRY_RUN = 'false',
-  // Same fallback knob as fider-triage uses, so the cc: line stays consistent
-  // across all bot-authored comments.
-  FIDER_MENTION_USERS_FALLBACK = '',
-  FIDER_BOT_USERNAME = 'maintainerr-fider-bot',
+  // Optional Discord webhook for maintainer notifications. Silent no-op when
+  // unset — the stale sweep still happens, just nothing posted to chat.
+  DISCORD_FIDER_BOT_WEBHOOK = '',
+  // Optional Discord role ID (snowflake) to @-mention in notifications.
+  DISCORD_PING_ROLE_ID = '',
 } = process.env;
 
 const dryRun = DRY_RUN === 'true';
@@ -36,9 +37,6 @@ const requireEnv = () => {
 };
 
 const fider = createFider({ host: FIDER_HOST, apiKey: FIDER_API_KEY });
-
-let mentionPrefix = '';
-const withMentionPrefix = (body) => (mentionPrefix ? `${mentionPrefix}\n\n${body}` : body);
 
 const fetchOpenPosts = async () => {
   const all = [];
@@ -118,7 +116,7 @@ const sweepPost = async (post) => {
     }
     await fider(`/api/v1/posts/${post.number}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ content: withMentionPrefix(buildStaleWarnComment()) }),
+      body: JSON.stringify({ content: buildStaleWarnComment() }),
     });
     log(`stale-warn posted on #${post.number}`);
     return { phase: 1 };
@@ -161,12 +159,6 @@ const main = async () => {
     host: FIDER_HOST,
     tags: [{ slug: TAG_STALE, color: 'e74c3c' }],
   });
-  mentionPrefix = await buildMentionPrefix({
-    fider,
-    log,
-    botUsername: FIDER_BOT_USERNAME,
-    fallback: FIDER_MENTION_USERS_FALLBACK,
-  });
   const posts = await fetchOpenPosts();
   log(`fetched ${posts.length} open post(s)`);
   let warned = 0;
@@ -174,8 +166,36 @@ const main = async () => {
   for (const post of posts) {
     try {
       const result = await sweepPost(post);
-      if (result.phase === 1) warned += 1;
-      else if (result.phase === 2) declined += 1;
+      if (result.phase === 1) {
+        warned += 1;
+        await notifyDiscord({
+          webhookUrl: DISCORD_FIDER_BOT_WEBHOOK,
+          pingRoleId: DISCORD_PING_ROLE_ID,
+          log,
+          host: FIDER_HOST,
+          kind: 'stale-warned',
+          post,
+          fields: {
+            Filed: post.createdAt ? post.createdAt.slice(0, 10) : 'unknown',
+            Votes: String(post.votesCount ?? 0),
+            'Will auto-decline': `in ${DECLINE_GRACE_DAYS} days unless engaged`,
+          },
+        });
+      } else if (result.phase === 2) {
+        declined += 1;
+        await notifyDiscord({
+          webhookUrl: DISCORD_FIDER_BOT_WEBHOOK,
+          pingRoleId: DISCORD_PING_ROLE_ID,
+          log,
+          host: FIDER_HOST,
+          kind: 'stale-declined',
+          post,
+          fields: {
+            Reason: `${DECLINE_GRACE_DAYS}+ days after warn with no engagement`,
+            Votes: String(post.votesCount ?? 0),
+          },
+        });
+      }
       // Skips are quiet — most posts don't qualify and we don't want noise.
     } catch (err) {
       log(`#${post.number} error: ${err.message}`);

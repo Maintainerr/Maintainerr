@@ -50,4 +50,6 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
           FORCE_REEVAL: 'true'
           FIDER_TRIAGE_MODEL: openai/gpt-4.1-mini
+          DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
+          DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}
         run: node tools/fider-triage.mjs

@@ -40,14 +40,8 @@ jobs:
           FIDER_API_KEY: ${{ secrets.FIDER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          # Cron runs are always live; manual runs default to dry-run via the
-          # workflow_dispatch input above so it's easy to preview decisions
-          # without writing to Fider. See docs/fider-triage.md.
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
-          # gpt-4.1-mini is OpenAI's documented successor to gpt-4o-mini with
-          # better instruction-following — important for our strict JSON rubric
-          # that requires a verbatim quote from the candidate PR. Same Low
-          # rate-limit tier (150 req/day) and shape we already validated, so
-          # no reason to use the larger High-tier models for this task.
           FIDER_TRIAGE_MODEL: openai/gpt-4.1-mini
+          DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
+          DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}
         run: node tools/fider-triage.mjs

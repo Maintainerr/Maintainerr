@@ -51,4 +51,6 @@ jobs:
           FIDER_HOST: ${{ vars.FIDER_HOST || 'https://features.maintainerr.info' }}
           FIDER_API_KEY: ${{ secrets.FIDER_API_KEY }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
+          DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}
         run: node tools/fider-stale.mjs
