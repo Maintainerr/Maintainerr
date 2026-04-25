@@ -401,10 +401,60 @@ describe('RuleExecutorService', () => {
       collectionService.syncMediaServerChildrenToCollection,
     ).toHaveBeenCalledWith(
       expect.anything(),
-      [
-        expect.objectContaining({ mediaServerId: 'm-truly-manual' }),
-      ],
+      [expect.objectContaining({ mediaServerId: 'm-truly-manual' })],
       'local',
+    );
+  });
+
+  it('skips manual child import when sibling ownership lookup fails', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.PLEX,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Shared Title',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Shared Title',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    collectionService.getSiblingRuleOwnedMediaServerIds.mockRejectedValue(
+      new Error('db down'),
+    );
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'm-sibling-rule-owned' },
+      { id: 'm-truly-manual' },
+    ]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Could not determine sibling rule ownership'),
     );
   });
 
