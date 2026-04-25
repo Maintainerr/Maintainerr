@@ -163,6 +163,319 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('returns rule-owned media server ids from sibling collections sharing a media server collection', async () => {
+    const collection = createCollection({
+      id: 1,
+      mediaServerId: 'remote-collection',
+    });
+    const sibling = createCollection({
+      id: 2,
+      mediaServerId: 'remote-collection',
+    });
+    collectionRepo.find.mockResolvedValue([sibling]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(sibling, {
+        mediaServerId: 'rule-owned',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'manual-only',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    ]);
+
+    const result = await service.getSiblingRuleOwnedMediaServerIds(collection);
+
+    expect(Array.from(result)).toEqual(['rule-owned']);
+  });
+
+  it('does not delete a shared media server collection when one rule empties locally', async () => {
+    const collection = createCollection({
+      id: 11,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    const collectionMedia = [
+      createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find
+      .mockResolvedValueOnce(collectionMedia)
+      .mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(
+      async (value) => value as Collection,
+    );
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue(['item-1']);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+    ]);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(collectionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 11, mediaServerId: null }),
+    );
+  });
+
+  it('keeps a shared empty automatic collection during link checks', async () => {
+    const collection = createCollection({
+      id: 12,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Shared Empty',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Shared Empty',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+  });
+
+  it('repopulates a shared empty automatic collection from local rule-owned items', async () => {
+    const collection = createCollection({
+      id: 13,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Shared Empty Repop',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Shared Empty Repop',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-2',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'manual-only',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    ]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-collection',
+      ['rule-owned-1', 'rule-owned-2'],
+    );
+  });
+
+  it('does not call addBatchToCollection when a shared empty collection has no local rule-owned items', async () => {
+    const collection = createCollection({
+      id: 14,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Shared Empty NoLocal',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Shared Empty NoLocal',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'manual-only',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    ]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+  });
+
+  it('resyncs only items missing from a shared partially-drifted automatic collection', async () => {
+    const collection = createCollection({
+      id: 15,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Shared Partial Drift',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Shared Partial Drift',
+      childCount: 1,
+    } as any);
+    // Plex still has one of our items but lost the other two.
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'rule-owned-still-present' },
+    ] as any);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-still-present',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-missing-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-missing-2',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-collection',
+      ['rule-owned-missing-1', 'rule-owned-missing-2'],
+    );
+  });
+
+  it('does not addBatch when a shared collection already contains all rule-owned items', async () => {
+    const collection = createCollection({
+      id: 16,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Shared In Sync',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Shared In Sync',
+      childCount: 2,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'rule-owned-1' },
+      { id: 'rule-owned-2' },
+      { id: 'sibling-owned' },
+    ] as any);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-2',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+  });
+
+  it('getSiblingRuleOwnedMediaServerIds excludes manual sibling collections', async () => {
+    const collection = createCollection({
+      id: 20,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    collectionRepo.find.mockResolvedValue([]);
+
+    const result = await service.getSiblingRuleOwnedMediaServerIds(collection);
+
+    expect(Array.from(result)).toEqual([]);
+    expect(collectionRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          manualCollection: false,
+        }),
+      }),
+    );
+  });
+
+  it('getSiblingRuleOwnedMediaServerIds throws on repository failure', async () => {
+    const collection = createCollection({
+      id: 21,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    collectionRepo.find.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      service.getSiblingRuleOwnedMediaServerIds(collection),
+    ).rejects.toThrow('db down');
+  });
+
+  it('isMediaServerCollectionShared filters siblings by manualCollection', async () => {
+    collectionRepo.count.mockResolvedValue(0);
+
+    await service.isMediaServerCollectionShared(
+      createCollection({
+        id: 22,
+        mediaServerId: 'remote-collection',
+        manualCollection: false,
+      }),
+    );
+
+    expect(collectionRepo.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          manualCollection: false,
+        }),
+      }),
+    );
+  });
+
   it('trusts Plex metadata childCount before stale child enumeration when checking automatic links', async () => {
     const collection = createCollection({
       id: 9,
