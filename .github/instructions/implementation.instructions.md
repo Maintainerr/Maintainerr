@@ -14,9 +14,29 @@ Treat full `LoadingSpinner` as delayed, `SmallLoadingSpinner` as immediate, and 
 
 When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.), read the official API documentation to confirm behaviour. Do not guess or assume — facts only, based on current documentation.
 
+### Workspace MCP servers
+
+- Workspace MCP configuration lives in `.vscode/mcp.json`.
+- Prefer the `github` MCP server for live GitHub context such as issues, pull requests, status checks, branches, commits, releases, and cross-repo search. It is intentionally configured as read-only, so do not plan on it for creating or editing GitHub resources.
+- Prefer the `playwright` MCP server for browser-driven UI validation, repro steps, navigation, form interactions, screenshots, console inspection, and network checks when validating frontend behavior.
+- If `.vscode/mcp.json` changes, reload the VS Code window before assuming the new MCP configuration is active.
+
 ### API documentation references
 
+#### Media management services
+
+- Sonarr: https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/Sonarr.Api.V3/openapi.json
+- Radarr: https://raw.githubusercontent.com/Radarr/Radarr/develop/src/Radarr.Api.V3/openapi.json
+- Tautulli: https://docs.tautulli.com/extending-tautulli/api-reference
+
+#### Request management services
+
+- Seerr/Overseerr/Jellyseerr: https://docs.seerr.dev/
+
+#### Media server services
+
 - Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
+- Plex (OpenAPI): https://raw.githubusercontent.com/LukeHagar/plex-api-spec/refs/heads/main/src/pms-spec.yaml
 - Jellyfin: https://api.jellyfin.org/
 
 ## Rules
