@@ -67,6 +67,13 @@ export interface GotifyOptions {
   token: string;
 }
 
+export interface NtfyOptions {
+  agent: NotificationAgentKey.NTFY;
+  url: string;
+  topic: string;
+  token?: string;
+}
+
 export type NotificationAgentOptions =
   | DiscordOptions
   | SlackOptions
@@ -76,7 +83,8 @@ export type NotificationAgentOptions =
   | PushbulletOptions
   | PushoverOptions
   | WebhookOptions
-  | GotifyOptions;
+  | GotifyOptions
+  | NtfyOptions;
 
 interface BaseNotificationAgentConfig {
   enabled: boolean;
@@ -124,6 +132,10 @@ export interface NotificationAgentGotify extends BaseNotificationAgentConfig {
   options: GotifyOptions;
 }
 
+export interface NotificationAgentNtfy extends BaseNotificationAgentConfig {
+  options: NtfyOptions;
+}
+
 export type AnyNotificationAgentConfig =
   | NotificationAgentDiscord
   | NotificationAgentSlack
@@ -133,12 +145,14 @@ export type AnyNotificationAgentConfig =
   | NotificationAgentPushbullet
   | NotificationAgentPushover
   | NotificationAgentWebhook
-  | NotificationAgentGotify;
+  | NotificationAgentGotify
+  | NotificationAgentNtfy;
 
 export enum NotificationAgentKey {
   DISCORD = 'discord',
   EMAIL = 'email',
   GOTIFY = 'gotify',
+  NTFY = 'ntfy',
   PUSHBULLET = 'pushbullet',
   PUSHOVER = 'pushover',
   SLACK = 'slack',
