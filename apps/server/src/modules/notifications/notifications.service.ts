@@ -30,6 +30,7 @@ import DiscordAgent from './agents/discord';
 import EmailAgent from './agents/email';
 import GotifyAgent from './agents/gotify';
 import LunaSeaAgent from './agents/lunasea';
+import NtfyAgent from './agents/ntfy';
 import PushbulletAgent from './agents/pushbullet';
 import PushoverAgent from './agents/pushover';
 import SlackAgent from './agents/slack';
@@ -44,6 +45,7 @@ import {
   NotificationAgentKey,
   NotificationAgentOptions,
   NotificationType,
+  NtfyOptions,
   PushbulletOptions,
   PushoverOptions,
   SlackOptions,
@@ -387,6 +389,17 @@ export class NotificationService implements OnModuleInit {
           this.loggerFactory.createLogger(),
           notification,
         );
+      case NotificationAgentKey.NTFY:
+        return new NtfyAgent(
+          this.settings,
+          {
+            enabled: notification.enabled,
+            types: notification.types,
+            options: notification.options as NtfyOptions,
+          },
+          this.loggerFactory.createLogger(),
+          notification,
+        );
       case NotificationAgentKey.PUSHBULLET:
         return new PushbulletAgent(
           this.settings,
@@ -636,6 +649,15 @@ export class NotificationService implements OnModuleInit {
         options: [
           { field: 'url', type: 'text', required: true, extraInfo: '' },
           { field: 'token', type: 'text', required: true, extraInfo: '' },
+        ],
+      },
+      {
+        name: NotificationAgentKey.NTFY,
+        friendlyName: 'Ntfy',
+        options: [
+          { field: 'url', type: 'text', required: true, extraInfo: '' },
+          { field: 'topic', type: 'text', required: true, extraInfo: '' },
+          { field: 'token', type: 'text', required: false, extraInfo: '' },
         ],
       },
     ];
