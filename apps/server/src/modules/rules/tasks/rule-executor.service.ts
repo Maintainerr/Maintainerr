@@ -381,6 +381,14 @@ export class RuleExecutorService {
           const excludedParentIds = new Set<string>(
             exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
           );
+          // When two automatic rule groups share a title they end up linked
+          // to the same media server collection. Items rule-owned by a
+          // sibling collection must not be imported here as manual — that
+          // would subject them to this rule's deleteAfterDays.
+          const siblingRuleOwnedIds =
+            await this.collectionService.getSiblingRuleOwnedMediaServerIds(
+              collection,
+            );
           const missingManualChildren: CollectionMediaChange[] = [];
 
           for (const child of children) {
@@ -404,6 +412,10 @@ export class RuleExecutorService {
                 (child.grandparentId &&
                   excludedParentIds.has(child.grandparentId.toString()))
               ) {
+                continue;
+              }
+
+              if (siblingRuleOwnedIds.has(childId)) {
                 continue;
               }
 

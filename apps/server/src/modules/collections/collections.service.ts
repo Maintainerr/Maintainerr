@@ -192,6 +192,43 @@ export class CollectionsService {
     }
   }
 
+  public async getSiblingRuleOwnedMediaServerIds(
+    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+  ): Promise<Set<string>> {
+    if (!collection.mediaServerId) {
+      return new Set();
+    }
+
+    try {
+      const siblings = await this.collectionRepo.find({
+        where: {
+          mediaServerId: collection.mediaServerId,
+          ...(collection.id !== undefined ? { id: Not(collection.id) } : {}),
+        },
+      });
+
+      if (siblings.length === 0) {
+        return new Set();
+      }
+
+      const siblingMedia = await this.CollectionMediaRepo.find({
+        where: { collectionId: In(siblings.map((sibling) => sibling.id)) },
+      });
+
+      return new Set(
+        siblingMedia
+          .filter((entry) => hasCollectionMediaRuleMembership(entry))
+          .map((entry) => entry.mediaServerId),
+      );
+    } catch (error) {
+      this.logger.warn(
+        'Failed to compute rule-owned media for sibling collections',
+      );
+      this.logger.debug(error);
+      return new Set();
+    }
+  }
+
   public async reconcileSharedManualCollectionState(
     collection: Collection,
     options: SharedManualCollectionReconciliationOptions = {},
@@ -1555,11 +1592,22 @@ export class CollectionsService {
           0;
 
         if (actualChildCount <= 0) {
-          this.logger.debug(
-            `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
-          );
-          await mediaServer.deleteCollection(serverColl.id);
-          serverColl = undefined;
+          // Skip the delete when another Maintainerr collection still points
+          // at the same media server collection — it may be repopulated by
+          // its own rule group on the next sync.
+          const isShared = await this.isMediaServerCollectionShared(collection);
+
+          if (isShared) {
+            this.logger.debug(
+              `[checkAutomaticMediaServerLink] Skipping delete of empty collection ${serverColl.id} because it is shared with another rule group`,
+            );
+          } else {
+            this.logger.debug(
+              `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
+            );
+            await mediaServer.deleteCollection(serverColl.id);
+            serverColl = undefined;
+          }
         } else {
           this.logger.debug(
             metadataChildCount !== undefined
@@ -2029,15 +2077,27 @@ export class CollectionsService {
           !collection.manualCollection &&
           collection.mediaServerId
         ) {
-          try {
-            await mediaServer.deleteCollection(collection.mediaServerId);
+          // Another rule group with the same title may share this media
+          // server collection. Deleting it would also wipe the sibling rule's
+          // items, so just unlink locally and let the sibling keep ownership.
+          const isShared = await this.isMediaServerCollectionShared(collection);
+
+          if (isShared) {
             collection = await this.collectionRepo.save({
               ...collection,
               mediaServerId: null,
             });
-          } catch (error) {
-            this.logger.warn('Failed to delete collection from media server');
-            this.logger.debug(error);
+          } else {
+            try {
+              await mediaServer.deleteCollection(collection.mediaServerId);
+              collection = await this.collectionRepo.save({
+                ...collection,
+                mediaServerId: null,
+              });
+            } catch (error) {
+              this.logger.warn('Failed to delete collection from media server');
+              this.logger.debug(error);
+            }
           }
         }
       }
