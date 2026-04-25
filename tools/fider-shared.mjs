@@ -41,6 +41,46 @@ export const postHasTag = (post, slug) =>
 export const buildMentionToken = (name) =>
   '@' + String(name || '').trim().replace(/\s+/g, '-');
 
+// Idempotently create a set of Fider tags. Skips ones that already exist.
+// Tag creation requires Administrator role (per docs.fider.io/api/tags) — on
+// 403 we throw a clear instructional error instead of the raw HTTP failure
+// so the maintainer knows about the one-time promote/demote dance.
+export const ensureTags = async ({ fider, log, dryRun, host, tags }) => {
+  const existing = await fider('/api/v1/tags');
+  const existingSlugs = new Set((existing || []).map((t) => t.slug));
+  for (const tag of tags) {
+    if (existingSlugs.has(tag.slug)) continue;
+    if (dryRun) {
+      log(`[dry-run] would create tag '${tag.slug}'`);
+      continue;
+    }
+    try {
+      await fider('/api/v1/tags', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: tag.name || tag.slug,
+          color: tag.color,
+          isPublic: tag.isPublic ?? false,
+        }),
+      });
+      log(`created tag '${tag.slug}'`);
+    } catch (err) {
+      if (String(err.message).includes('403')) {
+        const settingsUrl = host
+          ? `${host.replace(/\/$/, '')}/settings/tags`
+          : '/settings/tags';
+        throw new Error(
+          `cannot create tag '${tag.slug}': Fider returned 403. ` +
+            `Tag creation requires Administrator role. Either temporarily promote ` +
+            `the bot to Administrator, run the workflow once, then demote, or have ` +
+            `an admin create the tag manually at ${settingsUrl}.`,
+        );
+      }
+      throw err;
+    }
+  }
+};
+
 // Resolve a "cc: @u1 @u2 ..." prefix to prepend to bot-authored comments.
 // Source of truth in priority order:
 //   1. GET /api/v1/users (works for Collaborator OR Administrator)

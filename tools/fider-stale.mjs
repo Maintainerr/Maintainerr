@@ -1,4 +1,4 @@
-import { buildMentionPrefix, createFider, postHasTag } from './fider-shared.mjs';
+import { buildMentionPrefix, createFider, ensureTags, postHasTag } from './fider-shared.mjs';
 
 const {
   FIDER_HOST,
@@ -154,6 +154,13 @@ const sweepPost = async (post) => {
 const main = async () => {
   requireEnv();
   log(`dryRun=${dryRun} ageThreshold=${STALE_AGE_DAYS}d minVotesToKeep=${MAX_VOTES_FOR_STALE} graceWindow=${DECLINE_GRACE_DAYS}d`);
+  await ensureTags({
+    fider,
+    log,
+    dryRun,
+    host: FIDER_HOST,
+    tags: [{ slug: TAG_STALE, color: 'e74c3c' }],
+  });
   mentionPrefix = await buildMentionPrefix({
     fider,
     log,

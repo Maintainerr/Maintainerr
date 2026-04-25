@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { buildMentionPrefix, createFider, postHasTag } from './fider-shared.mjs';
+import { buildMentionPrefix, createFider, ensureTags as ensureFiderTags, postHasTag } from './fider-shared.mjs';
 
 const {
   FIDER_HOST,
@@ -87,43 +87,19 @@ const fider = createFider({ host: FIDER_HOST, apiKey: FIDER_API_KEY });
 let mentionPrefix = '';
 const withMentionPrefix = (body) => (mentionPrefix ? `${mentionPrefix}\n\n${body}` : body);
 
-const ensureTags = async () => {
-  const existing = await fider('/api/v1/tags');
-  const slugs = new Set((existing || []).map((t) => t.slug));
-  const wanted = [
-    { slug: TAG_CHECKED, name: TAG_CHECKED, color: '7f8c8d', isPublic: false },
-    { slug: TAG_POSSIBLY_COMPLETED, name: TAG_POSSIBLY_COMPLETED, color: 'f39c12', isPublic: false },
-    { slug: TAG_POSSIBLY_DUPLICATE, name: TAG_POSSIBLY_DUPLICATE, color: '9b59b6', isPublic: false },
-    { slug: TAG_POSSIBLY_PRE_EXISTING, name: TAG_POSSIBLY_PRE_EXISTING, color: '3498db', isPublic: false },
-  ];
-  for (const tag of wanted) {
-    if (slugs.has(tag.slug)) continue;
-    if (dryRun) {
-      log(`[dry-run] would create tag '${tag.slug}'`);
-      continue;
-    }
-    // Tag creation requires Administrator in Fider; Collaborator can apply
-    // existing tags but not create them. Surface a clear hint instead of the
-    // raw 403 if the bot is running with Collaborator role.
-    try {
-      await fider('/api/v1/tags', {
-        method: 'POST',
-        body: JSON.stringify({ name: tag.name, color: tag.color, isPublic: tag.isPublic }),
-      });
-      log(`created tag '${tag.slug}'`);
-    } catch (err) {
-      if (String(err.message).includes('403')) {
-        throw new Error(
-          `cannot create tag '${tag.slug}': Fider returned 403. ` +
-            `Tag creation requires Administrator role. Either temporarily promote the bot ` +
-            `to Administrator, run the workflow once, then demote, or have an admin create ` +
-            `the tag manually at ${FIDER_HOST.replace(/\/$/, '')}/settings/tags.`,
-        );
-      }
-      throw err;
-    }
-  }
-};
+const ensureTags = () =>
+  ensureFiderTags({
+    fider,
+    log,
+    dryRun,
+    host: FIDER_HOST,
+    tags: [
+      { slug: TAG_CHECKED, color: '7f8c8d' },
+      { slug: TAG_POSSIBLY_COMPLETED, color: 'f39c12' },
+      { slug: TAG_POSSIBLY_DUPLICATE, color: '9b59b6' },
+      { slug: TAG_POSSIBLY_PRE_EXISTING, color: '3498db' },
+    ],
+  });
 
 const OPEN_STATUSES = new Set(['open', 'planned', 'started']);
 
