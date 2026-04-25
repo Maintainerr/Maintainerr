@@ -1,0 +1,45 @@
+name: Triage Fider feature requests
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log decisions without writing tags to Fider"
+        type: boolean
+        default: true
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: manual workflow run
+
+  triage:
+    needs: guard_manual_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      models: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run Fider triage
+        env:
+          FIDER_HOST: ${{ vars.FIDER_HOST || 'https://features.maintainerr.info' }}
+          FIDER_API_KEY: ${{ secrets.FIDER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          FIDER_TRIAGE_MODEL: openai/gpt-4o-mini
+        run: node tools/fider-triage.mjs
