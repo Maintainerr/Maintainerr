@@ -71,7 +71,7 @@ export interface NtfyOptions {
   agent: NotificationAgentKey.NTFY;
   url: string;
   topic: string;
-  token: string;
+  token?: string;
 }
 
 export type NotificationAgentOptions =

@@ -657,7 +657,7 @@ export class NotificationService implements OnModuleInit {
         options: [
           { field: 'url', type: 'text', required: true, extraInfo: '' },
           { field: 'topic', type: 'text', required: true, extraInfo: '' },
-          { field: 'token', type: 'text', required: true, extraInfo: '' },
+          { field: 'token', type: 'text', required: false, extraInfo: '' },
         ],
       },
     ];

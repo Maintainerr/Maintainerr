@@ -35,12 +35,7 @@ class NtfyAgent implements NotificationAgent {
   public shouldSend(): boolean {
     const settings = this.getSettings();
 
-    if (
-      settings.enabled &&
-      settings.options.url &&
-      settings.options.topic &&
-      settings.options.token
-    ) {
+    if (settings.enabled && settings.options.url && settings.options.topic) {
       return true;
     }
 
@@ -77,13 +72,17 @@ class NtfyAgent implements NotificationAgent {
       const topic = settings.options.topic.replace(/^\/+/, '');
       const endpoint = `${baseUrl}/${topic}`;
       const notificationPayload = this.getNotificationPayload(type, payload);
+      const headers: Record<string, string> = {
+        Title: notificationPayload.title,
+        'Content-Type': 'text/plain; charset=utf-8',
+      };
+
+      if (settings.options.token) {
+        headers.Authorization = `Bearer ${settings.options.token}`;
+      }
 
       await axios.post(endpoint, notificationPayload.message, {
-        headers: {
-          Authorization: `Bearer ${settings.options.token}`,
-          Title: notificationPayload.title,
-          'Content-Type': 'text/plain; charset=utf-8',
-        },
+        headers,
       });
 
       return 'Success';
