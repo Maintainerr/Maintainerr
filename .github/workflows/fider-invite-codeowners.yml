@@ -1,0 +1,59 @@
+name: Fider - Invite CODEOWNERS
+
+# Sends Fider invitation emails to GitHub CODEOWNERS who aren't already a
+# Collaborator or Administrator on the Fider instance. Runs weekly so newly-
+# added CODEOWNERS get invited within a few days; manual dispatch defaults to
+# dry-run for previewing.
+#
+# Caveats:
+# - Only invites CODEOWNERS who expose a public email on their GitHub
+#   profile. Users with private emails are listed in the log and need a
+#   manual invite.
+# - Recipients arrive at Visitor role; an admin still needs to promote
+#   them to Collaborator at /settings/members afterwards.
+# - Fider has no list-invitations endpoint, so we de-dupe by checking
+#   /api/v1/users for an existing Collaborator/Administrator with the same
+#   display name (case-insensitive). Visitors and unknown users get an
+#   invite; pending-but-not-yet-accepted CODEOWNERS may get a re-send,
+#   harmless.
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log decisions without actually sending invitations"
+        type: boolean
+        default: true
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: manual workflow run
+
+  invite:
+    needs: guard_manual_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Invite CODEOWNERS to Fider
+        env:
+          FIDER_HOST: ${{ vars.FIDER_HOST || 'https://features.maintainerr.info' }}
+          FIDER_API_KEY: ${{ secrets.FIDER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Push events go live; manual dispatch defaults to dry-run via the input.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: node tools/fider-invite-codeowners.mjs
