@@ -13,7 +13,9 @@
       "args": [
         "@playwright/mcp@latest",
         "--headless",
-        "--isolated"
+        "--isolated",
+        "--output-dir",
+        ".playwright-mcp"
       ]
     }
   }

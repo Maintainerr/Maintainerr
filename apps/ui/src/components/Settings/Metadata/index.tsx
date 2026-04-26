@@ -19,6 +19,7 @@ import GetApiHandler, {
   DeleteApiHandler,
   PostApiHandler,
 } from '../../../utils/ApiHandler'
+import BrandLink from '../../Common/BrandLink'
 import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
@@ -142,14 +143,9 @@ const providers: ProviderConfig[] = [
     description: (
       <>
         You can create a free API key at{' '}
-        <a
-          href="https://www.themoviedb.org/settings/api"
-          target="_blank"
-          rel="noreferrer"
-          className="text-maintainerr underline hover:text-maintainerr-400"
-        >
+        <BrandLink external href="https://www.themoviedb.org/settings/api">
           themoviedb.org
-        </a>
+        </BrandLink>
         .
       </>
     ),
@@ -165,14 +161,9 @@ const providers: ProviderConfig[] = [
     description: (
       <>
         You can create a free developer API key at{' '}
-        <a
-          href="https://thetvdb.com/dashboard/account/apikey"
-          target="_blank"
-          rel="noreferrer"
-          className="text-maintainerr underline hover:text-maintainerr-400"
-        >
+        <BrandLink external href="https://thetvdb.com/dashboard/account/apikey">
           thetvdb.com
-        </a>
+        </BrandLink>
         .
       </>
     ),

@@ -90,11 +90,13 @@ const SettingsTabs: React.FC<{
   settingsRoutes: SettingsRoute[]
   allEnabled?: boolean
   isRouteDisabled?: (route: SettingsRoute) => boolean
+  onBlockedNavigate?: () => void
 }> = ({
   tabType = 'default',
   settingsRoutes,
   allEnabled = true,
   isRouteDisabled,
+  onBlockedNavigate = showMediaServerSetupRequiredToast,
 }) => {
   const location = useLocation()
   const navigate = useNavigate()
@@ -127,7 +129,7 @@ const SettingsTabs: React.FC<{
             )
 
             if (nextRoute && routeIsDisabled(nextRoute)) {
-              showMediaServerSetupRequiredToast()
+              onBlockedNavigate()
               navigate(currentRoute)
               return
             }
@@ -171,7 +173,7 @@ const SettingsTabs: React.FC<{
                 currentPath={location.pathname}
                 route={route.route}
                 regex={route.activeRegex ?? route.regex}
-                onBlockedNavigate={showMediaServerSetupRequiredToast}
+                onBlockedNavigate={onBlockedNavigate}
                 key={`button-settings-link-${index}`}
               >
                 {route.content ?? route.text}
@@ -189,7 +191,7 @@ const SettingsTabs: React.FC<{
                 currentPath={location.pathname}
                 route={route.route}
                 regex={route.activeRegex ?? route.regex}
-                onBlockedNavigate={showMediaServerSetupRequiredToast}
+                onBlockedNavigate={onBlockedNavigate}
                 key={`standard-settings-link-${index}`}
               >
                 {route.content ?? route.text}

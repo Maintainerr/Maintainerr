@@ -16,10 +16,10 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 
 ### Workspace MCP servers
 
-- Workspace MCP configuration lives in `.vscode/mcp.json`.
-- Prefer the `github` MCP server for live GitHub context such as issues, pull requests, status checks, branches, commits, releases, and cross-repo search. It is intentionally configured as read-only, so do not plan on it for creating or editing GitHub resources.
-- Prefer the `playwright` MCP server for browser-driven UI validation, repro steps, navigation, form interactions, screenshots, console inspection, and network checks when validating frontend behavior.
-- If `.vscode/mcp.json` changes, reload the VS Code window before assuming the new MCP configuration is active.
+- Workspace MCP config lives in `.vscode/mcp.json` (VS Code) and `.mcp.json` (Claude Code). Keep them in sync.
+- `github` MCP: read-only — use for live GitHub context, never for writes.
+- `playwright` MCP: use for browser-driven UI validation. **Screenshots must be saved as `filename: ".playwright-mcp/<name>.png"`** — bare filenames land at the repo root (the `--output-dir` flag doesn't apply to explicit filenames).
+- Reload VS Code / restart the Claude Code session after editing either mcp.json.
 
 ### API documentation references
 

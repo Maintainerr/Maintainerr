@@ -34,6 +34,7 @@ import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import { PostApiHandler } from '../../../../utils/ApiHandler'
 import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
+import BrandLink from '../../../Common/BrandLink'
 import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
@@ -1498,13 +1499,9 @@ const AddModal = (props: AddModal) => {
                         Rule handler schedule override
                         <p className="text-xs font-normal">
                           Supports all standard{' '}
-                          <a
-                            href="http://crontab.org/"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
+                          <BrandLink external href="https://crontab.guru/">
                             cron
-                          </a>{' '}
+                          </BrandLink>{' '}
                           patterns
                         </p>
                       </label>
