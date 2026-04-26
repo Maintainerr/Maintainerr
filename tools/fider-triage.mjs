@@ -189,8 +189,13 @@ const COMPLETED_FOOTER =
   '_Automated triage — please verify and mark this post as Completed if the PR delivers what was requested, or remove the `possibly-completed` tag if not._';
 const DUPLICATE_FOOTER =
   '_Automated triage — please verify and either close as duplicate (with a link to the original) or remove the `possibly-duplicate` tag if these are distinct requests._';
-const PRE_EXISTING_FOOTER =
-  '_Automated triage — this is **lower confidence than `possibly-completed`** because the relevant code shipped before this request was filed, so the user may simply not have known the feature existed. A maintainer should verify and close as Completed (pointing at the docs/PR) or remove the `possibly-pre-existing` tag if the request asks for behaviour the existing feature does not provide._';
+
+// Author handle is supplied by /api/v1/posts (each post carries a `user`
+// object). Used to address the OP directly in the pre-existing comment so
+// they see the nudge to split multi-ask requests.
+const opMention = (post) => (post.user?.name ? `@${post.user.name}` : 'the original poster');
+const preExistingFooter = (post) =>
+  `_Automated triage — ${opMention(post)}, if this request bundles multiple feature asks, please split them into separate posts so each can be tracked independently. A maintainer will verify the match._`;
 
 const commentOnPost = async (post, verdict, candidates) => {
   const candidate = candidates.find((c) => c.url === verdict.evidence_url);
@@ -217,7 +222,7 @@ const commentOnPreExisting = async (post, verdict, candidates) => {
     buildBotComment({
       header: `This may already be supported by an existing feature: ${verdict.evidence_url} (merged ${merged}).`,
       quote: verdict.quote,
-      footer: PRE_EXISTING_FOOTER,
+      footer: preExistingFooter(post),
       marker: COMMENT_MARKERS.preExisting,
     }),
     `cites pre-existing ${verdict.evidence_url}`,
