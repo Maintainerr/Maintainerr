@@ -16,7 +16,7 @@ describe('ArrAction', () => {
     useServarrSettingsMock.mockReturnValue({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useServarrSettings>)
+    } as unknown as ReturnType<typeof useServarrSettings>)
   })
 
   afterEach(() => {
@@ -30,7 +30,7 @@ describe('ArrAction', () => {
       data: undefined,
       isLoading: true,
       isFetching: true,
-    } as ReturnType<typeof useServarrSettings>)
+    } as unknown as ReturnType<typeof useServarrSettings>)
 
     render(
       <ArrAction
@@ -60,7 +60,7 @@ describe('ArrAction', () => {
       data: [],
       isLoading: false,
       isFetching: false,
-    } as ReturnType<typeof useServarrSettings>)
+    } as unknown as ReturnType<typeof useServarrSettings>)
 
     render(
       <ArrAction
