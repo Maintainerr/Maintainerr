@@ -1,0 +1,75 @@
+name: Reddit Release Post
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Git tag to post when running manually
+        required: false
+        type: string
+      subreddit:
+        description: Override the target subreddit
+        required: false
+        type: string
+      post_kind:
+        description: Submit a self post or a link post
+        required: false
+        default: self
+        type: choice
+        options:
+          - self
+          - link
+      dry_run:
+        description: Build the release post but do not submit it
+        required: false
+        default: false
+        type: boolean
+      allow_repost:
+        description: Allow posting even when a recent duplicate is detected
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reddit-release-post-${{ github.event.release.tag_name || inputs.release_tag || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  post_release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Activate corepack
+        run: |
+          corepack install
+          corepack enable
+
+      - name: Install dependencies
+        run: yarn --immutable
+
+      - name: Preview or submit Reddit release post
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          REDDIT_SUBREDDIT: ${{ inputs.subreddit || vars.REDDIT_SUBREDDIT }}
+          REDDIT_POST_KIND: ${{ inputs.post_kind || 'self' }}
+          REDDIT_ALLOW_REPOST: ${{ inputs.allow_repost }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node tools/reddit-release-post.mjs
