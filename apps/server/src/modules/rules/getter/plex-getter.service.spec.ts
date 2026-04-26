@@ -6,6 +6,7 @@ import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { PlexGetterService } from './plex-getter.service';
 
+const SEEN_BY_PROP_ID = 1;
 const VIEWCOUNT_PROP_ID = 5;
 const ISWATCHED_PROP_ID = 43;
 const PLEX_ITEM_ID = 'plex-item-123';
@@ -285,6 +286,57 @@ describe('PlexGetterService', () => {
       expect(result).toEqual(new Date(1_690_000_000 * 1000));
       expect(plexApi.getCollectionChildren).toHaveBeenCalledTimes(1);
       expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('coll-1');
+    });
+  });
+
+  describe('seenBy (id 1)', () => {
+    it('maps watch-history account ids to known Plex usernames', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        { plexId: 1, username: 'alice' },
+        { plexId: 2, username: 'bob' },
+      ] as never);
+      plexApi.getWatchHistory.mockResolvedValue([
+        { accountID: '1' },
+        { accountID: '2' },
+      ] as never);
+
+      const result = await service.get(
+        SEEN_BY_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+      );
+
+      expect(result).toEqual(['alice', 'bob']);
+    });
+
+    it('returns [] for confirmed-empty history (no one has watched the item)', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        { plexId: 1, username: 'alice' },
+      ] as never);
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const result = await service.get(
+        SEEN_BY_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns undefined when watch-history lookup fails so the comparator skips the item rather than misclassifying it as "viewed by no one"', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        { plexId: 1, username: 'alice' },
+      ] as never);
+      plexApi.getWatchHistory.mockRejectedValue(new Error('plex unreachable'));
+
+      const result = await service.get(
+        SEEN_BY_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+      );
+
+      expect(result).toBeUndefined();
     });
   });
 });
