@@ -81,7 +81,7 @@ describe('CollectionsListPage', () => {
     useCollectionsMock.mockReset()
     useQueryClientMock.mockReturnValue({
       fetchQuery,
-    } as ReturnType<typeof useQueryClient>)
+    } as unknown as ReturnType<typeof useQueryClient>)
 
     useCollectionsMock.mockReturnValue({
       data: [
