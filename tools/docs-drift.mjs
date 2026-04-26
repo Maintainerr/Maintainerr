@@ -107,6 +107,58 @@ const featCommits = () => {
   return out ? out.split("\n") : [];
 };
 
+// Files that, when touched by a `fix:` commit, suggest user-visible
+// behavior may have changed and the docs are worth a second look.
+// Greppable allowlist — extend as new user-facing surfaces emerge.
+const USER_VISIBLE_FIX_PATH_PREFIXES = [
+  "apps/ui/",
+  "apps/server/src/modules/notifications/",
+  "apps/server/src/modules/settings/",
+  "apps/server/src/modules/collections/",
+  "apps/server/src/modules/rules/tasks/",
+  "README.md",
+];
+
+const USER_VISIBLE_FIX_PATH_SUFFIXES = [".controller.ts"];
+
+const fixCommits = () => {
+  const out = git([
+    "log",
+    `${baseRef}..HEAD`,
+    "--no-merges",
+    "--extended-regexp",
+    "--grep=^fix(\\(|:)",
+    "--pretty=format:%h %s",
+  ]).trim();
+  if (!out) return [];
+
+  const candidates = out.split("\n");
+  const flagged = [];
+
+  for (const line of candidates) {
+    const sha = line.split(" ", 1)[0];
+    if (!sha) continue;
+    const filesOut = git([
+      "show",
+      "--no-renames",
+      "--name-only",
+      "--pretty=format:",
+      sha,
+    ]).trim();
+    const files = filesOut ? filesOut.split("\n").filter(Boolean) : [];
+    const matched = files.filter(
+      (f) =>
+        USER_VISIBLE_FIX_PATH_PREFIXES.some((p) => f.startsWith(p)) ||
+        USER_VISIBLE_FIX_PATH_SUFFIXES.some((s) => f.endsWith(s)),
+    );
+    if (matched.length > 0) {
+      flagged.push({ line, matched });
+    }
+  }
+
+  return flagged;
+};
+
 const codeKeys = parseCodeKeys();
 const docKeys = parseDocKeys();
 const missingFromDocs = [...codeKeys].filter((k) => !docKeys.has(k)).sort();
@@ -116,6 +168,7 @@ const constantsDiff = rulesConstantsDiff();
 const contracts = contractsChanges();
 const controllers = newControllers();
 const feats = featCommits();
+const behavioralFixes = fixCommits();
 
 const lines = [];
 lines.push("<!-- maintainerr-docs-drift -->");
@@ -231,6 +284,24 @@ if (feats.length) {
 }
 lines.push("");
 
+lines.push("### Behavioral fixes worth reviewing");
+lines.push("");
+if (behavioralFixes.length) {
+  for (const { line, matched } of behavioralFixes) {
+    lines.push(`- ${line}`);
+    lines.push(
+      `  - touched: ${matched.map((f) => `\`${f}\``).join(", ")}`,
+    );
+  }
+  lines.push("");
+  lines.push(
+    "_`fix:` commits that touched user-facing surfaces (UI, settings, notifications, collections, rule executor, controllers, README). Worth scanning to decide whether observable behavior changed enough to warrant a docs note._",
+  );
+} else {
+  lines.push("_No user-facing `fix:` commits detected._");
+}
+lines.push("");
+
 const meta = {
   baseRef,
   hasDrift:
@@ -243,7 +314,8 @@ const meta = {
       contracts.deleted.length >
       0 ||
     controllers.length > 0 ||
-    feats.length > 0,
+    feats.length > 0 ||
+    behavioralFixes.length > 0,
   sections: {
     glossaryMissingFromDocs: missingFromDocs.length,
     glossaryMissingFromCode: missingFromCode.length,
@@ -254,6 +326,7 @@ const meta = {
     contractsDeleted: contracts.deleted.length,
     newControllers: controllers.length,
     featCommits: feats.length,
+    behavioralFixCommits: behavioralFixes.length,
   },
 };
 

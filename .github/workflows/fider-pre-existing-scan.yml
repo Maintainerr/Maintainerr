@@ -1,0 +1,66 @@
+name: Fider - Pre-existing scan
+
+# Opt-in companion to the daily fider-triage workflow. Runs the same script
+# with CHECK_PRE_EXISTING=true, which adds a second model call per post that
+# searches for PRs merged BEFORE the FR was filed. Catches the "user filed a
+# request for something that already existed" case that the daily run cannot
+# detect (its mergedAt > createdAt filter is precisely what excludes pre-
+# existing features).
+#
+# Lower precision than the standard completion check, hence:
+#   - Separate tag (possibly-pre-existing, blue) so maintainers can review it
+#     independently of the high-confidence possibly-completed flag.
+#   - Stricter model rubric (must quote a phrase that directly delivers the
+#     specific ask, not just touch the same area).
+#   - Manual workflow_dispatch only — no cron schedule. Run when you want a
+#     periodic backlog sweep, not unattended.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log decisions without writing tags or comments to Fider"
+        type: boolean
+        default: true
+      force_reeval:
+        description: "Also ignore the triage-checked tag (re-process every open post)"
+        type: boolean
+        default: false
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: true
+      actor: ${{ github.actor }}
+      source: manual workflow run
+
+  pre_existing_scan:
+    needs: guard_manual_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      models: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Run Fider triage (pre-existing scan)
+        env:
+          FIDER_HOST: ${{ vars.FIDER_HOST || 'https://features.maintainerr.info' }}
+          FIDER_API_KEY: ${{ secrets.FIDER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          FORCE_REEVAL: ${{ inputs.force_reeval }}
+          CHECK_PRE_EXISTING: 'true'
+          FIDER_TRIAGE_MODEL: openai/gpt-4.1-mini
+          DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
+          DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}
+        run: node tools/fider-triage.mjs

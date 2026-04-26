@@ -4,10 +4,7 @@ import {
   RuleValueType,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import {
-  PlexSeenBy,
-  SimplePlexUser,
-} from '../../..//modules/api/plex-api/interfaces/library.interfaces';
+import { SimplePlexUser } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
 import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
@@ -80,21 +77,17 @@ export class PlexGetterService {
           return metadata.addedAt ? new Date(+metadata.addedAt * 1000) : null;
         }
         case 'seenBy': {
+          // Errors must surface so the outer catch returns `undefined` for an
+          // unknown viewer set instead of collapsing the failure into a
+          // confirmed empty `[]`. Same contract as `lastViewedAt` (id 7).
           const plexUsers = await this.plexApi.getCorrectedUsers(false);
-
-          const viewers: PlexSeenBy[] = await this.plexApi
-            .getWatchHistory(metadata.ratingKey)
-            .catch(() => {
-              return null;
-            });
-          if (viewers) {
-            const viewerIds = viewers.map((el) => +el.accountID);
-            return plexUsers
-              .filter((el) => viewerIds.includes(el.plexId))
-              .map((el) => el.username);
-          } else {
-            return [];
-          }
+          const viewers = await this.plexApi.getWatchHistory(
+            metadata.ratingKey,
+          );
+          const viewerIds = viewers.map((el) => +el.accountID);
+          return plexUsers
+            .filter((el) => viewerIds.includes(el.plexId))
+            .map((el) => el.username);
         }
         case 'releaseDate': {
           return new Date(metadata.originallyAvailableAt)
@@ -297,11 +290,12 @@ export class PlexGetterService {
               season.ratingKey,
             );
             for (const episode of episodes) {
-              const viewers: PlexSeenBy[] = await this.plexApi
-                .getWatchHistory(episode.ratingKey)
-                .catch(() => {
-                  return null;
-                });
+              // Errors propagate to the outer catch — silently treating a
+              // failed lookup as "no viewers" would drop genuine viewers from
+              // `allViewers` and mark the show as unwatched-by-everyone.
+              const viewers = await this.plexApi.getWatchHistory(
+                episode.ratingKey,
+              );
 
               const arrLength = allViewers.length - 1;
               allViewers
@@ -309,7 +303,6 @@ export class PlexGetterService {
                 .reverse()
                 .forEach((el, idx) => {
                   if (
-                    !viewers ||
                     !viewers.find((viewEl) => el.plexId === viewEl.accountID)
                   ) {
                     allViewers.splice(arrLength - idx, 1);
@@ -813,10 +806,12 @@ export class PlexGetterService {
               coll.ratingKey,
             );
             for (const child of children ?? []) {
-              const history = await this.plexApi
-                .getWatchHistory(child.ratingKey)
-                .catch(() => null);
-              if (!history) continue;
+              // Errors propagate to the outer catch so a transient lookup
+              // failure doesn't silently understate `latest` and trigger a
+              // false delete on a recently-watched sibling collection.
+              const history = await this.plexApi.getWatchHistory(
+                child.ratingKey,
+              );
               for (const entry of history) {
                 if (entry.viewedAt && +entry.viewedAt > latest) {
                   latest = +entry.viewedAt;

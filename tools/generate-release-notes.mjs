@@ -63,6 +63,55 @@ const resolveLastTag = () => {
 const effectiveLastTag = resolveLastTag();
 const range = effectiveLastTag ? `${effectiveLastTag}..${nextHead}` : nextHead;
 
+const buildHeader = () => {
+  if (!nextVersion) return '';
+  const version = nextVersion.replace(/^v/, '');
+  const date = new Date().toISOString().slice(0, 10);
+  if (repo && effectiveLastTag) {
+    return `# [${version}](https://github.com/${repo}/compare/${effectiveLastTag}...v${version}) (${date})\n\n\n`;
+  }
+  return `# ${version} (${date})\n\n\n`;
+};
+
+const fetchNewContributors = async () => {
+  if (!modelToken || !repo || !nextVersion || !effectiveLastTag) return '';
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/releases/generate-notes`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${modelToken}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tag_name: `v${nextVersion.replace(/^v/, '')}`,
+          previous_tag_name: effectiveLastTag,
+          target_commitish: nextHead === 'HEAD' ? 'main' : nextHead,
+        }),
+      },
+    );
+    if (!res.ok) {
+      log(`generate-notes ${res.status}: ${await res.text()}`);
+      return '';
+    }
+    const data = await res.json();
+    const body = data.body || '';
+    const marker = '## New Contributors';
+    const start = body.indexOf(marker);
+    if (start < 0) return '';
+    const rest = body.slice(start);
+    const nextSection = rest.search(/\n## |\n\*\*Full Changelog/);
+    const section = nextSection < 0 ? rest : rest.slice(0, nextSection);
+    return section.trim();
+  } catch (err) {
+    log(`generate-notes fetch failed: ${err.message}`);
+    return '';
+  }
+};
+
 const cleanCommitBody = (raw) => {
   return raw
     .replace(/\r\n/g, '\n')
@@ -339,8 +388,13 @@ const buildPrompt = ({
 const main = async () => {
   const commits = parseCommits();
   log(`range=${range} commits=${commits.length} model=${RELEASE_NOTES_MODEL}`);
+  const header = buildHeader();
+  const newContribs = await fetchNewContributors();
+  const footer = newContribs ? `\n\n${newContribs}\n` : '';
   if (!commits.length) {
-    process.stdout.write('_No user-facing changes in this release._\n');
+    process.stdout.write(
+      `${header}_No user-facing changes in this release._${footer}\n`,
+    );
     return;
   }
 
@@ -352,7 +406,7 @@ const main = async () => {
 
   if (!modelToken) {
     log('no GITHUB_TOKEN/GH_TOKEN available; emitting fallback notes');
-    process.stdout.write(fallbackNotes(commits, migrations));
+    process.stdout.write(`${header}${fallbackNotes(commits, migrations)}${footer}`);
     return;
   }
 
@@ -368,7 +422,7 @@ const main = async () => {
     log(
       `prompt too large (${prompt.length} chars > ${MAX_PROMPT_CHARS}); emitting fallback notes`,
     );
-    process.stdout.write(fallbackNotes(commits, migrations));
+    process.stdout.write(`${header}${fallbackNotes(commits, migrations)}${footer}`);
     return;
   }
 
@@ -401,10 +455,10 @@ const main = async () => {
       temperature: 0.1,
     });
     if (!notes) throw new Error('empty model output');
-    process.stdout.write(`${notes}\n`);
+    process.stdout.write(`${header}${notes}${footer}\n`);
   } catch (err) {
     log(`model call failed: ${err.message}; emitting fallback notes`);
-    process.stdout.write(fallbackNotes(commits, migrations));
+    process.stdout.write(`${header}${fallbackNotes(commits, migrations)}${footer}`);
   }
 };
 

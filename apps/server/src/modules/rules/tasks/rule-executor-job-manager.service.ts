@@ -196,6 +196,9 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       } finally {
         this.processingQueue = false;
         this.processQueuePromise = null;
+        // Broadcast the false transition so listeners that scope work to a
+        // single batch (e.g. notification dedupe) can observe batch end.
+        this.emitStatusUpdate();
       }
     })();
 

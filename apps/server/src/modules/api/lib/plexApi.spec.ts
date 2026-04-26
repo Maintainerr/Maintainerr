@@ -46,4 +46,17 @@ describe('PlexApi', () => {
     expect(headers['X-Plex-Client-Identifier']).toBeUndefined();
     expect(axiosRetry).toHaveBeenCalledTimes(1);
   });
+
+  it('forwards the configured timeout to axios so wedged Plex sockets cannot stall callers indefinitely', () => {
+    new PlexApi({
+      hostname: 'plex.local',
+      port: 32400,
+      token: 'token',
+      timeout: 30000,
+    });
+
+    expect(axios.create).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: 30000 }),
+    );
+  });
 });

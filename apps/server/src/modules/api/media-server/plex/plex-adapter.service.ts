@@ -219,7 +219,6 @@ export class PlexAdapterService implements IMediaServerService {
 
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     const history = await this.plexApi.getWatchHistory(itemId);
-    if (!history) return [];
     return history.map(PlexMapper.toWatchRecord);
   }
 
@@ -230,7 +229,7 @@ export class PlexAdapterService implements IMediaServerService {
   ): Promise<MediaWatchState> {
     const history = await this.plexApi.getWatchHistory(itemId, false);
 
-    if (history && history.length > 0) {
+    if (history.length > 0) {
       return {
         viewCount: history.length,
         isWatched: true,

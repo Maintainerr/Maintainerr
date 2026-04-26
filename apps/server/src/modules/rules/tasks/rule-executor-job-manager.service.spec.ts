@@ -307,6 +307,25 @@ describe('RuleExecutorJobManagerService', () => {
     expect(executeMock).toHaveBeenCalledWith(11, expect.any(AbortSignal));
   });
 
+  it('emits a status update with processingQueue=false when the queue drains', async () => {
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValue({ status: 'success' });
+    const { service, eventEmitter } = buildService(executeMock);
+
+    service.enqueue({ ruleGroupId: 5 });
+    await flushMicrotasks();
+    await waitForNextTick();
+
+    const sawDrainEmit = eventEmitter.emit.mock.calls.some(
+      (call) =>
+        call[1]?.data?.processingQueue === false &&
+        call[1]?.data?.executingRuleGroupId === null &&
+        call[1]?.data?.pendingRuleGroupIds?.length === 0,
+    );
+    expect(sawDrainEmit).toBe(true);
+  });
+
   it('preserves an abort request while waiting for the execution lock', async () => {
     const lockDeferred = createDeferred();
     const release = jest.fn();

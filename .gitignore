@@ -16,3 +16,6 @@ jellyfin-dev-documents/
 # External dependencies (local only)
 .external/
 .DS_Store
+
+# Playwright MCP scratch artifacts (snapshots, screenshots)
+.playwright-mcp/

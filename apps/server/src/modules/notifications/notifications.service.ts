@@ -2,6 +2,7 @@ import {
   BasicResponseDto,
   MaintainerrEvent,
   MediaItem,
+  RuleHandlerQueueStatusUpdatedEventDto,
 } from '@maintainerr/contracts';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -30,6 +31,7 @@ import DiscordAgent from './agents/discord';
 import EmailAgent from './agents/email';
 import GotifyAgent from './agents/gotify';
 import LunaSeaAgent from './agents/lunasea';
+import NtfyAgent from './agents/ntfy';
 import PushbulletAgent from './agents/pushbullet';
 import PushoverAgent from './agents/pushover';
 import SlackAgent from './agents/slack';
@@ -44,6 +46,7 @@ import {
   NotificationAgentKey,
   NotificationAgentOptions,
   NotificationType,
+  NtfyOptions,
   PushbulletOptions,
   PushoverOptions,
   SlackOptions,
@@ -61,6 +64,15 @@ export const hasNotificationType = (
 @Injectable()
 export class NotificationService implements OnModuleInit {
   private activeAgents: NotificationAgent[] = [];
+
+  // Dedupe state for notifications fired during a rule-executor batch
+  // (one processQueue() pass). Two same-titled automatic rule groups
+  // sharing a Plex collection both emit `Media Added`/`Removed` for the
+  // same item; without dedupe, the user sees N copies (one per sibling
+  // rule). State resets at every batch transition so notifications from
+  // *different* runs are never collapsed.
+  private batchActive = false;
+  private readonly batchSeenKeys = new Set<string>();
 
   constructor(
     @InjectRepository(Notification)
@@ -387,6 +399,17 @@ export class NotificationService implements OnModuleInit {
           this.loggerFactory.createLogger(),
           notification,
         );
+      case NotificationAgentKey.NTFY:
+        return new NtfyAgent(
+          this.settings,
+          {
+            enabled: notification.enabled,
+            types: notification.types,
+            options: notification.options as NtfyOptions,
+          },
+          this.loggerFactory.createLogger(),
+          notification,
+        );
       case NotificationAgentKey.PUSHBULLET:
         return new PushbulletAgent(
           this.settings,
@@ -636,6 +659,15 @@ export class NotificationService implements OnModuleInit {
         options: [
           { field: 'url', type: 'text', required: true, extraInfo: '' },
           { field: 'token', type: 'text', required: true, extraInfo: '' },
+        ],
+      },
+      {
+        name: NotificationAgentKey.NTFY,
+        friendlyName: 'Ntfy',
+        options: [
+          { field: 'url', type: 'text', required: true, extraInfo: '' },
+          { field: 'topic', type: 'text', required: true, extraInfo: '' },
+          { field: 'token', type: 'text', required: false, extraInfo: '' },
         ],
       },
     ];
@@ -909,11 +941,31 @@ export class NotificationService implements OnModuleInit {
     await this.handleNotification(NotificationType.COLLECTION_HANDLING_FAILED);
   }
 
+  @OnEvent(MaintainerrEvent.RuleHandlerQueue_StatusUpdated)
+  private ruleQueueStatusChanged(event: RuleHandlerQueueStatusUpdatedEventDto) {
+    const nowActive = !!event.data?.processingQueue;
+    if (nowActive === this.batchActive) {
+      // Mid-batch progress update — nothing to do.
+      return;
+    }
+    // Reset on every transition (in either direction). Clearing on the
+    // false→true edge also recovers from a missed prior false event.
+    this.batchSeenKeys.clear();
+    this.batchActive = nowActive;
+  }
+
   @OnEvent(MaintainerrEvent.CollectionMedia_Added)
   private async collectionMediaAdded(data: CollectionMediaAddedDto) {
+    const filteredMediaItems = this.dedupeBatchMediaItems(
+      MaintainerrEvent.CollectionMedia_Added,
+      data.collectionName,
+      data.mediaItems,
+    );
+    if (filteredMediaItems.length === 0) return;
+
     await this.handleNotification(
       NotificationType.MEDIA_ADDED_TO_COLLECTION,
-      data.mediaItems,
+      filteredMediaItems,
       data.collectionName,
       data.dayAmount,
       undefined,
@@ -923,14 +975,51 @@ export class NotificationService implements OnModuleInit {
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Removed)
   private async collectionMediaRemoved(data: CollectionMediaRemovedDto) {
+    const filteredMediaItems = this.dedupeBatchMediaItems(
+      MaintainerrEvent.CollectionMedia_Removed,
+      data.collectionName,
+      data.mediaItems,
+    );
+    if (filteredMediaItems.length === 0) return;
+
     await this.handleNotification(
       NotificationType.MEDIA_REMOVED_FROM_COLLECTION,
-      data.mediaItems,
+      filteredMediaItems,
       data.collectionName,
       data.dayAmount,
       undefined,
       data.identifier,
     );
+  }
+
+  /**
+   * When a rule-executor batch is active, drops media items that have
+   * already produced a notification for this (event, collection title)
+   * during the same batch. Outside a batch this is a no-op so manual
+   * test notifications and standalone runs are unaffected.
+   *
+   * Mutates `batchSeenKeys` synchronously before any caller awaits, so
+   * concurrent handler invocations from sibling rule groups can't both
+   * pass the same item through.
+   */
+  private dedupeBatchMediaItems(
+    event:
+      | MaintainerrEvent.CollectionMedia_Added
+      | MaintainerrEvent.CollectionMedia_Removed,
+    collectionName: string,
+    mediaItems: { mediaServerId: string }[],
+  ): { mediaServerId: string }[] {
+    if (!this.batchActive || !mediaItems || mediaItems.length === 0) {
+      return mediaItems ?? [];
+    }
+    const filteredMediaItems: { mediaServerId: string }[] = [];
+    for (const item of mediaItems) {
+      const key = `${event}|${collectionName ?? ''}|${item?.mediaServerId ?? ''}`;
+      if (this.batchSeenKeys.has(key)) continue;
+      this.batchSeenKeys.add(key);
+      filteredMediaItems.push(item);
+    }
+    return filteredMediaItems;
   }
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Handled)
