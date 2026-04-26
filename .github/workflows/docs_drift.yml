@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       base_ref:
-        description: "Git ref to compare against (e.g. v3.7.0, v3.6.0, origin/main). Default: origin/main"
+        description: "Git ref to compare against. 'latest' resolves to the most recent GitHub release at run time."
+        type: choice
         required: false
-        default: ""
+        default: "latest"
+        options:
+          - latest
+          - origin/main
+          - origin/development
       open_issue:
         description: "Open/update the drift tracking issue on Maintainerr_docs"
         type: boolean
@@ -89,17 +94,24 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.ref }}
           DISPATCH_BASE: ${{ inputs.base_ref }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
             ref="origin/${PR_BASE}"
-          elif [ -n "$DISPATCH_BASE" ]; then
+          elif [ -z "$DISPATCH_BASE" ] || [ "$DISPATCH_BASE" = "latest" ]; then
+            ref=$(gh release view --json tagName --jq .tagName)
+            if [ -z "$ref" ]; then
+              echo "Failed to resolve latest release tag"
+              exit 1
+            fi
+            echo "Resolved 'latest' to release tag: $ref"
+          else
             if [[ ! "$DISPATCH_BASE" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
               echo "Invalid base_ref input: $DISPATCH_BASE"
               exit 1
             fi
             ref="$DISPATCH_BASE"
-          else
-            ref="origin/main"
           fi
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Resolved base ref: $ref"

@@ -168,16 +168,21 @@ export class CollectionsService {
   }
 
   public async isMediaServerCollectionShared(
-    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+    collection: Pick<Collection, 'id' | 'mediaServerId' | 'manualCollection'>,
   ): Promise<boolean> {
     if (!collection.mediaServerId) {
       return false;
     }
 
     try {
+      // Only siblings of the same kind (manual vs automatic) count as
+      // shared. A manual collection that happens to point at the same
+      // media server collection as an automatic rule group is not a
+      // sibling for the cross-rule contamination guards we apply here.
       const linkedCollectionCount = await this.collectionRepo.count({
         where: {
           mediaServerId: collection.mediaServerId,
+          manualCollection: collection.manualCollection,
           ...(collection.id !== undefined ? { id: Not(collection.id) } : {}),
         },
       });
@@ -189,6 +194,94 @@ export class CollectionsService {
       );
       this.logger.debug(error);
       return false;
+    }
+  }
+
+  /**
+   * Returns the set of media server IDs that are rule-owned by another
+   * automatic collection sharing this collection's media server collection.
+   *
+   * Throws on repository failure. Callers must treat a thrown error as
+   * "ownership unknown" — silently defaulting to an empty set would
+   * re-introduce the cross-rule contamination this method exists to prevent
+   * (sibling-owned children would be imported as `manual` into the wrong
+   * rule's collection_media).
+   */
+  public async getSiblingRuleOwnedMediaServerIds(
+    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+  ): Promise<Set<string>> {
+    if (!collection.mediaServerId) {
+      return new Set();
+    }
+
+    const siblings = await this.collectionRepo.find({
+      where: {
+        mediaServerId: collection.mediaServerId,
+        manualCollection: false,
+        ...(collection.id !== undefined ? { id: Not(collection.id) } : {}),
+      },
+    });
+
+    if (siblings.length === 0) {
+      return new Set();
+    }
+
+    const siblingMedia = await this.CollectionMediaRepo.find({
+      where: { collectionId: In(siblings.map((sibling) => sibling.id)) },
+    });
+
+    return new Set(
+      siblingMedia
+        .filter((entry) => hasCollectionMediaRuleMembership(entry))
+        .map((entry) => entry.mediaServerId),
+    );
+  }
+
+  private async resyncRuleOwnedItemsToSharedCollection(
+    collection: Pick<Collection, 'id' | 'mediaServerId' | 'title'>,
+    serverChildIds: Set<string>,
+  ): Promise<void> {
+    if (!collection.mediaServerId) {
+      return;
+    }
+
+    try {
+      const localMedia = await this.CollectionMediaRepo.find({
+        where: { collectionId: collection.id },
+      });
+      const missingRuleOwnedIds = localMedia
+        .filter((entry) => hasCollectionMediaRuleMembership(entry))
+        .map((entry) => entry.mediaServerId)
+        .filter((mediaServerId) => !serverChildIds.has(mediaServerId));
+
+      if (missingRuleOwnedIds.length === 0) {
+        return;
+      }
+
+      const mediaServer = await this.getMediaServer();
+      this.logger.log(
+        `[checkAutomaticMediaServerLink] Resyncing ${missingRuleOwnedIds.length} local rule-owned item(s) into shared media server collection ${collection.mediaServerId} for "${collection.title}"`,
+      );
+
+      const failedItemIds = new Set(
+        await mediaServer.addBatchToCollection(
+          collection.mediaServerId,
+          missingRuleOwnedIds,
+        ),
+      );
+
+      for (const itemId of missingRuleOwnedIds) {
+        if (failedItemIds.has(itemId)) {
+          this.logger.warn(
+            `Failed to resync item ${itemId} into shared media server collection ${collection.mediaServerId}`,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.warn(
+        'Failed to resync local rule-owned items into shared media server collection',
+      );
+      this.logger.debug(error);
     }
   }
 
@@ -1545,27 +1638,53 @@ export class CollectionsService {
         collection.mediaServerId !== null &&
         originalMediaServerId !== null
       ) {
-        const metadataChildCount = Number.isFinite(serverColl.childCount)
-          ? serverColl.childCount
-          : undefined;
+        const isShared = await this.isMediaServerCollectionShared(collection);
 
-        const actualChildCount =
-          metadataChildCount ??
-          (await mediaServer.getCollectionChildren(serverColl.id))?.length ??
-          0;
-
-        if (actualChildCount <= 0) {
-          this.logger.debug(
-            `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
+        if (isShared) {
+          // For shared automatic collections we never delete (a sibling
+          // rule group may still depend on the media server collection)
+          // and we can't trust metadata childCount as the only signal:
+          // if the server holds N children but our local DB has rule-owned
+          // items not among them (partial drift, e.g. items stripped by
+          // exclude/unexclude flows), the rule executor's local-DB-only
+          // delta can't recover them. Fetch actual children and resync.
+          const serverChildren =
+            (await mediaServer.getCollectionChildren(serverColl.id)) ?? [];
+          const serverChildIds = new Set(
+            serverChildren
+              .map((child) => child?.id?.toString())
+              .filter((childId): childId is string => Boolean(childId)),
           );
-          await mediaServer.deleteCollection(serverColl.id);
-          serverColl = undefined;
+          this.logger.debug(
+            `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children — checking for local rule-owned drift`,
+          );
+          await this.resyncRuleOwnedItemsToSharedCollection(
+            collection,
+            serverChildIds,
+          );
         } else {
-          this.logger.debug(
-            metadataChildCount !== undefined
-              ? `[checkAutomaticMediaServerLink] Trusting Plex metadata childCount=${metadataChildCount} for collection ${serverColl.id}, keeping it`
-              : `[checkAutomaticMediaServerLink] Collection ${serverColl.id} has ${actualChildCount} children, keeping it`,
-          );
+          const metadataChildCount = Number.isFinite(serverColl.childCount)
+            ? serverColl.childCount
+            : undefined;
+
+          const actualChildCount =
+            metadataChildCount ??
+            (await mediaServer.getCollectionChildren(serverColl.id))?.length ??
+            0;
+
+          if (actualChildCount <= 0) {
+            this.logger.debug(
+              `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
+            );
+            await mediaServer.deleteCollection(serverColl.id);
+            serverColl = undefined;
+          } else {
+            this.logger.debug(
+              metadataChildCount !== undefined
+                ? `[checkAutomaticMediaServerLink] Trusting Plex metadata childCount=${metadataChildCount} for collection ${serverColl.id}, keeping it`
+                : `[checkAutomaticMediaServerLink] Collection ${serverColl.id} has ${actualChildCount} children, keeping it`,
+            );
+          }
         }
       }
 
@@ -2029,15 +2148,27 @@ export class CollectionsService {
           !collection.manualCollection &&
           collection.mediaServerId
         ) {
-          try {
-            await mediaServer.deleteCollection(collection.mediaServerId);
+          // Another rule group with the same title may share this media
+          // server collection. Deleting it would also wipe the sibling rule's
+          // items, so just unlink locally and let the sibling keep ownership.
+          const isShared = await this.isMediaServerCollectionShared(collection);
+
+          if (isShared) {
             collection = await this.collectionRepo.save({
               ...collection,
               mediaServerId: null,
             });
-          } catch (error) {
-            this.logger.warn('Failed to delete collection from media server');
-            this.logger.debug(error);
+          } else {
+            try {
+              await mediaServer.deleteCollection(collection.mediaServerId);
+              collection = await this.collectionRepo.save({
+                ...collection,
+                mediaServerId: null,
+              });
+            } catch (error) {
+              this.logger.warn('Failed to delete collection from media server');
+              this.logger.debug(error);
+            }
           }
         }
       }

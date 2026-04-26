@@ -364,67 +364,93 @@ export class RuleExecutorService {
             `Skipping manual child import for newly linked automatic collection '${collection.title}' to avoid marking existing collection contents as manual.`,
           );
         } else if (children && children.length > 0) {
-          // Fetch exclusions to avoid re-adding excluded items as manual
-          const exclusions = await this.rulesService.getExclusions(
-            rulegroup.id,
-          );
-          const collectionMediaIds = new Set(
-            collectionMedia
-              .map((item) => item?.mediaServerId)
-              .filter((mediaServerId): mediaServerId is string =>
-                Boolean(mediaServerId),
-              ),
-          );
-          const excludedMediaServerIds = new Set<string>(
-            exclusions.map((e) => e.mediaServerId),
-          );
-          const excludedParentIds = new Set<string>(
-            exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
-          );
-          const missingManualChildren: CollectionMediaChange[] = [];
-
-          for (const child of children) {
-            if (child && child.id) {
-              const childId = child.id.toString();
-
-              // Skip items that were just added/removed by rule execution.
-              // The media server API may still return stale children after removal.
-              if (
-                collectionSyncChanges.addedMediaServerIds.has(childId) ||
-                collectionSyncChanges.removedMediaServerIds.has(childId)
-              ) {
-                continue;
-              }
-
-              // Skip items that are excluded
-              if (
-                excludedMediaServerIds.has(childId) ||
-                (child.parentId &&
-                  excludedParentIds.has(child.parentId.toString())) ||
-                (child.grandparentId &&
-                  excludedParentIds.has(child.grandparentId.toString()))
-              ) {
-                continue;
-              }
-
-              if (!collectionMediaIds.has(childId)) {
-                collectionMediaIds.add(childId);
-                missingManualChildren.push({
-                  mediaServerId: childId,
-                  reason: {
-                    type: 'media_added_manually',
-                  },
-                });
-              }
-            }
+          // When two automatic rule groups share a title they end up linked
+          // to the same media server collection. Items rule-owned by a
+          // sibling collection must not be imported here as manual — that
+          // would subject them to this rule's deleteAfterDays. If we cannot
+          // determine sibling ownership (DB error), refuse to import: a
+          // silent fallback to "no siblings" would re-introduce the
+          // contamination this guard exists to prevent.
+          let siblingRuleOwnedIds: Set<string> | undefined;
+          try {
+            siblingRuleOwnedIds =
+              await this.collectionService.getSiblingRuleOwnedMediaServerIds(
+                collection,
+              );
+          } catch (error) {
+            this.logger.warn(
+              `Could not determine sibling rule ownership for '${collection.title}'. Skipping manual child import to avoid cross-rule contamination.`,
+            );
+            this.logger.debug(error);
           }
 
-          if (missingManualChildren.length > 0) {
-            await this.collectionService.syncMediaServerChildrenToCollection(
-              collection,
-              missingManualChildren,
-              CollectionMediaManualMembershipSource.LOCAL,
+          if (siblingRuleOwnedIds !== undefined) {
+            // Fetch exclusions to avoid re-adding excluded items as manual
+            const exclusions = await this.rulesService.getExclusions(
+              rulegroup.id,
             );
+            const collectionMediaIds = new Set(
+              collectionMedia
+                .map((item) => item?.mediaServerId)
+                .filter((mediaServerId): mediaServerId is string =>
+                  Boolean(mediaServerId),
+                ),
+            );
+            const excludedMediaServerIds = new Set<string>(
+              exclusions.map((e) => e.mediaServerId),
+            );
+            const excludedParentIds = new Set<string>(
+              exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
+            );
+            const missingManualChildren: CollectionMediaChange[] = [];
+
+            for (const child of children) {
+              if (child && child.id) {
+                const childId = child.id.toString();
+
+                // Skip items that were just added/removed by rule execution.
+                // The media server API may still return stale children after removal.
+                if (
+                  collectionSyncChanges.addedMediaServerIds.has(childId) ||
+                  collectionSyncChanges.removedMediaServerIds.has(childId)
+                ) {
+                  continue;
+                }
+
+                // Skip items that are excluded
+                if (
+                  excludedMediaServerIds.has(childId) ||
+                  (child.parentId &&
+                    excludedParentIds.has(child.parentId.toString())) ||
+                  (child.grandparentId &&
+                    excludedParentIds.has(child.grandparentId.toString()))
+                ) {
+                  continue;
+                }
+
+                if (siblingRuleOwnedIds.has(childId)) {
+                  continue;
+                }
+
+                if (!collectionMediaIds.has(childId)) {
+                  collectionMediaIds.add(childId);
+                  missingManualChildren.push({
+                    mediaServerId: childId,
+                    reason: {
+                      type: 'media_added_manually',
+                    },
+                  });
+                }
+              }
+            }
+
+            if (missingManualChildren.length > 0) {
+              await this.collectionService.syncMediaServerChildrenToCollection(
+                collection,
+                missingManualChildren,
+                CollectionMediaManualMembershipSource.LOCAL,
+              );
+            }
           }
         }
 
