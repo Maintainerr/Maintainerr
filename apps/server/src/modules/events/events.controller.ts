@@ -21,7 +21,11 @@ import {
 import { OnEvent } from '@nestjs/event-emitter';
 import { Response } from 'express';
 import { IncomingMessage } from 'http';
-import { interval, map, Subject } from 'rxjs';
+import { interval, Subscription } from 'rxjs';
+import {
+  createSseStreamClient,
+  SseStreamClient,
+} from '../../utils/sse-stream';
 import { EventsBufferService } from './events-buffer.service';
 
 @Controller('/api/events')
@@ -31,7 +35,7 @@ export class EventsController implements BeforeApplicationShutdown {
 
   connectedClients = new Map<
     string,
-    { close: () => void; subject: Subject<NestMessageEvent> }
+    SseStreamClient
   >();
 
   async beforeApplicationShutdown() {
@@ -54,39 +58,6 @@ export class EventsController implements BeforeApplicationShutdown {
       request.socket.setTimeout(0);
     }
 
-    const subject = new Subject<NestMessageEvent>();
-    const observer = {
-      next: (msg: NestMessageEvent) => {
-        if (msg.type) response.write(`event: ${msg.type}\n`);
-        if (msg.id) response.write(`id: ${msg.id}\n`);
-        if (msg.retry) response.write(`retry: ${msg.retry}\n`);
-
-        response.write(`data: ${JSON.stringify(msg.data)}\n\n`);
-      },
-    };
-
-    subject.subscribe(observer);
-
-    const clientKey = String(Math.random());
-    this.connectedClients.set(clientKey, {
-      close: () => {
-        response.end();
-      },
-      subject,
-    });
-
-    // Send data to the client every 30s to keep the connection alive
-    const pingSubscription = interval(30 * 1000)
-      .pipe(map(() => response.write(': ping\n\n')))
-      .subscribe();
-
-    response.on('close', () => {
-      subject.complete();
-      pingSubscription.unsubscribe();
-      this.connectedClients.delete(clientKey);
-      response.end();
-    });
-
     response.set({
       'Cache-Control':
         'private, no-cache, no-store, must-revalidate, max-age=0, no-transform',
@@ -95,7 +66,27 @@ export class EventsController implements BeforeApplicationShutdown {
     });
 
     response.flushHeaders();
-    response.write('\n');
+
+    const clientKey = String(Math.random());
+    const subscriptions: { ping?: Subscription } = {};
+    const client = createSseStreamClient({
+      response,
+      onClose: () => {
+        subscriptions.ping?.unsubscribe();
+        this.connectedClients.delete(clientKey);
+      },
+    });
+
+    this.connectedClients.set(clientKey, client);
+
+    // Send data to the client every 30s to keep the connection alive.
+    subscriptions.ping = interval(30 * 1000).subscribe(() => {
+      client.writeRaw(': ping\n\n');
+    });
+
+    if (!client.writeRaw('\n')) {
+      return;
+    }
 
     const bufferedEvents = this.eventsBufferService.getEventsAfter(lastEventId);
 

@@ -33,6 +33,11 @@ export interface ProcessorRunResult {
   errors: number;
 }
 
+interface RevertItemResult {
+  restored: boolean;
+  failed: boolean;
+}
+
 @Injectable()
 export class OverlayProcessorService {
   public status: ProcessorStatus = 'idle';
@@ -119,8 +124,8 @@ export class OverlayProcessorService {
   // ── Revert ────────────────────────────────────────────────────────────────
 
   /**
-   * Revert one item. Returns `true` when the original poster was restored,
-   * so callers can decide whether to emit an event and/or aggregate.
+   * Revert one item. Reports whether the original poster was restored or the
+   * restore failed, so callers can emit events and count retryable failures.
    *
    * Failure handling:
    *  - No backup on disk → nothing we can do; clear state so we stop tracking.
@@ -133,7 +138,7 @@ export class OverlayProcessorService {
     collectionId: number,
     mediaServerId: string,
     provider: IOverlayProvider,
-  ): Promise<boolean> {
+  ): Promise<RevertItemResult> {
     const originalBuf = this.loadOriginalPoster(mediaServerId);
 
     if (!originalBuf) {
@@ -141,7 +146,7 @@ export class OverlayProcessorService {
         `No saved original poster for ${mediaServerId}, cannot restore`,
       );
       await this.stateService.removeState(collectionId, mediaServerId);
-      return false;
+      return { restored: false, failed: false };
     }
 
     try {
@@ -149,15 +154,16 @@ export class OverlayProcessorService {
     } catch (error) {
       this.logger.warn(
         `Failed to restore original poster for ${mediaServerId}; keeping backup for retry`,
+        error,
       );
       this.logger.debug(error);
-      return false;
+      return { restored: false, failed: true };
     }
 
     this.logger.log(`Restored original poster for item ${mediaServerId}`);
     this.deleteOriginalPoster(mediaServerId);
     await this.stateService.removeState(collectionId, mediaServerId);
-    return true;
+    return { restored: true, failed: false };
   }
 
   async revertCollection(collectionId: number): Promise<number> {
@@ -189,14 +195,22 @@ export class OverlayProcessorService {
 
     const reverted: { mediaServerId: string }[] = [];
     for (const item of mediaItems) {
-      if (
-        await this.revertItemInternal(
+      try {
+        const result = await this.revertItemInternal(
           collectionId,
           item.mediaServerId,
           provider,
-        )
-      ) {
-        reverted.push({ mediaServerId: item.mediaServerId });
+        );
+
+        if (result.restored) {
+          reverted.push({ mediaServerId: item.mediaServerId });
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to revert overlay for ${item.mediaServerId}; continuing batch`,
+          error,
+        );
+        this.logger.debug(error);
       }
     }
 
@@ -390,15 +404,27 @@ export class OverlayProcessorService {
           this.logger.log(
             `Item ${state.mediaServerId} no longer in any overlay collection, reverting`,
           );
-          const restored = await this.revertItemInternal(
-            state.collectionId,
-            state.mediaServerId,
-            provider,
-          );
-          if (restored) {
-            this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+          try {
+            const result = await this.revertItemInternal(
+              state.collectionId,
+              state.mediaServerId,
+              provider,
+            );
+
+            if (result.restored) {
+              this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+              totalResult.reverted++;
+            } else if (result.failed) {
+              totalResult.errors++;
+            }
+          } catch (error) {
+            this.logger.warn(
+              `Failed to revert stale overlay state for ${state.mediaServerId}; continuing run`,
+              error,
+            );
+            this.logger.debug(error);
+            totalResult.errors++;
           }
-          totalResult.reverted++;
         }
       }
 
@@ -468,17 +494,24 @@ export class OverlayProcessorService {
     const allStates = await this.stateService.getAllStates();
     const revertedMediaItems: { mediaServerId: string }[] = [];
     for (const state of allStates) {
-      const restored = await this.revertItemInternal(
-        state.collectionId,
-        state.mediaServerId,
-        provider,
-      );
-      if (restored) {
-        this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+      try {
+        const result = await this.revertItemInternal(
+          state.collectionId,
+          state.mediaServerId,
+          provider,
+        );
+
+        if (result.restored) {
+          this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to reset overlay for ${state.mediaServerId}; keeping state for retry`,
+          error,
+        );
+        this.logger.debug(error);
       }
     }
-
-    await this.stateService.clearAllStates();
 
     if (revertedMediaItems.length > 0) {
       this.eventEmitter.emit(
@@ -487,7 +520,7 @@ export class OverlayProcessorService {
       );
     }
 
-    this.logger.log('All overlays reset and state cleared');
+    this.logger.log('Overlay reset complete');
   }
 
   // ── Template-based overlay application ────────────────────────────────────

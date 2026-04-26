@@ -354,6 +354,73 @@ describe('OverlayProcessorService', () => {
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
+  it('counts stale-state restore failures as errors and keeps retry state during process-all runs', async () => {
+    const epipeError = Object.assign(new Error('write EPIPE'), {
+      code: 'EPIPE',
+    });
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getAllStates: jest
+        .fn()
+        .mockResolvedValue([{ collectionId: 42, mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const collection = createCollection({
+      id: 1,
+      title: 'Overlay run',
+      type: 'movie',
+      deleteAfterDays: null,
+    });
+    collection.collectionMedia = [];
+    const collectionsService = {
+      getCollectionsWithOverlayEnabled: jest
+        .fn()
+        .mockResolvedValue([collection]),
+    };
+    const provider = makeProvider({
+      uploadImage: jest.fn().mockRejectedValue(epipeError),
+    });
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    const deleteSpy = jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    const result = await service.processAllCollections();
+
+    expect(result).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 0,
+      errors: 1,
+    });
+    expect(deleteSpy).not.toHaveBeenCalled();
+    expect(stateService.removeState).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.OverlayHandler_Finished,
+    );
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.OverlayHandler_Failed,
+    );
+  });
+
   it('emits one aggregated overlay reverted notification for reset-all runs', async () => {
     const stateService = {
       getAllStates: jest.fn().mockResolvedValue([
