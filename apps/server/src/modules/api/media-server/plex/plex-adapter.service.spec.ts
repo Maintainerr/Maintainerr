@@ -384,10 +384,17 @@ describe('PlexAdapterService', () => {
   });
 
   describe('getWatchHistory', () => {
-    it('should return empty array when PlexApiService returns undefined', async () => {
-      plexApi.getWatchHistory.mockResolvedValue(undefined);
+    it('should return empty array when Plex returned no history entries', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([]);
       const history = await service.getWatchHistory('item123');
       expect(history).toEqual([]);
+    });
+
+    it('should propagate errors so callers can distinguish a real outage from a confirmed empty history', async () => {
+      plexApi.getWatchHistory.mockRejectedValue(new Error('plex unreachable'));
+      await expect(service.getWatchHistory('item123')).rejects.toThrow(
+        'plex unreachable',
+      );
     });
 
     it('should map Plex watch history to WatchRecord array', async () => {
