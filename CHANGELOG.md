@@ -1,41 +1,44 @@
+# [3.8.0](https://github.com/maintainerr/Maintainerr/compare/v3.7.0...v3.8.0) (2026-04-25)
+
 ## Highlights
-- Added a new Storage Metrics dashboard for accurate per-library size computation and reclaimable space insights.
-- Introduced overlay templates with a new editor, template management features, and API endpoints for overlays and templates.
-- Fixed critical issues in the `DELETE_SHOW_IF_EMPTY` feature for Sonarr, ensuring proper cleanup and improved logging.
+- Added a new Storage Metrics dashboard for aggregating disk usage from Radarr/Sonarr root folders, deduplicating mounts, and surfacing reclaimable space. Includes accurate per-library size computation for Plex and Jellyfin.
+- Introduced overlay templates and refactored the overlay system to include new entities, services, and controllers. Added an overlay editor, template management features, and a font upload endpoint.
+- Introduced a Calendar page to the UI.
+- Implemented drag-and-drop reordering for rules and sections in the Rule Creator, improving usability and state management.
 
 ## Breaking Changes
-- Removed event-driven overlay processing for collections and rules. Overlays now run only on the overlay schedule or via explicit actions.
+- Removed event-driven overlay processing for collections and rules. Overlays now run only on the overlay schedule or via explicit actions (#2733).
 
 ## Features
 - Added drag-and-drop reordering for rules and sections in the Rule Creator.
-- Added `collection_siblings_lastViewedAt` rule to return the newest watched-at timestamp across a movie's collection siblings.
-- Added Jellyfin support for the overlay feature, integrating it into the media server interface.
-- Added a docs drift report workflow to surface user-facing changes requiring documentation updates.
+- Added `collection_siblings_lastViewedAt` property to rules for aggregating the newest watched-at timestamp across a movie's collection siblings.
 
 ## Fixes
-- Fixed `DELETE_SHOW_IF_EMPTY` in Sonarr to handle Seerr integration and improve cleanup logging (#2763).
-- Fixed `useLockBodyScroll` behavior in modals to resolve scrolling issues (#2749).
-- Fixed watch history handling in Jellyfin and Plex to distinguish between "no watch history" and "lookup failed" scenarios (#2744).
-- Fixed overlay issues: preserving `isDefault` flag, matching font preview/output, and adding overlay notifications (#2723).
-- Fixed storage metrics to deduplicate shared mounts, improve accuracy, and align UI elements.
-- Fixed various UI issues, including calendar tag colors, rule creator spacing, and mobile responsiveness.
+- Fixed `DELETE_SHOW_IF_EMPTY` in Sonarr to handle Seerr integration properly and added debug logs for cleanup skips (#2763).
+- Fixed `useLockBodyScroll` behavior to address scrolling issues caused by simultaneous modal closures (#2749).
+- Improved handling of watch history failures in Jellyfin and Plex, ensuring better error distinction and fail-closed behavior (#2744).
+- Fixed multiple issues with overlays, including preserving the `isDefault` flag, resolving font mismatches, and improving overlay notifications (#2723).
+- Fixed storage metrics to deduplicate same-host instances, improve badge colors, and refine capacity calculations for shared filesystems.
+- Fixed collection item action handling to improve validation, serialization, and UI consistency (#2730).
+- Fixed React hooks warnings by converting effect-driven data fetches to TanStack Query hooks and derived state (#2729).
 
 ## Performance
-- Improved storage metrics computation for Plex and Jellyfin by deduplicating mounts and optimizing library size calculations.
+- Optimized storage metrics by deduplicating library sizes and improving error handling for Plex and Jellyfin (#2718).
 
-## Database migrations
+## Database Migrations
 - Added `overlay_templates` table for managing overlay templates.
 - Added `overlay_settings` table for storing overlay configuration.
-- Added `overlay_item_state` table for tracking overlay processing state.
-- Added a unique index on `overlay_item_state` for `collectionId` and `mediaServerId`.
+- Added `overlay_item_state` table for tracking overlay processing state, with a unique index on `collectionId` and `mediaServerId`.
 
 ## Internal
-- Refactored Rule Creator state management for improved UX and simplified logic.
-- Updated release workflows to exclude chore commits from release notes and generate notes using GitHub Models.
+- Refactored the overlay system to support Jellyfin and align with the media server interface (#2756).
+- Simplified Rule Creator state management and promoted shared button components.
 - Retired the `ACTIONS_TOKEN` PAT in favor of GitHub App tokens for CI workflows (#2762).
+- Updated release process to exclude chore commits from release notes and generate notes using GitHub Models (#2740).
+- Added a docs drift report workflow to surface user-facing changes requiring documentation updates (#2745).
 
 ## Dependencies
-- Updated 40 dependencies, including nodemailer, @typescript-eslint/eslint-plugin, prettier-plugin-tailwindcss, vite, and @nestjs/swagger.
+- Updated 40 dependencies, including nodemailer, @typescript-eslint/eslint-plugin, prettier-plugin-tailwindcss, vite, @nestjs/swagger, and @tanstack/react-query.
 
 # [3.7.0](https://github.com/maintainerr/Maintainerr/compare/v3.6.0...v3.7.0) (2026-04-14)
 
