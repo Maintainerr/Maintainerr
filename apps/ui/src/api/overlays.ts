@@ -8,6 +8,13 @@ import type {
   OverlayTemplateExport,
   OverlayTemplateUpdate,
 } from '@maintainerr/contracts'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationOptions,
+  type UseQueryOptions,
+} from '@tanstack/react-query'
 import GetApiHandler, {
   API_BASE_PATH,
   DeleteApiHandler,
@@ -20,6 +27,59 @@ export const getOverlaySettings = () =>
 
 export const updateOverlaySettings = (data: OverlaySettingsUpdate) =>
   PutApiHandler<OverlaySettings>('/overlays/settings', data)
+
+type UseOverlaySettingsQueryKey = ['overlays', 'settings']
+
+type UseOverlaySettingsOptions = Omit<
+  UseQueryOptions<
+    OverlaySettings,
+    Error,
+    OverlaySettings,
+    UseOverlaySettingsQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const useOverlaySettings = (options?: UseOverlaySettingsOptions) =>
+  useQuery<OverlaySettings, Error, OverlaySettings, UseOverlaySettingsQueryKey>(
+    {
+      queryKey: ['overlays', 'settings'],
+      queryFn: async () => {
+        const data = await GetApiHandler<OverlaySettings>('/overlays/settings')
+        return data
+      },
+      staleTime: 0,
+      ...options,
+    },
+  )
+
+type UseUpdateOverlaySettingsOptions = Omit<
+  UseMutationOptions<OverlaySettings, Error, OverlaySettingsUpdate>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useUpdateOverlaySettings = (
+  options?: UseUpdateOverlaySettingsOptions,
+) => {
+  const queryClient = useQueryClient()
+  return useMutation<OverlaySettings, Error, OverlaySettingsUpdate>({
+    mutationKey: ['overlays', 'settings', 'update'],
+    mutationFn: async (payload) => {
+      const data = await PutApiHandler<OverlaySettings>(
+        '/overlays/settings',
+        payload,
+      )
+      return data
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData<OverlaySettings>(
+        ['overlays', 'settings'] satisfies UseOverlaySettingsQueryKey,
+        data,
+      )
+    },
+    ...options,
+  })
+}
 
 export const getOverlaySections = () =>
   GetApiHandler<OverlayLibrarySection[]>('/overlays/sections')

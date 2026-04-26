@@ -16,10 +16,10 @@ import type {
   StorageTopCollection,
 } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { getApiErrorMessage } from '../../utils/ApiError'
 import GetApiHandler from '../../utils/ApiHandler'
 import { formatBytes, formatPercent } from '../../utils/formatBytes'
+import BrandLink from '../Common/BrandLink'
 import Button from '../Common/Button'
 import LoadingSpinner, { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import Modal from '../Common/Modal'
@@ -619,12 +619,9 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
           {collections.map((collection) => (
             <tr key={collection.id}>
               <td className="px-3 py-2">
-                <Link
-                  className="text-maintainerr-500 hover:text-maintainerrdark-500 hover:underline"
-                  to={`/collections/${collection.id}`}
-                >
+                <BrandLink to={`/collections/${collection.id}`}>
                   {collection.title}
-                </Link>
+                </BrandLink>
               </td>
               <td className="px-3 py-2 capitalize text-zinc-300">
                 {collection.type}

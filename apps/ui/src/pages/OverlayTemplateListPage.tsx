@@ -324,10 +324,10 @@ function TemplateCard({
           type="button"
           className="flex items-center gap-1 rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
           onClick={() => onEdit(t.id)}
-          title={t.isPreset ? 'Duplicate to edit' : 'Edit'}
+          title={t.isPreset ? 'Editing a preset will save a copy' : 'Edit'}
         >
           <PencilAltIcon className="h-3.5 w-3.5" />
-          {t.isPreset ? 'View' : 'Edit'}
+          Edit
         </button>
         <button
           type="button"

@@ -7,13 +7,15 @@ import {
 } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import {
   getOverlaySettings,
   processAllOverlays,
   resetAllOverlays,
-  updateOverlaySettings,
+  useUpdateOverlaySettings,
 } from '../../../api/overlays'
 import Button from '../../Common/Button'
+import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
 import PageControlRow from '../../Common/PageControlRow'
 import PendingButton from '../../Common/PendingButton'
@@ -36,7 +38,7 @@ function ToggleField({
   label: string
   checked: boolean
   onChange: (v: boolean) => void
-  helpText?: string
+  helpText?: React.ReactNode
 }) {
   return (
     <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
@@ -63,9 +65,11 @@ function ToggleField({
 // ── Main component ──────────────────────────────────────────────────────
 
 const OverlaySettings = () => {
+  const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+  const [missingCronModalOpen, setMissingCronModalOpen] = useState(false)
 
   const {
     feedback,
@@ -76,6 +80,15 @@ const OverlaySettings = () => {
     showError,
   } = useSettingsFeedback('Overlay settings')
 
+  // Persisted (server) enabled state — distinct from the form's in-flight
+  // value. Run Now / Reset operate against the server, so they must reflect
+  // what the server has, not unsaved toggle changes. The cron is needed
+  // only to detect the moment overlays go enabled with no schedule set, so
+  // the post-save modal can fire once.
+  const [loadedEnabled, setLoadedEnabled] = useState(false)
+
+  const { mutateAsync: updateOverlaySettings } = useUpdateOverlaySettings()
+
   const {
     handleSubmit,
     control,
@@ -85,6 +98,7 @@ const OverlaySettings = () => {
     resolver: zodResolver(overlaySettingsSchema),
     defaultValues: async () => {
       const settings = await getOverlaySettings()
+      setLoadedEnabled(settings.enabled)
       return settings
     },
   })
@@ -92,8 +106,19 @@ const OverlaySettings = () => {
   const onSubmit = async (data: OverlaySettings) => {
     try {
       const updated = await updateOverlaySettings(data as OverlaySettingsUpdate)
+      // Surface the missing-schedule guidance the moment overlays *actually*
+      // become enabled (server-confirmed) without a cron. Firing only when
+      // the persisted state flips false→true keeps the modal from nagging
+      // on every save and avoids the wording lie of "enabled" while the
+      // form is still dirty.
+      const justEnabledWithoutCron =
+        updated.enabled && !updated.cronSchedule && !loadedEnabled
+      setLoadedEnabled(updated.enabled)
       reset(updated)
       showUpdated()
+      if (justEnabledWithoutCron) {
+        setMissingCronModalOpen(true)
+      }
     } catch {
       showUpdateError()
     }
@@ -166,11 +191,21 @@ const OverlaySettings = () => {
                 actions={
                   <>
                     <span className="flex rounded-md shadow-sm">
+                      <DocsButton page="overlays" />
+                    </span>
+                    <span
+                      className="flex rounded-md shadow-sm"
+                      title={
+                        !loadedEnabled
+                          ? 'Enable overlays and save to run manually'
+                          : undefined
+                      }
+                    >
                       <PendingButton
                         buttonType="default"
                         type="button"
                         onClick={handleProcessAll}
-                        disabled={processing}
+                        disabled={processing || !loadedEnabled}
                         isPending={processing}
                         idleLabel="Run Now"
                         pendingLabel="Running"
@@ -178,12 +213,19 @@ const OverlaySettings = () => {
                         idleIcon={<RefreshIcon />}
                       />
                     </span>
-                    <span className="flex rounded-md shadow-sm">
+                    <span
+                      className="flex rounded-md shadow-sm"
+                      title={
+                        !loadedEnabled
+                          ? 'Enable overlays and save to reset existing overlays'
+                          : undefined
+                      }
+                    >
                       <Button
                         buttonType="danger"
                         type="button"
                         onClick={handleResetAllRequest}
-                        disabled={resetting}
+                        disabled={resetting || !loadedEnabled}
                       >
                         <span>
                           {resetting ? 'Resetting...' : 'Reset All Overlays'}
@@ -226,6 +268,36 @@ const OverlaySettings = () => {
           <p>
             This will revert every applied overlay and restore the original
             posters for all collections.
+          </p>
+        </Modal>
+      )}
+
+      {missingCronModalOpen && (
+        <Modal
+          title="Overlays are now enabled"
+          size="sm"
+          onCancel={() => setMissingCronModalOpen(false)}
+          cancelText="Got it"
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => {
+                setMissingCronModalOpen(false)
+                navigate('/settings/jobs')
+              }}
+            >
+              Open Job Settings
+            </Button>
+          }
+        >
+          <p>To run them automatically, set a schedule in Job Settings.</p>
+          <p className="mt-2">
+            Example: <code>45 4 * * *</code> (4:45 AM every day).
+          </p>
+          <p className="mt-2">
+            If you do not set a schedule, you will need to use Run Now in
+            Overlay Settings each time.
           </p>
         </Modal>
       )}
