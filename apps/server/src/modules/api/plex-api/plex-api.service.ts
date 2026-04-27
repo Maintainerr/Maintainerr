@@ -1612,9 +1612,9 @@ export class PlexApiService {
         timeout: 30000,
       });
       return true;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`);
-      this.logger.debug(err);
+      this.logger.debug(error);
       return false;
     }
   }
