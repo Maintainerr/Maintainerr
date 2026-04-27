@@ -7,6 +7,11 @@ describe('CollectionMediaPage', () => {
       id: 'episode-1',
       title: 'Episode 1',
       type: 'episode' as const,
+      guid: 'test-guid-1',
+      addedAt: new Date('2026-04-20T00:00:00.000Z'),
+      providerIds: {},
+      mediaSources: [],
+      library: { id: 'lib-1', title: 'Test Library' },
       maintainerrIsManual: false,
     }
 

@@ -1,6 +1,5 @@
 import type { MediaItemType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Link } from 'react-router-dom'
 import {
   useCalendarEntryDetails,
   useCalendarOverlayData,
@@ -9,6 +8,7 @@ import {
   type CalendarEntry,
 } from '../../api/calendar'
 import Badge from '../Common/Badge'
+import BrandLink from '../Common/BrandLink'
 import Button from '../Common/Button'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import Modal from '../Common/Modal'
@@ -504,12 +504,9 @@ const Calendar = () => {
                       </div>
                       <div className="col-span-2">
                         <div className="text-zinc-400">Collection</div>
-                        <Link
-                          className="text-maintainerr hover:text-maintainerr-400 hover:underline"
-                          to={`/collections/${item.collectionId}`}
-                        >
+                        <BrandLink to={`/collections/${item.collectionId}`}>
                           {item.collectionTitle}
-                        </Link>
+                        </BrandLink>
                       </div>
                     </div>
                   </div>
@@ -572,12 +569,9 @@ const Calendar = () => {
                             {formatAddedAt(item.addedAt)}
                           </td>
                           <td className="border-y border-zinc-600/60 bg-zinc-800/40 px-3 py-2 text-center">
-                            <Link
-                              className="text-maintainerr hover:text-maintainerr-400 hover:underline"
-                              to={`/collections/${item.collectionId}`}
-                            >
+                            <BrandLink to={`/collections/${item.collectionId}`}>
                               {item.collectionTitle}
-                            </Link>
+                            </BrandLink>
                           </td>
                           <td className="rounded-r-md border-y border-r border-zinc-600/60 bg-zinc-800/40 px-3 py-2 text-center text-zinc-300">
                             {getMediaTypeLabel(item.mediaType)}

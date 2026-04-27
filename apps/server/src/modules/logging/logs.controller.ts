@@ -38,10 +38,11 @@ import {
   map,
   mergeMap,
   of,
-  Subject,
+  Subscription,
   switchMap,
 } from 'rxjs';
 import { Readable } from 'stream';
+import { createSseStreamClient, SseStreamClient } from '../../utils/sse-stream';
 import { formatLogMessage } from './logFormatting';
 import { LogSettingsService, MaintainerrLogger } from './logs.service';
 
@@ -62,10 +63,7 @@ export class LogsController implements BeforeApplicationShutdown {
     this.logger.setContext(LogsController.name);
   }
 
-  connectedClients = new Map<
-    string,
-    { close: () => void; subject: Subject<NestMessageEvent> }
-  >();
+  connectedClients = new Map<string, SseStreamClient>();
 
   async beforeApplicationShutdown() {
     for (const [, client] of this.connectedClients) {
@@ -85,36 +83,6 @@ export class LogsController implements BeforeApplicationShutdown {
       request.socket.setTimeout(0);
     }
 
-    const subject = new Subject<NestMessageEvent>();
-
-    const observer = {
-      next: (msg: NestMessageEvent) => {
-        if (msg.type) response.write(`event: ${msg.type}\n`);
-        if (msg.id) response.write(`id: ${msg.id}\n`);
-        if (msg.retry) response.write(`retry: ${msg.retry}\n`);
-
-        response.write(`data: ${JSON.stringify(msg.data)}\n\n`);
-      },
-    };
-
-    subject.subscribe(observer);
-
-    const clientKey = String(Math.random());
-    this.connectedClients.set(clientKey, {
-      close: () => {
-        response.end();
-      },
-      subject,
-    });
-
-    response.on('close', () => {
-      subject.complete();
-      pingSubscription.unsubscribe();
-      logEventStreamSubscription.unsubscribe();
-      this.connectedClients.delete(clientKey);
-      response.end();
-    });
-
     response.set({
       'Cache-Control':
         'private, no-cache, no-store, must-revalidate, max-age=0, no-transform',
@@ -123,7 +91,28 @@ export class LogsController implements BeforeApplicationShutdown {
     });
 
     response.flushHeaders();
-    response.write('\n');
+
+    const clientKey = String(Math.random());
+    const subscriptions: {
+      ping?: Subscription;
+      logEvents?: Subscription;
+    } = {};
+    const client = createSseStreamClient({
+      response,
+      onClose: () => {
+        subscriptions.ping?.unsubscribe();
+        subscriptions.logEvents?.unsubscribe();
+        this.connectedClients.delete(clientKey);
+      },
+      onError: (error) => {
+        this.logger.debug(error);
+      },
+    });
+
+    this.connectedClients.set(clientKey, client);
+    if (!client.writeRaw('\n')) {
+      return;
+    }
 
     const currentLogFile = new Promise<string | undefined>(
       (resolve, reject) => {
@@ -241,18 +230,18 @@ export class LogsController implements BeforeApplicationShutdown {
       ),
     );
 
-    const logEventStreamSubscription = logEventStream
+    subscriptions.logEvents = logEventStream
       .pipe(map((x) => this.sendDataToClient(clientKey, x)))
       .subscribe();
 
-    // Send data to the client every 30s to keep the connection alive
-    const pingSubscription = interval(30 * 1000)
-      .pipe(map(() => response.write(': ping\n\n')))
-      .subscribe();
+    // Send data to the client every 30s to keep the connection alive.
+    subscriptions.ping = interval(30 * 1000).subscribe(() => {
+      client.writeRaw(': ping\n\n');
+    });
   }
 
   sendDataToClient(clientId: string, message: NestMessageEvent) {
-    this.connectedClients.get(clientId)?.subject.next(message);
+    this.connectedClients.get(clientId)?.send(message);
   }
 
   @Get('files')

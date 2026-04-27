@@ -4,13 +4,10 @@ import {
   SortAscendingIcon,
   SortDescendingIcon,
 } from '@heroicons/react/outline'
-import { DocumentTextIcon } from '@heroicons/react/solid'
 import {
-  CollectionLogDto,
   CollectionLogMetaMediaAddedByRule,
   CollectionLogMetaMediaRemovedByRule,
   ECollectionLogType,
-  isMetaActionedByRule,
 } from '@maintainerr/contracts'
 import { useRef, useState } from 'react'
 import YAML from 'yaml'

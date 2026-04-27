@@ -21,6 +21,7 @@ import {
 } from '../api/overlays'
 import Button from '../components/Common/Button'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import Modal from '../components/Common/Modal'
 import PageControlRow from '../components/Common/PageControlRow'
 import SaveButton from '../components/Common/SaveButton'
 import { Input } from '../components/Forms/Input'
@@ -43,8 +44,17 @@ import { getApiErrorMessage } from '../utils/ApiError'
 const defaults = (mode: OverlayTemplateMode) =>
   mode === 'poster' ? POSTER_CANVAS : TITLECARD_CANVAS
 
+// Outer component remounts the inner editor whenever `id` changes. This keeps
+// useState initial values fresh on transitions (e.g. preset → /new) so we
+// don't need a reset effect — which the lint rule
+// `react-hooks/set-state-in-effect` correctly flags as cascading-render bait.
 const OverlayTemplateEditorPage = () => {
   const { id } = useParams<{ id: string }>()
+  return <OverlayTemplateEditor routeId={id ?? 'new'} key={id ?? 'new'} />
+}
+
+const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
+  const id = routeId
   const isNew = id === 'new'
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(!isNew)
@@ -52,8 +62,11 @@ const OverlayTemplateEditorPage = () => {
   const [description, setDescription] = useState('')
   const [mode, setMode] = useState<OverlayTemplateMode>('poster')
   const [isPreset, setIsPreset] = useState(false)
+  const [sourcePresetName, setSourcePresetName] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [copyModalOpen, setCopyModalOpen] = useState(false)
+  const [copyName, setCopyName] = useState('')
   const [sections, setSections] = useState<
     { key: string; title: string; type: string }[]
   >([])
@@ -83,7 +96,9 @@ const OverlayTemplateEditorPage = () => {
     [elements, selectedId],
   )
 
-  // Load existing template
+  // Load existing template. The wrapper remounts this component when `id`
+  // changes (see OverlayTemplateEditorPage above), so the new-template
+  // branch needs no manual state reset — useState initial values handle it.
   useEffect(() => {
     if (isNew) return
     const templateId = Number(id)
@@ -101,6 +116,7 @@ const OverlayTemplateEditorPage = () => {
       setDescription(t.description)
       setMode(t.mode)
       setIsPreset(t.isPreset)
+      setSourcePresetName(t.isPreset ? t.name : '')
       resetElements(t.elements)
       setIsLoading(false)
     })
@@ -229,9 +245,53 @@ const OverlayTemplateEditorPage = () => {
     return () => window.removeEventListener('keydown', handler)
   }, [undo, redo, selectedId, setElements])
 
+  // Saving a preset must not mutate it — the server rejects it and the
+  // shared presets are seeded once, so any "edit" of a preset is really
+  // a fork. We open the copy modal pre-filled with a sensible default,
+  // then create a fresh user-owned template on confirm.
+  const openCopyModal = () => {
+    setCopyName(`${sourcePresetName || name} (copy)`)
+    setCopyModalOpen(true)
+  }
+
+  const createTemplateFromCurrent = async (newName: string) => {
+    const trimmedName = newName.trim()
+    if (!trimmedName) {
+      showError('Template name is required')
+      return false
+    }
+    setSaving(true)
+    try {
+      const created = await createOverlayTemplate({
+        name: trimmedName,
+        description,
+        mode,
+        canvasWidth: canvasDefaults.width,
+        canvasHeight: canvasDefaults.height,
+        elements,
+        isDefault: false,
+      } satisfies OverlayTemplateCreate)
+      if (created) {
+        // No success alert here — the navigation to the new template's URL
+        // (with its name visible in the title field) is the confirmation.
+        // Showing an inline alert just before unmount would flash visibly
+        // for one frame and then disappear, which reads as a flicker.
+        navigate(`/overlays/templates/${created.id}`, { replace: true })
+        return true
+      }
+      showError('Failed to create template')
+      return false
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Failed to save template'))
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSave = async () => {
     if (isPreset) {
-      showError('Preset templates cannot be edited. Duplicate first.')
+      openCopyModal()
       return
     }
     const trimmedName = name.trim()
@@ -239,40 +299,29 @@ const OverlayTemplateEditorPage = () => {
       showError('Template name is required')
       return
     }
+    if (isNew) {
+      await createTemplateFromCurrent(trimmedName)
+      return
+    }
     setSaving(true)
     try {
-      if (isNew) {
-        const created = await createOverlayTemplate({
-          name: trimmedName,
-          description,
-          mode,
-          canvasWidth: canvasDefaults.width,
-          canvasHeight: canvasDefaults.height,
-          elements,
-          isDefault: false,
-        } satisfies OverlayTemplateCreate)
-        if (created) {
-          showSuccess('Template created')
-          navigate(`/overlays/templates/${created.id}`, {
-            replace: true,
-          })
-        } else {
-          showError('Failed to create template')
-        }
-      } else {
-        const updated = await updateOverlayTemplate(Number(id), {
-          name: trimmedName,
-          description,
-          elements,
-        } satisfies OverlayTemplateUpdate)
-        if (updated) showSuccess('Template saved')
-        else showError('Failed to save template')
-      }
+      const updated = await updateOverlayTemplate(Number(id), {
+        name: trimmedName,
+        description,
+        elements,
+      } satisfies OverlayTemplateUpdate)
+      if (updated) showSuccess('Template saved')
+      else showError('Failed to save template')
     } catch (err) {
       showError(getApiErrorMessage(err, 'Failed to save template'))
     } finally {
       setSaving(false)
     }
+  }
+
+  const confirmSaveAsCopy = async () => {
+    const ok = await createTemplateFromCurrent(copyName)
+    if (ok) setCopyModalOpen(false)
   }
 
   const handleAddElement = useCallback(
@@ -318,8 +367,9 @@ const OverlayTemplateEditorPage = () => {
             {isNew ? 'New Template' : 'Edit Template'}
           </h3>
           <p className="description">
-            Design overlay elements on the canvas. Enter a valid template name
-            in the Template Name field before saving your changes.
+            {isPreset
+              ? 'You’re editing a preset. Saving will create your own copy — the original preset is left unchanged.'
+              : 'Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes.'}
           </p>
         </div>
 
@@ -339,8 +389,10 @@ const OverlayTemplateEditorPage = () => {
               <SaveButton
                 type="button"
                 onClick={handleSave}
-                disabled={isLoading || saving || isPreset || !name.trim()}
+                disabled={isLoading || saving || (!isPreset && !name.trim())}
                 isPending={saving}
+                label={isPreset ? 'Save as copy' : 'Save Changes'}
+                pendingLabel={isPreset ? 'Copying...' : 'Saving...'}
               />
               <Button
                 className="h-10 px-3"
@@ -354,7 +406,7 @@ const OverlayTemplateEditorPage = () => {
                 <Input
                   name="template-name"
                   type="text"
-                  value={name}
+                  value={isPreset ? sourcePresetName : name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={isLoading || isPreset}
                   placeholder="Template Name"
@@ -521,6 +573,38 @@ const OverlayTemplateEditorPage = () => {
           )}
         </div>
       </div>
+
+      {copyModalOpen && (
+        <Modal
+          title="Save preset as a copy"
+          size="sm"
+          onCancel={saving ? undefined : () => setCopyModalOpen(false)}
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              type="button"
+              disabled={saving || !copyName.trim()}
+              onClick={() => void confirmSaveAsCopy()}
+            >
+              {saving ? 'Saving...' : 'Save copy'}
+            </Button>
+          }
+        >
+          <p className="mb-3">
+            Presets can&rsquo;t be modified. Enter a name for your copy — it
+            will start from the current canvas and become editable.
+          </p>
+          <Input
+            name="copy-template-name"
+            type="text"
+            value={copyName}
+            onChange={(e) => setCopyName(e.target.value)}
+            placeholder="Template Name"
+            autoFocus
+          />
+        </Modal>
+      )}
     </>
   )
 }

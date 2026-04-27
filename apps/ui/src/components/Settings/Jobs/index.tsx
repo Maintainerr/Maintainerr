@@ -7,6 +7,7 @@ import {
   updateOverlaySettings,
 } from '../../../api/overlays'
 import { usePatchSettings } from '../../../api/settings'
+import BrandLink from '../../Common/BrandLink'
 import { SmallLoadingSpinner } from '../../Common/LoadingSpinner'
 import SaveButton from '../../Common/SaveButton'
 import { Input } from '../../Forms/Input'
@@ -191,7 +192,13 @@ const JobSettings = () => {
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">Job Settings</h3>
-          <p className="description">Job configuration</p>
+          <p className="description">
+            Job configuration. All schedules support standard{' '}
+            <BrandLink external href="https://crontab.guru/">
+              cron
+            </BrandLink>{' '}
+            patterns.
+          </p>
         </div>
 
         <SettingsFeedbackAlert feedback={feedback} />
@@ -202,15 +209,7 @@ const JobSettings = () => {
               <label htmlFor="rules_handler_job_cron" className="text-label">
                 Rule Handler
                 <p className="text-xs font-normal">
-                  Supports all standard{' '}
-                  <a
-                    href="http://crontab.org/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    cron
-                  </a>{' '}
-                  patterns. Can be overridden by individual rule groups.
+                  Can be overridden by individual rule groups.
                 </p>
               </label>
               <div className="form-input">
@@ -242,17 +241,6 @@ const JobSettings = () => {
                 className="text-label"
               >
                 Collection Handler
-                <p className="text-xs font-normal">
-                  Supports all standard{' '}
-                  <a
-                    href="http://crontab.org/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    cron
-                  </a>{' '}
-                  patterns
-                </p>
               </label>
 
               <div className="form-input">
@@ -282,15 +270,7 @@ const JobSettings = () => {
               <label htmlFor="overlay_handler_job_cron" className="text-label">
                 Overlay Handler
                 <p className="text-xs font-normal">
-                  Supports all standard{' '}
-                  <a
-                    href="http://crontab.org/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    cron
-                  </a>{' '}
-                  patterns. Leave empty to disable scheduled overlay runs.
+                  Leave empty to disable scheduled overlay runs.
                 </p>
               </label>
 

@@ -49,7 +49,7 @@ import {
   PlexDevice,
   PlexStatusResponse,
 } from './interfaces/server.interface';
-import { PLEX_PAGE_SIZE } from './plex-api.constants';
+import { PLEX_PAGE_SIZE, PLEX_REQUEST_TIMEOUT_MS } from './plex-api.constants';
 
 type PlexApiSettings = SettingsService &
   Pick<
@@ -236,6 +236,7 @@ export class PlexApiService {
         port: settingsPlex.port,
         https: settingsPlex.useSsl,
         token: plexToken,
+        timeout: PLEX_REQUEST_TIMEOUT_MS,
       });
 
       const machineId = await this.setMachineId();
@@ -323,6 +324,7 @@ export class PlexApiService {
           port: conn.port,
           https: conn.protocol === 'https',
           token: plexToken,
+          timeout: PLEX_REQUEST_TIMEOUT_MS,
         });
 
         await this.settings.updatePlexConnectionDetails({
@@ -729,22 +731,19 @@ export class PlexApiService {
     itemId: string,
     useCache: boolean = true,
   ): Promise<PlexSeenBy[]> {
-    try {
-      const response: PlexLibraryResponse =
-        await this.plexClient.queryAll<PlexLibraryResponse>(
-          {
-            uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
-          },
-          useCache,
-        );
-      return response.MediaContainer.Metadata as PlexSeenBy[];
-    } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
+    // Errors must propagate so callers can distinguish a real outage from a
+    // confirmed empty history. Returning [] (or undefined) here would
+    // misclassify failures as "never watched", which leaks into NOT_EXISTS
+    // checks and missing-value diagnostics in the rules layer. Mirrors the
+    // Jellyfin adapter's getWatchHistory contract.
+    const response: PlexLibraryResponse =
+      await this.plexClient.queryAll<PlexLibraryResponse>(
+        {
+          uri: `/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=${itemId}`,
+        },
+        useCache,
       );
-      this.logger.debug(error);
-      return undefined;
-    }
+    return (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
   }
 
   public async getCollections(
@@ -1613,9 +1612,9 @@ export class PlexApiService {
         timeout: 30000,
       });
       return true;
-    } catch (err) {
+    } catch (error) {
       this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`);
-      this.logger.debug(err);
+      this.logger.debug(error);
       return false;
     }
   }

@@ -49,6 +49,13 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
           FORCE_REEVAL: 'true'
+          # Re-eval is the right place to run the broader pre-existing-feature
+          # check: it's monthly (so we can spend the model budget), and the
+          # script relaxes the PR-title prefix gate when forceReeval=true so
+          # foundational features that predate the feat:/fix: convention can
+          # surface as candidates. Catches "user filed an FR for something
+          # that already shipped years ago" cases the daily run can't see.
+          CHECK_PRE_EXISTING: 'true'
           FIDER_TRIAGE_MODEL: openai/gpt-4.1-mini
           DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
           DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}

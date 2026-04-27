@@ -2,6 +2,123 @@
 // free (Node built-ins only) so each script can stay an `mjs` entry point
 // invoked directly from a workflow step.
 
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Headers safe to log on every model response — quota/rate-limit signals only.
+// Anything that could leak infra topology, trace IDs, or session state is
+// deliberately omitted.
+const RATE_LIMIT_HEADERS = [
+  'x-ratelimit-limit-requests',
+  'x-ratelimit-remaining-requests',
+  'x-ratelimit-reset-requests',
+  'x-ratelimit-renewalperiod-requests',
+  'x-ratelimit-limit-tokens',
+  'x-ratelimit-remaining-tokens',
+  'x-ratelimit-reset-tokens',
+  'x-ratelimit-renewalperiod-tokens',
+  'x-ratelimit-abusepenalty-active',
+  'retry-after',
+];
+
+const summariseRateHeaders = (headers) => {
+  const parts = [];
+  for (const name of RATE_LIMIT_HEADERS) {
+    const value = headers.get(name);
+    if (value) parts.push(`${name}=${value}`);
+  }
+  return parts.length ? parts.join(' ') : '(no rate-limit headers returned)';
+};
+
+// Factory for a throttled, retrying GitHub Models caller with a per-run
+// budget. Returns { call, count, BudgetExhaustedError }.
+//
+// Observed runner-token limits (GitHub Actions GITHUB_TOKEN, models: read):
+// 1000 RPM and 1M TPM with no exposed daily cap (run id 24963827391,
+// 2026-04-26). Defaults pace at 60 RPM with an 800-call sanity ceiling.
+//
+// Throws BudgetExhaustedError once the per-run cap is reached so the caller
+// can break the loop cleanly without it counting as a per-post failure.
+export const createModelCaller = ({
+  endpoint,
+  token,
+  log,
+  minGapMs = 1000,
+  maxCalls = 800,
+  retryDelaysMs = [60000, 120000, 240000],
+  // Cap on how long we'll honour a Retry-After header. Models can return
+  // values measured in tens of thousands of seconds (~daily quota reset).
+  // Past this cap we bail so the scheduled run can shut down cleanly and
+  // the next run picks up after the quota window resets.
+  maxHonouredRetryAfterMs = 5 * 60 * 1000,
+}) => {
+  let lastCallAt = 0;
+  let callCount = 0;
+  let headersLoggedOnce = false;
+
+  class BudgetExhaustedError extends Error {
+    constructor() {
+      super(`model-call budget exhausted (${maxCalls})`);
+      this.name = 'BudgetExhaustedError';
+    }
+  }
+
+  const throttle = async () => {
+    if (callCount >= maxCalls) throw new BudgetExhaustedError();
+    const elapsed = Date.now() - lastCallAt;
+    if (elapsed < minGapMs) await sleep(minGapMs - elapsed);
+    lastCallAt = Date.now();
+    callCount += 1;
+  };
+
+  const call = async (body) => {
+    let attempt = 0;
+    for (;;) {
+      await throttle();
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body,
+      });
+      if (!headersLoggedOnce) {
+        log(`models headers: ${summariseRateHeaders(res.headers)}`);
+        headersLoggedOnce = true;
+      }
+      if (res.ok) return res;
+
+      const transient = res.status === 429 || res.status >= 500;
+      if (!transient || attempt >= retryDelaysMs.length) {
+        const text = await res.text().catch(() => '');
+        log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
+        throw new Error(`GitHub Models ${res.status}: ${text}`);
+      }
+      const retryAfterRaw = Number(res.headers.get('retry-after'));
+      const retryAfterMs =
+        Number.isFinite(retryAfterRaw) && retryAfterRaw > 0 ? retryAfterRaw * 1000 : 0;
+      if (retryAfterMs > maxHonouredRetryAfterMs) {
+        const text = await res.text().catch(() => '');
+        log(`models ${res.status} with retry-after=${retryAfterRaw}s exceeds ${Math.round(maxHonouredRetryAfterMs / 1000)}s cap — likely daily quota; giving up on this post`);
+        log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
+        throw new Error(`GitHub Models ${res.status}: retry-after ${retryAfterRaw}s; ${text}`);
+      }
+      const wait = retryAfterMs > 0 ? retryAfterMs : retryDelaysMs[attempt];
+      log(`models ${res.status}, retrying in ${Math.round(wait / 1000)}s (attempt ${attempt + 1}/${retryDelaysMs.length}) — ${summariseRateHeaders(res.headers)}`);
+      await sleep(wait);
+      attempt += 1;
+    }
+  };
+
+  return {
+    call,
+    get count() { return callCount; },
+    BudgetExhaustedError,
+  };
+};
+
 // Returns a thin Fider API wrapper bound to the given host + bearer token.
 // Throws on any non-2xx response with the response body included for context.
 export const createFider = ({ host, apiKey }) => {
