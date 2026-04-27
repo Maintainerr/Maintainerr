@@ -13,6 +13,7 @@ import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsService } from '../settings/settings.service';
+import { CollectionPosterService } from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import {
@@ -31,6 +32,7 @@ describe('CollectionsService', () => {
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
   let settingsService: Mocked<SettingsService>;
+  let collectionPosterService: Mocked<CollectionPosterService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -47,6 +49,7 @@ describe('CollectionsService', () => {
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
     settingsService = unitRef.get(SettingsService);
+    collectionPosterService = unitRef.get(CollectionPosterService);
     metadataService.resolveIds.mockResolvedValue({
       tmdb: 1,
       type: 'movie',
@@ -95,6 +98,7 @@ describe('CollectionsService', () => {
     queryBuilder.into.mockReturnValue(queryBuilder);
     queryBuilder.values.mockReturnValue(queryBuilder);
     dataSource.createQueryBuilder.mockReturnValue(queryBuilder as any);
+    collectionPosterService.loadStoredPoster.mockResolvedValue(null);
 
     await service.createCollection(
       createCollection({
@@ -112,6 +116,45 @@ describe('CollectionsService', () => {
         }),
       ]),
     );
+    expect(collectionPosterService.loadStoredPoster).toHaveBeenCalledWith(42);
+    expect(collectionPosterService.pushToMediaServer).not.toHaveBeenCalled();
+  });
+
+  it('re-pushes a stored poster when creating a media-server collection', async () => {
+    const queryBuilder = {
+      insert: jest.fn(),
+      into: jest.fn(),
+      values: jest.fn(),
+      execute: jest.fn().mockResolvedValue({ generatedMaps: [{ id: 42 }] }),
+    };
+
+    queryBuilder.insert.mockReturnValue(queryBuilder);
+    queryBuilder.into.mockReturnValue(queryBuilder);
+    queryBuilder.values.mockReturnValue(queryBuilder);
+    dataSource.createQueryBuilder.mockReturnValue(queryBuilder as any);
+    collectionPosterService.loadStoredPoster.mockResolvedValue({
+      buffer: Buffer.from('jpeg-bytes'),
+      contentType: 'image/jpeg',
+    });
+
+    await service.createCollection(
+      createCollection({ mediaServerId: null }),
+      false,
+    );
+
+    expect(collectionPosterService.pushToMediaServer).toHaveBeenCalledWith(
+      'remote-collection',
+      expect.any(Buffer),
+      'image/jpeg',
+    );
+  });
+
+  it('removes stored poster bytes when deleting a collection from the database', async () => {
+    collectionRepo.delete.mockResolvedValue({} as any);
+
+    await (service as any).RemoveCollectionFromDB(createCollection({ id: 77 }));
+
+    expect(collectionPosterService.removeStoredPoster).toHaveBeenCalledWith(77);
   });
 
   it('does not delete a collection when some removals fail', async () => {

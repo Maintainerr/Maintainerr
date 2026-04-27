@@ -53,4 +53,6 @@ export enum MediaServerFeature {
   LABELS = 'labels',
   /** Playlist management */
   PLAYLISTS = 'playlists',
+  /** Custom poster artwork can be set on collections */
+  COLLECTION_POSTER = 'collection_poster',
 }

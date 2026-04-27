@@ -1807,5 +1807,23 @@ describe('JellyfinAdapterService', () => {
         ).rejects.toThrow('Jellyfin API not initialized');
       });
     });
+
+    describe('setCollectionImage', () => {
+      it('reuses setItemImage with the Primary image type', async () => {
+        await initializeAdapter();
+        const buf = Buffer.from('jpeg-bytes');
+
+        await service.setCollectionImage('col1', buf, 'image/jpeg');
+
+        expect(jellyfinApiMocks.setItemImage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            itemId: 'col1',
+            imageType: 'Primary',
+            body: buf.toString('base64'),
+          }),
+          { headers: { 'Content-Type': 'image/jpeg' } },
+        );
+      });
+    });
   });
 });

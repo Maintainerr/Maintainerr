@@ -45,6 +45,7 @@ import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
+import CollectionPosterPicker from './CollectionPosterPicker'
 import QualityProfileSelector from './QualityProfileSelector'
 
 const YamlImporterModal = lazy(
@@ -1371,6 +1372,29 @@ const AddModal = (props: AddModal) => {
                         {errors.manualCollectionName && (
                           <p className="mt-1 text-xs text-error-400">
                             {errors.manualCollectionName.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col py-4">
+                      <label className="text-label">
+                        Custom {collectionTerm} poster
+                        <p className="text-xs font-normal">
+                          Upload your own cover art for the {collectionTerm} on{' '}
+                          {mediaServerName}
+                        </p>
+                      </label>
+                      <div className="py-2">
+                        {props.editData?.collection?.id ? (
+                          <CollectionPosterPicker
+                            collectionId={props.editData.collection.id}
+                            collectionTerm={collectionTerm}
+                            mediaServerName={mediaServerName}
+                          />
+                        ) : (
+                          <p className="text-xs text-zinc-400">
+                            Save first to enable poster upload.
                           </p>
                         )}
                       </div>

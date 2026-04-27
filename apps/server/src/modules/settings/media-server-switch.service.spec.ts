@@ -1,6 +1,9 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
+import * as fs from 'fs';
+import * as path from 'path';
 import { DataSource, Repository } from 'typeorm';
+import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -9,6 +12,8 @@ import { Exclusion } from '../rules/entities/exclusion.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsService } from './settings.service';
+
+const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
 
 describe('MediaServerSwitchService', () => {
   let service: MediaServerSwitchService;
@@ -114,6 +119,7 @@ describe('MediaServerSwitchService', () => {
         manager: {
           clear: jest.fn().mockResolvedValue(undefined),
           createQueryBuilder: jest.fn(() => qb),
+          find: jest.fn().mockResolvedValue([]),
           findOne: jest.fn().mockResolvedValue({ id: 1 }),
           save: jest.fn().mockResolvedValue(undefined),
         },
@@ -222,6 +228,32 @@ describe('MediaServerSwitchService', () => {
         message: 'Already using plex as media server',
       });
       expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
+    });
+
+    it('removes stored collection posters after a full wipe switch', async () => {
+      const queryRunner = createQueryRunnerMock();
+      queryRunner.manager.find.mockResolvedValue([{ id: 3 }, { id: 7 }]);
+      dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
+
+      fs.mkdirSync(STORAGE_DIR, { recursive: true });
+      fs.writeFileSync(path.join(STORAGE_DIR, '3.jpg'), 'poster-3');
+      fs.writeFileSync(path.join(STORAGE_DIR, '7.jpg'), 'poster-7');
+
+      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+      settingsService.init.mockResolvedValue(undefined);
+      collectionRepo.count.mockResolvedValue(2);
+      collectionMediaRepo.count.mockResolvedValue(0);
+      collectionLogRepo.count.mockResolvedValue(0);
+      exclusionRepo.count.mockResolvedValue(0);
+
+      const result = await service.executeSwitch({
+        targetServerType: MediaServerType.JELLYFIN,
+        migrateRules: false,
+      });
+
+      expect(result.status).toBe('OK');
+      expect(fs.existsSync(path.join(STORAGE_DIR, '3.jpg'))).toBe(false);
+      expect(fs.existsSync(path.join(STORAGE_DIR, '7.jpg'))).toBe(false);
     });
 
     it('should reject concurrent switch attempts with ConflictException', async () => {
