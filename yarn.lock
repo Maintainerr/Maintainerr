@@ -3039,7 +3039,7 @@ __metadata:
     "@eslint/js": "npm:^9.39.2"
     "@nestjs/common": "npm:^11.1.19"
     "@nestjs/core": "npm:^11.1.19"
-    "@nestjs/swagger": "npm:^11.4.1"
+    "@nestjs/swagger": "npm:^11.4.2"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.15.1"
     eslint: "npm:^9.39.2"
@@ -3067,12 +3067,12 @@ __metadata:
     "@nestjs/cli": "npm:^11.0.21"
     "@nestjs/common": "npm:^11.1.19"
     "@nestjs/core": "npm:^11.1.19"
-    "@nestjs/event-emitter": "npm:^3.0.1"
+    "@nestjs/event-emitter": "npm:^3.1.0"
     "@nestjs/platform-express": "npm:^11.1.19"
     "@nestjs/schedule": "npm:^6.1.3"
     "@nestjs/schematics": "npm:^11.1.0"
     "@nestjs/serve-static": "npm:^5.0.5"
-    "@nestjs/swagger": "npm:^11.4.1"
+    "@nestjs/swagger": "npm:^11.4.2"
     "@nestjs/testing": "npm:^11.1.19"
     "@nestjs/typeorm": "npm:^11.0.1"
     "@octokit/core": "npm:^5.2.0"
@@ -3389,15 +3389,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/event-emitter@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "@nestjs/event-emitter@npm:3.0.1"
+"@nestjs/event-emitter@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@nestjs/event-emitter@npm:3.1.0"
   dependencies:
     eventemitter2: "npm:6.4.9"
   peerDependencies:
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@nestjs/core": ^10.0.0 || ^11.0.0
-  checksum: 10c0/27c503b280c65e2bbebb21a8b208eed116b3ee7fe69724ad2a8ecbacb944a575a12d23d0ac027e05624c9c98c2b5fc90c4348c0cff28d9786311ede8a0c8eb6e
+  checksum: 10c0/4aee7cb0b2b745236d23c4a448bd6d0513a1c6eb2f2d6a68e9095be21ae1698bea4f7baf6dfb55b4d88a2e1bc0cfd9d0206e824aa143f97bc0629366ca4c4fa4
   languageName: node
   linkType: hard
 
@@ -3502,9 +3502,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/swagger@npm:^11.4.1":
-  version: 11.4.1
-  resolution: "@nestjs/swagger@npm:11.4.1"
+"@nestjs/swagger@npm:^11.4.2":
+  version: 11.4.2
+  resolution: "@nestjs/swagger@npm:11.4.2"
   dependencies:
     "@microsoft/tsdoc": "npm:0.16.0"
     "@nestjs/mapped-types": "npm:2.1.1"
@@ -3526,7 +3526,7 @@ __metadata:
       optional: true
     class-validator:
       optional: true
-  checksum: 10c0/42f15f1d35cb36a8c28ecf11a391b127ae364427875e624898fd818e6f690f7efc2ea92387e45d15e39ea6c3775f273fac76be596c22e1cc08535b3113380c2b
+  checksum: 10c0/984fd19f255471eab084db2fa67accad119ddddc855c783aea52650b5ca0851db995128389c61a8e058342549f8c750b9a0b35f69fcf4da8b8059b79dc480ee3
   languageName: node
   linkType: hard
 
