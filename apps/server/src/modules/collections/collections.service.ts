@@ -2780,7 +2780,14 @@ export class CollectionsService {
 
       // Drop any stored poster bytes; the media-server side is left alone —
       // Plex/Jellyfin will recompute a thumb from member items as usual.
-      this.collectionPosterService.removeStoredPoster(collection.id);
+      try {
+        this.collectionPosterService.removeStoredPoster(collection.id);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to remove stored poster file for deleted collection ${collection.id}; orphaned`,
+        );
+        this.logger.debug(error);
+      }
 
       this.eventEmitter.emit(MaintainerrEvent.Collection_Deleted, {
         collection,

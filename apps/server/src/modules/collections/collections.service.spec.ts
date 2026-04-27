@@ -157,6 +157,17 @@ describe('CollectionsService', () => {
     expect(collectionPosterService.removeStoredPoster).toHaveBeenCalledWith(77);
   });
 
+  it('still returns success when stored poster cleanup fails after the database row is deleted', async () => {
+    collectionRepo.delete.mockResolvedValue({} as any);
+    collectionPosterService.removeStoredPoster.mockImplementation(() => {
+      throw new Error('EACCES');
+    });
+
+    await expect(
+      (service as any).RemoveCollectionFromDB(createCollection({ id: 78 })),
+    ).resolves.toEqual({ status: 'OK', code: 1, message: 'Success' });
+  });
+
   it('does not delete a collection when some removals fail', async () => {
     const collection = createCollection({
       id: 1,
