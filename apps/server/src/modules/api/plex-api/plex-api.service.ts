@@ -1580,25 +1580,15 @@ export class PlexApiService {
       ':' +
       settings.port;
 
-    try {
-      await axios.post(
-        `${baseUrl}/library/metadata/${plexId}/posters`,
-        buffer,
-        {
-          headers: {
-            'X-Plex-Token': settings.auth_token,
-            'Content-Type': contentType,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          timeout: 120000,
-        },
-      );
-    } catch (error) {
-      this.logger.warn(`Failed to upload Plex poster for item ${plexId}`, error);
-      this.logger.debug(error);
-      throw error;
-    }
+    await axios.post(`${baseUrl}/library/metadata/${plexId}/posters`, buffer, {
+      headers: {
+        'X-Plex-Token': settings.auth_token,
+        'Content-Type': contentType,
+      },
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 120000,
+    });
   }
 
   /**
@@ -1622,9 +1612,9 @@ export class PlexApiService {
         timeout: 30000,
       });
       return true;
-    } catch (err) {
-      this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`, err);
-      this.logger.debug(err);
+    } catch (error) {
+      this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`);
+      this.logger.debug(error);
       return false;
     }
   }

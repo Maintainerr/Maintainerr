@@ -22,21 +22,21 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Response } from 'express';
 import { IncomingMessage } from 'http';
 import { interval, Subscription } from 'rxjs';
-import {
-  createSseStreamClient,
-  SseStreamClient,
-} from '../../utils/sse-stream';
+import { createSseStreamClient, SseStreamClient } from '../../utils/sse-stream';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { EventsBufferService } from './events-buffer.service';
 
 @Controller('/api/events')
 export class EventsController implements BeforeApplicationShutdown {
   private mostRecentEvent: NestMessageEvent | null = null;
-  constructor(private readonly eventsBufferService: EventsBufferService) {}
+  constructor(
+    private readonly eventsBufferService: EventsBufferService,
+    private readonly logger: MaintainerrLogger,
+  ) {
+    this.logger.setContext(EventsController.name);
+  }
 
-  connectedClients = new Map<
-    string,
-    SseStreamClient
-  >();
+  connectedClients = new Map<string, SseStreamClient>();
 
   async beforeApplicationShutdown() {
     for (const [, client] of this.connectedClients) {
@@ -75,18 +75,21 @@ export class EventsController implements BeforeApplicationShutdown {
         subscriptions.ping?.unsubscribe();
         this.connectedClients.delete(clientKey);
       },
+      onError: (error) => {
+        this.logger.debug(error);
+      },
     });
 
     this.connectedClients.set(clientKey, client);
+
+    if (!client.writeRaw('\n')) {
+      return;
+    }
 
     // Send data to the client every 30s to keep the connection alive.
     subscriptions.ping = interval(30 * 1000).subscribe(() => {
       client.writeRaw(': ping\n\n');
     });
-
-    if (!client.writeRaw('\n')) {
-      return;
-    }
 
     const bufferedEvents = this.eventsBufferService.getEventsAfter(lastEventId);
 
@@ -128,13 +131,13 @@ export class EventsController implements BeforeApplicationShutdown {
     });
 
     for (const [, client] of this.connectedClients) {
-      client.subject.next(eventMessage);
+      client.send(eventMessage);
     }
 
     this.mostRecentEvent = eventMessage;
   }
 
   sendDataToClient(clientId: string, message: NestMessageEvent) {
-    this.connectedClients.get(clientId)?.subject.next(message);
+    this.connectedClients.get(clientId)?.send(message);
   }
 }

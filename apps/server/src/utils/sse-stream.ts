@@ -1,6 +1,5 @@
 import { MessageEvent as NestMessageEvent } from '@nestjs/common';
 import { Response } from 'express';
-import { Subject } from 'rxjs';
 
 type SseStreamClientOptions = {
   response: Response;
@@ -10,7 +9,7 @@ type SseStreamClientOptions = {
 
 export type SseStreamClient = {
   close: () => void;
-  subject: Subject<NestMessageEvent>;
+  send: (message: NestMessageEvent) => boolean;
   writeRaw: (chunk: string) => boolean;
 };
 
@@ -34,7 +33,6 @@ export const createSseStreamClient = ({
   onClose,
   onError,
 }: SseStreamClientOptions): SseStreamClient => {
-  const subject = new Subject<NestMessageEvent>();
   const socket = response.socket;
   let closed = false;
 
@@ -45,8 +43,6 @@ export const createSseStreamClient = ({
     response.off('close', handleClose);
     response.off('error', handleError);
     socket?.off('error', handleError);
-    subject.complete();
-    subscription.unsubscribe();
 
     if (endResponse && isResponseWritable(response)) {
       try {
@@ -81,7 +77,7 @@ export const createSseStreamClient = ({
     }
   };
 
-  const writeMessage = (message: NestMessageEvent): boolean => {
+  const send = (message: NestMessageEvent): boolean => {
     for (const chunk of formatSseMessage(message)) {
       if (!writeRaw(chunk)) {
         return false;
@@ -99,18 +95,13 @@ export const createSseStreamClient = ({
     fail(error);
   }
 
-  const subscription = subject.subscribe({
-    next: writeMessage,
-    error: fail,
-  });
-
   response.once('close', handleClose);
   response.once('error', handleError);
   socket?.once('error', handleError);
 
   return {
     close: () => finish(true),
-    subject,
+    send,
     writeRaw,
   };
 };

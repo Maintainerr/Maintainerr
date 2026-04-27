@@ -1,7 +1,11 @@
-import { MessageEvent as NestMessageEvent, RawBodyRequest } from '@nestjs/common';
+import {
+  MessageEvent as NestMessageEvent,
+  RawBodyRequest,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { EventEmitter } from 'events';
 import { IncomingMessage } from 'http';
+import { createMockLogger } from '../../../test/utils/data';
 import { EventsBufferService } from './events-buffer.service';
 import { EventsController } from './events.controller';
 
@@ -41,16 +45,17 @@ describe('EventsController', () => {
     const eventsBufferService = {
       parseLastEventId: jest.fn().mockReturnValue(undefined),
       getEventsAfter: jest.fn().mockReturnValue([]),
-      buildBufferedEvent: jest
-        .fn()
-        .mockImplementation(
-          (message: Omit<NestMessageEvent, 'id'>): NestMessageEvent => ({
-            ...message,
-            id: '1',
-          }),
-        ),
+      buildBufferedEvent: jest.fn().mockImplementation(
+        (message: Omit<NestMessageEvent, 'id'>): NestMessageEvent => ({
+          ...message,
+          id: '1',
+        }),
+      ),
     } as unknown as jest.Mocked<EventsBufferService>;
-    const controller = new EventsController(eventsBufferService);
+    const controller = new EventsController(
+      eventsBufferService,
+      createMockLogger(),
+    );
     const response = new MockResponse();
 
     await controller.stream(response as unknown as Response, buildRequest());

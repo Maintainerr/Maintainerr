@@ -33,10 +33,7 @@ export interface ProcessorRunResult {
   errors: number;
 }
 
-interface RevertItemResult {
-  restored: boolean;
-  failed: boolean;
-}
+type RevertItemResult = 'restored' | 'failed' | 'no-backup';
 
 @Injectable()
 export class OverlayProcessorService {
@@ -146,7 +143,7 @@ export class OverlayProcessorService {
         `No saved original poster for ${mediaServerId}, cannot restore`,
       );
       await this.stateService.removeState(collectionId, mediaServerId);
-      return { restored: false, failed: false };
+      return 'no-backup';
     }
 
     try {
@@ -154,16 +151,15 @@ export class OverlayProcessorService {
     } catch (error) {
       this.logger.warn(
         `Failed to restore original poster for ${mediaServerId}; keeping backup for retry`,
-        error,
       );
       this.logger.debug(error);
-      return { restored: false, failed: true };
+      return 'failed';
     }
 
     this.logger.log(`Restored original poster for item ${mediaServerId}`);
     this.deleteOriginalPoster(mediaServerId);
     await this.stateService.removeState(collectionId, mediaServerId);
-    return { restored: true, failed: false };
+    return 'restored';
   }
 
   async revertCollection(collectionId: number): Promise<number> {
@@ -202,13 +198,12 @@ export class OverlayProcessorService {
           provider,
         );
 
-        if (result.restored) {
+        if (result === 'restored') {
           reverted.push({ mediaServerId: item.mediaServerId });
         }
       } catch (error) {
         this.logger.warn(
           `Failed to revert overlay for ${item.mediaServerId}; continuing batch`,
-          error,
         );
         this.logger.debug(error);
       }
@@ -411,16 +406,15 @@ export class OverlayProcessorService {
               provider,
             );
 
-            if (result.restored) {
+            if (result === 'restored') {
               this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
               totalResult.reverted++;
-            } else if (result.failed) {
+            } else if (result === 'failed') {
               totalResult.errors++;
             }
           } catch (error) {
             this.logger.warn(
               `Failed to revert stale overlay state for ${state.mediaServerId}; continuing run`,
-              error,
             );
             this.logger.debug(error);
             totalResult.errors++;
@@ -501,13 +495,12 @@ export class OverlayProcessorService {
           provider,
         );
 
-        if (result.restored) {
+        if (result === 'restored') {
           this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
         }
       } catch (error) {
         this.logger.warn(
           `Failed to reset overlay for ${state.mediaServerId}; keeping state for retry`,
-          error,
         );
         this.logger.debug(error);
       }

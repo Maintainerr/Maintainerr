@@ -42,10 +42,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { Readable } from 'stream';
-import {
-  createSseStreamClient,
-  SseStreamClient,
-} from '../../utils/sse-stream';
+import { createSseStreamClient, SseStreamClient } from '../../utils/sse-stream';
 import { formatLogMessage } from './logFormatting';
 import { LogSettingsService, MaintainerrLogger } from './logs.service';
 
@@ -66,10 +63,7 @@ export class LogsController implements BeforeApplicationShutdown {
     this.logger.setContext(LogsController.name);
   }
 
-  connectedClients = new Map<
-    string,
-    SseStreamClient
-  >();
+  connectedClients = new Map<string, SseStreamClient>();
 
   async beforeApplicationShutdown() {
     for (const [, client] of this.connectedClients) {
@@ -109,6 +103,9 @@ export class LogsController implements BeforeApplicationShutdown {
         subscriptions.ping?.unsubscribe();
         subscriptions.logEvents?.unsubscribe();
         this.connectedClients.delete(clientKey);
+      },
+      onError: (error) => {
+        this.logger.debug(error);
       },
     });
 
@@ -244,7 +241,7 @@ export class LogsController implements BeforeApplicationShutdown {
   }
 
   sendDataToClient(clientId: string, message: NestMessageEvent) {
-    this.connectedClients.get(clientId)?.subject.next(message);
+    this.connectedClients.get(clientId)?.send(message);
   }
 
   @Get('files')
