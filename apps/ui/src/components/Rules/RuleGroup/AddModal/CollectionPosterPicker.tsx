@@ -209,7 +209,9 @@ export const CollectionPosterPicker = ({
               disabled={busy}
               onClick={() => fileInputRef.current?.click()}
             >
-              {hasPosterForCurrentCollection ? 'Replace poster' : 'Upload poster'}
+              {hasPosterForCurrentCollection
+                ? 'Replace poster'
+                : 'Upload poster'}
             </Button>
             {hasPosterForCurrentCollection && (
               <Button
