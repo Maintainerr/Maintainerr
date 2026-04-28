@@ -5,6 +5,7 @@ import * as path from 'path';
 import sharp from 'sharp';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 
 const STORED_CONTENT_TYPE = 'image/jpeg';
@@ -120,6 +121,44 @@ export class CollectionPosterService {
   }
 
   /**
+   * Issue a generic metadata-refresh request to the media server for the
+   * given collection. This does not force image replacement — it just nudges
+   * Plex/Jellyfin to re-evaluate their own artwork sources, which may or may
+   * not change the visible poster depending on configured agents and server
+   * caching. Best-effort: returns `requested: false` when no mediaServerId is
+   * set, no server is configured, or the underlying call fails.
+   */
+  async refreshCollectionOnMediaServer(
+    mediaServerId: string | null | undefined,
+  ): Promise<{ requested: boolean }> {
+    if (!mediaServerId) {
+      return { requested: false };
+    }
+
+    let mediaServer: IMediaServerService;
+    try {
+      mediaServer = await this.mediaServerFactory.getService();
+    } catch (error) {
+      this.logger.warn(
+        'Cannot refresh collection metadata — no media server configured',
+      );
+      this.logger.debug(error);
+      return { requested: false };
+    }
+
+    try {
+      await mediaServer.refreshItemMetadata(mediaServerId);
+      return { requested: true };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to refresh collection metadata on media server (collection ${mediaServerId})`,
+      );
+      this.logger.debug(error);
+      return { requested: false };
+    }
+  }
+
+  /**
    * Push a poster to the configured media server's collection. Best-effort:
    * silently no-ops if the server doesn't support COLLECTION_POSTER, has no
    * mediaServerId yet, or upload fails (caller logs context).
@@ -133,7 +172,7 @@ export class CollectionPosterService {
       return { attempted: false, pushed: false };
     }
 
-    let mediaServer;
+    let mediaServer: IMediaServerService;
     try {
       mediaServer = await this.mediaServerFactory.getService();
     } catch (error) {

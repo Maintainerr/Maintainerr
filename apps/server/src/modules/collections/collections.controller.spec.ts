@@ -64,6 +64,7 @@ describe('CollectionsController', () => {
     storePoster: jest.fn(),
     removeStoredPoster: jest.fn(),
     pushToMediaServer: jest.fn(),
+    refreshCollectionOnMediaServer: jest.fn(),
   } as unknown as jest.Mocked<CollectionPosterService>;
 
   const logger = {
@@ -88,6 +89,9 @@ describe('CollectionsController', () => {
     collectionPosterService.pushToMediaServer.mockResolvedValue({
       attempted: true,
       pushed: true,
+    });
+    collectionPosterService.refreshCollectionOnMediaServer.mockResolvedValue({
+      requested: true,
     });
   });
 
@@ -405,6 +409,36 @@ describe('CollectionsController', () => {
       await expect(
         controller.uploadCollectionPoster(collection.id, file),
       ).rejects.toThrow('disk full');
+    });
+  });
+
+  describe('deleteCollectionPoster', () => {
+    it('removes the stored poster and asks the media server to refresh metadata', async () => {
+      const collection = createCollection({ mediaServerId: 'remote-id' });
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+
+      await expect(
+        controller.deleteCollectionPoster(collection.id),
+      ).resolves.toEqual({ cleared: true, refreshRequested: true });
+
+      expect(collectionPosterService.removeStoredPoster).toHaveBeenCalledWith(
+        collection.id,
+      );
+      expect(
+        collectionPosterService.refreshCollectionOnMediaServer,
+      ).toHaveBeenCalledWith('remote-id');
+    });
+
+    it('reports refreshRequested=false when the media server refresh fails', async () => {
+      const collection = createCollection({ mediaServerId: 'remote-id' });
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+      collectionPosterService.refreshCollectionOnMediaServer.mockResolvedValueOnce(
+        { requested: false },
+      );
+
+      await expect(
+        controller.deleteCollectionPoster(collection.id),
+      ).resolves.toEqual({ cleared: true, refreshRequested: false });
     });
   });
 });

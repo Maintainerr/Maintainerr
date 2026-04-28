@@ -1,4 +1,7 @@
-import type { CollectionPosterUploadResponse } from '@maintainerr/contracts'
+import type {
+  CollectionPosterDeleteResponse,
+  CollectionPosterUploadResponse,
+} from '@maintainerr/contracts'
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import type { ICollection } from '../components/Collection'
 import GetApiHandler, {
@@ -84,7 +87,7 @@ export const uploadCollectionPoster = async (
 }
 
 export const deleteCollectionPoster = async (collectionId: number) => {
-  return await DeleteApiHandler<{ cleared: boolean }>(
+  return await DeleteApiHandler<CollectionPosterDeleteResponse>(
     `/collections/${collectionId}/poster`,
   )
 }

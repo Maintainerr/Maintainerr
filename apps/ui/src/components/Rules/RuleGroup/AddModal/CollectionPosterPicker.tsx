@@ -146,14 +146,16 @@ export const CollectionPosterPicker = ({
     setBusy(true)
     setStatus(null)
     try {
-      await deleteCollectionPoster(collectionId)
+      const { refreshRequested } = await deleteCollectionPoster(collectionId)
       probeTokenRef.current += 1
       setPosterStateCollectionId(collectionId)
       setHasPoster(false)
       setCacheBust(Date.now())
       setStatus({
         type: 'info',
-        title: `Custom poster cleared. The artwork on ${mediaServerName} is unchanged — refresh metadata there if you want the original back.`,
+        title: refreshRequested
+          ? `Custom poster cleared. ${mediaServerName} metadata refresh requested — artwork may update depending on ${mediaServerName} behavior and configured agents.`
+          : `Custom poster cleared. The artwork on ${mediaServerName} is unchanged — refresh metadata there if you want the original back.`,
       })
     } catch (error) {
       void logClientError(

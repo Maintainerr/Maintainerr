@@ -15,8 +15,12 @@ or Jellyfin drops a collection and Maintainerr creates it again.
 - If the live push cannot run or fails, the local JPEG is still kept.
 - When Maintainerr recreates that collection later, it re-pushes the stored
   JPEG automatically.
-- Clearing the poster removes only Maintainerr's stored file. It does not
-  reset Plex or Jellyfin back to their original artwork.
+- Clearing the poster removes Maintainerr's stored file and then makes a
+  best-effort metadata refresh request to the current media server when the
+  collection has a live id.
+- That refresh request does not guarantee the server will restore different
+  artwork; whether anything changes depends on the server and its configured
+  metadata/image agents.
 - Deleting a Maintainerr collection removes the stored poster file too.
 
 This is intentionally a one-shot writer, not a polling loop. Maintainerr does
@@ -46,8 +50,13 @@ Endpoints live under `/api/collections/:id`.
 
 ### `DELETE /poster`
 
-- Returns `{ cleared: true }`.
-- Removes only Maintainerr's stored file.
+- Returns `{ cleared: boolean, refreshRequested: boolean }`.
+- `refreshRequested: true` means Maintainerr successfully sent a metadata
+  refresh request to the current media server after clearing the local file.
+- `refreshRequested: false` means no refresh request was sent, or the request
+  failed.
+- `refreshRequested` does not guarantee that the media server will change the
+  collection artwork.
 
 ## Media Server Support
 

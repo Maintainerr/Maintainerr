@@ -1,6 +1,7 @@
 import {
   COLLECTION_POSTER_MAX_BYTES,
   COLLECTION_POSTER_MAX_LABEL,
+  CollectionPosterDeleteResponse,
   CollectionPosterUploadResponse,
   CollectionLogMeta,
   CollectionMediaSortField,
@@ -604,16 +605,42 @@ export class CollectionsController {
   @Delete('/:id/poster')
   @ApiOperation({
     summary:
-      'Clear the stored custom poster. The media-server collection is left untouched — refresh artwork there manually if needed.',
+      'Clear the stored custom poster and request a best-effort metadata refresh on the media server. Artwork may or may not change depending on the configured server behavior and agents.',
   })
-  async deleteCollectionPoster(@Param('id', ParseIntPipe) id: number) {
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns whether the local poster was cleared and whether Maintainerr successfully requested a media-server metadata refresh.',
+    schema: {
+      type: 'object',
+      required: ['cleared', 'refreshRequested'],
+      properties: {
+        cleared: {
+          type: 'boolean',
+          description: 'True when the stored local poster file was removed.',
+        },
+        refreshRequested: {
+          type: 'boolean',
+          description:
+            'True when Maintainerr successfully sent a metadata refresh request to the current media server. This does not guarantee that artwork will change.',
+        },
+      },
+    },
+  })
+  async deleteCollectionPoster(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<CollectionPosterDeleteResponse> {
     const collection = await this.collectionService.getCollectionRecord(id);
     if (!collection) {
       throw new NotFoundException('Collection not found');
     }
 
     this.collectionPosterService.removeStoredPoster(id);
-    return { cleared: true };
+    const refreshResult =
+      await this.collectionPosterService.refreshCollectionOnMediaServer(
+        collection.mediaServerId,
+      );
+    return { cleared: true, refreshRequested: refreshResult.requested };
   }
 
   @Get('/logs/:id/content/:page')

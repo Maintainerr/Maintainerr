@@ -6,6 +6,11 @@ export interface CollectionPosterUploadResponse {
   pushed: boolean
 }
 
+export interface CollectionPosterDeleteResponse {
+  cleared: boolean
+  refreshRequested: boolean
+}
+
 // Custom collection posters are stored locally and pushed to the media server
 // in a single request. Cap the upload at 500 KB so we never push large bodies
 // over flaky media-server connections — anything bigger is almost certainly
