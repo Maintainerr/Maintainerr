@@ -1,4 +1,8 @@
 import {
+  COLLECTION_POSTER_MAX_BYTES,
+  COLLECTION_POSTER_MAX_LABEL,
+  CollectionPosterDeleteResponse,
+  CollectionPosterUploadResponse,
   CollectionLogMeta,
   CollectionMediaSortField,
   ECollectionLogType,
@@ -12,6 +16,7 @@ import {
   mediaSortOrders,
 } from '@maintainerr/contracts';
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -25,9 +30,16 @@ import {
   Post,
   Put,
   Query,
+  Res,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { isValidCron } from 'cron-validator';
+import { Response } from 'express';
+import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -37,6 +49,10 @@ import {
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
 } from '../tasks/execution-lock.service';
 import { CollectionHandler } from './collection-handler';
+import {
+  CollectionPosterService,
+  InvalidCollectionPosterError,
+} from './collection-poster.service';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsService } from './collections.service';
 
@@ -212,6 +228,7 @@ export class CollectionsController {
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
     private readonly executionLock: ExecutionLockService,
     private readonly collectionHandler: CollectionHandler,
+    private readonly collectionPosterService: CollectionPosterService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(CollectionsController.name);
@@ -492,6 +509,138 @@ export class CollectionsController {
         sortOrder,
       },
     );
+  }
+
+  // ── Custom collection poster ─────────────────────────────────────────────
+
+  @Get('/:id/poster')
+  @ApiOperation({
+    summary:
+      'Stream the user-uploaded poster bytes for a collection. 404 when none.',
+  })
+  @ApiResponse({ status: 200, description: 'Returns the stored JPEG bytes.' })
+  @ApiResponse({
+    status: 404,
+    description: 'No custom poster on this collection.',
+  })
+  getCollectionPoster(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: true }) res: Response,
+  ): StreamableFile {
+    const stored = this.collectionPosterService.getStoredPosterFile(id);
+    if (!stored) {
+      throw new NotFoundException('No custom poster set for this collection');
+    }
+
+    res.setHeader('Content-Type', stored.contentType);
+    res.setHeader('Cache-Control', 'no-cache');
+    return new StreamableFile(fs.createReadStream(stored.path));
+  }
+
+  @Post('/:id/poster')
+  @UseInterceptors(
+    FileInterceptor('poster', {
+      limits: { fileSize: COLLECTION_POSTER_MAX_BYTES },
+    }),
+  )
+  @ApiOperation({
+    summary: `Upload a custom collection poster. Stored locally and pushed to the media server (best-effort). ${COLLECTION_POSTER_MAX_LABEL} max.`,
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Returns { pushed, attempted } so clients can distinguish a deferred local save from an attempted live media-server push.',
+    schema: {
+      type: 'object',
+      required: ['pushed', 'attempted'],
+      properties: {
+        pushed: {
+          type: 'boolean',
+          description:
+            'True when the live media-server upload succeeded during this request.',
+        },
+        attempted: {
+          type: 'boolean',
+          description:
+            'True when Maintainerr attempted a live media-server upload during this request.',
+        },
+      },
+    },
+  })
+  async uploadCollectionPoster(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: { originalname: string; buffer: Buffer } | undefined,
+  ): Promise<CollectionPosterUploadResponse> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('No poster file uploaded');
+    }
+
+    const collection = await this.collectionService.getCollectionRecord(id);
+    if (!collection) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    let stored: { buffer: Buffer; contentType: string };
+    try {
+      stored = await this.collectionPosterService.storePoster(id, file.buffer);
+    } catch (error) {
+      if (error instanceof InvalidCollectionPosterError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+
+    const pushResult = await this.collectionPosterService.pushToMediaServer(
+      collection.mediaServerId,
+      stored.buffer,
+      stored.contentType,
+    );
+
+    return {
+      pushed: pushResult.pushed,
+      attempted: pushResult.attempted,
+    };
+  }
+
+  @Delete('/:id/poster')
+  @ApiOperation({
+    summary:
+      'Clear the stored custom poster and request a best-effort metadata refresh on the media server. Artwork may or may not change depending on the configured server behavior and agents.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns whether the local poster was cleared and whether Maintainerr successfully requested a media-server metadata refresh.',
+    schema: {
+      type: 'object',
+      required: ['cleared', 'refreshRequested'],
+      properties: {
+        cleared: {
+          type: 'boolean',
+          description: 'True when the stored local poster file was removed.',
+        },
+        refreshRequested: {
+          type: 'boolean',
+          description:
+            'True when Maintainerr successfully sent a metadata refresh request to the current media server. This does not guarantee that artwork will change.',
+        },
+      },
+    },
+  })
+  async deleteCollectionPoster(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<CollectionPosterDeleteResponse> {
+    const collection = await this.collectionService.getCollectionRecord(id);
+    if (!collection) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    this.collectionPosterService.removeStoredPoster(id);
+    const refreshResult =
+      await this.collectionPosterService.refreshCollectionOnMediaServer(
+        collection.mediaServerId,
+      );
+    return { cleared: true, refreshRequested: refreshResult.requested };
   }
 
   @Get('/logs/:id/content/:page')

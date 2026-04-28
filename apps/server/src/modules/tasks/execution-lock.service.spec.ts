@@ -65,6 +65,15 @@ describe('ExecutionLockService', () => {
     release?.();
   });
 
+  it('allows tryAcquire after a previous acquire was released', async () => {
+    const release = await service.acquire('shared');
+    release();
+
+    const next = service.tryAcquire('shared');
+    expect(next).not.toBeNull();
+    next?.();
+  });
+
   it('does not block subsequent acquires after release', async () => {
     const release = await service.acquire('shared');
     release();

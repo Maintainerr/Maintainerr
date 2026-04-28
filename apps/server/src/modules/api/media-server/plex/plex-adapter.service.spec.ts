@@ -624,6 +624,17 @@ describe('PlexAdapterService', () => {
       expect(plexApi.deleteCollection).toHaveBeenCalledWith('col123');
     });
 
+    it('should delegate setCollectionImage to PlexApiService.setThumb', async () => {
+      plexApi.setThumb.mockResolvedValue(undefined);
+      const buf = Buffer.from('jpeg-bytes');
+      await service.setCollectionImage('col123', buf, 'image/jpeg');
+      expect(plexApi.setThumb).toHaveBeenCalledWith(
+        'col123',
+        buf,
+        'image/jpeg',
+      );
+    });
+
     it('should treat NOK add responses as failures', async () => {
       plexApi.addChildToCollection.mockResolvedValue({
         status: 'NOK',

@@ -267,6 +267,24 @@ export interface IMediaServerService {
   ): Promise<void>;
 
   /**
+   * Set the primary poster image on a collection on the media server.
+   *
+   * Maintainerr is one writer among several (Kometa, Posterizarr, manual
+   * uploads). This is a single write — last writer wins. Unlike per-item
+   * overlays (which re-apply on cron because they carry day-counter state),
+   * collection posters carry no per-cycle state, so callers should write
+   * only when the source bytes change (user upload, collection re-create);
+   * polling on a schedule would just fight other writers for no benefit.
+   *
+   * Gated by MediaServerFeature.COLLECTION_POSTER. Throws on upload failure.
+   */
+  setCollectionImage(
+    collectionId: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void>;
+
+  /**
    * Get watchlist items for a user.
    * Only available on Plex (requires Plex.tv API).
    */

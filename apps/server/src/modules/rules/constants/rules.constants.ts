@@ -213,7 +213,7 @@ export class RuleConstants {
         {
           id: 12,
           name: 'sw_allEpisodesSeenBy',
-          humanName: '[list] Users that saw all available episodes',
+          humanName: '[list] Users that watched every episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season'],
@@ -260,7 +260,7 @@ export class RuleConstants {
         {
           id: 18,
           name: 'sw_watchers',
-          humanName: '[list] Users that watch the show/season/episode',
+          humanName: '[list] Users that watched at least one episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
@@ -979,7 +979,7 @@ export class RuleConstants {
         {
           id: 1,
           name: 'sw_allEpisodesSeenBy',
-          humanName: '[list] Users that saw all available episodes',
+          humanName: '[list] Users that watched every episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season'],
@@ -1031,7 +1031,7 @@ export class RuleConstants {
         {
           id: 8,
           name: 'sw_watchers',
-          humanName: '[list] Users that watch the show/season/episode',
+          humanName: '[list] Users that watched at least one episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
@@ -1131,7 +1131,7 @@ export class RuleConstants {
         {
           id: 12,
           name: 'sw_allEpisodesSeenBy',
-          humanName: '[list] Users that saw all available episodes',
+          humanName: '[list] Users that watched every episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season'],
@@ -1178,7 +1178,7 @@ export class RuleConstants {
         {
           id: 18,
           name: 'sw_watchers',
-          humanName: '[list] Users that watch the show/season/episode',
+          humanName: '[list] Users that watched at least one episode',
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
