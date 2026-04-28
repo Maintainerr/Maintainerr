@@ -377,7 +377,7 @@ function ElementRenderer({
             radiusY={h / 2}
             fill={el.fillColor}
             stroke={el.strokeColor ?? undefined}
-            strokeWidth={el.strokeWidth}
+            strokeWidth={el.strokeWidth * scale}
           />
         )
       }
@@ -386,7 +386,7 @@ function ElementRenderer({
           {...commonProps}
           fill={el.fillColor}
           stroke={el.strokeColor ?? undefined}
-          strokeWidth={el.strokeWidth}
+          strokeWidth={el.strokeWidth * scale}
           cornerRadius={el.cornerRadius * scale}
         />
       )
