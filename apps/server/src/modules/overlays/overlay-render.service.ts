@@ -471,7 +471,10 @@ export class OverlayRenderService {
     const imgW = meta.width!;
     const imgH = meta.height!;
 
-    // Scale factor: template canvas → actual poster dimensions
+    // Scale factor: template canvas → actual poster dimensions.
+    // Style values (fontSize, padding, radii, strokeWidth) all scale by
+    // `scaleX` so text and shape styling stay proportional with each other;
+    // canvas and poster share the same aspect ratio in practice.
     const scaleX = imgW / canvasWidth;
     const scaleY = imgH / canvasHeight;
 
@@ -498,7 +501,7 @@ export class OverlayRenderService {
           layerBuf = this.renderVariableElement(el, sw, sh, scaleX, context);
           break;
         case 'shape':
-          layerBuf = this.renderShapeElement(el, sw, sh);
+          layerBuf = this.renderShapeElement(el, sw, sh, scaleX);
           break;
         case 'image':
           layerBuf = await this.renderImageElement(el, sw, sh);
@@ -777,12 +780,14 @@ export class OverlayRenderService {
     el: Extract<OverlayElement, { type: 'shape' }>,
     w: number,
     h: number,
+    scale: number,
   ): Buffer {
     const canvas = createCanvas(w, h);
     const ctx = canvas.getContext('2d');
 
     const fill = el.fillColor ? this.parseColor(el.fillColor) : null;
     const stroke = el.strokeColor ? this.parseColor(el.strokeColor) : null;
+    const strokeWidth = el.strokeWidth * scale;
 
     if (el.shapeType === 'ellipse') {
       ctx.beginPath();
@@ -791,22 +796,22 @@ export class OverlayRenderService {
         ctx.fillStyle = fill;
         ctx.fill();
       }
-      if (stroke && el.strokeWidth && !this.isTransparent(stroke)) {
+      if (stroke && strokeWidth > 0 && !this.isTransparent(stroke)) {
         ctx.strokeStyle = stroke;
-        ctx.lineWidth = el.strokeWidth;
+        ctx.lineWidth = strokeWidth;
         ctx.stroke();
       }
     } else {
       // rectangle
-      const rad = el.cornerRadius ?? 0;
+      const rad = Math.round((el.cornerRadius ?? 0) * scale);
       this.drawRoundRect(ctx, 0, 0, w, h, rad);
       if (fill && !this.isTransparent(fill)) {
         ctx.fillStyle = fill;
         ctx.fill();
       }
-      if (stroke && el.strokeWidth && !this.isTransparent(stroke)) {
+      if (stroke && strokeWidth > 0 && !this.isTransparent(stroke)) {
         ctx.strokeStyle = stroke;
-        ctx.lineWidth = el.strokeWidth;
+        ctx.lineWidth = strokeWidth;
         ctx.stroke();
       }
     }
