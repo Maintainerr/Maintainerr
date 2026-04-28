@@ -24,6 +24,7 @@ const jellyfinApiMocks = {
   getItems: jest.fn(),
   getItem: jest.fn(),
   getItemUserData: jest.fn(),
+  updateItem: jest.fn(),
   refreshItem: jest.fn(),
   getItemImage: jest.fn(),
   setItemImage: jest.fn(),
@@ -72,10 +73,12 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
     ProviderIds: 'ProviderIds',
     Path: 'Path',
     DateCreated: 'DateCreated',
+    ChildCount: 'ChildCount',
     MediaSources: 'MediaSources',
     Genres: 'Genres',
     Tags: 'Tags',
     Overview: 'Overview',
+    ParentId: 'ParentId',
     People: 'People',
   },
   LocationType: {
@@ -146,6 +149,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
       collectionApiMocks.addToCollection(...args),
     removeFromCollection: (...args: unknown[]) =>
       collectionApiMocks.removeFromCollection(...args),
+  })),
+  getItemUpdateApi: jest.fn().mockImplementation(() => ({
+    updateItem: (...args: unknown[]) => jellyfinApiMocks.updateItem(...args),
   })),
   getItemRefreshApi: jest.fn().mockImplementation(() => ({
     refreshItem: (...args: unknown[]) => jellyfinApiMocks.refreshItem(...args),
@@ -220,6 +226,7 @@ describe('JellyfinAdapterService', () => {
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
     jellyfinApiMocks.getItem.mockResolvedValue({ data: undefined });
+    jellyfinApiMocks.updateItem.mockResolvedValue(undefined);
     jellyfinApiMocks.refreshItem.mockResolvedValue(undefined);
     collectionApiMocks.createCollection.mockResolvedValue({
       data: { Id: 'collection-1' },
@@ -1629,6 +1636,180 @@ describe('JellyfinAdapterService', () => {
       });
       expect(jellyfinApiMocks.deleteItem).toHaveBeenCalledWith({
         itemId: 'collection-1',
+      });
+    });
+
+    describe('caching', () => {
+      it('caches non-empty getCollections results and serves them on the next call', async () => {
+        jellyfinApiMocks.getItems.mockResolvedValueOnce({
+          data: {
+            Items: [
+              {
+                Id: 'collection-1',
+                Name: 'C1',
+                ChildCount: 2,
+                ParentId: 'library-1',
+              },
+            ],
+          },
+        });
+
+        await service.getCollections('library-1');
+
+        expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({ parentId: 'library-1' }),
+        );
+
+        expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+          'jellyfin:collections:library-1',
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'collection-1' }),
+          ]),
+          600,
+        );
+
+        const cached = [{ id: 'cached', title: 'Cached' }];
+        jellyfinCacheMocks.data.get.mockReturnValueOnce(cached);
+
+        const second = await service.getCollections('library-1');
+        expect(second).toBe(cached);
+        // Only the first call hit the API
+        expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not cache an empty getCollections result', async () => {
+        jellyfinApiMocks.getItems.mockResolvedValueOnce({
+          data: { Items: [] },
+        });
+
+        await service.getCollections('library-1');
+
+        expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalledWith(
+          'jellyfin:collections:library-1',
+          expect.anything(),
+          expect.anything(),
+        );
+      });
+
+      it('does not cache an empty getCollectionChildren result', async () => {
+        // Both parentId and recursive lookups return zero items
+        jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+
+        await service.getCollectionChildren('collection-1');
+
+        expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalledWith(
+          'jellyfin:collections:children:collection-1',
+          expect.anything(),
+          expect.anything(),
+        );
+      });
+
+      it('invalidates the children cache after addToCollection', async () => {
+        await service.addToCollection('collection-1', 'item-1');
+
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+          'jellyfin:collections:children:collection-1',
+        );
+      });
+
+      it('invalidates the children cache once after addBatchToCollection (multi-chunk)', async () => {
+        const items = Array.from(
+          { length: JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1 },
+          (_, i) => `item-${i}`,
+        );
+
+        await service.addBatchToCollection('collection-1', items);
+
+        const childInvalidations =
+          jellyfinCacheMocks.data.del.mock.calls.filter(
+            (call) => call[0] === 'jellyfin:collections:children:collection-1',
+          );
+        expect(childInvalidations).toHaveLength(1);
+      });
+
+      it('invalidates the children cache after removeBatchFromCollection', async () => {
+        await service.removeBatchFromCollection('collection-1', ['item-1']);
+
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+          'jellyfin:collections:children:collection-1',
+        );
+      });
+
+      it('invalidates the per-library collections cache after createCollection', async () => {
+        collectionApiMocks.createCollection.mockResolvedValueOnce({
+          data: { Id: 'collection-new' },
+        });
+
+        await service.createCollection({
+          libraryId: 'library-1',
+          title: 'New',
+          type: 'movie',
+        });
+
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+          'jellyfin:collections:library-1',
+        );
+      });
+
+      it('invalidates the per-library collections cache after updateCollection', async () => {
+        jellyfinApiMocks.getItems
+          .mockResolvedValueOnce({
+            data: {
+              Items: [
+                {
+                  Id: 'collection-1',
+                  Name: 'Old Name',
+                  ParentId: 'library-1',
+                  Tags: [],
+                  Genres: [],
+                  Studios: [],
+                  People: [],
+                },
+              ],
+            },
+          })
+          .mockResolvedValueOnce({
+            data: {
+              Items: [
+                {
+                  Id: 'collection-1',
+                  Name: 'New Name',
+                  ParentId: 'library-1',
+                },
+              ],
+            },
+          });
+
+        await service.updateCollection({
+          collectionId: 'collection-1',
+          libraryId: 'library-1',
+          title: 'New Name',
+          summary: 'Updated summary',
+          sortTitle: 'New Name',
+        });
+
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+          'jellyfin:collections:library-1',
+        );
+      });
+
+      it('clears every per-library collections entry on deleteCollection (libraryId unknown) and the children cache', async () => {
+        jellyfinCacheMocks.data.keys.mockReturnValueOnce([
+          'jellyfin:collections:library-1',
+          'jellyfin:collections:library-2',
+          'jellyfin:collections:children:collection-99',
+          'jellyfin:users',
+        ]);
+
+        await service.deleteCollection('collection-1');
+
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith([
+          'jellyfin:collections:library-1',
+          'jellyfin:collections:library-2',
+        ]);
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+          'jellyfin:collections:children:collection-1',
+        );
       });
     });
   });

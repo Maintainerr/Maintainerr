@@ -1282,12 +1282,14 @@ export class JellyfinAdapterService implements IMediaServerService {
         const userId = await this.getUserId();
         const response = await getItemsApi(this.api).getItems({
           userId,
+          parentId: libraryId,
           includeItemTypes: [BaseItemKind.BoxSet],
           recursive: true,
           fields: [
             ItemFields.Overview,
             ItemFields.DateCreated,
             ItemFields.ChildCount,
+            ItemFields.ParentId,
           ],
         });
 
@@ -1298,11 +1300,15 @@ export class JellyfinAdapterService implements IMediaServerService {
         allCollections = collections.filter(
           (collection): collection is MediaCollection => collection !== null,
         );
-        this.cache.data.set(
-          cacheKey,
-          allCollections,
-          JELLYFIN_CACHE_TTL.COLLECTIONS,
-        );
+        // Skip caching empty results so a transient zero-collection response
+        // (e.g. mid-library-scan) can't mask a just-created entry.
+        if (allCollections.length > 0) {
+          this.cache.data.set(
+            cacheKey,
+            allCollections,
+            JELLYFIN_CACHE_TTL.COLLECTIONS,
+          );
+        }
       } catch (error) {
         this.logger.error(`Failed to get collections for ${libraryId}`);
         this.logger.debug(error);
@@ -1368,6 +1374,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         throw new Error('Collection created but no ID returned');
       }
 
+      this.invalidateCollectionsCache(params.libraryId);
+
       // Note: No refresh needed - Jellyfin auto-generates composite images
       // when items are added (as long as isLocked: true, which we set above).
 
@@ -1393,6 +1401,9 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
+      // libraryId not known here; clear all per-library entries.
+      this.invalidateCollectionsCache();
+      this.invalidateCollectionChildrenCache(collectionId);
     } catch (error) {
       this.logger.error(`Failed to delete collection ${collectionId}`);
       this.logger.debug(error);
@@ -1465,11 +1476,15 @@ export class JellyfinAdapterService implements IMediaServerService {
           );
         }
 
-        this.cache.data.set(
-          cacheKey,
-          allCollectionChildren,
-          JELLYFIN_CACHE_TTL.COLLECTIONS,
-        );
+        // Skip caching empty results: Jellyfin may briefly return [] for a
+        // freshly-created collection while indexing.
+        if (allCollectionChildren.length > 0) {
+          this.cache.data.set(
+            cacheKey,
+            allCollectionChildren,
+            JELLYFIN_CACHE_TTL.COLLECTIONS,
+          );
+        }
       } catch (error) {
         if (
           error instanceof AxiosError &&
@@ -1486,6 +1501,25 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     return allCollectionChildren;
+  }
+
+  private invalidateCollectionsCache(libraryId?: string): void {
+    if (libraryId) {
+      this.cache.data.del(`${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`);
+      return;
+    }
+    const prefix = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:`;
+    const childrenPrefix = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:`;
+    const stale = this.cache.data
+      .keys()
+      .filter((k) => k.startsWith(prefix) && !k.startsWith(childrenPrefix));
+    if (stale.length > 0) this.cache.data.del(stale);
+  }
+
+  private invalidateCollectionChildrenCache(collectionId: string): void {
+    this.cache.data.del(
+      `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:${collectionId}`,
+    );
   }
 
   private async addToCollectionInternal(
@@ -1513,6 +1547,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   async addToCollection(collectionId: string, itemId: string): Promise<void> {
     await this.addToCollectionInternal(collectionId, itemId, true);
+    this.invalidateCollectionChildrenCache(collectionId);
   }
 
   async addBatchToCollection(
@@ -1550,6 +1585,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Jellyfin batch add fallback left ${failedIds.length} failed item(s) for collection ${collectionId}`,
       );
     }
+
+    this.invalidateCollectionChildrenCache(collectionId);
 
     return failedIds;
   }
@@ -1599,6 +1636,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         collectionId,
         ids: [itemId],
       });
+      this.invalidateCollectionChildrenCache(collectionId);
     } catch (error) {
       this.logger.error(
         `Failed to remove ${itemId} from collection ${collectionId}`,
@@ -1632,6 +1670,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         failedIds.push(...chunk);
       }
     }
+
+    this.invalidateCollectionChildrenCache(collectionId);
 
     return failedIds;
   }
@@ -1700,6 +1740,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.Overview,
           ItemFields.DateCreated,
           ItemFields.ChildCount,
+          ItemFields.ParentId,
         ],
       });
 
@@ -1707,6 +1748,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       if (!collection) {
         throw new Error(`Collection ${params.collectionId} not found`);
       }
+
+      this.invalidateCollectionsCache(params.libraryId);
 
       return JellyfinMapper.toMediaCollection(collection);
     } catch (error) {
