@@ -1272,31 +1272,45 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
     if (!this.api) return [];
 
-    try {
-      const userId = await this.getUserId();
-      const response = await getItemsApi(this.api).getItems({
-        userId,
-        includeItemTypes: [BaseItemKind.BoxSet],
-        recursive: true,
-        fields: [
-          ItemFields.Overview,
-          ItemFields.DateCreated,
-          ItemFields.ChildCount,
-        ],
-      });
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
+    let allCollections = this.cache.data.get<MediaCollection[]>(cacheKey);
 
-      const collections = (response.data.Items || []).map(
-        JellyfinMapper.toMediaCollection,
-      );
+    if (!allCollections) {
+      allCollections = [];
 
-      return collections.filter(
-        (collection): collection is MediaCollection => collection !== null,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to get collections for ${libraryId}`);
-      this.logger.debug(error);
-      return [];
+      try {
+        const userId = await this.getUserId();
+        const response = await getItemsApi(this.api).getItems({
+          userId,
+          includeItemTypes: [BaseItemKind.BoxSet],
+          recursive: true,
+          fields: [
+            ItemFields.Overview,
+            ItemFields.DateCreated,
+            ItemFields.ChildCount,
+          ],
+        });
+
+        const collections = (response.data.Items || []).map(
+          JellyfinMapper.toMediaCollection,
+        );
+
+        allCollections = collections.filter(
+          (collection): collection is MediaCollection => collection !== null,
+        );
+        this.cache.data.set(
+          cacheKey,
+          allCollections,
+          JELLYFIN_CACHE_TTL.COLLECTIONS,
+        );
+      } catch (error) {
+        this.logger.error(`Failed to get collections for ${libraryId}`);
+        this.logger.debug(error);
+        return [];
+      }
     }
+
+    return allCollections;
   }
 
   async getCollection(
@@ -1389,72 +1403,89 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
     if (!this.api) return [];
 
-    try {
-      const userId = await this.getUserId();
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:${collectionId}`;
+    let allCollectionChildren = this.cache.data.get<MediaItem[]>(cacheKey);
 
-      // For BoxSets in Jellyfin, we need to use the Items endpoint
-      // with the collection's ID as parentId AND a userId
-      const response = await this.retryLibraryRequestOnce(
-        `get Jellyfin collection children for ${collectionId}`,
-        async () =>
-          await getItemsApi(this.api!).getItems({
-            userId,
-            parentId: collectionId,
-            fields: [
-              ItemFields.ProviderIds,
-              ItemFields.Path,
-              ItemFields.DateCreated,
-            ],
-            enableUserData: true,
-            recursive: false,
-          }),
-      );
+    if (!allCollectionChildren) {
+      allCollectionChildren = [];
 
-      // If parentId approach returns nothing, try recursive search
-      if (!response.data.Items?.length) {
-        const itemsResponse = await this.retryLibraryRequestOnce(
-          `get Jellyfin collection children recursively for ${collectionId}`,
+      try {
+        const userId = await this.getUserId();
+
+        // For BoxSets in Jellyfin, we need to use the Items endpoint
+        // with the collection's ID as parentId AND a userId
+        const response = await this.retryLibraryRequestOnce(
+          `get Jellyfin collection children for ${collectionId}`,
           async () =>
             await getItemsApi(this.api!).getItems({
               userId,
               parentId: collectionId,
-              recursive: true,
-              includeItemTypes: [
-                BaseItemKind.Movie,
-                BaseItemKind.Series,
-                BaseItemKind.Season,
-                BaseItemKind.Episode,
-              ],
               fields: [
                 ItemFields.ProviderIds,
                 ItemFields.Path,
                 ItemFields.DateCreated,
               ],
               enableUserData: true,
+              recursive: false,
             }),
         );
 
-        if (itemsResponse.data.Items?.length) {
-          return (itemsResponse.data.Items || []).map(
+        // If parentId approach returns nothing, try recursive search
+        if (!response.data.Items?.length) {
+          const itemsResponse = await this.retryLibraryRequestOnce(
+            `get Jellyfin collection children recursively for ${collectionId}`,
+            async () =>
+              await getItemsApi(this.api!).getItems({
+                userId,
+                parentId: collectionId,
+                recursive: true,
+                includeItemTypes: [
+                  BaseItemKind.Movie,
+                  BaseItemKind.Series,
+                  BaseItemKind.Season,
+                  BaseItemKind.Episode,
+                ],
+                fields: [
+                  ItemFields.ProviderIds,
+                  ItemFields.Path,
+                  ItemFields.DateCreated,
+                ],
+                enableUserData: true,
+              }),
+          );
+
+          if (itemsResponse.data.Items?.length) {
+            allCollectionChildren = (itemsResponse.data.Items || []).map(
+              JellyfinMapper.toMediaItem,
+            );
+          }
+        } else {
+          allCollectionChildren = (response.data.Items || []).map(
             JellyfinMapper.toMediaItem,
           );
         }
-      }
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
-    } catch (error) {
-      if (
-        error instanceof AxiosError &&
-        (error.response?.status === 400 || error.response?.status === 404)
-      ) {
-        throw error;
+        this.cache.data.set(
+          cacheKey,
+          allCollectionChildren,
+          JELLYFIN_CACHE_TTL.COLLECTIONS,
+        );
+      } catch (error) {
+        if (
+          error instanceof AxiosError &&
+          (error.response?.status === 400 || error.response?.status === 404)
+        ) {
+          throw error;
+        }
+        this.logger.error(
+          `Failed to get collection children for ${collectionId}`,
+          error,
+        );
+        return [];
       }
-      this.logger.error(
-        `Failed to get collection children for ${collectionId}`,
-        error,
-      );
-      return [];
     }
+
+    return allCollectionChildren;
   }
 
   private async addToCollectionInternal(
