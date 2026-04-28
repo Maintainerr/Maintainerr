@@ -45,10 +45,19 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   }
 
   private emitStatusUpdate() {
-    this.eventEmitter.emit(
-      MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
-      new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
-    );
+    // Defense-in-depth for #2799: a thrown synchronous listener must never
+    // bubble out of here. The executor holds the rules-collections lock by
+    // the time it emits, and a propagating throw could skip the release()
+    // call and leak the lock until restart.
+    try {
+      this.eventEmitter.emit(
+        MaintainerrEvent.RuleHandlerQueue_StatusUpdated,
+        new RuleHandlerQueueStatusUpdatedEventDto(this.getStatus()),
+      );
+    } catch (error) {
+      this.logger.debug('Failed to emit rule handler queue status update');
+      this.logger.debug(error);
+    }
   }
 
   private getPendingRuleGroupIds(): number[] {
@@ -216,20 +225,28 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       const release = await this.executionLock.acquire(
         RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
       );
-      this.executingRuleGroupId = request.ruleGroupId;
-      this.emitStatusUpdate();
 
+      // Everything between acquire and release lives inside this try so
+      // release() always runs — including if `emitStatusUpdate` synchronously
+      // throws (e.g. an event listener throws). Without this, a thrown
+      // listener would leak the lock entry forever and every future
+      // `tryAcquire` would return null until restart (#2799).
       try {
-        const result = await this.ruleExecutorService.executeForRuleGroups(
-          request.ruleGroupId,
-          this.abortController.signal,
-        );
-        this.handleQueueLevelFailure(result);
-      } catch (error) {
-        this.logger.error(
-          `An error occurred while executing job for rule group ${request.ruleGroupId}`,
-          error,
-        );
+        this.executingRuleGroupId = request.ruleGroupId;
+        this.emitStatusUpdate();
+
+        try {
+          const result = await this.ruleExecutorService.executeForRuleGroups(
+            request.ruleGroupId,
+            this.abortController.signal,
+          );
+          this.handleQueueLevelFailure(result);
+        } catch (error) {
+          this.logger.error(
+            `An error occurred while executing job for rule group ${request.ruleGroupId}`,
+            error,
+          );
+        }
       } finally {
         release();
         this.executingRuleGroupId = null;

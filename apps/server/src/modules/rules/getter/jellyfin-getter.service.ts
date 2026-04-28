@@ -272,6 +272,12 @@ export class JellyfinGetterService {
           return favoritedByUserIds.map((id) => userMap.get(id) || id);
         }
 
+        // At season/show level this returns the UNION of users that watched
+        // any descendant episode — not the intersection. A user who watched
+        // 3/6 episodes is included. This is the documented behaviour and is
+        // covered by the #2559 regression test in
+        // jellyfin-getter.service.spec.ts. Use `sw_allEpisodesSeenBy` when
+        // you need "watched every episode" semantics instead.
         case 'sw_watchers': {
           return await this.getSwWatchers(metadata.id, metadata.type);
         }
