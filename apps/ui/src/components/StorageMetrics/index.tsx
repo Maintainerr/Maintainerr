@@ -1,5 +1,6 @@
 import {
   ChartBarIcon,
+  CheckCircleIcon,
   CollectionIcon,
   DesktopComputerIcon,
   ExclamationCircleIcon,
@@ -136,7 +137,8 @@ const StorageMetrics: React.FC = () => {
   const hasInstances = metrics.instances.length > 0
   const hasAnyMounts = metrics.mounts.length > 0
   const hasCollectionData = metrics.collectionSummary.totalCollectionCount > 0
-  const { totals } = metrics
+  const { totals, cleanupTotals } = metrics
+  const hasCleanupActivity = cleanupTotals.itemsHandled > 0
   const hasAnyTotal = totals.totalSpace > 0
   const hasAnyFree = totals.freeSpace > 0 || totals.mountCount > 0
   const mountLabel = (count: number) =>
@@ -193,6 +195,39 @@ const StorageMetrics: React.FC = () => {
             icon={<CollectionIcon className="h-5 w-5" />}
           />
         </div>
+
+        <section className="mt-8">
+          <h2 className="sm-heading">Cleanup totals</h2>
+          <p className="description">
+            Cumulative count of media items Maintainerr has handled across all
+            collections. Counters increment each time a collection action
+            removes, unmonitors, or otherwise processes a media item.
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <SummaryCard
+              title="Items handled"
+              value={cleanupTotals.itemsHandled.toLocaleString()}
+              subtitle={
+                hasCleanupActivity
+                  ? 'Total across all collections'
+                  : 'No items processed yet'
+              }
+              icon={<CheckCircleIcon className="h-5 w-5" />}
+            />
+            <SummaryCard
+              title="Movies handled"
+              value={cleanupTotals.moviesHandled.toLocaleString()}
+              subtitle="From movie collections"
+              icon={<FilmIcon className="h-5 w-5" />}
+            />
+            <SummaryCard
+              title="Episodes handled"
+              value={cleanupTotals.episodesHandled.toLocaleString()}
+              subtitle="From show, season, and episode collections"
+              icon={<DesktopComputerIcon className="h-5 w-5" />}
+            />
+          </div>
+        </section>
 
         <section className="mt-8">
           <h2 className="sm-heading">Potential reclaim by type</h2>

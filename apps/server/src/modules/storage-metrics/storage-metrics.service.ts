@@ -3,6 +3,7 @@ import {
   MediaLibrary,
   MediaServerType,
   normalizeDiskPath,
+  StorageCleanupTotals,
   StorageCollectionSummary,
   StorageDiskspaceEntry,
   StorageInstanceStatus,
@@ -110,11 +111,13 @@ export class StorageMetricsService {
       hostByInstance,
     );
 
-    const [collectionSummary, topCollections, mediaServer] = await Promise.all([
-      this.buildCollectionSummary(),
-      this.buildTopCollections(),
-      this.buildMediaServerInfo(),
-    ]);
+    const [collectionSummary, topCollections, mediaServer, cleanupTotals] =
+      await Promise.all([
+        this.buildCollectionSummary(),
+        this.buildTopCollections(),
+        this.buildMediaServerInfo(),
+        this.buildCleanupTotals(),
+      ]);
 
     return {
       generatedAt: new Date().toISOString(),
@@ -124,6 +127,7 @@ export class StorageMetricsService {
       mediaServer,
       collectionSummary,
       topCollections,
+      cleanupTotals,
     };
   }
 
@@ -524,6 +528,31 @@ export class StorageMetricsService {
       libraries: libraryStats,
       totalItemCount,
     };
+  }
+
+  private async buildCleanupTotals(): Promise<StorageCleanupTotals> {
+    const rows = await this.collectionRepo
+      .createQueryBuilder('c')
+      .select('c.type', 'type')
+      .addSelect('COALESCE(SUM(c.handledMediaAmount), 0)', 'handled')
+      .groupBy('c.type')
+      .getRawMany<{ type: MediaItemType; handled: string | number }>();
+
+    let itemsHandled = 0;
+    let moviesHandled = 0;
+    let episodesHandled = 0;
+
+    for (const row of rows) {
+      const handled = this.toNumber(row.handled) ?? 0;
+      itemsHandled += handled;
+      if (row.type === 'movie') {
+        moviesHandled += handled;
+      } else {
+        episodesHandled += handled;
+      }
+    }
+
+    return { itemsHandled, moviesHandled, episodesHandled };
   }
 
   private async buildCollectionSummary(): Promise<StorageCollectionSummary> {

@@ -61,6 +61,12 @@ export interface StorageMediaServerLibrary {
   sizeBytes: number | null
 }
 
+export interface StorageCleanupTotals {
+  itemsHandled: number
+  moviesHandled: number
+  episodesHandled: number
+}
+
 export interface StorageMediaServerInfo {
   configured: boolean
   serverType: MediaServerType | null
@@ -79,6 +85,7 @@ export interface StorageMetricsResponse {
   mediaServer: StorageMediaServerInfo
   collectionSummary: StorageCollectionSummary
   topCollections: StorageTopCollection[]
+  cleanupTotals: StorageCleanupTotals
 }
 
 export interface StorageLibrarySizesResponse {

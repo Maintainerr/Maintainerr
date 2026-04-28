@@ -70,6 +70,11 @@ describe('StorageMetrics', () => {
         isActive: true,
       },
     ],
+    cleanupTotals: {
+      itemsHandled: 0,
+      moviesHandled: 0,
+      episodesHandled: 0,
+    },
   }
 
   beforeEach(() => {
