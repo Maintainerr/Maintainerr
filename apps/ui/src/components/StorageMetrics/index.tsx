@@ -6,6 +6,7 @@ import {
   ExclamationCircleIcon,
   FilmIcon,
   FolderIcon,
+  PlayIcon,
   ServerIcon,
 } from '@heroicons/react/solid'
 import type {
@@ -39,7 +40,11 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   subtitle,
   icon,
 }) => (
-  <div className="transparent-glass-bg flex flex-col rounded-lg border border-zinc-700 p-4 shadow">
+  <div
+    role="region"
+    aria-label={title}
+    className="transparent-glass-bg flex flex-col rounded-lg border border-zinc-700 p-4 shadow"
+  >
     <div className="flex items-center text-sm font-medium uppercase tracking-wide text-zinc-400">
       <span className="mr-2 text-maintainerr-500">{icon}</span>
       {title}
@@ -203,7 +208,7 @@ const StorageMetrics: React.FC = () => {
             collections. Counters increment each time a collection action
             removes, unmonitors, or otherwise processes a media item.
           </p>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryCard
               title="Items handled"
               value={cleanupTotals.itemsHandled.toLocaleString()}
@@ -221,10 +226,22 @@ const StorageMetrics: React.FC = () => {
               icon={<FilmIcon className="h-5 w-5" />}
             />
             <SummaryCard
+              title="Shows handled"
+              value={cleanupTotals.showsHandled.toLocaleString()}
+              subtitle="From show collections"
+              icon={<DesktopComputerIcon className="h-5 w-5" />}
+            />
+            <SummaryCard
+              title="Seasons handled"
+              value={cleanupTotals.seasonsHandled.toLocaleString()}
+              subtitle="From season collections"
+              icon={<CollectionIcon className="h-5 w-5" />}
+            />
+            <SummaryCard
               title="Episodes handled"
               value={cleanupTotals.episodesHandled.toLocaleString()}
-              subtitle="From show, season, and episode collections"
-              icon={<DesktopComputerIcon className="h-5 w-5" />}
+              subtitle="From episode collections"
+              icon={<PlayIcon className="h-5 w-5" />}
             />
           </div>
         </section>

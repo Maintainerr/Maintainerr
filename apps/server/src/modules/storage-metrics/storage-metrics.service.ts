@@ -540,19 +540,36 @@ export class StorageMetricsService {
 
     let itemsHandled = 0;
     let moviesHandled = 0;
+    let showsHandled = 0;
+    let seasonsHandled = 0;
     let episodesHandled = 0;
 
     for (const row of rows) {
       const handled = this.toNumber(row.handled) ?? 0;
       itemsHandled += handled;
-      if (row.type === 'movie') {
-        moviesHandled += handled;
-      } else {
-        episodesHandled += handled;
+      switch (row.type) {
+        case 'movie':
+          moviesHandled += handled;
+          break;
+        case 'show':
+          showsHandled += handled;
+          break;
+        case 'season':
+          seasonsHandled += handled;
+          break;
+        case 'episode':
+          episodesHandled += handled;
+          break;
       }
     }
 
-    return { itemsHandled, moviesHandled, episodesHandled };
+    return {
+      itemsHandled,
+      moviesHandled,
+      showsHandled,
+      seasonsHandled,
+      episodesHandled,
+    };
   }
 
   private async buildCollectionSummary(): Promise<StorageCollectionSummary> {

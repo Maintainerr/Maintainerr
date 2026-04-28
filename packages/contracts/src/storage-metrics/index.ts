@@ -64,6 +64,8 @@ export interface StorageMediaServerLibrary {
 export interface StorageCleanupTotals {
   itemsHandled: number
   moviesHandled: number
+  showsHandled: number
+  seasonsHandled: number
   episodesHandled: number
 }
 
