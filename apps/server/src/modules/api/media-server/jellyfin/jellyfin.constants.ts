@@ -5,6 +5,7 @@ export const JELLYFIN_CACHE_TTL = {
   USERS: 1800000,
   LIBRARIES: 1800000,
   STATUS: 60000,
+  COLLECTIONS: 600,
 } as const;
 
 export const JELLYFIN_BATCH_SIZE = {
@@ -37,6 +38,7 @@ export const JELLYFIN_CACHE_KEYS = {
   USERS: 'jellyfin:users',
   LIBRARIES: 'jellyfin:libraries',
   STATUS: 'jellyfin:status',
+  COLLECTIONS: 'jellyfin:collections',
 } as const;
 
 /**
