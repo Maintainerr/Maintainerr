@@ -320,6 +320,11 @@ export class PlexGetterService {
 
           return [];
         }
+        // At season/show level this returns the UNION of users that watched
+        // any descendant episode — not the intersection. Plex's per-show
+        // watch history aggregates child views, so any account that watched
+        // at least one episode appears here. Use `sw_allEpisodesSeenBy` when
+        // you need "watched every episode" semantics instead.
         case 'sw_watchers': {
           const plexUsers = await this.plexApi.getCorrectedUsers(false);
 
