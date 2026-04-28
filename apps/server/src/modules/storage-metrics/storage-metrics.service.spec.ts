@@ -158,8 +158,7 @@ describe('StorageMetricsService', () => {
         { getRawMany },
         {
           get(target, prop) {
-            if (prop in target)
-              return target[prop as keyof typeof target];
+            if (prop in target) return target[prop as keyof typeof target];
             return jest.fn().mockReturnValue(queryBuilder);
           },
         },
