@@ -14,10 +14,12 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.CENTRAL_WATCH_HISTORY,
     MediaServerFeature.LABELS,
     MediaServerFeature.PLAYLISTS,
+    MediaServerFeature.COLLECTION_POSTER,
   ]),
   [MediaServerType.JELLYFIN]: new Set([
     MediaServerFeature.LABELS, // Tags in Jellyfin
     MediaServerFeature.PLAYLISTS,
+    MediaServerFeature.COLLECTION_POSTER,
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
     // Note: CENTRAL_WATCH_HISTORY not supported (requires user iteration)

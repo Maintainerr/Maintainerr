@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import {
@@ -23,6 +27,10 @@ import {
   removeFromCollectionBodySchema,
   updateScheduleBodySchema,
 } from './collections.controller';
+import {
+  CollectionPosterService,
+  InvalidCollectionPosterError,
+} from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 
 describe('CollectionsController', () => {
@@ -51,6 +59,14 @@ describe('CollectionsController', () => {
     handleMedia: jest.fn(),
   } as unknown as jest.Mocked<CollectionHandler>;
 
+  const collectionPosterService = {
+    loadStoredPoster: jest.fn(),
+    storePoster: jest.fn(),
+    removeStoredPoster: jest.fn(),
+    pushToMediaServer: jest.fn(),
+    refreshCollectionOnMediaServer: jest.fn(),
+  } as unknown as jest.Mocked<CollectionPosterService>;
+
   const logger = {
     setContext: jest.fn(),
   } as unknown as jest.Mocked<MaintainerrLogger>;
@@ -63,12 +79,20 @@ describe('CollectionsController', () => {
       ruleExecutorJobManagerService,
       executionLock,
       collectionHandler,
+      collectionPosterService,
       logger,
     );
 
     collectionWorkerService.isRunning.mockReturnValue(false);
     ruleExecutorJobManagerService.isProcessing.mockReturnValue(false);
     executionLock.tryAcquire.mockReturnValue(jest.fn());
+    collectionPosterService.pushToMediaServer.mockResolvedValue({
+      attempted: true,
+      pushed: true,
+    });
+    collectionPosterService.refreshCollectionOnMediaServer.mockResolvedValue({
+      requested: true,
+    });
   });
 
   it('validates the item action request body with Zod', () => {
@@ -325,5 +349,96 @@ describe('CollectionsController', () => {
         mediaId: media.mediaServerId,
       }),
     ).rejects.toThrow(ConflictException);
+  });
+
+  describe('uploadCollectionPoster', () => {
+    it('returns the poster push status details', async () => {
+      const collection = createCollection();
+      const file = {
+        originalname: 'poster.png',
+        buffer: Buffer.from('image-bytes'),
+      };
+
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+      collectionPosterService.storePoster.mockResolvedValue({
+        buffer: Buffer.from('jpeg-bytes'),
+        contentType: 'image/jpeg',
+      });
+      collectionPosterService.pushToMediaServer.mockResolvedValue({
+        attempted: false,
+        pushed: false,
+      });
+
+      await expect(
+        controller.uploadCollectionPoster(collection.id, file),
+      ).resolves.toEqual({
+        pushed: false,
+        attempted: false,
+      });
+    });
+
+    it('maps invalid images to BadRequestException', async () => {
+      const collection = createCollection();
+      const file = {
+        originalname: 'poster.png',
+        buffer: Buffer.from('image-bytes'),
+      };
+
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+      collectionPosterService.storePoster.mockRejectedValueOnce(
+        new InvalidCollectionPosterError('Uploaded file is not a valid image'),
+      );
+
+      await expect(
+        controller.uploadCollectionPoster(collection.id, file),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('preserves storage failures as server errors', async () => {
+      const collection = createCollection();
+      const file = {
+        originalname: 'poster.png',
+        buffer: Buffer.from('image-bytes'),
+      };
+
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+      collectionPosterService.storePoster.mockRejectedValueOnce(
+        new Error('disk full'),
+      );
+
+      await expect(
+        controller.uploadCollectionPoster(collection.id, file),
+      ).rejects.toThrow('disk full');
+    });
+  });
+
+  describe('deleteCollectionPoster', () => {
+    it('removes the stored poster and asks the media server to refresh metadata', async () => {
+      const collection = createCollection({ mediaServerId: 'remote-id' });
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+
+      await expect(
+        controller.deleteCollectionPoster(collection.id),
+      ).resolves.toEqual({ cleared: true, refreshRequested: true });
+
+      expect(collectionPosterService.removeStoredPoster).toHaveBeenCalledWith(
+        collection.id,
+      );
+      expect(
+        collectionPosterService.refreshCollectionOnMediaServer,
+      ).toHaveBeenCalledWith('remote-id');
+    });
+
+    it('reports refreshRequested=false when the media server refresh fails', async () => {
+      const collection = createCollection({ mediaServerId: 'remote-id' });
+      collectionsService.getCollectionRecord.mockResolvedValue(collection);
+      collectionPosterService.refreshCollectionOnMediaServer.mockResolvedValueOnce(
+        { requested: false },
+      );
+
+      await expect(
+        controller.deleteCollectionPoster(collection.id),
+      ).resolves.toEqual({ cleared: true, refreshRequested: false });
+    });
   });
 });

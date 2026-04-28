@@ -509,6 +509,21 @@ export class JellyfinAdapterService implements IMediaServerService {
     );
   }
 
+  async setCollectionImage(
+    collectionId: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    // BoxSets are Items in Jellyfin, so the same Primary-image endpoint
+    // applies. Reuses the base64 quirk handled by setItemImage.
+    await this.setItemImage(
+      collectionId,
+      ImageType.Primary,
+      buffer,
+      contentType,
+    );
+  }
+
   private isCompletedWatch(
     userData:
       | {
