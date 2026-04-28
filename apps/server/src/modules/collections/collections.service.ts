@@ -1889,6 +1889,21 @@ export class CollectionsService {
               });
             }
 
+            // Push stored custom poster: this is the first time the
+            // collection has a media-server id, so any deferred upload
+            // saved against the db id needs to be applied now.
+            const storedPoster =
+              await this.collectionPosterService.loadStoredPoster(
+                collection.id,
+              );
+            if (storedPoster) {
+              await this.collectionPosterService.pushToMediaServer(
+                collection.mediaServerId,
+                storedPoster.buffer,
+                storedPoster.contentType,
+              );
+            }
+
             // Check if we need to sync existing items to a newly created collection
             const needsResync = collectionMedia.length > 0;
 

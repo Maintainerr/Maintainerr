@@ -1,4 +1,6 @@
 import {
+  COLLECTION_POSTER_MAX_BYTES,
+  COLLECTION_POSTER_MAX_LABEL,
   CollectionPosterUploadResponse,
   CollectionLogMeta,
   CollectionMediaSortField,
@@ -537,12 +539,11 @@ export class CollectionsController {
   @Post('/:id/poster')
   @UseInterceptors(
     FileInterceptor('poster', {
-      limits: { fileSize: 10 * 1024 * 1024 },
+      limits: { fileSize: COLLECTION_POSTER_MAX_BYTES },
     }),
   )
   @ApiOperation({
-    summary:
-      'Upload a custom collection poster. Stored locally and pushed to the media server (best-effort). 10 MiB max.',
+    summary: `Upload a custom collection poster. Stored locally and pushed to the media server (best-effort). ${COLLECTION_POSTER_MAX_LABEL} max.`,
   })
   @ApiResponse({
     status: 201,

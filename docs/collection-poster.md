@@ -7,7 +7,7 @@ or Jellyfin drops a collection and Maintainerr creates it again.
 
 ## Behavior
 
-- Uploads accept JPEG, PNG, or WebP up to 10 MiB.
+- Uploads accept JPEG, PNG, or WebP up to 500 KB.
 - The upload is normalized to JPEG and stored at
   `<dataDir>/collection-posters/{collectionDbId}.jpg`.
 - Maintainerr writes the poster immediately on upload when a live

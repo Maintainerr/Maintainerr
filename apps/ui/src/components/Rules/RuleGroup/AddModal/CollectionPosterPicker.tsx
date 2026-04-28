@@ -1,3 +1,7 @@
+import {
+  COLLECTION_POSTER_MAX_BYTES,
+  COLLECTION_POSTER_MAX_LABEL,
+} from '@maintainerr/contracts'
 import { useEffect, useRef, useState } from 'react'
 import {
   buildCollectionPosterUrl,
@@ -20,7 +24,6 @@ type Status = {
 } | null
 
 const ACCEPT = 'image/jpeg,image/png,image/webp'
-const MAX_BYTES = 10 * 1024 * 1024
 
 /**
  * In-modal control for managing the user-uploaded poster on a Maintainerr
@@ -92,10 +95,10 @@ export const CollectionPosterPicker = ({
     event.target.value = ''
     if (!file) return
 
-    if (file.size > MAX_BYTES) {
+    if (file.size > COLLECTION_POSTER_MAX_BYTES) {
       setStatus({
         type: 'error',
-        title: 'File is larger than 10 MB',
+        title: `File is larger than ${COLLECTION_POSTER_MAX_LABEL}`,
       })
       return
     }
@@ -188,9 +191,9 @@ export const CollectionPosterPicker = ({
         </div>
         <div className="flex flex-1 flex-col gap-2">
           <p className="text-xs text-zinc-400">
-            Upload a JPEG, PNG, or WebP. The image is re-encoded to JPEG and
-            stored locally; Maintainerr pushes it to {mediaServerName} as a
-            one-shot write. Other tools that manage{' '}
+            Upload a JPEG, PNG, or WebP up to {COLLECTION_POSTER_MAX_LABEL}. The
+            image is re-encoded to JPEG and stored locally; Maintainerr pushes
+            it to {mediaServerName} as a one-shot write. Other tools that manage{' '}
             {mediaServerName.toLowerCase()} collection artwork (e.g. Kometa,
             Posterizarr) may overwrite it.
           </p>
@@ -215,7 +218,7 @@ export const CollectionPosterPicker = ({
             </Button>
             {hasPosterForCurrentCollection && (
               <Button
-                buttonType="warning"
+                buttonType="danger"
                 type="button"
                 disabled={busy}
                 onClick={handleClear}

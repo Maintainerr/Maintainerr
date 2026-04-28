@@ -613,6 +613,42 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('pushes a stored poster the first time a rule run creates the media-server collection', async () => {
+    const collection = createCollection({
+      id: 4,
+      mediaServerId: null,
+      manualCollection: false,
+      libraryId: 'library-1',
+      title: 'New Collection',
+    });
+    const collectionMedia = [
+      createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue(collectionMedia);
+    collectionRepo.save.mockResolvedValue({
+      ...collection,
+      mediaServerId: 'remote-collection',
+    } as Collection);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    collectionPosterService.loadStoredPoster.mockResolvedValue({
+      buffer: Buffer.from('jpeg-bytes'),
+      contentType: 'image/jpeg',
+    });
+
+    await service.addToCollection(collection.id, []);
+
+    expect(collectionPosterService.loadStoredPoster).toHaveBeenCalledWith(4);
+    expect(collectionPosterService.pushToMediaServer).toHaveBeenCalledWith(
+      'remote-collection',
+      expect.any(Buffer),
+      'image/jpeg',
+    );
+  });
+
   it('reuses an existing automatic media server collection before creating a new one', async () => {
     const collection = createCollection({
       id: 5,
