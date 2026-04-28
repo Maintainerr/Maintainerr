@@ -181,8 +181,15 @@ describe('OverlayCanvas', () => {
       '[data-konva="Ellipse"][data-id="ellipse-shape"]',
     )
 
-    expect(Number(rect?.getAttribute('data-stroke-width'))).toBeCloseTo(1.6)
-    expect(Number(rect?.getAttribute('data-corner-radius'))).toBeCloseTo(4.8)
-    expect(Number(ellipse?.getAttribute('data-stroke-width'))).toBeCloseTo(2.4)
+    // Stroke and cornerRadius must scale by the same factor as element width.
+    const rectWidth = Number(rect?.getAttribute('data-width'))
+    const rectStroke = Number(rect?.getAttribute('data-stroke-width'))
+    const rectCorner = Number(rect?.getAttribute('data-corner-radius'))
+    expect(rectStroke / rectWidth).toBeCloseTo(4 / 200)
+    expect(rectCorner / rectWidth).toBeCloseTo(12 / 200)
+
+    const ellipseRadiusX = Number(ellipse?.getAttribute('data-radius-x'))
+    const ellipseStroke = Number(ellipse?.getAttribute('data-stroke-width'))
+    expect(ellipseStroke / (ellipseRadiusX * 2)).toBeCloseTo(6 / 120)
   })
 })
