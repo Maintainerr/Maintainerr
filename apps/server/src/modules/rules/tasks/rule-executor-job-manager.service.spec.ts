@@ -1,5 +1,10 @@
+import { MaintainerrEvent } from '@maintainerr/contracts';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createMockLogger } from '../../../../test/utils/data';
-import { ExecutionLockService } from '../../tasks/execution-lock.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../../tasks/execution-lock.service';
 import { RuleExecutorJobManagerService } from './rule-executor-job-manager.service';
 import { RuleExecutionResult } from './rule-executor.service';
 
@@ -359,5 +364,44 @@ describe('RuleExecutorJobManagerService', () => {
     await flushMicrotasks();
 
     expect(executeMock).toHaveBeenCalledWith(42, expect.any(AbortSignal));
+  });
+
+  // Regression for #2799: a synchronous status-event listener that throws
+  // must NOT prevent the rules-collections lock from being released. If the
+  // lock leaks here, manual Trigger Now stays broken until container restart.
+  it('releases the rules-collections lock when a status-event listener throws', async () => {
+    const executeMock: ExecuteMock = jest
+      .fn()
+      .mockResolvedValue({ status: 'success' });
+
+    const ruleExecutorService = { executeForRuleGroups: executeMock };
+    const realLock = new ExecutionLockService();
+    const realEmitter = new EventEmitter2();
+
+    realEmitter.on(MaintainerrEvent.RuleHandlerQueue_StatusUpdated, () => {
+      throw new Error('listener boom');
+    });
+
+    const service = new RuleExecutorJobManagerService(
+      ruleExecutorService as any,
+      realLock,
+      { verifyConnection: jest.fn().mockResolvedValue({}) } as any,
+      realEmitter,
+      logger as any,
+    );
+
+    service.enqueue({ ruleGroupId: 99 });
+
+    await flushMicrotasks();
+    await waitForNextTick();
+    await flushMicrotasks();
+    await waitForNextTick();
+
+    expect(executeMock).toHaveBeenCalledWith(99, expect.any(AbortSignal));
+    expect(service.isProcessing()).toBe(false);
+
+    const release = realLock.tryAcquire(RULES_COLLECTIONS_EXECUTION_LOCK_KEY);
+    expect(release).not.toBeNull();
+    release?.();
   });
 });

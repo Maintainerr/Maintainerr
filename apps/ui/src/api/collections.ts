@@ -1,6 +1,14 @@
+import type {
+  CollectionPosterDeleteResponse,
+  CollectionPosterUploadResponse,
+} from '@maintainerr/contracts'
 import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import type { ICollection } from '../components/Collection'
-import GetApiHandler, { PostApiHandler } from '../utils/ApiHandler'
+import GetApiHandler, {
+  API_BASE_PATH,
+  DeleteApiHandler,
+  PostApiHandler,
+} from '../utils/ApiHandler'
 
 type UseCollectionsQueryKey = ['collections', string]
 type UseCollectionQueryKey = ['collections', 'detail', string]
@@ -54,6 +62,34 @@ export const triggerCollectionItemAction = async (
     collectionId,
     mediaId: String(mediaId),
   })
+}
+
+// ── Custom collection poster ───────────────────────────────────────────────
+
+export const buildCollectionPosterUrl = (
+  collectionId: number,
+  cacheBust?: number,
+) => {
+  const base = `${API_BASE_PATH}/api/collections/${collectionId}/poster`
+  return cacheBust !== undefined ? `${base}?v=${cacheBust}` : base
+}
+
+export const uploadCollectionPoster = async (
+  collectionId: number,
+  file: File,
+) => {
+  const formData = new FormData()
+  formData.append('poster', file)
+  return await PostApiHandler<CollectionPosterUploadResponse>(
+    `/collections/${collectionId}/poster`,
+    formData,
+  )
+}
+
+export const deleteCollectionPoster = async (collectionId: number) => {
+  return await DeleteApiHandler<CollectionPosterDeleteResponse>(
+    `/collections/${collectionId}/poster`,
+  )
 }
 
 export const useCollection = (

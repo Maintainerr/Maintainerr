@@ -324,6 +324,17 @@ export class PlexAdapterService implements IMediaServerService {
     }
   }
 
+  async setCollectionImage(
+    collectionId: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    // Plex collections share the /library/metadata/{id}/posters upload-and-
+    // select dance with regular items; setThumb already handles the
+    // upload/diff/select retry loop and content-addressed dedup edge cases.
+    await this.plexApi.setThumb(collectionId, buffer, contentType);
+  }
+
   private async sumLibraryItemSizes(library: MediaLibrary): Promise<number> {
     if (library.type === 'show') {
       return this.sumShowLibraryItemSizes(library.id);

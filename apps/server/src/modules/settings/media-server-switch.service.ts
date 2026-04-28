@@ -11,7 +11,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
+import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
@@ -29,6 +32,9 @@ interface MediaServerDataCounts {
   exclusions: number;
   collectionLogs: number;
 }
+
+const COLLECTION_POSTER_DIR = path.join(configDataDir, 'collection-posters');
+const COLLECTION_POSTER_EXTENSION = '.jpg';
 
 /**
  * Service for handling media server switching operations.
@@ -63,6 +69,7 @@ export class MediaServerSwitchService {
     @InjectRepository(Exclusion)
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
+    @Inject(forwardRef(() => RuleMigrationService))
     private readonly ruleMigrationService: RuleMigrationService,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -178,7 +185,7 @@ export class MediaServerSwitchService {
         }
 
         // Clear media server-specific data in correct order (respecting foreign keys)
-        await this.clearMediaServerData(
+        const clearedCollectionIds = await this.clearMediaServerData(
           queryRunner,
           migrateRules,
           targetServerType,
@@ -192,6 +199,23 @@ export class MediaServerSwitchService {
         );
 
         await queryRunner.commitTransaction();
+
+        for (const collectionId of clearedCollectionIds) {
+          try {
+            const storedPosterPath = path.join(
+              COLLECTION_POSTER_DIR,
+              `${collectionId}${COLLECTION_POSTER_EXTENSION}`,
+            );
+            if (fs.existsSync(storedPosterPath)) {
+              fs.unlinkSync(storedPosterPath);
+            }
+          } catch (error) {
+            this.logger.warn(
+              `Failed to remove stored poster for deleted collection ${collectionId}`,
+            );
+            this.logger.debug(error);
+          }
+        }
       } catch (error) {
         await queryRunner.rollbackTransaction();
         throw error;
@@ -249,7 +273,7 @@ export class MediaServerSwitchService {
     migrateRules: boolean,
     targetServerType: MediaServerType,
     counts: MediaServerDataCounts,
-  ): Promise<void> {
+  ): Promise<number[]> {
     // 1. Collection media (references collections)
     await queryRunner.manager.clear(CollectionMedia);
     this.logger.log(`Cleared ${counts.collectionMedia} collection media items`);
@@ -263,6 +287,10 @@ export class MediaServerSwitchService {
     this.logger.log(`Cleared ${counts.exclusions} exclusions`);
 
     if (!migrateRules) {
+      const collectionsToDelete = await queryRunner.manager.find(Collection, {
+        select: { id: true },
+      });
+
       // 4. Rule groups (references collections via OneToOne) - cascades to rules
       await queryRunner.manager.clear(RuleGroup);
       this.logger.log(`Cleared rule groups and rules`);
@@ -270,6 +298,8 @@ export class MediaServerSwitchService {
       // 5. Collections - only clear if not migrating
       await queryRunner.manager.clear(Collection);
       this.logger.log(`Cleared ${counts.collections} collections`);
+
+      return collectionsToDelete.map(({ id }) => id);
     } else {
       // When migrating rules, preserve collections but reset media server references:
       // - Reset libraryId on rule groups (will need to be re-assigned by user)
@@ -299,6 +329,8 @@ export class MediaServerSwitchService {
       this.logger.log(
         `Preserved ${counts.collections} collections, reset media server references`,
       );
+
+      return [];
     }
   }
 

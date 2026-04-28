@@ -509,6 +509,21 @@ export class JellyfinAdapterService implements IMediaServerService {
     );
   }
 
+  async setCollectionImage(
+    collectionId: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    // BoxSets are Items in Jellyfin, so the same Primary-image endpoint
+    // applies. Reuses the base64 quirk handled by setItemImage.
+    await this.setItemImage(
+      collectionId,
+      ImageType.Primary,
+      buffer,
+      contentType,
+    );
+  }
+
   private isCompletedWatch(
     userData:
       | {
@@ -1257,31 +1272,51 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
     if (!this.api) return [];
 
-    try {
-      const userId = await this.getUserId();
-      const response = await getItemsApi(this.api).getItems({
-        userId,
-        includeItemTypes: [BaseItemKind.BoxSet],
-        recursive: true,
-        fields: [
-          ItemFields.Overview,
-          ItemFields.DateCreated,
-          ItemFields.ChildCount,
-        ],
-      });
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
+    let allCollections = this.cache.data.get<MediaCollection[]>(cacheKey);
 
-      const collections = (response.data.Items || []).map(
-        JellyfinMapper.toMediaCollection,
-      );
+    if (!allCollections) {
+      allCollections = [];
 
-      return collections.filter(
-        (collection): collection is MediaCollection => collection !== null,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to get collections for ${libraryId}`);
-      this.logger.debug(error);
-      return [];
+      try {
+        const userId = await this.getUserId();
+        const response = await getItemsApi(this.api).getItems({
+          userId,
+          parentId: libraryId,
+          includeItemTypes: [BaseItemKind.BoxSet],
+          recursive: true,
+          fields: [
+            ItemFields.Overview,
+            ItemFields.DateCreated,
+            ItemFields.ChildCount,
+            ItemFields.ParentId,
+          ],
+        });
+
+        const collections = (response.data.Items || []).map(
+          JellyfinMapper.toMediaCollection,
+        );
+
+        allCollections = collections.filter(
+          (collection): collection is MediaCollection => collection !== null,
+        );
+        // Skip caching empty results so a transient zero-collection response
+        // (e.g. mid-library-scan) can't mask a just-created entry.
+        if (allCollections.length > 0) {
+          this.cache.data.set(
+            cacheKey,
+            allCollections,
+            JELLYFIN_CACHE_TTL.COLLECTIONS,
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Failed to get collections for ${libraryId}`);
+        this.logger.debug(error);
+        return [];
+      }
     }
+
+    return allCollections;
   }
 
   async getCollection(
@@ -1339,6 +1374,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         throw new Error('Collection created but no ID returned');
       }
 
+      this.invalidateCollectionsCache(params.libraryId);
+
       // Note: No refresh needed - Jellyfin auto-generates composite images
       // when items are added (as long as isLocked: true, which we set above).
 
@@ -1364,6 +1401,9 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
+      // libraryId not known here; clear all per-library entries.
+      this.invalidateCollectionsCache();
+      this.invalidateCollectionChildrenCache(collectionId);
     } catch (error) {
       this.logger.error(`Failed to delete collection ${collectionId}`);
       this.logger.debug(error);
@@ -1374,72 +1414,112 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
     if (!this.api) return [];
 
-    try {
-      const userId = await this.getUserId();
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:${collectionId}`;
+    let allCollectionChildren = this.cache.data.get<MediaItem[]>(cacheKey);
 
-      // For BoxSets in Jellyfin, we need to use the Items endpoint
-      // with the collection's ID as parentId AND a userId
-      const response = await this.retryLibraryRequestOnce(
-        `get Jellyfin collection children for ${collectionId}`,
-        async () =>
-          await getItemsApi(this.api!).getItems({
-            userId,
-            parentId: collectionId,
-            fields: [
-              ItemFields.ProviderIds,
-              ItemFields.Path,
-              ItemFields.DateCreated,
-            ],
-            enableUserData: true,
-            recursive: false,
-          }),
-      );
+    if (!allCollectionChildren) {
+      allCollectionChildren = [];
 
-      // If parentId approach returns nothing, try recursive search
-      if (!response.data.Items?.length) {
-        const itemsResponse = await this.retryLibraryRequestOnce(
-          `get Jellyfin collection children recursively for ${collectionId}`,
+      try {
+        const userId = await this.getUserId();
+
+        // For BoxSets in Jellyfin, we need to use the Items endpoint
+        // with the collection's ID as parentId AND a userId
+        const response = await this.retryLibraryRequestOnce(
+          `get Jellyfin collection children for ${collectionId}`,
           async () =>
             await getItemsApi(this.api!).getItems({
               userId,
               parentId: collectionId,
-              recursive: true,
-              includeItemTypes: [
-                BaseItemKind.Movie,
-                BaseItemKind.Series,
-                BaseItemKind.Season,
-                BaseItemKind.Episode,
-              ],
               fields: [
                 ItemFields.ProviderIds,
                 ItemFields.Path,
                 ItemFields.DateCreated,
               ],
               enableUserData: true,
+              recursive: false,
             }),
         );
 
-        if (itemsResponse.data.Items?.length) {
-          return (itemsResponse.data.Items || []).map(
+        // If parentId approach returns nothing, try recursive search
+        if (!response.data.Items?.length) {
+          const itemsResponse = await this.retryLibraryRequestOnce(
+            `get Jellyfin collection children recursively for ${collectionId}`,
+            async () =>
+              await getItemsApi(this.api!).getItems({
+                userId,
+                parentId: collectionId,
+                recursive: true,
+                includeItemTypes: [
+                  BaseItemKind.Movie,
+                  BaseItemKind.Series,
+                  BaseItemKind.Season,
+                  BaseItemKind.Episode,
+                ],
+                fields: [
+                  ItemFields.ProviderIds,
+                  ItemFields.Path,
+                  ItemFields.DateCreated,
+                ],
+                enableUserData: true,
+              }),
+          );
+
+          if (itemsResponse.data.Items?.length) {
+            allCollectionChildren = (itemsResponse.data.Items || []).map(
+              JellyfinMapper.toMediaItem,
+            );
+          }
+        } else {
+          allCollectionChildren = (response.data.Items || []).map(
             JellyfinMapper.toMediaItem,
           );
         }
-      }
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
-    } catch (error) {
-      if (
-        error instanceof AxiosError &&
-        (error.response?.status === 400 || error.response?.status === 404)
-      ) {
-        throw error;
+        // Skip caching empty results: Jellyfin may briefly return [] for a
+        // freshly-created collection while indexing.
+        if (allCollectionChildren.length > 0) {
+          this.cache.data.set(
+            cacheKey,
+            allCollectionChildren,
+            JELLYFIN_CACHE_TTL.COLLECTIONS,
+          );
+        }
+      } catch (error) {
+        if (
+          error instanceof AxiosError &&
+          (error.response?.status === 400 || error.response?.status === 404)
+        ) {
+          throw error;
+        }
+        this.logger.error(
+          `Failed to get collection children for ${collectionId}`,
+          error,
+        );
+        return [];
       }
-      this.logger.error(
-        `Failed to get collection children for ${collectionId}`,
-        error,
-      );
-      return [];
     }
+
+    return allCollectionChildren;
+  }
+
+  private invalidateCollectionsCache(libraryId?: string): void {
+    if (libraryId) {
+      this.cache.data.del(`${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`);
+      return;
+    }
+    const prefix = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:`;
+    const childrenPrefix = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:`;
+    const stale = this.cache.data
+      .keys()
+      .filter((k) => k.startsWith(prefix) && !k.startsWith(childrenPrefix));
+    if (stale.length > 0) this.cache.data.del(stale);
+  }
+
+  private invalidateCollectionChildrenCache(collectionId: string): void {
+    this.cache.data.del(
+      `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:${collectionId}`,
+    );
   }
 
   private async addToCollectionInternal(
@@ -1467,6 +1547,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   async addToCollection(collectionId: string, itemId: string): Promise<void> {
     await this.addToCollectionInternal(collectionId, itemId, true);
+    this.invalidateCollectionChildrenCache(collectionId);
   }
 
   async addBatchToCollection(
@@ -1504,6 +1585,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Jellyfin batch add fallback left ${failedIds.length} failed item(s) for collection ${collectionId}`,
       );
     }
+
+    this.invalidateCollectionChildrenCache(collectionId);
 
     return failedIds;
   }
@@ -1553,6 +1636,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         collectionId,
         ids: [itemId],
       });
+      this.invalidateCollectionChildrenCache(collectionId);
     } catch (error) {
       this.logger.error(
         `Failed to remove ${itemId} from collection ${collectionId}`,
@@ -1586,6 +1670,8 @@ export class JellyfinAdapterService implements IMediaServerService {
         failedIds.push(...chunk);
       }
     }
+
+    this.invalidateCollectionChildrenCache(collectionId);
 
     return failedIds;
   }
@@ -1654,6 +1740,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.Overview,
           ItemFields.DateCreated,
           ItemFields.ChildCount,
+          ItemFields.ParentId,
         ],
       });
 
@@ -1661,6 +1748,8 @@ export class JellyfinAdapterService implements IMediaServerService {
       if (!collection) {
         throw new Error(`Collection ${params.collectionId} not found`);
       }
+
+      this.invalidateCollectionsCache(params.libraryId);
 
       return JellyfinMapper.toMediaCollection(collection);
     } catch (error) {

@@ -31,6 +31,7 @@ import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsService } from '../settings/settings.service';
+import { CollectionPosterService } from './collection-poster.service';
 import { Collection } from './entities/collection.entities';
 import {
   CollectionMedia,
@@ -100,6 +101,7 @@ export class CollectionsService {
     private readonly settingsService: SettingsService,
     private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly collectionPosterService: CollectionPosterService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -1374,6 +1376,19 @@ export class CollectionsService {
           collection,
           collection.mediaServerId ? collection.mediaServerId : undefined,
         );
+
+      // Re-push any stored poster after a collection recreate.
+      const storedPoster = await this.collectionPosterService.loadStoredPoster(
+        collectionDb.id,
+      );
+      if (storedPoster) {
+        await this.collectionPosterService.pushToMediaServer(
+          collectionDb.mediaServerId ?? collection.mediaServerId,
+          storedPoster.buffer,
+          storedPoster.contentType,
+        );
+      }
+
       return { dbCollection: collectionDb };
     } catch (error) {
       this.logger.error(
@@ -1872,6 +1887,21 @@ export class CollectionsService {
                 ownHome: collection.visibleOnHome,
                 sharedHome: collection.visibleOnHome,
               });
+            }
+
+            // Push stored custom poster: this is the first time the
+            // collection has a media-server id, so any deferred upload
+            // saved against the db id needs to be applied now.
+            const storedPoster =
+              await this.collectionPosterService.loadStoredPoster(
+                collection.id,
+              );
+            if (storedPoster) {
+              await this.collectionPosterService.pushToMediaServer(
+                collection.mediaServerId,
+                storedPoster.buffer,
+                storedPoster.contentType,
+              );
             }
 
             // Check if we need to sync existing items to a newly created collection
@@ -2762,6 +2792,17 @@ export class CollectionsService {
     this.logger.log(`Removing collection from database..`);
     try {
       await this.collectionRepo.delete(collection.id);
+
+      // Drop any stored poster bytes; the media-server side is left alone —
+      // Plex/Jellyfin will recompute a thumb from member items as usual.
+      try {
+        this.collectionPosterService.removeStoredPoster(collection.id);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to remove stored poster file for deleted collection ${collection.id}; orphaned`,
+        );
+        this.logger.debug(error);
+      }
 
       this.eventEmitter.emit(MaintainerrEvent.Collection_Deleted, {
         collection,

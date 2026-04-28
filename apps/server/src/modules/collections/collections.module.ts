@@ -15,6 +15,7 @@ import { RulesModule } from '../rules/rules.module';
 import { SettingsModule } from '../settings/settings.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { CollectionHandler } from './collection-handler';
+import { CollectionPosterService } from './collection-poster.service';
 import { CollectionWorkerService } from './collection-worker.service';
 import { CollectionsController } from './collections.controller';
 import { CollectionsService } from './collections.service';
@@ -46,8 +47,9 @@ import { CollectionMedia } from './entities/collection_media.entities';
     CollectionWorkerService,
     CollectionLogCleanerService,
     CollectionHandler,
+    CollectionPosterService,
   ],
   controllers: [CollectionsController],
-  exports: [CollectionsService],
+  exports: [CollectionsService, CollectionPosterService],
 })
 export class CollectionsModule {}

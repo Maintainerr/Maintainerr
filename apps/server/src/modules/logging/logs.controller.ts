@@ -22,7 +22,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Response } from 'express';
 import { createReadStream, readdir } from 'fs';
-import { readdir as readdirp, stat } from 'fs/promises';
+import { lstat, readdir as readdirp, realpath, stat } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import mime from 'mime-types';
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -51,7 +51,10 @@ const logsDirectory =
     ? '/opt/data/logs'
     : path.join(__dirname, `../../../../../data/logs`);
 
-const safeLogFileRegex = /maintainerr-\d{4}-\d{2}-\d{2}\.log(\.gz)?/;
+const safeLogFileRegex = /^maintainerr-\d{4}-\d{2}-\d{2}\.log(\.gz)?$/;
+
+const isPathInsideDirectory = (directoryPath: string, candidatePath: string) =>
+  candidatePath.startsWith(`${directoryPath}${path.sep}`);
 
 @Controller('/api/logs')
 export class LogsController implements BeforeApplicationShutdown {
@@ -269,8 +272,29 @@ export class LogsController implements BeforeApplicationShutdown {
     }
 
     const filePath = path.join(logsDirectory, file);
-    const fileMimeType = mime.lookup(filePath);
-    const fileStream: Readable = createReadStream(filePath);
+    const fileStats = await lstat(filePath).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') {
+          throw new HttpException('File not found', HttpStatus.NOT_FOUND);
+        }
+
+        throw error;
+      },
+    );
+    if (fileStats.isSymbolicLink() || !fileStats.isFile()) {
+      throw new HttpException('Invalid file', HttpStatus.BAD_REQUEST);
+    }
+
+    const [resolvedDir, resolvedFilePath] = await Promise.all([
+      realpath(logsDirectory),
+      realpath(filePath),
+    ]);
+    if (!isPathInsideDirectory(resolvedDir, resolvedFilePath)) {
+      throw new HttpException('Invalid file', HttpStatus.BAD_REQUEST);
+    }
+
+    const fileMimeType = mime.lookup(resolvedFilePath);
+    const fileStream: Readable = createReadStream(resolvedFilePath);
 
     return new StreamableFile(fileStream, {
       type: fileMimeType !== false ? fileMimeType : 'application/octet-stream',
