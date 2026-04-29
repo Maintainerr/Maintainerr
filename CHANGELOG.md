@@ -1,3 +1,27 @@
+## Highlights
+- Fix: Resolved a critical path traversal vulnerability in the log file download endpoint, preventing unauthorized file access.
+- Feat: Added support for custom collection poster uploads, including endpoints for upload, fetch, and clear, with integration for Plex and Jellyfin (#2784).
+- Feat: Introduced caching for Jellyfin collections and their children to reduce redundant queries during rule execution (#2800).
+
+## Features
+- Added support for ntfy.sh as a notification service (#2769).
+
+## Fixes
+- Fixed sticky "Collection handling is already running" error by improving lock cleanup and hardening rule executor job handling (#2801).
+- Resolved server crash during overlay "Run Now" operations caused by broken streams or transient Plex upload failures (#2781).
+- Fixed TypeScript configuration to unblock `tsc` and resolved hidden type errors in the UI (#2776).
+- Addressed issues with overlay preset editing, cron discoverability, and tab gating (#2775).
+- Added a request timeout for Plex API calls and improved error handling for watch-history retrieval (#2773).
+- Fixed cross-rule contamination for automatic collections with the same title, ensuring proper collection linkage and item assignment (#2766).
+- Deduplicated sibling-rule media events within a single rule-executor batch to prevent duplicate notifications.
+
+## Internal
+- Improved Fider triage workflows, including automated tagging, re-evaluation, and stale post handling.
+- Enhanced release process by restoring version headers and adding a "New Contributors" section.
+
+## Dependencies
+- Updated 10 dependencies, including `typescript-eslint`, `react-hook-form`, and `nodemailer`.
+
 # [3.8.0](https://github.com/maintainerr/Maintainerr/compare/v3.7.0...v3.8.0) (2026-04-25)
 
 ## Highlights
