@@ -8,6 +8,13 @@ import path from 'path';
 import { AppModule } from './app/app.module';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
+import { installStdioPipeGuards } from './modules/logging/winston/stdioPipeGuard';
+
+// Pre-bootstrap guard so the console.warn/console.error calls below — and any
+// other write before LogsModule loads — cannot crash the process on a broken
+// stdio pipe. The logging module re-installs these (idempotent) for
+// defence-in-depth.
+installStdioPipeGuards();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
