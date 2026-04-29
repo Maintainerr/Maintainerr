@@ -34,12 +34,12 @@ export const attachStdioErrorHandler = (
   stream: ErrorListenableStream,
   onNonEpipeError?: (error: Error) => void,
 ): void => {
-  if (handledStreams.has(stream as object)) {
+  if (handledStreams.has(stream)) {
     return;
   }
 
   stream.on('error', createStdioErrorHandler(onNonEpipeError));
-  handledStreams.add(stream as object);
+  handledStreams.add(stream);
 };
 
 export const attachProcessStdioErrorHandlers = (): void => {
