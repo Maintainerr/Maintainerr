@@ -22,6 +22,11 @@
 ## Dependencies
 - Updated 10 dependencies, including `typescript-eslint`, `react-hook-form`, and `nodemailer`.
 
+## New Contributors
+- @GitGitro made their first contribution in #2769
+- @SmolSoftBoi made their first contribution in #2781
+- @natekspencer made their first contribution in #2800
+
 # [3.8.0](https://github.com/maintainerr/Maintainerr/compare/v3.7.0...v3.8.0) (2026-04-25)
 
 ## Highlights
