@@ -1,4 +1,5 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import OverlayTemplateEditorPage from './OverlayTemplateEditorPage'
 
@@ -52,8 +53,6 @@ vi.mock('../components/OverlayEditor/ElementToolbox', () => ({
 
 vi.mock('../components/OverlayEditor/LayerPanel', () => ({
   LayerPanel: ({ onSelect }: { onSelect: (id: string) => void }) => {
-    const { useEffect } = require('react') as typeof import('react')
-
     useEffect(() => {
       onSelect('image-1')
     }, [onSelect])

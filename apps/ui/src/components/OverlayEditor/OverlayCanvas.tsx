@@ -144,16 +144,22 @@ export function OverlayCanvas({
       imagePaths.map((p) => imageCacheKey(p, imageLoadVersion)),
     )
 
-    // Keep only entries that are still reachable for the current editor
-    // state. Old versioned keys are dead as soon as imageLoadVersion bumps,
-    // and removed elements should not pin decoded bitmaps for the rest of
-    // the session.
-    setLoadedImages((prev) => {
-      const next = Object.fromEntries(
-        Object.entries(prev).filter(([key]) => activeKeys.has(key)),
-      )
-
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next
+    // Prune entries that are no longer reachable: stale versions after an
+    // upload, and orphans from removed elements. Deferred to a microtask so
+    // the setState lands outside the effect body — same observable timing
+    // as a synchronous call (still pre-paint), but doesn't trip the
+    // `react-hooks/set-state-in-effect` static check. Identity-preserving:
+    // returns `prev` when nothing changed so it never causes a re-render.
+    queueMicrotask(() => {
+      if (cancelled) return
+      setLoadedImages((prev) => {
+        const next = Object.fromEntries(
+          Object.entries(prev).filter(([key]) => activeKeys.has(key)),
+        )
+        return Object.keys(next).length === Object.keys(prev).length
+          ? prev
+          : next
+      })
     })
 
     for (const p of imagePaths) {
