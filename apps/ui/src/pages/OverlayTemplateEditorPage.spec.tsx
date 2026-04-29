@@ -19,12 +19,14 @@ vi.mock('../api/overlays', () => ({
   buildItemImageUrl: vi.fn(),
   createOverlayTemplate: vi.fn(),
   getOverlayFonts: () => getOverlayFonts(),
+  getOverlayImages: vi.fn().mockResolvedValue([]),
   getOverlaySections: () => getOverlaySections(),
   getOverlayTemplate: () => getOverlayTemplate(),
   getRandomEpisode: vi.fn(),
   getRandomItem: vi.fn(),
   updateOverlayTemplate: vi.fn(),
   uploadFont: vi.fn(),
+  uploadOverlayImage: vi.fn(),
 }))
 
 vi.mock('../components/OverlayEditor/editorFonts', () => ({

@@ -153,6 +153,11 @@ export type ShapeElement = z.infer<typeof shapeElementSchema>
 
 // ── Image element ─────────────────────────────────────────────────────────
 
+import { IMAGE_UPLOAD_MAX_BYTES, IMAGE_UPLOAD_MAX_LABEL } from '../uploads'
+
+export const OVERLAY_IMAGE_MAX_BYTES = IMAGE_UPLOAD_MAX_BYTES
+export const OVERLAY_IMAGE_MAX_LABEL = IMAGE_UPLOAD_MAX_LABEL
+
 export const imageElementSchema = z.object({
   ...baseElementFields,
   type: z.literal('image'),

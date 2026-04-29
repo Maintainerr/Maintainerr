@@ -1,5 +1,9 @@
 import {
   isSafeFilename,
+  OVERLAY_IMAGE_EXTENSIONS,
+  OVERLAY_IMAGE_FORMATS,
+  OVERLAY_IMAGE_MAX_BYTES,
+  OVERLAY_IMAGE_MAX_LABEL,
   OverlayLibrarySection,
   OverlayPreviewItem,
   OverlaySettings,
@@ -36,6 +40,7 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
+import sharp from 'sharp';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerSetupGuard } from '../api/media-server/guards/media-server-setup.guard';
 import { CollectionsService } from '../collections/collections.service';
@@ -56,6 +61,11 @@ export class OverlaysController {
     ['.otf', 'font/otf'],
     ['.woff', 'font/woff'],
   ]);
+  // Driven from the shared OVERLAY_IMAGE_FORMATS contract so any added
+  // extension lights up the server validation and the UI picker together.
+  private readonly imageContentTypes = new Map<string, string>(
+    OVERLAY_IMAGE_FORMATS.map((f) => [f.extension, f.mime] as const),
+  );
 
   constructor(
     private readonly settingsService: OverlaySettingsService,
@@ -316,12 +326,123 @@ export class OverlaysController {
 
     const safeName = sanitizeFilenameChars(path.basename(file.originalname));
     const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
-
-    fs.mkdirSync(userFontsDir, { recursive: true });
     const destPath = path.join(userFontsDir, safeName);
     fs.writeFileSync(destPath, file.buffer);
 
     return { name: safeName, path: destPath };
+  }
+
+  // ── Images ──────────────────────────────────────────────────────────────
+
+  private resolveImageContentType(fileName: string): string | undefined {
+    return this.imageContentTypes.get(path.extname(fileName).toLowerCase());
+  }
+
+  private isSupportedImageFile(fileName: string): boolean {
+    return this.resolveImageContentType(fileName) !== undefined;
+  }
+
+  private getImagesDir(): string {
+    return path.join(configDataDir, 'overlays', 'images');
+  }
+
+  @Get('images')
+  listImages() {
+    const imagesDir = this.getImagesDir();
+    return fs
+      .readdirSync(imagesDir)
+      .filter((f) => this.isSupportedImageFile(f))
+      .map((name) => ({ name, path: path.join(imagesDir, name) }));
+  }
+
+  @Get('images/:name')
+  getImage(
+    @Param('name') name: string,
+    @Res({ passthrough: true }) res: Response,
+  ): StreamableFile {
+    if (!isSafeFilename(name)) {
+      throw new HttpException('Invalid image name', HttpStatus.BAD_REQUEST);
+    }
+    const contentType = this.resolveImageContentType(name);
+    if (!contentType) {
+      throw new HttpException('Unsupported image type', HttpStatus.BAD_REQUEST);
+    }
+    const filePath = path.join(this.getImagesDir(), name);
+    if (!fs.existsSync(filePath)) {
+      throw new HttpException('Image not found', HttpStatus.NOT_FOUND);
+    }
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'no-cache');
+    return new StreamableFile(fs.createReadStream(filePath));
+  }
+
+  @Post('images')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: OVERLAY_IMAGE_MAX_BYTES },
+    }),
+  )
+  async uploadImage(
+    @UploadedFile() file: { originalname: string; buffer: Buffer } | undefined,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new HttpException('No image file uploaded', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!this.isSupportedImageFile(file.originalname)) {
+      throw new HttpException(
+        `Only ${OVERLAY_IMAGE_EXTENSIONS.join(', ')} image files are supported`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    let detectedFormat: string | undefined;
+    try {
+      const meta = await sharp(file.buffer).metadata();
+      detectedFormat = meta.format;
+    } catch {
+      throw new HttpException(
+        'Uploaded file is not a valid image',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Reject extension/content mismatches: a PNG renamed to .jpg would
+    // otherwise be served back with a Content-Type derived from the
+    // extension, which is misleading and a small spoofing risk. Compare
+    // sharp's detected format against the format expected for the
+    // sanitized extension. Both sides use canonical names (jpeg/png/webp).
+    const expectedContentType = this.resolveImageContentType(file.originalname);
+    const expectedFormat = expectedContentType?.replace(/^image\//, '');
+    if (detectedFormat && expectedFormat && detectedFormat !== expectedFormat) {
+      throw new HttpException(
+        `File contents (${detectedFormat}) do not match the file extension`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const safeName = sanitizeFilenameChars(path.basename(file.originalname));
+    const destPath = path.join(this.getImagesDir(), safeName);
+    fs.writeFileSync(destPath, file.buffer);
+
+    this.logger.log(
+      `Uploaded overlay image "${safeName}" (${OVERLAY_IMAGE_MAX_LABEL} max)`,
+    );
+
+    return { name: safeName, path: destPath };
+  }
+
+  @Delete('images/:name')
+  deleteImage(@Param('name') name: string) {
+    if (!isSafeFilename(name)) {
+      throw new HttpException('Invalid image name', HttpStatus.BAD_REQUEST);
+    }
+    const filePath = path.join(this.getImagesDir(), name);
+    if (!fs.existsSync(filePath)) {
+      throw new HttpException('Image not found', HttpStatus.NOT_FOUND);
+    }
+    fs.unlinkSync(filePath);
+    return { success: true };
   }
 
   // ── Templates ───────────────────────────────────────────────────────────

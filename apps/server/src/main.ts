@@ -61,6 +61,15 @@ function createDataDirectoryStructure() {
       });
     }
 
+    // create overlay user-resource dirs so the list/delete endpoints can
+    // operate on a fresh install without first having to upload something
+    for (const name of ['overlays/fonts', 'overlays/images']) {
+      const overlayDir = path.join(dataDir, name);
+      if (!fs.existsSync(overlayDir)) {
+        fs.mkdirSync(overlayDir, { recursive: true, mode: 0o777 });
+      }
+    }
+
     // if db already exists, check r/w permissions
     const db = path.join(dataDir, 'maintainerr.sqlite');
     if (fs.existsSync(db)) {

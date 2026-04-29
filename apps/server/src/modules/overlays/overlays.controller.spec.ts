@@ -145,10 +145,7 @@ describe('OverlaysController', () => {
       buffer: Buffer.from('font'),
     });
 
-    expect(mockedMkdirSync).toHaveBeenCalledWith(
-      expect.stringContaining(path.join('overlays', 'fonts')),
-      { recursive: true },
-    );
+    expect(mockedMkdirSync).not.toHaveBeenCalled();
     expect(mockedWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining(path.join('overlays', 'fonts', 'Inter-Bold.ttf')),
       expect.any(Buffer),

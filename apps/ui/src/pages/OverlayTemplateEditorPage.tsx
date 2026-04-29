@@ -12,12 +12,14 @@ import {
   buildItemImageUrl,
   createOverlayTemplate,
   getOverlayFonts,
+  getOverlayImages,
   getOverlaySections,
   getOverlayTemplate,
   getRandomEpisode,
   getRandomItem,
   updateOverlayTemplate,
   uploadFont,
+  uploadOverlayImage,
 } from '../api/overlays'
 import Button from '../components/Common/Button'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
@@ -73,7 +75,9 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
   const [selectedSection, setSelectedSection] = useState('')
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null)
   const [fonts, setFonts] = useState<{ name: string; path: string }[]>([])
+  const [images, setImages] = useState<{ name: string; path: string }[]>([])
   const [fontLoadVersion, setFontLoadVersion] = useState(0)
+  const [imageLoadVersion, setImageLoadVersion] = useState(0)
   const [mobileTab, setMobileTab] = useState<'tools' | 'layers' | 'properties'>(
     'layers',
   )
@@ -154,6 +158,18 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
   }, [showWarning])
 
   useEffect(() => {
+    void getOverlayImages()
+      .then((i) => {
+        if (i) setImages(i)
+      })
+      .catch(() => {
+        showWarning(
+          'Could not load overlay image list. Image elements will only render if the filename exists on disk.',
+        )
+      })
+  }, [showWarning])
+
+  useEffect(() => {
     if (fonts.length === 0) return
 
     let cancelled = false
@@ -186,6 +202,42 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
         showError('Failed to upload font')
       }
       return null
+    },
+    [showError, showSuccess],
+  )
+
+  const handleUploadImage = useCallback(
+    async (file: File) => {
+      // The upload itself is the success boundary — once the server has
+      // accepted and stored the file, refreshing the list is a separate,
+      // non-fatal concern. A transient list-fetch failure must not roll
+      // back the success message or prevent selecting the new asset.
+      let result: { name: string; path: string } | null = null
+      try {
+        result = await uploadOverlayImage(file)
+      } catch (err) {
+        showError(getApiErrorMessage(err, 'Failed to upload image'))
+        return null
+      }
+      if (!result) return null
+
+      // Bust the canvas image cache so an in-place replacement of the
+      // same filename actually shows the new bytes.
+      setImageLoadVersion((v) => v + 1)
+      showSuccess(`Image "${result.name}" uploaded`)
+
+      // Best-effort list refresh. If it fails, the picker may not show the
+      // newly uploaded option until the editor is reopened, but the upload
+      // itself stands and the caller still gets a valid result so the
+      // current element can be wired to it immediately.
+      try {
+        const updated = await getOverlayImages()
+        if (updated) setImages(updated)
+      } catch {
+        // Intentionally swallowed.
+      }
+
+      return result
     },
     [showError, showSuccess],
   )
@@ -487,6 +539,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                   onUpdate={handleUpdateElement}
                   backgroundUrl={backgroundUrl}
                   fontLoadVersion={fontLoadVersion}
+                  imageLoadVersion={imageLoadVersion}
                 />
               </div>
 
@@ -508,6 +561,8 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                       onChange={handleUpdateElement}
                       fonts={fonts}
                       onUploadFont={handleUploadFont}
+                      images={images}
+                      onUploadImage={handleUploadImage}
                     />
                   ) : (
                     <p className="text-center text-xs text-zinc-500">
@@ -561,6 +616,8 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                         onChange={handleUpdateElement}
                         fonts={fonts}
                         onUploadFont={handleUploadFont}
+                        images={images}
+                        onUploadImage={handleUploadImage}
                       />
                     ) : (
                       <p className="text-center text-xs text-zinc-500">
