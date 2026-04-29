@@ -72,9 +72,7 @@ describe('stdioPipeGuard', () => {
       const stream = makeStream();
       installStdioPipeGuard(stream);
 
-      expect(() => stream.emit('error', makeError('ENOSPC'))).toThrow(
-        /ENOSPC/,
-      );
+      expect(() => stream.emit('error', makeError('ENOSPC'))).toThrow(/ENOSPC/);
     });
 
     it('is idempotent: re-installing does not double-attach listeners', () => {
