@@ -1,8 +1,15 @@
 import { HttpException, StreamableFile } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import sharp from 'sharp';
 import { createMockLogger } from '../../../test/utils/data';
 import { OverlaysController } from './overlays.controller';
+
+jest.mock('sharp', () =>
+  jest.fn(() => ({
+    metadata: jest.fn(),
+  })),
+);
 
 jest.mock('fs', () => {
   const actual = jest.requireActual('fs');
@@ -27,6 +34,7 @@ const mockedMkdirSync = fs.mkdirSync as jest.MockedFunction<
 const mockedWriteFileSync = fs.writeFileSync as jest.MockedFunction<
   typeof fs.writeFileSync
 >;
+const mockedSharp = sharp as jest.MockedFunction<typeof sharp>;
 
 describe('OverlaysController', () => {
   let controller: OverlaysController;
@@ -36,6 +44,7 @@ describe('OverlaysController', () => {
     mockedExistsSync.mockReset();
     mockedMkdirSync.mockClear();
     mockedWriteFileSync.mockClear();
+    mockedSharp.mockReset();
     mockedExistsSync.mockReturnValue(false);
 
     controller = new OverlaysController(
@@ -155,6 +164,48 @@ describe('OverlaysController', () => {
         name: 'Inter-Bold.ttf',
         path: expect.stringContaining(
           path.join('overlays', 'fonts', 'Inter-Bold.ttf'),
+        ),
+      }),
+    );
+  });
+
+  it('rejects image uploads when bytes do not match the file extension', async () => {
+    mockedSharp.mockReturnValue({
+      metadata: jest.fn().mockResolvedValue({ format: 'png' }),
+    } as any);
+
+    await expect(
+      controller.uploadImage({
+        originalname: 'poster.jpg',
+        buffer: Buffer.from('image'),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: 'File contents (png) do not match the file extension',
+    });
+
+    expect(mockedWriteFileSync).not.toHaveBeenCalled();
+  });
+
+  it('persists supported image uploads to the overlays image directory', async () => {
+    mockedSharp.mockReturnValue({
+      metadata: jest.fn().mockResolvedValue({ format: 'png' }),
+    } as any);
+
+    const result = await controller.uploadImage({
+      originalname: 'poster.png',
+      buffer: Buffer.from('image'),
+    });
+
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+      expect.stringContaining(path.join('overlays', 'images', 'poster.png')),
+      expect.any(Buffer),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        name: 'poster.png',
+        path: expect.stringContaining(
+          path.join('overlays', 'images', 'poster.png'),
         ),
       }),
     );

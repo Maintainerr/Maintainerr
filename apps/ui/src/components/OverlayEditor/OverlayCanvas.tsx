@@ -140,6 +140,22 @@ export function OverlayCanvas({
 
   useEffect(() => {
     let cancelled = false
+    const activeKeys = new Set(
+      imagePaths.map((p) => imageCacheKey(p, imageLoadVersion)),
+    )
+
+    // Keep only entries that are still reachable for the current editor
+    // state. Old versioned keys are dead as soon as imageLoadVersion bumps,
+    // and removed elements should not pin decoded bitmaps for the rest of
+    // the session.
+    setLoadedImages((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([key]) => activeKeys.has(key)),
+      )
+
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next
+    })
+
     for (const p of imagePaths) {
       const key = imageCacheKey(p, imageLoadVersion)
       const img = new window.Image()
