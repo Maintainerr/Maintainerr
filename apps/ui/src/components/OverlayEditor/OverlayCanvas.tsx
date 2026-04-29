@@ -26,6 +26,12 @@ interface OverlayCanvasProps {
 
 const MAX_DISPLAY_HEIGHT = 600
 const MIN_DISPLAY_HEIGHT = 240
+// Cap how far past the canvas the user can grow an element via the
+// transformer. Touch resize on iOS can yield runaway coordinates if the
+// underlying touch event reports unexpected positions (e.g. multi-touch,
+// pinch-zoom, address-bar collapse mid-drag); clamping the box keeps a
+// glitchy gesture from saving million-pixel widths into the template.
+const MAX_RESIZE_FACTOR = 4
 
 export function OverlayCanvas({
   elements,
@@ -40,6 +46,11 @@ export function OverlayCanvas({
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const trRef = useRef<Konva.Transformer>(null)
+  // Mirror the latest scale into a ref so transformend reads the value that
+  // was in effect when the gesture finished — not whichever scale the
+  // useCallback closure happened to capture. This matters when a layout
+  // shift (e.g. iOS address bar) recomputes scale during the drag.
+  const scaleRef = useRef(1)
   const [loadedBackground, setLoadedBackground] = useState<{
     image: HTMLImageElement
     url: string
@@ -80,6 +91,10 @@ export function OverlayCanvas({
   const scale = Math.min(1, scaleByHeight, scaleByWidth)
   const displayW = Math.max(1, Math.round(canvasWidth * scale))
   const displayH = Math.max(1, Math.round(canvasHeight * scale))
+
+  useEffect(() => {
+    scaleRef.current = scale
+  }, [scale])
 
   // Load background image when URL changes
   useEffect(() => {
@@ -137,13 +152,14 @@ export function OverlayCanvas({
   const handleDragEnd = useCallback(
     (el: OverlayElement, e: Konva.KonvaEventObject<DragEvent>) => {
       const node = e.target
+      const currentScale = scaleRef.current || 1
       onUpdate({
         ...el,
-        x: Math.round(node.x() / scale),
-        y: Math.round(node.y() / scale),
+        x: Math.round(node.x() / currentScale),
+        y: Math.round(node.y() / currentScale),
       })
     },
-    [onUpdate, scale],
+    [onUpdate],
   )
 
   const handleTransformEnd = useCallback(
@@ -151,21 +167,31 @@ export function OverlayCanvas({
       const node = e.target
       const scaleXNode = node.scaleX()
       const scaleYNode = node.scaleY()
+      const currentScale = scaleRef.current || 1
 
       // Reset scale and apply to width/height
       node.scaleX(1)
       node.scaleY(1)
 
+      const maxWidth = canvasWidth * MAX_RESIZE_FACTOR
+      const maxHeight = canvasHeight * MAX_RESIZE_FACTOR
+
       onUpdate({
         ...el,
-        x: Math.round(node.x() / scale),
-        y: Math.round(node.y() / scale),
-        width: Math.max(1, Math.round((node.width() * scaleXNode) / scale)),
-        height: Math.max(1, Math.round((node.height() * scaleYNode) / scale)),
+        x: Math.round(node.x() / currentScale),
+        y: Math.round(node.y() / currentScale),
+        width: Math.min(
+          maxWidth,
+          Math.max(1, Math.round((node.width() * scaleXNode) / currentScale)),
+        ),
+        height: Math.min(
+          maxHeight,
+          Math.max(1, Math.round((node.height() * scaleYNode) / currentScale)),
+        ),
         rotation: Math.round(node.rotation()),
       })
     },
-    [onUpdate, scale],
+    [onUpdate, canvasWidth, canvasHeight],
   )
 
   const sorted = [...elements]
@@ -238,6 +264,18 @@ export function OverlayCanvas({
               ref={trRef as React.RefObject<Konva.Transformer>}
               boundBoxFunc={(oldBox, newBox) => {
                 if (newBox.width < 5 || newBox.height < 5) return oldBox
+                const maxW = displayW * MAX_RESIZE_FACTOR
+                const maxH = displayH * MAX_RESIZE_FACTOR
+                if (
+                  Math.abs(newBox.width) > maxW ||
+                  Math.abs(newBox.height) > maxH ||
+                  !Number.isFinite(newBox.width) ||
+                  !Number.isFinite(newBox.height) ||
+                  !Number.isFinite(newBox.x) ||
+                  !Number.isFinite(newBox.y)
+                ) {
+                  return oldBox
+                }
                 return newBox
               }}
               anchorSize={8}
