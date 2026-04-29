@@ -4,6 +4,12 @@ import {
   createStdioErrorHandler,
 } from './stdio-error-handler';
 
+const createMockStream = (): Pick<NodeJS.WritableStream, 'on'> &
+  EventEmitter => {
+  return new EventEmitter() as unknown as Pick<NodeJS.WritableStream, 'on'> &
+    EventEmitter;
+};
+
 describe('stdio error handler', () => {
   it('ignores broken pipe errors', () => {
     const handler = createStdioErrorHandler();
@@ -22,21 +28,17 @@ describe('stdio error handler', () => {
   });
 
   it('allows custom handling for unexpected stream errors', () => {
-    const onUnexpectedError = jest.fn();
-    const handler = createStdioErrorHandler(onUnexpectedError);
+    const onNonEpipeError = jest.fn();
+    const handler = createStdioErrorHandler(onNonEpipeError);
     const error = new Error('boom');
 
     handler(error);
 
-    expect(onUnexpectedError).toHaveBeenCalledWith(error);
+    expect(onNonEpipeError).toHaveBeenCalledWith(error);
   });
 
   it('attaches at most one handler per stream', () => {
-    const stream = new EventEmitter() as unknown as Pick<
-      NodeJS.WritableStream,
-      'on'
-    > &
-      EventEmitter;
+    const stream = createMockStream();
 
     attachStdioErrorHandler(stream);
     attachStdioErrorHandler(stream);
@@ -45,11 +47,7 @@ describe('stdio error handler', () => {
   });
 
   it('prevents stream EPIPE events from surfacing as uncaught exceptions', () => {
-    const stream = new EventEmitter() as unknown as Pick<
-      NodeJS.WritableStream,
-      'on'
-    > &
-      EventEmitter;
+    const stream = createMockStream();
     attachStdioErrorHandler(stream);
 
     const error = Object.assign(new Error('write EPIPE'), {

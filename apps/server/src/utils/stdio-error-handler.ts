@@ -17,14 +17,14 @@ const rethrowUnexpectedError = (error: Error): never => {
 };
 
 export const createStdioErrorHandler = (
-  onUnexpectedError: (error: Error) => void = rethrowUnexpectedError,
+  onNonEpipeError: (error: Error) => void = rethrowUnexpectedError,
 ) => {
   return (error: unknown): void => {
     if (isBrokenPipeError(error)) {
       return;
     }
 
-    onUnexpectedError(
+    onNonEpipeError(
       error instanceof Error ? error : new Error(String(error)),
     );
   };
@@ -32,15 +32,14 @@ export const createStdioErrorHandler = (
 
 export const attachStdioErrorHandler = (
   stream: ErrorListenableStream,
-  onUnexpectedError?: (error: Error) => void,
+  onNonEpipeError?: (error: Error) => void,
 ): void => {
-  const streamKey = stream as object;
-  if (handledStreams.has(streamKey)) {
+  if (handledStreams.has(stream as object)) {
     return;
   }
 
-  stream.on('error', createStdioErrorHandler(onUnexpectedError));
-  handledStreams.add(streamKey);
+  stream.on('error', createStdioErrorHandler(onNonEpipeError));
+  handledStreams.add(stream as object);
 };
 
 export const attachProcessStdioErrorHandlers = (): void => {
