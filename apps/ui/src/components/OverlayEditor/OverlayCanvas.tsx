@@ -499,7 +499,6 @@ function ElementRenderer({
               y={offsetY}
               width={drawW}
               height={drawH}
-              listening={false}
             />
           </Group>
         )

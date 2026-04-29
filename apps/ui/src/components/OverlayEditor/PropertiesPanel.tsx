@@ -488,11 +488,7 @@ function FontFields<
         value={selectValue}
         options={fonts}
         onSelect={applyFontByName}
-        onUpload={async (file) => {
-          const uploaded = await onUploadFont(file)
-          if (uploaded) applyFontByName(uploaded.name)
-          return uploaded
-        }}
+        onUpload={onUploadFont}
         accept=".ttf,.otf,.woff"
         uploadTitle="Upload font (.ttf, .otf, .woff)"
         placeholder={el.fontPath || 'Select font...'}
