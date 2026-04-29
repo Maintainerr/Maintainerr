@@ -8,6 +8,7 @@ import path from 'path';
 import { AppModule } from './app/app.module';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
+import { attachProcessStdioErrorHandlers } from './utils/stdio-error-handler';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -77,6 +78,7 @@ function createDataDirectoryStructure() {
   }
 }
 
+attachProcessStdioErrorHandlers();
 createDataDirectoryStructure();
 bootstrap().catch((error) => {
   console.error(
