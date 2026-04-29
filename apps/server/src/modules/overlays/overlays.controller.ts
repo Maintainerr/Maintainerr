@@ -271,12 +271,15 @@ export class OverlaysController {
     const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
     const dirs = [userFontsDir, this.fontsDir];
 
+    // Mirror the validation in `getFont` and the render service so the
+    // picker can't surface manually-dropped files (e.g. with spaces) that
+    // the GET endpoint would reject with 400.
     const byName = new Map<string, { name: string; path: string }>();
     for (const dir of dirs) {
       if (!fs.existsSync(dir)) continue;
       const files = fs
         .readdirSync(dir)
-        .filter((f) => this.isSupportedFontFile(f));
+        .filter((f) => this.isSupportedFontFile(f) && isSafeFilename(f));
       for (const file of files) {
         if (!byName.has(file)) {
           byName.set(file, { name: file, path: path.join(dir, file) });

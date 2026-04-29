@@ -174,6 +174,21 @@ describe('OverlaysController', () => {
     );
   });
 
+  it('omits unsafe filenames from the font picker', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReaddirSync.mockReturnValue([
+      'Inter-Bold.ttf',
+      'My Font.ttf',
+      '../escape.ttf',
+      'subdir/nested.ttf',
+      'Inter-Bold.woff2',
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
+
+    const result = controller.listFonts();
+
+    expect(result.map((entry) => entry.name)).toEqual(['Inter-Bold.ttf']);
+  });
+
   it('omits unsafe filenames from the image picker', () => {
     mockedReaddirSync.mockReturnValue([
       'safe.png',
