@@ -18,6 +18,7 @@ jest.mock('fs', () => {
     createReadStream: jest.fn(() => 'stream'),
     existsSync: jest.fn(),
     mkdirSync: jest.fn(),
+    readdirSync: jest.fn(),
     writeFileSync: jest.fn(),
   };
 });
@@ -31,6 +32,9 @@ const mockedExistsSync = fs.existsSync as jest.MockedFunction<
 const mockedMkdirSync = fs.mkdirSync as jest.MockedFunction<
   typeof fs.mkdirSync
 >;
+const mockedReaddirSync = fs.readdirSync as jest.MockedFunction<
+  typeof fs.readdirSync
+>;
 const mockedWriteFileSync = fs.writeFileSync as jest.MockedFunction<
   typeof fs.writeFileSync
 >;
@@ -43,6 +47,7 @@ describe('OverlaysController', () => {
     mockedCreateReadStream.mockClear();
     mockedExistsSync.mockReset();
     mockedMkdirSync.mockClear();
+    mockedReaddirSync.mockReset();
     mockedWriteFileSync.mockClear();
     mockedSharp.mockReset();
     mockedExistsSync.mockReturnValue(false);
@@ -167,6 +172,20 @@ describe('OverlaysController', () => {
         ),
       }),
     );
+  });
+
+  it('omits unsafe filenames from the image picker', () => {
+    mockedReaddirSync.mockReturnValue([
+      'safe.png',
+      'My Logo.png',
+      '../escape.png',
+      'subdir/nested.png',
+      'logo.svg',
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
+
+    const result = controller.listImages();
+
+    expect(result.map((entry) => entry.name)).toEqual(['safe.png']);
   });
 
   it('rejects image uploads when bytes do not match the file extension', async () => {

@@ -349,9 +349,12 @@ export class OverlaysController {
   @Get('images')
   listImages() {
     const imagesDir = this.getImagesDir();
+    // Mirror the validation in `getImage` and the render service so the
+    // picker can't surface manually-dropped files (e.g. with spaces) that
+    // the GET endpoint would reject with 400.
     return fs
       .readdirSync(imagesDir)
-      .filter((f) => this.isSupportedImageFile(f))
+      .filter((f) => this.isSupportedImageFile(f) && isSafeFilename(f))
       .map((name) => ({ name, path: path.join(imagesDir, name) }));
   }
 
