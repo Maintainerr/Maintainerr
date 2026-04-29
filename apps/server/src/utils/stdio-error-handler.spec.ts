@@ -4,10 +4,10 @@ import {
   createStdioErrorHandler,
 } from './stdio-error-handler';
 
-const createMockStream = (): Pick<NodeJS.WritableStream, 'on'> &
-  EventEmitter => {
-  return new EventEmitter() as unknown as Pick<NodeJS.WritableStream, 'on'> &
-    EventEmitter;
+type MockStream = EventEmitter & Pick<NodeJS.WritableStream, 'on'>;
+
+const createMockStream = (): MockStream => {
+  return new EventEmitter() as MockStream;
 };
 
 describe('stdio error handler', () => {

@@ -78,9 +78,13 @@ function createDataDirectoryStructure() {
   }
 }
 
-attachProcessStdioErrorHandlers();
-createDataDirectoryStructure();
-bootstrap().catch((error) => {
+async function startApplication() {
+  attachProcessStdioErrorHandlers();
+  createDataDirectoryStructure();
+  await bootstrap();
+}
+
+startApplication().catch((error) => {
   console.error(
     'A fatal error occurred starting the server. This is likely a bug, please report this issue on GitHub.',
     { error },
