@@ -8,6 +8,13 @@ import path from 'path';
 import { AppModule } from './app/app.module';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
+import { installStdioPipeGuards } from './modules/logging/winston/stdioPipeGuard';
+
+// Pre-bootstrap guard so the console.warn/console.error calls below — and any
+// other write before LogsModule loads — cannot crash the process on a broken
+// stdio pipe. The logging module re-installs these (idempotent) for
+// defence-in-depth.
+installStdioPipeGuards();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -95,6 +102,21 @@ process
     // We do not exit the process here as the error is unlikely to be fatal.
   })
   .on('uncaughtException', (err) => {
+    const code =
+      err && typeof err === 'object'
+        ? (err as NodeJS.ErrnoException).code
+        : undefined;
+
+    // A broken stdout/stderr pipe (EPIPE/ERR_STREAM_DESTROYED) is an
+    // output-sink failure, not an application correctness failure. The
+    // logging module installs guards on process.stdout/stderr to swallow
+    // these; this is a silent fallback in case one slips through. We don't
+    // log here because writing to the same broken sink could re-trigger the
+    // crash we're avoiding.
+    if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') {
+      return;
+    }
+
     new Logger('main').error(
       'The server has crashed because of an uncaughtException. This is likely a bug, please report this issue on GitHub.',
       err,

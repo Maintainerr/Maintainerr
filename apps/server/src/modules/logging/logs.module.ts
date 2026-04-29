@@ -16,6 +16,9 @@ import {
   MaintainerrLoggerFactory,
 } from './logs.service';
 import { EventEmitterTransport } from './winston/eventEmitterTransport';
+import { installStdioPipeGuards } from './winston/stdioPipeGuard';
+
+installStdioPipeGuards();
 
 const dataDir =
   process.env.NODE_ENV === 'production'
