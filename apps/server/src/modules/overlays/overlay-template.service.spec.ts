@@ -162,21 +162,19 @@ describe('OverlayTemplateService', () => {
 
   it('returns the requested template when its mode matches the collection mode', async () => {
     const repo = {
-      findOne: jest
-        .fn()
-        .mockResolvedValueOnce({
-          id: 7,
-          name: 'Poster template',
-          description: 'poster',
-          mode: 'poster',
-          canvasWidth: 1000,
-          canvasHeight: 1500,
-          elements: [],
-          isPreset: false,
-          isDefault: false,
-          createdAt: new Date('2026-04-17T10:00:00.000Z'),
-          updatedAt: new Date('2026-04-17T10:00:00.000Z'),
-        }),
+      findOne: jest.fn().mockResolvedValueOnce({
+        id: 7,
+        name: 'Poster template',
+        description: 'poster',
+        mode: 'poster',
+        canvasWidth: 1000,
+        canvasHeight: 1500,
+        elements: [],
+        isPreset: false,
+        isDefault: false,
+        createdAt: new Date('2026-04-17T10:00:00.000Z'),
+        updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+      }),
       save: jest.fn(),
       find: jest.fn(),
       update: jest.fn(),
