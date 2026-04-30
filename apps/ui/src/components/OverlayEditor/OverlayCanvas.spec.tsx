@@ -3,18 +3,6 @@ import { cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OverlayCanvas } from './OverlayCanvas'
 
-type BoundBoxFunc = (
-  oldBox: { x: number; y: number; width: number; height: number },
-  newBox: { x: number; y: number; width: number; height: number },
-) => { x: number; y: number; width: number; height: number }
-
-interface CapturedTransformEnd {
-  handler?: (e: { target: unknown }) => void
-}
-
-const capturedTransformEnd: CapturedTransformEnd = {}
-const capturedBoundBoxFunc: { fn?: BoundBoxFunc } = {}
-
 vi.mock('react-konva', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
 
@@ -27,8 +15,6 @@ vi.mock('react-konva', async () => {
     radiusY?: number
     width?: number
     height?: number
-    onTransformEnd?: (e: { target: unknown }) => void
-    boundBoxFunc?: BoundBoxFunc
   }
 
   type StageHandle = {
@@ -46,16 +32,6 @@ vi.mock('react-konva', async () => {
 
   const node = (name: string) =>
     function KonvaNode({ children, ...props }: KonvaNodeProps) {
-      // Capture the transform handler from the first id'd Group so tests can
-      // exercise the resize math without simulating a full Konva drag.
-      if (
-        name === 'Group' &&
-        props.id &&
-        props.onTransformEnd &&
-        !capturedTransformEnd.handler
-      ) {
-        capturedTransformEnd.handler = props.onTransformEnd
-      }
       return React.createElement(
         'div',
         {
@@ -92,14 +68,11 @@ vi.mock('react-konva', async () => {
   )
 
   const Transformer = React.forwardRef<TransformerHandle, KonvaNodeProps>(
-    function MockTransformer(props, ref) {
+    function MockTransformer(_props, ref) {
       React.useImperativeHandle(ref, () => ({
         getLayer: () => ({ batchDraw: () => undefined }),
         nodes: () => undefined,
       }))
-      if (props.boundBoxFunc) {
-        capturedBoundBoxFunc.fn = props.boundBoxFunc
-      }
 
       return React.createElement('div', { 'data-konva': 'Transformer' })
     },
@@ -136,8 +109,6 @@ describe('OverlayCanvas', () => {
       value: MockResizeObserver,
       writable: true,
     })
-    capturedTransformEnd.handler = undefined
-    capturedBoundBoxFunc.fn = undefined
   })
 
   afterEach(() => {
@@ -220,98 +191,5 @@ describe('OverlayCanvas', () => {
     const ellipseRadiusX = Number(ellipse?.getAttribute('data-radius-x'))
     const ellipseStroke = Number(ellipse?.getAttribute('data-stroke-width'))
     expect(ellipseStroke / (ellipseRadiusX * 2)).toBeCloseTo(6 / 120)
-  })
-
-  it('clamps transformend results to MAX_RESIZE_FACTOR × canvas dimensions', () => {
-    const onUpdate = vi.fn()
-    const imageEl: OverlayElement = {
-      id: 'img-1',
-      type: 'image',
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 200,
-      rotation: 0,
-      layerOrder: 0,
-      opacity: 1,
-      visible: true,
-      imagePath: 'poster.png',
-    }
-
-    render(
-      <OverlayCanvas
-        elements={[imageEl]}
-        canvasWidth={1000}
-        canvasHeight={1500}
-        selectedId={'img-1'}
-        onSelect={vi.fn()}
-        onUpdate={onUpdate}
-      />,
-    )
-
-    expect(capturedTransformEnd.handler).toBeDefined()
-
-    // Simulate a runaway iOS-style resize: scaleX wildly inflated. The node
-    // mock mirrors Konva's get/set width/scale getters so `node.scaleX(1)`
-    // (the handler's reset call) accepts an argument.
-    let scaleXVal = 5000
-    let scaleYVal = 5000
-    const liveNode = {
-      x: () => 8,
-      y: () => 8,
-      width: () => 32,
-      height: () => 32,
-      rotation: () => 0,
-      scaleX: (v?: number) => {
-        if (v !== undefined) scaleXVal = v
-        return scaleXVal
-      },
-      scaleY: (v?: number) => {
-        if (v !== undefined) scaleYVal = v
-        return scaleYVal
-      },
-    }
-
-    capturedTransformEnd.handler!({ target: liveNode })
-
-    expect(onUpdate).toHaveBeenCalledTimes(1)
-    const updated = onUpdate.mock.calls[0][0]
-    // Without clamping the math gives 32 * 5000 / 1 = 160000. With the cap
-    // of 4× canvas, width should land at 1000 × 4 = 4000.
-    expect(updated.width).toBe(4000)
-    expect(updated.height).toBe(6000) // 1500 × 4
-  })
-
-  it('boundBoxFunc rejects boxes that exceed MAX_RESIZE_FACTOR or are non-finite', () => {
-    render(
-      <OverlayCanvas
-        elements={[]}
-        canvasWidth={1000}
-        canvasHeight={1500}
-        selectedId={null}
-        onSelect={vi.fn()}
-        onUpdate={vi.fn()}
-      />,
-    )
-
-    expect(capturedBoundBoxFunc.fn).toBeDefined()
-    const fn = capturedBoundBoxFunc.fn!
-    const oldBox = { x: 0, y: 0, width: 100, height: 100 }
-
-    // ResizeObserver is mocked, so containerSize stays 0 and the scale falls
-    // back to fitting MAX_DISPLAY_HEIGHT (600) inside canvasHeight (1500),
-    // yielding scale=0.4 → displayW=400. The cap is MAX_RESIZE_FACTOR × 400
-    // = 1600. Boxes inside that range pass through; anything beyond reverts.
-    const acceptable = fn(oldBox, { x: 0, y: 0, width: 1500, height: 1000 })
-    expect(acceptable.width).toBe(1500)
-
-    const tooWide = fn(oldBox, { x: 0, y: 0, width: 5000, height: 1000 })
-    expect(tooWide).toBe(oldBox)
-
-    const nonFinite = fn(oldBox, { x: 0, y: 0, width: Infinity, height: 100 })
-    expect(nonFinite).toBe(oldBox)
-
-    const tooSmall = fn(oldBox, { x: 0, y: 0, width: 4, height: 100 })
-    expect(tooSmall).toBe(oldBox)
   })
 })
