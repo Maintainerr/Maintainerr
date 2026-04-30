@@ -61,6 +61,13 @@ const OverlaysWrapper = () => {
     [overlaysEnabled],
   )
 
+  // Mobile uses a native <select> for tab navigation, where iOS Safari just
+  // greys out disabled options without firing onChange — so a tap that lands
+  // on a locked route gives the user no signal at all (no toast either,
+  // since onChange never runs). A persistent inline notice keeps the
+  // disabled state visible without depending on transient feedback.
+  const showDisabledHint = !isLoading && !overlaysEnabled
+
   return (
     <>
       <div className="mt-6">
@@ -70,6 +77,11 @@ const OverlaysWrapper = () => {
           isRouteDisabled={isRouteDisabled}
           onBlockedNavigate={showOverlaysDisabledToast}
         />
+        {showDisabledHint && (
+          <p className="mt-2 text-xs text-zinc-400">
+            Templates are locked until overlays are enabled below.
+          </p>
+        )}
       </div>
       <div className="mt-10 min-h-[16rem] text-white">
         {isLoading ? (

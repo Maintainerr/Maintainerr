@@ -1,6 +1,10 @@
 import { ServarrAction } from '@maintainerr/contracts'
 import { describe, expect, it } from 'vitest'
-import { getStoredLibraryFallbackState, ruleGroupFormSchema } from './index'
+import {
+  getStoredLibraryFallbackState,
+  ruleGroupFormSchema,
+  shouldClearOverlayTemplateSelection,
+} from './index'
 
 describe('ruleGroupFormSchema', () => {
   it('allows missing arr server selection for fallback media server delete actions', () => {
@@ -104,5 +108,30 @@ describe('ruleGroupFormSchema', () => {
       storedLibraryMissing: true,
       showStoredLibraryFallback: true,
     })
+  })
+})
+
+describe('shouldClearOverlayTemplateSelection', () => {
+  // Regression for #2805: the saved selection must survive the initial
+  // render where overlayTemplates is still []. Clearing before the fetch
+  // resolves was reverting the user's choice on save.
+  it('does not clear the saved selection while templates are still loading', () => {
+    expect(shouldClearOverlayTemplateSelection(false, 7, [])).toBe(false)
+  })
+
+  it('does not clear when no template is selected', () => {
+    expect(shouldClearOverlayTemplateSelection(true, null, [{ id: 1 }])).toBe(
+      false,
+    )
+  })
+
+  it('keeps a selection that exists in the available list', () => {
+    expect(
+      shouldClearOverlayTemplateSelection(true, 7, [{ id: 7 }, { id: 9 }]),
+    ).toBe(false)
+  })
+
+  it('clears a selection that no longer matches once templates resolve', () => {
+    expect(shouldClearOverlayTemplateSelection(true, 7, [{ id: 9 }])).toBe(true)
   })
 })
