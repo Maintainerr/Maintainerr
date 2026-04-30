@@ -141,7 +141,7 @@ export class OverlayTemplateService implements OnModuleInit {
   ): Promise<OverlayTemplate | null> {
     if (overlayTemplateId) {
       const specific = await this.findById(overlayTemplateId);
-      if (specific) return specific;
+      if (specific?.mode === mode) return specific;
     }
     return this.findDefault(mode);
   }
