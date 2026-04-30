@@ -114,6 +114,28 @@ export const uploadFont = async (file: File) => {
   )
 }
 
+export const getOverlayImages = () =>
+  GetApiHandler<{ name: string; path: string }[]>('/overlays/images')
+
+export const buildOverlayImageUrl = (imageName: string, cacheBust?: number) => {
+  const base = `${API_BASE_PATH}/api/overlays/images/${encodeURIComponent(imageName)}`
+  return cacheBust !== undefined ? `${base}?v=${cacheBust}` : base
+}
+
+export const uploadOverlayImage = async (file: File) => {
+  const formData = new FormData()
+  formData.append('image', file)
+  return PostApiHandler<{ name: string; path: string }>(
+    '/overlays/images',
+    formData,
+  )
+}
+
+export const deleteOverlayImage = (imageName: string) =>
+  DeleteApiHandler<{ success: boolean }>(
+    `/overlays/images/${encodeURIComponent(imageName)}`,
+  )
+
 export const processAllOverlays = () =>
   PostApiHandler<{ processed: number; reverted: number; errors: number }>(
     '/overlays/process',

@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat .github/copilot-instructions.md"
+            "command": "cat AGENTS.md"
           }
         ]
       }

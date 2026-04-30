@@ -143,6 +143,41 @@ describe('StorageMetricsService', () => {
     });
   });
 
+  describe('buildCleanupTotals', () => {
+    it('keeps movie, show, season, and episode totals separate', async () => {
+      const getRawMany = jest.fn().mockResolvedValue([
+        { type: 'movie', handled: '3' },
+        { type: 'show', handled: '4' },
+        { type: 'season', handled: 5 },
+        { type: 'episode', handled: '6' },
+      ]);
+      // Self-chaining proxy: any query-builder method (select, addSelect,
+      // groupBy, where, orderBy, …) returns the same builder, so the test
+      // does not break when buildCleanupTotals adds more chained calls.
+      const queryBuilder: any = new Proxy(
+        { getRawMany },
+        {
+          get(target, prop) {
+            if (prop in target) return target[prop as keyof typeof target];
+            return jest.fn().mockReturnValue(queryBuilder);
+          },
+        },
+      );
+
+      (service as any).collectionRepo = {
+        createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      };
+
+      await expect((service as any).buildCleanupTotals()).resolves.toEqual({
+        itemsHandled: 18,
+        moviesHandled: 3,
+        showsHandled: 4,
+        seasonsHandled: 5,
+        episodesHandled: 6,
+      });
+    });
+  });
+
   describe('computeTotals', () => {
     type MountInput = Partial<StorageDiskspaceEntry> & {
       instanceType: 'radarr' | 'sonarr';

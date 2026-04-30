@@ -1,6 +1,6 @@
 import type { StorageMetricsResponse } from '@maintainerr/contracts'
 import { MediaServerType } from '@maintainerr/contracts'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GetApiHandler from '../../utils/ApiHandler'
@@ -19,8 +19,16 @@ vi.mock('../Common/LoadingSpinner', () => ({
 
 describe('StorageMetrics', () => {
   const getApiHandlerMock = vi.mocked(GetApiHandler)
+  let metricsResponse: StorageMetricsResponse
 
-  const metricsResponse: StorageMetricsResponse = {
+  const renderStorageMetrics = () =>
+    render(
+      <MemoryRouter>
+        <StorageMetrics />
+      </MemoryRouter>,
+    )
+
+  const createMetricsResponse = (): StorageMetricsResponse => ({
     generatedAt: '2026-04-17T00:00:00.000Z',
     totals: {
       freeSpace: 400,
@@ -70,9 +78,17 @@ describe('StorageMetrics', () => {
         isActive: true,
       },
     ],
-  }
+    cleanupTotals: {
+      itemsHandled: 0,
+      moviesHandled: 0,
+      showsHandled: 0,
+      seasonsHandled: 0,
+      episodesHandled: 0,
+    },
+  })
 
   beforeEach(() => {
+    metricsResponse = createMetricsResponse()
     getApiHandlerMock.mockReset()
     getApiHandlerMock.mockImplementation(async (path: string) => {
       if (path === '/storage-metrics') {
@@ -88,22 +104,65 @@ describe('StorageMetrics', () => {
   })
 
   it('uses router links for top collections and shows the library size caveat', async () => {
-    render(
-      <MemoryRouter>
-        <StorageMetrics />
-      </MemoryRouter>,
-    )
+    const { unmount } = renderStorageMetrics()
 
-    await waitFor(() => {
-      expect(screen.getByText('Soon Gone')).toBeTruthy()
-    })
+    try {
+      await waitFor(() => {
+        expect(screen.getByText('Soon Gone')).toBeTruthy()
+      })
 
-    expect(
-      screen.getByText('Soon Gone').closest('a')?.getAttribute('href'),
-    ).toBe('/collections/7')
-    const caveat =
-      'Sizes approximate on-disk bytes and may not fully reflect hardlinks, sparse files, or filesystem snapshots.'
+      expect(
+        screen.getByText('Soon Gone').closest('a')?.getAttribute('href'),
+      ).toBe('/collections/7')
+      const caveat =
+        'Sizes approximate on-disk bytes and may not fully reflect hardlinks, sparse files, or filesystem snapshots.'
 
-    expect(screen.getByText(caveat)).toBeTruthy()
+      expect(screen.getByText(caveat)).toBeTruthy()
+    } finally {
+      unmount()
+    }
+  })
+
+  it('renders cleanup totals with separate show, season, and episode cards', async () => {
+    metricsResponse.cleanupTotals = {
+      itemsHandled: 18,
+      moviesHandled: 3,
+      showsHandled: 4,
+      seasonsHandled: 5,
+      episodesHandled: 6,
+    }
+
+    const { unmount } = renderStorageMetrics()
+
+    try {
+      await waitFor(() => {
+        expect(screen.getByText('Shows handled')).toBeTruthy()
+      })
+
+      expect(screen.getByText('18')).toBeTruthy()
+
+      const moviesCard = screen.getByRole('region', { name: 'Movies handled' })
+      const showsCard = screen.getByRole('region', { name: 'Shows handled' })
+      const seasonsCard = screen.getByRole('region', {
+        name: 'Seasons handled',
+      })
+      const episodesCard = screen.getByRole('region', {
+        name: 'Episodes handled',
+      })
+
+      expect(within(moviesCard).getByText('3')).toBeTruthy()
+      expect(within(showsCard).getByText('4')).toBeTruthy()
+      expect(within(showsCard).getByText('From show collections')).toBeTruthy()
+      expect(within(seasonsCard).getByText('5')).toBeTruthy()
+      expect(
+        within(seasonsCard).getByText('From season collections'),
+      ).toBeTruthy()
+      expect(within(episodesCard).getByText('6')).toBeTruthy()
+      expect(
+        within(episodesCard).getByText('From episode collections'),
+      ).toBeTruthy()
+    } finally {
+      unmount()
+    }
   })
 })

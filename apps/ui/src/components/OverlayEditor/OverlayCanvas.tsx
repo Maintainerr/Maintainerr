@@ -1,6 +1,6 @@
 import type { OverlayElement } from '@maintainerr/contracts'
 import Konva from 'konva'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Ellipse,
   Group,
@@ -11,6 +11,7 @@ import {
   Text,
   Transformer,
 } from 'react-konva'
+import { buildOverlayImageUrl } from '../../api/overlays'
 import { getOverlayPreviewFontFamily } from './editorFonts'
 
 interface OverlayCanvasProps {
@@ -22,10 +23,14 @@ interface OverlayCanvasProps {
   onUpdate: (el: OverlayElement) => void
   backgroundUrl?: string | null
   fontLoadVersion?: number
+  imageLoadVersion?: number
 }
 
 const MAX_DISPLAY_HEIGHT = 600
 const MIN_DISPLAY_HEIGHT = 240
+
+const imageCacheKey = (imagePath: string, version: number) =>
+  `${imagePath}@${version}`
 
 export function OverlayCanvas({
   elements,
@@ -36,6 +41,7 @@ export function OverlayCanvas({
   onUpdate,
   backgroundUrl,
   fontLoadVersion = 0,
+  imageLoadVersion = 0,
 }: OverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
@@ -44,6 +50,13 @@ export function OverlayCanvas({
     image: HTMLImageElement
     url: string
   } | null>(null)
+  // Cache of decoded bitmaps keyed by `${imagePath}@${version}`. Including
+  // the version in the key means an upload that overwrites an existing
+  // filename creates a fresh entry instead of serving stale bytes — without
+  // needing a synchronous cache-clear effect.
+  const [loadedImages, setLoadedImages] = useState<
+    Record<string, HTMLImageElement>
+  >({})
   const [containerSize, setContainerSize] = useState<{
     width: number
     height: number
@@ -104,6 +117,71 @@ export function OverlayCanvas({
       img.onerror = null
     }
   }, [backgroundUrl])
+
+  // Load bytes for every distinct image element so the canvas can show the
+  // real artwork instead of a gray placeholder. `imageLoadVersion` is bumped
+  // by the parent on a fresh upload, which busts the cache for files
+  // overwritten in place. Prunes entries no longer referenced so a deleted
+  // element doesn't keep its bitmap pinned in memory.
+  const imagePaths = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          elements
+            .filter(
+              (e): e is Extract<OverlayElement, { type: 'image' }> =>
+                e.type === 'image' && Boolean(e.imagePath),
+            )
+            .map((e) => e.imagePath),
+        ),
+      ),
+    [elements],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    const activeKeys = new Set(
+      imagePaths.map((p) => imageCacheKey(p, imageLoadVersion)),
+    )
+
+    // Prune entries that are no longer reachable: stale versions after an
+    // upload, and orphans from removed elements. Deferred to a microtask so
+    // the setState lands outside the effect body — same observable timing
+    // as a synchronous call (still pre-paint), but doesn't trip the
+    // `react-hooks/set-state-in-effect` static check. Identity-preserving:
+    // returns `prev` when nothing changed so it never causes a re-render.
+    queueMicrotask(() => {
+      if (cancelled) return
+      setLoadedImages((prev) => {
+        const next = Object.fromEntries(
+          Object.entries(prev).filter(([key]) => activeKeys.has(key)),
+        )
+        return Object.keys(next).length === Object.keys(prev).length
+          ? prev
+          : next
+      })
+    })
+
+    for (const p of imagePaths) {
+      const key = imageCacheKey(p, imageLoadVersion)
+      const img = new window.Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        if (cancelled) return
+        // setState in onload is async (post-effect), so this avoids the
+        // cascading-render trap of synchronously calling setState in the
+        // effect body itself.
+        setLoadedImages((prev) =>
+          prev[key] === img ? prev : { ...prev, [key]: img },
+        )
+      }
+      img.onerror = () => undefined
+      img.src = buildOverlayImageUrl(p, imageLoadVersion)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [imagePaths, imageLoadVersion])
 
   // Attach transformer to selected shape
   useEffect(() => {
@@ -225,6 +303,8 @@ export function OverlayCanvas({
                 key={el.id}
                 element={el}
                 scale={scale}
+                loadedImages={loadedImages}
+                imageLoadVersion={imageLoadVersion}
                 onSelect={() => onSelect(el.id)}
                 onDragEnd={(e) => handleDragEnd(el, e)}
                 onTransformEnd={(e) => handleTransformEnd(el, e)}
@@ -255,12 +335,16 @@ export function OverlayCanvas({
 function ElementRenderer({
   element: el,
   scale,
+  loadedImages,
+  imageLoadVersion,
   onSelect,
   onDragEnd,
   onTransformEnd,
 }: {
   element: OverlayElement
   scale: number
+  loadedImages: Record<string, HTMLImageElement>
+  imageLoadVersion: number
   onSelect: () => void
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void
   onTransformEnd: (e: Konva.KonvaEventObject<Event>) => void
@@ -377,7 +461,7 @@ function ElementRenderer({
             radiusY={h / 2}
             fill={el.fillColor}
             stroke={el.strokeColor ?? undefined}
-            strokeWidth={el.strokeWidth}
+            strokeWidth={el.strokeWidth * scale}
           />
         )
       }
@@ -386,13 +470,39 @@ function ElementRenderer({
           {...commonProps}
           fill={el.fillColor}
           stroke={el.strokeColor ?? undefined}
-          strokeWidth={el.strokeWidth}
+          strokeWidth={el.strokeWidth * scale}
           cornerRadius={el.cornerRadius * scale}
         />
       )
 
-    case 'image':
-      // Placeholder rectangle for image elements
+    case 'image': {
+      const loaded = el.imagePath
+        ? loadedImages[imageCacheKey(el.imagePath, imageLoadVersion)]
+        : undefined
+      if (loaded) {
+        // Mirror the server's sharp `fit: 'contain'`: scale to fit the
+        // bounding box while preserving aspect ratio, centred, padded with
+        // transparent space — never stretched. Keeps the editor preview
+        // visually identical to the rendered output.
+        const naturalW = loaded.naturalWidth || w
+        const naturalH = loaded.naturalHeight || h
+        const fitScale = Math.min(w / naturalW, h / naturalH)
+        const drawW = naturalW * fitScale
+        const drawH = naturalH * fitScale
+        const offsetX = (w - drawW) / 2
+        const offsetY = (h - drawH) / 2
+        return (
+          <Group {...commonProps}>
+            <KonvaImage
+              image={loaded}
+              x={offsetX}
+              y={offsetY}
+              width={drawW}
+              height={drawH}
+            />
+          </Group>
+        )
+      }
       return (
         <Group {...commonProps}>
           <Rect
@@ -405,7 +515,7 @@ function ElementRenderer({
           <Text
             width={w}
             height={h}
-            text="[Image]"
+            text={el.imagePath ? 'Loading…' : '[Image]'}
             fontSize={14 * scale}
             fill="#888"
             align="center"
@@ -413,6 +523,7 @@ function ElementRenderer({
           />
         </Group>
       )
+    }
 
     default:
       return null
