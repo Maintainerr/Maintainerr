@@ -328,6 +328,9 @@ export class OverlaysController {
     }
 
     const safeName = sanitizeFilenameChars(path.basename(file.originalname));
+    if (!isSafeFilename(safeName)) {
+      throw new HttpException('Invalid font filename', HttpStatus.BAD_REQUEST);
+    }
     const userFontsDir = path.join(configDataDir, 'overlays', 'fonts');
     const destPath = path.join(userFontsDir, safeName);
     fs.writeFileSync(destPath, file.buffer);
@@ -352,6 +355,7 @@ export class OverlaysController {
   @Get('images')
   listImages() {
     const imagesDir = this.getImagesDir();
+    if (!fs.existsSync(imagesDir)) return [];
     // Mirror the validation in `getImage` and the render service so the
     // picker can't surface manually-dropped files (e.g. with spaces) that
     // the GET endpoint would reject with 400.
@@ -428,6 +432,9 @@ export class OverlaysController {
     }
 
     const safeName = sanitizeFilenameChars(path.basename(file.originalname));
+    if (!isSafeFilename(safeName)) {
+      throw new HttpException('Invalid image filename', HttpStatus.BAD_REQUEST);
+    }
     const destPath = path.join(this.getImagesDir(), safeName);
     fs.writeFileSync(destPath, file.buffer);
 

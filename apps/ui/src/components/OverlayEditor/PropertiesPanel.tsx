@@ -15,6 +15,13 @@ import {
 } from './editorFonts'
 import { ResourceField, type ResourceOption } from './ResourceField'
 
+function formatDisjunction(items: readonly string[]): string {
+  if (items.length === 0) return ''
+  if (items.length === 1) return items[0]
+  if (items.length === 2) return `${items[0]} or ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`
+}
+
 interface PropertiesPanelProps {
   element: OverlayElement
   onChange: (el: OverlayElement) => void
@@ -422,13 +429,7 @@ function ImageProperties({
   images: ResourceOption[]
   onUploadImage: (file: File) => Promise<ResourceOption | null>
 }) {
-  // Build a localised "PNG, JPG, or WebP" string from the shared formats
-  // list, so adding a new format on the server lights up the helper text
-  // automatically — no parallel string to keep in sync.
-  const formatList = new Intl.ListFormat('en', {
-    style: 'long',
-    type: 'disjunction',
-  }).format(OVERLAY_IMAGE_FORMAT_LABELS)
+  const formatList = formatDisjunction(OVERLAY_IMAGE_FORMAT_LABELS)
 
   return (
     <FieldGroup label="Image">

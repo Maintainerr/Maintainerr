@@ -153,6 +153,20 @@ describe('OverlaysController', () => {
     expect(mockedWriteFileSync).not.toHaveBeenCalled();
   });
 
+  it('rejects font uploads when the sanitized filename is still unsafe', async () => {
+    await expect(
+      controller.uploadFont({
+        originalname: `${'a'.repeat(252)}.ttf`,
+        buffer: Buffer.from('font'),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: 'Invalid font filename',
+    });
+
+    expect(mockedWriteFileSync).not.toHaveBeenCalled();
+  });
+
   it('persists supported font uploads to the overlays font directory', async () => {
     const result = await controller.uploadFont({
       originalname: 'Inter-Bold.ttf',
@@ -190,6 +204,7 @@ describe('OverlaysController', () => {
   });
 
   it('omits unsafe filenames from the image picker', () => {
+    mockedExistsSync.mockReturnValue(true);
     mockedReaddirSync.mockReturnValue([
       'safe.png',
       'My Logo.png',
@@ -201,6 +216,13 @@ describe('OverlaysController', () => {
     const result = controller.listImages();
 
     expect(result.map((entry) => entry.name)).toEqual(['safe.png']);
+  });
+
+  it('returns an empty image list when the directory does not exist', () => {
+    mockedExistsSync.mockReturnValue(false);
+
+    expect(controller.listImages()).toEqual([]);
+    expect(mockedReaddirSync).not.toHaveBeenCalled();
   });
 
   it('rejects image uploads when bytes do not match the file extension', async () => {
@@ -216,6 +238,24 @@ describe('OverlaysController', () => {
     ).rejects.toMatchObject({
       status: 400,
       response: 'File contents (png) do not match the file extension',
+    });
+
+    expect(mockedWriteFileSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects image uploads when the sanitized filename is still unsafe', async () => {
+    mockedSharp.mockReturnValue({
+      metadata: jest.fn().mockResolvedValue({ format: 'png' }),
+    } as any);
+
+    await expect(
+      controller.uploadImage({
+        originalname: `${'a'.repeat(252)}.png`,
+        buffer: Buffer.from('image'),
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: 'Invalid image filename',
     });
 
     expect(mockedWriteFileSync).not.toHaveBeenCalled();

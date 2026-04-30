@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -21,7 +21,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
-    "@tanstack/react-query": "^5.99.2",
+    "@tanstack/react-query": "^5.100.6",
     "axios": "^1.15.0",
     "bowser": "^2.14.1",
     "clsx": "^2.1.1",
@@ -40,7 +40,7 @@
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
     "yaml": "^2.8.3",
-    "zod": "^4.3.6"
+    "zod": "^4.4.1"
   },
   "browserslist": [
     "> 0.5%",
@@ -70,7 +70,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "jsdom": "^29.1.0",
+    "jsdom": "^29.1.1",
     "monaco-editor": "0.55.1",
     "postcss": "^8.5.10",
     "prettier": "^3.8.3",
