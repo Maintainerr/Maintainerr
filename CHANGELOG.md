@@ -1,4 +1,29 @@
 ## Highlights
+- Added a compact image picker in the overlay Properties panel, enabling image uploads for overlay Image elements directly from the UI (#2814).
+- Fixed overlay template selection reverting to "Default" after saving a rule group by ensuring proper template loading behavior (#2815).
+- Scaled overlay shape strokes in previews and renders to ensure consistent appearance between editor previews and server-rendered outputs (#2803).
+
+## Features
+- Added cumulative cleanup totals section to the Storage Metrics page, showing processed items, movies, and episodes over time (#2804).
+- Enabled image uploads for overlay Image elements from the UI, with validation and automatic discovery of on-disk files (#2814).
+
+## Fixes
+- Tightened upload filename guards and improved error handling for missing directories in overlays.
+- Replaced `Intl.ListFormat` with a manual helper to fix type-checking issues in the UI.
+- Fixed overlay template selection persisting correctly after saving rule groups (#2815).
+- Hardened server logging against `stdio` EPIPE errors to prevent crashes (#2812).
+
+## Performance
+- Scaled overlay shape strokes in previews and renders for consistent visual output (#2803).
+
+## Internal
+- Updated repository instructions to consolidate agent and Copilot guidance into `AGENTS.md` (#2813).
+- Added new contributors to the changelog (#2806).
+
+## Dependencies
+- Updated 3 dependencies, including `rolldown`, `@tanstack/eslint-plugin-query`, and `knip`.
+
+## Highlights
 - Fix: Resolved a critical path traversal vulnerability in the log file download endpoint, preventing unauthorized file access.
 - Feat: Added support for custom collection poster uploads, including endpoints for upload, fetch, and clear, with integration for Plex and Jellyfin (#2784).
 - Feat: Introduced caching for Jellyfin collections and their children to reduce redundant queries during rule execution (#2800).
