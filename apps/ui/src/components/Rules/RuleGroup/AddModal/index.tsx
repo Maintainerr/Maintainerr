@@ -492,6 +492,7 @@ const AddModal = (props: AddModal) => {
   const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>(
     [],
   )
+  const [overlayTemplatesLoaded, setOverlayTemplatesLoaded] = useState(false)
 
   const overlayTemplateMode =
     selectedType === 'episode' ? 'titlecard' : 'poster'
@@ -523,11 +524,12 @@ const AddModal = (props: AddModal) => {
       if (templates) {
         setOverlayTemplates(templates)
       }
+      setOverlayTemplatesLoaded(true)
     })
   }, [])
 
   useEffect(() => {
-    if (overlayTemplateId == null) {
+    if (!overlayTemplatesLoaded || overlayTemplateId == null) {
       return
     }
 
@@ -538,7 +540,12 @@ const AddModal = (props: AddModal) => {
     if (!hasMatchingTemplate) {
       setValue('overlayTemplateId', null)
     }
-  }, [availableOverlayTemplates, overlayTemplateId, setValue])
+  }, [
+    overlayTemplatesLoaded,
+    availableOverlayTemplates,
+    overlayTemplateId,
+    setValue,
+  ])
 
   // Scroll detection without useEffect
   const atBottom = useSyncExternalStore(
