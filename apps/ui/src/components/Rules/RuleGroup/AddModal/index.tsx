@@ -62,6 +62,24 @@ interface AddModal {
   onSuccess: () => void
 }
 
+// Pure predicate behind the "clear unavailable overlay template" effect.
+// Extracted so the regression for #2805 can be asserted directly: the
+// effect must wait for the templates fetch to resolve, otherwise an empty
+// initial list reads as "no matching template" and silently nulls the
+// user's saved selection.
+export const shouldClearOverlayTemplateSelection = (
+  templatesLoaded: boolean,
+  overlayTemplateId: number | null | undefined,
+  availableOverlayTemplates: { id: number }[],
+) => {
+  if (!templatesLoaded || overlayTemplateId == null) {
+    return false
+  }
+  return !availableOverlayTemplates.some(
+    (template) => template.id === overlayTemplateId,
+  )
+}
+
 export const getStoredLibraryFallbackState = (
   storedLibraryId: string | undefined,
   libraries: MediaLibrary[] | undefined,
@@ -529,15 +547,13 @@ const AddModal = (props: AddModal) => {
   }, [])
 
   useEffect(() => {
-    if (!overlayTemplatesLoaded || overlayTemplateId == null) {
-      return
-    }
-
-    const hasMatchingTemplate = availableOverlayTemplates.some(
-      (template) => template.id === overlayTemplateId,
-    )
-
-    if (!hasMatchingTemplate) {
+    if (
+      shouldClearOverlayTemplateSelection(
+        overlayTemplatesLoaded,
+        overlayTemplateId,
+        availableOverlayTemplates,
+      )
+    ) {
       setValue('overlayTemplateId', null)
     }
   }, [
