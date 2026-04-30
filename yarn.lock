@@ -3162,7 +3162,7 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-react: "npm:^7.37.5"
     eslint-plugin-react-hooks: "npm:^7.1.1"
-    jsdom: "npm:^29.1.0"
+    jsdom: "npm:^29.1.1"
     konva: "npm:^10.2.3"
     lodash-es: "npm:^4.18.1"
     monaco-editor: "npm:0.55.1"
@@ -13863,9 +13863,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsdom@npm:^29.1.0":
-  version: 29.1.0
-  resolution: "jsdom@npm:29.1.0"
+"jsdom@npm:^29.1.1":
+  version: 29.1.1
+  resolution: "jsdom@npm:29.1.1"
   dependencies:
     "@asamuzakjp/css-color": "npm:^5.1.11"
     "@asamuzakjp/dom-selector": "npm:^7.1.1"
@@ -13893,7 +13893,7 @@ __metadata:
   peerDependenciesMeta:
     canvas:
       optional: true
-  checksum: 10c0/875f298f8b1267b4bb4ddecdf94a6d279a01ea55fe14f43b89d56eb5dc3ffe81e93356181620d58d06c43b934e5d9f0c61810a971c38c1613a0b57c060eab85b
+  checksum: 10c0/20e2174b09d9d06393cb48e1392b7a1cb7191d6656a6f7b3b8fbf9853b4ab0ef60b4a42c2c55f71b55ca5da50ffa75bcdc6986210963182e7993c6f9cd4f499b
   languageName: node
   linkType: hard
 
