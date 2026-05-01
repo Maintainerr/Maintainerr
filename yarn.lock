@@ -3043,7 +3043,7 @@ __metadata:
     class-validator: "npm:^0.15.1"
     eslint: "npm:^9.39.2"
     eslint-config-prettier: "npm:^10.1.8"
-    globals: "npm:^17.5.0"
+    globals: "npm:^17.6.0"
     nestjs-zod: "npm:^5.3.0"
     prettier: "npm:^3.8.3"
     reflect-metadata: "npm:^0.2.2"
@@ -3089,7 +3089,7 @@ __metadata:
     "@types/xml2js": "npm:^0.4.14"
     "@typescript-eslint/eslint-plugin": "npm:^8.59.0"
     "@typescript-eslint/parser": "npm:^8.59.1"
-    axios: "npm:^1.15.0"
+    axios: "npm:^1.15.2"
     axios-retry: "npm:^4.5.0"
     better-sqlite3: "npm:^12.9.0"
     canvas: "npm:^3.2.3"
@@ -3141,7 +3141,7 @@ __metadata:
     "@tailwindcss/aspect-ratio": "npm:^0.4.2"
     "@tailwindcss/forms": "npm:^0.5.11"
     "@tailwindcss/typography": "npm:^0.5.19"
-    "@tanstack/eslint-plugin-query": "npm:^5.100.6"
+    "@tanstack/eslint-plugin-query": "npm:^5.100.7"
     "@tanstack/react-query": "npm:^5.100.6"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.2"
@@ -3153,7 +3153,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.59.1"
     "@vitejs/plugin-react": "npm:^6.0.1"
     autoprefixer: "npm:10.5.0"
-    axios: "npm:^1.15.0"
+    axios: "npm:^1.15.2"
     bowser: "npm:^2.14.1"
     clsx: "npm:^2.1.1"
     compare-versions: "npm:^6.1.1"
@@ -5543,9 +5543,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/eslint-plugin-query@npm:^5.100.6":
-  version: 5.100.6
-  resolution: "@tanstack/eslint-plugin-query@npm:5.100.6"
+"@tanstack/eslint-plugin-query@npm:^5.100.7":
+  version: 5.100.7
+  resolution: "@tanstack/eslint-plugin-query@npm:5.100.7"
   dependencies:
     "@typescript-eslint/utils": "npm:^8.58.1"
   peerDependencies:
@@ -5554,7 +5554,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/217834702fb0149ba04d1604c691814b28aabc4f141998af1a015242366ee49dd16a68478050763983c05d318fb8017a0353d1182fe88837b724f92ef5f63e92
+  checksum: 10c0/c322afa1d81935b687f3cbbdc2037bbfeb73f0c829d5eaa548e8260c81928142d38c7374c55a015aca7b1794736347e3abdc79911cf747938f83764f22769779
   languageName: node
   linkType: hard
 
@@ -7797,14 +7797,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.15.0":
-  version: 1.15.0
-  resolution: "axios@npm:1.15.0"
+"axios@npm:^1.15.2":
+  version: 1.15.2
+  resolution: "axios@npm:1.15.2"
   dependencies:
     follow-redirects: "npm:^1.15.11"
     form-data: "npm:^4.0.5"
     proxy-from-env: "npm:^2.1.0"
-  checksum: 10c0/47e0f860e98d4d7aa145e89ce0cae00e1fb0f1d2485f065c21fce955ddb1dba4103a46bd0e47acd18a27208a7f62c96249e620db575521b92a968619ab133409
+  checksum: 10c0/4eeae0feeaa7fdc1ef24f81f8b378fdadedf4aebdd6bf224484675160f8744cf17b9b0d1c215279979940f7e8ce463beffa2f713099612e428eac238515c81d5
   languageName: node
   linkType: hard
 
@@ -11839,10 +11839,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:^17.5.0":
-  version: 17.5.0
-  resolution: "globals@npm:17.5.0"
-  checksum: 10c0/92828102ed2f5637907725f0478038bed02fc83e9fc89300bb753639ba7c022b6c02576fc772117302b431b204591db1f2fa909d26f3f0a9852cc856a941df3f
+"globals@npm:^17.6.0":
+  version: 17.6.0
+  resolution: "globals@npm:17.6.0"
+  checksum: 10c0/cf94fb4329cc5c68cf81018fd68324f413181ee169f0235b0b33b82bc93fe7825a21beea951f83a80e8e4bbdad9c0c80515a145b5fd4b5cb52f2a80db899a93f
   languageName: node
   linkType: hard
 
