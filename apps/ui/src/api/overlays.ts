@@ -22,6 +22,13 @@ import GetApiHandler, {
   PutApiHandler,
 } from '../utils/ApiHandler'
 
+export interface OverlayProcessResult {
+  processed: number
+  reverted: number
+  skipped?: number
+  errors: number
+}
+
 export const getOverlaySettings = () =>
   GetApiHandler<OverlaySettings>('/overlays/settings')
 
@@ -137,8 +144,17 @@ export const deleteOverlayImage = (imageName: string) =>
   )
 
 export const processAllOverlays = (options?: { force?: boolean }) =>
-  PostApiHandler<{ processed: number; reverted: number; errors: number }>(
+  PostApiHandler<OverlayProcessResult>(
     '/overlays/process',
+    options?.force ? { force: true } : {},
+  )
+
+export const processCollectionOverlays = (
+  collectionId: number,
+  options?: { force?: boolean },
+) =>
+  PostApiHandler<OverlayProcessResult>(
+    `/overlays/process/${collectionId}`,
     options?.force ? { force: true } : {},
   )
 
