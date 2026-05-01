@@ -230,6 +230,7 @@ export class OverlayProcessorService {
   async processCollection(
     collection: Collection & { collectionMedia: CollectionMedia[] },
     appliedMediaItems?: { mediaServerId: string }[],
+    force = false,
   ): Promise<ProcessorRunResult> {
     const result: ProcessorRunResult = {
       processed: 0,
@@ -238,6 +239,12 @@ export class OverlayProcessorService {
       errors: 0,
     };
     const processedMediaItems = appliedMediaItems ?? [];
+
+    if (force) {
+      this.logger.debug(
+        `Force overlay processing requested for collection "${collection.title}"`,
+      );
+    }
 
     if (collection.deleteAfterDays == null) {
       this.logger.debug(
@@ -293,9 +300,9 @@ export class OverlayProcessorService {
         itemId,
       );
 
-      // Re-apply if not yet processed or if days-left changed
+      // Forced runs bypass the stale-state skip so template changes can be reapplied.
       const shouldApply =
-        !existingState || existingState.daysLeftShown !== daysLeft;
+        force || !existingState || existingState.daysLeftShown !== daysLeft;
 
       if (shouldApply) {
         this.logger.log(
@@ -334,7 +341,7 @@ export class OverlayProcessorService {
 
   // ── Process all enabled collections ───────────────────────────────────────
 
-  async processAllCollections(): Promise<ProcessorRunResult> {
+  async processAllCollections(force = false): Promise<ProcessorRunResult> {
     if (this.status === 'running') {
       this.logger.warn('Overlay processor is already running, skipping');
       return { processed: 0, reverted: 0, skipped: 0, errors: 0 };
@@ -349,6 +356,12 @@ export class OverlayProcessorService {
     };
     const appliedMediaItems: { mediaServerId: string }[] = [];
     const revertedMediaItems: { mediaServerId: string }[] = [];
+
+    if (force) {
+      this.logger.debug(
+        'Force overlay processing requested for all collections',
+      );
+    }
 
     try {
       const settings = await this.settingsService.getSettings();
@@ -430,6 +443,7 @@ export class OverlayProcessorService {
         const collResult = await this.processCollection(
           coll,
           appliedMediaItems,
+          force,
         );
         totalResult.processed += collResult.processed;
         totalResult.reverted += collResult.reverted;

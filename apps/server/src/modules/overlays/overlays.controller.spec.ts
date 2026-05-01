@@ -30,6 +30,15 @@ const mockedWriteFileSync = fs.writeFileSync as jest.MockedFunction<
 
 describe('OverlaysController', () => {
   let controller: OverlaysController;
+  let processorService: {
+    status: 'idle' | 'running' | 'error';
+    processAllCollections: jest.Mock;
+    processCollection: jest.Mock;
+  };
+  let collectionsService: {
+    getCollection: jest.Mock;
+    getCollectionMedia: jest.Mock;
+  };
 
   beforeEach(() => {
     mockedCreateReadStream.mockClear();
@@ -38,13 +47,23 @@ describe('OverlaysController', () => {
     mockedWriteFileSync.mockClear();
     mockedExistsSync.mockReturnValue(false);
 
+    processorService = {
+      status: 'idle',
+      processAllCollections: jest.fn(),
+      processCollection: jest.fn(),
+    };
+    collectionsService = {
+      getCollection: jest.fn(),
+      getCollectionMedia: jest.fn(),
+    };
+
     controller = new OverlaysController(
       {} as any,
+      processorService as any,
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
-      {} as any,
+      collectionsService as any,
       createMockLogger(),
     );
 
@@ -160,6 +179,64 @@ describe('OverlaysController', () => {
           path.join('overlays', 'fonts', 'Inter-Bold.ttf'),
         ),
       }),
+    );
+  });
+
+  it('forwards global force-processing requests to the processor', async () => {
+    const result = { processed: 1, reverted: 0, skipped: 0, errors: 0 };
+    processorService.processAllCollections.mockResolvedValue(result);
+
+    await expect(controller.processAll({ force: true })).resolves.toBe(result);
+
+    expect(processorService.processAllCollections).toHaveBeenCalledWith(true);
+  });
+
+  it('defaults global process requests to non-force mode', async () => {
+    const result = { processed: 0, reverted: 0, skipped: 1, errors: 0 };
+    processorService.processAllCollections.mockResolvedValue(result);
+
+    await controller.processAll({});
+
+    expect(processorService.processAllCollections).toHaveBeenCalledWith(false);
+  });
+
+  it('forwards collection force-processing requests to the processor', async () => {
+    const collection = {
+      id: 7,
+      title: 'Leaving Soon',
+      collectionMedia: [],
+    };
+    const result = { processed: 2, reverted: 0, skipped: 0, errors: 0 };
+    collectionsService.getCollection.mockResolvedValue(collection);
+    processorService.processCollection.mockResolvedValue(result);
+
+    await expect(
+      controller.processCollection(7, { force: true }),
+    ).resolves.toBe(result);
+
+    expect(processorService.processCollection).toHaveBeenCalledWith(
+      collection,
+      undefined,
+      true,
+    );
+  });
+
+  it('defaults collection process requests to non-force mode', async () => {
+    const collection = {
+      id: 8,
+      title: 'Library Cleanup',
+      collectionMedia: [],
+    };
+    const result = { processed: 0, reverted: 0, skipped: 3, errors: 0 };
+    collectionsService.getCollection.mockResolvedValue(collection);
+    processorService.processCollection.mockResolvedValue(result);
+
+    await controller.processCollection(8, {});
+
+    expect(processorService.processCollection).toHaveBeenCalledWith(
+      collection,
+      undefined,
+      false,
     );
   });
 });
