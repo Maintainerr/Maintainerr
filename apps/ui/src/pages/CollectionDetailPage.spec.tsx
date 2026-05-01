@@ -43,18 +43,26 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('../components/Collection/CollectionDetail/CollectionDetailControlRow', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="collection-detail-control-row">{children}</div>
-  ),
-}))
+vi.mock(
+  '../components/Collection/CollectionDetail/CollectionDetailControlRow',
+  () => ({
+    default: ({ children }: { children?: React.ReactNode }) => (
+      <div data-testid="collection-detail-control-row">{children}</div>
+    ),
+  }),
+)
 
-vi.mock('../components/Collection/CollectionDetail/ReapplyOverlaysButton', () => ({
-  default: () => <button type="button">Reapply overlays</button>,
-}))
+vi.mock(
+  '../components/Collection/CollectionDetail/ReapplyOverlaysButton',
+  () => ({
+    default: () => <button type="button">Reapply overlays</button>,
+  }),
+)
 
 vi.mock('../components/Common/LazyModalBoundary', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }))
 
 vi.mock('../components/Common/LoadingSpinner', () => ({
