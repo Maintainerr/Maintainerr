@@ -102,4 +102,21 @@ describe('OverlaySettings', () => {
     expect((reapply as HTMLButtonElement).disabled).toBe(true)
     expect((reset as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('shows visible copy that distinguishes process, reapply, and reset behavior', async () => {
+    render(<OverlaySettings />)
+
+    expect(await screen.findByText('Action meanings')).toBeTruthy()
+    expect(
+      screen.getByText(/process overlays normally and skip items/i),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(
+        /rebuild existing overlays using the current templates/i,
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/restore the original artwork and clear overlay state/i),
+    ).toBeTruthy()
+  })
 })

@@ -80,6 +80,11 @@ describe('ReapplyOverlaysButton', () => {
     )
 
     expect(screen.getByText(/only this collection/i)).toBeTruthy()
+    expect(
+      screen.getByText(
+        /does not restore originals and it will not process unrelated collections/i,
+      ),
+    ).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reapply now' }))
 

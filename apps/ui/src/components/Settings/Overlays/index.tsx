@@ -197,6 +197,31 @@ const OverlaySettings = () => {
               )}
             />
 
+            <div className="mt-5 rounded-lg border border-zinc-700 bg-zinc-900/40 p-4 text-sm text-zinc-300">
+              <h4 className="font-semibold text-zinc-100">Action meanings</h4>
+              <ul className="mt-2 space-y-2 text-xs leading-5 text-zinc-400">
+                <li>
+                  <span className="font-medium text-zinc-200">Run Now:</span>{' '}
+                  process overlays normally and skip items that are already up
+                  to date.
+                </li>
+                <li>
+                  <span className="font-medium text-zinc-200">
+                    Reapply All:
+                  </span>{' '}
+                  rebuild existing overlays using the current templates without
+                  restoring originals first.
+                </li>
+                <li>
+                  <span className="font-medium text-zinc-200">
+                    Reset All Overlays:
+                  </span>{' '}
+                  restore the original artwork and clear overlay state for every
+                  collection.
+                </li>
+              </ul>
+            </div>
+
             {/* Actions */}
             <div className="actions mt-5 w-full">
               <PageControlRow
@@ -290,7 +315,7 @@ const OverlaySettings = () => {
 
       {confirmResetOpen && (
         <Modal
-          title="Reset all overlays?"
+          title="Restore original artwork for all collections?"
           size="sm"
           onCancel={() => setConfirmResetOpen(false)}
           footerActions={
@@ -306,6 +331,11 @@ const OverlaySettings = () => {
           <p>
             This will revert every applied overlay and restore the original
             posters for all collections.
+          </p>
+          <p className="mt-2">
+            Use <span className="font-semibold text-zinc-100">Reapply All</span>{' '}
+            if you want to rebuild overlays with current templates instead of
+            restoring originals.
           </p>
         </Modal>
       )}
