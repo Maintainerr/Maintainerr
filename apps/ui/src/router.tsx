@@ -3,7 +3,6 @@ import type { RouteObject } from 'react-router-dom'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
 import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
-import Overview from './components/Overview'
 // Settings is kept eager because it wraps an <Outlet /> — making it lazy
 // would cause two sequential fetches (wrapper then child) on every settings navigation.
 import Overlays from './components/Overlays'
@@ -64,6 +63,7 @@ const storageMetricsRoute = createLazyRoute(
 const collectionInfoRoute = createLazyRoute(
   () => import('./pages/CollectionInfoPage'),
 )
+const overviewRoute = createLazyRoute(() => import('./components/Overview'))
 const rulesListRoute = createLazyRoute(() => import('./pages/RulesListPage'))
 const ruleFormRoute = createLazyRoute(() => import('./pages/RuleFormPage'))
 const settingsMainRoute = createLazyRoute(
@@ -133,7 +133,8 @@ const appRoutes: AppRoute[] = [
     children: [
       {
         path: 'overview',
-        element: <Overview />,
+        lazy: overviewRoute.lazy,
+        preload: overviewRoute.preload,
       },
       {
         path: 'collections',

@@ -21,6 +21,21 @@ export default defineConfig(({ mode }) => {
               return 'icons'
             }
             if (
+              id.includes('node_modules/konva/') ||
+              id.includes('node_modules/react-konva/')
+            ) {
+              return 'konva'
+            }
+            if (
+              id.includes('node_modules/monaco-editor/') ||
+              id.includes('node_modules/@monaco-editor/react/')
+            ) {
+              return 'monaco'
+            }
+            if (id.includes('node_modules/@headlessui/react/')) {
+              return 'headlessui'
+            }
+            if (
               id.includes('node_modules/react/') ||
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/react-router/') ||
@@ -30,6 +45,27 @@ export default defineConfig(({ mode }) => {
             }
             if (id.includes('@tanstack/react-query')) {
               return 'query'
+            }
+            if (id.includes('node_modules/zod/')) {
+              return 'validation'
+            }
+            if (
+              id.includes('node_modules/react-hook-form/') ||
+              id.includes('node_modules/@hookform/resolvers/')
+            ) {
+              return 'forms'
+            }
+            if (
+              id.includes('node_modules/axios/') ||
+              id.includes('node_modules/react-toastify/')
+            ) {
+              return 'network'
+            }
+            if (id.includes('node_modules/lodash-es/')) {
+              return 'lodash'
+            }
+            if (id.includes('node_modules/yaml/')) {
+              return 'yaml'
             }
           },
         },
