@@ -267,6 +267,72 @@ describe('OverlayProcessorService', () => {
     });
   });
 
+  it('blocks concurrent standalone collection runs while one is already in progress', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getItemState: jest.fn().mockResolvedValue(null),
+    };
+    const template = makeTemplate();
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    const collection = createCollection({
+      id: 1,
+      title: 'Exclusive overlay',
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockImplementation(async () => {
+      expect(service.status).toBe('running');
+
+      await expect(
+        service.processCollection(collection as any),
+      ).resolves.toEqual({
+        processed: 0,
+        reverted: 0,
+        skipped: 0,
+        errors: 0,
+      });
+
+      return true;
+    });
+
+    await expect(service.processCollection(collection as any)).resolves.toEqual(
+      {
+        processed: 1,
+        reverted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+    );
+
+    expect(service.status).toBe('idle');
+  });
+
   it('skips same-day overlay state during normal process-all runs', async () => {
     const settingsService = {
       getSettings: jest.fn().mockResolvedValue({ enabled: true }),

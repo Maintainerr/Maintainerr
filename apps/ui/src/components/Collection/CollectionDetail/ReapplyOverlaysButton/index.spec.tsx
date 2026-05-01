@@ -7,12 +7,16 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { processCollectionOverlays } from '../../../../api/overlays'
+import {
+  processCollectionOverlays,
+  useOverlaySettings,
+} from '../../../../api/overlays'
 import { logClientError } from '../../../../utils/ClientLogger'
 import ReapplyOverlaysButton from './index'
 
 vi.mock('../../../../api/overlays', () => ({
   processCollectionOverlays: vi.fn(),
+  useOverlaySettings: vi.fn(),
 }))
 
 vi.mock('../../../../utils/ClientLogger', () => ({
@@ -21,6 +25,7 @@ vi.mock('../../../../utils/ClientLogger', () => ({
 
 describe('ReapplyOverlaysButton', () => {
   const processCollectionOverlaysMock = vi.mocked(processCollectionOverlays)
+  const useOverlaySettingsMock = vi.mocked(useOverlaySettings)
   const logClientErrorMock = vi.mocked(logClientError)
 
   beforeEach(() => {
@@ -30,6 +35,11 @@ describe('ReapplyOverlaysButton', () => {
       reverted: 0,
       errors: 0,
     })
+    useOverlaySettingsMock.mockReset()
+    useOverlaySettingsMock.mockReturnValue({
+      data: { enabled: true },
+      isLoading: false,
+    } as ReturnType<typeof useOverlaySettings>)
     logClientErrorMock.mockReset()
   })
 
@@ -70,6 +80,19 @@ describe('ReapplyOverlaysButton', () => {
     expect(
       screen.queryByRole('button', { name: 'Reapply This Collection' }),
     ).toBeNull()
+  })
+
+  it('disables the action when overlays are globally disabled', () => {
+    useOverlaySettingsMock.mockReturnValueOnce({
+      data: { enabled: false },
+      isLoading: false,
+    } as ReturnType<typeof useOverlaySettings>)
+
+    renderButton()
+
+    expect(
+      screen.getByRole('button', { name: 'Reapply This Collection' }),
+    ).toHaveProperty('disabled', true)
   })
 
   it('opens a confirmation modal and triggers a forced collection reapply', async () => {

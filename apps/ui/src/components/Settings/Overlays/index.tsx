@@ -271,24 +271,12 @@ const OverlaySettings = () => {
                         idleIcon={<RefreshIcon />}
                       />
                     </span>
-                    <span
-                      className="flex rounded-md shadow-sm"
-                      title={
-                        !loadedEnabled
-                          ? 'Enable overlays and save to reset existing overlays'
-                          : undefined
-                      }
-                    >
+                    <span className="flex rounded-md shadow-sm">
                       <Button
                         buttonType="danger"
                         type="button"
                         onClick={handleResetAllRequest}
-                        disabled={
-                          processing ||
-                          reprocessing ||
-                          resetting ||
-                          !loadedEnabled
-                        }
+                        disabled={processing || reprocessing || resetting}
                       >
                         <span>
                           {resetting ? 'Resetting...' : 'Reset All Overlays'}
