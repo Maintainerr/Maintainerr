@@ -37,7 +37,6 @@ const CollectionDetailPage = () => {
   }
 
   const currentTab = getCurrentTab()
-  const showCollectionOverlayActions = Boolean(collection?.overlayEnabled)
 
   const { data: ruleGroup, isLoading: ruleGroupLoading } =
     useRuleGroupForCollection(id)
@@ -47,6 +46,7 @@ const CollectionDetailPage = () => {
     error: collectionError,
     isLoading,
   } = useCollection(id)
+  const showCollectionOverlayActions = Boolean(collection?.overlayEnabled)
 
   useEffect(() => {
     if (!collectionError) {
