@@ -29,6 +29,8 @@ const ReapplyOverlaysButton = ({
     return null
   }
 
+  const collectionId = collection.id
+
   const handleReapply = async () => {
     if (executing) {
       return
@@ -39,7 +41,7 @@ const ReapplyOverlaysButton = ({
     setSuccess(undefined)
 
     try {
-      const result = await processCollectionOverlays(collection.id, {
+      const result = await processCollectionOverlays(collectionId, {
         force: true,
       })
 
@@ -121,8 +123,8 @@ const ReapplyOverlaysButton = ({
             current overlay template configuration.
           </p>
           <p className="mt-3">
-            It does not reset originals and it will not process unrelated
-            collections.
+            This is the collection-scoped version of Reapply All. It does not
+            restore originals and it will not process unrelated collections.
           </p>
           {success ? (
             <div className="mt-3">
