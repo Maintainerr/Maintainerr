@@ -67,6 +67,7 @@ function ToggleField({
 const OverlaySettings = () => {
   const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
+  const [reprocessing, setReprocessing] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [missingCronModalOpen, setMissingCronModalOpen] = useState(false)
@@ -124,17 +125,29 @@ const OverlaySettings = () => {
     }
   }
 
-  const handleProcessAll = async () => {
-    setProcessing(true)
+  const handleProcessAll = async (force = false) => {
+    if (force) {
+      setReprocessing(true)
+    } else {
+      setProcessing(true)
+    }
     try {
-      const result = await processAllOverlays()
+      const result = await processAllOverlays(
+        force ? { force: true } : undefined,
+      )
       showInfo(
         `Processed: ${result.processed}, Reverted: ${result.reverted}, Errors: ${result.errors}`,
       )
     } catch {
-      showError('Failed to process overlays')
+      showError(
+        force ? 'Failed to reapply overlays' : 'Failed to process overlays',
+      )
     } finally {
-      setProcessing(false)
+      if (force) {
+        setReprocessing(false)
+      } else {
+        setProcessing(false)
+      }
     }
   }
 
@@ -177,7 +190,7 @@ const OverlaySettings = () => {
                 <ToggleField
                   name="enabled"
                   label="Enable overlays"
-                  checked={field.value}
+                  checked={field.value ?? false}
                   onChange={field.onChange}
                   helpText="Master switch for overlay processing"
                 />
@@ -204,12 +217,32 @@ const OverlaySettings = () => {
                       <PendingButton
                         buttonType="default"
                         type="button"
-                        onClick={handleProcessAll}
-                        disabled={processing || !loadedEnabled}
+                        onClick={() => void handleProcessAll()}
+                        disabled={processing || reprocessing || !loadedEnabled}
                         isPending={processing}
                         idleLabel="Run Now"
                         pendingLabel="Running"
                         reserveLabel="Run Now"
+                        idleIcon={<RefreshIcon />}
+                      />
+                    </span>
+                    <span
+                      className="flex rounded-md shadow-sm"
+                      title={
+                        !loadedEnabled
+                          ? 'Enable overlays and save to force a full reapply'
+                          : undefined
+                      }
+                    >
+                      <PendingButton
+                        buttonType="default"
+                        type="button"
+                        onClick={() => void handleProcessAll(true)}
+                        disabled={processing || reprocessing || !loadedEnabled}
+                        isPending={reprocessing}
+                        idleLabel="Reapply All"
+                        pendingLabel="Reapplying"
+                        reserveLabel="Reapply All"
                         idleIcon={<RefreshIcon />}
                       />
                     </span>
@@ -225,7 +258,12 @@ const OverlaySettings = () => {
                         buttonType="danger"
                         type="button"
                         onClick={handleResetAllRequest}
-                        disabled={resetting || !loadedEnabled}
+                        disabled={
+                          processing ||
+                          reprocessing ||
+                          resetting ||
+                          !loadedEnabled
+                        }
                       >
                         <span>
                           {resetting ? 'Resetting...' : 'Reset All Overlays'}

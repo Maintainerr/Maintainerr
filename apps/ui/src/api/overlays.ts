@@ -136,10 +136,10 @@ export const deleteOverlayImage = (imageName: string) =>
     `/overlays/images/${encodeURIComponent(imageName)}`,
   )
 
-export const processAllOverlays = () =>
+export const processAllOverlays = (options?: { force?: boolean }) =>
   PostApiHandler<{ processed: number; reverted: number; errors: number }>(
     '/overlays/process',
-    {},
+    options?.force ? { force: true } : {},
   )
 
 export const resetAllOverlays = () =>
