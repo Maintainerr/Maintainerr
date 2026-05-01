@@ -382,6 +382,7 @@ export class OverlayProcessorService {
     const totalResult = this.createEmptyResult();
     const appliedMediaItems: { mediaServerId: string }[] = [];
     const revertedMediaItems: { mediaServerId: string }[] = [];
+    let finalStatus: ProcessorStatus = 'idle';
 
     if (force) {
       this.logger.debug(
@@ -393,7 +394,6 @@ export class OverlayProcessorService {
       const settings = await this.settingsService.getSettings();
       if (!settings.enabled) {
         this.logger.log('Overlay feature is disabled, skipping');
-        this.status = 'idle';
         return totalResult;
       }
 
@@ -402,7 +402,6 @@ export class OverlayProcessorService {
         this.logger.warn(
           'Overlay processing skipped: no overlay provider available for the configured media server',
         );
-        this.status = 'idle';
         return totalResult;
       }
 
@@ -415,7 +414,6 @@ export class OverlayProcessorService {
 
       if (!collections.length) {
         this.logger.log('No collections have overlays enabled');
-        this.status = 'idle';
         return totalResult;
       }
 
@@ -496,15 +494,15 @@ export class OverlayProcessorService {
       );
 
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Finished);
-      this.status = 'idle';
     } catch (error) {
       this.logger.error(
         `Unhandled error in overlay processor run: ${error instanceof Error ? error.message : String(error)}`,
       );
       this.logger.debug(error);
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Failed);
-      this.status = 'error';
+      finalStatus = 'error';
     } finally {
+      this.status = finalStatus;
       this.lastRun = new Date();
       this.lastResult = totalResult;
     }

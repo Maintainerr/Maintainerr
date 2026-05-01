@@ -14,6 +14,7 @@ import {
   resetAllOverlays,
   useUpdateOverlaySettings,
 } from '../../../api/overlays'
+import { formatOverlayProcessSummary } from '../../../utils/overlayProcessResult'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
@@ -126,28 +127,20 @@ const OverlaySettings = () => {
   }
 
   const handleProcessAll = async (force = false) => {
-    if (force) {
-      setReprocessing(true)
-    } else {
-      setProcessing(true)
-    }
+    const setPending = force ? setReprocessing : setProcessing
+
+    setPending(true)
     try {
       const result = await processAllOverlays(
         force ? { force: true } : undefined,
       )
-      showInfo(
-        `Processed: ${result.processed}, Reverted: ${result.reverted}, Errors: ${result.errors}`,
-      )
+      showInfo(formatOverlayProcessSummary(result))
     } catch {
       showError(
         force ? 'Failed to reapply overlays' : 'Failed to process overlays',
       )
     } finally {
-      if (force) {
-        setReprocessing(false)
-      } else {
-        setProcessing(false)
-      }
+      setPending(false)
     }
   }
 

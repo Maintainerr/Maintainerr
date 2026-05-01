@@ -7,6 +7,7 @@ import {
 } from '../../../../api/overlays'
 import { getApiErrorMessage } from '../../../../utils/ApiError'
 import { logClientError } from '../../../../utils/ClientLogger'
+import { formatOverlayProcessSummary } from '../../../../utils/overlayProcessResult'
 import Alert from '../../../Common/Alert'
 import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
@@ -52,15 +53,13 @@ const ReapplyOverlaysButton = ({
         force: true,
       })
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['collections'] }),
-        queryClient.invalidateQueries({ queryKey: ['calendar'] }),
-        queryClient.invalidateQueries({ queryKey: ['overlay-data'] }),
-      ])
-
-      setSuccess(
-        `Processed: ${result.processed}, Reverted: ${result.reverted}, Errors: ${result.errors}`,
+      await Promise.all(
+        [['collections'], ['calendar'], ['overlay-data']].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
       )
+
+      setSuccess(formatOverlayProcessSummary(result))
     } catch (error) {
       void logClientError(
         'Failed to reapply overlays for this collection.',
