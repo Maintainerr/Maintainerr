@@ -8,6 +8,13 @@ import path from 'path';
 import { AppModule } from './app/app.module';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
+import { installStdioPipeGuards } from './modules/logging/winston/stdioPipeGuard';
+
+// Pre-bootstrap guard so the console.warn/console.error calls below — and any
+// other write before LogsModule loads — cannot crash the process on a broken
+// stdio pipe. The logging module re-installs these (idempotent) for
+// defence-in-depth.
+installStdioPipeGuards();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -59,6 +66,15 @@ function createDataDirectoryStructure() {
         recursive: true,
         mode: 0o777,
       });
+    }
+
+    // create overlay user-resource dirs so the list/delete endpoints can
+    // operate on a fresh install without first having to upload something
+    for (const name of ['overlays/fonts', 'overlays/images']) {
+      const overlayDir = path.join(dataDir, name);
+      if (!fs.existsSync(overlayDir)) {
+        fs.mkdirSync(overlayDir, { recursive: true, mode: 0o777 });
+      }
     }
 
     // if db already exists, check r/w permissions

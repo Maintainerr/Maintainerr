@@ -1,5 +1,10 @@
 import type { OverlayElement, VariableSegment } from '@maintainerr/contracts'
-import { useRef, useState } from 'react'
+import {
+  IMAGE_UPLOAD_MAX_LABEL,
+  OVERLAY_IMAGE_ACCEPT,
+  OVERLAY_IMAGE_FORMAT_LABELS,
+} from '@maintainerr/contracts'
+import { useState } from 'react'
 import ColorPickerModal from '../Common/ColorPickerModal'
 import { Input } from '../Forms/Input'
 import { Select } from '../Forms/Select'
@@ -8,12 +13,22 @@ import {
   getOverlayFontFamily,
   type OverlayEditorFont,
 } from './editorFonts'
+import { ResourceField, type ResourceOption } from './ResourceField'
+
+function formatDisjunction(items: readonly string[]): string {
+  if (items.length === 0) return ''
+  if (items.length === 1) return items[0]
+  if (items.length === 2) return `${items[0]} or ${items[1]}`
+  return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`
+}
 
 interface PropertiesPanelProps {
   element: OverlayElement
   onChange: (el: OverlayElement) => void
   fonts: { name: string; path: string }[]
   onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
+  images: { name: string; path: string }[]
+  onUploadImage: (file: File) => Promise<{ name: string; path: string } | null>
 }
 
 export function PropertiesPanel({
@@ -21,6 +36,8 @@ export function PropertiesPanel({
   onChange,
   fonts,
   onUploadFont,
+  images,
+  onUploadImage,
 }: PropertiesPanelProps) {
   const update = <K extends keyof OverlayElement>(
     key: K,
@@ -101,7 +118,14 @@ export function PropertiesPanel({
         />
       )}
       {el.type === 'shape' && <ShapeProperties el={el} onChange={onChange} />}
-      {el.type === 'image' && <ImageProperties el={el} onChange={onChange} />}
+      {el.type === 'image' && (
+        <ImageProperties
+          el={el}
+          onChange={onChange}
+          images={images}
+          onUploadImage={onUploadImage}
+        />
+      )}
     </div>
   )
 }
@@ -397,23 +421,30 @@ function ShapeProperties({
 function ImageProperties({
   el,
   onChange,
+  images,
+  onUploadImage,
 }: {
   el: Extract<OverlayElement, { type: 'image' }>
   onChange: (el: OverlayElement) => void
+  images: ResourceOption[]
+  onUploadImage: (file: File) => Promise<ResourceOption | null>
 }) {
-  const update = <K extends keyof typeof el>(key: K, value: (typeof el)[K]) =>
-    onChange({ ...el, [key]: value })
+  const formatList = formatDisjunction(OVERLAY_IMAGE_FORMAT_LABELS)
 
   return (
     <FieldGroup label="Image">
-      <TextField
-        label="Filename"
+      <ResourceField
+        label="Image"
         value={el.imagePath}
-        onChange={(v) => update('imagePath', v)}
+        options={images}
+        onSelect={(name) => onChange({ ...el, imagePath: name })}
+        onUpload={onUploadImage}
+        accept={OVERLAY_IMAGE_ACCEPT}
+        uploadTitle={`Upload image (${formatList} — up to ${IMAGE_UPLOAD_MAX_LABEL})`}
+        placeholder="Select image..."
       />
       <p className="text-[10px] text-zinc-500">
-        Filename of an image placed in data/overlays/images/ on the server (e.g.
-        poster.png). Subdirectories are not allowed.
+        {formatList} — up to {IMAGE_UPLOAD_MAX_LABEL}.
       </p>
     </FieldGroup>
   )
@@ -442,67 +473,27 @@ function FontFields<
   fonts: OverlayEditorFont[]
   onUploadFont: (file: File) => Promise<OverlayEditorFont | null>
 }) {
-  const fileRef = useRef<HTMLInputElement>(null)
   const currentFont = findOverlayFont(fonts, el.fontPath)
-  const selectValue = currentFont ? currentFont.name : ''
+  const selectValue = currentFont ? currentFont.name : el.fontPath
 
-  const handleFontSelect = (fontName: string) => {
-    const font = findOverlayFont(fonts, fontName)
-    if (font) {
-      const family = getOverlayFontFamily(font.name)
-      update('fontFamily', family as T['fontFamily'])
-      update('fontPath', font.name as T['fontPath'])
-    }
-  }
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const uploaded = await onUploadFont(file)
-    if (uploaded) {
-      const family = getOverlayFontFamily(uploaded.name)
-      update('fontFamily', family as T['fontFamily'])
-      update('fontPath', uploaded.name as T['fontPath'])
-    }
-    e.target.value = ''
+  const applyFontByName = (fontName: string) => {
+    const family = getOverlayFontFamily(fontName)
+    update('fontFamily', family as T['fontFamily'])
+    update('fontPath', fontName as T['fontPath'])
   }
 
   return (
     <FieldGroup label="Font">
-      <label className="flex items-center gap-1.5">
-        <span className="w-12 shrink-0 text-zinc-400">Font</span>
-        <Select
-          name="font-family"
-          value={selectValue}
-          onChange={(e) => handleFontSelect(e.target.value)}
-        >
-          {!currentFont && (
-            <option value="" disabled>
-              {el.fontPath || 'Select font...'}
-            </option>
-          )}
-          {fonts.map((f) => (
-            <option key={f.path} value={f.name}>
-              {f.name}
-            </option>
-          ))}
-        </Select>
-        <button
-          type="button"
-          className="shrink-0 rounded-md border border-zinc-500 bg-zinc-700 px-2 py-1 text-[10px] text-zinc-200 hover:bg-zinc-600"
-          onClick={() => fileRef.current?.click()}
-          title="Upload font (.ttf, .otf, .woff)"
-        >
-          Upload
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".ttf,.otf,.woff"
-          className="hidden"
-          onChange={handleUpload}
-        />
-      </label>
+      <ResourceField
+        label="Font"
+        value={selectValue}
+        options={fonts}
+        onSelect={applyFontByName}
+        onUpload={onUploadFont}
+        accept=".ttf,.otf,.woff"
+        uploadTitle="Upload font (.ttf, .otf, .woff)"
+        placeholder={el.fontPath || 'Select font...'}
+      />
       <NumberField
         label="Size"
         value={el.fontSize}

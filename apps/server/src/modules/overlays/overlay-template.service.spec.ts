@@ -160,6 +160,88 @@ describe('OverlayTemplateService', () => {
     );
   });
 
+  it('returns the requested template when its mode matches the collection mode', async () => {
+    const repo = {
+      findOne: jest.fn().mockResolvedValueOnce({
+        id: 7,
+        name: 'Poster template',
+        description: 'poster',
+        mode: 'poster',
+        canvasWidth: 1000,
+        canvasHeight: 1500,
+        elements: [],
+        isPreset: false,
+        isDefault: false,
+        createdAt: new Date('2026-04-17T10:00:00.000Z'),
+        updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+      }),
+      save: jest.fn(),
+      find: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+    };
+
+    const service = new OverlayTemplateService(repo as any, createMockLogger());
+
+    await expect(service.resolveForCollection(7, 'poster')).resolves.toEqual(
+      expect.objectContaining({ id: 7, mode: 'poster' }),
+    );
+    expect(repo.findOne).toHaveBeenCalledTimes(1);
+    expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 7 } });
+  });
+
+  it('falls back to the default template when the requested template mode does not match', async () => {
+    const repo = {
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 8,
+          name: 'Episode title card',
+          description: 'titlecard',
+          mode: 'titlecard',
+          canvasWidth: 1920,
+          canvasHeight: 1080,
+          elements: [],
+          isPreset: false,
+          isDefault: false,
+          createdAt: new Date('2026-04-17T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+        })
+        .mockResolvedValueOnce({
+          id: 1,
+          name: 'Default poster',
+          description: 'default',
+          mode: 'poster',
+          canvasWidth: 1000,
+          canvasHeight: 1500,
+          elements: [],
+          isPreset: true,
+          isDefault: true,
+          createdAt: new Date('2026-04-17T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-17T10:00:00.000Z'),
+        }),
+      save: jest.fn(),
+      find: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+    };
+
+    const service = new OverlayTemplateService(repo as any, createMockLogger());
+
+    await expect(service.resolveForCollection(8, 'poster')).resolves.toEqual(
+      expect.objectContaining({ id: 1, mode: 'poster', isDefault: true }),
+    );
+    expect(repo.findOne).toHaveBeenNthCalledWith(1, { where: { id: 8 } });
+    expect(repo.findOne).toHaveBeenNthCalledWith(2, {
+      where: { mode: 'poster', isDefault: true },
+      order: { updatedAt: 'DESC', id: 'DESC' },
+    });
+  });
+
   it('preserves isDefault flag when updating a template without explicitly changing it', async () => {
     const entity = {
       id: 5,
