@@ -1,7 +1,10 @@
 import { RefreshIcon } from '@heroicons/react/solid'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { processCollectionOverlays } from '../../../../api/overlays'
+import {
+  processCollectionOverlays,
+  useOverlaySettings,
+} from '../../../../api/overlays'
 import { getApiErrorMessage } from '../../../../utils/ApiError'
 import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
@@ -24,12 +27,16 @@ const ReapplyOverlaysButton = ({
   const [executing, setExecuting] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const [success, setSuccess] = useState<string | undefined>()
+  const { data: overlaySettings, isLoading: overlaySettingsLoading } =
+    useOverlaySettings()
 
   if (!collection.id || !collection.overlayEnabled) {
     return null
   }
 
   const collectionId = collection.id
+  const canReapply =
+    Boolean(overlaySettings?.enabled) && !overlaySettingsLoading
 
   const handleReapply = async () => {
     if (executing) {
@@ -74,7 +81,16 @@ const ReapplyOverlaysButton = ({
 
   return (
     <>
-      <Button buttonType="primary" onClick={() => setConfirmOpen(true)}>
+      <Button
+        buttonType="primary"
+        disabled={!canReapply}
+        onClick={() => setConfirmOpen(true)}
+        title={
+          !canReapply
+            ? 'Enable overlays in settings before reapplying this collection'
+            : undefined
+        }
+      >
         <RefreshIcon className="mr-2 h-4 w-4" />
         {buttonLabel}
       </Button>

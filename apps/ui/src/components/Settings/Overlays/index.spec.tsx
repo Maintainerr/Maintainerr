@@ -85,7 +85,7 @@ describe('OverlaySettings', () => {
     })
   })
 
-  it('disables manual actions when overlays are not enabled on the server', async () => {
+  it('keeps reset available even when overlays are not enabled on the server', async () => {
     getOverlaySettings.mockResolvedValueOnce({
       ...DEFAULT_OVERLAY_SETTINGS,
       enabled: false,
@@ -100,7 +100,7 @@ describe('OverlaySettings', () => {
 
     expect((runNow as HTMLButtonElement).disabled).toBe(true)
     expect((reapply as HTMLButtonElement).disabled).toBe(true)
-    expect((reset as HTMLButtonElement).disabled).toBe(true)
+    expect((reset as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('shows visible copy that distinguishes process, reapply, and reset behavior', async () => {

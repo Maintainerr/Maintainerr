@@ -54,6 +54,15 @@ export class OverlayProcessorService {
     items.push({ mediaServerId });
   }
 
+  private createEmptyResult(): ProcessorRunResult {
+    return {
+      processed: 0,
+      reverted: 0,
+      skipped: 0,
+      errors: 0,
+    };
+  }
+
   constructor(
     private readonly providerFactory: OverlayProviderFactory,
     private readonly collectionsService: CollectionsService,
@@ -227,17 +236,12 @@ export class OverlayProcessorService {
 
   // ── Process single collection ─────────────────────────────────────────────
 
-  async processCollection(
+  private async processCollectionInternal(
     collection: Collection & { collectionMedia: CollectionMedia[] },
     appliedMediaItems?: { mediaServerId: string }[],
     force = false,
   ): Promise<ProcessorRunResult> {
-    const result: ProcessorRunResult = {
-      processed: 0,
-      reverted: 0,
-      skipped: 0,
-      errors: 0,
-    };
+    const result = this.createEmptyResult();
     const processedMediaItems = appliedMediaItems ?? [];
 
     if (force) {
@@ -339,21 +343,43 @@ export class OverlayProcessorService {
     return result;
   }
 
+  async processCollection(
+    collection: Collection & { collectionMedia: CollectionMedia[] },
+    appliedMediaItems?: { mediaServerId: string }[],
+    force = false,
+  ): Promise<ProcessorRunResult> {
+    if (appliedMediaItems) {
+      return this.processCollectionInternal(
+        collection,
+        appliedMediaItems,
+        force,
+      );
+    }
+
+    if (this.status === 'running') {
+      this.logger.warn('Overlay processor is already running, skipping');
+      return this.createEmptyResult();
+    }
+
+    this.status = 'running';
+
+    try {
+      return await this.processCollectionInternal(collection, undefined, force);
+    } finally {
+      this.status = 'idle';
+    }
+  }
+
   // ── Process all enabled collections ───────────────────────────────────────
 
   async processAllCollections(force = false): Promise<ProcessorRunResult> {
     if (this.status === 'running') {
       this.logger.warn('Overlay processor is already running, skipping');
-      return { processed: 0, reverted: 0, skipped: 0, errors: 0 };
+      return this.createEmptyResult();
     }
 
     this.status = 'running';
-    const totalResult: ProcessorRunResult = {
-      processed: 0,
-      reverted: 0,
-      skipped: 0,
-      errors: 0,
-    };
+    const totalResult = this.createEmptyResult();
     const appliedMediaItems: { mediaServerId: string }[] = [];
     const revertedMediaItems: { mediaServerId: string }[] = [];
 
