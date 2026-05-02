@@ -41,7 +41,7 @@ import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
 import sharp from 'sharp';
-import z from 'zod';
+import { z } from 'zod';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerSetupGuard } from '../api/media-server/guards/media-server-setup.guard';
 import { CollectionsService } from '../collections/collections.service';
