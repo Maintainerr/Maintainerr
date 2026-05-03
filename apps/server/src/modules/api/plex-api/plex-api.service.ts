@@ -1721,6 +1721,34 @@ export class PlexApiService {
   }
 
   /**
+   * Confirm a Plex item is still present.
+   *
+   * `getItemType` swallows every error as `null`, which conflates "gone"
+   * with "I couldn't ask right now" — fine for type lookup, dangerous for
+   * cleanup decisions that delete the only restore-from-overlay backup.
+   * This variant returns `false` only when Plex explicitly reports 404
+   * and rethrows on auth / network / 5xx so callers preserve state.
+   */
+  public async itemExists(plexId: string): Promise<boolean> {
+    try {
+      const response = await this.plexClient.query<PlexMetadataResponse>(
+        `/library/metadata/${plexId}`,
+        false,
+      );
+      return Boolean(response?.MediaContainer?.Metadata?.[0]);
+    } catch (error) {
+      // plexApi._request wraps the AxiosError as Error with `cause`
+      // pointing at the original; the response status lives there.
+      const cause = (error as { cause?: { response?: { status?: number } } })
+        ?.cause;
+      if (cause?.response?.status === 404) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Returns all movie/show library sections (for overlay preview section picker).
    */
   public async getOverlayLibrarySections(): Promise<

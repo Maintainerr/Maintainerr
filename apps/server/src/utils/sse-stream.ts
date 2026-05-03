@@ -35,14 +35,23 @@ export const createSseStreamClient = ({
 }: SseStreamClientOptions): SseStreamClient => {
   const socket = response.socket;
   let closed = false;
+  let listenersDetached = false;
 
-  const finish = (endResponse: boolean): void => {
-    if (closed) return;
-
-    closed = true;
+  const detachListeners = (): void => {
+    if (listenersDetached) return;
+    listenersDetached = true;
     response.off('close', handleClose);
     response.off('error', handleError);
     socket?.off('error', handleError);
+  };
+
+  const finish = (endResponse: boolean, detach = true): void => {
+    if (closed) {
+      if (detach) detachListeners();
+      return;
+    }
+
+    closed = true;
 
     if (endResponse && isResponseWritable(response)) {
       try {
@@ -53,11 +62,14 @@ export const createSseStreamClient = ({
     }
 
     onClose();
+
+    if (detach) detachListeners();
   };
 
   const fail = (error: unknown): void => {
+    if (closed) return;
     onError?.(error);
-    finish(false);
+    finish(false, false);
   };
 
   const writeRaw = (chunk: string): boolean => {
@@ -96,11 +108,11 @@ export const createSseStreamClient = ({
   }
 
   response.once('close', handleClose);
-  response.once('error', handleError);
-  socket?.once('error', handleError);
+  response.on('error', handleError);
+  socket?.on('error', handleError);
 
   return {
-    close: () => finish(true),
+    close: () => finish(true, false),
     send,
     writeRaw,
   };
