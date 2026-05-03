@@ -69,4 +69,8 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
   ): Promise<void> {
     await this.jf.setItemImage(itemId, ImageType.Primary, buffer, contentType);
   }
+
+  async itemExists(itemId: string): Promise<boolean> {
+    return this.jf.itemExists(itemId);
+  }
 }

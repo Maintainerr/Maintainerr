@@ -123,6 +123,11 @@ export function OverlayCanvas({
   // by the parent on a fresh upload, which busts the cache for files
   // overwritten in place. Prunes entries no longer referenced so a deleted
   // element doesn't keep its bitmap pinned in memory.
+  //
+  // Visibility is intentionally NOT part of this key: hiding an element
+  // would otherwise evict its decoded bitmap, and toggling it back on
+  // would force a fresh fetch + placeholder flash. Visibility only
+  // affects what gets drawn (see `sorted` below), not what gets cached.
   const imagePathKey = useMemo(
     () =>
       Array.from(
@@ -130,7 +135,7 @@ export function OverlayCanvas({
           elements
             .filter(
               (e): e is Extract<OverlayElement, { type: 'image' }> =>
-                e.type === 'image' && e.visible && Boolean(e.imagePath),
+                e.type === 'image' && Boolean(e.imagePath),
             )
             .map((e) => e.imagePath),
         ),

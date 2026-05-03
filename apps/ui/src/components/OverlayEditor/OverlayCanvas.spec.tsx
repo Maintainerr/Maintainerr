@@ -373,4 +373,49 @@ describe('OverlayCanvas', () => {
     })
     expect(buildOverlayImageUrlMock).toHaveBeenLastCalledWith('logo.png', 1)
   })
+
+  it('keeps cached image assets when an image element is toggled hidden and back', async () => {
+    const { rerender } = render(
+      <OverlayCanvas
+        elements={[imageElement]}
+        canvasWidth={1000}
+        canvasHeight={1500}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(buildOverlayImageUrlMock).toHaveBeenCalledTimes(1)
+    })
+
+    // Hide the image — its filename is still referenced in the document,
+    // so the cached bitmap must not be evicted.
+    rerender(
+      <OverlayCanvas
+        elements={[{ ...imageElement, visible: false }]}
+        canvasWidth={1000}
+        canvasHeight={1500}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    )
+
+    // Show it again. No new fetch should happen — we re-use the cached
+    // bitmap rather than briefly rendering a placeholder.
+    rerender(
+      <OverlayCanvas
+        elements={[imageElement]}
+        canvasWidth={1000}
+        canvasHeight={1500}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    )
+
+    expect(buildOverlayImageUrlMock).toHaveBeenCalledTimes(1)
+  })
 })

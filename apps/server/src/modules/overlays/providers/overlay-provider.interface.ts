@@ -58,4 +58,16 @@ export interface IOverlayProvider {
     buffer: Buffer,
     contentType: string,
   ): Promise<void>;
+
+  /**
+   * Confirm `itemId` is still present on the configured media server.
+   * Returns `true` when the item exists, `false` only when the server
+   * explicitly reports it gone (HTTP 404 / empty result). Throws on
+   * transient failures (network errors, 5xx, auth) so revert callers can
+   * preserve their state for a later retry rather than dropping it on a
+   * blip. Used to short-circuit revert attempts on items that have been
+   * removed from the library — uploading to a deleted item triggers the
+   * server to close the connection mid-stream, surfacing as EPIPE.
+   */
+  itemExists(itemId: string): Promise<boolean>;
 }

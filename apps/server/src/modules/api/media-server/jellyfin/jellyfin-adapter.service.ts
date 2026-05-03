@@ -871,6 +871,31 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Confirm a Jellyfin item is still present. Distinguishes "definitely
+   * gone" (200 with empty Items, or 404) from "could not check" — the
+   * latter rethrows so revert callers don't drop their state on a blip.
+   */
+  async itemExists(itemId: string): Promise<boolean> {
+    if (!this.api) return false;
+
+    const userId = await this.getUserId();
+    try {
+      const response = await getItemsApi(this.api).getItems({
+        userId,
+        ids: [itemId],
+        enableUserData: false,
+        limit: 1,
+      });
+      return Boolean(response.data.Items?.[0]);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
