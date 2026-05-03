@@ -535,30 +535,46 @@ export class StorageMetricsService {
       .createQueryBuilder('c')
       .select('c.type', 'type')
       .addSelect('COALESCE(SUM(c.handledMediaAmount), 0)', 'handled')
+      .addSelect('COALESCE(SUM(c.handledMediaSizeBytes), 0)', 'bytes')
       .groupBy('c.type')
-      .getRawMany<{ type: MediaItemType; handled: string | number }>();
+      .getRawMany<{
+        type: MediaItemType;
+        handled: string | number;
+        bytes: string | number;
+      }>();
 
     let itemsHandled = 0;
     let moviesHandled = 0;
     let showsHandled = 0;
     let seasonsHandled = 0;
     let episodesHandled = 0;
+    let bytesHandled = 0;
+    let movieBytesHandled = 0;
+    let showBytesHandled = 0;
+    let seasonBytesHandled = 0;
+    let episodeBytesHandled = 0;
 
     for (const row of rows) {
       const handled = this.toNumber(row.handled) ?? 0;
+      const bytes = this.toNumber(row.bytes) ?? 0;
       itemsHandled += handled;
+      bytesHandled += bytes;
       switch (row.type) {
         case 'movie':
           moviesHandled += handled;
+          movieBytesHandled += bytes;
           break;
         case 'show':
           showsHandled += handled;
+          showBytesHandled += bytes;
           break;
         case 'season':
           seasonsHandled += handled;
+          seasonBytesHandled += bytes;
           break;
         case 'episode':
           episodesHandled += handled;
+          episodeBytesHandled += bytes;
           break;
       }
     }
@@ -569,6 +585,11 @@ export class StorageMetricsService {
       showsHandled,
       seasonsHandled,
       episodesHandled,
+      bytesHandled,
+      movieBytesHandled,
+      showBytesHandled,
+      seasonBytesHandled,
+      episodeBytesHandled,
     };
   }
 
@@ -577,12 +598,9 @@ export class StorageMetricsService {
 
     let activeCount = 0;
     let inactiveCount = 0;
-    let activeSizeBytes = 0;
-    let activeSizedCount = 0;
-    let movieSizeBytes = 0;
-    let showSizeBytes = 0;
     let movieCollectionCount = 0;
     let showCollectionCount = 0;
+    const eligibleIds = new Set<number>();
 
     for (const collection of collections) {
       if (collection.isActive) {
@@ -597,17 +615,68 @@ export class StorageMetricsService {
         showCollectionCount += 1;
       }
 
-      const size = this.toNumber(collection.totalSizeBytes);
-      if (!collection.isActive || size === null) continue;
-
-      activeSizeBytes += size;
-      activeSizedCount += 1;
-
-      if (collection.type === 'movie') {
-        movieSizeBytes += size;
-      } else if (collection.type === 'show') {
-        showSizeBytes += size;
+      // "Reclaimable" only counts collections whose rules will actually free
+      // disk: active and configured to delete after some number of days.
+      const deleteAfterDays = this.toNumber(collection.deleteAfterDays);
+      if (
+        collection.isActive &&
+        deleteAfterDays !== null &&
+        deleteAfterDays > 0
+      ) {
+        eligibleIds.add(collection.id);
       }
+    }
+
+    let activeSizeBytes = 0;
+    let movieSizeBytes = 0;
+    let showSizeBytes = 0;
+    let activeSizedCount = 0;
+
+    if (eligibleIds.size > 0) {
+      const ids = Array.from(eligibleIds);
+
+      // Group by mediaServerId so the same item across multiple collections
+      // is counted once. Per-item sizes are identical across rows for the
+      // same id, so MAX is equivalent to "any" — it just deduplicates.
+      // Partitioning by collection.type assigns each unique item to its
+      // collection's type bucket; collections are typed homogeneously, so
+      // overlap between movie and show buckets is not a real-world concern.
+      const rows = await this.collectionMediaRepo
+        .createQueryBuilder('cm')
+        .select('cm.mediaServerId', 'mediaServerId')
+        .addSelect('c.type', 'type')
+        .addSelect('MAX(cm.sizeBytes)', 'sizeBytes')
+        .innerJoin('cm.collection', 'c')
+        .where('cm.collectionId IN (:...ids)', { ids })
+        .andWhere('cm.sizeBytes IS NOT NULL')
+        .groupBy('cm.mediaServerId')
+        .addGroupBy('c.type')
+        .getRawMany<{
+          mediaServerId: string;
+          type: MediaItemType;
+          sizeBytes: string | number | null;
+        }>();
+
+      for (const row of rows) {
+        const size = this.toNumber(row.sizeBytes);
+        if (size === null || size <= 0) continue;
+
+        activeSizeBytes += size;
+        if (row.type === 'movie') {
+          movieSizeBytes += size;
+        } else if (row.type === 'show') {
+          showSizeBytes += size;
+        }
+      }
+
+      const sized = await this.collectionMediaRepo
+        .createQueryBuilder('cm')
+        .select('DISTINCT cm.collectionId', 'collectionId')
+        .where('cm.collectionId IN (:...ids)', { ids })
+        .andWhere('cm.sizeBytes IS NOT NULL')
+        .getRawMany<{ collectionId: number }>();
+
+      activeSizedCount = sized.length;
     }
 
     return {

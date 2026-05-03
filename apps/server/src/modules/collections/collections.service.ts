@@ -3010,25 +3010,22 @@ export class CollectionsService {
       let hasAnySize = false;
 
       for (const media of collectionMedia) {
+        let itemSize: number | null = null;
         try {
           const metadata = await mediaServer.getMetadata(media.mediaServerId);
-          if (!metadata) continue;
-
-          const itemSize = this.sumMediaSourceSizes(metadata);
-
-          if (itemSize > 0) {
-            totalBytes += itemSize;
-            hasAnySize = true;
-          } else if (metadata.type === 'show' || metadata.type === 'season') {
-            // Show/season items may not have file sizes at the top level.
-            // Traverse children to sum episode-level sizes.
-            const childSize = await this.getChildrenTotalSize(
-              mediaServer,
-              metadata,
-            );
-            if (childSize > 0) {
-              totalBytes += childSize;
-              hasAnySize = true;
+          if (metadata) {
+            const directSize = this.sumMediaSourceSizes(metadata);
+            if (directSize > 0) {
+              itemSize = directSize;
+            } else if (
+              metadata.type === 'show' ||
+              metadata.type === 'season'
+            ) {
+              const childSize = await this.getChildrenTotalSize(
+                mediaServer,
+                metadata,
+              );
+              if (childSize > 0) itemSize = childSize;
             }
           }
         } catch (error) {
@@ -3036,6 +3033,19 @@ export class CollectionsService {
             `Failed to get size for media ${media.mediaServerId}`,
           );
           this.logger.debug(error);
+        }
+
+        if (itemSize != null && itemSize > 0) {
+          totalBytes += itemSize;
+          hasAnySize = true;
+        }
+
+        // Persist per-item size so cross-collection dedup in storage metrics
+        // can count an item once even when it belongs to multiple collections.
+        if (media.sizeBytes !== itemSize) {
+          await this.CollectionMediaRepo.update(media.id, {
+            sizeBytes: itemSize,
+          });
         }
       }
 
