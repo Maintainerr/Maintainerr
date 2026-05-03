@@ -1,13 +1,13 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface {
-    name = 'AddStorageReclaimMetrics1777819543664'
+  name = 'AddStorageReclaimMetrics1777819543664';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP INDEX "idx_collection_media_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection_media" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -23,7 +23,7 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                 CONSTRAINT "FK_604b0cd0f85150923289b7f2c19" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection_media"(
                     "id",
                     "collectionId",
@@ -48,17 +48,17 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                 "manualMembershipSource"
             FROM "collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection_media"
                 RENAME TO "collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_media_collection_id" ON "collection_media" ("collectionId")
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "temporary_collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -96,7 +96,7 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                     CONSTRAINT "FK_b638046ca16fca4108a7981fd8c" FOREIGN KEY ("sonarrSettingsId") REFERENCES "sonarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_collection"(
                     "id",
                     "libraryId",
@@ -159,21 +159,21 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                 "overlayTemplateId"
             FROM "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_collection"
                 RENAME TO "collection"
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "collection"
                 RENAME TO "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "libraryId" varchar NOT NULL,
@@ -210,7 +210,7 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                     CONSTRAINT "FK_b638046ca16fca4108a7981fd8c" FOREIGN KEY ("sonarrSettingsId") REFERENCES "sonarr_settings" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection"(
                     "id",
                     "libraryId",
@@ -273,17 +273,17 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                 "overlayTemplateId"
             FROM "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP INDEX "idx_collection_media_collection_id"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "collection_media"
                 RENAME TO "temporary_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "collection_media" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "collectionId" integer NOT NULL,
@@ -298,7 +298,7 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                 CONSTRAINT "FK_604b0cd0f85150923289b7f2c19" FOREIGN KEY ("collectionId") REFERENCES "collection" ("id") ON DELETE CASCADE ON UPDATE NO ACTION
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "collection_media"(
                     "id",
                     "collectionId",
@@ -323,12 +323,11 @@ export class AddStorageReclaimMetrics1777819543664 implements MigrationInterface
                 "manualMembershipSource"
             FROM "temporary_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_collection_media"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE INDEX "idx_collection_media_collection_id" ON "collection_media" ("collectionId")
         `);
-    }
-
+  }
 }

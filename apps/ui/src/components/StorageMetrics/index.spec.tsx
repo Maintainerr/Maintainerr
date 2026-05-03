@@ -84,6 +84,11 @@ describe('StorageMetrics', () => {
       showsHandled: 0,
       seasonsHandled: 0,
       episodesHandled: 0,
+      bytesHandled: 0,
+      movieBytesHandled: 0,
+      showBytesHandled: 0,
+      seasonBytesHandled: 0,
+      episodeBytesHandled: 0,
     },
   })
 
@@ -130,6 +135,11 @@ describe('StorageMetrics', () => {
       showsHandled: 4,
       seasonsHandled: 5,
       episodesHandled: 6,
+      bytesHandled: 1800,
+      movieBytesHandled: 300,
+      showBytesHandled: 400,
+      seasonBytesHandled: 500,
+      episodeBytesHandled: 600,
     }
 
     const { unmount } = renderStorageMetrics()
@@ -151,16 +161,13 @@ describe('StorageMetrics', () => {
       })
 
       expect(within(moviesCard).getByText('3')).toBeTruthy()
+      expect(within(moviesCard).getByText('300 B reclaimed')).toBeTruthy()
       expect(within(showsCard).getByText('4')).toBeTruthy()
-      expect(within(showsCard).getByText('From show collections')).toBeTruthy()
+      expect(within(showsCard).getByText('400 B reclaimed')).toBeTruthy()
       expect(within(seasonsCard).getByText('5')).toBeTruthy()
-      expect(
-        within(seasonsCard).getByText('From season collections'),
-      ).toBeTruthy()
+      expect(within(seasonsCard).getByText('500 B reclaimed')).toBeTruthy()
       expect(within(episodesCard).getByText('6')).toBeTruthy()
-      expect(
-        within(episodesCard).getByText('From episode collections'),
-      ).toBeTruthy()
+      expect(within(episodesCard).getByText('600 B reclaimed')).toBeTruthy()
     } finally {
       unmount()
     }

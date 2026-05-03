@@ -207,7 +207,7 @@ const StorageMetrics: React.FC = () => {
           <p className="description">
             Cumulative count of media items Maintainerr has handled across all
             collections, with the on-disk space reclaimed by delete-style
-            actions. Unmonitor and quality-change actions don't contribute to
+            actions. Unmonitor and quality-change actions do not contribute to
             bytes reclaimed.
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
