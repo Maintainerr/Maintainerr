@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/server",
-  "version": "3.10.0",
+  "version": "3.10.1",
   "private": true,
   "scripts": {
     "dev": "nest start --watch",

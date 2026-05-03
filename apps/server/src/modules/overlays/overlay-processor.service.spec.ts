@@ -30,6 +30,7 @@ const makeProvider = (overrides: Partial<Record<string, jest.Mock>> = {}) => ({
   getRandomEpisode: jest.fn(),
   downloadImage: jest.fn(),
   uploadImage: jest.fn().mockResolvedValue(undefined),
+  itemExists: jest.fn().mockResolvedValue(true),
   ...overrides,
 });
 
@@ -969,6 +970,167 @@ describe('OverlayProcessorService', () => {
     expect(stateService.removeState).not.toHaveBeenCalled();
     // No reverted event should be emitted because nothing was actually reverted.
     expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('drops state and backup without uploading when the item no longer exists on the media server', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = makeProvider({
+      itemExists: jest.fn().mockResolvedValue(false),
+    });
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
+    };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    const deleteSpy = jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertCollection(42);
+
+    expect(provider.itemExists).toHaveBeenCalledWith('media-1');
+    // Skip the upload — Plex would close the connection mid-stream (EPIPE)
+    // for a deleted item.
+    expect(provider.uploadImage).not.toHaveBeenCalled();
+    // Stale state and the backup are no longer useful — clear them so we
+    // don't retry forever and pin a deleted item's bitmap on disk.
+    expect(deleteSpy).toHaveBeenCalledWith('media-1');
+    expect(stateService.removeState).toHaveBeenCalledWith(42, 'media-1');
+    // Quiet cleanup: not surfaced as a revert event.
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.Overlay_Reverted,
+      expect.anything(),
+    );
+  });
+
+  it('treats an existence-check error as inconclusive and falls through to the upload', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = makeProvider({
+      itemExists: jest.fn().mockRejectedValue(new Error('network blip')),
+    });
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+    const collectionsService = {
+      getCollection: jest
+        .fn()
+        .mockResolvedValue({ type: 'movie', title: 'Flaky collection' }),
+    };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.revertCollection(42);
+
+    // Inconclusive existence → still attempt the upload so a transient
+    // network blip can't drop a backup we'll need on the next run.
+    expect(provider.uploadImage).toHaveBeenCalledWith(
+      'media-1',
+      expect.any(Buffer),
+      'image/jpeg',
+    );
+  });
+
+  it('does not count item-gone reverts as errors during process-all runs', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getAllStates: jest
+        .fn()
+        .mockResolvedValue([{ collectionId: 42, mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const collection = createCollection({
+      id: 1,
+      title: 'Overlay run',
+      type: 'movie',
+      deleteAfterDays: null,
+    });
+    collection.collectionMedia = [];
+    const collectionsService = {
+      getCollectionsWithOverlayEnabled: jest
+        .fn()
+        .mockResolvedValue([collection]),
+    };
+    const provider = makeProvider({
+      itemExists: jest.fn().mockResolvedValue(false),
+    });
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    const deleteSpy = jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    const result = await service.processAllCollections();
+
+    expect(result).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 0,
+      errors: 0,
+    });
+    expect(provider.uploadImage).not.toHaveBeenCalled();
+    expect(deleteSpy).toHaveBeenCalledWith('media-1');
+    expect(stateService.removeState).toHaveBeenCalledWith(42, 'media-1');
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.Overlay_Reverted,
+      expect.anything(),
+    );
   });
 
   it('clears state (but does not delete a non-existent backup) when no backup is saved', async () => {
