@@ -19,6 +19,7 @@ import {
   hasCollectionMediaManualMembership,
 } from '../../collections/entities/collection_media.entities';
 import { CollectionMediaChange } from '../../collections/interfaces/collection-media.interface';
+import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
 import {
   CollectionMediaAddedDto,
   CollectionMediaRemovedDto,
@@ -99,6 +100,7 @@ export class RuleExecutorService {
     private readonly eventEmitter: EventEmitter2,
     private readonly progressManager: RuleExecutorProgressService,
     private readonly logger: MaintainerrLogger,
+    private readonly recentlyHandledMedia: RecentlyHandledMediaService,
   ) {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
@@ -691,11 +693,38 @@ export class RuleExecutorService {
           }),
         );
 
+        // Suppress re-adds for items the collection handler just processed.
+        // Conditions like "watched" / "lastViewedAt before N days" stay true
+        // after the handler action, so without this guard the user gets a
+        // `Media Removed` event immediately followed by `Media Added` for
+        // the same title — confusing and noisy via email/Discord. The next
+        // handler run replaces the suppression set, so this only blocks
+        // the immediate echo.
+        let suppressedReAddCount = 0;
         const mediaToAdd: string[] = [];
         for (const mediaServerId of desiredMediaServerIds) {
-          if (!currentMediaServerIds.has(mediaServerId)) {
-            mediaToAdd.push(mediaServerId);
+          if (currentMediaServerIds.has(mediaServerId)) continue;
+          if (
+            this.recentlyHandledMedia.wasRecentlyHandled(
+              collection.id,
+              mediaServerId,
+            )
+          ) {
+            suppressedReAddCount++;
+            continue;
           }
+          mediaToAdd.push(mediaServerId);
+        }
+        if (suppressedReAddCount > 0) {
+          this.logger.log(
+            `Suppressed re-add of ${suppressedReAddCount} media item${
+              suppressedReAddCount === 1 ? '' : 's'
+            } in '${
+              collection.manualCollection
+                ? collection.manualCollectionName
+                : collection.title
+            }' that the collection handler just processed.`,
+          );
         }
 
         const dataToAdd: CollectionMediaChange[] = this.prepareDataAmendment(
