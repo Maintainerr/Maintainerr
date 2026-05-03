@@ -1,3 +1,9 @@
+## Fixes
+- Fix EPIPE crash and stabilize canvas previews in overlays when clicking "Run now" or "Reset all overlays" (#2832).
+
+## Dependencies
+- Updated 6 dependencies, including notable upgrades to `axios`, `@tanstack/react-query`, and `zod`.
+
 ## Highlights
 - Added a compact image picker in the overlay Properties panel, enabling image uploads for overlay Image elements directly from the UI (#2814).
 - Fixed overlay template selection reverting to "Default" after saving a rule group by ensuring proper template loading behavior (#2815).
