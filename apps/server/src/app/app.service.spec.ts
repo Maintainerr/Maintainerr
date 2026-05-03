@@ -127,6 +127,32 @@ describe('AppService', () => {
     expect(githubApi.getLatestRelease).not.toHaveBeenCalled();
   });
 
+  it('detects updates across multi-digit version segments', async () => {
+    process.env.npm_package_version = '3.9.0';
+    process.env.VERSION_TAG = 'latest';
+    process.env.GIT_SHA = 'bd8a1e0123456789';
+    process.env.NODE_ENV = 'production';
+
+    githubApi.getLatestRelease.mockResolvedValue({ tag_name: 'v3.10.1' });
+
+    await expect(service.getAppVersionStatus()).resolves.toMatchObject({
+      updateAvailable: true,
+    });
+  });
+
+  it('does not flag an update when local is newer than remote', async () => {
+    process.env.npm_package_version = '3.10.0';
+    process.env.VERSION_TAG = 'latest';
+    process.env.GIT_SHA = 'bd8a1e0123456789';
+    process.env.NODE_ENV = 'production';
+
+    githubApi.getLatestRelease.mockResolvedValue({ tag_name: 'v3.9.5' });
+
+    await expect(service.getAppVersionStatus()).resolves.toMatchObject({
+      updateAvailable: false,
+    });
+  });
+
   it('keeps local development builds marked as local', async () => {
     process.env.npm_package_version = '3.3.0';
     process.env.VERSION_TAG = 'development';
