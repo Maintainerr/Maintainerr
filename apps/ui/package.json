@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.10.0",
+  "version": "3.10.1",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -39,7 +39,7 @@
     "react-select": "^5.10.2",
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
-    "yaml": "^2.8.3",
+    "yaml": "^2.8.4",
     "zod": "^4.4.1"
   },
   "browserslist": [
@@ -72,7 +72,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.1.1",
     "monaco-editor": "0.55.1",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.11",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^3.4.19",

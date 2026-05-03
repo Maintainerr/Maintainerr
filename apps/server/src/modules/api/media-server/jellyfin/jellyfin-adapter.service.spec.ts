@@ -2006,5 +2006,45 @@ describe('JellyfinAdapterService', () => {
         );
       });
     });
+
+    describe('itemExists', () => {
+      it('returns true when getItems returns the item', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItems.mockResolvedValue({
+          data: { Items: [{ Id: '42' }] },
+        });
+
+        await expect(service.itemExists('42')).resolves.toBe(true);
+      });
+
+      it('returns false when getItems returns no items (item gone)', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+
+        await expect(service.itemExists('42')).resolves.toBe(false);
+      });
+
+      it('returns false on a 404 from Jellyfin', async () => {
+        await initializeAdapter();
+        jellyfinApiMocks.getItems.mockRejectedValue(createResponseError(404));
+
+        await expect(service.itemExists('42')).resolves.toBe(false);
+      });
+
+      it('rethrows non-404 errors so revert callers preserve state', async () => {
+        await initializeAdapter();
+        const err = createResponseError(502);
+        jellyfinApiMocks.getItems.mockRejectedValue(err);
+
+        await expect(service.itemExists('42')).rejects.toBe(err);
+      });
+
+      it('throws when the adapter is not initialised so revert callers preserve state', async () => {
+        await expect(service.itemExists('42')).rejects.toThrow(
+          'Jellyfin API not initialized',
+        );
+        expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+      });
+    });
   });
 });

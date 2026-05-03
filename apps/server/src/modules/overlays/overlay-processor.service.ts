@@ -33,7 +33,7 @@ export interface ProcessorRunResult {
   errors: number;
 }
 
-type RevertItemResult = 'restored' | 'failed' | 'no-backup';
+type RevertItemResult = 'restored' | 'failed' | 'no-backup' | 'item-gone';
 
 @Injectable()
 export class OverlayProcessorService {
@@ -126,6 +126,10 @@ export class OverlayProcessorService {
    *
    * Failure handling:
    *  - No backup on disk → nothing we can do; clear state so we stop tracking.
+   *  - Item no longer on the media server → nothing left to restore;
+   *    clear state and backup so we don't retry forever (Plex closes the
+   *    connection mid-upload for deleted items, surfacing as EPIPE; this
+   *    short-circuit keeps that off the run summary too).
    *  - Backup on disk, upload fails → keep both backup and state so a later
    *    run can retry cleanly. Destroying the only recovery data on a
    *    transient media-server outage would strand the item overlaid forever.
@@ -144,6 +148,25 @@ export class OverlayProcessorService {
       );
       await this.stateService.removeState(collectionId, mediaServerId);
       return 'no-backup';
+    }
+
+    // A failed existence check (network blip, 5xx, auth) leaves `exists`
+    // optimistically true so the upload still runs and any failure follows
+    // the existing retry path — we never drop a backup on uncertainty.
+    let exists = true;
+    try {
+      exists = await provider.itemExists(mediaServerId);
+    } catch (error) {
+      this.logger.debug(error);
+    }
+
+    if (!exists) {
+      this.logger.log(
+        `Item ${mediaServerId} no longer exists on the media server, dropping overlay state and backup`,
+      );
+      this.deleteOriginalPoster(mediaServerId);
+      await this.stateService.removeState(collectionId, mediaServerId);
+      return 'item-gone';
     }
 
     try {
