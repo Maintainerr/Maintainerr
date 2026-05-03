@@ -123,7 +123,12 @@ export function OverlayCanvas({
   // by the parent on a fresh upload, which busts the cache for files
   // overwritten in place. Prunes entries no longer referenced so a deleted
   // element doesn't keep its bitmap pinned in memory.
-  const imagePaths = useMemo(
+  //
+  // Visibility is intentionally NOT part of this key: hiding an element
+  // would otherwise evict its decoded bitmap, and toggling it back on
+  // would force a fresh fetch + placeholder flash. Visibility only
+  // affects what gets drawn (see `sorted` below), not what gets cached.
+  const imagePathKey = useMemo(
     () =>
       Array.from(
         new Set(
@@ -134,8 +139,14 @@ export function OverlayCanvas({
             )
             .map((e) => e.imagePath),
         ),
-      ),
+      )
+        .sort()
+        .join('|'),
     [elements],
+  )
+  const imagePaths = useMemo(
+    () => (imagePathKey ? imagePathKey.split('|') : []),
+    [imagePathKey],
   )
 
   useEffect(() => {
@@ -493,6 +504,7 @@ function ElementRenderer({
         const offsetY = (h - drawH) / 2
         return (
           <Group {...commonProps}>
+            <Rect width={w} height={h} fill="rgba(0,0,0,0)" />
             <KonvaImage
               image={loaded}
               x={offsetX}
