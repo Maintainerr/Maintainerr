@@ -18,6 +18,8 @@ yarn test | tail -20
 
 Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, and Tautulli to provide comprehensive media lifecycle management.
 
+For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Repository Structure
 
 This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspaces**:
@@ -41,7 +43,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 - **Testing**: Jest with @suites for dependency mocking and unit testing
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: Zod v4+ schemas with nestjs-zod
-- **Architecture**: Event-driven with schedulers, graceful shutdown support
+- **Architecture**: Event-driven with schedulers and graceful shutdown support. See [ARCHITECTURE.md](ARCHITECTURE.md) for the system-level overview.
 
 ### Frontend (`apps/ui/`)
 

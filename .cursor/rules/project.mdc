@@ -3,4 +3,4 @@ description: Project overview and coding standards
 alwaysApply: true
 ---
 
-At the start of every conversation, read `AGENTS.md` for the full project overview, technology stack, coding standards, and contribution guidelines.
+At the start of every conversation, read `AGENTS.md` for the full project overview, technology stack, coding standards, and contribution guidelines. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overview.

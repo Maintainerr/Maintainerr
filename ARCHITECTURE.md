@@ -1,9 +1,10 @@
 # Architecture Overview
 
-This document gives contributors and agents a fast map of Maintainerr's
-architecture. It is intentionally high level: use it to find the right area of
-the codebase, then follow the local module, tests, and contracts for exact
-behaviour.
+This document gives contributors a fast map of Maintainerr's architecture. It
+is tool-neutral and should support manual development, IDE workflows, and
+automation equally. It is intentionally high level: use it to find the right
+area of the codebase, then follow the local module, tests, and contracts for
+exact behaviour.
 
 Last updated: 2026-04-29.
 
@@ -232,5 +233,5 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
   Jellyseerr, and Seerr-compatible APIs.
 - SSE: Server-sent events used for live rule and collection job updates.
 
-This document is adapted from the general `ARCHITECTURE.md` template at
-https://architecture.md/.
+This repository architecture overview lives in
+[ARCHITECTURE.md](ARCHITECTURE.md).
