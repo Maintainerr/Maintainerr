@@ -2039,8 +2039,10 @@ describe('JellyfinAdapterService', () => {
         await expect(service.itemExists('42')).rejects.toBe(err);
       });
 
-      it('returns false when the adapter is not initialised', async () => {
-        await expect(service.itemExists('42')).resolves.toBe(false);
+      it('throws when the adapter is not initialised so revert callers preserve state', async () => {
+        await expect(service.itemExists('42')).rejects.toThrow(
+          'Jellyfin API not initialized',
+        );
         expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
       });
     });

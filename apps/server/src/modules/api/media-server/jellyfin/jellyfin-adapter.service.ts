@@ -874,10 +874,15 @@ export class JellyfinAdapterService implements IMediaServerService {
   /**
    * Confirm a Jellyfin item is still present. Distinguishes "definitely
    * gone" (200 with empty Items, or 404) from "could not check" — the
-   * latter rethrows so revert callers don't drop their state on a blip.
+   * latter throws so revert callers don't drop their state on a blip.
+   * An uninitialised adapter is treated as inconclusive (throws) for the
+   * same reason: callers must never delete the only restore-from-overlay
+   * backup just because the media server is temporarily unconfigured.
    */
   async itemExists(itemId: string): Promise<boolean> {
-    if (!this.api) return false;
+    if (!this.api) {
+      throw new Error('Jellyfin API not initialized');
+    }
 
     const userId = await this.getUserId();
     try {
