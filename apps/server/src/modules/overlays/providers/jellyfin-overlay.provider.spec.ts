@@ -125,4 +125,20 @@ describe('JellyfinOverlayProvider', () => {
       );
     });
   });
+
+  describe('itemExists', () => {
+    it('delegates to JellyfinAdapterService.itemExists', async () => {
+      jf.itemExists.mockResolvedValue(true);
+      await expect(provider.itemExists('42')).resolves.toBe(true);
+      expect(jf.itemExists).toHaveBeenCalledWith('42');
+
+      jf.itemExists.mockResolvedValue(false);
+      await expect(provider.itemExists('42')).resolves.toBe(false);
+    });
+
+    it('propagates errors so revert callers preserve state on transient failures', async () => {
+      jf.itemExists.mockRejectedValue(new Error('5xx'));
+      await expect(provider.itemExists('42')).rejects.toThrow('5xx');
+    });
+  });
 });

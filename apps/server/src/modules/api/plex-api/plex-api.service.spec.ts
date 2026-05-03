@@ -300,6 +300,46 @@ describe('PlexApiService.getMetadata', () => {
       true,
     );
   });
+
+  describe('itemExists', () => {
+    it('returns true when Plex returns metadata for the item', async () => {
+      const query = jest.fn().mockResolvedValue({
+        MediaContainer: { Metadata: [{ ratingKey: '123' }] },
+      });
+      (service as any).plexClient = { query };
+
+      await expect(service.itemExists('123')).resolves.toBe(true);
+    });
+
+    it('returns false when Plex explicitly reports the item is gone (404)', async () => {
+      const wrapped = new Error(
+        'GET /library/metadata/123 failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: 404',
+        { cause: { response: { status: 404 } } as any },
+      );
+      const query = jest.fn().mockRejectedValue(wrapped);
+      (service as any).plexClient = { query };
+
+      await expect(service.itemExists('123')).resolves.toBe(false);
+    });
+
+    it('rethrows non-404 failures so revert callers can preserve state', async () => {
+      const wrapped = new Error('boom', {
+        cause: { response: { status: 500 } } as any,
+      });
+      const query = jest.fn().mockRejectedValue(wrapped);
+      (service as any).plexClient = { query };
+
+      await expect(service.itemExists('123')).rejects.toBe(wrapped);
+    });
+
+    it('rethrows network errors with no response status', async () => {
+      const wrapped = new Error('connect ECONNREFUSED');
+      const query = jest.fn().mockRejectedValue(wrapped);
+      (service as any).plexClient = { query };
+
+      await expect(service.itemExists('123')).rejects.toBe(wrapped);
+    });
+  });
 });
 
 describe('PlexApiService.initialize', () => {
