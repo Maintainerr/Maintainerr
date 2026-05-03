@@ -149,15 +149,6 @@ export const processAllOverlays = (options?: { force?: boolean }) =>
     options?.force ? { force: true } : {},
   )
 
-export const processCollectionOverlays = (
-  collectionId: number,
-  options?: { force?: boolean },
-) =>
-  PostApiHandler<OverlayProcessResult>(
-    `/overlays/process/${collectionId}`,
-    options?.force ? { force: true } : {},
-  )
-
 export const resetAllOverlays = () =>
   DeleteApiHandler<{ success: boolean }>('/overlays/reset')
 

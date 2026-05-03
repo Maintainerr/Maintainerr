@@ -322,28 +322,7 @@ describe('OverlaysController', () => {
     expect(processorService.processAllCollections).toHaveBeenCalledWith(false);
   });
 
-  it('forwards collection force-processing requests to the processor', async () => {
-    const collection = {
-      id: 7,
-      title: 'Leaving Soon',
-      collectionMedia: [],
-    };
-    const result = { processed: 2, reverted: 0, skipped: 0, errors: 0 };
-    collectionsService.getCollection.mockResolvedValue(collection);
-    processorService.processCollection.mockResolvedValue(result);
-
-    await expect(
-      controller.processCollection(7, { force: true }),
-    ).resolves.toBe(result);
-
-    expect(processorService.processCollection).toHaveBeenCalledWith(
-      collection,
-      undefined,
-      true,
-    );
-  });
-
-  it('defaults collection process requests to non-force mode', async () => {
+  it('processes collection requests without force mode', async () => {
     const collection = {
       id: 8,
       title: 'Library Cleanup',
@@ -353,12 +332,8 @@ describe('OverlaysController', () => {
     collectionsService.getCollection.mockResolvedValue(collection);
     processorService.processCollection.mockResolvedValue(result);
 
-    await controller.processCollection(8, {});
+    await expect(controller.processCollection(8)).resolves.toBe(result);
 
-    expect(processorService.processCollection).toHaveBeenCalledWith(
-      collection,
-      undefined,
-      false,
-    );
+    expect(processorService.processCollection).toHaveBeenCalledWith(collection);
   });
 });

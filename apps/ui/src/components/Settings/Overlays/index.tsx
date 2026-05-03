@@ -68,7 +68,6 @@ function ToggleField({
 const OverlaySettings = () => {
   const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
-  const [reprocessing, setReprocessing] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [missingCronModalOpen, setMissingCronModalOpen] = useState(false)
@@ -126,21 +125,15 @@ const OverlaySettings = () => {
     }
   }
 
-  const handleProcessAll = async (force = false) => {
-    const setPending = force ? setReprocessing : setProcessing
-
-    setPending(true)
+  const handleProcessAll = async () => {
+    setProcessing(true)
     try {
-      const result = await processAllOverlays(
-        force ? { force: true } : undefined,
-      )
+      const result = await processAllOverlays({ force: true })
       showInfo(formatOverlayProcessSummary(result))
     } catch {
-      showError(
-        force ? 'Failed to reapply overlays' : 'Failed to process overlays',
-      )
+      showError('Failed to process overlays')
     } finally {
-      setPending(false)
+      setProcessing(false)
     }
   }
 
@@ -190,31 +183,6 @@ const OverlaySettings = () => {
               )}
             />
 
-            <div className="mt-5 rounded-lg border border-zinc-700 bg-zinc-900/40 p-4 text-sm text-zinc-300">
-              <h4 className="font-semibold text-zinc-100">Action meanings</h4>
-              <ul className="mt-2 space-y-2 text-xs leading-5 text-zinc-400">
-                <li>
-                  <span className="font-medium text-zinc-200">Run Now:</span>{' '}
-                  process overlays normally and skip items that are already up
-                  to date.
-                </li>
-                <li>
-                  <span className="font-medium text-zinc-200">
-                    Reapply All:
-                  </span>{' '}
-                  rebuild existing overlays using the current templates without
-                  restoring originals first.
-                </li>
-                <li>
-                  <span className="font-medium text-zinc-200">
-                    Reset All Overlays:
-                  </span>{' '}
-                  restore the original artwork and clear overlay state for every
-                  collection.
-                </li>
-              </ul>
-            </div>
-
             {/* Actions */}
             <div className="actions mt-5 w-full">
               <PageControlRow
@@ -236,31 +204,11 @@ const OverlaySettings = () => {
                         buttonType="default"
                         type="button"
                         onClick={() => void handleProcessAll()}
-                        disabled={processing || reprocessing || !loadedEnabled}
+                        disabled={processing || !loadedEnabled}
                         isPending={processing}
                         idleLabel="Run Now"
                         pendingLabel="Running"
                         reserveLabel="Run Now"
-                        idleIcon={<RefreshIcon />}
-                      />
-                    </span>
-                    <span
-                      className="flex rounded-md shadow-sm"
-                      title={
-                        !loadedEnabled
-                          ? 'Enable overlays and save to force a full reapply'
-                          : undefined
-                      }
-                    >
-                      <PendingButton
-                        buttonType="default"
-                        type="button"
-                        onClick={() => void handleProcessAll(true)}
-                        disabled={processing || reprocessing || !loadedEnabled}
-                        isPending={reprocessing}
-                        idleLabel="Reapply All"
-                        pendingLabel="Reapplying"
-                        reserveLabel="Reapply All"
                         idleIcon={<RefreshIcon />}
                       />
                     </span>
@@ -269,7 +217,7 @@ const OverlaySettings = () => {
                         buttonType="danger"
                         type="button"
                         onClick={handleResetAllRequest}
-                        disabled={processing || reprocessing || resetting}
+                        disabled={processing || resetting}
                       >
                         <span>
                           {resetting ? 'Resetting...' : 'Reset All Overlays'}
@@ -312,11 +260,6 @@ const OverlaySettings = () => {
           <p>
             This will revert every applied overlay and restore the original
             posters for all collections.
-          </p>
-          <p className="mt-2">
-            Use <span className="font-semibold text-zinc-100">Reapply All</span>{' '}
-            if you want to rebuild overlays with current templates instead of
-            restoring originals.
           </p>
         </Modal>
       )}

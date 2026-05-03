@@ -52,13 +52,6 @@ vi.mock(
   }),
 )
 
-vi.mock(
-  '../components/Collection/CollectionDetail/ReapplyOverlaysButton',
-  () => ({
-    default: () => <button type="button">Reapply overlays</button>,
-  }),
-)
-
 vi.mock('../components/Common/LazyModalBoundary', () => ({
   default: ({ children }: { children?: React.ReactNode }) => (
     <div>{children}</div>

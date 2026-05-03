@@ -59,30 +59,19 @@ describe('OverlaySettings', () => {
     cleanup()
   })
 
-  it('runs the standard manual overlay pass without force', async () => {
+  it('runs a forced manual overlay pass from Run Now', async () => {
     render(<OverlaySettings />)
 
     const runNow = await screen.findByRole('button', { name: 'Run Now' })
     fireEvent.click(runNow)
 
     await waitFor(() => {
-      expect(processAllOverlays).toHaveBeenCalledWith(undefined)
+      expect(processAllOverlays).toHaveBeenCalledWith({ force: true })
     })
 
     expect(
       await screen.findByText('Processed: 3, Reverted: 1, Errors: 0'),
     ).toBeTruthy()
-  })
-
-  it('runs a forced manual overlay reapply pass', async () => {
-    render(<OverlaySettings />)
-
-    const reapply = await screen.findByRole('button', { name: 'Reapply All' })
-    fireEvent.click(reapply)
-
-    await waitFor(() => {
-      expect(processAllOverlays).toHaveBeenCalledWith({ force: true })
-    })
   })
 
   it('keeps reset available even when overlays are not enabled on the server', async () => {
@@ -95,28 +84,10 @@ describe('OverlaySettings', () => {
     render(<OverlaySettings />)
 
     const runNow = await screen.findByRole('button', { name: 'Run Now' })
-    const reapply = screen.getByRole('button', { name: 'Reapply All' })
     const reset = screen.getByRole('button', { name: 'Reset All Overlays' })
 
     expect((runNow as HTMLButtonElement).disabled).toBe(true)
-    expect((reapply as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Reapply All' })).toBeNull()
     expect((reset as HTMLButtonElement).disabled).toBe(false)
-  })
-
-  it('shows visible copy that distinguishes process, reapply, and reset behavior', async () => {
-    render(<OverlaySettings />)
-
-    expect(await screen.findByText('Action meanings')).toBeTruthy()
-    expect(
-      screen.getByText(/process overlays normally and skip items/i),
-    ).toBeTruthy()
-    expect(
-      screen.getByText(
-        /rebuild existing overlays using the current templates/i,
-      ),
-    ).toBeTruthy()
-    expect(
-      screen.getByText(/restore the original artwork and clear overlay state/i),
-    ).toBeTruthy()
   })
 })

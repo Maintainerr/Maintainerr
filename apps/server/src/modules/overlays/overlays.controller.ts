@@ -211,8 +211,6 @@ export class OverlaysController {
   @Post('process/:collectionId')
   async processCollection(
     @Param('collectionId', ParseIntPipe) collectionId: number,
-    @Body(new ZodValidationPipe(overlayProcessRequestSchema))
-    request: OverlayProcessBody,
   ) {
     if (this.processorService.status === 'running') {
       throw new HttpException(
@@ -234,11 +232,7 @@ export class OverlaysController {
       collection.collectionMedia = media ?? [];
     }
 
-    const result = await this.processorService.processCollection(
-      collection,
-      undefined,
-      request.force ?? false,
-    );
+    const result = await this.processorService.processCollection(collection);
     return result;
   }
 

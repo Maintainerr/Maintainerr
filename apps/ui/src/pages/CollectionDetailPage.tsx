@@ -5,7 +5,6 @@ import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
 import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
-import ReapplyOverlaysButton from '../components/Collection/CollectionDetail/ReapplyOverlaysButton'
 import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
@@ -46,7 +45,6 @@ const CollectionDetailPage = () => {
     error: collectionError,
     isLoading,
   } = useCollection(id)
-  const showCollectionOverlayActions = Boolean(collection?.overlayEnabled)
 
   useEffect(() => {
     if (!collectionError) {
@@ -132,16 +130,11 @@ const CollectionDetailPage = () => {
               />
             </div>
           </div>
-          {currentTab === 'info' &&
-          (ruleGroup?.useRules || showCollectionOverlayActions) ? (
+          {currentTab === 'info' && ruleGroup?.useRules ? (
             <CollectionDetailControlRow
               canTestMedia={Boolean(ruleGroup?.useRules)}
               onOpenTestMedia={() => setMediaTestModalOpen(true)}
-            >
-              {showCollectionOverlayActions ? (
-                <ReapplyOverlaysButton collection={collection} />
-              ) : null}
-            </CollectionDetailControlRow>
+            />
           ) : null}
 
           <Outlet
