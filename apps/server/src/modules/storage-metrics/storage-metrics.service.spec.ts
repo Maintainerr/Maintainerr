@@ -294,6 +294,37 @@ describe('StorageMetricsService', () => {
       expect(summary.activeSizeBytes).toBe(0);
       expect(summary.activeSizedCount).toBe(0);
       expect(summary.totalCollectionCount).toBe(1);
+      expect(summary.reclaimableUsingFallback).toBe(false);
+    });
+
+    it('falls back to cached collection totals when per-item sizes are missing', async () => {
+      setup(
+        [
+          {
+            id: 1,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'movie',
+            totalSizeBytes: 300,
+          } as any,
+          {
+            id: 2,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'show',
+            totalSizeBytes: 700,
+          } as any,
+        ],
+        [],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableUsingFallback).toBe(true);
+      expect(summary.activeSizeBytes).toBe(1000);
+      expect(summary.movieSizeBytes).toBe(300);
+      expect(summary.showSizeBytes).toBe(700);
+      expect(summary.activeSizedCount).toBe(2);
     });
   });
 

@@ -197,7 +197,11 @@ const StorageMetrics: React.FC = () => {
           <SummaryCard
             title="Reclaimable from collections"
             value={formatBytes(metrics.collectionSummary.activeSizeBytes)}
-            subtitle={`${metrics.collectionSummary.activeSizedCount} of ${metrics.collectionSummary.activeCount} active collections sized — duplicates counted once`}
+            subtitle={
+              metrics.collectionSummary.reclaimableUsingFallback
+                ? `${metrics.collectionSummary.activeSizedCount} of ${metrics.collectionSummary.activeCount} active collections sized — duplicates not yet deduplicated, refreshes after next collection run`
+                : `${metrics.collectionSummary.activeSizedCount} of ${metrics.collectionSummary.activeCount} active collections sized — duplicates counted once`
+            }
             icon={<CollectionIcon className="h-5 w-5" />}
           />
         </div>

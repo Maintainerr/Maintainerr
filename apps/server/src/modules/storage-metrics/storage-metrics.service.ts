@@ -631,6 +631,7 @@ export class StorageMetricsService {
     let movieSizeBytes = 0;
     let showSizeBytes = 0;
     let activeSizedCount = 0;
+    let reclaimableUsingFallback = false;
 
     if (eligibleIds.size > 0) {
       const ids = Array.from(eligibleIds);
@@ -677,6 +678,28 @@ export class StorageMetricsService {
         .getRawMany<{ collectionId: number }>();
 
       activeSizedCount = sized.length;
+
+      // Per-item sizes are populated by the collection-handler cron (via
+      // updateCollectionTotalSize). On a fresh upgrade, no row has them yet,
+      // so the deduped query returns nothing. Until the next cron tick, fall
+      // back to the cached per-collection totals (un-deduped) so the card
+      // isn't blank.
+      if (activeSizedCount === 0) {
+        for (const collection of collections) {
+          if (!eligibleIds.has(collection.id)) continue;
+          const total = this.toNumber(collection.totalSizeBytes);
+          if (total === null || total <= 0) continue;
+
+          activeSizeBytes += total;
+          if (collection.type === 'movie') {
+            movieSizeBytes += total;
+          } else if (collection.type === 'show') {
+            showSizeBytes += total;
+          }
+          activeSizedCount += 1;
+          reclaimableUsingFallback = true;
+        }
+      }
     }
 
     return {
@@ -689,6 +712,7 @@ export class StorageMetricsService {
       showSizeBytes,
       movieCollectionCount,
       showCollectionCount,
+      reclaimableUsingFallback,
     };
   }
 

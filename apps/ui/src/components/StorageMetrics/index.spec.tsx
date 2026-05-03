@@ -67,6 +67,7 @@ describe('StorageMetrics', () => {
       showSizeBytes: 0,
       movieCollectionCount: 1,
       showCollectionCount: 0,
+      reclaimableUsingFallback: false,
     },
     topCollections: [
       {

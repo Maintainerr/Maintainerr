@@ -50,6 +50,14 @@ export interface StorageCollectionSummary {
   showSizeBytes: number
   movieCollectionCount: number
   showCollectionCount: number
+  /**
+   * True when `activeSizeBytes` was computed from cached per-collection
+   * totals because per-item sizes have not been backfilled yet. In this
+   * mode duplicates across collections are NOT deduplicated, so the value
+   * may overestimate. Flips to false after the first backfill pass
+   * populates `CollectionMedia.sizeBytes`.
+   */
+  reclaimableUsingFallback: boolean
 }
 
 export interface StorageTopCollection {
