@@ -67,15 +67,7 @@ export class AppService {
         'Maintainerr',
       );
       if (githubResp && githubResp.tag_name) {
-        const transformedLocalVersion = currentVersion
-          .replace('v', '')
-          .replace('.', '');
-
-        const transformedGithubVersion = githubResp.tag_name
-          .replace('v', '')
-          .replace('.', '');
-
-        return transformedGithubVersion > transformedLocalVersion;
+        return this.isRemoteVersionNewer(currentVersion, githubResp.tag_name);
       }
       this.logger.warn(`Couldn't fetch latest release version from GitHub`);
       return false;
@@ -97,5 +89,27 @@ export class AppService {
       }
     }
     return false;
+  }
+
+  private isRemoteVersionNewer(local: string, remote: string): boolean {
+    const localParts = this.parseSemver(local);
+    const remoteParts = this.parseSemver(remote);
+
+    for (let i = 0; i < 3; i++) {
+      if (remoteParts[i] > localParts[i]) return true;
+      if (remoteParts[i] < localParts[i]) return false;
+    }
+    return false;
+  }
+
+  private parseSemver(version: string): [number, number, number] {
+    const withoutPrefix = version.startsWith('v') ? version.slice(1) : version;
+    const core = withoutPrefix.split('-')[0];
+    const segments = core.split('.').map((s) => Number.parseInt(s, 10));
+    return [
+      Number.isFinite(segments[0]) ? segments[0] : 0,
+      Number.isFinite(segments[1]) ? segments[1] : 0,
+      Number.isFinite(segments[2]) ? segments[2] : 0,
+    ];
   }
 }
