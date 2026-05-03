@@ -103,8 +103,9 @@ export class AppService {
   }
 
   private parseSemver(version: string): [number, number, number] {
-    const cleaned = version.replace(/^v/, '').split('-')[0];
-    const segments = cleaned.split('.').map((s) => Number.parseInt(s, 10));
+    const withoutPrefix = version.startsWith('v') ? version.slice(1) : version;
+    const core = withoutPrefix.split('-')[0];
+    const segments = core.split('.').map((s) => Number.parseInt(s, 10));
     return [
       Number.isFinite(segments[0]) ? segments[0] : 0,
       Number.isFinite(segments[1]) ? segments[1] : 0,
