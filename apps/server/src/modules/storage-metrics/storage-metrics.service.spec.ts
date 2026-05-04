@@ -237,8 +237,8 @@ describe('StorageMetricsService', () => {
 
       expect(summary.activeSizeBytes).toBe(150);
       expect(summary.movieSizeBytes).toBe(150);
-      expect(summary.activeCount).toBe(2);
-      expect(summary.activeSizedCount).toBe(2);
+      expect(summary.reclaimableCount).toBe(2);
+      expect(summary.reclaimableSizedCount).toBe(2);
     });
 
     it('excludes collections without a delete rule', async () => {
@@ -258,29 +258,8 @@ describe('StorageMetricsService', () => {
       const summary = await (service as any).buildCollectionSummary();
 
       expect(summary.activeSizeBytes).toBe(100);
-      expect(summary.activeCount).toBe(3);
-      expect(summary.activeSizedCount).toBe(1);
-    });
-
-    it('excludes inactive collections even when they have a delete rule', async () => {
-      setup(
-        [
-          { id: 1, isActive: false, deleteAfterDays: 30, type: 'movie' },
-          { id: 2, isActive: true, deleteAfterDays: 30, type: 'show' },
-        ],
-        [
-          { collectionId: 1, mediaServerId: 'a', sizeBytes: 999 },
-          { collectionId: 2, mediaServerId: 'b', sizeBytes: 100 },
-        ],
-      );
-
-      const summary = await (service as any).buildCollectionSummary();
-
-      expect(summary.activeSizeBytes).toBe(100);
-      expect(summary.showSizeBytes).toBe(100);
-      expect(summary.movieSizeBytes).toBe(0);
-      expect(summary.inactiveCount).toBe(1);
-      expect(summary.activeCount).toBe(1);
+      expect(summary.reclaimableCount).toBe(1);
+      expect(summary.reclaimableSizedCount).toBe(1);
     });
 
     it('returns zeros when no collection is eligible', async () => {
@@ -292,7 +271,8 @@ describe('StorageMetricsService', () => {
       const summary = await (service as any).buildCollectionSummary();
 
       expect(summary.activeSizeBytes).toBe(0);
-      expect(summary.activeSizedCount).toBe(0);
+      expect(summary.reclaimableCount).toBe(0);
+      expect(summary.reclaimableSizedCount).toBe(0);
       expect(summary.totalCollectionCount).toBe(1);
       expect(summary.reclaimableUsingFallback).toBe(false);
     });
@@ -324,7 +304,38 @@ describe('StorageMetricsService', () => {
       expect(summary.activeSizeBytes).toBe(1000);
       expect(summary.movieSizeBytes).toBe(300);
       expect(summary.showSizeBytes).toBe(700);
-      expect(summary.activeSizedCount).toBe(2);
+      expect(summary.reclaimableSizedCount).toBe(2);
+      expect(summary.reclaimableCount).toBe(2);
+    });
+
+    it('keeps fallback mode until every reclaimable collection has per-item sizes', async () => {
+      setup(
+        [
+          {
+            id: 1,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'movie',
+            totalSizeBytes: 300,
+          } as any,
+          {
+            id: 2,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'show',
+            totalSizeBytes: 700,
+          } as any,
+        ],
+        [{ collectionId: 1, mediaServerId: 'm-1', sizeBytes: 300 }],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableUsingFallback).toBe(true);
+      expect(summary.activeSizeBytes).toBe(1000);
+      expect(summary.movieSizeBytes).toBe(300);
+      expect(summary.showSizeBytes).toBe(700);
+      expect(summary.reclaimableSizedCount).toBe(2);
     });
   });
 

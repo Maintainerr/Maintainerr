@@ -596,23 +596,15 @@ export class StorageMetricsService {
   private async buildCollectionSummary(): Promise<StorageCollectionSummary> {
     const collections = await this.collectionRepo.find();
 
-    let activeCount = 0;
+    let reclaimableCount = 0;
     let inactiveCount = 0;
-    let movieCollectionCount = 0;
-    let showCollectionCount = 0;
+    let reclaimableMovieCount = 0;
+    let reclaimableShowCount = 0;
     const eligibleIds = new Set<number>();
 
     for (const collection of collections) {
-      if (collection.isActive) {
-        activeCount += 1;
-      } else {
+      if (!collection.isActive) {
         inactiveCount += 1;
-      }
-
-      if (collection.type === 'movie') {
-        movieCollectionCount += 1;
-      } else if (collection.type === 'show') {
-        showCollectionCount += 1;
       }
 
       // "Reclaimable" only counts collections whose rules will actually free
@@ -624,13 +616,19 @@ export class StorageMetricsService {
         deleteAfterDays > 0
       ) {
         eligibleIds.add(collection.id);
+        reclaimableCount += 1;
+        if (collection.type === 'movie') {
+          reclaimableMovieCount += 1;
+        } else if (collection.type === 'show') {
+          reclaimableShowCount += 1;
+        }
       }
     }
 
     let activeSizeBytes = 0;
     let movieSizeBytes = 0;
     let showSizeBytes = 0;
-    let activeSizedCount = 0;
+    let reclaimableSizedCount = 0;
     let reclaimableUsingFallback = false;
 
     if (eligibleIds.size > 0) {
@@ -677,14 +675,18 @@ export class StorageMetricsService {
         .andWhere('cm.sizeBytes IS NOT NULL')
         .getRawMany<{ collectionId: number }>();
 
-      activeSizedCount = sized.length;
+      reclaimableSizedCount = sized.length;
 
-      // Per-item sizes are populated by the collection-handler cron (via
-      // updateCollectionTotalSize). On a fresh upgrade, no row has them yet,
-      // so the deduped query returns nothing. Until the next cron tick, fall
-      // back to the cached per-collection totals (un-deduped) so the card
-      // isn't blank.
-      if (activeSizedCount === 0) {
+      // Per-item sizes are populated lazily by collection size refreshes.
+      // Until every reclaimable collection has been backfilled, keep using
+      // the cached per-collection totals so we do not silently undercount the
+      // unsized collections. In fallback mode duplicates are not deduplicated.
+      if (reclaimableSizedCount !== reclaimableCount) {
+        activeSizeBytes = 0;
+        movieSizeBytes = 0;
+        showSizeBytes = 0;
+        reclaimableSizedCount = 0;
+
         for (const collection of collections) {
           if (!eligibleIds.has(collection.id)) continue;
           const total = this.toNumber(collection.totalSizeBytes);
@@ -696,22 +698,23 @@ export class StorageMetricsService {
           } else if (collection.type === 'show') {
             showSizeBytes += total;
           }
-          activeSizedCount += 1;
-          reclaimableUsingFallback = true;
+          reclaimableSizedCount += 1;
         }
+
+        reclaimableUsingFallback = reclaimableSizedCount > 0;
       }
     }
 
     return {
-      activeCount,
+      reclaimableCount,
       activeSizeBytes,
-      activeSizedCount,
+      reclaimableSizedCount,
       inactiveCount,
       totalCollectionCount: collections.length,
       movieSizeBytes,
       showSizeBytes,
-      movieCollectionCount,
-      showCollectionCount,
+      reclaimableMovieCount,
+      reclaimableShowCount,
       reclaimableUsingFallback,
     };
   }

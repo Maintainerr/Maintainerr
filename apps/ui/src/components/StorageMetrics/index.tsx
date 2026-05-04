@@ -199,8 +199,8 @@ const StorageMetrics: React.FC = () => {
             value={formatBytes(metrics.collectionSummary.activeSizeBytes)}
             subtitle={
               metrics.collectionSummary.reclaimableUsingFallback
-                ? `${metrics.collectionSummary.activeSizedCount} of ${metrics.collectionSummary.activeCount} active collections sized — duplicates not yet deduplicated, refreshes after next collection run`
-                : `${metrics.collectionSummary.activeSizedCount} of ${metrics.collectionSummary.activeCount} active collections sized — duplicates counted once`
+                ? `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized — duplicates not yet deduplicated, refreshes after next collection run`
+                : `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized — duplicates counted once`
             }
             icon={<CollectionIcon className="h-5 w-5" />}
           />
@@ -255,8 +255,9 @@ const StorageMetrics: React.FC = () => {
         <section className="mt-8">
           <h2 className="sm-heading">Potential reclaim by type</h2>
           <p className="description">
-            Based on cached collection sizes, deduplicated across collections.
-            Run collection processing jobs to refresh size data.
+            {metrics.collectionSummary.reclaimableUsingFallback
+              ? 'Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh.'
+              : 'Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data.'}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
@@ -266,8 +267,8 @@ const StorageMetrics: React.FC = () => {
                   Movies
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.movieCollectionCount} collection
-                  {metrics.collectionSummary.movieCollectionCount === 1
+                  {metrics.collectionSummary.reclaimableMovieCount} collection
+                  {metrics.collectionSummary.reclaimableMovieCount === 1
                     ? ''
                     : 's'}
                 </span>
@@ -283,8 +284,8 @@ const StorageMetrics: React.FC = () => {
                   Shows
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.showCollectionCount} collection
-                  {metrics.collectionSummary.showCollectionCount === 1
+                  {metrics.collectionSummary.reclaimableShowCount} collection
+                  {metrics.collectionSummary.reclaimableShowCount === 1
                     ? ''
                     : 's'}
                 </span>

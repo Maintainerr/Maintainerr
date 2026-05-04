@@ -58,15 +58,15 @@ describe('StorageMetrics', () => {
       totalItemCount: 42,
     },
     collectionSummary: {
-      activeCount: 1,
+      reclaimableCount: 1,
       activeSizeBytes: 500,
-      activeSizedCount: 1,
+      reclaimableSizedCount: 1,
       inactiveCount: 0,
       totalCollectionCount: 1,
       movieSizeBytes: 500,
       showSizeBytes: 0,
-      movieCollectionCount: 1,
-      showCollectionCount: 0,
+      reclaimableMovieCount: 1,
+      reclaimableShowCount: 0,
       reclaimableUsingFallback: false,
     },
     topCollections: [
@@ -169,6 +169,38 @@ describe('StorageMetrics', () => {
       expect(within(seasonsCard).getByText('500 B reclaimed')).toBeTruthy()
       expect(within(episodesCard).getByText('6')).toBeTruthy()
       expect(within(episodesCard).getByText('600 B reclaimed')).toBeTruthy()
+    } finally {
+      unmount()
+    }
+  })
+
+  it('uses reclaimable counts and fallback copy consistently', async () => {
+    metricsResponse.collectionSummary = {
+      ...metricsResponse.collectionSummary,
+      reclaimableCount: 3,
+      reclaimableSizedCount: 2,
+      reclaimableMovieCount: 1,
+      reclaimableShowCount: 2,
+      reclaimableUsingFallback: true,
+    }
+
+    const { unmount } = renderStorageMetrics()
+
+    try {
+      await waitFor(() => {
+        expect(screen.getByText('Reclaimable from collections')).toBeTruthy()
+      })
+
+      expect(
+        screen.getByText(
+          '2 of 3 reclaimable collections sized — duplicates not yet deduplicated, refreshes after next collection run',
+        ),
+      ).toBeTruthy()
+      expect(
+        screen.getByText(
+          'Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh.',
+        ),
+      ).toBeTruthy()
     } finally {
       unmount()
     }
