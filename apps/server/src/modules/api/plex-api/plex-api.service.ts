@@ -915,6 +915,40 @@ export class PlexApiService {
     }
   }
 
+  public async setCollectionCustomSort(collectionId: string): Promise<void> {
+    try {
+      await this.plexClient.putQuery({
+        uri: `/library/metadata/${collectionId}/prefs?collectionSort=2`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to set custom sort for collection ${collectionId}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
+  public async moveCollectionItem(
+    collectionId: string,
+    itemId: string,
+    afterId?: string,
+  ): Promise<void> {
+    try {
+      // path accepts comma-separated IDs according to spec but we use it sequentially
+      const afterQuery = afterId ? `?after=${afterId}` : '';
+      await this.plexClient.putQuery({
+        uri: `/library/collections/${collectionId}/items/${itemId}/move${afterQuery}`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to move item ${itemId} in collection ${collectionId}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
   public async deleteCollection(
     collectionId: string,
   ): Promise<BasicResponseDto> {

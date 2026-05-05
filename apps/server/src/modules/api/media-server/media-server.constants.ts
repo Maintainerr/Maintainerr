@@ -15,6 +15,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.LABELS,
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
+    MediaServerFeature.COLLECTION_SORT,
   ]),
   [MediaServerType.JELLYFIN]: new Set([
     MediaServerFeature.LABELS, // Tags in Jellyfin
@@ -23,6 +24,8 @@ export const MEDIA_SERVER_FEATURES: Record<
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
     // Note: CENTRAL_WATCH_HISTORY not supported (requires user iteration)
+    // Note: COLLECTION_SORT not supported — no boxset reorder API;
+    // ForcedSortName has global side-effects.
   ]),
 };
 

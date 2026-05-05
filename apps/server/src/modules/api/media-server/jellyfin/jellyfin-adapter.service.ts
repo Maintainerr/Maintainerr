@@ -1804,6 +1804,17 @@ export class JellyfinAdapterService implements IMediaServerService {
     );
   }
 
+  async reorderCollectionItems(
+    collectionId: string,
+    orderedItemIds: string[],
+  ): Promise<void> {
+    this.logger.warn(
+      `Attempted to reorder items in collection ${collectionId}, ` +
+        'but Jellyfin does not support boxset reordering.',
+    );
+    throw new Error('Collection sort not supported on Jellyfin');
+  }
+
   // OPTIONAL: SERVER-SPECIFIC FEATURES (Not supported)
 
   // getWatchlistForUser is not implemented for Jellyfin
