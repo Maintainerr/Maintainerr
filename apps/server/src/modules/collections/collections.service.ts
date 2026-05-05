@@ -104,7 +104,7 @@ export class CollectionsService {
     private readonly collectionPosterService: CollectionPosterService,
     private readonly logger: MaintainerrLogger,
   ) {
-    logger.setContext(CollectionsService.name);
+    this.logger.setContext(CollectionsService.name);
   }
 
   /**
@@ -2009,6 +2009,50 @@ export class CollectionsService {
               collection.deleteAfterDays,
             ),
           );
+        }
+
+        // -- NEW: Apply Collection Sort --
+        if (
+          collection.mediaServerSort &&
+          mediaServer.supportsFeature(MediaServerFeature.COLLECTION_SORT)
+        ) {
+          try {
+            this.logger.log(
+              `Applying collection sort '${collection.mediaServerSort}' for collection ${collection.id}...`,
+            );
+            // Fetch the fully hydrated items so we can sort them correctly
+            const allMediaRows = await this.CollectionMediaRepo.find({
+              where: { collectionId: collection.id },
+            });
+            const hydratedItems = await this.hydrateCollectionMediaWithMetadata(
+              allMediaRows,
+              mediaServer,
+            );
+
+            // Sort them using the requested criteria
+            const sortedItems = hydratedItems.sort((a, b) =>
+              compareMediaItemsBySort(
+                a.mediaData!,
+                b.mediaData!,
+                collection.mediaServerSort!.split('.')[0] as any, // "deleteSoonest"
+                collection.mediaServerSort!.split('.')[1] as any, // "asc" or "desc"
+              ),
+            );
+
+            // Push ordered array of IDs to the media server
+            const orderedItemIds = sortedItems.map(
+              (item) => item.mediaServerId,
+            );
+            await mediaServer.reorderCollectionItems(
+              collection.mediaServerId,
+              orderedItemIds,
+            );
+          } catch (error) {
+            this.logger.warn(
+              `Failed to apply collection sort '${collection.mediaServerSort}' to media server`,
+            );
+            this.logger.debug(error);
+          }
         }
 
         if (isSharedManualCollection) {
