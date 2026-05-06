@@ -148,7 +148,7 @@ describe('StorageMetricsService', () => {
       id: number;
       isActive: boolean;
       deleteAfterDays: number | null;
-      type: 'movie' | 'show';
+      type: 'movie' | 'show' | 'season' | 'episode';
     };
     type FakeMediaRow = {
       collectionId: number;
@@ -336,6 +336,59 @@ describe('StorageMetricsService', () => {
       expect(summary.movieSizeBytes).toBe(300);
       expect(summary.showSizeBytes).toBe(700);
       expect(summary.reclaimableSizedCount).toBe(2);
+    });
+
+    it('rolls season and episode collections into the show bucket so they are not silently dropped', async () => {
+      setup(
+        [
+          { id: 1, isActive: true, deleteAfterDays: 30, type: 'season' },
+          { id: 2, isActive: true, deleteAfterDays: 30, type: 'episode' },
+          { id: 3, isActive: true, deleteAfterDays: 30, type: 'movie' },
+        ],
+        [
+          { collectionId: 1, mediaServerId: 's-1', sizeBytes: 200 },
+          { collectionId: 2, mediaServerId: 'e-1', sizeBytes: 50 },
+          { collectionId: 3, mediaServerId: 'm-1', sizeBytes: 100 },
+        ],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableCount).toBe(3);
+      expect(summary.activeSizeBytes).toBe(350);
+      expect(summary.movieSizeBytes).toBe(100);
+      expect(summary.showSizeBytes).toBe(250);
+      expect(summary.reclaimableMovieCount).toBe(1);
+      expect(summary.reclaimableShowCount).toBe(2);
+    });
+
+    it('rolls season and episode collections into the show bucket in fallback mode', async () => {
+      setup(
+        [
+          {
+            id: 1,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'season',
+            totalSizeBytes: 400,
+          } as any,
+          {
+            id: 2,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'episode',
+            totalSizeBytes: 100,
+          } as any,
+        ],
+        [],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableUsingFallback).toBe(true);
+      expect(summary.movieSizeBytes).toBe(0);
+      expect(summary.showSizeBytes).toBe(500);
+      expect(summary.reclaimableShowCount).toBe(2);
     });
   });
 

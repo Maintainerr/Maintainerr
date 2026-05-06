@@ -619,7 +619,10 @@ export class StorageMetricsService {
         reclaimableCount += 1;
         if (collection.type === 'movie') {
           reclaimableMovieCount += 1;
-        } else if (collection.type === 'show') {
+        } else {
+          // 'show', 'season', and 'episode' are all show-derived content;
+          // roll them into the same bucket so episode/season collections
+          // are not silently dropped from the per-type breakdown.
           reclaimableShowCount += 1;
         }
       }
@@ -663,7 +666,7 @@ export class StorageMetricsService {
         activeSizeBytes += size;
         if (row.type === 'movie') {
           movieSizeBytes += size;
-        } else if (row.type === 'show') {
+        } else {
           showSizeBytes += size;
         }
       }
@@ -695,7 +698,7 @@ export class StorageMetricsService {
           activeSizeBytes += total;
           if (collection.type === 'movie') {
             movieSizeBytes += total;
-          } else if (collection.type === 'show') {
+          } else {
             showSizeBytes += total;
           }
           reclaimableSizedCount += 1;
