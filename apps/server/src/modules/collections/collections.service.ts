@@ -3039,7 +3039,10 @@ export class CollectionsService {
 
         // Persist per-item size so cross-collection dedup in storage metrics
         // can count an item once even when it belongs to multiple collections.
-        if (media.sizeBytes !== itemSize) {
+        // Only overwrite when we successfully resolved a size; leave the cached
+        // value alone on transient metadata failures so a single hiccup does
+        // not clobber previously-known data.
+        if (itemSize !== null && media.sizeBytes !== itemSize) {
           await this.CollectionMediaRepo.update(media.id, {
             sizeBytes: itemSize,
           });
