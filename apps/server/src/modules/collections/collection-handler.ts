@@ -11,6 +11,7 @@ import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
+import { RecentlyHandledMediaService } from './recently-handled-media.service';
 
 @Injectable()
 export class CollectionHandler {
@@ -23,6 +24,7 @@ export class CollectionHandler {
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
     private readonly logger: MaintainerrLogger,
+    private readonly recentlyHandledMedia: RecentlyHandledMediaService,
   ) {
     logger.setContext(CollectionHandler.name);
   }
@@ -159,11 +161,28 @@ export class CollectionHandler {
 
     collection.handledMediaAmount++;
 
+    // Only credit bytes when the action actually frees disk space.
+    // Unmonitor / quality-change actions leave files on disk.
+    const freesDisk =
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE;
+    if (freesDisk && media.sizeBytes != null && media.sizeBytes > 0) {
+      collection.handledMediaSizeBytes =
+        Number(collection.handledMediaSizeBytes ?? 0) + Number(media.sizeBytes);
+    }
+
     await this.collectionService.CollectionLogRecordForChild(
       media.mediaServerId,
       collection.id,
       'handle',
     );
+
+    // Remember this so the rule executor's next pass doesn't re-add the
+    // same item (and fire a `Media Added` notification) before any rule
+    // input has had a chance to change. Lives here so both the scheduled
+    // worker and the manual `POST /media/handle` endpoint feed the set.
+    this.recentlyHandledMedia.markHandled(collection.id, media.mediaServerId);
 
     await this.collectionService.saveCollection(collection);
 
