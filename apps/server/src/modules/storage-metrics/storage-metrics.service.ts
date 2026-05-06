@@ -314,9 +314,7 @@ export class StorageMetricsService {
       mountCount: merged.size,
       accurateMountCount,
       accurateTotalSpace:
-        merged.size > 0 &&
-        accurateMountCount === merged.size &&
-        totalSpace > 0,
+        merged.size > 0 && accurateMountCount === merged.size && totalSpace > 0,
     };
   }
 
@@ -346,9 +344,7 @@ export class StorageMetricsService {
     return result;
   }
 
-  private buildCrossHostSharedKey(
-    mount: StorageDiskspaceEntry,
-  ): string | null {
+  private buildCrossHostSharedKey(mount: StorageDiskspaceEntry): string | null {
     // Without an accurate totalSpace there is no reliable cross-host
     // signature, so leave inaccurate mounts on their per-host key.
     if (!mount.hasAccurateTotalSpace) return null;
