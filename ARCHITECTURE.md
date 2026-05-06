@@ -6,7 +6,9 @@ automation equally. It is intentionally high level: use it to find the right
 area of the codebase, then follow the local module, tests, and contracts for
 exact behaviour.
 
-Last updated: 2026-04-29.
+Refresh this file when adding or removing top-level workspaces, server modules,
+global UI providers, integration surfaces, persistence flows, or deployment
+entry points.
 
 ## Project Structure
 
@@ -42,9 +44,10 @@ flowchart LR
   Media --> Plex["Plex adapter"]
   Media --> Jellyfin["Jellyfin adapter"]
   API --> Servarr["Radarr / Sonarr"]
-  API --> Seerr["Seerr / Overseerr / Jellyseerr"]
+  API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
-  API --> Metadata["TMDB / TVDB / GitHub"]
+  API --> Metadata["TMDB / TVDB"]
+  API --> GitHub["GitHub releases"]
 ```
 
 In production, the Nest server also serves the built UI from
@@ -60,11 +63,16 @@ React Router, TanStack Query, React Hook Form, TailwindCSS, and Headless UI.
 
 - `src/router.tsx` is the route source of truth. It uses eager shell routes and
   lazy feature pages with preload support.
+- `src/main.tsx` wires the global provider stack:
+  `QueryClientProvider -> EventsProvider -> TaskStatusProvider -> SearchContextProvider -> RouterProvider`.
 - `src/utils/ApiHandler.tsx` centralises API base path handling and Axios REST
   helpers.
-- `src/contexts/events-context.tsx` opens the reconnecting SSE stream.
+- `src/contexts/events-context.tsx` opens the reconnecting SSE stream and
+  exports `useEvent` for typed feature subscriptions.
 - `src/contexts/taskstatus-context.tsx` combines initial task status queries
   with live rule and collection handler events.
+- `src/contexts/search-context.tsx` owns global search text shared across
+  searchable list views.
 - `src/components/Common/` contains shared UI primitives. Prefer existing
   buttons, loading boundaries, modals, tables, and feedback patterns before
   adding new ones.
@@ -85,10 +93,16 @@ integrations, and production static serving.
 - `src/modules/api/media-server/plex/` and
   `src/modules/api/media-server/jellyfin/` contain server-specific adapters,
   constants, mappers, caching, and SDK/API calls.
+- Other `src/modules/api/` submodules wrap integration clients and helper
+  APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, TMDB, TVDB,
+  GitHub, external API, internal API, and shared request/cache helpers.
 - `src/modules/rules/` evaluates rule groups against media-server and external
   service data.
 - `src/modules/collections/` tracks matched media, exclusions, collection logs,
   posters, and collection handling actions.
+- `src/modules/actions/` contains the Radarr and Sonarr action handlers for
+  destructive or state-changing Servarr actions such as delete, unmonitor, and
+  quality profile changes.
 - `src/modules/tasks/` creates and tracks scheduled jobs.
 - `src/modules/events/` exposes server-sent events for rule and collection job
   progress.
@@ -112,8 +126,12 @@ Maintainerr stores local state in SQLite through TypeORM.
   `/opt/data/maintainerr.sqlite`.
 - TypeORM loads entities with `autoLoadEntities` and runs migrations
   automatically on server start.
-- Schema changes must use the TypeORM workflow in `typeorm_instructions.txt`;
-  do not hand-write SQL migrations.
+- Migration files live in `apps/server/src/database/migrations/`.
+- `apps/server/src/datasource-config.ts` is the TypeORM CLI data source used
+  for migration generation and execution.
+- Schema changes must use the TypeORM workflow in
+  [typeorm_instructions.txt](typeorm_instructions.txt); do not hand-write SQL
+  migrations.
 
 The data directory also stores operational files such as logs, custom
 collection posters, overlay images, original artwork backups, and other
@@ -161,7 +179,8 @@ Important runtime environment variables include:
 - Avoid logging raw secrets. Use existing secret masking helpers where
   available.
 - Keep destructive actions explicit: delete, unmonitor, and quality-profile
-  changes should remain tied to collection/rule configuration.
+  changes should remain tied to collection/rule configuration and action
+  handlers.
 
 ## Development and Testing
 
@@ -232,6 +251,3 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 - Seerr: The request-management integration family covering Overseerr,
   Jellyseerr, and Seerr-compatible APIs.
 - SSE: Server-sent events used for live rule and collection job updates.
-
-This repository architecture overview lives in
-[ARCHITECTURE.md](ARCHITECTURE.md).
