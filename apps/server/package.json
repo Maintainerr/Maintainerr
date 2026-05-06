@@ -74,7 +74,7 @@
     "@nestjs/testing": "^11.1.19",
     "@suites/di.nestjs": "^3.0.1",
     "@suites/doubles.jest": "^3.0.1",
-    "@suites/unit": "^3.0.1",
+    "@suites/unit": "^3.1.0",
     "@types/email-templates": "^10.0.4",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.24",
