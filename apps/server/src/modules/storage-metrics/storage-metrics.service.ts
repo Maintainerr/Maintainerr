@@ -600,6 +600,8 @@ export class StorageMetricsService {
     let inactiveCount = 0;
     let reclaimableMovieCount = 0;
     let reclaimableShowCount = 0;
+    let reclaimableSeasonCount = 0;
+    let reclaimableEpisodeCount = 0;
     const eligibleIds = new Set<number>();
 
     for (const collection of collections) {
@@ -621,6 +623,10 @@ export class StorageMetricsService {
           reclaimableMovieCount += 1;
         } else if (collection.type === 'show') {
           reclaimableShowCount += 1;
+        } else if (collection.type === 'season') {
+          reclaimableSeasonCount += 1;
+        } else if (collection.type === 'episode') {
+          reclaimableEpisodeCount += 1;
         }
       }
     }
@@ -628,6 +634,8 @@ export class StorageMetricsService {
     let activeSizeBytes = 0;
     let movieSizeBytes = 0;
     let showSizeBytes = 0;
+    let seasonSizeBytes = 0;
+    let episodeSizeBytes = 0;
     let reclaimableSizedCount = 0;
     let reclaimableUsingFallback = false;
 
@@ -665,6 +673,10 @@ export class StorageMetricsService {
           movieSizeBytes += size;
         } else if (row.type === 'show') {
           showSizeBytes += size;
+        } else if (row.type === 'season') {
+          seasonSizeBytes += size;
+        } else if (row.type === 'episode') {
+          episodeSizeBytes += size;
         }
       }
 
@@ -685,6 +697,8 @@ export class StorageMetricsService {
         activeSizeBytes = 0;
         movieSizeBytes = 0;
         showSizeBytes = 0;
+        seasonSizeBytes = 0;
+        episodeSizeBytes = 0;
         reclaimableSizedCount = 0;
 
         for (const collection of collections) {
@@ -697,6 +711,10 @@ export class StorageMetricsService {
             movieSizeBytes += total;
           } else if (collection.type === 'show') {
             showSizeBytes += total;
+          } else if (collection.type === 'season') {
+            seasonSizeBytes += total;
+          } else if (collection.type === 'episode') {
+            episodeSizeBytes += total;
           }
           reclaimableSizedCount += 1;
         }
@@ -713,8 +731,12 @@ export class StorageMetricsService {
       totalCollectionCount: collections.length,
       movieSizeBytes,
       showSizeBytes,
+      seasonSizeBytes,
+      episodeSizeBytes,
       reclaimableMovieCount,
       reclaimableShowCount,
+      reclaimableSeasonCount,
+      reclaimableEpisodeCount,
       reclaimableUsingFallback,
     };
   }

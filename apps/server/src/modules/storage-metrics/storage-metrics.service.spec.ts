@@ -148,7 +148,7 @@ describe('StorageMetricsService', () => {
       id: number;
       isActive: boolean;
       deleteAfterDays: number | null;
-      type: 'movie' | 'show';
+      type: 'movie' | 'show' | 'season' | 'episode';
     };
     type FakeMediaRow = {
       collectionId: number;
@@ -336,6 +336,68 @@ describe('StorageMetricsService', () => {
       expect(summary.movieSizeBytes).toBe(300);
       expect(summary.showSizeBytes).toBe(700);
       expect(summary.reclaimableSizedCount).toBe(2);
+    });
+
+    it('keeps movie, show, season, and episode collections in separate buckets', async () => {
+      setup(
+        [
+          { id: 1, isActive: true, deleteAfterDays: 30, type: 'movie' },
+          { id: 2, isActive: true, deleteAfterDays: 30, type: 'show' },
+          { id: 3, isActive: true, deleteAfterDays: 30, type: 'season' },
+          { id: 4, isActive: true, deleteAfterDays: 30, type: 'episode' },
+        ],
+        [
+          { collectionId: 1, mediaServerId: 'm-1', sizeBytes: 100 },
+          { collectionId: 2, mediaServerId: 'sh-1', sizeBytes: 200 },
+          { collectionId: 3, mediaServerId: 'se-1', sizeBytes: 300 },
+          { collectionId: 4, mediaServerId: 'ep-1', sizeBytes: 50 },
+        ],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableCount).toBe(4);
+      expect(summary.activeSizeBytes).toBe(650);
+      expect(summary.movieSizeBytes).toBe(100);
+      expect(summary.showSizeBytes).toBe(200);
+      expect(summary.seasonSizeBytes).toBe(300);
+      expect(summary.episodeSizeBytes).toBe(50);
+      expect(summary.reclaimableMovieCount).toBe(1);
+      expect(summary.reclaimableShowCount).toBe(1);
+      expect(summary.reclaimableSeasonCount).toBe(1);
+      expect(summary.reclaimableEpisodeCount).toBe(1);
+    });
+
+    it('keeps season and episode buckets separate in fallback mode', async () => {
+      setup(
+        [
+          {
+            id: 1,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'season',
+            totalSizeBytes: 400,
+          } as any,
+          {
+            id: 2,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'episode',
+            totalSizeBytes: 100,
+          } as any,
+        ],
+        [],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableUsingFallback).toBe(true);
+      expect(summary.movieSizeBytes).toBe(0);
+      expect(summary.showSizeBytes).toBe(0);
+      expect(summary.seasonSizeBytes).toBe(400);
+      expect(summary.episodeSizeBytes).toBe(100);
+      expect(summary.reclaimableSeasonCount).toBe(1);
+      expect(summary.reclaimableEpisodeCount).toBe(1);
     });
   });
 
