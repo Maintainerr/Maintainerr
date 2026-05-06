@@ -160,7 +160,8 @@ const StorageMetrics: React.FC = () => {
           <h1 className="text-2xl font-semibold text-white">Storage Metrics</h1>
           <p className="mt-1 text-sm text-zinc-400">
             Disk usage across your Radarr and Sonarr instances, plus how much
-            space Maintainerr can reclaim from active collections.
+            space Maintainerr can reclaim from collections with a delete rule.
+            Items appearing in multiple collections are counted once.
           </p>
         </div>
 
@@ -196,7 +197,11 @@ const StorageMetrics: React.FC = () => {
           <SummaryCard
             title="Reclaimable from collections"
             value={formatBytes(metrics.collectionSummary.activeSizeBytes)}
-            subtitle={`${metrics.collectionSummary.activeSizedCount} of ${metrics.collectionSummary.activeCount} active collections sized`}
+            subtitle={
+              metrics.collectionSummary.reclaimableUsingFallback
+                ? `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized — duplicates not yet deduplicated, refreshes after next collection run`
+                : `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized — duplicates counted once`
+            }
             icon={<CollectionIcon className="h-5 w-5" />}
           />
         </div>
@@ -205,8 +210,9 @@ const StorageMetrics: React.FC = () => {
           <h2 className="sm-heading">Cleanup totals</h2>
           <p className="description">
             Cumulative count of media items Maintainerr has handled across all
-            collections. Counters increment each time a collection action
-            removes, unmonitors, or otherwise processes a media item.
+            collections, with the on-disk space reclaimed by delete-style
+            actions. Unmonitor and quality-change actions do not contribute to
+            bytes reclaimed.
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryCard
@@ -214,7 +220,7 @@ const StorageMetrics: React.FC = () => {
               value={cleanupTotals.itemsHandled.toLocaleString()}
               subtitle={
                 hasCleanupActivity
-                  ? 'Total across all collections'
+                  ? `${formatBytes(cleanupTotals.bytesHandled)} reclaimed total`
                   : 'No items processed yet'
               }
               icon={<CheckCircleIcon className="h-5 w-5" />}
@@ -222,25 +228,25 @@ const StorageMetrics: React.FC = () => {
             <SummaryCard
               title="Movies handled"
               value={cleanupTotals.moviesHandled.toLocaleString()}
-              subtitle="From movie collections"
+              subtitle={`${formatBytes(cleanupTotals.movieBytesHandled)} reclaimed`}
               icon={<FilmIcon className="h-5 w-5" />}
             />
             <SummaryCard
               title="Shows handled"
               value={cleanupTotals.showsHandled.toLocaleString()}
-              subtitle="From show collections"
+              subtitle={`${formatBytes(cleanupTotals.showBytesHandled)} reclaimed`}
               icon={<DesktopComputerIcon className="h-5 w-5" />}
             />
             <SummaryCard
               title="Seasons handled"
               value={cleanupTotals.seasonsHandled.toLocaleString()}
-              subtitle="From season collections"
+              subtitle={`${formatBytes(cleanupTotals.seasonBytesHandled)} reclaimed`}
               icon={<CollectionIcon className="h-5 w-5" />}
             />
             <SummaryCard
               title="Episodes handled"
               value={cleanupTotals.episodesHandled.toLocaleString()}
-              subtitle="From episode collections"
+              subtitle={`${formatBytes(cleanupTotals.episodeBytesHandled)} reclaimed`}
               icon={<PlayIcon className="h-5 w-5" />}
             />
           </div>
@@ -249,8 +255,9 @@ const StorageMetrics: React.FC = () => {
         <section className="mt-8">
           <h2 className="sm-heading">Potential reclaim by type</h2>
           <p className="description">
-            Based on cached collection sizes. Run collection processing jobs to
-            refresh size data.
+            {metrics.collectionSummary.reclaimableUsingFallback
+              ? 'Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh.'
+              : 'Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data.'}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
@@ -260,8 +267,8 @@ const StorageMetrics: React.FC = () => {
                   Movies
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.movieCollectionCount} collection
-                  {metrics.collectionSummary.movieCollectionCount === 1
+                  {metrics.collectionSummary.reclaimableMovieCount} collection
+                  {metrics.collectionSummary.reclaimableMovieCount === 1
                     ? ''
                     : 's'}
                 </span>
@@ -277,8 +284,8 @@ const StorageMetrics: React.FC = () => {
                   Shows
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.showCollectionCount} collection
-                  {metrics.collectionSummary.showCollectionCount === 1
+                  {metrics.collectionSummary.reclaimableShowCount} collection
+                  {metrics.collectionSummary.reclaimableShowCount === 1
                     ? ''
                     : 's'}
                 </span>
