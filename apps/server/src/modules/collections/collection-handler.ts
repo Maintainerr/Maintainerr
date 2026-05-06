@@ -161,6 +161,17 @@ export class CollectionHandler {
 
     collection.handledMediaAmount++;
 
+    // Only credit bytes when the action actually frees disk space.
+    // Unmonitor / quality-change actions leave files on disk.
+    const freesDisk =
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE;
+    if (freesDisk && media.sizeBytes != null && media.sizeBytes > 0) {
+      collection.handledMediaSizeBytes =
+        Number(collection.handledMediaSizeBytes ?? 0) + Number(media.sizeBytes);
+    }
+
     await this.collectionService.CollectionLogRecordForChild(
       media.mediaServerId,
       collection.id,

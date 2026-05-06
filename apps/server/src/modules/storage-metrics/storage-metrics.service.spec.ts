@@ -143,13 +143,209 @@ describe('StorageMetricsService', () => {
     });
   });
 
+  describe('buildCollectionSummary', () => {
+    type FakeCollection = {
+      id: number;
+      isActive: boolean;
+      deleteAfterDays: number | null;
+      type: 'movie' | 'show';
+    };
+    type FakeMediaRow = {
+      collectionId: number;
+      mediaServerId: string;
+      sizeBytes: number;
+    };
+
+    const setup = (collections: FakeCollection[], rows: FakeMediaRow[]) => {
+      (service as any).collectionRepo = {
+        find: jest.fn().mockResolvedValue(collections),
+      };
+
+      (service as any).collectionMediaRepo = {
+        createQueryBuilder: jest.fn().mockImplementation(() => {
+          const ctx: { ids?: number[] } = {};
+          let mode: 'group' | 'distinct' = 'group';
+          const builder: any = {};
+          builder.select = jest.fn().mockImplementation((expr: string) => {
+            if (expr.startsWith('DISTINCT')) mode = 'distinct';
+            return builder;
+          });
+          builder.addSelect = jest.fn().mockReturnValue(builder);
+          builder.innerJoin = jest.fn().mockReturnValue(builder);
+          builder.where = jest
+            .fn()
+            .mockImplementation((_: string, params: { ids: number[] }) => {
+              ctx.ids = params.ids;
+              return builder;
+            });
+          builder.andWhere = jest.fn().mockReturnValue(builder);
+          builder.groupBy = jest.fn().mockReturnValue(builder);
+          builder.addGroupBy = jest.fn().mockReturnValue(builder);
+          builder.getRawMany = jest.fn().mockImplementation(async () => {
+            const eligible = rows.filter(
+              (r) => ctx.ids?.includes(r.collectionId) && r.sizeBytes != null,
+            );
+            if (mode === 'distinct') {
+              const seen = new Set<number>();
+              const out: { collectionId: number }[] = [];
+              for (const r of eligible) {
+                if (!seen.has(r.collectionId)) {
+                  seen.add(r.collectionId);
+                  out.push({ collectionId: r.collectionId });
+                }
+              }
+              return out;
+            }
+            const groups = new Map<
+              string,
+              { mediaServerId: string; type: string; sizeBytes: number }
+            >();
+            for (const r of eligible) {
+              const c = collections.find((cc) => cc.id === r.collectionId);
+              if (!c) continue;
+              const key = `${r.mediaServerId}|${c.type}`;
+              const prev = groups.get(key);
+              if (!prev || r.sizeBytes > prev.sizeBytes) {
+                groups.set(key, {
+                  mediaServerId: r.mediaServerId,
+                  type: c.type,
+                  sizeBytes: r.sizeBytes,
+                });
+              }
+            }
+            return Array.from(groups.values());
+          });
+          return builder;
+        }),
+      };
+    };
+
+    it('counts an item once even when it appears in multiple delete-rule collections', async () => {
+      setup(
+        [
+          { id: 1, isActive: true, deleteAfterDays: 30, type: 'movie' },
+          { id: 2, isActive: true, deleteAfterDays: 60, type: 'movie' },
+        ],
+        [
+          { collectionId: 1, mediaServerId: 'm-shared', sizeBytes: 100 },
+          { collectionId: 2, mediaServerId: 'm-shared', sizeBytes: 100 },
+          { collectionId: 1, mediaServerId: 'm-only-1', sizeBytes: 50 },
+        ],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.activeSizeBytes).toBe(150);
+      expect(summary.movieSizeBytes).toBe(150);
+      expect(summary.reclaimableCount).toBe(2);
+      expect(summary.reclaimableSizedCount).toBe(2);
+    });
+
+    it('excludes collections without a delete rule', async () => {
+      setup(
+        [
+          { id: 1, isActive: true, deleteAfterDays: 30, type: 'movie' },
+          { id: 2, isActive: true, deleteAfterDays: null, type: 'movie' },
+          { id: 3, isActive: true, deleteAfterDays: 0, type: 'movie' },
+        ],
+        [
+          { collectionId: 1, mediaServerId: 'a', sizeBytes: 100 },
+          { collectionId: 2, mediaServerId: 'b', sizeBytes: 200 },
+          { collectionId: 3, mediaServerId: 'c', sizeBytes: 400 },
+        ],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.activeSizeBytes).toBe(100);
+      expect(summary.reclaimableCount).toBe(1);
+      expect(summary.reclaimableSizedCount).toBe(1);
+    });
+
+    it('returns zeros when no collection is eligible', async () => {
+      setup(
+        [{ id: 1, isActive: true, deleteAfterDays: null, type: 'movie' }],
+        [{ collectionId: 1, mediaServerId: 'a', sizeBytes: 100 }],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.activeSizeBytes).toBe(0);
+      expect(summary.reclaimableCount).toBe(0);
+      expect(summary.reclaimableSizedCount).toBe(0);
+      expect(summary.totalCollectionCount).toBe(1);
+      expect(summary.reclaimableUsingFallback).toBe(false);
+    });
+
+    it('falls back to cached collection totals when per-item sizes are missing', async () => {
+      setup(
+        [
+          {
+            id: 1,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'movie',
+            totalSizeBytes: 300,
+          } as any,
+          {
+            id: 2,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'show',
+            totalSizeBytes: 700,
+          } as any,
+        ],
+        [],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableUsingFallback).toBe(true);
+      expect(summary.activeSizeBytes).toBe(1000);
+      expect(summary.movieSizeBytes).toBe(300);
+      expect(summary.showSizeBytes).toBe(700);
+      expect(summary.reclaimableSizedCount).toBe(2);
+      expect(summary.reclaimableCount).toBe(2);
+    });
+
+    it('keeps fallback mode until every reclaimable collection has per-item sizes', async () => {
+      setup(
+        [
+          {
+            id: 1,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'movie',
+            totalSizeBytes: 300,
+          } as any,
+          {
+            id: 2,
+            isActive: true,
+            deleteAfterDays: 30,
+            type: 'show',
+            totalSizeBytes: 700,
+          } as any,
+        ],
+        [{ collectionId: 1, mediaServerId: 'm-1', sizeBytes: 300 }],
+      );
+
+      const summary = await (service as any).buildCollectionSummary();
+
+      expect(summary.reclaimableUsingFallback).toBe(true);
+      expect(summary.activeSizeBytes).toBe(1000);
+      expect(summary.movieSizeBytes).toBe(300);
+      expect(summary.showSizeBytes).toBe(700);
+      expect(summary.reclaimableSizedCount).toBe(2);
+    });
+  });
+
   describe('buildCleanupTotals', () => {
-    it('keeps movie, show, season, and episode totals separate', async () => {
+    it('keeps movie, show, season, and episode totals separate and tallies reclaimed bytes', async () => {
       const getRawMany = jest.fn().mockResolvedValue([
-        { type: 'movie', handled: '3' },
-        { type: 'show', handled: '4' },
-        { type: 'season', handled: 5 },
-        { type: 'episode', handled: '6' },
+        { type: 'movie', handled: '3', bytes: '300' },
+        { type: 'show', handled: '4', bytes: 400 },
+        { type: 'season', handled: 5, bytes: '500' },
+        { type: 'episode', handled: '6', bytes: 600 },
       ]);
       // Self-chaining proxy: any query-builder method (select, addSelect,
       // groupBy, where, orderBy, …) returns the same builder, so the test
@@ -174,6 +370,11 @@ describe('StorageMetricsService', () => {
         showsHandled: 4,
         seasonsHandled: 5,
         episodesHandled: 6,
+        bytesHandled: 1800,
+        movieBytesHandled: 300,
+        showBytesHandled: 400,
+        seasonBytesHandled: 500,
+        episodeBytesHandled: 600,
       });
     });
   });
