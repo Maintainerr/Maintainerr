@@ -3058,7 +3058,10 @@ export class CollectionsService {
       const directSize = this.sumMediaSourceSizes(metadata);
       if (directSize > 0) return directSize;
       if (metadata.type === 'show' || metadata.type === 'season') {
-        const childSize = await this.getChildrenTotalSize(mediaServer, metadata);
+        const childSize = await this.getChildrenTotalSize(
+          mediaServer,
+          metadata,
+        );
         if (childSize > 0) return childSize;
       }
       return null;
