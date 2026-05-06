@@ -11,6 +11,7 @@ import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
+import { RecentlyHandledMediaService } from './recently-handled-media.service';
 
 @Injectable()
 export class CollectionHandler {
@@ -23,6 +24,7 @@ export class CollectionHandler {
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
     private readonly logger: MaintainerrLogger,
+    private readonly recentlyHandledMedia: RecentlyHandledMediaService,
   ) {
     logger.setContext(CollectionHandler.name);
   }
@@ -47,6 +49,27 @@ export class CollectionHandler {
     const library = libraries.find(
       (e) => e.id === collection.libraryId.toString(),
     );
+
+    // Resolve the on-disk size before running the action. The size cache is
+    // populated lazily by the collection size sync; if the handler runs
+    // against a freshly-added item before the next sync, `media.sizeBytes`
+    // is null and the post-action increment below would silently drop the
+    // bytes. After a delete-style action the file is gone and the media
+    // server's metadata loses the size, so this lookup has to happen first.
+    const freesDisk =
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE;
+    let resolvedSizeBytes: number | null =
+      media.sizeBytes != null && Number(media.sizeBytes) > 0
+        ? Number(media.sizeBytes)
+        : null;
+    if (freesDisk && resolvedSizeBytes === null) {
+      resolvedSizeBytes = await this.collectionService.resolveItemSize(
+        mediaServer,
+        media.mediaServerId,
+      );
+    }
 
     let actionHandled = false;
 
@@ -159,11 +182,25 @@ export class CollectionHandler {
 
     collection.handledMediaAmount++;
 
+    // Credit bytes for delete-style actions only; unmonitor / quality-change
+    // leave files on disk. `resolvedSizeBytes` was captured before the action
+    // ran so it survives the file being gone afterwards.
+    if (freesDisk && resolvedSizeBytes != null && resolvedSizeBytes > 0) {
+      collection.handledMediaSizeBytes =
+        Number(collection.handledMediaSizeBytes ?? 0) + resolvedSizeBytes;
+    }
+
     await this.collectionService.CollectionLogRecordForChild(
       media.mediaServerId,
       collection.id,
       'handle',
     );
+
+    // Remember this so the rule executor's next pass doesn't re-add the
+    // same item (and fire a `Media Added` notification) before any rule
+    // input has had a chance to change. Lives here so both the scheduled
+    // worker and the manual `POST /media/handle` endpoint feed the set.
+    this.recentlyHandledMedia.markHandled(collection.id, media.mediaServerId);
 
     await this.collectionService.saveCollection(collection);
 

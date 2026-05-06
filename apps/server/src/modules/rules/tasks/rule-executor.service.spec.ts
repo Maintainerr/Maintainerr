@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createMockLogger } from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { CollectionsService } from '../../collections/collections.service';
+import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
 import { SettingsService } from '../../settings/settings.service';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
@@ -115,6 +116,8 @@ describe('RuleExecutorService', () => {
 
     const logger = createMockLogger();
 
+    const recentlyHandledMedia = new RecentlyHandledMediaService();
+
     const service = new RuleExecutorService(
       rulesService,
       mediaServerFactory,
@@ -124,6 +127,7 @@ describe('RuleExecutorService', () => {
       eventEmitter,
       progressManager,
       logger,
+      recentlyHandledMedia,
     );
 
     return {
@@ -136,6 +140,7 @@ describe('RuleExecutorService', () => {
       eventEmitter,
       progressManager,
       logger,
+      recentlyHandledMedia,
     };
   };
 
@@ -1085,6 +1090,132 @@ describe('RuleExecutorService', () => {
     expect(
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
+  });
+
+  it('suppresses re-add of items the collection handler just processed', async () => {
+    const {
+      service,
+      collectionService,
+      eventEmitter,
+      recentlyHandledMedia,
+      logger,
+    } = createService(MediaServerType.PLEX);
+
+    const collection = {
+      id: 1,
+      title: 'Watched + idle',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    // Collection is empty (handler just removed the item moments ago)
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+
+    // Rule still matches the same item: without suppression it would be
+    // re-added, immediately producing a confusing `Media Added` event.
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm-just-handled' }];
+    (service as any).statisticsData = [];
+
+    recentlyHandledMedia.markHandled(collection.id, 'm-just-handled');
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(
+      collectionService.addToCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Added,
+      expect.anything(),
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Suppressed re-add of 1 media item in 'Watched + idle'",
+      ),
+    );
+  });
+
+  it('still adds items the handler did not just process', async () => {
+    const { service, collectionService, recentlyHandledMedia } = createService(
+      MediaServerType.PLEX,
+    );
+
+    const collection = {
+      id: 1,
+      title: 'Watched + idle',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm-fresh' }];
+    (service as any).statisticsData = [];
+
+    recentlyHandledMedia.markHandled(collection.id, 'm-just-handled');
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(1, [
+      {
+        mediaServerId: 'm-fresh',
+        reason: {
+          type: 'media_added_by_rule',
+          data: undefined,
+        },
+      },
+    ]);
+  });
+
+  it('consumes suppression marks after one rule pass so a later legitimate match is re-added', async () => {
+    const { service, collectionService, recentlyHandledMedia } = createService(
+      MediaServerType.PLEX,
+    );
+
+    const collection = {
+      id: 1,
+      title: 'Watched + idle',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm-just-handled' }];
+    (service as any).statisticsData = [];
+
+    recentlyHandledMedia.markHandled(collection.id, 'm-just-handled');
+
+    // First pass: suppression in effect, no add.
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+
+    expect(
+      recentlyHandledMedia.wasRecentlyHandled(collection.id, 'm-just-handled'),
+    ).toBe(false);
+
+    // Second pass with the same input: suppression has been consumed, so a
+    // rule that still matches gets re-added normally instead of being
+    // permanently silenced.
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(1, [
+      {
+        mediaServerId: 'm-just-handled',
+        reason: {
+          type: 'media_added_by_rule',
+          data: undefined,
+        },
+      },
+    ]);
   });
 
   it('fails cleanly when collection sync returns undefined', async () => {
