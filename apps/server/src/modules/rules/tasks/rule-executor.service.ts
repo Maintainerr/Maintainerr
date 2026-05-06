@@ -697,9 +697,13 @@ export class RuleExecutorService {
         // Conditions like "watched" / "lastViewedAt before N days" stay true
         // after the handler action, so without this guard the user gets a
         // `Media Removed` event immediately followed by `Media Added` for
-        // the same title — confusing and noisy via email/Discord. The next
-        // handler run replaces the suppression set, so this only blocks
-        // the immediate echo.
+        // the same title — confusing and noisy via email/Discord.
+        //
+        // The marks are consumed here: this pass blocks the immediate echo,
+        // and any subsequent pass treats the items normally. If the rule
+        // still legitimately matches on a later pass (e.g. an unmonitored
+        // file becomes watched again months later), the item gets re-added
+        // and the user sees the expected notification cycle.
         let suppressedReAddCount = 0;
         const mediaToAdd: string[] = [];
         for (const mediaServerId of desiredMediaServerIds) {
@@ -715,6 +719,7 @@ export class RuleExecutorService {
           }
           mediaToAdd.push(mediaServerId);
         }
+        this.recentlyHandledMedia.clearForCollection(collection.id);
         if (suppressedReAddCount > 0) {
           this.logger.log(
             `Suppressed re-add of ${suppressedReAddCount} media item${

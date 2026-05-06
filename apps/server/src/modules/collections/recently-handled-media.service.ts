@@ -14,16 +14,21 @@ import { OnEvent } from '@nestjs/event-emitter';
  * re-added and a `Media Added` notification fires — confusing users who
  * just received a `Media Removed` event for the same title.
  *
- * State is in-memory and per-collection. Both the scheduled handler and
- * the manual `POST /media/handle` endpoint funnel through
- * `CollectionHandler.handleMedia`, so a single mark-on-success call there
- * keeps every code path consistent.
+ * Lifecycle:
+ *  - `CollectionHandler.handleMedia` calls `markHandled` after each
+ *    successful action. Both the scheduled worker and the manual
+ *    `POST /media/handle` endpoint funnel through that single call site.
+ *  - `RuleExecutorService.handleCollection` calls `wasRecentlyHandled`
+ *    while building its add list, then calls `clearForCollection` once
+ *    that decision has been made. The suppression therefore blocks
+ *    exactly the immediate echo and disappears for the pass after.
+ *  - `Collection_Deleted` clears any leftover marks for the collection.
  *
- * A process restart wipes the state, so one re-add/notification can slip
- * through after a restart until the handler runs again — acceptable.
- * Entries are removed when the collection itself is deleted; otherwise
- * they live until they're queried again, which keeps the structure
- * trivially bounded by active collection size.
+ * State is in-memory and per-collection. A process restart wipes it, so
+ * one re-add/notification can slip through after a restart until the
+ * handler runs again — acceptable. Because the rule executor consumes
+ * each collection's marks on its next pass, the structure stays bounded
+ * by what the handler produces between two consecutive rule passes.
  */
 @Injectable()
 export class RecentlyHandledMediaService {

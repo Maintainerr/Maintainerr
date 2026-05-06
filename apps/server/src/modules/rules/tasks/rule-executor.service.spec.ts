@@ -1173,6 +1173,51 @@ describe('RuleExecutorService', () => {
     ]);
   });
 
+  it('consumes suppression marks after one rule pass so a later legitimate match is re-added', async () => {
+    const { service, collectionService, recentlyHandledMedia } = createService(
+      MediaServerType.PLEX,
+    );
+
+    const collection = {
+      id: 1,
+      title: 'Watched + idle',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm-just-handled' }];
+    (service as any).statisticsData = [];
+
+    recentlyHandledMedia.markHandled(collection.id, 'm-just-handled');
+
+    // First pass: suppression in effect, no add.
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
+
+    expect(
+      recentlyHandledMedia.wasRecentlyHandled(collection.id, 'm-just-handled'),
+    ).toBe(false);
+
+    // Second pass with the same input: suppression has been consumed, so a
+    // rule that still matches gets re-added normally instead of being
+    // permanently silenced.
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(1, [
+      {
+        mediaServerId: 'm-just-handled',
+        reason: {
+          type: 'media_added_by_rule',
+          data: undefined,
+        },
+      },
+    ]);
+  });
+
   it('fails cleanly when collection sync returns undefined', async () => {
     const { service, collectionService } = createService(
       MediaServerType.JELLYFIN,
