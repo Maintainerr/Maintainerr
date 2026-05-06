@@ -478,7 +478,37 @@ describe('StorageMetricsService', () => {
       expect(totals.mountCount).toBe(2);
     });
 
-    it('does not merge identical capacities across different hosts', () => {
+    it('merges shared storage across different hosts when totalSpace and freeSpace match byte-for-byte', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data/media/movies',
+            freeSpace: 2761668689920,
+            totalSpace: 4000000000000,
+          }),
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/data/media/tv',
+            freeSpace: 2761668689920,
+            totalSpace: 4000000000000,
+          }),
+        ],
+        {
+          'radarr||1': ['/data/media/movies'],
+          'sonarr||1': ['/data/media/tv'],
+        },
+        { 'radarr||1': 'radarr-lxc.local', 'sonarr||1': 'sonarr-lxc.local' },
+      );
+
+      expect(totals.totalSpace).toBe(4000000000000);
+      expect(totals.freeSpace).toBe(2761668689920);
+      expect(totals.mountCount).toBe(1);
+    });
+
+    it('keeps same-capacity disks on different hosts separate when freeSpace differs', () => {
       const totals = compute(
         [
           mount({
@@ -492,7 +522,7 @@ describe('StorageMetricsService', () => {
             instanceType: 'sonarr',
             instanceId: 1,
             path: '/tv',
-            freeSpace: 180,
+            freeSpace: 181,
             totalSpace: 200,
           }),
         ],
@@ -502,6 +532,34 @@ describe('StorageMetricsService', () => {
 
       expect(totals.totalSpace).toBe(400);
       expect(totals.mountCount).toBe(2);
+    });
+
+    it('merges shared storage across hosts when a matching volume label confirms identity', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/movies',
+            label: 'media-pool',
+            freeSpace: 500,
+            totalSpace: 1000,
+          }),
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/tv',
+            label: 'media-pool',
+            freeSpace: 480,
+            totalSpace: 1000,
+          }),
+        ],
+        { 'radarr||1': ['/movies'], 'sonarr||1': ['/tv'] },
+        { 'radarr||1': 'radarr.local', 'sonarr||1': 'sonarr.local' },
+      );
+
+      expect(totals.totalSpace).toBe(1000);
+      expect(totals.mountCount).toBe(1);
     });
 
     it('merges shared filesystems even when freeSpace drifts between back-to-back queries', () => {
