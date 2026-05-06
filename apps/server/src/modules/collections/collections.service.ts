@@ -3010,27 +3010,10 @@ export class CollectionsService {
       let hasAnySize = false;
 
       for (const media of collectionMedia) {
-        let itemSize: number | null = null;
-        try {
-          const metadata = await mediaServer.getMetadata(media.mediaServerId);
-          if (metadata) {
-            const directSize = this.sumMediaSourceSizes(metadata);
-            if (directSize > 0) {
-              itemSize = directSize;
-            } else if (metadata.type === 'show' || metadata.type === 'season') {
-              const childSize = await this.getChildrenTotalSize(
-                mediaServer,
-                metadata,
-              );
-              if (childSize > 0) itemSize = childSize;
-            }
-          }
-        } catch (error) {
-          this.logger.debug(
-            `Failed to get size for media ${media.mediaServerId}`,
-          );
-          this.logger.debug(error);
-        }
+        const itemSize = await this.resolveItemSize(
+          mediaServer,
+          media.mediaServerId,
+        );
 
         if (itemSize != null && itemSize > 0) {
           totalBytes += itemSize;
@@ -3057,6 +3040,35 @@ export class CollectionsService {
         `Failed to update total size for collection ${collectionId}`,
       );
       this.logger.debug(error);
+    }
+  }
+
+  /**
+   * Resolve the on-disk size of a single media item via the media server,
+   * falling back to summing children for shows/seasons. Returns null when
+   * the lookup fails or the server reports no usable size.
+   */
+  async resolveItemSize(
+    mediaServer: IMediaServerService,
+    mediaServerId: string,
+  ): Promise<number | null> {
+    try {
+      const metadata = await mediaServer.getMetadata(mediaServerId);
+      if (!metadata) return null;
+      const directSize = this.sumMediaSourceSizes(metadata);
+      if (directSize > 0) return directSize;
+      if (metadata.type === 'show' || metadata.type === 'season') {
+        const childSize = await this.getChildrenTotalSize(
+          mediaServer,
+          metadata,
+        );
+        if (childSize > 0) return childSize;
+      }
+      return null;
+    } catch (error) {
+      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(error);
+      return null;
     }
   }
 

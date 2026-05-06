@@ -50,6 +50,27 @@ export class CollectionHandler {
       (e) => e.id === collection.libraryId.toString(),
     );
 
+    // Resolve the on-disk size before running the action. The size cache is
+    // populated lazily by the collection size sync; if the handler runs
+    // against a freshly-added item before the next sync, `media.sizeBytes`
+    // is null and the post-action increment below would silently drop the
+    // bytes. After a delete-style action the file is gone and the media
+    // server's metadata loses the size, so this lookup has to happen first.
+    const freesDisk =
+      collection.arrAction !== ServarrAction.UNMONITOR &&
+      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
+      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE;
+    let resolvedSizeBytes: number | null =
+      media.sizeBytes != null && Number(media.sizeBytes) > 0
+        ? Number(media.sizeBytes)
+        : null;
+    if (freesDisk && resolvedSizeBytes === null) {
+      resolvedSizeBytes = await this.collectionService.resolveItemSize(
+        mediaServer,
+        media.mediaServerId,
+      );
+    }
+
     let actionHandled = false;
 
     if (library?.type === 'movie' && collection.radarrSettingsId) {
@@ -161,15 +182,12 @@ export class CollectionHandler {
 
     collection.handledMediaAmount++;
 
-    // Only credit bytes when the action actually frees disk space.
-    // Unmonitor / quality-change actions leave files on disk.
-    const freesDisk =
-      collection.arrAction !== ServarrAction.UNMONITOR &&
-      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
-      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE;
-    if (freesDisk && media.sizeBytes != null && media.sizeBytes > 0) {
+    // Credit bytes for delete-style actions only; unmonitor / quality-change
+    // leave files on disk. `resolvedSizeBytes` was captured before the action
+    // ran so it survives the file being gone afterwards.
+    if (freesDisk && resolvedSizeBytes != null && resolvedSizeBytes > 0) {
       collection.handledMediaSizeBytes =
-        Number(collection.handledMediaSizeBytes ?? 0) + Number(media.sizeBytes);
+        Number(collection.handledMediaSizeBytes ?? 0) + resolvedSizeBytes;
     }
 
     await this.collectionService.CollectionLogRecordForChild(
