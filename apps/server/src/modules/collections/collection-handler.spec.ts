@@ -447,6 +447,120 @@ describe('CollectionHandler', () => {
     expect(collectionsService.saveCollection).not.toHaveBeenCalled();
   });
 
+  it('credits cached sizeBytes to handledMediaSizeBytes for delete-style actions', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+    collectionMedia.sizeBytes = 1_500_000_000 as any;
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(collectionsService.resolveItemSize).not.toHaveBeenCalled();
+    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handledMediaAmount: 1,
+        handledMediaSizeBytes: 1_500_000_000,
+      }),
+    );
+  });
+
+  it('falls back to media-server lookup when sizeBytes is null on a delete-style action', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+    collectionMedia.sizeBytes = null as any;
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    collectionsService.resolveItemSize.mockResolvedValue(2_000_000_000);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(collectionsService.resolveItemSize).toHaveBeenCalledWith(
+      mediaServer,
+      collectionMedia.mediaServerId,
+    );
+    expect(
+      collectionsService.resolveItemSize.mock.invocationCallOrder[0],
+    ).toBeLessThan(mediaServer.deleteFromDisk.mock.invocationCallOrder[0]);
+    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handledMediaAmount: 1,
+        handledMediaSizeBytes: 2_000_000_000,
+      }),
+    );
+  });
+
+  it('does not look up size for unmonitor actions', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+    collectionMedia.sizeBytes = null as any;
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(collectionsService.resolveItemSize).not.toHaveBeenCalled();
+    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handledMediaAmount: 1,
+        handledMediaSizeBytes: 0,
+      }),
+    );
+  });
+
+  it('skips byte credit when the lookup also fails to resolve a size', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+    collectionMedia.sizeBytes = null as any;
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    collectionsService.resolveItemSize.mockResolvedValue(null);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(collectionsService.resolveItemSize).toHaveBeenCalled();
+    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handledMediaAmount: 1,
+        handledMediaSizeBytes: 0,
+      }),
+    );
+  });
+
   it('should not call SeerrApiService if Seerr is not configured', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
