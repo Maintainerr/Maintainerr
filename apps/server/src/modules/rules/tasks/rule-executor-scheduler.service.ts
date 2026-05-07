@@ -34,13 +34,13 @@ export class RuleExecutorSchedulerService
     private readonly queueManager: RuleExecutorJobManagerService,
     private readonly logger: MaintainerrLogger,
   ) {
-    logger.setContext(RuleExecutorSchedulerService.name);
+    this.logger.setContext(RuleExecutorSchedulerService.name);
   }
 
   async onApplicationBootstrap() {
     const ruleGroups = await this.rulesService.getRuleGroups(true);
 
-    const ruleGroupsWithCronSchedule = ruleGroups.filter(
+    const ruleGroupsWithCronSchedule = (ruleGroups || []).filter(
       (rg) => rg.ruleHandlerCronSchedule,
     );
 
@@ -63,7 +63,7 @@ export class RuleExecutorSchedulerService
 
   public async enqueueAllActiveRuleGroups() {
     const ruleGroups = await this.rulesService.getRuleGroups(true);
-    for (const rg of ruleGroups) {
+    for (const rg of ruleGroups || []) {
       this.queueManager.enqueue({
         ruleGroupId: rg.id,
       });
@@ -261,7 +261,7 @@ export class RuleExecutorSchedulerService
 
   private async executeGlobalSchedule() {
     const ruleGroups = await this.rulesService.getRuleGroups(true);
-    const ruleGroupsFollowingGlobalSchedule = ruleGroups.filter(
+    const ruleGroupsFollowingGlobalSchedule = (ruleGroups || []).filter(
       (rg) => !rg.ruleHandlerCronSchedule,
     );
 

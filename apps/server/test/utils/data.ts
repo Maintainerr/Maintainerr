@@ -89,6 +89,7 @@ export const createCollection = (
     totalSizeBytes: null,
     overlayTemplateId: null,
     overlayTemplate: null,
+    mediaServerSort: null,
     ...properties,
   };
 };

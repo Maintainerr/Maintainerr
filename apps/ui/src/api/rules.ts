@@ -75,6 +75,7 @@ export interface RuleGroupCollectionPayload {
   manualCollectionName?: string
   keepLogsForMonths?: number
   sortTitle?: string
+  mediaServerSort?: string
 }
 
 export interface RuleGroupCreatePayload {

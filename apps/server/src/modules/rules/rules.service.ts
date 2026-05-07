@@ -135,7 +135,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return []; // <--- FIXED
     }
   }
 
@@ -175,7 +175,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return []; // <--- FIXED
     }
   }
 
@@ -205,7 +205,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return []; // <--- FIXED
     }
   }
 
