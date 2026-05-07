@@ -1,6 +1,7 @@
 import type {
   OverlayLibrarySection,
   OverlayPreviewItem,
+  OverlayProcessorRunResult,
   OverlaySettings,
   OverlaySettingsUpdate,
   OverlayTemplate,
@@ -21,13 +22,6 @@ import GetApiHandler, {
   PostApiHandler,
   PutApiHandler,
 } from '../utils/ApiHandler'
-
-export interface OverlayProcessResult {
-  processed: number
-  reverted: number
-  skipped?: number
-  errors: number
-}
 
 export const getOverlaySettings = () =>
   GetApiHandler<OverlaySettings>('/overlays/settings')
@@ -144,7 +138,7 @@ export const deleteOverlayImage = (imageName: string) =>
   )
 
 export const processAllOverlays = (options?: { force?: boolean }) =>
-  PostApiHandler<OverlayProcessResult>(
+  PostApiHandler<OverlayProcessorRunResult>(
     '/overlays/process',
     options?.force ? { force: true } : {},
   )

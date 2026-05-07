@@ -1,5 +1,6 @@
 import {
   MaintainerrEvent,
+  OverlayProcessorRunResult,
   OverlayResult,
   OverlayTemplate,
   OverlayTemplateMode,
@@ -26,12 +27,7 @@ import { IOverlayProvider } from './providers/overlay-provider.interface';
 
 export type ProcessorStatus = 'idle' | 'running' | 'error';
 
-export interface ProcessorRunResult {
-  processed: number;
-  reverted: number;
-  skipped: number;
-  errors: number;
-}
+export type ProcessorRunResult = OverlayProcessorRunResult;
 
 type RevertItemResult = 'restored' | 'failed' | 'no-backup' | 'item-gone';
 
@@ -368,17 +364,8 @@ export class OverlayProcessorService {
 
   async processCollection(
     collection: Collection & { collectionMedia: CollectionMedia[] },
-    appliedMediaItems?: { mediaServerId: string }[],
     force = false,
   ): Promise<ProcessorRunResult> {
-    if (appliedMediaItems) {
-      return this.processCollectionInternal(
-        collection,
-        appliedMediaItems,
-        force,
-      );
-    }
-
     if (this.status === 'running') {
       this.logger.warn('Overlay processor is already running, skipping');
       return this.createEmptyResult();
@@ -487,7 +474,7 @@ export class OverlayProcessorService {
         this.logger.log(
           `--- Processing: "${coll.title}" (${coll.collectionMedia.length} items) ---`,
         );
-        const collResult = await this.processCollection(
+        const collResult = await this.processCollectionInternal(
           coll,
           appliedMediaItems,
           force,

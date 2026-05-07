@@ -41,7 +41,10 @@ import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
 import sharp from 'sharp';
-import { z } from 'zod';
+import {
+  type OverlayProcessRequest,
+  overlayProcessRequestSchema,
+} from '@maintainerr/contracts';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerSetupGuard } from '../api/media-server/guards/media-server-setup.guard';
 import { CollectionsService } from '../collections/collections.service';
@@ -52,14 +55,6 @@ import { OverlayTaskService } from './overlay-task.service';
 import { OverlayTemplateService } from './overlay-template.service';
 import { OverlayProviderFactory } from './providers/overlay-provider.factory';
 import { IOverlayProvider } from './providers/overlay-provider.interface';
-
-const overlayProcessBodySchema = z.object({
-  force: z.boolean().optional(),
-});
-
-const overlayProcessRequestSchema = overlayProcessBodySchema.default({});
-
-type OverlayProcessBody = z.infer<typeof overlayProcessBodySchema>;
 
 @Controller('api/overlays')
 @UseGuards(MediaServerSetupGuard)
@@ -194,7 +189,7 @@ export class OverlaysController {
   @Post('process')
   async processAll(
     @Body(new ZodValidationPipe(overlayProcessRequestSchema))
-    request: OverlayProcessBody,
+    request: OverlayProcessRequest,
   ) {
     if (this.processorService.status === 'running') {
       throw new HttpException(
@@ -246,6 +241,12 @@ export class OverlaysController {
 
   @Delete('reset')
   async resetAll() {
+    if (this.processorService.status === 'running') {
+      throw new HttpException(
+        'Overlay processing is already running',
+        HttpStatus.CONFLICT,
+      );
+    }
     await this.processorService.resetAllOverlays();
     return { success: true };
   }

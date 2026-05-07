@@ -49,6 +49,7 @@ describe('OverlaySettings', () => {
     processAllOverlays.mockResolvedValue({
       processed: 3,
       reverted: 1,
+      skipped: 2,
       errors: 0,
     })
     resetAllOverlays.mockResolvedValue({ success: true })
@@ -70,7 +71,9 @@ describe('OverlaySettings', () => {
     })
 
     expect(
-      await screen.findByText('Processed: 3, Reverted: 1, Errors: 0'),
+      await screen.findByText(
+        'Processed: 3, Reverted: 1, Skipped: 2, Errors: 0',
+      ),
     ).toBeTruthy()
   })
 

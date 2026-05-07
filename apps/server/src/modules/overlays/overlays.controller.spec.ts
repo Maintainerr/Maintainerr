@@ -46,6 +46,7 @@ describe('OverlaysController', () => {
     status: 'idle' | 'running' | 'error';
     processAllCollections: jest.Mock;
     processCollection: jest.Mock;
+    resetAllOverlays: jest.Mock;
   };
   let collectionsService: {
     getCollection: jest.Mock;
@@ -65,6 +66,7 @@ describe('OverlaysController', () => {
       status: 'idle',
       processAllCollections: jest.fn(),
       processCollection: jest.fn(),
+      resetAllOverlays: jest.fn(),
     };
     collectionsService = {
       getCollection: jest.fn(),
@@ -335,5 +337,24 @@ describe('OverlaysController', () => {
     await expect(controller.processCollection(8)).resolves.toBe(result);
 
     expect(processorService.processCollection).toHaveBeenCalledWith(collection);
+  });
+
+  it('allows reset while overlays are globally disabled', async () => {
+    processorService.resetAllOverlays.mockResolvedValue(undefined);
+
+    await expect(controller.resetAll()).resolves.toEqual({ success: true });
+
+    expect(processorService.resetAllOverlays).toHaveBeenCalled();
+  });
+
+  it('rejects reset with 409 while a processor run is in progress', async () => {
+    processorService.status = 'running';
+
+    await expect(controller.resetAll()).rejects.toMatchObject({
+      status: 409,
+      response: 'Overlay processing is already running',
+    });
+
+    expect(processorService.resetAllOverlays).not.toHaveBeenCalled();
   });
 });

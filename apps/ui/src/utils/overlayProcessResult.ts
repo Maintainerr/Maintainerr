@@ -1,8 +1,9 @@
-import type { OverlayProcessResult } from '../api/overlays'
+import type { OverlayProcessorRunResult } from '@maintainerr/contracts'
 
 export const formatOverlayProcessSummary = ({
   processed,
   reverted,
+  skipped,
   errors,
-}: Pick<OverlayProcessResult, 'processed' | 'reverted' | 'errors'>) =>
-  `Processed: ${processed}, Reverted: ${reverted}, Errors: ${errors}`
+}: OverlayProcessorRunResult) =>
+  `Processed: ${processed}, Reverted: ${reverted}, Skipped: ${skipped}, Errors: ${errors}`

@@ -247,11 +247,7 @@ describe('OverlayProcessorService', () => {
 
     jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
 
-    const result = await service.processCollection(
-      collection as any,
-      undefined,
-      true,
-    );
+    const result = await service.processCollection(collection as any, true);
 
     expect(service.applyTemplateOverlay).toHaveBeenCalledWith(
       'media-1',

@@ -132,7 +132,7 @@ const CollectionDetailPage = () => {
           </div>
           {currentTab === 'info' && ruleGroup?.useRules ? (
             <CollectionDetailControlRow
-              canTestMedia={Boolean(ruleGroup?.useRules)}
+              canTestMedia={true}
               onOpenTestMedia={() => setMediaTestModalOpen(true)}
             />
           ) : null}
