@@ -296,6 +296,7 @@ export const ruleGroupFormSchema = z
     manualCollection: z.boolean(),
     manualCollectionName: z.string().optional(),
     sortTitle: z.string().optional(),
+    mediaServerSort: z.string().optional(),
     active: z.boolean(),
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
@@ -378,6 +379,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   manualCollection: editData?.collection?.manualCollection ?? false,
   manualCollectionName: editData?.collection?.manualCollectionName ?? '',
   sortTitle: editData?.collection?.sortTitle ?? '',
+  mediaServerSort: (editData?.collection as any)?.mediaServerSort ?? '',
   active: editData?.isActive ?? true,
   useRules: editData?.useRules ?? true,
   radarrSettingsId: editData
@@ -771,6 +773,10 @@ const AddModal = (props: AddModal) => {
           data.manualCollectionName ?? `My custom ${collectionTerm}`,
         keepLogsForMonths: data.keepLogsForMonths,
         sortTitle: data.sortTitle?.trim() ? data.sortTitle : undefined,
+        mediaServerSort:
+          data.mediaServerSort && data.mediaServerSort !== ''
+            ? data.mediaServerSort
+            : undefined,
       },
       rules: data.useRules ? rules : [],
       notifications: configuredNotificationConfigurations,
@@ -1466,6 +1472,52 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     </div>
+
+                    {isPlex && (
+                      <div className="flex flex-row items-center justify-between py-2 md:py-4">
+                        <label
+                          htmlFor="media_server_sort"
+                          className="text-label text-left"
+                        >
+                          {collectionTermCapitalized} items sort
+                          <p className="text-xs font-normal">
+                            Automatically sort the items inside the{' '}
+                            {collectionTerm} on {mediaServerName}
+                          </p>
+                        </label>
+                        <div className="flex justify-end px-2 py-2">
+                          <div className="form-input-field w-full">
+                            <Select
+                              id="media_server_sort"
+                              {...register('mediaServerSort')}
+                            >
+                              <option value="">Default (No custom sort)</option>
+                              <option value="deleteSoonest.asc">
+                                Days until deletion (Fewest first)
+                              </option>
+                              <option value="addDate.desc">
+                                Date Added (Newest first)
+                              </option>
+                              <option value="addDate.asc">
+                                Date Added (Oldest first)
+                              </option>
+                              <option value="releaseDate.desc">
+                                Release Date (Newest first)
+                              </option>
+                              <option value="releaseDate.asc">
+                                Release Date (Oldest first)
+                              </option>
+                              <option value="title.asc">
+                                Alphabetical (A-Z)
+                              </option>
+                              <option value="title.desc">
+                                Alphabetical (Z-A)
+                              </option>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {isPlex && tautulliEnabled && useRulesEnabled && (
                       <div className="flex flex-row items-center justify-between py-2 md:py-4">
