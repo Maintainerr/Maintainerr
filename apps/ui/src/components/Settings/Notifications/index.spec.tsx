@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
 import NotificationSettings from './index'
@@ -137,13 +143,30 @@ describe('NotificationSettings', () => {
       await screen.findByRole('dialog', { name: 'New Notification Agent' }),
     ).toBeTruthy()
 
-    fireEvent.change(screen.getByLabelText('Name *'), {
+    fireEvent.change(await screen.findByLabelText('Name *'), {
       target: { value: 'Webhook agent' },
     })
     fireEvent.change(screen.getByLabelText('Agent *'), {
       target: { value: '1' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    const saveButton = screen.getByRole('button', { name: 'Save Changes' })
+
+    await waitFor(() => {
+      expect(saveButton.hasAttribute('disabled')).toBe(false)
+    })
+
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledWith(
+        '/notifications/configuration/add',
+        expect.objectContaining({
+          name: 'Webhook agent',
+          agent: 'webhook',
+        }),
+      )
+    })
 
     expect(await screen.findByText('Notification agent saved')).toBeTruthy()
   })

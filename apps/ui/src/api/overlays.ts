@@ -1,6 +1,7 @@
 import type {
   OverlayLibrarySection,
   OverlayPreviewItem,
+  OverlayProcessorRunResult,
   OverlaySettings,
   OverlaySettingsUpdate,
   OverlayTemplate,
@@ -136,10 +137,10 @@ export const deleteOverlayImage = (imageName: string) =>
     `/overlays/images/${encodeURIComponent(imageName)}`,
   )
 
-export const processAllOverlays = () =>
-  PostApiHandler<{ processed: number; reverted: number; errors: number }>(
+export const processAllOverlays = (options?: { force?: boolean }) =>
+  PostApiHandler<OverlayProcessorRunResult>(
     '/overlays/process',
-    {},
+    options?.force ? { force: true } : {},
   )
 
 export const resetAllOverlays = () =>

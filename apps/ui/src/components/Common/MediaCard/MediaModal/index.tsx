@@ -23,7 +23,7 @@ import {
   rememberMaintainerrStatusDetails,
 } from '../maintainerrStatus'
 import type { ICollection } from '../../../Collection'
-import TriggerRuleButton from '../../../Collection/CollectionDetail/TriggerRuleButton'
+import TriggerRuleButton from '../../../Collection/CollectionDetail/TriggerRuleActionButton'
 
 interface ModalContentProps {
   onClose: () => void

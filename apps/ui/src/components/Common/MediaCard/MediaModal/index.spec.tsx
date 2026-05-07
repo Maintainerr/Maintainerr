@@ -13,7 +13,7 @@ import GetApiHandler from '../../../../utils/ApiHandler'
 import { clearMaintainerrStatusDetailsCache } from '../maintainerrStatus'
 import MediaModal from './index'
 
-vi.mock('../../../Collection/CollectionDetail/TriggerRuleButton', () => ({
+vi.mock('../../../Collection/CollectionDetail/TriggerRuleActionButton', () => ({
   default: () => <div>trigger-rule-action</div>,
 }))
 

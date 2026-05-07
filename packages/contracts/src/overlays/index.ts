@@ -1,5 +1,6 @@
 export * from './frame-config'
 export * from './overlay-element'
+export * from './overlay-processor'
 export * from './overlay-provider-dtos'
 export * from './overlay-render'
 export * from './overlay-settings'
