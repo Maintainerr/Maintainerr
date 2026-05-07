@@ -87,6 +87,7 @@ export const createCollection = (
     tautulliWatchedPercentOverride: undefined,
     sortTitle: undefined,
     totalSizeBytes: null,
+    handledMediaSizeBytes: 0,
     overlayTemplateId: null,
     overlayTemplate: null,
     mediaServerSort: null,
@@ -121,6 +122,7 @@ export const createCollectionMedia = (
       null as CollectionMediaManualMembershipSource | null,
     mediaServerId: faker.number.int().toString(),
     tmdbId: faker.number.int(),
+    sizeBytes: null,
     ...properties,
   });
 };

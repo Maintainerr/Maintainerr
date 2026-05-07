@@ -3054,32 +3054,25 @@ export class CollectionsService {
       let hasAnySize = false;
 
       for (const media of collectionMedia) {
-        try {
-          const metadata = await mediaServer.getMetadata(media.mediaServerId);
-          if (!metadata) continue;
+        const itemSize = await this.resolveItemSize(
+          mediaServer,
+          media.mediaServerId,
+        );
 
-          const itemSize = this.sumMediaSourceSizes(metadata);
+        if (itemSize != null && itemSize > 0) {
+          totalBytes += itemSize;
+          hasAnySize = true;
+        }
 
-          if (itemSize > 0) {
-            totalBytes += itemSize;
-            hasAnySize = true;
-          } else if (metadata.type === 'show' || metadata.type === 'season') {
-            // Show/season items may not have file sizes at the top level.
-            // Traverse children to sum episode-level sizes.
-            const childSize = await this.getChildrenTotalSize(
-              mediaServer,
-              metadata,
-            );
-            if (childSize > 0) {
-              totalBytes += childSize;
-              hasAnySize = true;
-            }
-          }
-        } catch (error) {
-          this.logger.debug(
-            `Failed to get size for media ${media.mediaServerId}`,
-          );
-          this.logger.debug(error);
+        // Persist per-item size so cross-collection dedup in storage metrics
+        // can count an item once even when it belongs to multiple collections.
+        // Only overwrite when we successfully resolved a size; leave the cached
+        // value alone on transient metadata failures so a single hiccup does
+        // not clobber previously-known data.
+        if (itemSize !== null && media.sizeBytes !== itemSize) {
+          await this.CollectionMediaRepo.update(media.id, {
+            sizeBytes: itemSize,
+          });
         }
       }
 
@@ -3091,6 +3084,35 @@ export class CollectionsService {
         `Failed to update total size for collection ${collectionId}`,
       );
       this.logger.debug(error);
+    }
+  }
+
+  /**
+   * Resolve the on-disk size of a single media item via the media server,
+   * falling back to summing children for shows/seasons. Returns null when
+   * the lookup fails or the server reports no usable size.
+   */
+  async resolveItemSize(
+    mediaServer: IMediaServerService,
+    mediaServerId: string,
+  ): Promise<number | null> {
+    try {
+      const metadata = await mediaServer.getMetadata(mediaServerId);
+      if (!metadata) return null;
+      const directSize = this.sumMediaSourceSizes(metadata);
+      if (directSize > 0) return directSize;
+      if (metadata.type === 'show' || metadata.type === 'season') {
+        const childSize = await this.getChildrenTotalSize(
+          mediaServer,
+          metadata,
+        );
+        if (childSize > 0) return childSize;
+      }
+      return null;
+    } catch (error) {
+      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(error);
+      return null;
     }
   }
 

@@ -49,6 +49,9 @@ export class CollectionMedia {
   @Column({ type: 'varchar', nullable: true, default: null })
   manualMembershipSource: CollectionMediaManualMembershipSource | null;
 
+  @Column({ type: 'bigint', nullable: true, default: null })
+  sizeBytes: number | null;
+
   @BeforeInsert()
   @BeforeUpdate()
   syncLegacyManualFlag(): void {

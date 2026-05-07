@@ -21,6 +21,7 @@ import { CollectionsController } from './collections.controller';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
+import { RecentlyHandledMediaService } from './recently-handled-media.service';
 
 @Module({
   imports: [
@@ -48,8 +49,13 @@ import { CollectionMedia } from './entities/collection_media.entities';
     CollectionLogCleanerService,
     CollectionHandler,
     CollectionPosterService,
+    RecentlyHandledMediaService,
   ],
   controllers: [CollectionsController],
-  exports: [CollectionsService, CollectionPosterService],
+  exports: [
+    CollectionsService,
+    CollectionPosterService,
+    RecentlyHandledMediaService,
+  ],
 })
 export class CollectionsModule {}
