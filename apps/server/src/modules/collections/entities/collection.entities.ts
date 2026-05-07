@@ -104,6 +104,9 @@ export class Collection {
   @Column({ type: 'bigint', nullable: true, default: null })
   totalSizeBytes: number | null;
 
+  @Column({ type: 'bigint', nullable: false, default: 0 })
+  handledMediaSizeBytes: number;
+
   @Column({ nullable: false, default: false })
   overlayEnabled: boolean;
 
