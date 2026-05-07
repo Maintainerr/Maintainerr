@@ -55,4 +55,6 @@ export enum MediaServerFeature {
   PLAYLISTS = 'playlists',
   /** Custom poster artwork can be set on collections */
   COLLECTION_POSTER = 'collection_poster',
+  /** Ability to sort collections */
+  COLLECTION_SORT = 'collection_sort',
 }

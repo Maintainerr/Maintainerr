@@ -3,6 +3,7 @@ import {
   CollectionLogMeta,
   CollectionMediaSortField,
   compareMediaItemsBySort,
+  parseCollectionSortKey,
   ECollectionLogType,
   isMediaType,
   MaintainerrEvent,
@@ -755,6 +756,65 @@ export class CollectionsService {
       .filter(
         (entity): entity is CollectionMediaWithMetadata => entity !== undefined,
       );
+  }
+
+  private async applyCollectionSort(
+    collection: Collection,
+    mediaServer: IMediaServerService,
+  ): Promise<void> {
+    const sortKey = collection.mediaServerSort;
+    const parsed = sortKey ? parseCollectionSortKey(sortKey) : undefined;
+    if (!parsed) {
+      this.logger.warn(
+        `Ignoring invalid collection sort '${sortKey}' on collection ${collection.id}`,
+      );
+      return;
+    }
+
+    try {
+      // Plex rejects move/prefs on smart collections — skip defensively even
+      // though Maintainerr-managed collections are non-smart.
+      const serverCollection = await mediaServer.getCollection(
+        collection.mediaServerId,
+      );
+      if (serverCollection?.smart) {
+        this.logger.log(
+          `Skipping collection sort for ${collection.mediaServerId}: smart collection`,
+        );
+        return;
+      }
+
+      const allMediaRows = await this.CollectionMediaRepo.find({
+        where: { collectionId: collection.id },
+      });
+      const hydratedItems = await this.hydrateCollectionMediaWithMetadata(
+        allMediaRows,
+        mediaServer,
+      );
+      const sortable = hydratedItems.filter((item) => item.mediaData);
+      if (sortable.length === 0) {
+        return;
+      }
+
+      sortable.sort((a, b) =>
+        compareMediaItemsBySort(
+          a.mediaData,
+          b.mediaData,
+          parsed.sort,
+          parsed.order,
+        ),
+      );
+
+      await mediaServer.reorderCollectionItems(
+        collection.mediaServerId,
+        sortable.map((item) => item.mediaServerId),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to apply collection sort '${sortKey}' to media server`,
+      );
+      this.logger.debug(error);
+    }
   }
 
   private async hydrateExclusionsWithMetadata(
@@ -2011,6 +2071,18 @@ export class CollectionsService {
           );
         }
 
+        // Push collection sort to the media server only when membership
+        // changed in this cycle — relative order is preserved on remove-only
+        // cycles, so re-sorting unchanged collections would just be churn.
+        if (
+          collection.mediaServerSort &&
+          newMedia.length > 0 &&
+          collection.mediaServerId &&
+          mediaServer.supportsFeature(MediaServerFeature.COLLECTION_SORT)
+        ) {
+          await this.applyCollectionSort(collection, mediaServer);
+        }
+
         if (isSharedManualCollection) {
           await this.reconcileSharedManualCollectionState(collection, {
             addedMediaServerIds: new Set(
@@ -2752,6 +2824,7 @@ export class CollectionsService {
             sonarrSettingsId: collection.sonarrSettingsId,
             radarrSettingsId: collection.radarrSettingsId,
             sortTitle: collection.sortTitle,
+            mediaServerSort: collection.mediaServerSort ?? null,
             overlayEnabled: collection.overlayEnabled ?? false,
             overlayTemplateId: collection.overlayTemplateId ?? null,
           },
