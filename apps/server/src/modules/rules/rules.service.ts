@@ -135,7 +135,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return []; // <--- FIXED
+      return undefined;
     }
   }
 
@@ -175,7 +175,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return []; // <--- FIXED
+      return undefined;
     }
   }
 
@@ -205,7 +205,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return []; // <--- FIXED
+      return undefined;
     }
   }
 
@@ -357,6 +357,7 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
           overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         })
@@ -523,6 +524,7 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
           overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         };

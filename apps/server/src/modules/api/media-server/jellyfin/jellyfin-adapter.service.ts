@@ -1809,7 +1809,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     orderedItemIds: string[],
   ): Promise<void> {
     this.logger.warn(
-      `Attempted to reorder items in collection ${collectionId}, ` +
+      `Attempted to reorder ${orderedItemIds.length} items in collection ${collectionId}, ` +
         'but Jellyfin does not support boxset reordering.',
     );
     throw new Error('Collection sort not supported on Jellyfin');

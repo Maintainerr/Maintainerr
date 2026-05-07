@@ -935,7 +935,10 @@ export class PlexApiService {
     afterId?: string,
   ): Promise<void> {
     try {
-      // path accepts comma-separated IDs according to spec but we use it sequentially
+      // Plex move is per-item. Omitting `after` puts the item at the front;
+      // otherwise it lands immediately after `afterId`. Reordering a full
+      // collection is therefore O(n) sequential PUTs — acceptable for the
+      // collection sizes Maintainerr manages.
       const afterQuery = afterId ? `?after=${afterId}` : '';
       await this.plexClient.putQuery({
         uri: `/library/collections/${collectionId}/items/${itemId}/move${afterQuery}`,

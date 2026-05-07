@@ -1,4 +1,7 @@
-import type { ArrDiskspaceResource } from '@maintainerr/contracts'
+import type {
+  ArrDiskspaceResource,
+  MediaServerCollectionSort,
+} from '@maintainerr/contracts'
 import {
   BasicResponseDto,
   MediaItemType,
@@ -75,7 +78,7 @@ export interface RuleGroupCollectionPayload {
   manualCollectionName?: string
   keepLogsForMonths?: number
   sortTitle?: string
-  mediaServerSort?: string
+  mediaServerSort?: MediaServerCollectionSort
 }
 
 export interface RuleGroupCreatePayload {

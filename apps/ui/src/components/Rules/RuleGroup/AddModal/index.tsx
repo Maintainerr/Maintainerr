@@ -12,8 +12,11 @@ import {
   Application,
   MediaItemType,
   MediaLibrary,
+  MediaServerFeature,
   OverlayTemplate,
+  parseCollectionSortKey,
   ServarrAction,
+  supportsFeature,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
 import { lazy, useEffect, useState, useSyncExternalStore } from 'react'
@@ -39,6 +42,7 @@ import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import { getCollectionMediaSortConfig } from '../../../Common/MediaLibrarySortControl'
 import SaveButton from '../../../Common/SaveButton'
 import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
@@ -379,7 +383,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   manualCollection: editData?.collection?.manualCollection ?? false,
   manualCollectionName: editData?.collection?.manualCollectionName ?? '',
   sortTitle: editData?.collection?.sortTitle ?? '',
-  mediaServerSort: (editData?.collection as any)?.mediaServerSort ?? '',
+  mediaServerSort: editData?.collection?.mediaServerSort ?? '',
   active: editData?.isActive ?? true,
   useRules: editData?.useRules ?? true,
   radarrSettingsId: editData
@@ -399,12 +403,16 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
 
 const AddModal = (props: AddModal) => {
   const navigate = useNavigate()
-  const { isPlex, isJellyfin } = useMediaServerType()
+  const { isPlex, isJellyfin, mediaServerType } = useMediaServerType()
   const mediaServerName = isPlex
     ? 'Plex'
     : isJellyfin
       ? 'Jellyfin'
       : 'your media server'
+  const supportsCollectionSort = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.COLLECTION_SORT,
+  )
   // Both Plex and Jellyfin call them "Collections" in their GUI
   // (Jellyfin's internal API type is "BoxSet" but the user-facing term is "Collection")
   const collectionTerm = 'collection'
@@ -773,10 +781,8 @@ const AddModal = (props: AddModal) => {
           data.manualCollectionName ?? `My custom ${collectionTerm}`,
         keepLogsForMonths: data.keepLogsForMonths,
         sortTitle: data.sortTitle?.trim() ? data.sortTitle : undefined,
-        mediaServerSort:
-          data.mediaServerSort && data.mediaServerSort !== ''
-            ? data.mediaServerSort
-            : undefined,
+        mediaServerSort: parseCollectionSortKey(data.mediaServerSort ?? '')
+          ?.key,
       },
       rules: data.useRules ? rules : [],
       notifications: configuredNotificationConfigurations,
@@ -1473,7 +1479,7 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
 
-                    {isPlex && (
+                    {supportsCollectionSort && (
                       <div className="flex flex-row items-center justify-between py-2 md:py-4">
                         <label
                           htmlFor="media_server_sort"
@@ -1481,8 +1487,10 @@ const AddModal = (props: AddModal) => {
                         >
                           {collectionTermCapitalized} items sort
                           <p className="text-xs font-normal">
-                            Automatically sort the items inside the{' '}
-                            {collectionTerm} on {mediaServerName}
+                            Automatically sort items inside the {collectionTerm}{' '}
+                            on {mediaServerName}. Disabling later does not
+                            restore the default order — change it in{' '}
+                            {mediaServerName} if needed.
                           </p>
                         </label>
                         <div className="flex justify-end px-2 py-2">
@@ -1491,28 +1499,15 @@ const AddModal = (props: AddModal) => {
                               id="media_server_sort"
                               {...register('mediaServerSort')}
                             >
-                              <option value="">Default (No custom sort)</option>
-                              <option value="deleteSoonest.asc">
-                                Days until deletion (Fewest first)
-                              </option>
-                              <option value="addDate.desc">
-                                Date Added (Newest first)
-                              </option>
-                              <option value="addDate.asc">
-                                Date Added (Oldest first)
-                              </option>
-                              <option value="releaseDate.desc">
-                                Release Date (Newest first)
-                              </option>
-                              <option value="releaseDate.asc">
-                                Release Date (Oldest first)
-                              </option>
-                              <option value="title.asc">
-                                Alphabetical (A-Z)
-                              </option>
-                              <option value="title.desc">
-                                Alphabetical (Z-A)
-                              </option>
+                              <option value="">Default (no custom sort)</option>
+                              {getCollectionMediaSortConfig(
+                                selectedLibraryType,
+                                true,
+                              ).options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
                             </Select>
                           </div>
                         </div>

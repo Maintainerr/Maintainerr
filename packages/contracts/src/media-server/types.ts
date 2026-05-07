@@ -150,13 +150,6 @@ export interface WatchRecord {
 }
 
 /**
- * Collection sort options for media servers
- */
-export type MediaServerCollectionSort =
-  | 'deleteSoonest.asc'
-  | 'deleteSoonest.desc'
-
-/**
  * Server-agnostic collection representation
  */
 export interface MediaCollection {
