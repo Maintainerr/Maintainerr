@@ -340,6 +340,42 @@ describe('MetadataSettingsService', () => {
     );
   });
 
+  it.each([
+    '00000000-0000-0000-0000-000000000000',
+    '00000000000000000000000000000000',
+  ])(
+    'does not retry with Jellyfin empty GUID %j returned by item lookup',
+    async (emptyGuid) => {
+      const mediaServerId = 'e9b2dcaa-529c-426e-9433-5e9981f27f2e';
+      const queryBuilder = createQueryBuilder([{ mediaServerId }]);
+      const refreshItemMetadata = jest
+        .fn()
+        .mockRejectedValue(new Error('refresh failed'));
+      const getMetadata = jest.fn().mockResolvedValue({ id: emptyGuid });
+
+      collectionMediaRepo.createQueryBuilder.mockReturnValue(
+        queryBuilder as never,
+      );
+      mediaServerFactory.getService.mockResolvedValue({
+        isSetup: jest.fn().mockReturnValue(true),
+        getServerType: jest.fn().mockReturnValue(MediaServerType.JELLYFIN),
+        refreshItemMetadata,
+        getMetadata,
+      } as never);
+
+      await (service as any).refreshMediaServerItems(MetadataProvider.TMDB, {
+        retryFailedItemsWithMetadataLookup: true,
+      });
+
+      expect(refreshItemMetadata).toHaveBeenCalledTimes(1);
+      expect(refreshItemMetadata).not.toHaveBeenCalledWith(emptyGuid);
+      expect(getMetadata).toHaveBeenCalledWith(mediaServerId);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('did not return a usable id'),
+      );
+    },
+  );
+
   it('logs and surfaces the final failure when the retry also rejects', async () => {
     const queryBuilder = createQueryBuilder([{ mediaServerId: '12345' }]);
     const refreshItemMetadata = jest
