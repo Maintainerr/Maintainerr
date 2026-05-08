@@ -1,4 +1,8 @@
-import { MediaItemType, MediaServerType } from '@maintainerr/contracts';
+import {
+  MediaItemType,
+  MediaServerCollectionSort,
+  MediaServerType,
+} from '@maintainerr/contracts';
 import {
   Column,
   Entity,
@@ -100,6 +104,9 @@ export class Collection {
 
   @Column({ nullable: true })
   sortTitle: string;
+
+  @Column({ type: 'varchar', nullable: true, default: null })
+  mediaServerSort: MediaServerCollectionSort | null;
 
   @Column({ type: 'bigint', nullable: true, default: null })
   totalSizeBytes: number | null;

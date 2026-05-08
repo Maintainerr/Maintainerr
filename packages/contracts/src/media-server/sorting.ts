@@ -28,6 +28,9 @@ export type CollectionMediaSortField =
 
 export type MediaLibrarySortKey = `${MediaLibrarySortField}.${MediaSortOrder}`
 
+export type MediaServerCollectionSort =
+  `${CollectionMediaSortField}.${MediaSortOrder}`
+
 export interface MediaLibrarySortParams {
   sort: MediaLibrarySortField
   sortOrder: MediaSortOrder

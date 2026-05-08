@@ -61,6 +61,11 @@ const collectionMediaSortQuerySchema = z
   .optional();
 const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
+const collectionMediaSortKeySchema = z.union(
+  collectionMediaSortFields.flatMap((field) =>
+    mediaSortOrders.map((order) => z.literal(`${field}.${order}` as const)),
+  ),
+);
 
 const ruleValueSchema = z.union([
   z.number(),
@@ -146,6 +151,7 @@ const collectionBaseShape = {
   radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
   sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
   sortTitle: z.string().optional().nullable(),
+  mediaServerSort: collectionMediaSortKeySchema.optional().nullable(),
   overlayEnabled: z.boolean().optional(),
   overlayTemplateId: z.coerce.number().int().optional().nullable(),
 };

@@ -689,6 +689,52 @@ export class PlexAdapterService implements IMediaServerService {
       );
     }
   }
+
+  async reorderCollectionItems(
+    collectionId: string,
+    orderedItemIds: string[],
+  ): Promise<void> {
+    if (orderedItemIds.length === 0) {
+      return;
+    }
+
+    // Short-circuit when the collection is already in the requested order:
+    // skip both the prefs PUT and every move PUT.
+    const currentChildren =
+      await this.plexApi.getCollectionChildren(collectionId);
+    const currentOrder =
+      currentChildren?.map((child) => child.ratingKey?.toString() ?? '') ?? [];
+    if (
+      currentOrder.length === orderedItemIds.length &&
+      currentOrder.every((id, index) => id === orderedItemIds[index])
+    ) {
+      return;
+    }
+
+    await this.plexApi.setCollectionCustomSort(collectionId);
+
+    // Continue past per-item failures so a single rejected move doesn't
+    // leave the rest of the collection partially sorted.
+    const failedItemIds: string[] = [];
+    let previousId: string | undefined = undefined;
+    for (const itemId of orderedItemIds) {
+      try {
+        await this.plexApi.moveCollectionItem(collectionId, itemId, previousId);
+        previousId = itemId;
+      } catch (error) {
+        failedItemIds.push(itemId);
+        this.logger.debug(error);
+      }
+    }
+
+    if (failedItemIds.length > 0) {
+      this.logger.warn(
+        `Reorder of collection ${collectionId} completed with ${failedItemIds.length} failed move(s); ` +
+          `failed item ids: ${failedItemIds.join(', ')}`,
+      );
+    }
+  }
+
   async getWatchlistForUser(userId: string): Promise<string[]> {
     // PlexApiService.getWatchlistIdsForUser requires both userId and username
     // but returns PlexCommunityWatchList[] with id, key, title, type
