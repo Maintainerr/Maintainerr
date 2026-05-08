@@ -694,24 +694,44 @@ export class PlexAdapterService implements IMediaServerService {
     collectionId: string,
     orderedItemIds: string[],
   ): Promise<void> {
-    if (!orderedItemIds || orderedItemIds.length === 0) {
+    if (orderedItemIds.length === 0) {
       return;
     }
 
-    try {
-      await this.plexApi.setCollectionCustomSort(collectionId);
+    // Short-circuit when the collection is already in the requested order:
+    // skip both the prefs PUT and every move PUT.
+    const currentChildren =
+      await this.plexApi.getCollectionChildren(collectionId);
+    const currentOrder =
+      currentChildren?.map((child) => child.ratingKey?.toString() ?? '') ?? [];
+    if (
+      currentOrder.length === orderedItemIds.length &&
+      currentOrder.every((id, index) => id === orderedItemIds[index])
+    ) {
+      return;
+    }
 
-      let previousId: string | undefined = undefined;
-      for (const itemId of orderedItemIds) {
+    await this.plexApi.setCollectionCustomSort(collectionId);
+
+    // Continue past per-item failures so a single rejected move doesn't
+    // leave the rest of the collection partially sorted.
+    const failedItemIds: string[] = [];
+    let previousId: string | undefined = undefined;
+    for (const itemId of orderedItemIds) {
+      try {
         await this.plexApi.moveCollectionItem(collectionId, itemId, previousId);
         previousId = itemId;
+      } catch (error) {
+        failedItemIds.push(itemId);
+        this.logger.debug(error);
       }
-    } catch (error) {
-      this.logger.error(
-        `Failed to reorder items in collection ${collectionId}`,
+    }
+
+    if (failedItemIds.length > 0) {
+      this.logger.warn(
+        `Reorder of collection ${collectionId} completed with ${failedItemIds.length} failed move(s); ` +
+          `failed item ids: ${failedItemIds.join(', ')}`,
       );
-      this.logger.debug(error);
-      throw new Error(`Failed to reorder items in collection ${collectionId}`);
     }
   }
 
