@@ -915,6 +915,43 @@ export class PlexApiService {
     }
   }
 
+  public async setCollectionCustomSort(collectionId: string): Promise<void> {
+    try {
+      await this.plexClient.putQuery({
+        uri: `/library/metadata/${collectionId}/prefs?collectionSort=2`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to set custom sort for collection ${collectionId}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
+  public async moveCollectionItem(
+    collectionId: string,
+    itemId: string,
+    afterId?: string,
+  ): Promise<void> {
+    try {
+      // Plex move is per-item. Omitting `after` puts the item at the front;
+      // otherwise it lands immediately after `afterId`. Reordering a full
+      // collection is therefore O(n) sequential PUTs — acceptable for the
+      // collection sizes Maintainerr manages.
+      const afterQuery = afterId ? `?after=${afterId}` : '';
+      await this.plexClient.putQuery({
+        uri: `/library/collections/${collectionId}/items/${itemId}/move${afterQuery}`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to move item ${itemId} in collection ${collectionId}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
   public async deleteCollection(
     collectionId: string,
   ): Promise<BasicResponseDto> {

@@ -1,4 +1,8 @@
-import { type MediaItem, type MediaItemType } from '@maintainerr/contracts'
+import {
+  type MediaItem,
+  type MediaItemType,
+  type MediaServerCollectionSort,
+} from '@maintainerr/contracts'
 
 export interface ICollection {
   id?: number
@@ -29,6 +33,7 @@ export interface ICollection {
   radarrQualityProfileId?: number
   sonarrQualityProfileId?: number
   sortTitle?: string
+  mediaServerSort?: MediaServerCollectionSort | null
   totalSizeBytes?: number | null
   mediaCount?: number
 }

@@ -257,4 +257,145 @@ describe('RulesService.updateRules', () => {
       message: 'Success',
     });
   });
+
+  const buildSortTransitionFixture = (options: {
+    previousSort: string | null;
+    nextSort: string | null;
+  }) => {
+    const dbCollection = {
+      id: 7,
+      libraryId: 'lib-1',
+      mediaServerId: 'plex-col-1',
+      manualCollection: false,
+      manualCollectionName: '',
+      mediaServerSort: options.previousSort,
+    } as any;
+
+    const freshCollection = {
+      ...dbCollection,
+      mediaServerSort: options.nextSort,
+    } as any;
+
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue(dbCollection),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest.fn().mockResolvedValue({
+        dbCollection: freshCollection,
+      }),
+      applyCollectionSort: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const mediaServer = {
+      cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: 'lib-1', title: 'Movies', type: 'movie' }]),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: {
+        findOne: jest.fn().mockResolvedValue({
+          id: 5,
+          collectionId: dbCollection.id,
+          dataType: 'movie',
+        }),
+      },
+      collectionMediaRepository: { delete: jest.fn() },
+      exclusionRepo: { delete: jest.fn() },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+    });
+
+    jest.spyOn(service as any, 'createOrUpdateGroup').mockResolvedValue(5);
+
+    return { service, collectionService, dbCollection, freshCollection };
+  };
+
+  it('applies the collection sort immediately when newly enabled on save', async () => {
+    const { service, collectionService, freshCollection } =
+      buildSortTransitionFixture({
+        previousSort: null,
+        nextSort: 'title.asc',
+      });
+
+    await service.updateRules({
+      id: 5,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'rg',
+      description: '',
+      rules: [],
+      useRules: false,
+      isActive: true,
+      collection: {
+        manualCollection: false,
+        manualCollectionName: '',
+        keepLogsForMonths: 1,
+        mediaServerSort: 'title.asc',
+      },
+      notifications: [],
+    } as any);
+
+    expect(collectionService.applyCollectionSort).toHaveBeenCalledWith(
+      freshCollection,
+    );
+  });
+
+  it('does not reapply sort on save when the sort value is cleared', async () => {
+    const { service, collectionService } = buildSortTransitionFixture({
+      previousSort: 'title.asc',
+      nextSort: null,
+    });
+
+    await service.updateRules({
+      id: 5,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'rg',
+      description: '',
+      rules: [],
+      useRules: false,
+      isActive: true,
+      collection: {
+        manualCollection: false,
+        manualCollectionName: '',
+        keepLogsForMonths: 1,
+        mediaServerSort: null,
+      },
+      notifications: [],
+    } as any);
+
+    expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
+  });
+
+  it('does not touch sort on save when the sort value is unchanged', async () => {
+    const { service, collectionService } = buildSortTransitionFixture({
+      previousSort: 'title.asc',
+      nextSort: 'title.asc',
+    });
+
+    await service.updateRules({
+      id: 5,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'rg',
+      description: '',
+      rules: [],
+      useRules: false,
+      isActive: true,
+      collection: {
+        manualCollection: false,
+        manualCollectionName: '',
+        keepLogsForMonths: 1,
+        mediaServerSort: 'title.asc',
+      },
+      notifications: [],
+    } as any);
+
+    expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
+  });
 });
