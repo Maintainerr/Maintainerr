@@ -10,10 +10,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
-import {
-  isBlankMediaServerId,
-  shouldRefreshMetadataItemId,
-} from '../api/media-server/media-server-id.utils';
+import { shouldRefreshMetadataItemId } from '../api/media-server/media-server-id.utils';
 import { MEDIA_SERVER_BATCH_SIZE } from '../api/media-server/media-server.constants';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import type { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -309,14 +306,13 @@ export class MetadataSettingsService {
         throw error;
       }
 
-      if (!metadata || isBlankMediaServerId(metadata.id)) {
+      const verifiedItemId = metadata?.id?.trim() ?? '';
+      if (!shouldRefreshMetadataItemId(serverType, verifiedItemId)) {
         this.logger.warn(
           `Skipping ${serverType} metadata refresh retry for item ${itemId}; item lookup did not return a usable id`,
         );
         throw error;
       }
-
-      const verifiedItemId = metadata.id.trim();
 
       if (verifiedItemId !== itemId) {
         this.logger.warn(
