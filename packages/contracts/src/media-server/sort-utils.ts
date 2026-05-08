@@ -1,7 +1,9 @@
 import {
+  collectionMediaSortFields,
   type CollectionMediaSortField,
   type MediaLibrarySortField,
   type MediaLibrarySortKey,
+  type MediaServerCollectionSort,
   type MediaSortOrder,
 } from './sorting'
 import type { MediaItem } from './types'
@@ -82,6 +84,29 @@ export const compareMediaItemsBySort = (
       )
     default:
       return 0
+  }
+}
+
+export const parseCollectionSortKey = (
+  key: string,
+):
+  | {
+      key: MediaServerCollectionSort
+      sort: CollectionMediaSortField
+      order: MediaSortOrder
+    }
+  | undefined => {
+  const [sort, order] = key.split('.') as [string, string | undefined]
+  if (
+    !(collectionMediaSortFields as readonly string[]).includes(sort) ||
+    (order !== 'asc' && order !== 'desc')
+  ) {
+    return undefined
+  }
+  return {
+    key: key as MediaServerCollectionSort,
+    sort: sort as CollectionMediaSortField,
+    order,
   }
 }
 

@@ -184,6 +184,39 @@ describe('PlexApiService.getMetadata', () => {
     expect(logger.debug).not.toHaveBeenCalled();
   });
 
+  it('switches a collection into custom sort mode via prefs', async () => {
+    const putQuery = jest.fn().mockResolvedValue(undefined);
+    (service as any).plexClient = { putQuery };
+
+    await service.setCollectionCustomSort('55');
+
+    expect(putQuery).toHaveBeenCalledWith({
+      uri: '/library/metadata/55/prefs?collectionSort=2',
+    });
+  });
+
+  it('omits the after parameter when moving an item to the front', async () => {
+    const putQuery = jest.fn().mockResolvedValue(undefined);
+    (service as any).plexClient = { putQuery };
+
+    await service.moveCollectionItem('55', '99');
+
+    expect(putQuery).toHaveBeenCalledWith({
+      uri: '/library/collections/55/items/99/move',
+    });
+  });
+
+  it('places an item after the given sibling when moving', async () => {
+    const putQuery = jest.fn().mockResolvedValue(undefined);
+    (service as any).plexClient = { putQuery };
+
+    await service.moveCollectionItem('55', '99', '42');
+
+    expect(putQuery).toHaveBeenCalledWith({
+      uri: '/library/collections/55/items/99/move?after=42',
+    });
+  });
+
   it('uses the canonical Plex items path when deleting a collection child', async () => {
     const deleteQuery = jest.fn().mockResolvedValue(undefined);
 

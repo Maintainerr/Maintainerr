@@ -357,8 +357,15 @@ describe('JellyfinAdapterService', () => {
       [MediaServerFeature.COLLECTION_VISIBILITY, false],
       [MediaServerFeature.WATCHLIST, false],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, false],
+      [MediaServerFeature.COLLECTION_SORT, false],
     ])('supportsFeature(%s) is %s', (feature, expected) => {
       expect(service.supportsFeature(feature)).toBe(expected);
+    });
+
+    it('reorderCollectionItems throws because Jellyfin lacks a boxset reorder API', async () => {
+      await expect(
+        service.reorderCollectionItems('col1', ['a', 'b']),
+      ).rejects.toThrow('Collection sort not supported on Jellyfin');
     });
   });
 

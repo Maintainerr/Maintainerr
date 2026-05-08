@@ -689,6 +689,32 @@ export class PlexAdapterService implements IMediaServerService {
       );
     }
   }
+
+  async reorderCollectionItems(
+    collectionId: string,
+    orderedItemIds: string[],
+  ): Promise<void> {
+    if (!orderedItemIds || orderedItemIds.length === 0) {
+      return;
+    }
+
+    try {
+      await this.plexApi.setCollectionCustomSort(collectionId);
+
+      let previousId: string | undefined = undefined;
+      for (const itemId of orderedItemIds) {
+        await this.plexApi.moveCollectionItem(collectionId, itemId, previousId);
+        previousId = itemId;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to reorder items in collection ${collectionId}`,
+      );
+      this.logger.debug(error);
+      throw new Error(`Failed to reorder items in collection ${collectionId}`);
+    }
+  }
+
   async getWatchlistForUser(userId: string): Promise<string[]> {
     // PlexApiService.getWatchlistIdsForUser requires both userId and username
     // but returns PlexCommunityWatchList[] with id, key, title, type

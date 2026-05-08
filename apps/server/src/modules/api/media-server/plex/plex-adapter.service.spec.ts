@@ -760,5 +760,26 @@ describe('PlexAdapterService', () => {
         sharedHome: false,
       });
     });
+
+    it('should set custom sort then move items into the requested order', async () => {
+      plexApi.setCollectionCustomSort.mockResolvedValue(undefined);
+      plexApi.moveCollectionItem.mockResolvedValue(undefined);
+
+      await service.reorderCollectionItems('col123', ['a', 'b', 'c']);
+
+      expect(plexApi.setCollectionCustomSort).toHaveBeenCalledWith('col123');
+      expect(plexApi.moveCollectionItem.mock.calls).toEqual([
+        ['col123', 'a', undefined],
+        ['col123', 'b', 'a'],
+        ['col123', 'c', 'b'],
+      ]);
+    });
+
+    it('should no-op when reordering an empty list', async () => {
+      await service.reorderCollectionItems('col123', []);
+
+      expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
+      expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
+    });
   });
 });
