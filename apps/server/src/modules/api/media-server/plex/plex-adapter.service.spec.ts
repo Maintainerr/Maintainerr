@@ -762,6 +762,11 @@ describe('PlexAdapterService', () => {
     });
 
     it('should set custom sort then move items into the requested order', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', { ratingKey: 'c' }),
+        createPlexLibraryItem('movie', { ratingKey: 'b' }),
+        createPlexLibraryItem('movie', { ratingKey: 'a' }),
+      ]);
       plexApi.setCollectionCustomSort.mockResolvedValue(undefined);
       plexApi.moveCollectionItem.mockResolvedValue(undefined);
 
@@ -778,8 +783,51 @@ describe('PlexAdapterService', () => {
     it('should no-op when reordering an empty list', async () => {
       await service.reorderCollectionItems('col123', []);
 
+      expect(plexApi.getCollectionChildren).not.toHaveBeenCalled();
       expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
       expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
+    });
+
+    it('should short-circuit without writing when current order already matches', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', { ratingKey: 'a' }),
+        createPlexLibraryItem('movie', { ratingKey: 'b' }),
+        createPlexLibraryItem('movie', { ratingKey: 'c' }),
+      ]);
+
+      await service.reorderCollectionItems('col123', ['a', 'b', 'c']);
+
+      expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
+      expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
+    });
+
+    it('should continue past per-item move failures and log a summary', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('movie', { ratingKey: 'c' }),
+        createPlexLibraryItem('movie', { ratingKey: 'b' }),
+        createPlexLibraryItem('movie', { ratingKey: 'a' }),
+      ]);
+      plexApi.setCollectionCustomSort.mockResolvedValue(undefined);
+      plexApi.moveCollectionItem.mockImplementation(
+        async (_collectionId, itemId) => {
+          if (itemId === 'b') {
+            throw new Error('plex move 409');
+          }
+        },
+      );
+
+      await expect(
+        service.reorderCollectionItems('col123', ['a', 'b', 'c']),
+      ).resolves.toBeUndefined();
+
+      expect(plexApi.moveCollectionItem.mock.calls).toEqual([
+        ['col123', 'a', undefined],
+        ['col123', 'b', 'a'],
+        ['col123', 'c', 'a'],
+      ]);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('1 failed move(s)'),
+      );
     });
   });
 });
