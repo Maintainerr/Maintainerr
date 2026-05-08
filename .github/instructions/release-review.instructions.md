@@ -4,6 +4,8 @@ applyTo: "**"
 
 ## Release review — how to audit a release candidate before tagging
 
+Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overview before auditing cross-module or runtime changes.
+
 Use this checklist when asked to do a production-readiness review
 between the last released tag and the current release candidate. The
 goal is to catch real regressions and security issues without
