@@ -259,7 +259,7 @@ const StorageMetrics: React.FC = () => {
               ? 'Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh.'
               : 'Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data.'}
           </p>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
@@ -292,6 +292,40 @@ const StorageMetrics: React.FC = () => {
               </div>
               <div className="mt-2 text-2xl font-semibold text-white">
                 {formatBytes(metrics.collectionSummary.showSizeBytes)}
+              </div>
+            </div>
+            <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
+              <div className="flex items-center justify-between text-sm text-zinc-300">
+                <span className="flex items-center gap-2">
+                  <CollectionIcon className="h-5 w-5 text-maintainerr-500" />
+                  Seasons
+                </span>
+                <span className="text-zinc-400">
+                  {metrics.collectionSummary.reclaimableSeasonCount} collection
+                  {metrics.collectionSummary.reclaimableSeasonCount === 1
+                    ? ''
+                    : 's'}
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-white">
+                {formatBytes(metrics.collectionSummary.seasonSizeBytes)}
+              </div>
+            </div>
+            <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
+              <div className="flex items-center justify-between text-sm text-zinc-300">
+                <span className="flex items-center gap-2">
+                  <PlayIcon className="h-5 w-5 text-maintainerrdark-500" />
+                  Episodes
+                </span>
+                <span className="text-zinc-400">
+                  {metrics.collectionSummary.reclaimableEpisodeCount} collection
+                  {metrics.collectionSummary.reclaimableEpisodeCount === 1
+                    ? ''
+                    : 's'}
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-white">
+                {formatBytes(metrics.collectionSummary.episodeSizeBytes)}
               </div>
             </div>
           </div>

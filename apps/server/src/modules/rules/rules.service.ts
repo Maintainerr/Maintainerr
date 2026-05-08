@@ -357,6 +357,7 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
           overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         })
@@ -523,6 +524,7 @@ export class RulesService {
           manualCollectionName: params.collection?.manualCollectionName,
           keepLogsForMonths: +params.collection?.keepLogsForMonths,
           sortTitle: params.collection?.sortTitle,
+          mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
           overlayTemplateId: params.collection?.overlayTemplateId ?? null,
         };
@@ -530,16 +532,19 @@ export class RulesService {
         // If there's no existing collection (e.g., after rule migration), create a new one
         // Otherwise, update the existing collection
         let collectionId: number | undefined;
+        let savedCollection: Collection | undefined;
         if (group.collectionId) {
           const result = await this.collectionService.updateCollection({
             id: group.collectionId,
             ...collectionData,
           });
-          collectionId = result?.dbCollection?.id;
+          savedCollection = result?.dbCollection as Collection | undefined;
+          collectionId = savedCollection?.id;
         } else {
           const result =
             await this.collectionService.createCollection(collectionData);
-          collectionId = result?.dbCollection?.id;
+          savedCollection = result?.dbCollection as Collection | undefined;
+          collectionId = savedCollection?.id;
         }
 
         if (!collectionId) {
@@ -547,6 +552,15 @@ export class RulesService {
             false,
             'Failed to create/update collection',
           );
+        }
+
+        // Apply collection sort immediately when it is newly enabled or changed.
+        // The executor still reapplies on membership changes during normal cycles;
+        // this covers save-time sort changes without otherwise touching contents.
+        const previousSort = dbCollection?.mediaServerSort ?? null;
+        const newSort = collectionData.mediaServerSort ?? null;
+        if (newSort && previousSort !== newSort && savedCollection) {
+          await this.collectionService.applyCollectionSort(savedCollection);
         }
 
         // update or create group
