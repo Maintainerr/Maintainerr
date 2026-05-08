@@ -272,6 +272,10 @@ export interface IMediaServerService {
    * (or no-op) before applying. Gated by MediaServerFeature.COLLECTION_SORT.
    * Throws if not supported. Caller is responsible for filtering out
    * smart collections (Plex rejects move on smart).
+   *
+   * Implementations should short-circuit when the current child order
+   * already matches `orderedItemIds`, and continue through the full list
+   * if individual moves fail (logging a summary at the end).
    */
   reorderCollectionItems(
     collectionId: string,

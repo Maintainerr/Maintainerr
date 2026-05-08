@@ -3,7 +3,6 @@ import {
   CollectionLogMeta,
   CollectionMediaSortField,
   compareMediaItemsBySort,
-  parseCollectionSortKey,
   ECollectionLogType,
   isMediaType,
   MaintainerrEvent,
@@ -15,6 +14,7 @@ import {
   MediaServerFeature,
   MediaServerType,
   MediaSortOrder,
+  parseCollectionSortKey,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -758,16 +758,21 @@ export class CollectionsService {
       );
   }
 
-  private async applyCollectionSort(
-    collection: Collection,
-    mediaServer: IMediaServerService,
-  ): Promise<void> {
+  async applyCollectionSort(collection: Collection): Promise<void> {
     const sortKey = collection.mediaServerSort;
     const parsed = sortKey ? parseCollectionSortKey(sortKey) : undefined;
     if (!parsed) {
       this.logger.warn(
         `Ignoring invalid collection sort '${sortKey}' on collection ${collection.id}`,
       );
+      return;
+    }
+    if (!collection.mediaServerId) {
+      return;
+    }
+
+    const mediaServer = await this.getMediaServer();
+    if (!mediaServer.supportsFeature(MediaServerFeature.COLLECTION_SORT)) {
       return;
     }
 
@@ -2071,16 +2076,11 @@ export class CollectionsService {
           );
         }
 
-        // Push collection sort to the media server only when membership
-        // changed in this cycle — relative order is preserved on remove-only
-        // cycles, so re-sorting unchanged collections would just be churn.
-        if (
-          collection.mediaServerSort &&
-          newMedia.length > 0 &&
-          collection.mediaServerId &&
-          mediaServer.supportsFeature(MediaServerFeature.COLLECTION_SORT)
-        ) {
-          await this.applyCollectionSort(collection, mediaServer);
+        // Push collection sort to the media server when membership changed
+        // in this cycle. The adapter short-circuits if the order already
+        // matches, so this is cheap when nothing actually moved.
+        if (collection.mediaServerSort && newMedia.length > 0) {
+          await this.applyCollectionSort(collection);
         }
 
         if (isSharedManualCollection) {

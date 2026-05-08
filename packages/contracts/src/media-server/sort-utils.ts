@@ -46,20 +46,30 @@ export const compareMediaItemsBySort = (
 ): number => {
   const direction = sortOrder === 'desc' ? -1 : 1
 
+  // Numeric/date sorts fall back to the existing 'title.asc' branch when the
+  // primary returns 0, so within-group ordering is stable A→Z regardless of
+  // direction. Status sorts (manual/excluded) intentionally skip the
+  // tiebreaker — see compareMaintainerrState above.
   switch (sort) {
     case 'title':
       return leftItem.title.localeCompare(rightItem.title) * direction
     case 'airDate':
       return (
         (getComparableAirDate(leftItem) - getComparableAirDate(rightItem)) *
-        direction
+          direction ||
+        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
       )
     case 'rating':
       return (
-        (getAudienceRating(leftItem) - getAudienceRating(rightItem)) * direction
+        (getAudienceRating(leftItem) - getAudienceRating(rightItem)) *
+          direction ||
+        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
       )
     case 'watchCount':
-      return (getWatchCount(leftItem) - getWatchCount(rightItem)) * direction
+      return (
+        (getWatchCount(leftItem) - getWatchCount(rightItem)) * direction ||
+        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
+      )
     case 'manual':
       return compareMaintainerrState(
         leftItem,
@@ -80,7 +90,8 @@ export const compareMediaItemsBySort = (
       return (
         (new Date(leftItem.addedAt).getTime() -
           new Date(rightItem.addedAt).getTime()) *
-        direction
+          direction ||
+        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
       )
     default:
       return 0

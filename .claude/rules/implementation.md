@@ -1,1 +1,3 @@
 At the start of every conversation, read `.github/instructions/implementation.instructions.md` and follow it for implementation-specific guidance.
+
+Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overview before changing cross-module boundaries.
