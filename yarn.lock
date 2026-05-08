@@ -3077,7 +3077,7 @@ __metadata:
     "@octokit/core": "npm:^5.2.0"
     "@octokit/plugin-throttling": "npm:^8.2.0"
     "@suites/di.nestjs": "npm:^3.0.1"
-    "@suites/doubles.jest": "npm:^3.0.1"
+    "@suites/doubles.jest": "npm:^3.1.0"
     "@suites/unit": "npm:^3.0.1"
     "@tygra/nestjs-graceful-shutdown": "npm:^2.0.0"
     "@types/email-templates": "npm:^10.0.4"
@@ -5442,6 +5442,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@suites/core.unit@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/core.unit@npm:3.1.0"
+  dependencies:
+    "@suites/types.common": "npm:^3.1.0"
+    "@suites/types.di": "npm:^3.1.0"
+    "@suites/types.doubles": "npm:^3.1.0"
+  checksum: 10c0/0e707d928e21a42463d1dfe8879c5ca6f6d4abe9e81a368a2cd4239be78773d95297f2f37693cb78942e3de48edb549bab9d574875dcfef85baeedcc35f7d164
+  languageName: node
+  linkType: hard
+
 "@suites/di.nestjs@npm:^3.0.1":
   version: 3.0.1
   resolution: "@suites/di.nestjs@npm:3.0.1"
@@ -5455,16 +5466,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/doubles.jest@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "@suites/doubles.jest@npm:3.0.1"
+"@suites/doubles.jest@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/doubles.jest@npm:3.1.0"
   dependencies:
-    "@suites/core.unit": "npm:^3.0.1"
-    "@suites/types.common": "npm:^3.0.0"
-    "@suites/types.doubles": "npm:^3.0.0"
+    "@suites/core.unit": "npm:^3.1.0"
+    "@suites/types.common": "npm:^3.1.0"
+    "@suites/types.di": "npm:^3.1.0"
+    "@suites/types.doubles": "npm:^3.1.0"
   peerDependencies:
     jest: "> 26.0"
-  checksum: 10c0/42e79dc676a155948bd94150d72fadc22a84e727438f86ae3c8f0dacf8f125109f6f03fe4ff2de8ad116f5eeb790a1708916b150879975d0b41575ece23e9236
+  checksum: 10c0/258535f8ab76fd046fd04f82d91519555308a3a958eec04729992e60d83bd687ffa9e2c29108562cef949b0795bcd8bdfeb7baad4a04a890260823a0384042ef
   languageName: node
   linkType: hard
 
@@ -5472,6 +5484,13 @@ __metadata:
   version: 3.0.0
   resolution: "@suites/types.common@npm:3.0.0"
   checksum: 10c0/103ea3fef3c8a2502565094b8005cb3a2cd549a5a911a969c5745c89e35b4cf2327667d92daa060c68a4577fad80da1d0939b2dd6c050b0ddbc0368bf5fcf876
+  languageName: node
+  linkType: hard
+
+"@suites/types.common@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/types.common@npm:3.1.0"
+  checksum: 10c0/3ef414a6b1270494380c85906fb9aba67e9f997e87e3953b9c5afdf558879811648dd019e40a7cfd0d48b329ccb1a464c7757666e3e9c287ad4d4c164216206c
   languageName: node
   linkType: hard
 
@@ -5484,10 +5503,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@suites/types.di@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/types.di@npm:3.1.0"
+  dependencies:
+    "@suites/types.common": "npm:^3.1.0"
+  checksum: 10c0/e105a96765c6a1b6dbec78c26ab0bfec0a0d118b1aa356db99ad8afc04af6eda85e926abad0083cbfcd630b338d3b60a3bd57763818d9321d8fb6ede6aaa766b
+  languageName: node
+  linkType: hard
+
 "@suites/types.doubles@npm:^3.0.0":
   version: 3.0.0
   resolution: "@suites/types.doubles@npm:3.0.0"
   checksum: 10c0/694b10964daa6820715bd6b614dc581b5727c8ae320fb888eccf6290558a3e3d003c7d6f923ca741720e98276cfeb847ff7b72356441b31955f793cbc96d1116
+  languageName: node
+  linkType: hard
+
+"@suites/types.doubles@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/types.doubles@npm:3.1.0"
+  dependencies:
+    "@suites/types.common": "npm:^3.1.0"
+  checksum: 10c0/2210a6f2d14ff758a106ce694f53361be2049d61628093433f418a713a672fc5d3b2e5bb84eba7b86c4bbf42dab522ed396bf05afa8540e03b5e713f58d4b6f6
   languageName: node
   linkType: hard
 
