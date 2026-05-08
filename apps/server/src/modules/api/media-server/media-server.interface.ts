@@ -267,6 +267,22 @@ export interface IMediaServerService {
   ): Promise<void>;
 
   /**
+   * Push an ordered list of item IDs onto the collection's display order.
+   * Implementations must switch the collection into custom-sort mode
+   * (or no-op) before applying. Gated by MediaServerFeature.COLLECTION_SORT.
+   * Throws if not supported. Caller is responsible for filtering out
+   * smart collections (Plex rejects move on smart).
+   *
+   * Implementations should short-circuit when the current child order
+   * already matches `orderedItemIds`, and continue through the full list
+   * if individual moves fail (logging a summary at the end).
+   */
+  reorderCollectionItems(
+    collectionId: string,
+    orderedItemIds: string[],
+  ): Promise<void>;
+
+  /**
    * Set the primary poster image on a collection on the media server.
    *
    * Maintainerr is one writer among several (Kometa, Posterizarr, manual
