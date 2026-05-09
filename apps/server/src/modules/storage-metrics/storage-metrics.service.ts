@@ -282,6 +282,14 @@ export class StorageMetricsService {
       }
     }
 
+    // Coalesce mounts that survived the per-host dedupe but clearly point at
+    // the same shared volume from different hosts (e.g. Radarr/Sonarr running
+    // in separate LXC containers against the same NAS). A byte-exact match on
+    // totalSpace plus freeSpace — or a matching volume label plus byte-exact
+    // totalSpace — is implausible across truly unrelated filesystems, since
+    // any block-level write would diverge them.
+    const merged = this.mergeSharedMountsAcrossHosts(seen);
+
     // Sonarr's /diskspace excludes DriveType.Network, so NFS/CIFS mounts
     // commonly arrive via /rootfolder, which reports freeSpace but not
     // totalSpace. Sum freeSpace across every deduped mount so the Free card
@@ -291,7 +299,7 @@ export class StorageMetricsService {
     let totalSpace = 0;
     let accurateMountCount = 0;
 
-    for (const mount of seen.values()) {
+    for (const mount of merged.values()) {
       freeSpace += mount.freeSpace;
       if (mount.hasAccurateTotalSpace) {
         totalSpace += mount.totalSpace;
@@ -303,11 +311,49 @@ export class StorageMetricsService {
       freeSpace,
       totalSpace,
       usedSpace: Math.max(totalSpace - freeSpace, 0),
-      mountCount: seen.size,
+      mountCount: merged.size,
       accurateMountCount,
       accurateTotalSpace:
-        seen.size > 0 && accurateMountCount === seen.size && totalSpace > 0,
+        merged.size > 0 && accurateMountCount === merged.size && totalSpace > 0,
     };
+  }
+
+  /**
+   * Second-pass dedupe that merges mounts across hosts when their signature
+   * is tight enough to imply shared backend storage. Stricter than the
+   * per-host pass: cross-host requires byte-exact totalSpace+freeSpace (or
+   * label + byte-exact totalSpace), since unrelated filesystems can land in
+   * the same MiB-bucketed signature by coincidence but cannot match
+   * byte-for-byte once any IO has happened.
+   */
+  private mergeSharedMountsAcrossHosts(
+    seen: Map<string, StorageDiskspaceEntry>,
+  ): Map<string, StorageDiskspaceEntry> {
+    const result = new Map<string, StorageDiskspaceEntry>();
+    for (const [originalKey, mount] of seen) {
+      const sharedKey = this.buildCrossHostSharedKey(mount);
+      const key = sharedKey ?? originalKey;
+      const existing = result.get(key);
+      if (
+        !existing ||
+        (!existing.hasAccurateTotalSpace && mount.hasAccurateTotalSpace)
+      ) {
+        result.set(key, mount);
+      }
+    }
+    return result;
+  }
+
+  private buildCrossHostSharedKey(mount: StorageDiskspaceEntry): string | null {
+    // Without an accurate totalSpace there is no reliable cross-host
+    // signature, so leave inaccurate mounts on their per-host key.
+    if (!mount.hasAccurateTotalSpace) return null;
+
+    const label = mount.label?.trim().toLowerCase();
+    if (label) {
+      return `shared||label||${label}||${mount.totalSpace}`;
+    }
+    return `shared||cap||${mount.totalSpace}||${mount.freeSpace}`;
   }
 
   /**
