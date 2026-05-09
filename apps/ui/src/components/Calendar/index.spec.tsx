@@ -8,6 +8,7 @@ import {
   useCalendarOverlayData,
   useCalendarSchedule,
 } from '../../api/calendar'
+import { buildQuerySuccessResult } from '../../test-utils/queryResults'
 import type { ICollection } from '../Collection'
 import Calendar from './index'
 
@@ -59,21 +60,16 @@ describe('Calendar', () => {
       },
     ]
 
-    useCalendarScheduleMock.mockReturnValue({
-      data: calendarDays,
-      isLoading: false,
-    } as ReturnType<typeof useCalendarSchedule>)
+    useCalendarScheduleMock.mockReturnValue(
+      buildQuerySuccessResult(calendarDays),
+    )
     const overlayCollections: ICollection[] = []
-    useCalendarOverlayDataMock.mockReturnValue({
-      data: overlayCollections,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useCalendarOverlayData>)
+    useCalendarOverlayDataMock.mockReturnValue(
+      buildQuerySuccessResult(overlayCollections),
+    )
     useCalendarEntryDetailsMock.mockImplementation(
       (params: Parameters<typeof useCalendarEntryDetails>[0]) => {
-        return {
-          data: params ? detailItems : [],
-          isLoading: false,
-        } as ReturnType<typeof useCalendarEntryDetails>
+        return buildQuerySuccessResult(params ? detailItems : [])
       },
     )
   })

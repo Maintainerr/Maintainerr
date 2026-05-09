@@ -1,3 +1,4 @@
+import type { MediaLibrary } from '@maintainerr/contracts'
 import {
   cleanup,
   fireEvent,
@@ -7,8 +8,12 @@ import {
 } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import GetApiHandler from '../../../utils/ApiHandler'
 import { useMediaServerLibraries } from '../../../api/media-server'
+import {
+  buildQueryErrorResult,
+  buildQuerySuccessResult,
+} from '../../../test-utils/queryResults'
+import GetApiHandler from '../../../utils/ApiHandler'
 import CollectionItem from './index'
 
 vi.mock('../../../api/media-server', () => ({
@@ -39,11 +44,11 @@ describe('CollectionItem', () => {
 
   beforeEach(() => {
     getApiHandlerMock.mockReset()
-    librariesHookMock.mockReturnValue({
-      data: [{ id: 'library-1', title: 'Movies', type: 'movie' }],
-      error: undefined,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useMediaServerLibraries>)
+    const libraries: MediaLibrary[] = [
+      { id: 'library-1', title: 'Movies', type: 'movie' },
+    ]
+
+    librariesHookMock.mockReturnValue(buildQuerySuccessResult(libraries))
   })
 
   afterEach(() => {
@@ -148,12 +153,9 @@ describe('CollectionItem', () => {
   })
 
   it('shows "Unavailable" in warning style when libraries query errored and the id is unresolved', () => {
-    librariesHookMock.mockReturnValue({
-      data: undefined,
-      error: new Error('offline'),
-      isError: true,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useMediaServerLibraries>)
+    librariesHookMock.mockReturnValue(
+      buildQueryErrorResult<MediaLibrary[]>(new Error('offline')),
+    )
 
     render(
       <CollectionItem
