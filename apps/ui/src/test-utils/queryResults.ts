@@ -5,18 +5,12 @@ import type {
   QueryObserverSuccessResult,
   UseQueryResult,
 } from '@tanstack/react-query'
+import { createDeferred } from './createDeferred'
 
 type QueryResultRefetch<TData, TError> = UseQueryResult<
   TData,
   TError
 >['refetch']
-
-const createPendingPromise = <TData>() => {
-  return new Promise<TData>((resolve) => {
-    // Keep React Query's stable promise pending in tests that never read it.
-    void resolve
-  })
-}
 
 const createRefetch = <TData, TError>(): QueryResultRefetch<TData, TError> => {
   return async (): Promise<QueryObserverResult<TData, TError>> =>
@@ -91,7 +85,7 @@ export const buildQueryLoadingResult = <TData, TError = Error>(
     refetch: createRefetch<TData, TError>(),
     status: 'pending',
     fetchStatus: 'fetching',
-    promise: createPendingPromise<TData>(),
+    promise: createDeferred<TData>().promise,
   } satisfies QueryObserverLoadingResult<TData, TError>
 
   return {
@@ -130,7 +124,7 @@ export const buildQueryErrorResult = <TData, TError = Error>(
     refetch: createRefetch<TData, TError>(),
     status: 'error',
     fetchStatus: 'idle',
-    promise: createPendingPromise<TData>(),
+    promise: createDeferred<TData>().promise,
   } satisfies QueryObserverLoadingErrorResult<TData, TError>
 
   return {
