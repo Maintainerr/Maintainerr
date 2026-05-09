@@ -1,7 +1,9 @@
+import type { MediaLibrary } from '@maintainerr/contracts'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../../../api/media-server'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
+import { buildQuerySuccessResult } from '../../../test-utils/queryResults'
 import CollectionOverview from './index'
 
 vi.mock('../../../api/media-server', () => ({
@@ -38,14 +40,12 @@ describe('CollectionOverview', () => {
   const taskStatusHookMock = vi.mocked(useTaskStatusContext)
 
   beforeEach(() => {
-    librariesHookMock.mockReturnValue({
-      data: [],
-      error: undefined,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useMediaServerLibraries>)
+    librariesHookMock.mockReturnValue(
+      buildQuerySuccessResult<MediaLibrary[]>([]),
+    )
     taskStatusHookMock.mockReturnValue({
       collectionHandlerRunning: false,
-    } as unknown as ReturnType<typeof useTaskStatusContext>)
+    })
   })
 
   afterEach(() => {
