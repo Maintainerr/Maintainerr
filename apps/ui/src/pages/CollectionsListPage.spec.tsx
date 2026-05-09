@@ -8,10 +8,12 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchCollections, useCollections } from '../api/collections'
+import type { ICollection } from '../components/Collection'
+import { createTestQueryClient } from '../test-utils/queryClient'
+import { buildQuerySuccessResult } from '../test-utils/queryResults'
 import CollectionsListPage from './CollectionsListPage'
 
 const navigate = vi.fn()
-const fetchQuery = vi.fn()
 
 vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>(
@@ -72,26 +74,34 @@ describe('CollectionsListPage', () => {
   const useCollectionsMock = vi.mocked(useCollections)
   const fetchCollectionsMock = vi.mocked(fetchCollections)
   const useQueryClientMock = vi.mocked(useQueryClient)
+  let queryClient: ReturnType<typeof createTestQueryClient>
 
   beforeEach(() => {
     cleanup()
     navigate.mockReset()
-    fetchQuery.mockReset()
     fetchCollectionsMock.mockReset()
     useCollectionsMock.mockReset()
-    useQueryClientMock.mockReturnValue({
-      fetchQuery,
-    } as unknown as ReturnType<typeof useQueryClient>)
+    queryClient = createTestQueryClient()
+    vi.spyOn(queryClient, 'fetchQuery')
+    useQueryClientMock.mockReturnValue(queryClient)
 
-    useCollectionsMock.mockReturnValue({
-      data: [
-        {
-          id: 1,
-          title: 'Action',
-        },
-      ],
-      isLoading: false,
-    } as ReturnType<typeof useCollections>)
+    const collection: ICollection = {
+      id: 1,
+      title: 'Action',
+      libraryId: 'library-1',
+      isActive: true,
+      type: 'movie',
+      arrAction: 0,
+      media: [],
+      manualCollection: false,
+      manualCollectionName: '',
+      addDate: new Date(),
+      handledMediaAmount: 0,
+      lastDurationInSeconds: 0,
+      keepLogsForMonths: 0,
+    }
+
+    useCollectionsMock.mockReturnValue(buildQuerySuccessResult([collection]))
   })
 
   afterEach(() => {
@@ -99,7 +109,9 @@ describe('CollectionsListPage', () => {
   })
 
   it('restores the previous library selection if a library switch request fails', async () => {
-    fetchQuery.mockRejectedValueOnce(new Error('request failed'))
+    vi.mocked(queryClient.fetchQuery).mockRejectedValueOnce(
+      new Error('request failed'),
+    )
 
     render(<CollectionsListPage />)
 
