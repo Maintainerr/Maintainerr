@@ -1,3 +1,20 @@
+## Highlights
+- Fixed incorrect version comparison logic that caused update notifications to fail for multi-digit version segments (#2838).
+- Improved storage metrics by deduplicating reclaimable bytes and adding per-type cleanup byte counters (#2833).
+
+## Fixes
+- Resolved issue where collection rules re-added items immediately after removal due to stale rule inputs (#2837).
+- Corrected version comparison logic for multi-digit segments to ensure accurate update notifications (#2838).
+
+## Performance
+- Enhanced storage metrics by deduplicating reclaimable bytes and excluding collections without `deleteAfterDays > 0` from calculations (#2833).
+
+## Database migrations
+- Added a `sizeBytes` column to the `collection_media` table to track media size.
+
+## Dependencies
+- Updated 8 dependencies, including react-router-dom, postcss, and axios.
+
 ## Fixes
 - Fix EPIPE crash and stabilize canvas previews in overlays when clicking "Run now" or "Reset all overlays" (#2832).
 

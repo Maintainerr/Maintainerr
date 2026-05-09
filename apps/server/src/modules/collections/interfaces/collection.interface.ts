@@ -1,5 +1,6 @@
 import {
   MediaItemType,
+  MediaServerCollectionSort,
   MediaServerType,
   ServarrAction,
 } from '@maintainerr/contracts';
@@ -32,6 +33,7 @@ export interface ICollection {
   radarrQualityProfileId?: number;
   sonarrQualityProfileId?: number;
   sortTitle?: string;
+  mediaServerSort?: MediaServerCollectionSort | null;
   overlayEnabled?: boolean;
   overlayTemplateId?: number | null;
 }

@@ -50,10 +50,18 @@ export interface StorageCollectionSummary {
   movieSizeBytes: number
   /** Show portion of `activeSizeBytes` (deduplicated). */
   showSizeBytes: number
+  /** Season portion of `activeSizeBytes` (deduplicated). */
+  seasonSizeBytes: number
+  /** Episode portion of `activeSizeBytes` (deduplicated). */
+  episodeSizeBytes: number
   /** Count of reclaimable movie collections. */
   reclaimableMovieCount: number
   /** Count of reclaimable show collections. */
   reclaimableShowCount: number
+  /** Count of reclaimable season collections. */
+  reclaimableSeasonCount: number
+  /** Count of reclaimable episode collections. */
+  reclaimableEpisodeCount: number
   /**
    * True when `activeSizeBytes` was computed from cached per-collection
    * totals because per-item sizes have not been backfilled for every
