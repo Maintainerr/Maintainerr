@@ -1,20 +1,30 @@
+import type { MediaLibrary } from '@maintainerr/contracts'
 import { cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../api/media-server'
+import {
+  buildQueryErrorResult,
+  buildQuerySuccessResult,
+} from '../test-utils/queryResults'
 import { useLibraryDisplay } from './useLibraryDisplay'
 
 vi.mock('../api/media-server', () => ({
   useMediaServerLibraries: vi.fn(),
 }))
 
-const mockHook = (overrides: {
-  data?: { id: string; title: string; type: string }[]
-  isError?: boolean
-}) => {
-  vi.mocked(useMediaServerLibraries).mockReturnValue({
-    data: overrides.data,
-    isError: overrides.isError ?? false,
-  } as unknown as ReturnType<typeof useMediaServerLibraries>)
+const mockHook = (overrides: { data?: MediaLibrary[]; isError?: boolean }) => {
+  if (overrides.isError) {
+    vi.mocked(useMediaServerLibraries).mockReturnValue(
+      buildQueryErrorResult<MediaLibrary[]>(
+        new Error('Media server unavailable'),
+      ),
+    )
+    return
+  }
+
+  vi.mocked(useMediaServerLibraries).mockReturnValue(
+    buildQuerySuccessResult(overrides.data ?? []),
+  )
 }
 
 describe('useLibraryDisplay', () => {
