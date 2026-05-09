@@ -2,6 +2,11 @@ import { ServarrAction } from '@maintainerr/contracts'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useServarrSettings } from '../../../../../api/settings'
+import {
+  buildQueryLoadingResult,
+  buildQuerySuccessResult,
+} from '../../../../../test-utils/queryResults'
+import type { ISonarrSetting } from '../../../../Settings/Sonarr'
 import ArrAction from './index'
 
 vi.mock('../../../../../api/settings', () => ({
@@ -13,10 +18,9 @@ describe('ArrAction', () => {
 
   beforeEach(() => {
     useServarrSettingsMock.mockReset()
-    useServarrSettingsMock.mockReturnValue({
-      data: [],
-      isLoading: false,
-    } as unknown as ReturnType<typeof useServarrSettings>)
+    useServarrSettingsMock.mockReturnValue(
+      buildQuerySuccessResult<ISonarrSetting[]>([]),
+    )
   })
 
   afterEach(() => {
@@ -26,11 +30,9 @@ describe('ArrAction', () => {
   it('does not clear the saved server before Servarr settings finish loading', async () => {
     const onUpdate = vi.fn()
 
-    useServarrSettingsMock.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isFetching: true,
-    } as unknown as ReturnType<typeof useServarrSettings>)
+    useServarrSettingsMock.mockReturnValue(
+      buildQueryLoadingResult<ISonarrSetting[]>(),
+    )
 
     render(
       <ArrAction
@@ -56,11 +58,9 @@ describe('ArrAction', () => {
   it('clears the saved server after settings load when it no longer exists', async () => {
     const onUpdate = vi.fn()
 
-    useServarrSettingsMock.mockReturnValue({
-      data: [],
-      isLoading: false,
-      isFetching: false,
-    } as unknown as ReturnType<typeof useServarrSettings>)
+    useServarrSettingsMock.mockReturnValue(
+      buildQuerySuccessResult<ISonarrSetting[]>([]),
+    )
 
     render(
       <ArrAction
@@ -112,11 +112,18 @@ describe('ArrAction', () => {
   })
 
   it('shows quality profile action after a Sonarr server is selected', async () => {
-    useServarrSettingsMock.mockReturnValue({
-      data: [{ id: 12, serverName: 'Primary Sonarr' }],
-      isLoading: false,
-      isFetching: false,
-    } as ReturnType<typeof useServarrSettings>)
+    const sonarrSettings: ISonarrSetting[] = [
+      {
+        id: 12,
+        serverName: 'Primary Sonarr',
+        url: 'http://sonarr.example',
+        apiKey: 'test-api-key',
+      },
+    ]
+
+    useServarrSettingsMock.mockReturnValue(
+      buildQuerySuccessResult(sonarrSettings),
+    )
 
     render(
       <ArrAction
