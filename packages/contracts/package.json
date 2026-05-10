@@ -28,8 +28,8 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.6.0",
     "prettier": "^3.8.3",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.1"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.2"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.19",

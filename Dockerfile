@@ -1,4 +1,4 @@
-FROM node:24.15.0-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS base
+FROM node:26.1.0-alpine3.22@sha256:df14c236fa02ce2e232f234d571ce831c6b67c27605ece534164822257ed256e AS base
 LABEL Description="Contains the Maintainerr Docker image"
 
 FROM base AS builder
@@ -17,7 +17,7 @@ RUN apk add --no-cache \
     pixman-dev \
     librsvg-dev
 
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 
 # Copy only files needed to resolve/install dependencies first (better Docker layer caching)
 COPY package.json yarn.lock .yarnrc.yml turbo.json ./
