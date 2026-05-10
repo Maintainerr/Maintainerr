@@ -17,7 +17,7 @@ RUN apk add --no-cache \
     pixman-dev \
     librsvg-dev
 
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 
 # Copy only files needed to resolve/install dependencies first (better Docker layer caching)
 COPY package.json yarn.lock .yarnrc.yml turbo.json ./
