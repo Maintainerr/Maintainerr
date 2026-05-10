@@ -154,6 +154,304 @@ describe('OverlayProcessorService', () => {
     );
   });
 
+  it('skips items whose overlay state already matches the current day count during normal runs', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getItemState: jest.fn().mockResolvedValue({ daysLeftShown: 0 }),
+    };
+    const template = makeTemplate();
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    const collection = createCollection({
+      id: 1,
+      title: 'Stable overlay',
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
+
+    const result = await service.processCollection(collection as any);
+
+    expect(service.applyTemplateOverlay).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 1,
+      errors: 0,
+    });
+  });
+
+  it('rebuilds items whose overlay state already matches the current day count during forced runs', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getItemState: jest.fn().mockResolvedValue({ daysLeftShown: 0 }),
+    };
+    const template = makeTemplate();
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    const collection = createCollection({
+      id: 1,
+      title: 'Forced overlay',
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
+
+    const result = await service.processCollection(collection as any, true);
+
+    expect(service.applyTemplateOverlay).toHaveBeenCalledWith(
+      'media-1',
+      collection.id,
+      expect.any(Date),
+      template,
+      provider,
+    );
+    expect(result).toEqual({
+      processed: 1,
+      reverted: 0,
+      skipped: 0,
+      errors: 0,
+    });
+  });
+
+  it('blocks concurrent standalone collection runs while one is already in progress', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getItemState: jest.fn().mockResolvedValue(null),
+    };
+    const template = makeTemplate();
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      {} as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    const collection = createCollection({
+      id: 1,
+      title: 'Exclusive overlay',
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockImplementation(async () => {
+      expect(service.status).toBe('running');
+
+      await expect(
+        service.processCollection(collection as any),
+      ).resolves.toEqual({
+        processed: 0,
+        reverted: 0,
+        skipped: 0,
+        errors: 0,
+      });
+
+      return true;
+    });
+
+    await expect(service.processCollection(collection as any)).resolves.toEqual(
+      {
+        processed: 1,
+        reverted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+    );
+
+    expect(service.status).toBe('idle');
+  });
+
+  it('skips same-day overlay state during normal process-all runs', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getAllStates: jest.fn().mockResolvedValue([]),
+      getItemState: jest.fn().mockResolvedValue({ daysLeftShown: 0 }),
+    };
+    const template = makeTemplate();
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const collection = createCollection({
+      id: 1,
+      title: 'Stable batch',
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+    const collectionsService = {
+      getCollectionsWithOverlayEnabled: jest
+        .fn()
+        .mockResolvedValue([collection]),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
+
+    const result = await service.processAllCollections();
+
+    expect(service.applyTemplateOverlay).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 1,
+      errors: 0,
+    });
+  });
+
+  it('rebuilds same-day overlay state during forced process-all runs', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = {
+      getAllStates: jest.fn().mockResolvedValue([]),
+      getItemState: jest.fn().mockResolvedValue({ daysLeftShown: 0 }),
+    };
+    const template = makeTemplate();
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(template),
+    };
+    const collection = createCollection({
+      id: 1,
+      title: 'Forced batch',
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+    const collectionsService = {
+      getCollectionsWithOverlayEnabled: jest
+        .fn()
+        .mockResolvedValue([collection]),
+    };
+    const provider = makeProvider();
+    const providerFactory = makeProviderFactory(provider);
+    const eventEmitter = { emit: jest.fn() };
+
+    const service = new OverlayProcessorService(
+      providerFactory as any,
+      collectionsService as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      eventEmitter as any,
+      createMockLogger(),
+    );
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
+
+    const result = await service.processAllCollections(true);
+
+    expect(service.applyTemplateOverlay).toHaveBeenCalledWith(
+      'media-1',
+      collection.id,
+      expect.any(Date),
+      template,
+      provider,
+    );
+    expect(result).toEqual({
+      processed: 1,
+      reverted: 0,
+      skipped: 0,
+      errors: 0,
+    });
+  });
+
   it('emits one aggregated overlay applied notification for process-all runs', async () => {
     const settingsService = {
       getSettings: jest.fn().mockResolvedValue({ enabled: true }),
@@ -457,6 +755,10 @@ describe('OverlayProcessorService', () => {
       .mockImplementation(() => {});
 
     await service.resetAllOverlays();
+
+    expect(stateService.removeState).toHaveBeenNthCalledWith(1, 1, 'media-1');
+    expect(stateService.removeState).toHaveBeenNthCalledWith(2, 2, 'media-2');
+    expect(stateService.removeState).toHaveBeenCalledTimes(2);
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.Overlay_Reverted,
