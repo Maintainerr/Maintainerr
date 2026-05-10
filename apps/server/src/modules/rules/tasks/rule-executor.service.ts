@@ -30,6 +30,10 @@ import { SettingsService } from '../../settings/settings.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
+import {
+  buildExclusionCascadeSets,
+  isMediaItemExcluded,
+} from '../helpers/exclusion-cascade.helper';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
 import { RuleExecutorProgressService } from './rule-executor-progress.service';
@@ -398,12 +402,7 @@ export class RuleExecutorService {
                   Boolean(mediaServerId),
                 ),
             );
-            const excludedMediaServerIds = new Set<string>(
-              exclusions.map((e) => e.mediaServerId),
-            );
-            const excludedParentIds = new Set<string>(
-              exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
-            );
+            const exclusionCascade = buildExclusionCascadeSets(exclusions);
             const missingManualChildren: CollectionMediaChange[] = [];
 
             for (const child of children) {
@@ -420,13 +419,7 @@ export class RuleExecutorService {
                 }
 
                 // Skip items that are excluded
-                if (
-                  excludedMediaServerIds.has(childId) ||
-                  (child.parentId &&
-                    excludedParentIds.has(child.parentId.toString())) ||
-                  (child.grandparentId &&
-                    excludedParentIds.has(child.grandparentId.toString()))
-                ) {
+                if (isMediaItemExcluded(exclusionCascade, child)) {
                   continue;
                 }
 
@@ -612,14 +605,7 @@ export class RuleExecutorService {
       );
 
       const exclusions = await this.rulesService.getExclusions(rulegroup?.id);
-
-      // Build sets of excluded IDs - both direct mediaServerId and parent IDs
-      const excludedMediaServerIds = new Set<string>(
-        exclusions.map((e) => e.mediaServerId),
-      );
-      const excludedParentIds = new Set<string>(
-        exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
-      );
+      const exclusionCascade = buildExclusionCascadeSets(exclusions);
 
       const statsByMediaServerId = new Map<string, IComparisonStatistics>();
       for (const stat of this.statisticsData ?? []) {
@@ -629,24 +615,14 @@ export class RuleExecutorService {
         }
       }
 
-      // filter exclusions out of results & get correct media item ID
-      // Check both direct exclusion and parent exclusion (e.g., show excluded -> all seasons excluded)
+      // Filter exclusions out of results. Cascade is keyed off the show/season
+      // exclusion's own mediaServerId (via type), so a single-episode exclusion
+      // only skips that episode — not its siblings (issue #2858).
       const desiredMediaServerIds = new Set<string>();
 
       for (const item of this.resultData ?? []) {
-        const mediaServerId = item.id;
-        const isDirectlyExcluded = excludedMediaServerIds.has(mediaServerId);
-        const isParentExcluded =
-          item.parentId && excludedParentIds.has(item.parentId);
-        const isGrandparentExcluded =
-          item.grandparentId && excludedParentIds.has(item.grandparentId);
-
-        if (
-          !isDirectlyExcluded &&
-          !isParentExcluded &&
-          !isGrandparentExcluded
-        ) {
-          desiredMediaServerIds.add(mediaServerId);
+        if (!isMediaItemExcluded(exclusionCascade, item)) {
+          desiredMediaServerIds.add(item.id);
         }
       }
 
