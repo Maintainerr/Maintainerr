@@ -916,12 +916,29 @@ export class CollectionsService {
 
       const itemCount = await queryBuilder.getCount();
 
-      if (!sort) {
-        // Default load (no explicit sort): SQL-paginate by recently-added.
+      if (!sort || sort === 'deleteSoonest') {
+        // SQL-paginate by `collection_media.addDate`. `deleteSoonest` is
+        // equivalent to `addDate` ordering because `deleteAfterDays` is
+        // constant for every item in a collection — so the only sort key
+        // that actually matters lives on the `collection_media` row and the
+        // database can paginate it directly without hydrating MediaItem
+        // metadata for every row in the collection. This keeps page loads
+        // fast on collections with hundreds of items.
+        //
+        // Trade-off: `applyCollectionSort` (the media-server push) still
+        // applies the day-bucketed title tiebreaker via `compareMediaItemsBySort`,
+        // so the polished alphabetical-within-day order is what users see
+        // when browsing the actual Plex/Jellyfin collection. The Maintainerr
+        // UI page may show same-day items in a slightly different order
+        // (by `addDate, id` instead of by title) — acceptable because the
+        // primary sort key is correct and Maintainerr's DB remains the
+        // source of truth driving the next push.
+        const direction =
+          sort === 'deleteSoonest' && sortOrder === 'asc' ? 'ASC' : 'DESC';
         const { entities } = await queryBuilder
           .clone()
-          .orderBy('collection_media.addDate', 'DESC')
-          .addOrderBy('collection_media.id', 'DESC')
+          .orderBy('collection_media.addDate', direction)
+          .addOrderBy('collection_media.id', direction)
           .skip(offset)
           .take(size)
           .getRawAndEntities();
@@ -935,11 +952,11 @@ export class CollectionsService {
         };
       }
 
-      // Explicit sort — including deleteSoonest — goes through hydrate-
-      // then-sort so the response matches what applyCollectionSort pushes
-      // to the media server (day-bucketed addDate with show-aware
-      // tiebreakers). The `deleteSoonest` SQL fast-path was dropped to keep
-      // the two paths consistent; fix it together if perf becomes an issue.
+      // Explicit sort on a MediaItem-side key (airDate / rating / watchCount /
+      // title) — the sort value isn't on `collection_media`, so we have to
+      // hydrate the whole collection before paginating. Acceptable because
+      // these sorts are rarely used compared to `deleteSoonest` and the
+      // default load.
       const { entities } = await queryBuilder
         .clone()
         .orderBy('collection_media.addDate', 'DESC')

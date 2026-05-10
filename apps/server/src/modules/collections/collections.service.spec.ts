@@ -1220,21 +1220,16 @@ describe('CollectionsService', () => {
     });
   });
 
-  it('orders deleteSoonest paging by collection_media.addDate so the UI matches the media-server push', async () => {
-    // Regression for #2867: the API response and applyCollectionSort must
-    // agree, otherwise the user sees one order in Maintainerr and another
-    // in the media-server collection. MediaItem.addedAt is held identical
-    // across all rows here so any path that falls back to it would tie
-    // and the result order would depend on Map iteration.
+  it('paginates deleteSoonest at the SQL level by collection_media.addDate', async () => {
+    // `deleteSoonest` is equivalent to ordering by `collection_media.addDate`
+    // because `deleteAfterDays` is constant across a collection. SQL does the
+    // pagination so we don't have to hydrate every row in the collection
+    // before slicing — critical for collections with hundreds of items where
+    // hydrating all rows would block the UI for minutes.
     const collection = createCollection({
       id: 9,
       mediaServerId: 'remote-collection',
       type: 'movie',
-    });
-    const libraryAddDate = new Date('2024-06-01T00:00:00Z');
-    const leavesLatest = createCollectionMedia(collection, {
-      mediaServerId: 'leaves-latest',
-      addDate: new Date('2024-02-01T10:00:00Z'),
     });
     const leavesSoonest = createCollectionMedia(collection, {
       mediaServerId: 'leaves-soonest',
@@ -1244,49 +1239,24 @@ describe('CollectionsService', () => {
       mediaServerId: 'leaves-middle',
       addDate: new Date('2024-01-15T10:00:00Z'),
     });
-    const entities = [leavesLatest, leavesSoonest, leavesMiddle];
-    const metadataByMediaServerId = new Map([
-      [
-        'leaves-latest',
-        createMediaItem({
-          id: 'leaves-latest',
-          title: 'Latest',
-          addedAt: libraryAddDate,
-        }),
-      ],
-      [
-        'leaves-soonest',
-        createMediaItem({
-          id: 'leaves-soonest',
-          title: 'Soonest',
-          addedAt: libraryAddDate,
-        }),
-      ],
-      [
-        'leaves-middle',
-        createMediaItem({
-          id: 'leaves-middle',
-          title: 'Middle',
-          addedAt: libraryAddDate,
-        }),
-      ],
-    ]);
+    const sqlPagedEntities = [leavesSoonest, leavesMiddle];
     const queryBuilder = {
       where: jest.fn().mockReturnThis(),
-      getCount: jest.fn().mockResolvedValue(entities.length),
+      getCount: jest.fn().mockResolvedValue(3),
       clone: jest.fn(),
     };
     const cloneBuilder = {
       orderBy: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
-      getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest
+        .fn()
+        .mockResolvedValue({ entities: sqlPagedEntities }),
     };
     queryBuilder.clone.mockReturnValue(cloneBuilder);
     collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
 
-    jest
-      .spyOn(service as any, 'getCollectionMediaMetadata')
-      .mockResolvedValue(metadataByMediaServerId);
     const hydrateSpy = jest
       .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
       .mockImplementation(async (page) => page as any);
@@ -1294,12 +1264,60 @@ describe('CollectionsService', () => {
     await service.getCollectionMediaWithServerDataAndPaging(collection.id, {
       sort: 'deleteSoonest',
       sortOrder: 'asc',
+      offset: 0,
+      size: 2,
     });
 
-    expect(hydrateSpy).toHaveBeenCalledWith(
-      [leavesSoonest, leavesMiddle, leavesLatest],
-      mediaServer,
-      metadataByMediaServerId,
+    expect(cloneBuilder.orderBy).toHaveBeenCalledWith(
+      'collection_media.addDate',
+      'ASC',
+    );
+    expect(cloneBuilder.addOrderBy).toHaveBeenCalledWith(
+      'collection_media.id',
+      'ASC',
+    );
+    expect(cloneBuilder.skip).toHaveBeenCalledWith(0);
+    expect(cloneBuilder.take).toHaveBeenCalledWith(2);
+    expect(hydrateSpy).toHaveBeenCalledWith(sqlPagedEntities, mediaServer);
+  });
+
+  it('paginates deleteSoonest desc by ordering addDate DESC', async () => {
+    const collection = createCollection({
+      id: 11,
+      mediaServerId: 'remote-collection',
+      type: 'movie',
+    });
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(0),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities: [] }),
+    };
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+
+    jest
+      .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+      .mockResolvedValue([]);
+
+    await service.getCollectionMediaWithServerDataAndPaging(collection.id, {
+      sort: 'deleteSoonest',
+      sortOrder: 'desc',
+    });
+
+    expect(cloneBuilder.orderBy).toHaveBeenCalledWith(
+      'collection_media.addDate',
+      'DESC',
+    );
+    expect(cloneBuilder.addOrderBy).toHaveBeenCalledWith(
+      'collection_media.id',
+      'DESC',
     );
   });
 
