@@ -10,19 +10,22 @@ import type { MediaItem } from './types'
 
 const defaultMediaLibrarySort: MediaLibrarySortKey = 'title.asc'
 
-export const getAudienceRating = (item: MediaItem): number => {
-  return item.ratings?.find((rating) => rating.type === 'audience')?.value ?? 0
+const toDayBucket = (
+  value: Date | string | number | null | undefined,
+): number | undefined => {
+  if (value == null) return undefined
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
+  return Number.isNaN(ms) ? undefined : Math.floor(ms / 86400000)
 }
 
-const getComparableAirDate = (item: MediaItem): number => {
-  return item.originallyAvailableAt
-    ? new Date(item.originallyAvailableAt).getTime()
-    : 0
+export const getAudienceRating = (item: MediaItem): number | undefined => {
+  return item.ratings?.find((rating) => rating.type === 'audience')?.value
 }
 
-const getWatchCount = (item: MediaItem): number => {
-  return item.viewCount ?? 0
-}
+const getAirDateBucket = (item: MediaItem): number | undefined =>
+  toDayBucket(item.originallyAvailableAt)
+
+const getWatchCount = (item: MediaItem): number | undefined => item.viewCount
 
 export interface CompareMediaItemsOptions {
   /**
@@ -38,14 +41,12 @@ export interface CompareMediaItemsOptions {
 const getDeleteSoonestDayBucket = (
   item: MediaItem,
   override: CompareMediaItemsOptions['deleteSoonestDate'],
-): number => {
-  const value = override?.(item) ?? item.addedAt
-  const ms = value ? new Date(value).getTime() : 0
+): number | undefined => {
   // Bucket by UTC day so items added in the same rule run tie and reach the
   // title tiebreaker. Items split across the UTC midnight boundary land in
   // adjacent buckets — acceptable because the user-visible "Leaving in X
   // days" label can also flip across that boundary.
-  return Math.floor(ms / 86_400_000)
+  return toDayBucket(override?.(item) ?? item.addedAt)
 }
 
 // Title comparison that groups episodes and seasons under their show. Movies
@@ -62,6 +63,29 @@ const compareByDisplayHierarchy = (
   return (
     leftPrimary.localeCompare(rightPrimary) ||
     leftItem.title.localeCompare(rightItem.title)
+  )
+}
+
+// Numeric sort with two invariants: (1) items missing the value sort to the
+// end regardless of direction — sorting "oldest air date first" must not put
+// an item with no air date ahead of one from 1995; and (2) within-group ties
+// fall back to the show-aware title order so the listing stays stable A→Z.
+const compareNumericWithTitleFallback = (
+  leftItem: MediaItem,
+  rightItem: MediaItem,
+  getValue: (item: MediaItem) => number | undefined,
+  direction: 1 | -1,
+): number => {
+  const leftValue = getValue(leftItem)
+  const rightValue = getValue(rightItem)
+  if (leftValue === undefined && rightValue === undefined) {
+    return compareByDisplayHierarchy(leftItem, rightItem)
+  }
+  if (leftValue === undefined) return 1
+  if (rightValue === undefined) return -1
+  return (
+    (leftValue - rightValue) * direction ||
+    compareByDisplayHierarchy(leftItem, rightItem)
   )
 }
 
@@ -86,33 +110,33 @@ export const compareMediaItemsBySort = (
   sortOrder: MediaSortOrder = 'asc',
   options?: CompareMediaItemsOptions,
 ): number => {
-  const direction = sortOrder === 'desc' ? -1 : 1
+  const direction: 1 | -1 = sortOrder === 'desc' ? -1 : 1
 
-  // Numeric/date sorts fall back to the existing 'title.asc' branch when the
-  // primary returns 0, so within-group ordering is stable A→Z regardless of
-  // direction. Status sorts (manual/excluded) intentionally skip the
-  // tiebreaker — see compareMaintainerrState above.
   switch (sort) {
     case 'title':
       // Show-aware so episodes/seasons group under their show. The
       // direction multiplier still applies, so 'desc' reverses both tiers.
       return compareByDisplayHierarchy(leftItem, rightItem) * direction
     case 'airDate':
-      return (
-        (getComparableAirDate(leftItem) - getComparableAirDate(rightItem)) *
-          direction ||
-        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
+      return compareNumericWithTitleFallback(
+        leftItem,
+        rightItem,
+        getAirDateBucket,
+        direction,
       )
     case 'rating':
-      return (
-        (getAudienceRating(leftItem) - getAudienceRating(rightItem)) *
-          direction ||
-        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
+      return compareNumericWithTitleFallback(
+        leftItem,
+        rightItem,
+        getAudienceRating,
+        direction,
       )
     case 'watchCount':
-      return (
-        (getWatchCount(leftItem) - getWatchCount(rightItem)) * direction ||
-        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
+      return compareNumericWithTitleFallback(
+        leftItem,
+        rightItem,
+        getWatchCount,
+        direction,
       )
     case 'manual':
       return compareMaintainerrState(
@@ -128,20 +152,13 @@ export const compareMediaItemsBySort = (
         sortOrder,
         (item) => item.maintainerrExclusionId != null,
       )
-    case 'deleteSoonest': {
-      const leftBucket = getDeleteSoonestDayBucket(
+    case 'deleteSoonest':
+      return compareNumericWithTitleFallback(
         leftItem,
-        options?.deleteSoonestDate,
-      )
-      const rightBucket = getDeleteSoonestDayBucket(
         rightItem,
-        options?.deleteSoonestDate,
+        (item) => getDeleteSoonestDayBucket(item, options?.deleteSoonestDate),
+        direction,
       )
-      return (
-        (leftBucket - rightBucket) * direction ||
-        compareMediaItemsBySort(leftItem, rightItem, 'title', 'asc')
-      )
-    }
     default:
       return 0
   }
