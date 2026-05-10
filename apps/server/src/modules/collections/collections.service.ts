@@ -766,16 +766,26 @@ export class CollectionsService {
    * media-server library). Sorting must follow the user-visible
    * "Leaving in X days" overlay so what Maintainerr UI shows matches what is
    * pushed to the media server collection.
+   *
+   * `deleteSoonestReferenceTime` anchors the comparator's day buckets to the
+   * same `daysLeft` rollover the overlay shows, so two items with the same
+   * countdown tie even when their `addDate`s straddle UTC midnight.
    */
   private buildCollectionMediaCompareOptions(
     rows: ReadonlyArray<{ mediaServerId: string; addDate: Date | string }>,
+    deleteAfterDays: number | null | undefined,
   ): CompareMediaItemsOptions {
     const addDateByMediaItemId = new Map<string, Date | string>(
       rows.map((row) => [row.mediaServerId, row.addDate]),
     );
-    return {
+    const options: CompareMediaItemsOptions = {
       deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
     };
+    if (deleteAfterDays != null) {
+      options.deleteSoonestReferenceTime =
+        Date.now() - deleteAfterDays * 86400000;
+    }
+    return options;
   }
 
   async applyCollectionSort(collection: Collection): Promise<void> {
@@ -821,7 +831,10 @@ export class CollectionsService {
         return;
       }
 
-      const compareOptions = this.buildCollectionMediaCompareOptions(sortable);
+      const compareOptions = this.buildCollectionMediaCompareOptions(
+        sortable,
+        collection.deleteAfterDays,
+      );
 
       sortable.sort((a, b) =>
         compareMediaItemsBySort(
@@ -946,8 +959,11 @@ export class CollectionsService {
         metadataByMediaServerId.has(entity.mediaServerId),
       );
 
-      const compareOptions =
-        this.buildCollectionMediaCompareOptions(sortableEntities);
+      const collectionRecord = await this.getCollection(id);
+      const compareOptions = this.buildCollectionMediaCompareOptions(
+        sortableEntities,
+        collectionRecord?.deleteAfterDays,
+      );
 
       const sortedPageEntities = sortableEntities
         .sort((leftItem, rightItem) =>

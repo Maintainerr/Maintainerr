@@ -101,10 +101,28 @@ describe('compareMediaItemsBySort tiebreakers', () => {
 });
 
 describe('compareMediaItemsBySort show-aware title ordering', () => {
+  // Helper: capture both the show title and the episode title so the
+  // assertion would fail under a plain episode-title-only comparator. The
+  // earlier version of this test used data (Aurora/Borealis/Comet/Drift)
+  // that happened to alphabetize correctly under either comparator.
+  const sortByShowAndEpisode = (
+    items: MediaItem[],
+    order: 'asc' | 'desc' = 'asc',
+  ): Array<[string, string]> =>
+    [...items]
+      .sort((leftItem, rightItem) =>
+        compareMediaItemsBySort(leftItem, rightItem, 'title', order),
+      )
+      .map((mediaItem) => [
+        mediaItem.grandparentTitle ?? mediaItem.parentTitle ?? '',
+        mediaItem.title,
+      ]);
+
   it('groups episodes from the same show together when sorting by title', () => {
-    // Pre-fix the title sort would interleave episodes by episode title
-    // (Aurora, Borealis, Comet, Drift) and split episodes from the same
-    // show. Show-aware ordering keeps a show's episodes contiguous.
+    // Episode titles are deliberately interleaved across shows so that an
+    // episode-title-only sort would yield Aurora, Bravo, Comet, Delta —
+    // which interleaves Show Alpha and Show Beta episodes. The show-aware
+    // comparator must instead group all of Show Alpha first.
     const items: MediaItem[] = [
       item({
         id: 'ep1',
@@ -114,29 +132,29 @@ describe('compareMediaItemsBySort show-aware title ordering', () => {
       }),
       item({
         id: 'ep2',
-        title: 'Aurora',
+        title: 'Bravo',
         type: 'episode',
         grandparentTitle: 'Show Alpha',
       }),
       item({
         id: 'ep3',
-        title: 'Drift',
+        title: 'Aurora',
         type: 'episode',
         grandparentTitle: 'Show Beta',
       }),
       item({
         id: 'ep4',
-        title: 'Borealis',
+        title: 'Delta',
         type: 'episode',
         grandparentTitle: 'Show Alpha',
       }),
     ];
 
-    expect(sortBy(items, 'title', 'asc')).toEqual([
-      'Aurora',
-      'Borealis',
-      'Comet',
-      'Drift',
+    expect(sortByShowAndEpisode(items, 'asc')).toEqual([
+      ['Show Alpha', 'Bravo'],
+      ['Show Alpha', 'Delta'],
+      ['Show Beta', 'Aurora'],
+      ['Show Beta', 'Comet'],
     ]);
   });
 
@@ -150,29 +168,29 @@ describe('compareMediaItemsBySort show-aware title ordering', () => {
       }),
       item({
         id: 'ep2',
-        title: 'Aurora',
+        title: 'Bravo',
         type: 'episode',
         grandparentTitle: 'Show Alpha',
       }),
       item({
         id: 'ep3',
-        title: 'Drift',
+        title: 'Aurora',
         type: 'episode',
         grandparentTitle: 'Show Beta',
       }),
       item({
         id: 'ep4',
-        title: 'Borealis',
+        title: 'Delta',
         type: 'episode',
         grandparentTitle: 'Show Alpha',
       }),
     ];
 
-    expect(sortBy(items, 'title', 'desc')).toEqual([
-      'Drift',
-      'Comet',
-      'Borealis',
-      'Aurora',
+    expect(sortByShowAndEpisode(items, 'desc')).toEqual([
+      ['Show Beta', 'Comet'],
+      ['Show Beta', 'Aurora'],
+      ['Show Alpha', 'Delta'],
+      ['Show Alpha', 'Bravo'],
     ]);
   });
 
@@ -268,6 +286,95 @@ describe('compareMediaItemsBySort deleteSoonest date override', () => {
         deleteSoonestDate: () => undefined,
       }),
     ).toEqual(['B', 'A']);
+  });
+});
+
+describe('compareMediaItemsBySort deleteSoonest reference-time bucketing', () => {
+  // Without a referenceTime, items bucket by UTC midnight: items added at
+  // 23:00 today and 01:00 tomorrow show the same overlay countdown but sort
+  // apart. With referenceTime = now - deleteAfterDays * dayMs, buckets
+  // align with the user-visible `daysLeft` rollover so they tie correctly.
+  const dayMs = 86400000;
+
+  it('ties items that share the same daysLeft despite straddling UTC midnight', () => {
+    const now = new Date('2024-01-02T12:00:00Z').getTime();
+    const deleteAfterDays = 3;
+    // Both items show "Leaves in 3 days" against `now`:
+    //   ceil((addDate + 3*day - now) / dayMs) === 3
+    const items: MediaItem[] = [
+      item({
+        id: 'late',
+        title: 'C',
+        addedAt: new Date('2024-01-01T23:00:00Z'),
+      }),
+      item({
+        id: 'early',
+        title: 'A',
+        addedAt: new Date('2024-01-02T01:00:00Z'),
+      }),
+      item({
+        id: 'mid',
+        title: 'B',
+        addedAt: new Date('2024-01-02T08:00:00Z'),
+      }),
+    ];
+
+    expect(
+      sortBy(items, 'deleteSoonest', 'asc', {
+        deleteSoonestReferenceTime: now - deleteAfterDays * dayMs,
+      }),
+    ).toEqual(['A', 'B', 'C']);
+  });
+
+  it('still keeps items in different daysLeft buckets ordered by date', () => {
+    const now = new Date('2024-01-02T12:00:00Z').getTime();
+    const deleteAfterDays = 3;
+    const items: MediaItem[] = [
+      item({
+        id: 'far',
+        title: 'Leaves day 5',
+        addedAt: new Date('2024-01-04T01:00:00Z'),
+      }),
+      item({
+        id: 'near',
+        title: 'Leaves day 2',
+        addedAt: new Date('2024-01-01T01:00:00Z'),
+      }),
+      item({
+        id: 'mid',
+        title: 'Leaves day 4',
+        addedAt: new Date('2024-01-03T01:00:00Z'),
+      }),
+    ];
+
+    expect(
+      sortBy(items, 'deleteSoonest', 'asc', {
+        deleteSoonestReferenceTime: now - deleteAfterDays * dayMs,
+      }),
+    ).toEqual(['Leaves day 2', 'Leaves day 4', 'Leaves day 5']);
+  });
+
+  it('accepts a Date for deleteSoonestReferenceTime (interchangeable with number)', () => {
+    const now = new Date('2024-01-02T12:00:00Z').getTime();
+    const deleteAfterDays = 3;
+    const items: MediaItem[] = [
+      item({
+        id: 'late',
+        title: 'C',
+        addedAt: new Date('2024-01-01T23:00:00Z'),
+      }),
+      item({
+        id: 'early',
+        title: 'A',
+        addedAt: new Date('2024-01-02T01:00:00Z'),
+      }),
+    ];
+
+    expect(
+      sortBy(items, 'deleteSoonest', 'asc', {
+        deleteSoonestReferenceTime: new Date(now - deleteAfterDays * dayMs),
+      }),
+    ).toEqual(['A', 'C']);
   });
 });
 

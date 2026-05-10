@@ -36,17 +36,40 @@ export interface CompareMediaItemsOptions {
    * to the underlying media-server library).
    */
   deleteSoonestDate?: (item: MediaItem) => Date | string | undefined | null
+  /**
+   * Anchor for `daysLeft` bucketing — pass `now - deleteAfterDays * dayMs`.
+   * When set, items with the same overlay countdown tie even if they
+   * straddle UTC midnight (e.g. addedAt 23:00 vs. 01:00 the next day with
+   * the same "Leaves in 3 days" label). When omitted, items bucket by UTC
+   * calendar day, which is acceptable for callers without a per-collection
+   * `deleteAfterDays` (e.g. defensive paths in the comparator spec).
+   */
+  deleteSoonestReferenceTime?: Date | number
+}
+
+const toReferenceMs = (
+  value: CompareMediaItemsOptions['deleteSoonestReferenceTime'],
+): number | undefined => {
+  if (value == null) return undefined
+  return value instanceof Date ? value.getTime() : value
 }
 
 const getDeleteSoonestDayBucket = (
   item: MediaItem,
-  override: CompareMediaItemsOptions['deleteSoonestDate'],
+  options: CompareMediaItemsOptions | undefined,
 ): number | undefined => {
-  // Bucket by UTC day so items added in the same rule run tie and reach the
-  // title tiebreaker. Items split across the UTC midnight boundary land in
-  // adjacent buckets — acceptable because the user-visible "Leaving in X
-  // days" label can also flip across that boundary.
-  return toDayBucket(override?.(item) ?? item.addedAt)
+  const value = options?.deleteSoonestDate?.(item) ?? item.addedAt
+  const referenceMs = toReferenceMs(options?.deleteSoonestReferenceTime)
+  if (referenceMs === undefined) {
+    // No collection context — bucket by UTC midnight.
+    return toDayBucket(value)
+  }
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
+  if (Number.isNaN(ms)) return undefined
+  // daysLeft = ceil((addDate + N*day - now) / dayMs) = ceil((addDate - R) / dayMs).
+  // Two items tie iff they share the same daysLeft window, which keeps the
+  // sort aligned with the visible countdown across UTC midnight.
+  return Math.ceil((ms - referenceMs) / 86400000)
 }
 
 // Title comparison that groups episodes and seasons under their show. Movies
@@ -156,7 +179,7 @@ export const compareMediaItemsBySort = (
       return compareNumericWithTitleFallback(
         leftItem,
         rightItem,
-        (item) => getDeleteSoonestDayBucket(item, options?.deleteSoonestDate),
+        (item) => getDeleteSoonestDayBucket(item, options),
         direction,
       )
     default:
