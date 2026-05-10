@@ -1246,4 +1246,138 @@ describe('RuleExecutorService', () => {
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
   });
+
+  // Issue #2858: Excluding a single episode previously cascaded to every
+  // sibling because Exclusion.parent (the entry-point of the exclusion
+  // request) was misused as a structural cascade key.
+  it('only filters the specifically excluded episode, leaving siblings of the same show eligible', async () => {
+    const { service, collectionService, rulesService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+    rulesService.getExclusions.mockResolvedValue([
+      // parent=showId mirrors what setExclusion writes when the AddModal is
+      // opened from a show overview — the regression hinges on this shape.
+      { mediaServerId: 'ep-1', parent: 'show-1', type: 'episode' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).statisticsData = [];
+    (service as any).resultData = [
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-2', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-3', parentId: 'season-2', grandparentId: 'show-1' },
+    ];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(
+      1,
+      expect.arrayContaining([
+        expect.objectContaining({ mediaServerId: 'ep-2' }),
+        expect.objectContaining({ mediaServerId: 'ep-3' }),
+      ]),
+    );
+    const addedIds = collectionService.addToCollection.mock.calls[0][1].map(
+      (m: { mediaServerId: string }) => m.mediaServerId,
+    );
+    expect(addedIds).not.toContain('ep-1');
+  });
+
+  it('cascades a season exclusion to its episodes only', async () => {
+    const { service, collectionService, rulesService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+    rulesService.getExclusions.mockResolvedValue([
+      { mediaServerId: 'season-1', parent: 'show-1', type: 'season' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).statisticsData = [];
+    (service as any).resultData = [
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-2', parentId: 'season-2', grandparentId: 'show-1' },
+    ];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    const addedIds = collectionService.addToCollection.mock.calls[0][1].map(
+      (m: { mediaServerId: string }) => m.mediaServerId,
+    );
+    expect(addedIds).toEqual(['ep-2']);
+  });
+
+  it('cascades a show exclusion to its seasons and episodes', async () => {
+    const { service, collectionService, rulesService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+    rulesService.getExclusions.mockResolvedValue([
+      { mediaServerId: 'show-1', parent: 'show-1', type: 'show' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).statisticsData = [];
+    (service as any).resultData = [
+      { id: 'season-1', parentId: 'show-1' },
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'season-other', parentId: 'show-2' },
+    ];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    const addedIds = collectionService.addToCollection.mock.calls[0][1].map(
+      (m: { mediaServerId: string }) => m.mediaServerId,
+    );
+    expect(addedIds).toEqual(['season-other']);
+  });
+
+  it('does not skip sibling episodes when syncing manually added children after a single-episode exclusion (issue #2858)', async () => {
+    const { service, mediaServer, rulesService, collectionService } =
+      createService(MediaServerType.JELLYFIN);
+
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-2', parentId: 'season-1', grandparentId: 'show-1' },
+    ]);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    rulesService.getExclusions.mockResolvedValue([
+      { mediaServerId: 'ep-1', parent: 'show-1', type: 'episode' },
+    ] as any);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaServerId: 'coll-1' }),
+      [
+        {
+          mediaServerId: 'ep-2',
+          reason: { type: 'media_added_manually' },
+        },
+      ],
+      'local',
+    );
+  });
 });
