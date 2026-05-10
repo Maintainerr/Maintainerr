@@ -3,6 +3,7 @@ import {
   CollectionLogMeta,
   CollectionMediaSortField,
   compareMediaItemsBySort,
+  type CompareMediaItemsOptions,
   ECollectionLogType,
   isMediaType,
   MaintainerrEvent,
@@ -758,6 +759,25 @@ export class CollectionsService {
       );
   }
 
+  /**
+   * Builds the comparator options that route `deleteSoonest` to each row's
+   * `collection_media.addDate` (when Maintainerr started the deletion timer)
+   * instead of `MediaItem.addedAt` (when the file landed in the underlying
+   * media-server library). Sorting must follow the user-visible
+   * "Leaving in X days" overlay so what Maintainerr UI shows matches what is
+   * pushed to the media server collection.
+   */
+  private buildCollectionMediaCompareOptions(
+    rows: ReadonlyArray<{ mediaServerId: string; addDate: Date | string }>,
+  ): CompareMediaItemsOptions {
+    const addDateByMediaItemId = new Map<string, Date | string>(
+      rows.map((row) => [row.mediaServerId, row.addDate]),
+    );
+    return {
+      deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
+    };
+  }
+
   async applyCollectionSort(collection: Collection): Promise<void> {
     const sortKey = collection.mediaServerSort;
     const parsed = sortKey ? parseCollectionSortKey(sortKey) : undefined;
@@ -801,12 +821,15 @@ export class CollectionsService {
         return;
       }
 
+      const compareOptions = this.buildCollectionMediaCompareOptions(sortable);
+
       sortable.sort((a, b) =>
         compareMediaItemsBySort(
           a.mediaData,
           b.mediaData,
           parsed.sort,
           parsed.order,
+          compareOptions,
         ),
       );
 
@@ -880,15 +903,12 @@ export class CollectionsService {
 
       const itemCount = await queryBuilder.getCount();
 
-      if (!sort || sort === 'deleteSoonest') {
-        // deleteSoonest is equivalent to addDate ordering because
-        // deleteAfterDays is constant for every item in a collection.
-        const direction =
-          sort === 'deleteSoonest' && sortOrder === 'asc' ? 'ASC' : 'DESC';
+      if (!sort) {
+        // Default load (no explicit sort): SQL-paginate by recently-added.
         const { entities } = await queryBuilder
           .clone()
-          .orderBy('collection_media.addDate', direction)
-          .addOrderBy('collection_media.id', direction)
+          .orderBy('collection_media.addDate', 'DESC')
+          .addOrderBy('collection_media.id', 'DESC')
           .skip(offset)
           .take(size)
           .getRawAndEntities();
@@ -902,15 +922,17 @@ export class CollectionsService {
         };
       }
 
+      // Explicit sort — including deleteSoonest — goes through hydrate-
+      // then-sort so the response matches what applyCollectionSort pushes
+      // to the media server (day-bucketed addDate with show-aware
+      // tiebreakers). The `deleteSoonest` SQL fast-path was dropped to keep
+      // the two paths consistent; fix it together if perf becomes an issue.
       const { entities } = await queryBuilder
         .clone()
         .orderBy('collection_media.addDate', 'DESC')
         .addOrderBy('collection_media.id', 'DESC')
         .getRawAndEntities();
 
-      // Metadata-backed sorts currently hydrate every matching row before
-      // pagination because these sort keys are not persisted locally.
-      // Replace this with cached DB-backed fields when available.
       this.logger.debug(
         `Collection ${id} sort ${sort} is hydrating ${itemCount} items before pagination`,
       );
@@ -924,6 +946,9 @@ export class CollectionsService {
         metadataByMediaServerId.has(entity.mediaServerId),
       );
 
+      const compareOptions =
+        this.buildCollectionMediaCompareOptions(sortableEntities);
+
       const sortedPageEntities = sortableEntities
         .sort((leftItem, rightItem) =>
           compareMediaItemsBySort(
@@ -931,6 +956,7 @@ export class CollectionsService {
             metadataByMediaServerId.get(rightItem.mediaServerId)!,
             sort,
             sortOrder,
+            compareOptions,
           ),
         )
         .slice(offset, offset + size);

@@ -1,4 +1,4 @@
-import { MediaServerType } from '@maintainerr/contracts';
+import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
 import { DataSource, Repository } from 'typeorm';
@@ -1220,6 +1220,89 @@ describe('CollectionsService', () => {
     });
   });
 
+  it('orders deleteSoonest paging by collection_media.addDate so the UI matches the media-server push', async () => {
+    // Regression for #2867: the API response and applyCollectionSort must
+    // agree, otherwise the user sees one order in Maintainerr and another
+    // in the media-server collection. MediaItem.addedAt is held identical
+    // across all rows here so any path that falls back to it would tie
+    // and the result order would depend on Map iteration.
+    const collection = createCollection({
+      id: 9,
+      mediaServerId: 'remote-collection',
+      type: 'movie',
+    });
+    const libraryAddDate = new Date('2024-06-01T00:00:00Z');
+    const leavesLatest = createCollectionMedia(collection, {
+      mediaServerId: 'leaves-latest',
+      addDate: new Date('2024-02-01T10:00:00Z'),
+    });
+    const leavesSoonest = createCollectionMedia(collection, {
+      mediaServerId: 'leaves-soonest',
+      addDate: new Date('2024-01-01T10:00:00Z'),
+    });
+    const leavesMiddle = createCollectionMedia(collection, {
+      mediaServerId: 'leaves-middle',
+      addDate: new Date('2024-01-15T10:00:00Z'),
+    });
+    const entities = [leavesLatest, leavesSoonest, leavesMiddle];
+    const metadataByMediaServerId = new Map([
+      [
+        'leaves-latest',
+        createMediaItem({
+          id: 'leaves-latest',
+          title: 'Latest',
+          addedAt: libraryAddDate,
+        }),
+      ],
+      [
+        'leaves-soonest',
+        createMediaItem({
+          id: 'leaves-soonest',
+          title: 'Soonest',
+          addedAt: libraryAddDate,
+        }),
+      ],
+      [
+        'leaves-middle',
+        createMediaItem({
+          id: 'leaves-middle',
+          title: 'Middle',
+          addedAt: libraryAddDate,
+        }),
+      ],
+    ]);
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(entities.length),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+    };
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+
+    jest
+      .spyOn(service as any, 'getCollectionMediaMetadata')
+      .mockResolvedValue(metadataByMediaServerId);
+    const hydrateSpy = jest
+      .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+      .mockImplementation(async (page) => page as any);
+
+    await service.getCollectionMediaWithServerDataAndPaging(collection.id, {
+      sort: 'deleteSoonest',
+      sortOrder: 'asc',
+    });
+
+    expect(hydrateSpy).toHaveBeenCalledWith(
+      [leavesSoonest, leavesMiddle, leavesLatest],
+      mediaServer,
+      metadataByMediaServerId,
+    );
+  });
+
   it('uses the sortable entity count for sorted collection media totals', async () => {
     const collection = createCollection({
       id: 8,
@@ -1664,5 +1747,68 @@ describe('CollectionsService', () => {
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('movie-1');
     expect(result).toHaveLength(1);
     expect(result[0].mediaData?.title).toBe('Fallback Movie');
+  });
+
+  it('reorders Plex collection items by collection_media.addDate, not media-server addedAt', async () => {
+    // Regression for #2867: applyCollectionSort previously sorted by
+    // MediaItem.addedAt (when the file was added to the Plex library).
+    // The user-visible "Leaving in X days" overlay is driven by
+    // collection_media.addDate, so the Plex order must follow that.
+    const collection = createCollection({
+      id: 99,
+      mediaServerId: 'remote-99',
+      mediaServerSort: 'deleteSoonest.asc',
+      type: 'movie',
+    });
+
+    const libraryAddDate = new Date('2024-06-01T00:00:00Z');
+    const rows = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'leaves-latest',
+        addDate: new Date('2024-02-01T10:00:00Z'),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'leaves-soonest',
+        addDate: new Date('2024-01-01T10:00:00Z'),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'leaves-middle',
+        addDate: new Date('2024-01-15T10:00:00Z'),
+      }),
+    ];
+
+    collectionMediaRepo.find.mockResolvedValue(rows);
+
+    mediaServer.supportsFeature.mockImplementation(
+      (feature) => feature === MediaServerFeature.COLLECTION_SORT,
+    );
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-99',
+      title: 'Test',
+      smart: false,
+      childCount: rows.length,
+    } as any);
+
+    // Hand back metadata where every item has the same library addedAt —
+    // if the comparator falls through to MediaItem.addedAt (the bug) the
+    // ordering becomes whatever Map iteration gives us; the assertion
+    // below would fail.
+    mediaServer.getMetadata.mockImplementation(async (id: string) =>
+      createMediaItem({
+        id,
+        title: id,
+        type: 'movie',
+        addedAt: libraryAddDate,
+      }),
+    );
+
+    mediaServer.reorderCollectionItems = jest.fn().mockResolvedValue(undefined);
+
+    await service.applyCollectionSort(collection as Collection);
+
+    expect(mediaServer.reorderCollectionItems).toHaveBeenCalledWith(
+      'remote-99',
+      ['leaves-soonest', 'leaves-middle', 'leaves-latest'],
+    );
   });
 });
