@@ -172,10 +172,17 @@ apps/ui/src/
 ├── hooks/          # Custom React hooks
 ├── pages/          # Page components for routes (DocsPage, PlexLoadingPage)
 ├── utils/          # Client-side utilities
+├── test-utils/     # Vitest helpers (TanStack Query result builders, shared QueryClient)
 ├── styles/         # Global styles and Tailwind config
 ├── router.tsx      # React Router configuration with route definitions
 └── main.tsx        # Application entry point
 ```
+
+When mocking TanStack Query hooks in specs, use the result builders in
+[apps/ui/src/test-utils/queryResults.ts](apps/ui/src/test-utils/queryResults.ts)
+(`buildQuerySuccessResult`, `buildQueryLoadingResult`, `buildQueryErrorResult`)
+instead of casting partial objects with `as unknown as ReturnType<typeof useFoo>`.
+See [apps/ui/src/test-utils/README.md](apps/ui/src/test-utils/README.md).
 
 ## Refactoring Guidelines
 
