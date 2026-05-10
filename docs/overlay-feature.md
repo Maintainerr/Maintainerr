@@ -333,8 +333,8 @@ Orchestrates the template-based apply/revert workflow.
 
 | Method                                                             | Description                                                                                                                                |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `processCollection(collection)`                                    | Resolve template via `templateService.resolveForCollection()`, iterate media, apply overlays. Skips items where `daysLeft` hasn't changed. |
-| `processAllCollections()`                                          | Process all overlay-enabled collections. Reverts orphaned items (no longer in any overlay collection). Emits start/finish/fail events.     |
+| `processCollection(collection, force?)`                            | Resolve template via `templateService.resolveForCollection()`, iterate media, apply overlays. Skips items where `daysLeft` hasn't changed unless `force` is `true`. |
+| `processAllCollections(force?)`                                    | Process all overlay-enabled collections. Reverts orphaned items (no longer in any overlay collection). Emits start/finish/fail events. `force` rebuilds even unchanged items. |
 | `applyTemplateOverlay(itemId, collectionId, deleteDate, template, mode, provider)` | Download artwork (or load saved original) via `provider.downloadImage`, render, upload via `provider.uploadImage`, record state |
 | `generateTemplatePreview(itemId, template)`                        | Resolve the active provider, download the artwork matching `template.mode`, render with a 14-day sample context                            |
 | `revertItem(collectionId, mediaServerId)`                          | Restore original poster for one item                                                                                                       |
@@ -377,13 +377,15 @@ All endpoints are under `@Controller('api/overlays')`.
 
 ### Processing
 
-| Method | Path                     | Params         | Response                        | Description                          |
-| ------ | ------------------------ | -------------- | ------------------------------- | ------------------------------------ |
-| GET    | `/status`                | —              | `{status, lastRun, lastResult}` | Current processor status             |
-| POST   | `/process`               | —              | `ProcessorRunResult`            | Run overlay processing (409 if busy) |
-| POST   | `/process/:collectionId` | `collectionId` | `ProcessorRunResult`            | Process single collection            |
-| POST   | `/revert/:collectionId`  | `collectionId` | `{success: true}`               | Revert single collection             |
-| DELETE | `/reset`                 | —              | `{success: true}`               | Reset all overlays                   |
+| Method | Path                     | Params / Body                          | Response                        | Description                                                                                       |
+| ------ | ------------------------ | -------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| GET    | `/status`                | —                                      | `{status, lastRun, lastResult}` | Current processor status                                                                          |
+| POST   | `/process`               | `OverlayProcessRequest` (`{force?}`)   | `OverlayProcessorRunResult`     | Run overlay processing (409 if busy). `force: true` bypasses the unchanged-`daysLeft` skip.       |
+| POST   | `/process/:collectionId` | `collectionId`, `{force?}`             | `OverlayProcessorRunResult`     | Process single collection. `force: true` bypasses the unchanged-`daysLeft` skip.                  |
+| POST   | `/revert/:collectionId`  | `collectionId`                         | `{success: true}`               | Revert single collection                                                                          |
+| DELETE | `/reset`                 | —                                      | `{success: true}`               | Reset all overlays. Returns 409 if a processor run is in progress (prevents concurrent mutation). |
+
+`OverlayProcessRequest` and `OverlayProcessorRunResult` (`{processed, reverted, skipped, errors}`) are defined in [`@maintainerr/contracts`](../packages/contracts/src/overlays/overlay-processor.ts).
 
 ### Fonts
 
@@ -592,7 +594,7 @@ The main entry point for the overlay feature. Combines template management with 
 - **Template cards** — grouped by mode (poster/titlecard), showing name, description, element count, canvas dimensions, default/preset badges
 - **Actions per card** — Edit (or View for presets), Duplicate, Set Default, Export, Delete
 - **Import** — hidden file input accepting `.json` files parsed as `OverlayTemplateExport`
-- **Processing** — "Run Now" triggers `processAllOverlays()`, "Reset All" triggers `resetAllOverlays()` with confirmation dialog
+- **Processing** — "Run Now" triggers `processAllOverlays()` (optionally with `force: true` to rebuild unchanged items), "Reset All" triggers `resetAllOverlays()` with confirmation dialog. Reset is blocked (409) while a processor run is in progress. The run result summary surfaces `processed`, `reverted`, `skipped`, and `errors`.
 
 ### Template Editor Page (`apps/ui/src/pages/OverlayTemplateEditorPage.tsx`)
 
@@ -664,11 +666,11 @@ All functions in `apps/ui/src/api/overlays.ts`:
 
 ### Processing
 
-| Function               | HTTP                     | Description                 |
-| ---------------------- | ------------------------ | --------------------------- |
-| `processAllOverlays()` | `POST /overlays/process` | Trigger full processing run |
-| `resetAllOverlays()`   | `DELETE /overlays/reset` | Revert all overlays         |
-| `getOverlayStatus()`   | `GET /overlays/status`   | Get processor status        |
+| Function                            | HTTP                     | Description                                                         |
+| ----------------------------------- | ------------------------ | ------------------------------------------------------------------- |
+| `processAllOverlays({force?})`      | `POST /overlays/process` | Trigger full processing run; `force: true` rebuilds unchanged items |
+| `resetAllOverlays()`                | `DELETE /overlays/reset` | Revert all overlays (409 if processor is running)                   |
+| `getOverlayStatus()`                | `GET /overlays/status`   | Get processor status                                                |
 
 ### Fonts
 
