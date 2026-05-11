@@ -1,4 +1,36 @@
 ## Highlights
+- Added support for force-processing overlays and gated reset operations against concurrent processing runs (#2827).
+- Improved collection sorting: collections now apply sort order on save and synchronize with the media server (#2860).
+- Enhanced storage metrics: potential reclaimable storage is now split into movie, show, season, and episode panels (#2854).
+
+## Breaking Changes
+- None.
+
+## Features
+- Added force-processing support for overlay operations and gated reset operations against concurrent processing runs (#2827).
+- Improved storage metrics by splitting potential reclaimable storage into movie, show, season, and episode panels (#2854).
+
+## Fixes
+- Fixed collection sorting to apply on save and synchronize with the media server (#2860).
+- Resolved issue where excluding a single episode incorrectly excluded all episodes of the same show (#2867).
+- Fixed storage metrics to merge shared volumes across hosts when byte-exact (#2852).
+- Fixed Jellyfin retry ID check to align with pre-filter logic (#2853).
+- Addressed issue where reclaimed bytes were not credited when `sizeBytes` was not yet cached (#2855).
+
+## Performance
+- None.
+
+## Database migrations
+- Added a new `mediaServerSort` column to the `collection` table to support media server-specific sorting.
+
+## Internal
+- Added typed TanStack Query test helpers and migrated UI spec mocks to use typed builders (#2863).
+- Added an architecture overview document detailing the monorepo structure, runtime flow, and core components (#2817).
+
+## Dependencies
+- Updated 5 dependencies, including notable updates to TypeScript and typescript-eslint.
+
+## Highlights
 - Fixed incorrect version comparison logic that caused update notifications to fail for multi-digit version segments (#2838).
 - Improved storage metrics by deduplicating reclaimable bytes and adding per-type cleanup byte counters (#2833).
 
