@@ -58,7 +58,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "sharp": "^0.34.5",
-    "typeorm": "^0.3.28",
+    "typeorm": "^0.3.29",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xml2js": "^0.6.2",
