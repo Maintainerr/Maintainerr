@@ -23,11 +23,7 @@
     /* Additional */
     "allowJs": true,
     "esModuleInterop": true,
-    "preserveWatchOutput": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "preserveWatchOutput": true
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
