@@ -1,7 +1,13 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // Pin the incremental build info next to the emitted output. Without
+    // this, nest-cli's type-check pass writes a duplicate
+    // tsconfig.build.tsbuildinfo at the package root because TS computes
+    // the default location from the caller's resolved outDir, which differs
+    // between the type-check invocation and the emit invocation.
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "**/__mocks__/*"]
 }
