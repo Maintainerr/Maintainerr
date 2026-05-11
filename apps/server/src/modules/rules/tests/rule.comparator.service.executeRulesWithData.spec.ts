@@ -423,4 +423,156 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       result: true,
     });
   });
+
+  // Strict-undefined transient-failure tracking (#1446). The getter contract is
+  // `null` = definitive absence, `undefined` = outer-catch transport failure.
+  // The set must reflect that distinction precisely so the executor can defer
+  // rule-driven removal on transient failures without sticking items that are
+  // legitimately empty (e.g. never-watched).
+  describe('transientFailureMediaIds', () => {
+    it('adds the media id when firstVal is undefined (transient transport failure)', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 31],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(true);
+      // Skip branch dropped the item from worker; it must not appear in data.
+      expect(result.data).toEqual([]);
+    });
+
+    it('does not add the media id when firstVal is null (definitive absence)', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 31],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(null);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
+    });
+
+    it('adds the media id when secondVal is undefined and rule.lastVal is set', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 5],
+          lastVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(10, undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(true);
+    });
+
+    it('does not add the media id when secondVal comes from customVal (no lastVal)', async () => {
+      const mediaItem = createSingleMedia();
+      // customVal path: getSecondValue never returns undefined regardless of
+      // getter behavior — the guard is `rule.lastVal != null`. Use a real
+      // first value so the comparison reaches the shouldCompare branch.
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 31],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(5);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
+    });
+
+    it('keeps NOT_EXISTS matching on null and does not flag the id as transient', async () => {
+      // Legitimate absence (`null`, e.g. lastViewedAt for a never-watched
+      // item) must keep producing NOT_EXISTS = true and must NOT trip the
+      // transient guard — otherwise items that legitimately stopped matching
+      // would be preserved forever. Locks the existing semantic against
+      // regression alongside the spec at line ~233.
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.NOT_EXISTS,
+          firstVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(null);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toHaveLength(1);
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
+    });
+
+    it('skips unary NOT_EXISTS on transient undefined and tracks the media id', async () => {
+      // Before fix 2, !hasExistsValue(undefined) === true would spuriously add
+      // the item. The tightened shouldCompare skips the unary branch on
+      // transient undefined: item is not in `data`, id is in the transient set.
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.NOT_EXISTS,
+          firstVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(true);
+    });
+  });
 });

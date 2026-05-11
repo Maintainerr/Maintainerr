@@ -21,6 +21,12 @@ import { ValueGetterService } from '../getter/getter.service';
 interface IComparatorReturnValue {
   stats: IComparisonStatistics[];
   data: MediaItem[];
+  // Items whose evaluation hit a getter that returned `undefined` — the
+  // documented "transport failure" signal (see plex/seerr-getter outer
+  // catches). Distinct from `null` (definitive absence). The executor
+  // uses this set to defer rule-driven removal so a brief external-API
+  // blip does not break the deleteAfterDays countdown (#1446).
+  transientFailureMediaIds: Set<string>;
 }
 
 @Injectable()
@@ -53,6 +59,7 @@ export class RuleComparatorService {
   private workerIds: Set<string>;
   private resultIds: Set<string>;
   private statsById: Map<string, IComparisonStatistics>;
+  private transientFailureIds: Set<string>;
 
   private static readonly UNARY_RULE_ACTIONS = new Set<RulePossibility>([
     RulePossibility.EXISTS,
@@ -86,6 +93,7 @@ export class RuleComparatorService {
       this.workerIds = new Set<string>();
       this.resultIds = new Set<string>();
       this.statsById = new Map<string, IComparisonStatistics>();
+      this.transientFailureIds = new Set<string>();
 
       // run rules
       let currentSection = 0;
@@ -141,7 +149,11 @@ export class RuleComparatorService {
       this.updateStatisticResults();
 
       // return comparatorReturnValue
-      return { stats: this.statistics, data: this.resultData };
+      return {
+        stats: this.statistics,
+        data: this.resultData,
+        transientFailureMediaIds: this.transientFailureIds,
+      };
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
@@ -221,9 +233,23 @@ export class RuleComparatorService {
         this.abortSignal?.throwIfAborted();
       }
 
+      // Distinguish transient transport failure (`=== undefined`, returned by
+      // the outer catch in plex/seerr-getter) from definitive absence (`null`,
+      // e.g. lastViewedAt for a never-watched item). The executor uses
+      // `transientFailureIds` to defer rule-driven removal on transient
+      // failures; the comparator also skips unary EXISTS/NOT_EXISTS on a
+      // transient `undefined` so it never resolves to `!hasExistsValue(undefined)
+      // === true` and spuriously **adds** the item (#1446).
+      const firstValTransient = firstVal === undefined;
+      const secondValTransient =
+        rule.lastVal != null && secondVal === undefined;
+      if (firstValTransient || secondValTransient) {
+        this.transientFailureIds.add(mediaId);
+      }
+
       const reasons = this.buildMissingReasons(rule, firstVal, secondVal);
       const shouldCompare = this.isUnaryRuleAction(rule.action)
-        ? true
+        ? !firstValTransient
         : firstVal != null && (secondVal != null || rule.lastVal != null);
 
       if (shouldCompare) {

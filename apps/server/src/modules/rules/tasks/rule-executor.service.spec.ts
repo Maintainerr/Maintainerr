@@ -98,9 +98,11 @@ describe('RuleExecutorService', () => {
 
     const comparatorFactory = {
       create: jest.fn().mockReturnValue({
-        executeRulesWithData: jest
-          .fn()
-          .mockResolvedValue({ stats: [], data: [] }),
+        executeRulesWithData: jest.fn().mockResolvedValue({
+          stats: [],
+          data: [],
+          transientFailureMediaIds: new Set<string>(),
+        }),
       }),
     } as unknown as jest.Mocked<RuleComparatorServiceFactory>;
 
@@ -1378,6 +1380,178 @@ describe('RuleExecutorService', () => {
         },
       ],
       'local',
+    );
+  });
+
+  // Defer rule-driven removal when the comparator flagged a transient getter
+  // failure for the item. Without this, a brief external-API blip restarts the
+  // deleteAfterDays countdown on every affected item (#1446).
+  it('preserves items dropped from resultData due to transient getter failure', async () => {
+    const { service, collectionService, logger } = createService(
+      MediaServerType.PLEX,
+    );
+
+    const collection = {
+      id: 1,
+      title: 'Flap test',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm-transient' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+    (service as any).transientFailureMediaIds = new Set<string>([
+      'm-transient',
+    ]);
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Preserved 1 media item in 'Flap test' because rule data was unfetchable",
+      ),
+    );
+  });
+
+  it('still removes items that dropped out for non-transient reasons', async () => {
+    const { service, collectionService } = createService(MediaServerType.PLEX);
+
+    const collection = {
+      id: 1,
+      title: 'Flap test',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm-stopped-matching' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+    // Empty transient set: item dropped out because it stopped matching, not
+    // because a getter failed. Removal must still proceed.
+    (service as any).transientFailureMediaIds = new Set<string>();
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    // collMediaData.length > 0, so removal goes through the resolved-link
+    // variant — mirror the executor's branch in the assertion.
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      [
+        {
+          mediaServerId: 'm-stopped-matching',
+          reason: {
+            type: 'media_removed_by_rule',
+            data: undefined,
+          },
+        },
+      ],
+      'rule',
+    );
+  });
+
+  // The executor processes media in 50-item chunks via `getMediaData`; the
+  // comparator returns a transient set per chunk. Without union accumulation,
+  // the removal gate would only see the last chunk's ids and silently drop
+  // preservation for items earlier in the library.
+  it('accumulates transientFailureMediaIds across executor chunks', async () => {
+    const {
+      service,
+      rulesService,
+      mediaServer,
+      collectionService,
+      eventEmitter,
+    } = createService(MediaServerType.PLEX);
+
+    const ruleGroup = {
+      id: 10,
+      name: 'Two-chunk run',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Two-chunk run' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Two-chunk run',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'A' },
+      { mediaServerId: 'B' },
+    ] as any);
+    // Server's collection still contains A and B so the manual-removal sync
+    // path (which compares DB membership to server-side collection children)
+    // is a no-op for this test. We are only exercising the rule-driven gate.
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'A' },
+      { id: 'B' },
+    ] as any);
+
+    // Two non-empty chunks so the executor loops twice.
+    mediaServer.getLibraryContents
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 50 }, (_, i) => ({ id: `chunk1-${i}` })),
+        totalSize: 60,
+      } as any)
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 10 }, (_, i) => ({ id: `chunk2-${i}` })),
+        totalSize: 60,
+      } as any);
+    mediaServer.getLibraryContentCount.mockResolvedValue(60);
+
+    // Each chunk reports a different transient id. Without accumulation, only
+    // B (the last chunk) would be preserved and A would be removed.
+    const comparator = (service as any).comparatorFactory.create();
+    comparator.executeRulesWithData
+      .mockResolvedValueOnce({
+        stats: [],
+        data: [],
+        transientFailureMediaIds: new Set<string>(['A']),
+      })
+      .mockResolvedValueOnce({
+        stats: [],
+        data: [],
+        transientFailureMediaIds: new Set<string>(['B']),
+      });
+
+    await service.executeForRuleGroups(10, new AbortController().signal);
+
+    // Neither A nor B should be removed — both were flagged transient across
+    // the two chunks.
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Removed,
+      expect.anything(),
     );
   });
 });
