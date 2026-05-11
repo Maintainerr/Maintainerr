@@ -3172,7 +3172,7 @@ __metadata:
     react: "npm:^19.2.5"
     react-dom: "npm:^19.2.5"
     react-hook-form: "npm:^7.75.0"
-    react-konva: "npm:^19.2.3"
+    react-konva: "npm:^19.2.4"
     react-markdown: "npm:10.1.0"
     react-movable: "npm:^3.4.1"
     react-router-dom: "npm:^7.15.0"
@@ -17890,9 +17890,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-konva@npm:^19.2.3":
-  version: 19.2.3
-  resolution: "react-konva@npm:19.2.3"
+"react-konva@npm:^19.2.4":
+  version: 19.2.4
+  resolution: "react-konva@npm:19.2.4"
   dependencies:
     "@types/react-reconciler": "npm:^0.33.0"
     its-fine: "npm:^2.0.0"
@@ -17902,7 +17902,7 @@ __metadata:
     konva: ^8.0.1 || ^7.2.5 || ^9.0.0 || ^10.0.0
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/7a7fa60d1e85d794be13bfab5890939f7adc39b29857118103de07bbe4b441281050376bf3e75d0bf6758d4a38dd04100d2a0686e855dc54a8845799cc5d99e6
+  checksum: 10c0/9698fd0799eb17aafab04540bbb46018a9bcdfb7fe26b9a072201c7db43c1625c742fc1a70fa59e7c2fec6c7604a2ebfb3f266d607bfb3ffbae1ea3447223927
   languageName: node
   linkType: hard
 
