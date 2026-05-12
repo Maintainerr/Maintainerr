@@ -249,12 +249,17 @@ describe('MetadataSettingsService', () => {
   });
 
   it('retries with the corrected id when lookup returns a different id', async () => {
-    const queryBuilder = createQueryBuilder([{ mediaServerId: 'stale-id' }]);
+    // #2853: pre-filter now requires a valid Jellyfin shape (32-char hex or
+    // 36-char dashed UUID), so the staged ids must look real or they get
+    // dropped before refreshItemMetadata is even called.
+    const staleId = 'a852a27afe324084ae66db579ee3ee18';
+    const correctId = 'e9b2dcaa-529c-426e-9433-5e9981f27f2e';
+    const queryBuilder = createQueryBuilder([{ mediaServerId: staleId }]);
     const refreshItemMetadata = jest
       .fn()
       .mockRejectedValueOnce(new Error('refresh failed'))
       .mockResolvedValueOnce(undefined);
-    const getMetadata = jest.fn().mockResolvedValue({ id: 'correct-id' });
+    const getMetadata = jest.fn().mockResolvedValue({ id: correctId });
 
     collectionMediaRepo.createQueryBuilder.mockReturnValue(
       queryBuilder as never,
@@ -270,12 +275,12 @@ describe('MetadataSettingsService', () => {
       retryFailedItemsWithMetadataLookup: true,
     });
 
-    expect(refreshItemMetadata).toHaveBeenNthCalledWith(1, 'stale-id');
-    expect(refreshItemMetadata).toHaveBeenNthCalledWith(2, 'correct-id');
-    expect(getMetadata).toHaveBeenCalledWith('stale-id');
+    expect(refreshItemMetadata).toHaveBeenNthCalledWith(1, staleId);
+    expect(refreshItemMetadata).toHaveBeenNthCalledWith(2, correctId);
+    expect(getMetadata).toHaveBeenCalledWith(staleId);
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        'verified item id correct-id after failure on stale-id',
+        `verified item id ${correctId} after failure on ${staleId}`,
       ),
     );
   });
