@@ -73,8 +73,16 @@ export function shouldRefreshMetadataItemId(
     return false;
   }
 
+  // Jellyfin Ids are always either 32-char unbroken hex or a 36-char dashed
+  // UUID. Anything else — truncated strings, garbage from migrations, the
+  // all-zero "empty Guid" — is rejected before the refresh request is issued
+  // so Jellyfin doesn't end up parsing the route as `Guid.Empty` and spamming
+  // `ProviderManager.StartProcessingRefreshQueue` with "Guid can't be empty"
+  // errors (#2853). The previous filter only rejected the all-zero Guid and
+  // pure-numeric (Plex-shaped) IDs, leaving every other malformed string to
+  // slip through.
   if (serverType === MediaServerType.JELLYFIN) {
-    return !isJellyfinEmptyGuid(value);
+    return isLikelyJellyfinId(value) && !isJellyfinEmptyGuid(value);
   }
 
   return true;

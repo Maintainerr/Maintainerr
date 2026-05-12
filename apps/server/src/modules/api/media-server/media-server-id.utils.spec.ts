@@ -129,5 +129,23 @@ describe('media-server-id.utils', () => {
         shouldRefreshMetadataItemId(MediaServerType.JELLYFIN, '12345'),
       ).toBe(false);
     });
+
+    // #2853: malformed strings used to slip through because the filter only
+    // rejected the all-zero Guid and Plex-shaped numeric IDs. Anything else
+    // — truncated UUIDs, non-hex garbage, fully-dashed but wrong-length — must
+    // now be rejected before Maintainerr sends it to Jellyfin's refresh queue.
+    it.each([
+      'abc',
+      'not-a-guid',
+      'a852a27afe324084ae66db579ee3ee1', // 31 chars (truncated hex)
+      'a852a27afe324084ae66db579ee3ee188', // 33 chars (oversized hex)
+      'e9b2dcaa-529c-426e-9433-5e9981f27f2', // 35 chars (truncated dashed UUID)
+      'e9b2dcaa-529c-426e-9433-5e9981f27f2ee', // 37 chars (oversized dashed UUID)
+      'gggggggg-gggg-gggg-gggg-gggggggggggg', // non-hex chars
+    ])('rejects malformed Jellyfin id %j', (value) => {
+      expect(shouldRefreshMetadataItemId(MediaServerType.JELLYFIN, value)).toBe(
+        false,
+      );
+    });
   });
 });
