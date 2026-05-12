@@ -1885,6 +1885,35 @@ describe('JellyfinAdapterService', () => {
           'jellyfin:collections:children:collection-1',
         );
       });
+
+      it('swallows deleteCollection failure when the collection is already gone (Jellyfin auto-delete race)', async () => {
+        jellyfinApiMocks.deleteItem.mockRejectedValueOnce(
+          createResponseError(500),
+        );
+        jellyfinApiMocks.getItem.mockRejectedValueOnce(
+          createResponseError(404),
+        );
+
+        await expect(
+          service.deleteCollection('collection-1'),
+        ).resolves.toBeUndefined();
+
+        expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+          'jellyfin:collections:children:collection-1',
+        );
+      });
+
+      it('rethrows deleteCollection failure when the collection still exists', async () => {
+        const serverError = createResponseError(500);
+        jellyfinApiMocks.deleteItem.mockRejectedValueOnce(serverError);
+        jellyfinApiMocks.getItem.mockResolvedValueOnce({
+          data: { Id: 'collection-1', Name: 'Still here' },
+        });
+
+        await expect(service.deleteCollection('collection-1')).rejects.toBe(
+          serverError,
+        );
+      });
     });
   });
 
