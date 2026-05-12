@@ -498,12 +498,14 @@ export class PlexApiService {
         },
       });
 
+      if (!response?.MediaContainer) {
+        this.logLibrarySectionError(id);
+        return undefined;
+      }
+
       return response.MediaContainer.totalSize;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(id, error);
       return undefined;
     }
   }
@@ -532,15 +534,17 @@ export class PlexApiService {
         useCache,
       );
 
+      if (!response?.MediaContainer) {
+        this.logLibrarySectionError(id);
+        return undefined;
+      }
+
       return {
         totalSize: response.MediaContainer.totalSize,
         items: (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [],
       };
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(id, error);
       return undefined;
     }
   }
@@ -557,12 +561,14 @@ export class PlexApiService {
         useCache,
       );
 
+      if (!response?.MediaContainer) {
+        this.logLibrarySectionError(id);
+        return undefined;
+      }
+
       return (response.MediaContainer.Metadata as PlexLibraryItem[]) ?? [];
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(id, error);
       return undefined;
     }
   }
@@ -583,12 +589,14 @@ export class PlexApiService {
         uri: `/library/sections/${id}/all?${params.toString()}`,
       });
 
+      if (!response?.MediaContainer) {
+        this.logLibrarySectionError(id);
+        return undefined;
+      }
+
       return response.MediaContainer.Metadata as PlexLibraryItem[];
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(id, error);
       return undefined;
     }
   }
@@ -717,12 +725,15 @@ export class PlexApiService {
           options.addedAt / 1000,
         )}`,
       });
+
+      if (!response?.MediaContainer) {
+        this.logLibrarySectionError(id);
+        return undefined;
+      }
+
       return response.MediaContainer.Metadata as PlexLibraryItem[];
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(id, error);
       return undefined;
     }
   }
@@ -754,15 +765,15 @@ export class PlexApiService {
       const response = await this.plexClient.queryAll<PlexLibraryResponse>({
         uri: `/library/sections/${libraryId}/collections?${subType ? `subtype=${subType}` : ''}`,
       });
-      const collection: PlexCollection[] = response.MediaContainer
-        .Metadata as PlexCollection[];
 
-      return collection;
+      if (!response?.MediaContainer) {
+        this.logLibrarySectionError(libraryId);
+        return undefined;
+      }
+
+      return response.MediaContainer.Metadata as PlexCollection[];
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(libraryId, error);
       return undefined;
     }
   }
@@ -879,10 +890,7 @@ export class PlexApiService {
       }
       return collection;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(params.libraryId, error);
       return undefined;
     }
   }
@@ -907,10 +915,7 @@ export class PlexApiService {
       await this.plexClient.putQuery({ uri });
       return await this.getCollection(+body.collectionId);
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
-      this.logger.debug(error);
+      this.logLibrarySectionError(body.libraryId, error);
       return undefined;
     }
   }
@@ -1107,6 +1112,32 @@ export class PlexApiService {
         'Plex api communication failure.. Is the application running?',
       ),
     };
+  }
+
+  private logLibrarySectionError(id: string | number, error?: unknown): void {
+    // Only 404 indicates a missing/renamed section. 401 and 403 share the
+    // same wrapper in lib/plexApi.ts but mean auth/permission failures, so
+    // those must fall through to the generic communication-failure log.
+    const status =
+      error instanceof Error
+        ? (error.cause as { response?: { status?: number } } | undefined)
+            ?.response?.status
+        : undefined;
+    const isInvalidSection = error === undefined || status === 404;
+
+    if (isInvalidSection) {
+      this.logger.warn(
+        `Plex library section '${id}' returned no data. The library may have been removed or its ID changed in Plex. Update any rules or collections that reference this library.`,
+      );
+    } else {
+      this.logger.error(
+        'Plex api communication failure.. Is the application running?',
+      );
+    }
+
+    if (error !== undefined) {
+      this.logger.debug(error);
+    }
   }
 
   private stringifyResponseBody(body: unknown): string | undefined {

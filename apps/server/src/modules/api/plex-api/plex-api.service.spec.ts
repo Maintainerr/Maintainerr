@@ -375,6 +375,114 @@ describe('PlexApiService.getMetadata', () => {
   });
 });
 
+describe('PlexApiService.getCollections (invalid section vs auth)', () => {
+  let service: PlexApiService;
+  let settingsService: PlexApiSettingsStub;
+  let logger: Mocked<MaintainerrLogger>;
+  let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+
+    service = unit;
+    settingsService = unitRef.get(
+      SettingsService,
+    ) as unknown as PlexApiSettingsStub;
+    logger = unitRef.get(MaintainerrLogger);
+    loggerFactory = unitRef.get(MaintainerrLoggerFactory);
+
+    settingsService.plex_hostname = 'plex.local';
+    settingsService.plex_port = 32400;
+    settingsService.plex_ssl = 0;
+    settingsService.plex_auth_token = 'token';
+    loggerFactory.createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as any);
+  });
+
+  it('warns about a stale section when Plex returns 200 with no MediaContainer', async () => {
+    (service as any).plexClient = {
+      queryAll: jest.fn().mockResolvedValue({}),
+    };
+
+    await expect(service.getCollections('42')).resolves.toBeUndefined();
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Plex library section '42' returned no data"),
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('warns about a stale section on a 404 response', async () => {
+    const wrapped = new Error(
+      'GET /library/sections/42/collections failed: not found',
+      { cause: { response: { status: 404 } } as any },
+    );
+    (service as any).plexClient = {
+      queryAll: jest.fn().mockRejectedValue(wrapped),
+    };
+
+    await expect(service.getCollections('42')).resolves.toBeUndefined();
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Plex library section '42' returned no data"),
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('emits the generic communication-failure error on a 401 auth failure', async () => {
+    const wrapped = new Error(
+      'GET /library/sections/42/collections failed: Plex Server denied request',
+      { cause: { response: { status: 401 } } as any },
+    );
+    (service as any).plexClient = {
+      queryAll: jest.fn().mockRejectedValue(wrapped),
+    };
+
+    await expect(service.getCollections('42')).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Plex api communication failure.. Is the application running?',
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('emits the generic communication-failure error on a 403 permission failure', async () => {
+    const wrapped = new Error(
+      'GET /library/sections/42/collections failed: managed user permissions',
+      { cause: { response: { status: 403 } } as any },
+    );
+    (service as any).plexClient = {
+      queryAll: jest.fn().mockRejectedValue(wrapped),
+    };
+
+    await expect(service.getCollections('42')).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Plex api communication failure.. Is the application running?',
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('emits the generic communication-failure error on a non-HTTP transport failure', async () => {
+    const wrapped = new Error('connect ECONNREFUSED');
+    (service as any).plexClient = {
+      queryAll: jest.fn().mockRejectedValue(wrapped),
+    };
+
+    await expect(service.getCollections('42')).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Plex api communication failure.. Is the application running?',
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+});
+
 describe('PlexApiService.initialize', () => {
   let service: PlexApiService;
   let settingsService: PlexApiSettingsStub;
