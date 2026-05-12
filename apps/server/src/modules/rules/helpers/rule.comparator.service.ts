@@ -21,6 +21,7 @@ import { ValueGetterService } from '../getter/getter.service';
 interface IComparatorReturnValue {
   stats: IComparisonStatistics[];
   data: MediaItem[];
+  transientFailureMediaIds: Set<string>;
 }
 
 @Injectable()
@@ -53,6 +54,7 @@ export class RuleComparatorService {
   private workerIds: Set<string>;
   private resultIds: Set<string>;
   private statsById: Map<string, IComparisonStatistics>;
+  private transientFailureIds: Set<string>;
 
   private static readonly UNARY_RULE_ACTIONS = new Set<RulePossibility>([
     RulePossibility.EXISTS,
@@ -86,6 +88,7 @@ export class RuleComparatorService {
       this.workerIds = new Set<string>();
       this.resultIds = new Set<string>();
       this.statsById = new Map<string, IComparisonStatistics>();
+      this.transientFailureIds = new Set<string>();
 
       // run rules
       let currentSection = 0;
@@ -141,7 +144,11 @@ export class RuleComparatorService {
       this.updateStatisticResults();
 
       // return comparatorReturnValue
-      return { stats: this.statistics, data: this.resultData };
+      return {
+        stats: this.statistics,
+        data: this.resultData,
+        transientFailureMediaIds: this.transientFailureIds,
+      };
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
@@ -221,9 +228,21 @@ export class RuleComparatorService {
         this.abortSignal?.throwIfAborted();
       }
 
+      const firstValTransient = firstVal === undefined;
+      const secondValTransient =
+        rule.lastVal != null && secondVal === undefined;
+      if (firstValTransient || secondValTransient) {
+        this.transientFailureIds.add(mediaId);
+      }
+
       const reasons = this.buildMissingReasons(rule, firstVal, secondVal);
+      // `undefined` from a getter is the documented transport-failure signal
+      // (outer catch in plex/seerr-getter); `null` is definitive absence.
+      // Skip unary EXISTS/NOT_EXISTS on transient `undefined` so it never
+      // resolves to `!hasExistsValue(undefined) === true` and spuriously
+      // adds the item (#1446).
       const shouldCompare = this.isUnaryRuleAction(rule.action)
-        ? true
+        ? !firstValTransient
         : firstVal != null && (secondVal != null || rule.lastVal != null);
 
       if (shouldCompare) {
