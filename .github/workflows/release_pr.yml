@@ -74,6 +74,14 @@ jobs:
   build-docker-image:
     needs: resolve-pr
     if: ${{ needs.resolve-pr.outputs.should_run == 'true' }}
+    # The `environment` gate requires a maintainer to manually approve before any
+    # code from the PR is checked out or executed. This closes the TOCTOU window
+    # that exists because `issue_comment` events carry no PR commit SHA — the SHA
+    # must be fetched from the API after the event fires, leaving a race where a
+    # collaborator could force-push between comment and SHA capture.
+    # Required setup: create a "release-builds" environment in repo Settings →
+    # Environments with at least one required reviewer.
+    environment: release-builds
     name: Build ${{ matrix.platform }}
     strategy:
       fail-fast: false
