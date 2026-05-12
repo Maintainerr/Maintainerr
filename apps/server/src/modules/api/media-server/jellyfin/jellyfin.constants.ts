@@ -17,6 +17,20 @@ export const JELLYFIN_BATCH_SIZE = {
   MAX_PAGE_SIZE: 500,
 } as const;
 
+/**
+ * Default query options for every library-scoped getItems() call — i.e.
+ * any call whose parentId is a library (or no parentId for a global recursive
+ * search) and that expects to surface real media items.
+ *
+ * collapseBoxSetItems: false always includes BoxSet members. Jellyfin libraries
+ * with "Group films into collections" hide them by default, which caused an
+ * add/remove loop on Maintainerr-managed BoxSets and silently under-counted
+ * library size/recent items (#2554).
+ */
+export const JELLYFIN_LIBRARY_QUERY_DEFAULTS = {
+  collapseBoxSetItems: false,
+} as const;
+
 export const JELLYFIN_LIBRARY_RETRY_DELAY_MS = 300;
 
 export const JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES = new Set([

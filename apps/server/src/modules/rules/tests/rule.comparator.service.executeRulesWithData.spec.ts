@@ -423,4 +423,144 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       result: true,
     });
   });
+
+  // Unary EXISTS/NOT_EXISTS must distinguish the getter's `null` (definitive
+  // absence — e.g. lastViewedAt for a never-watched item) from `undefined`
+  // (outer-catch transport failure in plex/seerr-getter). Without the
+  // tightened shouldCompare, `!hasExistsValue(undefined) === true` would
+  // spuriously add items on every transient API blip (#1446).
+  describe('unary EXISTS contract on null vs undefined', () => {
+    it('keeps NOT_EXISTS matching when firstVal is null (definitive absence)', async () => {
+      // Locks the existing semantic against the new shouldCompare branch.
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.NOT_EXISTS,
+          firstVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(null);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('skips unary NOT_EXISTS on transient undefined so the item is not spuriously added', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.NOT_EXISTS,
+          firstVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toEqual([]);
+    });
+  });
+
+  describe('transientFailureMediaIds', () => {
+    it('tracks firstVal undefined as a transient failure', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 31],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(true);
+    });
+
+    it('does not track firstVal null as a transient failure', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 31],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(null);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
+    });
+
+    it('tracks secondVal undefined when rule.lastVal is used', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 5],
+          lastVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(10, undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(true);
+    });
+
+    it('does not track customVal comparisons as second-value transients', async () => {
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 31],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(5);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
+    });
+  });
 });

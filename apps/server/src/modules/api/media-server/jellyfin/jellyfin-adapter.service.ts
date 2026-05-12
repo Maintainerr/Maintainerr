@@ -65,6 +65,7 @@ import {
   JELLYFIN_CACHE_TTL,
   JELLYFIN_CLIENT_INFO,
   JELLYFIN_DEVICE_INFO,
+  JELLYFIN_LIBRARY_QUERY_DEFAULTS,
   JELLYFIN_LIBRARY_RETRY_DELAY_MS,
   JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES,
   JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES,
@@ -414,6 +415,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // recursive getItems call spans the selected parent or the whole server.
       const parentId = sectionIds?.[0];
       const response = await getItemsApi(this.api).getItems({
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId,
         includeItemTypes: kinds,
@@ -686,6 +688,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       let page: Awaited<ReturnType<ReturnType<typeof getItemsApi>['getItems']>>;
       try {
         page = await getItemsApi(this.api!).getItems({
+          ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
           userId,
           parentId: library.id,
           recursive: true,
@@ -749,6 +752,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         `get Jellyfin library contents for ${libraryId}`,
         async () =>
           await getItemsApi(this.api!).getItems({
+            ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
             userId,
             parentId: libraryId,
             recursive: true,
@@ -792,6 +796,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId: libraryId,
         recursive: true,
@@ -818,6 +823,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId: libraryId,
         recursive: true,
@@ -970,6 +976,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId: libraryId,
         recursive: true,
@@ -1000,6 +1007,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         recursive: true,
         searchTerm: query,

@@ -519,6 +519,73 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  // Jellyfin libraries with "Group films into collections" hide BoxSet members
+  // unless the query opts out. Locks every library-scoped getItems call to the
+  // shared default so a Maintainerr-managed BoxSet does not flip movies in and
+  // out of library listings between rule runs (#2554).
+  describe('library queries opt out of BoxSet collapsing', () => {
+    beforeEach(async () => {
+      settingsService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      await service.initialize();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [], TotalRecordCount: 0 },
+      });
+    });
+
+    const expectCollapseFalse = () =>
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({ collapseBoxSetItems: false }),
+      );
+
+    it('getLibraryContents passes collapseBoxSetItems: false', async () => {
+      await service.getLibraryContents('library-1', { offset: 0, limit: 30 });
+      expectCollapseFalse();
+    });
+
+    it('getLibraryContentCount passes collapseBoxSetItems: false', async () => {
+      await service.getLibraryContentCount('library-1', 'movie');
+      expectCollapseFalse();
+    });
+
+    it('searchLibraryContents passes collapseBoxSetItems: false', async () => {
+      await service.searchLibraryContents('library-1', 'query', 'movie');
+      expectCollapseFalse();
+    });
+
+    it('getRecentlyAdded passes collapseBoxSetItems: false', async () => {
+      await service.getRecentlyAdded('library-1', { limit: 10 });
+      expectCollapseFalse();
+    });
+
+    it('searchContent passes collapseBoxSetItems: false', async () => {
+      await service.searchContent('query');
+      expectCollapseFalse();
+    });
+
+    it('findRandomItem passes collapseBoxSetItems: false', async () => {
+      await service.findRandomItem(['library-1'], ['Movie' as any]);
+      expectCollapseFalse();
+    });
+
+    it('computeLibraryStorageSizes passes collapseBoxSetItems: false', async () => {
+      jellyfinApiMocks.getMediaFolders.mockResolvedValueOnce({
+        data: {
+          Items: [
+            { Id: 'library-1', Name: 'Movies', CollectionType: 'movies' },
+          ],
+        },
+      });
+      jellyfinApiMocks.getItems.mockResolvedValueOnce({
+        data: { Items: [], TotalRecordCount: 0 },
+      });
+      await service.computeLibraryStorageSizes();
+      expectCollapseFalse();
+    });
+  });
+
   describe('getLibraries', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(

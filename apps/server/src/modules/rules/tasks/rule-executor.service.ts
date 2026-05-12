@@ -92,6 +92,7 @@ export class RuleExecutorService {
   workerData: MediaItem[];
   resultData: MediaItem[];
   statisticsData: IComparisonStatistics[];
+  transientFailureMediaIds: Set<string> = new Set<string>();
   Data: MediaItem[];
   startTime: Date;
 
@@ -237,6 +238,7 @@ export class RuleExecutorService {
         this.workerData = [];
         this.resultData = [];
         this.statisticsData = [];
+        this.transientFailureMediaIds = new Set<string>();
         this.mediaData = { page: 0, finished: false, data: [] };
 
         this.mediaDataType = ruleGroup.dataType || undefined;
@@ -260,6 +262,9 @@ export class RuleExecutorService {
           if (ruleResult) {
             this.statisticsData.push(...ruleResult.stats);
             this.resultData.push(...ruleResult.data);
+            for (const id of ruleResult.transientFailureMediaIds) {
+              this.transientFailureMediaIds.add(id);
+            }
           }
         }
 
@@ -721,10 +726,28 @@ export class RuleExecutorService {
         );
 
         const mediaToRemove: string[] = [];
+        let preservedTransientRemovalCount = 0;
         for (const mediaServerId of currentMediaServerIds) {
-          if (!desiredMediaServerIds.has(mediaServerId)) {
-            mediaToRemove.push(mediaServerId);
+          if (desiredMediaServerIds.has(mediaServerId)) {
+            continue;
           }
+          if (this.transientFailureMediaIds.has(mediaServerId)) {
+            preservedTransientRemovalCount++;
+            continue;
+          }
+          mediaToRemove.push(mediaServerId);
+        }
+
+        if (preservedTransientRemovalCount > 0) {
+          this.logger.debug(
+            `Skipped rule-driven removal for ${preservedTransientRemovalCount} media item${
+              preservedTransientRemovalCount === 1 ? '' : 's'
+            } in '${
+              collection.manualCollection
+                ? collection.manualCollectionName
+                : collection.title
+            }' because rule data was transiently unavailable this run; will retry next pass.`,
+          );
         }
 
         const dataToRemove: CollectionMediaChange[] = this.prepareDataAmendment(
