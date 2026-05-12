@@ -1431,14 +1431,22 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
-      // libraryId not known here; clear all per-library entries.
-      this.invalidateCollectionsCache();
-      this.invalidateCollectionChildrenCache(collectionId);
     } catch (error) {
-      this.logger.error(`Failed to delete collection ${collectionId}`);
-      this.logger.debug(error);
-      throw error;
+      // Jellyfin auto-deletes empty BoxSets — this races with our explicit
+      // delete and 404/500s once the item is gone. Re-check and swallow if so.
+      if (await this.getCollection(collectionId).then(Boolean)) {
+        this.logger.error(`Failed to delete collection ${collectionId}`);
+        this.logger.debug(error);
+        // Throw before the cache invalidation below — the collection still
+        // exists, so cached entries are still valid.
+        throw error;
+      }
+      this.logger.debug(`Jellyfin collection ${collectionId} already gone`);
     }
+
+    // libraryId not known here; clear all per-library entries.
+    this.invalidateCollectionsCache();
+    this.invalidateCollectionChildrenCache(collectionId);
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {

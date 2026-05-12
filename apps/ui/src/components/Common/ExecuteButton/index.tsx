@@ -6,6 +6,7 @@ interface IExecuteButton {
   onClick: () => void
   executing?: boolean
   disabled?: boolean
+  title?: string
 }
 
 const ExecuteButton = (props: IExecuteButton) => {
@@ -14,6 +15,7 @@ const ExecuteButton = (props: IExecuteButton) => {
       className="edit-button m-auto flex h-9 rounded text-zinc-200 shadow-md"
       onClick={props.onClick}
       disabled={props.disabled}
+      title={props.title}
     >
       {props.executing ? (
         <SmallLoadingSpinner className="m-auto ml-2 h-5" />
