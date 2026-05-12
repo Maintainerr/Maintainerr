@@ -3163,7 +3163,7 @@ __metadata:
     eslint-plugin-react: "npm:^7.37.5"
     eslint-plugin-react-hooks: "npm:^7.1.1"
     jsdom: "npm:^29.1.1"
-    konva: "npm:^10.2.3"
+    konva: "npm:^10.3.0"
     lodash-es: "npm:^4.18.1"
     monaco-editor: "npm:0.55.1"
     postcss: "npm:^8.5.14"
@@ -14180,10 +14180,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"konva@npm:^10.2.3":
-  version: 10.2.5
-  resolution: "konva@npm:10.2.5"
-  checksum: 10c0/5233d9d26632fe48cb7e9b0ce2b9bf5c8bea580cb9afb4065bd2fc09734836b49c8bfb2ee40659f0289e720363eaee023fe3205d8717fd9279035b66dca12e8e
+"konva@npm:^10.3.0":
+  version: 10.3.0
+  resolution: "konva@npm:10.3.0"
+  checksum: 10c0/f97bf5b370633b97e8860209f3248f0641cd88116036c0ec8c1c1227c9e988e500ef07482fc6677300e066312841fe1851119eafcfcdf93c0e747b958582bef0
   languageName: node
   linkType: hard
 
