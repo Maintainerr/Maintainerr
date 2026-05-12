@@ -1825,13 +1825,21 @@ const AddModal = (props: AddModal) => {
           title="Disabling this rule group"
           size="md"
           backgroundClickable={false}
-          cancelText="Got it"
-          cancelButtonType="primary"
-          onCancel={() => {
-            const data = pendingDisableSubmit
-            setPendingDisableSubmit(null)
-            void performSubmit(data)
-          }}
+          onCancel={() => setPendingDisableSubmit(null)}
+          cancelText="Cancel"
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => {
+                const data = pendingDisableSubmit
+                setPendingDisableSubmit(null)
+                void performSubmit(data)
+              }}
+            >
+              Got it
+            </Button>
+          }
         >
           <p>
             Disabling won&apos;t remove items already tracked by this rule
