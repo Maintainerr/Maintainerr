@@ -1,16 +1,15 @@
-// One-off mirror: copy open GitHub issues labelled `enhancement` (excluding
-// any authored by a CODEOWNER, so internal refactors stay on GitHub) to the
-// public Fider feature board, then close the GitHub issue with a comment
-// linking to the new Fider post.
+// Weekly sweep: copy open GitHub issues labelled `enhancement` (excluding any
+// authored by a CODEOWNER, so internal refactors stay on GitHub) to the public
+// Fider feature board, then close the GitHub issue with a comment linking to
+// the new Fider post.
 //
-// Run via:
-//   FIDER_HOST=... FIDER_API_KEY=... GITHUB_TOKEN=... GITHUB_REPOSITORY=owner/repo \
-//   DRY_RUN=true node tools/fider-mirror-enhancements.mjs
+// Idempotent: each Fider post embeds an HTML-comment marker tying it back to
+// the source issue. The next run scans every Fider post (any status, both
+// views) for those markers and skips anything already mirrored — even if the
+// GitHub issue was reopened or relabelled in the meantime.
 //
-// Defaults to dry-run. Set DRY_RUN=false to actually create posts and close
-// issues. Idempotent: each Fider post embeds an HTML-comment marker tying it
-// back to the source issue, so re-runs skip anything already mirrored — even
-// if the GitHub issue was reopened in the meantime.
+// DRY_RUN defaults to true for safety when invoked outside the workflow; the
+// scheduled workflow always sets it explicitly.
 
 import { readFileSync } from 'node:fs';
 import { createFider } from './fider-shared.mjs';
@@ -26,7 +25,7 @@ const {
 } = process.env;
 
 const dryRun = DRY_RUN !== 'false';
-const log = (msg) => process.stderr.write(`[fider-mirror] ${msg}\n`);
+const log = (msg) => process.stderr.write(`[fider-move] ${msg}\n`);
 
 const requireEnv = () => {
   const missing = [];
