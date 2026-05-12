@@ -92,15 +92,7 @@ export class RuleExecutorService {
   workerData: MediaItem[];
   resultData: MediaItem[];
   statisticsData: IComparisonStatistics[];
-  // Union of media ids whose evaluation hit a getter that returned
-  // `undefined` (transient transport failure) on any chunk in this run.
-  // Used as the gate on rule-driven removal so a brief blip on an
-  // external API (Plex watch history, plex.tv users, Seerr, etc.) does
-  // not silently restart the deleteAfterDays countdown (#1446). Default
-  // to an empty set so direct calls into handleCollection() (in tests
-  // and any future call paths that bypass executeForRuleGroups) never
-  // dereference undefined.
-  transientFailureMediaIds: Set<string> = new Set();
+  transientFailureMediaIds: Set<string> = new Set<string>();
   Data: MediaItem[];
   startTime: Date;
 
@@ -270,9 +262,6 @@ export class RuleExecutorService {
           if (ruleResult) {
             this.statisticsData.push(...ruleResult.stats);
             this.resultData.push(...ruleResult.data);
-            // The comparator returns transient ids per chunk. Union them so the
-            // removal gate in handleCollection() sees every item that had a
-            // transient failure anywhere in the run — not just the last chunk.
             for (const id of ruleResult.transientFailureMediaIds) {
               this.transientFailureMediaIds.add(id);
             }
@@ -736,33 +725,28 @@ export class RuleExecutorService {
           }),
         );
 
-        // Defer rule-driven removal when the only reason an item dropped out
-        // of `desiredMediaServerIds` is a transient getter failure (the
-        // documented `=== undefined` outer-catch return from plex/seerr-getter).
-        // Without this, a brief external-API blip restarts the deleteAfterDays
-        // countdown on every affected item and the destructive Servarr action
-        // never fires (#1446). The signal is strict-undefined only; legitimate
-        // `null` (never-watched, never-released, no Seerr request) still
-        // removes normally.
         const mediaToRemove: string[] = [];
-        let preservedDueToTransientFailureCount = 0;
+        let preservedTransientRemovalCount = 0;
         for (const mediaServerId of currentMediaServerIds) {
-          if (desiredMediaServerIds.has(mediaServerId)) continue;
+          if (desiredMediaServerIds.has(mediaServerId)) {
+            continue;
+          }
           if (this.transientFailureMediaIds.has(mediaServerId)) {
-            preservedDueToTransientFailureCount++;
+            preservedTransientRemovalCount++;
             continue;
           }
           mediaToRemove.push(mediaServerId);
         }
-        if (preservedDueToTransientFailureCount > 0) {
-          this.logger.log(
-            `Preserved ${preservedDueToTransientFailureCount} media item${
-              preservedDueToTransientFailureCount === 1 ? '' : 's'
+
+        if (preservedTransientRemovalCount > 0) {
+          this.logger.debug(
+            `Skipped rule-driven removal for ${preservedTransientRemovalCount} media item${
+              preservedTransientRemovalCount === 1 ? '' : 's'
             } in '${
               collection.manualCollection
                 ? collection.manualCollectionName
                 : collection.title
-            }' because rule data was unfetchable this run; will retry next pass.`,
+            }' because rule data was transiently unavailable this run; will retry next pass.`,
           );
         }
 

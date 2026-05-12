@@ -21,11 +21,6 @@ import { ValueGetterService } from '../getter/getter.service';
 interface IComparatorReturnValue {
   stats: IComparisonStatistics[];
   data: MediaItem[];
-  // Items whose evaluation hit a getter that returned `undefined` — the
-  // documented "transport failure" signal (see plex/seerr-getter outer
-  // catches). Distinct from `null` (definitive absence). The executor
-  // uses this set to defer rule-driven removal so a brief external-API
-  // blip does not break the deleteAfterDays countdown (#1446).
   transientFailureMediaIds: Set<string>;
 }
 
@@ -233,13 +228,6 @@ export class RuleComparatorService {
         this.abortSignal?.throwIfAborted();
       }
 
-      // Distinguish transient transport failure (`=== undefined`, returned by
-      // the outer catch in plex/seerr-getter) from definitive absence (`null`,
-      // e.g. lastViewedAt for a never-watched item). The executor uses
-      // `transientFailureIds` to defer rule-driven removal on transient
-      // failures; the comparator also skips unary EXISTS/NOT_EXISTS on a
-      // transient `undefined` so it never resolves to `!hasExistsValue(undefined)
-      // === true` and spuriously **adds** the item (#1446).
       const firstValTransient = firstVal === undefined;
       const secondValTransient =
         rule.lastVal != null && secondVal === undefined;
@@ -248,6 +236,11 @@ export class RuleComparatorService {
       }
 
       const reasons = this.buildMissingReasons(rule, firstVal, secondVal);
+      // `undefined` from a getter is the documented transport-failure signal
+      // (outer catch in plex/seerr-getter); `null` is definitive absence.
+      // Skip unary EXISTS/NOT_EXISTS on transient `undefined` so it never
+      // resolves to `!hasExistsValue(undefined) === true` and spuriously
+      // adds the item (#1446).
       const shouldCompare = this.isUnaryRuleAction(rule.action)
         ? !firstValTransient
         : firstVal != null && (secondVal != null || rule.lastVal != null);
