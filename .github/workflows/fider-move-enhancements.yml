@@ -31,6 +31,8 @@ jobs:
   move:
     needs: guard_manual_run
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Create GitHub App token
         id: app-token
