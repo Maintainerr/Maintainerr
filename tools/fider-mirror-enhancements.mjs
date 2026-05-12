@@ -128,7 +128,7 @@ const buildFiderDescription = (issue) => {
 };
 
 const buildClosingComment = (fiderUrl) =>
-  `This feature request has been migrated to the Maintainerr feature board, where it can be discussed and voted on:\n\n${fiderUrl}\n\nClosing in favour of the Fider post — future activity (votes, status updates, comments) will happen there.`;
+  `Thanks for the request! Feature ideas now live on the Maintainerr feature board, which is the proper place for them:\n\n${fiderUrl}\n\nHead over to follow progress, vote, and join the discussion — community votes help us prioritise what to build next. Closing here; this request continues on Fider.`;
 
 const mirrorOne = async (issue) => {
   const issueRef = `${GITHUB_REPOSITORY}#${issue.number}`;
@@ -160,7 +160,7 @@ const mirrorOne = async (issue) => {
   });
   await ghApi(`/repos/${GITHUB_REPOSITORY}/issues/${issue.number}`, {
     method: 'PATCH',
-    body: JSON.stringify({ state: 'closed', state_reason: 'not_planned' }),
+    body: JSON.stringify({ state: 'closed' }),
   });
   log(`closed ${issueRef} with link to Fider post ${postNumber}`);
   return { ok: true, fiderUrl };
