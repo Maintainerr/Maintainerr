@@ -1,3 +1,5 @@
+# [3.11.1](https://github.com/Maintainerr/Maintainerr/compare/v3.11.0...v3.11.1) (2026-05-12)
+
 ## Highlights
 
 - Fixed an issue where Jellyfin libraries with "Group films into collections" enabled caused BoxSet members to incorrectly toggle in and out of rule results (#2870).
@@ -21,6 +23,8 @@
 ## New Contributors
 
 - @blixten85 made their first contribution in #2881
+
+# [3.11.0](https://github.com/Maintainerr/Maintainerr/compare/v3.10.2...v3.11.0) (2026-05-11)
 
 ## Highlights
 
@@ -62,10 +66,14 @@
 
 - Updated 5 dependencies, including notable updates to TypeScript and typescript-eslint.
 
+# [3.10.2](https://github.com/Maintainerr/Maintainerr/compare/v3.10.1...v3.10.2) (2026-05-08)
+
 ## Highlights
 
 - Fixed incorrect version comparison logic that caused update notifications to fail for multi-digit version segments (#2838).
 - Improved storage metrics by deduplicating reclaimable bytes and adding per-type cleanup byte counters (#2833).
+
+# [3.10.1](https://github.com/Maintainerr/Maintainerr/compare/v3.10.0...v3.10.1) (2026-05-03)
 
 ## Fixes
 
@@ -91,6 +99,8 @@
 ## Dependencies
 
 - Updated 6 dependencies, including notable upgrades to `axios`, `@tanstack/react-query`, and `zod`.
+
+# [3.10.0](https://github.com/Maintainerr/Maintainerr/compare/v3.9.0...v3.10.0) (2026-04-30)
 
 ## Highlights
 
@@ -122,6 +132,8 @@
 ## Dependencies
 
 - Updated 3 dependencies, including `rolldown`, `@tanstack/eslint-plugin-query`, and `knip`.
+
+# [3.9.0](https://github.com/Maintainerr/Maintainerr/compare/v3.8.0...v3.9.0) (2026-04-29)
 
 ## Highlights
 
