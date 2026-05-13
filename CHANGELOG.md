@@ -1,4 +1,21 @@
 ## Highlights
+- Fixed an issue where Jellyfin libraries with "Group films into collections" enabled caused BoxSet members to incorrectly toggle in and out of rule results (#2870).
+- Improved error message for invalid Plex library section IDs to better guide users in resolving configuration issues (#2883).
+- Enhanced custom collection UX by renaming tags for clarity and adding tooltips to explain collection handling options (#2882).
+
+## Fixes
+- Validated Jellyfin IDs before refresh to prevent errors (#2853).
+- Improved error message when Plex library section ID is invalid (#2883).
+- Resolved Jellyfin collection add/remove loop for BoxSet items (#2870).
+- Clarified custom collection terminology and added warnings for disabling collection handling (#2882).
+- Added explicit token permissions to the Fider move job to address CodeQL findings.
+- Added environment gate to mitigate TOCTOU vulnerability in the release_pr workflow (#2879).
+- Addressed transitive dependency vulnerabilities by adding Yarn resolutions for specific packages (#2881).
+
+## Dependencies
+- Updated 10 dependencies, including notable packages: vite, typeorm, and @typescript-eslint/eslint-plugin.
+
+## Highlights
 - Added support for force-processing overlays and gated reset operations against concurrent processing runs (#2827).
 - Improved collection sorting: collections now apply sort order on save and synchronize with the media server (#2860).
 - Enhanced storage metrics: potential reclaimable storage is now split into movie, show, season, and episode panels (#2854).
