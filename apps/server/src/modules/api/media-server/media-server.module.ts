@@ -36,7 +36,7 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Exclusion, CollectionMedia, RuleGroup]),
-    forwardRef(() => PlexApiModule),
+    PlexApiModule,
     forwardRef(() => SettingsModule),
     JellyfinModule,
   ],
