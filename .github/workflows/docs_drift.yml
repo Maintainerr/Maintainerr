@@ -183,15 +183,24 @@ jobs:
 
           Open a PR on Maintainerr_docs that addresses this drift report, following these rules:
 
-          - **Always work from local clones, not github.com web views (they can be cached or truncated). Clone `Maintainerr/Maintainerr` and `Maintainerr/Maintainerr_docs` before anything else.**
-          - **Read complete files, not excerpts or partial reads.** Coverage you would otherwise miss often sits past the first screenful — read each doc file and each commit diff end-to-end.
-          - **Source of truth:** the upstream Maintainerr commits and file diffs listed above. Use the prose summary as guidance, but always confirm against the local clone (`git show <sha>`) before editing.
-          - **Skip what's already documented:** read the current `main` branch of Maintainerr_docs and the most recent merged docs PRs first. If something is already covered, do not re-document it.
-          - **Minimal edits only:** make only the doc updates that are still missing for the Next release. No speculative additions, no broad rewrites.
-          - **Doc-only changes:** restrict edits to files under `docs/` and `static/openapi-spec/`. Do not touch sidebars, config, or unrelated assets unless strictly required by a doc edit.
+          - **Always work from local clones, not github.com web views (they can be cached or truncated).
+            Clone `Maintainerr/Maintainerr` and `Maintainerr/Maintainerr_docs` before anything else.**
+          - **Read complete files, not excerpts or partial reads.** Coverage you would otherwise miss often
+            sits past the first screenful — read each doc file and each commit diff end-to-end.
+          - **Source of truth:** the upstream Maintainerr commits and file diffs listed above.
+            Use the prose summary as guidance, but always confirm against the local clone
+            (`git show <sha>`) before editing.
+          - **Skip what's already documented:** read the current `main` branch of Maintainerr_docs
+            and the most recent merged docs PRs first. If something is already covered, do not
+            re-document it.
+          - **Minimal edits only:** make only the doc updates that are still missing for the Next
+            release. No speculative additions, no broad rewrites.
+          - **Doc-only changes:** restrict edits to files under `docs/` and `static/openapi-spec/`.
+            Do not touch sidebars, config, or unrelated assets unless strictly required by a doc edit.
           - **PR description structure:**
             1. **What was added** — one short bullet per doc edit, citing the upstream commit or PR.
-            2. **Already covered by prior PRs** — list anything from this drift that earlier merged docs PRs already documented, so reviewers can confirm it's intentionally skipped.
+            2. **Already covered by prior PRs** — list anything from this drift that earlier merged
+               docs PRs already documented, so reviewers can confirm it's intentionally skipped.
           - Keep the PR focused and tied to the actual code diff rather than the issue summary alone.
           EOF
 
