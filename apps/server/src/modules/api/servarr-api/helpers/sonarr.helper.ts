@@ -105,9 +105,15 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
+  // Intentionally uncached: this endpoint is read straight after mutations
+  // (unmonitor + file deletes) by the empty-show cleanup, and also drives
+  // rule evaluation — both need Sonarr's current truth, not a snapshot that
+  // can be up to DEFAULT_TTL stale (see issue #2757 / #2891).
   public async getSeriesByTvdbId(id: number): Promise<SonarrSeries> {
     try {
-      const response = await this.get<SonarrSeries[]>(`/series?tvdbId=${id}`);
+      const response = await this.getWithoutCache<SonarrSeries[]>(
+        `/series?tvdbId=${id}`,
+      );
 
       if (!response?.[0]) {
         this.logger.warn(`Could not retrieve show by tvdb ID ${id}`);
