@@ -33,17 +33,19 @@ describe('RadarrApi', () => {
       year: 2024,
     });
 
-    jest.spyOn(api, 'get').mockImplementation(async (endpoint) => {
-      if (endpoint === 'movie/5') {
-        return movie;
-      }
+    jest
+      .spyOn(api, 'getWithoutCache')
+      .mockImplementation(async (endpoint) => {
+        if (endpoint === 'movie/5') {
+          return movie;
+        }
 
-      if (endpoint === 'moviefile?movieId=5') {
-        return [createRadarrMovieFile()];
-      }
+        if (endpoint === 'moviefile?movieId=5') {
+          return [createRadarrMovieFile()];
+        }
 
-      return undefined;
-    });
+        return undefined;
+      });
 
     jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
     jest.spyOn(api as any, 'runDelete').mockResolvedValue(true);
@@ -60,6 +62,44 @@ describe('RadarrApi', () => {
       tmdbId: movie.tmdbId,
       movieTitle: movie.title,
       movieYear: movie.year,
+    });
+  });
+
+  describe('cache coherency', () => {
+    it('getMovieByTmdbId reads uncached so post-mutation state is never stale', async () => {
+      const movie = createRadarrMovie({ id: 5, tmdbId: 123 });
+      const getSpy = jest
+        .spyOn(api, 'get')
+        .mockResolvedValue(undefined as never);
+      const getWithoutCacheSpy = jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValue([movie]);
+
+      await api.getMovieByTmdbId(123);
+
+      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/movie?tmdbId=123');
+      expect(getSpy).not.toHaveBeenCalled();
+    });
+
+    it('updateMovie reads the movie uncached before its read-modify-write', async () => {
+      const movie = createRadarrMovie({ id: 5, tmdbId: 123, monitored: true });
+      const getSpy = jest
+        .spyOn(api, 'get')
+        .mockResolvedValue(undefined as never);
+      jest.spyOn(api, 'getWithoutCache').mockResolvedValue(movie);
+      const runPutSpy = jest
+        .spyOn(api as any, 'runPut')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false }),
+      ).resolves.toBe(true);
+
+      expect(getSpy).not.toHaveBeenCalled();
+      expect(runPutSpy).toHaveBeenCalledWith(
+        'movie/5',
+        JSON.stringify({ ...movie, monitored: false }),
+      );
     });
   });
 });
