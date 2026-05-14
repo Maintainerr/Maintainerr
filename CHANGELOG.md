@@ -1,3 +1,14 @@
+## Fixes
+- Fixed an issue in Sonarr where the "Unmonitor and delete season + delete show if empty" action failed to delete the now-empty show after removing a season's files (#2897).
+
+## Internal
+- Restored missing release headers in changelog.
+- Backfilled missing new contributor in release notes.
+- Added `open_pr` input to the `docs-drift` workflow for drafting documentation PRs.
+
+## Dependencies
+- Updated 4 dependencies, including notable packages: @tanstack/eslint-plugin-query, zod, and jest.
+
 # [3.11.1](https://github.com/Maintainerr/Maintainerr/compare/v3.11.0...v3.11.1) (2026-05-12)
 
 ## Highlights
