@@ -479,16 +479,23 @@ export class SonarrActionHandler {
       return;
     }
 
-    if (!this.isShowEmptyAndEnded(series, 'monitored')) {
+    // No-Seerr fallback. The file gate above already proved the show has no
+    // episode files; `ended` confirms no further episodes are coming. We do
+    // NOT additionally require every season to be unmonitored: Sonarr carries
+    // every TVDB season on the series, including ones the user never
+    // downloaded, and those stay monitored forever — which would block
+    // deletion of a genuinely empty, ended show indefinitely (issue #2757 /
+    // #2891: e.g. a show where the user only ever had seasons 1-4).
+    if (series.status !== 'ended') {
       this.logger.debug(
-        `[Sonarr] Show '${series.title}' is not ended with all seasons unmonitored (status=${series.status}) - skipping show deletion`,
+        `[Sonarr] Show '${series.title}' has no episode files but is not ended (status=${series.status}) - skipping show deletion`,
       );
       return;
     }
 
     await sonarrApiClient.deleteShow(series.id, true, listExclusions);
     this.logger.log(
-      `[Sonarr] Show '${series.title}' is ended with no files or monitored seasons remaining - deleted from Sonarr`,
+      `[Sonarr] Show '${series.title}' is ended with no episode files remaining - deleted from Sonarr`,
     );
   }
 

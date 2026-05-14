@@ -495,6 +495,61 @@ describe('SonarrActionHandler', () => {
     );
   });
 
+  // Regression for issues #2757 / #2891. Sonarr carries every TVDB season on
+  // the series, including ones the user never downloaded; those stay
+  // monitored forever. The no-Seerr fallback must not require every season to
+  // be unmonitored — an ended show with zero episode files is deletable even
+  // when later (never-downloaded) seasons are still monitored.
+  it('should delete ended show with no episode files when Seerr is not configured even if later seasons remain monitored', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    seerrApi.isConfigured.mockReturnValue(false);
+
+    const series = createSonarrSeries({
+      id: 42,
+      status: 'ended',
+      seasons: [
+        { seasonNumber: 0, monitored: true },
+        { seasonNumber: 1, monitored: false },
+        { seasonNumber: 2, monitored: false },
+        { seasonNumber: 3, monitored: false },
+        { seasonNumber: 4, monitored: false },
+        { seasonNumber: 5, monitored: true },
+        { seasonNumber: 6, monitored: true },
+      ],
+      statistics: {
+        seasonCount: 6,
+        episodeFileCount: 0,
+        episodeCount: 100,
+        totalEpisodeCount: 100,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      series.id,
+      true,
+      collection.listExclusions,
+    );
+  });
+
   it.each([
     ServarrAction.DELETE_SHOW_IF_EMPTY,
     ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
