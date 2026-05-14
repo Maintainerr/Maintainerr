@@ -514,7 +514,7 @@ export class SonarrActionHandler {
 
     if (!this.isShowEmptyAndEnded(series, 'monitored')) {
       this.logger.debug(
-        `[Sonarr] Show '${series.title}' is not ended with all seasons unmonitored (status=${series.status}) - skipping show unmonitor`,
+        `[Sonarr] Show '${series.title}' is not ended or still has monitored seasons with files (status=${series.status}) - skipping show unmonitor`,
       );
       return;
     }
@@ -553,6 +553,14 @@ export class SonarrActionHandler {
       return (series.statistics?.episodeFileCount ?? 0) === 0;
     }
 
-    return series.seasons.every((season) => !season.monitored);
+    // 'monitored': the show counts as empty once no season is still both
+    // monitored AND holding files. Seasons the user never downloaded stay
+    // monitored on the series object indefinitely (Sonarr carries every TVDB
+    // season) and have zero files — they must not count as monitored content,
+    // or a genuinely finished show could never be unmonitored (#2757 / #2891).
+    return series.seasons.every(
+      (season) =>
+        !season.monitored || (season.statistics?.episodeFileCount ?? 0) === 0,
+    );
   }
 }

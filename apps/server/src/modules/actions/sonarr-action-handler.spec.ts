@@ -76,6 +76,17 @@ describe('SonarrActionHandler', () => {
     mediaServer.getMetadata.mockResolvedValue(mediaData);
   };
 
+  // Per-season Sonarr statistics; defaults to an empty (never-downloaded)
+  // season, override episodeFileCount for seasons that hold files.
+  const emptySeasonStats = (overrides: { episodeFileCount?: number } = {}) => ({
+    episodeFileCount: 0,
+    episodeCount: 0,
+    totalEpisodeCount: 0,
+    sizeOnDisk: 0,
+    percentOfEpisodes: 0,
+    ...overrides,
+  });
+
   it.each([
     { type: 'season', title: 'SEASONS' },
     {
@@ -630,6 +641,105 @@ describe('SonarrActionHandler', () => {
         monitored: false,
       }),
     );
+  });
+
+  // Regression for issues #2757 / #2891 on the unmonitor-show path. Sonarr
+  // carries every TVDB season on the series; seasons the user never
+  // downloaded stay monitored with zero files. They must not count as
+  // "monitored content" or a finished show could never be unmonitored.
+  it('should unmonitor ended show even if never-downloaded seasons remain monitored', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries({
+      id: 42,
+      monitored: true,
+      status: 'ended',
+      seasons: [
+        // specials + never-downloaded later seasons: monitored, zero files
+        { seasonNumber: 0, monitored: true, statistics: emptySeasonStats() },
+        // processed seasons: unmonitored, files kept by the UNMONITOR action
+        {
+          seasonNumber: 1,
+          monitored: false,
+          statistics: emptySeasonStats({ episodeFileCount: 20 }),
+        },
+        {
+          seasonNumber: 2,
+          monitored: false,
+          statistics: emptySeasonStats({ episodeFileCount: 22 }),
+        },
+        { seasonNumber: 3, monitored: true, statistics: emptySeasonStats() },
+        { seasonNumber: 4, monitored: true, statistics: emptySeasonStats() },
+      ],
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.updateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: series.id,
+        monitored: false,
+      }),
+    );
+  });
+
+  // A season that is still monitored AND holds files means the user is not
+  // done with the show — it must not be unmonitored.
+  it('should not unmonitor show when a monitored season still has files', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries({
+      id: 42,
+      monitored: true,
+      status: 'ended',
+      seasons: [
+        { seasonNumber: 0, monitored: false, statistics: emptySeasonStats() },
+        {
+          seasonNumber: 1,
+          monitored: false,
+          statistics: emptySeasonStats({ episodeFileCount: 20 }),
+        },
+        {
+          seasonNumber: 2,
+          monitored: true,
+          statistics: emptySeasonStats({ episodeFileCount: 22 }),
+        },
+      ],
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
   });
 
   it('should unmonitor and delete episode when type EPISODES and action DELETE', async () => {
