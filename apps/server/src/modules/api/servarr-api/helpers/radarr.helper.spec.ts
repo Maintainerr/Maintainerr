@@ -33,19 +33,17 @@ describe('RadarrApi', () => {
       year: 2024,
     });
 
-    jest
-      .spyOn(api, 'getWithoutCache')
-      .mockImplementation(async (endpoint) => {
-        if (endpoint === 'movie/5') {
-          return movie;
-        }
+    jest.spyOn(api, 'getWithoutCache').mockImplementation(async (endpoint) => {
+      if (endpoint === 'movie/5') {
+        return movie;
+      }
 
-        if (endpoint === 'moviefile?movieId=5') {
-          return [createRadarrMovieFile()];
-        }
+      if (endpoint === 'moviefile?movieId=5') {
+        return [createRadarrMovieFile()];
+      }
 
-        return undefined;
-      });
+      return undefined;
+    });
 
     jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
     jest.spyOn(api as any, 'runDelete').mockResolvedValue(true);
@@ -91,9 +89,9 @@ describe('RadarrApi', () => {
         .spyOn(api as any, 'runPut')
         .mockResolvedValue(true);
 
-      await expect(
-        api.updateMovie(5, { monitored: false }),
-      ).resolves.toBe(true);
+      await expect(api.updateMovie(5, { monitored: false })).resolves.toBe(
+        true,
+      );
 
       expect(getSpy).not.toHaveBeenCalled();
       expect(runPutSpy).toHaveBeenCalledWith(
