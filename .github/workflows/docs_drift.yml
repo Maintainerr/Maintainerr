@@ -126,6 +126,7 @@ jobs:
           DOCS_ROOT: ${{ github.workspace }}/.maintainerr_docs
           BASE_REF: ${{ steps.base.outputs.ref }}
           OUTPUT_PATH: ${{ github.workspace }}/.drift-report.md
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: node tools/docs-drift.mjs
 
       - name: Append AI suggestions for documentation-labeled PRs
