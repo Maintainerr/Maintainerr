@@ -17,6 +17,11 @@ on:
         type: boolean
         required: false
         default: false
+      open_pr:
+        description: "Assign Copilot to the drift issue so it drafts a docs PR (also opens/updates the issue)"
+        type: boolean
+        required: false
+        default: false
   pull_request:
     types: [closed]
     branches: [main]
@@ -163,11 +168,47 @@ jobs:
           echo "has_drift=$has_drift" >> "$GITHUB_OUTPUT"
           echo "Has drift: $has_drift"
 
+      - name: Append Copilot PR-drafting guidance
+        if: >-
+          steps.drift-meta.outputs.has_drift == 'true' &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.open_pr
+        env:
+          REPORT_PATH: ${{ github.workspace }}/.drift-report.md
+        run: |
+          cat >> "$REPORT_PATH" <<'EOF'
+
+          <!-- maintainerr-docs-drift-copilot-guidance -->
+          ### 🤖 Guidance for Copilot opening the docs PR
+
+          Open a PR on Maintainerr_docs that addresses this drift report, following these rules:
+
+          - **Always work from local clones, not github.com web views (they can be cached or truncated).
+            Clone `Maintainerr/Maintainerr` and `Maintainerr/Maintainerr_docs` before anything else.**
+          - **Read complete files, not excerpts or partial reads.** Coverage you would otherwise miss often
+            sits past the first screenful — read each doc file and each commit diff end-to-end.
+          - **Source of truth:** the upstream Maintainerr commits and file diffs listed above.
+            Use the prose summary as guidance, but always confirm against the local clone
+            (`git show <sha>`) before editing.
+          - **Skip what's already documented:** read the current `main` branch of Maintainerr_docs
+            and the most recent merged docs PRs first. If something is already covered, do not
+            re-document it.
+          - **Minimal edits only:** make only the doc updates that are still missing for the Next
+            release. No speculative additions, no broad rewrites.
+          - **Doc-only changes:** restrict edits to files under `docs/` and `static/openapi-spec/`.
+            Do not touch sidebars, config, or unrelated assets unless strictly required by a doc edit.
+          - **PR description structure:**
+            1. **What was added** — one short bullet per doc edit, citing the upstream commit or PR.
+            2. **Already covered by prior PRs** — list anything from this drift that earlier merged
+               docs PRs already documented, so reviewers can confirm it's intentionally skipped.
+          - Keep the PR focused and tied to the actual code diff rather than the issue summary alone.
+          EOF
+
       - name: Upsert docs drift issue on Maintainerr_docs
         if: >-
           steps.drift-meta.outputs.has_drift == 'true' &&
           (github.event_name == 'pull_request' ||
-           (github.event_name == 'workflow_dispatch' && inputs.open_issue))
+           (github.event_name == 'workflow_dispatch' && (inputs.open_issue || inputs.open_pr)))
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
@@ -188,11 +229,31 @@ jobs:
             echo "- Created drift issue: $created" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Assign Copilot to drift issue to draft a docs PR
+        if: >-
+          steps.drift-meta.outputs.has_drift == 'true' &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.open_pr
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
+          DOCS_REPO: Maintainerr/Maintainerr_docs
+          MARKER: maintainerr-docs-drift
+        run: |
+          issue_num=$(gh issue list --repo "$DOCS_REPO" --state open \
+            --search "\"$MARKER\" in:body" --json number --jq '.[0].number // empty')
+          if [ -z "$issue_num" ]; then
+            echo "No open drift issue found; cannot request a PR."
+            exit 0
+          fi
+          gh issue edit "$issue_num" --repo "$DOCS_REPO" --add-assignee Copilot
+          echo "- Requested docs PR: assigned Copilot to [$DOCS_REPO#$issue_num](https://github.com/$DOCS_REPO/issues/$issue_num)" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Close docs drift issue if clean
         if: >-
           steps.drift-meta.outputs.has_drift == 'false' &&
           (github.event_name == 'pull_request' ||
-           (github.event_name == 'workflow_dispatch' && inputs.open_issue))
+           (github.event_name == 'workflow_dispatch' && (inputs.open_issue || inputs.open_pr)))
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.docs-app-token.outputs.token }}
