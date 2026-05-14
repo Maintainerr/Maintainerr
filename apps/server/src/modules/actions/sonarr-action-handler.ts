@@ -522,7 +522,7 @@ export class SonarrActionHandler {
     series.monitored = false;
     await sonarrApiClient.updateSeries(series);
     this.logger.log(
-      `[Sonarr] Show '${series.title}' is ended with no monitored seasons - unmonitored show`,
+      `[Sonarr] Show '${series.title}' is ended with no monitored seasons holding files - unmonitored show`,
     );
   }
 
@@ -558,9 +558,14 @@ export class SonarrActionHandler {
     // monitored on the series object indefinitely (Sonarr carries every TVDB
     // season) and have zero files — they must not count as monitored content,
     // or a genuinely finished show could never be unmonitored (#2757 / #2891).
+    //
+    // A monitored season is only treated as empty when Sonarr *explicitly*
+    // reports zero files. season.statistics is optional; if it's absent the
+    // file count is unknown, so the season is treated as still having content
+    // (conservative — never unmonitor a show on an assumption).
     return series.seasons.every(
       (season) =>
-        !season.monitored || (season.statistics?.episodeFileCount ?? 0) === 0,
+        !season.monitored || season.statistics?.episodeFileCount === 0,
     );
   }
 }

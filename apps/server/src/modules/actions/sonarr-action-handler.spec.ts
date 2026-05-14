@@ -742,6 +742,48 @@ describe('SonarrActionHandler', () => {
     expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
   });
 
+  // season.statistics is optional in Sonarr's response. A monitored season
+  // with no statistics has an unknown file count — it must be treated as
+  // still having content, never assumed empty.
+  it('should not unmonitor show when a monitored season has no statistics', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries({
+      id: 42,
+      monitored: true,
+      status: 'ended',
+      seasons: [
+        { seasonNumber: 0, monitored: false, statistics: emptySeasonStats() },
+        {
+          seasonNumber: 1,
+          monitored: false,
+          statistics: emptySeasonStats({ episodeFileCount: 20 }),
+        },
+        // monitored, statistics omitted -> file count unknown
+        { seasonNumber: 2, monitored: true },
+      ],
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.updateSeries).not.toHaveBeenCalled();
+  });
+
   it('should unmonitor and delete episode when type EPISODES and action DELETE', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
