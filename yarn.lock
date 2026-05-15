@@ -3077,7 +3077,7 @@ __metadata:
     "@nestjs/typeorm": "npm:^11.0.1"
     "@octokit/core": "npm:^5.2.0"
     "@octokit/plugin-throttling": "npm:^8.2.0"
-    "@suites/di.nestjs": "npm:^3.0.1"
+    "@suites/di.nestjs": "npm:^3.1.0"
     "@suites/doubles.jest": "npm:^3.1.0"
     "@suites/unit": "npm:^3.1.1"
     "@tygra/nestjs-graceful-shutdown": "npm:^2.0.0"
@@ -5450,16 +5450,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/di.nestjs@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "@suites/di.nestjs@npm:3.0.1"
+"@suites/di.nestjs@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/di.nestjs@npm:3.1.0"
   dependencies:
-    "@suites/types.common": "npm:^3.0.0"
-    "@suites/types.di": "npm:^3.0.0"
+    "@suites/types.common": "npm:^3.1.0"
+    "@suites/types.di": "npm:^3.1.0"
   peerDependencies:
     "@nestjs/common": ">= 8.0"
     reflect-metadata: <1.0.0
-  checksum: 10c0/1542fc58fe32cf1f040d6fc9d5b60c1bd7fe794fb8b4aa286b9d64fa7f43cb7b9c7feca422aa131f7ab5ceecae62fc92302dbfca6516649789ce89d87c31b9ee
+  checksum: 10c0/e65ad5f1d8c229ba4972ffd2fa1cb7a8649f1e70b3f65340fab03ca16cee8e77e4520280de8b549f52ac64824670ae72806b0333a9748e082e6cd87f8e132272
   languageName: node
   linkType: hard
 
@@ -5477,26 +5477,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/types.common@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@suites/types.common@npm:3.0.0"
-  checksum: 10c0/103ea3fef3c8a2502565094b8005cb3a2cd549a5a911a969c5745c89e35b4cf2327667d92daa060c68a4577fad80da1d0939b2dd6c050b0ddbc0368bf5fcf876
-  languageName: node
-  linkType: hard
-
 "@suites/types.common@npm:^3.1.0":
   version: 3.1.0
   resolution: "@suites/types.common@npm:3.1.0"
   checksum: 10c0/3ef414a6b1270494380c85906fb9aba67e9f997e87e3953b9c5afdf558879811648dd019e40a7cfd0d48b329ccb1a464c7757666e3e9c287ad4d4c164216206c
-  languageName: node
-  linkType: hard
-
-"@suites/types.di@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@suites/types.di@npm:3.0.0"
-  dependencies:
-    "@suites/types.common": "npm:^3.0.0"
-  checksum: 10c0/447789340dc6a062b82d49512c2e606bdda76a586ae2334a42f3c8f798f60e59e7f0e7b364ab97ff7f1f6fb86c140315bc806c8acafed83449fede5ce1f29718
   languageName: node
   linkType: hard
 
