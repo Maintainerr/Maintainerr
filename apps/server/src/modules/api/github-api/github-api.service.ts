@@ -36,7 +36,9 @@ export class GitHubApiService {
     this.loadPersistedCache();
 
     // Create Octokit instance with throttling plugin
-    const OctokitWithPlugins = Octokit.plugin(throttling);
+    const OctokitWithPlugins = Octokit.plugin(
+      throttling as Parameters<typeof Octokit.plugin>[0],
+    );
 
     const octokitOptions: ConstructorParameters<typeof OctokitWithPlugins>[0] =
       {

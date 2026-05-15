@@ -499,7 +499,7 @@ export class PlexApiService {
       });
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
+        this.logInvalidLibrarySection(id);
         return undefined;
       }
 
@@ -535,7 +535,7 @@ export class PlexApiService {
       );
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
+        this.logInvalidLibrarySection(id);
         return undefined;
       }
 
@@ -562,7 +562,7 @@ export class PlexApiService {
       );
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
+        this.logInvalidLibrarySection(id);
         return undefined;
       }
 
@@ -590,7 +590,7 @@ export class PlexApiService {
       });
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
+        this.logInvalidLibrarySection(id);
         return undefined;
       }
 
@@ -727,7 +727,7 @@ export class PlexApiService {
       });
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
+        this.logInvalidLibrarySection(id);
         return undefined;
       }
 
@@ -767,7 +767,7 @@ export class PlexApiService {
       });
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(libraryId);
+        this.logInvalidLibrarySection(libraryId);
         return undefined;
       }
 
@@ -1114,30 +1114,27 @@ export class PlexApiService {
     };
   }
 
-  private logLibrarySectionError(id: string | number, error?: unknown): void {
-    // Only 404 indicates a missing/renamed section. 401 and 403 share the
-    // same wrapper in lib/plexApi.ts but mean auth/permission failures, so
-    // those must fall through to the generic communication-failure log.
+  private logInvalidLibrarySection(id: string | number): void {
+    this.logger.warn(
+      `Plex library section '${id}' returned no data. The library may have been removed or its ID changed in Plex. Update any rules or collections that reference this library.`,
+    );
+  }
+
+  private logLibrarySectionError(id: string | number, error: unknown): void {
     const status =
       error instanceof Error
         ? (error.cause as { response?: { status?: number } } | undefined)
             ?.response?.status
         : undefined;
-    const isInvalidSection = error === undefined || status === 404;
 
-    if (isInvalidSection) {
-      this.logger.warn(
-        `Plex library section '${id}' returned no data. The library may have been removed or its ID changed in Plex. Update any rules or collections that reference this library.`,
-      );
+    if (status === 404) {
+      this.logInvalidLibrarySection(id);
     } else {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
       );
     }
-
-    if (error !== undefined) {
-      this.logger.debug(error);
-    }
+    this.logger.debug(error);
   }
 
   private stringifyResponseBody(body: unknown): string | undefined {
