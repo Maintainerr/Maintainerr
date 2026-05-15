@@ -169,7 +169,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     }
   };
 
-  public getTags = async (): Promise<Tag[]> => {
+  public getTags = async (): Promise<Tag[] | undefined> => {
     try {
       const response = await this.axios.get<Tag[]>(`/tag`);
 
@@ -177,7 +177,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     } catch (error) {
       this.logger.warn('Failed to retrieve tags');
       this.logger.debug(error);
-      return [];
+      return undefined;
     }
   };
 

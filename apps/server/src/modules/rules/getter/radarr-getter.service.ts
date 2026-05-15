@@ -16,6 +16,7 @@ import {
 import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
+import { resolveArrTagNames } from '../helpers/arr-tags.utils';
 
 @Injectable()
 export class RadarrGetterService {
@@ -130,10 +131,7 @@ export class RadarrGetterService {
             return movieResponse.monitored ? 1 : 0;
           }
           case 'tags': {
-            const movieTags = movieResponse.tags;
-            return (await radarrApiClient.getTags())
-              ?.filter((el) => movieTags.includes(el.id))
-              .map((el) => el.label);
+            return resolveArrTagNames(movieResponse.tags, radarrApiClient);
           }
           case 'profile': {
             const movieProfile = movieResponse.qualityProfileId;
