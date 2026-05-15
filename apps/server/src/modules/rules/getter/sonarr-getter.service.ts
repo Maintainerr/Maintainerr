@@ -26,6 +26,7 @@ import {
 import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
+import { resolveArrTagNames } from '../helpers/arr-tags.utils';
 
 @Injectable()
 export class SonarrGetterService {
@@ -264,10 +265,7 @@ export class SonarrGetterService {
           return episode?.episodeNumber != null ? episode.episodeNumber : null;
         }
         case 'tags': {
-          const tagIds = showResponse.tags;
-          return (await sonarrApiClient.getTags())
-            ?.filter((el) => tagIds.includes(el.id))
-            .map((el) => el.label);
+          return resolveArrTagNames(showResponse.tags, sonarrApiClient);
         }
         case 'qualityProfileId': {
           const episodeFile = await getEpisodeFile();
