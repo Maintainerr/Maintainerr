@@ -464,8 +464,11 @@ export class RuleExecutorService {
         const isJellyfin =
           this.settings.media_server_type === MediaServerType.JELLYFIN;
         const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
+        // prettier-ignore
         const shouldCheckRemovals =
-          isJellyfin || isEmby ? children && children.length > 0 : true;
+          isJellyfin || isEmby
+            ? children && children.length > 0
+            : true;
 
         if (
           collectionMedia &&
