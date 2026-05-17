@@ -16,7 +16,10 @@ export interface EmbyLoginButtonProps {
    * Called on successful authentication with the access token, admin user id,
    * and the post-login server snapshot (libraries + users + serverName).
    */
-  onAuthenticated: (result: Required<Pick<EmbyLoginResult, 'token' | 'userId'>> & EmbyLoginResult) => void
+  onAuthenticated: (
+    result: Required<Pick<EmbyLoginResult, 'token' | 'userId'>> &
+      EmbyLoginResult,
+  ) => void
 }
 
 /**
@@ -108,9 +111,9 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
             <h3 className="mb-2 text-lg font-medium">Sign in with Emby</h3>
             <p className="mb-4 text-sm text-zinc-400">
               Authenticates against{' '}
-              <strong className="text-zinc-200">{embyUrl}</strong> with an
-              admin username and password. The resulting access token is
-              stored as the API key.
+              <strong className="text-zinc-200">{embyUrl}</strong> with an admin
+              username and password. The resulting access token is stored as the
+              API key.
             </p>
             <div className="space-y-3">
               <InputGroup

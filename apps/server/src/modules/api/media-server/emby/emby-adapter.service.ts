@@ -94,7 +94,9 @@ export class EmbyAdapterService implements IMediaServerService {
       return;
     }
 
-    this.embyUrl = url.replace(/\/+$/, '');
+    let cleanUrl = url;
+    while (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
+    this.embyUrl = cleanUrl;
     this.embyApiKey = apiKey;
     this.embyUserId = userId || undefined;
 
@@ -118,7 +120,7 @@ export class EmbyAdapterService implements IMediaServerService {
     } catch (error) {
       this.initialized = false;
       this.logger.warn(
-        `Failed to initialize Emby connection: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Failed to initialize Emby connection: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
     }
   }
@@ -151,7 +153,9 @@ export class EmbyAdapterService implements IMediaServerService {
   async getStatus(): Promise<MediaServerStatus | undefined> {
     if (!this.http) return undefined;
     try {
-      const cached = this.cache.data.get<EmbySystemInfo>(EMBY_CACHE_KEYS.STATUS);
+      const cached = this.cache.data.get<EmbySystemInfo>(
+        EMBY_CACHE_KEYS.STATUS,
+      );
       const info = cached
         ? cached
         : (await this.http.get<EmbySystemInfo>('/System/Info')).data;
@@ -171,7 +175,7 @@ export class EmbyAdapterService implements IMediaServerService {
       );
     } catch (error) {
       this.logger.debug(
-        `Emby getStatus failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getStatus failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return undefined;
     }
@@ -185,16 +189,12 @@ export class EmbyAdapterService implements IMediaServerService {
         ? cached
         : (await this.http.get<EmbyUserDto[]>('/Users')).data;
       if (!cached) {
-        this.cache.data.set(
-          EMBY_CACHE_KEYS.USERS,
-          users,
-          EMBY_CACHE_TTL.USERS,
-        );
+        this.cache.data.set(EMBY_CACHE_KEYS.USERS, users, EMBY_CACHE_TTL.USERS);
       }
       return users.map(EmbyMapper.toMediaUser);
     } catch (error) {
       this.logger.debug(
-        `Emby getUsers failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getUsers failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -207,7 +207,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return EmbyMapper.toMediaUser(data);
     } catch (error) {
       this.logger.debug(
-        `Emby getUser(${id}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getUser(${id}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return undefined;
     }
@@ -223,9 +223,7 @@ export class EmbyAdapterService implements IMediaServerService {
       const cached = this.cache.data.get<EmbyBaseItemDto[]>(
         EMBY_CACHE_KEYS.LIBRARIES,
       );
-      const folders = cached
-        ? cached
-        : await this.fetchLibraryFolders();
+      const folders = cached ? cached : await this.fetchLibraryFolders();
       if (!cached) {
         this.cache.data.set(
           EMBY_CACHE_KEYS.LIBRARIES,
@@ -235,12 +233,14 @@ export class EmbyAdapterService implements IMediaServerService {
       }
       return folders
         .filter((f) =>
-          ['movies', 'tvshows'].includes((f.CollectionType ?? '').toLowerCase()),
+          ['movies', 'tvshows'].includes(
+            (f.CollectionType ?? '').toLowerCase(),
+          ),
         )
         .map(EmbyMapper.toMediaLibrary);
     } catch (error) {
       this.logger.warn(
-        `Emby getLibraries failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getLibraries failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -272,18 +272,15 @@ export class EmbyAdapterService implements IMediaServerService {
     const libraries = await this.getLibraries();
     for (const lib of libraries) {
       try {
-        const { data } = await this.http.get<EmbyItemsQueryResponse>(
-          `/Items`,
-          {
-            params: {
-              ParentId: lib.id,
-              Recursive: true,
-              IncludeItemTypes: 'Movie,Episode',
-              Fields: 'MediaSources',
-              Limit: 0,
-            },
+        const { data } = await this.http.get<EmbyItemsQueryResponse>(`/Items`, {
+          params: {
+            ParentId: lib.id,
+            Recursive: true,
+            IncludeItemTypes: 'Movie,Episode',
+            Fields: 'MediaSources',
+            Limit: 0,
           },
-        );
+        });
         // Some Emby versions return aggregated stats via separate endpoints.
         // TODO(emby-server-test): verify whether /Items?Recursive&Fields=Size
         // returns Size as an aggregate or per item; for now we treat 0 as
@@ -298,7 +295,7 @@ export class EmbyAdapterService implements IMediaServerService {
         if (total > 0) result.set(lib.id, total);
       } catch (error) {
         this.logger.debug(
-          `Emby computeLibraryStorageSizes(${lib.id}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+          `Emby computeLibraryStorageSizes(${lib.id}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
       }
     }
@@ -339,7 +336,7 @@ export class EmbyAdapterService implements IMediaServerService {
       };
     } catch (error) {
       this.logger.warn(
-        `Emby getLibraryContents(${libraryId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getLibraryContents(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return { items: [], totalSize: 0, offset, limit };
     }
@@ -365,7 +362,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return data.TotalRecordCount ?? 0;
     } catch (error) {
       this.logger.debug(
-        `Emby getLibraryContentCount(${libraryId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getLibraryContentCount(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return 0;
     }
@@ -393,7 +390,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
       this.logger.debug(
-        `Emby searchLibraryContents failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby searchLibraryContents failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -412,12 +409,15 @@ export class EmbyAdapterService implements IMediaServerService {
         ? `/Users/${this.embyUserId}/Items/${itemId}`
         : `/Items/${itemId}`;
       const { data } = await this.http.get<EmbyBaseItemDto>(path, {
-        params: { Fields: 'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People' },
+        params: {
+          Fields:
+            'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People',
+        },
       });
       return EmbyMapper.toMediaItem(data);
     } catch (error) {
       this.logger.debug(
-        `Emby getMetadata(${itemId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getMetadata(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return undefined;
     }
@@ -436,7 +436,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
       this.logger.debug(
-        `Emby getChildrenMetadata(${parentId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getChildrenMetadata(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -473,7 +473,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (Array.isArray(data) ? data : []).map(EmbyMapper.toMediaItem);
     } catch (error) {
       this.logger.debug(
-        `Emby getRecentlyAdded(${libraryId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getRecentlyAdded(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -494,7 +494,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
       this.logger.debug(
-        `Emby searchContent failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby searchContent failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -514,7 +514,7 @@ export class EmbyAdapterService implements IMediaServerService {
       });
     } catch (error) {
       this.logger.debug(
-        `Emby refreshItemMetadata(${itemId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby refreshItemMetadata(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
     }
   }
@@ -555,7 +555,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return records;
     } catch (error) {
       this.logger.debug(
-        `Emby getWatchHistory(${itemId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getWatchHistory(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -596,7 +596,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (data.Items ?? []).map(EmbyMapper.toMediaCollection);
     } catch (error) {
       this.logger.debug(
-        `Emby getCollections(${libraryId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getCollections(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -616,7 +616,7 @@ export class EmbyAdapterService implements IMediaServerService {
     } catch (error) {
       if (throwOnError) throw error;
       this.logger.debug(
-        `Emby getCollection(${collectionId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getCollection(${collectionId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return undefined;
     }
@@ -648,13 +648,16 @@ export class EmbyAdapterService implements IMediaServerService {
           });
         } catch (error) {
           this.logger.warn(
-            `Emby createCollection metadata follow-up failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+            `Emby createCollection metadata follow-up failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
           );
         }
       }
       return collection;
     } catch (error) {
-      const message = formatConnectionFailureMessage(error, "Connection failed");
+      const message = formatConnectionFailureMessage(
+        error,
+        'Connection failed',
+      );
       this.logger.warn(`Emby createCollection failed: ${message}`);
       throw new Error(`Failed to create Emby collection: ${message}`);
     }
@@ -665,7 +668,10 @@ export class EmbyAdapterService implements IMediaServerService {
     try {
       await this.http.delete(`/Items/${collectionId}`);
     } catch (error) {
-      const message = formatConnectionFailureMessage(error, "Connection failed");
+      const message = formatConnectionFailureMessage(
+        error,
+        'Connection failed',
+      );
       throw new Error(`Failed to delete Emby collection: ${message}`);
     }
   }
@@ -702,7 +708,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
       this.logger.debug(
-        `Emby getCollectionChildren(${collectionId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getCollectionChildren(${collectionId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -718,14 +724,17 @@ export class EmbyAdapterService implements IMediaServerService {
   ): Promise<string[]> {
     if (!this.http || itemIds.length === 0) return itemIds;
     const failed: string[] = [];
-    for (const chunk of this.chunked(itemIds, EMBY_BATCH_SIZE.COLLECTION_MUTATION)) {
+    for (const chunk of this.chunked(
+      itemIds,
+      EMBY_BATCH_SIZE.COLLECTION_MUTATION,
+    )) {
       try {
         await this.http.post(`/Collections/${collectionId}/Items`, null, {
           params: { Ids: chunk.join(',') },
         });
       } catch (error) {
         this.logger.warn(
-          `Emby addBatchToCollection chunk failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+          `Emby addBatchToCollection chunk failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
         failed.push(...chunk);
       }
@@ -746,14 +755,17 @@ export class EmbyAdapterService implements IMediaServerService {
   ): Promise<string[]> {
     if (!this.http || itemIds.length === 0) return itemIds;
     const failed: string[] = [];
-    for (const chunk of this.chunked(itemIds, EMBY_BATCH_SIZE.COLLECTION_MUTATION)) {
+    for (const chunk of this.chunked(
+      itemIds,
+      EMBY_BATCH_SIZE.COLLECTION_MUTATION,
+    )) {
       try {
         await this.http.delete(`/Collections/${collectionId}/Items`, {
           params: { Ids: chunk.join(',') },
         });
       } catch (error) {
         this.logger.warn(
-          `Emby removeBatchFromCollection chunk failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+          `Emby removeBatchFromCollection chunk failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
         failed.push(...chunk);
       }
@@ -782,7 +794,10 @@ export class EmbyAdapterService implements IMediaServerService {
       }
       return refreshed;
     } catch (error) {
-      const message = formatConnectionFailureMessage(error, "Connection failed");
+      const message = formatConnectionFailureMessage(
+        error,
+        'Connection failed',
+      );
       throw new Error(`Failed to update Emby collection: ${message}`);
     }
   }
@@ -816,7 +831,7 @@ export class EmbyAdapterService implements IMediaServerService {
         );
       } catch (error) {
         this.logger.warn(
-          `Emby reorder move(${orderedItemIds[i]}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+          `Emby reorder move(${orderedItemIds[i]}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
       }
     }
@@ -836,7 +851,10 @@ export class EmbyAdapterService implements IMediaServerService {
         headers: { 'Content-Type': contentType },
       });
     } catch (error) {
-      const message = formatConnectionFailureMessage(error, "Connection failed");
+      const message = formatConnectionFailureMessage(
+        error,
+        'Connection failed',
+      );
       throw new Error(`Failed to upload Emby collection image: ${message}`);
     }
   }
@@ -860,7 +878,7 @@ export class EmbyAdapterService implements IMediaServerService {
       return (data.Items ?? []).map(EmbyMapper.toMediaPlaylist);
     } catch (error) {
       this.logger.debug(
-        `Emby getPlaylists(${libraryId}) failed: ${formatConnectionFailureMessage(error, "Connection failed")}`,
+        `Emby getPlaylists(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
@@ -875,7 +893,10 @@ export class EmbyAdapterService implements IMediaServerService {
     try {
       await this.http.delete(`/Items/${itemId}`);
     } catch (error) {
-      const message = formatConnectionFailureMessage(error, "Connection failed");
+      const message = formatConnectionFailureMessage(
+        error,
+        'Connection failed',
+      );
       throw new Error(`Failed to delete Emby item from disk: ${message}`);
     }
   }
@@ -939,7 +960,8 @@ export class EmbyAdapterService implements IMediaServerService {
     error?: string;
     users?: Array<{ id: string; name: string }>;
   }> {
-    const cleanUrl = url.replace(/\/+$/, '');
+    let cleanUrl = url;
+    while (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
     const probe = axios.create({
       baseURL: cleanUrl,
       timeout: 15000,
@@ -966,7 +988,7 @@ export class EmbyAdapterService implements IMediaServerService {
     } catch (error) {
       return {
         success: false,
-        error: formatConnectionFailureMessage(error, "Connection failed"),
+        error: formatConnectionFailureMessage(error, 'Connection failed'),
       };
     }
   }
@@ -988,7 +1010,8 @@ export class EmbyAdapterService implements IMediaServerService {
     users?: Array<{ id: string; name: string }>;
     libraries?: Array<{ id: string; name: string; type: string }>;
   }> {
-    const cleanUrl = url.replace(/\/+$/, '');
+    let cleanUrl = url;
+    while (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
     const probe = axios.create({
       baseURL: cleanUrl,
       timeout: 15000,
@@ -1047,7 +1070,7 @@ export class EmbyAdapterService implements IMediaServerService {
         error:
           ax.response?.status === 401
             ? 'Invalid Emby username or password'
-            : formatConnectionFailureMessage(error, "Connection failed"),
+            : formatConnectionFailureMessage(error, 'Connection failed'),
       };
     }
   }

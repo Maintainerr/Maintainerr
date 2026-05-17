@@ -129,9 +129,7 @@ export class MediaServerFactory {
       settings.plex_port &&
       settings.plex_auth_token,
     );
-    const embyConfigured = Boolean(
-      settings.emby_url && settings.emby_api_key,
-    );
+    const embyConfigured = Boolean(settings.emby_url && settings.emby_api_key);
     const inferredType = this.resolveServerType(
       plexConfigured,
       jellyfinConfigured,

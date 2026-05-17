@@ -103,13 +103,9 @@ export class EmbyGetterService {
       case 'rating_user':
         return item.userRating ?? null;
       case 'rating_audience':
-        return (
-          item.ratings?.find((r) => r.type === 'audience')?.value ?? null
-        );
+        return item.ratings?.find((r) => r.type === 'audience')?.value ?? null;
       case 'rating_critics':
-        return (
-          item.ratings?.find((r) => r.type === 'critic')?.value ?? null
-        );
+        return item.ratings?.find((r) => r.type === 'critic')?.value ?? null;
       case 'viewCount':
       case 'playCount':
         return item.viewCount ?? null;

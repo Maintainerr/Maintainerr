@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddEmbySupport1779021820174 implements MigrationInterface {
-    name = 'AddEmbySupport1779021820174'
+  name = 'AddEmbySupport1779021820174';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "temporary_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -39,7 +39,7 @@ export class AddEmbySupport1779021820174 implements MigrationInterface {
                 "emby_server_name" varchar
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_settings"(
                     "id",
                     "clientId",
@@ -98,21 +98,21 @@ export class AddEmbySupport1779021820174 implements MigrationInterface {
                 "plex_manual_mode"
             FROM "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_settings"
                 RENAME TO "settings"
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "settings"
                 RENAME TO "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -143,7 +143,7 @@ export class AddEmbySupport1779021820174 implements MigrationInterface {
                 "plex_manual_mode" integer DEFAULT (0)
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "settings"(
                     "id",
                     "clientId",
@@ -202,9 +202,8 @@ export class AddEmbySupport1779021820174 implements MigrationInterface {
                 "plex_manual_mode"
             FROM "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_settings"
         `);
-    }
-
+  }
 }

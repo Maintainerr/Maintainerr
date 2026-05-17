@@ -262,8 +262,8 @@ const EmbySettings = () => {
               helpText={
                 <>
                   In Emby, go to{' '}
-                  <strong>Dashboard &rarr; Advanced &rarr; API Keys</strong>{' '}
-                  and create a new key named &quot;Maintainerr&quot;. Or use{' '}
+                  <strong>Dashboard &rarr; Advanced &rarr; API Keys</strong> and
+                  create a new key named &quot;Maintainerr&quot;. Or use{' '}
                   <em>Sign in with Emby</em> below to obtain one automatically.
                 </>
               }
@@ -337,9 +337,7 @@ const EmbySettings = () => {
                     onClick={handleTest}
                     className="ml-3"
                     disabled={
-                      isEmbyLoading ||
-                      isTestPending ||
-                      isGoingToRemoveSettings
+                      isEmbyLoading || isTestPending || isGoingToRemoveSettings
                     }
                     isPending={isTestPending}
                     feedbackStatus={

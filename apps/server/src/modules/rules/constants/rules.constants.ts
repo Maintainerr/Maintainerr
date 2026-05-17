@@ -1395,7 +1395,10 @@ export class RuleConstants {
     const jellyfinApp = this.applications.find(
       (a) => a.id === Application.JELLYFIN,
     );
-    if (jellyfinApp && !this.applications.some((a) => a.id === Application.EMBY)) {
+    if (
+      jellyfinApp &&
+      !this.applications.some((a) => a.id === Application.EMBY)
+    ) {
       this.applications.push({
         id: Application.EMBY,
         name: 'Emby',

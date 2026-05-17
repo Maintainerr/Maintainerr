@@ -474,7 +474,10 @@ export const useTestEmby = (options?: UseTestEmbyOptions) => {
   return useMutation<EmbyTestResult, Error, EmbySetting>({
     mutationKey: ['settings', 'testEmby'],
     mutationFn: async (payload) => {
-      return await PostApiHandler<EmbyTestResult>('/settings/emby/test', payload)
+      return await PostApiHandler<EmbyTestResult>(
+        '/settings/emby/test',
+        payload,
+      )
     },
     ...options,
   })
@@ -552,7 +555,10 @@ export const useLoginEmby = (options?: UseLoginEmbyOptions) => {
   >({
     mutationKey: ['settings', 'loginEmby'],
     mutationFn: async (payload) => {
-      return await PostApiHandler<EmbyLoginResult>('/settings/emby/login', payload)
+      return await PostApiHandler<EmbyLoginResult>(
+        '/settings/emby/login',
+        payload,
+      )
     },
     ...options,
   })

@@ -441,7 +441,11 @@ export class SettingsController {
   @Post('/emby/login')
   async loginEmby(
     @Body()
-    payload: { emby_url: string; username: string; password: string },
+    payload: {
+      emby_url: string;
+      username: string;
+      password: string;
+    },
   ) {
     return this.settingsService.loginEmby(
       payload.emby_url,

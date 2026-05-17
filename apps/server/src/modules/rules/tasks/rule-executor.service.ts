@@ -454,16 +454,17 @@ export class RuleExecutorService {
           }
         }
 
-        // Handle manually removed items from collections.
-        // Jellyfin/Emby workaround: Skip removal check when children array is
-        // empty. Both share the same .NET BoxSet backend whose collection API
-        // can return empty children during brief sync delays after a write,
-        // causing false positives where valid items would be incorrectly
-        // flagged as "manually removed". Plex is unaffected.
-        const usesBoxsetSyncLagWorkaround =
+        // Handle manually removed items from collections
+        // Jellyfin/Emby workaround: Skip removal check when children array is empty.
+        // Unlike Plex, the .NET BoxSet collection API can return empty children
+        // during brief sync delays after collection modifications, causing false
+        // positives where valid items would be incorrectly flagged as "manually
+        // removed". This workaround can be removed if the upstream improves
+        // collection sync consistency.
+        const isJellyfin =
           this.settings.media_server_type === MediaServerType.JELLYFIN ||
           this.settings.media_server_type === MediaServerType.EMBY;
-        const shouldCheckRemovals = usesBoxsetSyncLagWorkaround
+        const shouldCheckRemovals = isJellyfin
           ? children && children.length > 0
           : true;
 
