@@ -17,10 +17,11 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import axios, { type AxiosInstance, AxiosError } from 'axios';
+import { type AxiosInstance, AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
+import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
 import type {
@@ -100,16 +101,11 @@ export class EmbyAdapterService implements IMediaServerService {
     this.embyApiKey = apiKey;
     this.embyUserId = userId || undefined;
 
-    this.http = axios.create({
-      baseURL: this.embyUrl,
-      timeout: 30000,
-      headers: {
-        'X-Emby-Token': apiKey,
-        'X-MediaBrowser-Token': apiKey,
-        'X-Emby-Authorization': this.buildAuthHeader(),
-        Accept: 'application/json',
-      },
-    });
+    this.http = new EmbyApi({
+      url: this.embyUrl,
+      apiKey,
+      authHeader: this.buildAuthHeader(),
+    }).axios;
 
     try {
       const info = await this.http.get<EmbySystemInfo>('/System/Info');
@@ -960,18 +956,12 @@ export class EmbyAdapterService implements IMediaServerService {
     error?: string;
     users?: Array<{ id: string; name: string }>;
   }> {
-    let cleanUrl = url;
-    while (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
-    const probe = axios.create({
-      baseURL: cleanUrl,
+    const probe = new EmbyApi({
+      url,
+      apiKey,
+      authHeader: this.buildAuthHeader(),
       timeout: 15000,
-      headers: {
-        'X-Emby-Token': apiKey,
-        'X-MediaBrowser-Token': apiKey,
-        'X-Emby-Authorization': this.buildAuthHeader(),
-        Accept: 'application/json',
-      },
-    });
+    }).axios;
     try {
       const [info, users] = await Promise.all([
         probe.get<EmbySystemInfo>('/System/Info'),
@@ -1010,17 +1000,12 @@ export class EmbyAdapterService implements IMediaServerService {
     users?: Array<{ id: string; name: string }>;
     libraries?: Array<{ id: string; name: string; type: string }>;
   }> {
-    let cleanUrl = url;
-    while (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
-    const probe = axios.create({
-      baseURL: cleanUrl,
+    const probe = new EmbyApi({
+      url,
+      authHeader: this.buildAuthHeader(),
       timeout: 15000,
-      headers: {
-        'X-Emby-Authorization': this.buildAuthHeader(),
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
+      extraHeaders: { 'Content-Type': 'application/json' },
+    }).axios;
     try {
       const { data } = await probe.post<EmbyAuthenticationResult>(
         '/Users/AuthenticateByName',
@@ -1033,16 +1018,12 @@ export class EmbyAdapterService implements IMediaServerService {
             'User authenticated but is not an administrator on this Emby server',
         };
       }
-      const authed = axios.create({
-        baseURL: cleanUrl,
+      const authed = new EmbyApi({
+        url,
+        apiKey: data.AccessToken,
+        authHeader: this.buildAuthHeader(),
         timeout: 15000,
-        headers: {
-          'X-Emby-Token': data.AccessToken,
-          'X-MediaBrowser-Token': data.AccessToken,
-          'X-Emby-Authorization': this.buildAuthHeader(),
-          Accept: 'application/json',
-        },
-      });
+      }).axios;
       const [info, libs, users] = await Promise.all([
         authed.get<EmbySystemInfo>('/System/Info'),
         authed.get<EmbyItemsQueryResponse>(`/Users/${data.User.Id}/Views`),
