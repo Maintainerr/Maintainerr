@@ -39,6 +39,13 @@ export function isLikelyJellyfinId(value: string): boolean {
   return false;
 }
 
+// Emby shares Jellyfin's .NET-derived ID conventions (32-char hex or
+// 36-char dashed UUID), so the same heuristic applies. Wrapper kept for
+// call-site clarity at sites that branch by server type.
+export function isLikelyEmbyId(value: string): boolean {
+  return isLikelyJellyfinId(value);
+}
+
 export function isJellyfinEmptyGuid(value: string): boolean {
   return (
     value === JELLYFIN_EMPTY_GUID_DASHED ||
@@ -62,6 +69,11 @@ export function isForeignServerId(
     return isLikelyJellyfinId(value);
   }
 
+  if (serverType === MediaServerType.EMBY) {
+    // Emby IDs share Jellyfin's shape; a Plex numeric ID is foreign to Emby.
+    return isLikelyPlexId(value);
+  }
+
   return false;
 }
 
@@ -83,6 +95,10 @@ export function shouldRefreshMetadataItemId(
   // slip through.
   if (serverType === MediaServerType.JELLYFIN) {
     return isLikelyJellyfinId(value) && !isJellyfinEmptyGuid(value);
+  }
+
+  if (serverType === MediaServerType.EMBY) {
+    return isLikelyEmbyId(value) && !isJellyfinEmptyGuid(value);
   }
 
   return true;

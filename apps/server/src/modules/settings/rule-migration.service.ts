@@ -389,6 +389,8 @@ export class RuleMigrationService {
         return Application.PLEX;
       case MediaServerType.JELLYFIN:
         return Application.JELLYFIN;
+      case MediaServerType.EMBY:
+        return Application.EMBY;
       default:
         throw new Error(`Unknown media server type: ${serverType}`);
     }
@@ -453,11 +455,15 @@ export class RuleMigrationService {
 
   private detectRuleSourceApp(
     rule: RuleDto,
-  ): Application.PLEX | Application.JELLYFIN | undefined {
+  ): Application.PLEX | Application.JELLYFIN | Application.EMBY | undefined {
     const firstApp = rule.firstVal?.[0];
     const lastApp = rule.lastVal?.[0];
 
-    if (firstApp !== Application.PLEX && firstApp !== Application.JELLYFIN) {
+    if (
+      firstApp !== Application.PLEX &&
+      firstApp !== Application.JELLYFIN &&
+      firstApp !== Application.EMBY
+    ) {
       return undefined;
     }
 

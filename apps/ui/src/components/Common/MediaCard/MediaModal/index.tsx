@@ -150,7 +150,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
   }) => {
     useLockBodyScroll(true)
 
-    const { isPlex, isJellyfin } = useMediaServerType()
+    const { isPlex, isJellyfin, isEmby } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdropResult, setBackdropResult] =
       useState<BackdropResult>(emptyBackdropResult)
@@ -526,6 +526,27 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         <img
                           src={`${basePath}/icons_logos/plex_logo.svg`}
                           alt="Plex Logo"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
+                  {isEmby && serverUrl && (
+                    <div>
+                      <a
+                        href={
+                          machineId
+                            ? `${serverUrl}/web/index.html#!/item?id=${id}&serverId=${machineId}`
+                            : `${serverUrl}/web/index.html#!/item?id=${id}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/emby.png`}
+                          alt="Emby Logo"
                           width={128}
                           height={32}
                           className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"

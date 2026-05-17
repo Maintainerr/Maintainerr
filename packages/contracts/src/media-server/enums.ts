@@ -1,6 +1,7 @@
 export enum MediaServerType {
   PLEX = 'plex',
   JELLYFIN = 'jellyfin',
+  EMBY = 'emby',
 }
 
 export type MediaItemType = 'movie' | 'show' | 'season' | 'episode'

@@ -42,6 +42,10 @@ const getMediaServerTypeFromPath = (
     return MediaServerType.JELLYFIN
   }
 
+  if (pathname.startsWith('/settings/emby')) {
+    return MediaServerType.EMBY
+  }
+
   if (
     pathname.startsWith('/settings/plex') ||
     pathname.startsWith('/settings/tautulli')
@@ -62,6 +66,15 @@ const getMediaServerRoute = (
       content: mediaServerTabContent('Jellyfin'),
       route: '/settings/jellyfin',
       regex: /^\/settings\/jellyfin$/,
+    }
+  }
+
+  if (mediaServerType === MediaServerType.EMBY) {
+    return {
+      text: 'Emby',
+      content: mediaServerTabContent('Emby'),
+      route: '/settings/emby',
+      regex: /^\/settings\/emby$/,
     }
   }
 

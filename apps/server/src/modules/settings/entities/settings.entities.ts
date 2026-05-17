@@ -70,6 +70,19 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   jellyfin_server_name?: string;
 
+  // Emby settings
+  @Column({ nullable: true })
+  emby_url?: string;
+
+  @Column({ nullable: true })
+  emby_api_key?: string;
+
+  @Column({ nullable: true })
+  emby_user_id?: string;
+
+  @Column({ nullable: true })
+  emby_server_name?: string;
+
   // Seerr integration
   @Column({ nullable: true })
   seerr_api_key: string;

@@ -1,5 +1,7 @@
 import {
   BasicResponseDto,
+  EmbySetting,
+  embySettingSchema,
   JellyfinSetting,
   jellyfinSettingSchema,
   MediaServerSwitchPreview,
@@ -390,6 +392,62 @@ export class SettingsController {
   @Delete('/jellyfin')
   async removeJellyfinSettings(): Promise<BasicResponseDto> {
     return await this.settingsService.removeJellyfinSettings();
+  }
+
+  // --------------------------------------------------------------------------
+  // Emby
+  // --------------------------------------------------------------------------
+
+  @Get('/emby')
+  async getEmbySetting(): Promise<EmbySetting | BasicResponseDto> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      emby_url: settings.emby_url,
+      emby_api_key: settings.emby_api_key,
+      emby_user_id: settings.emby_user_id,
+    };
+  }
+
+  @Post('/emby/test')
+  testEmby(
+    @Body(new ZodValidationPipe(embySettingSchema))
+    payload: EmbySetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsService.testEmby(payload);
+  }
+
+  @Post('/emby')
+  async saveEmbySettings(
+    @Body(new ZodValidationPipe(embySettingSchema))
+    payload: EmbySetting,
+  ): Promise<BasicResponseDto> {
+    return await this.settingsService.saveEmbySettings(payload);
+  }
+
+  @Delete('/emby')
+  async removeEmbySettings(): Promise<BasicResponseDto> {
+    return await this.settingsService.removeEmbySettings();
+  }
+
+  /**
+   * Authenticate against an Emby server with username/password (Plex-style
+   * login UX). Returns library/user lists for confirmation before save.
+   */
+  @Post('/emby/login')
+  async loginEmby(
+    @Body()
+    payload: { emby_url: string; username: string; password: string },
+  ) {
+    return this.settingsService.loginEmby(
+      payload.emby_url,
+      payload.username,
+      payload.password,
+    );
   }
 
   @Delete('/sonarr/:id')

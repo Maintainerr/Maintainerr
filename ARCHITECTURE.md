@@ -43,6 +43,7 @@ flowchart LR
   API --> Media["Media-server abstraction"]
   Media --> Plex["Plex adapter"]
   Media --> Jellyfin["Jellyfin adapter"]
+  Media --> Emby["Emby adapter"]
   API --> Servarr["Radarr / Sonarr"]
   API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
@@ -90,8 +91,9 @@ integrations, and production static serving.
   server switching.
 - `src/modules/api/media-server/` provides the server-agnostic media server
   interface, factory, controller, and shared utilities.
-- `src/modules/api/media-server/plex/` and
-  `src/modules/api/media-server/jellyfin/` contain server-specific adapters,
+- `src/modules/api/media-server/plex/`,
+  `src/modules/api/media-server/jellyfin/`, and
+  `src/modules/api/media-server/emby/` contain server-specific adapters,
   constants, mappers, caching, and SDK/API calls.
 - Other `src/modules/api/` submodules wrap integration clients and helper
   APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, TMDB, TVDB,
@@ -141,7 +143,7 @@ runtime assets. The Docker image exposes `/opt/data` as a volume.
 
 Maintainerr integrates with:
 
-- Plex and Jellyfin through the media-server abstraction.
+- Plex, Jellyfin, and Emby through the media-server abstraction.
 - Radarr and Sonarr for unmonitoring, deleting, and quality profile actions.
 - Seerr-compatible services for request cleanup.
 - Tautulli for Plex analytics and rule data.
@@ -212,8 +214,8 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 
 - Keep `modules/api/media-server/` server-agnostic. The shared interface,
   factory, controller, and utilities must not import Plex or Jellyfin types.
-- Put Plex-specific logic under `plex/` and Jellyfin-specific logic under
-  `jellyfin/`.
+- Put server-specific logic under the matching adapter directory (`plex/`,
+  `jellyfin/`, or `emby/`).
 - Use `supportsFeature()` for conditional media-server capabilities.
 - Implement every new media-server interface method for all supported media
   servers. Put partial support behind feature checks, not optional interface
@@ -244,8 +246,8 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 - Data directory: Runtime directory containing the SQLite database and local
   files such as logs, posters, and overlays.
 - Media-server abstraction: Server-side interface that lets Maintainerr support
-  Plex and Jellyfin without leaking their implementation details into shared
-  code.
+  Plex, Jellyfin, and Emby without leaking their implementation details into
+  shared code.
 - Rule group: A configured set of rules that selects media and links it to a
   Maintainerr collection.
 - Seerr: The request-management integration family covering Overseerr,

@@ -4,6 +4,7 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import { SettingsService } from '../../settings/settings.service';
+import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { MediaServerFactory } from './media-server.factory';
 import { PlexAdapterService } from './plex/plex-adapter.service';
@@ -37,6 +38,14 @@ describe('MediaServerFactory', () => {
     testConnection: jest.fn(),
   } as unknown as jest.Mocked<JellyfinAdapterService>;
 
+  const embyAdapter = {
+    isSetup: jest.fn(),
+    initialize: jest.fn(),
+    uninitialize: jest.fn(),
+    testConnection: jest.fn(),
+    loginWithCredentials: jest.fn(),
+  } as unknown as jest.Mocked<EmbyAdapterService>;
+
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
     Object.assign(new Settings(), {
       media_server_type: null,
@@ -46,6 +55,8 @@ describe('MediaServerFactory', () => {
       plex_auth_token: null,
       jellyfin_url: null,
       jellyfin_api_key: null,
+      emby_url: null,
+      emby_api_key: null,
       ...overrides,
     });
 
@@ -56,12 +67,14 @@ describe('MediaServerFactory', () => {
       mediaServerSwitchService,
       plexAdapter,
       jellyfinAdapter,
+      embyAdapter,
       logger,
     );
 
     mediaServerSwitchService.isSwitching.mockReturnValue(false);
     plexAdapter.isSetup.mockReturnValue(true);
     jellyfinAdapter.isSetup.mockReturnValue(true);
+    embyAdapter.isSetup.mockReturnValue(true);
   });
 
   it('throws ServiceUnavailableException while switch is in progress', async () => {
