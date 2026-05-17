@@ -462,11 +462,10 @@ export class RuleExecutorService {
         // removed". This workaround can be removed if the upstream improves
         // collection sync consistency.
         const isJellyfin =
-          this.settings.media_server_type === MediaServerType.JELLYFIN ||
-          this.settings.media_server_type === MediaServerType.EMBY;
-        const shouldCheckRemovals = isJellyfin
-          ? children && children.length > 0
-          : true;
+          this.settings.media_server_type === MediaServerType.JELLYFIN;
+        const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
+        const shouldCheckRemovals =
+          isJellyfin || isEmby ? children && children.length > 0 : true;
 
         if (
           collectionMedia &&
