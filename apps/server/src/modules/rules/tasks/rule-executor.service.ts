@@ -463,8 +463,8 @@ export class RuleExecutorService {
         // collection sync consistency.
         const isJellyfin =
           this.settings.media_server_type === MediaServerType.JELLYFIN;
-        const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
-        // prettier-ignore
+        const isEmby = 
+          this.settings.media_server_type === MediaServerType.EMBY;
         const shouldCheckRemovals =
           isJellyfin || isEmby
             ? children && children.length > 0
