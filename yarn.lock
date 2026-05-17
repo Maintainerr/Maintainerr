@@ -3077,7 +3077,7 @@ __metadata:
     "@nestjs/typeorm": "npm:^11.0.1"
     "@octokit/core": "npm:^5.2.0"
     "@octokit/plugin-throttling": "npm:^8.2.0"
-    "@suites/di.nestjs": "npm:^3.0.1"
+    "@suites/di.nestjs": "npm:^3.1.0"
     "@suites/doubles.jest": "npm:^3.1.0"
     "@suites/unit": "npm:^3.1.1"
     "@tygra/nestjs-graceful-shutdown": "npm:^2.0.0"
@@ -3090,9 +3090,9 @@ __metadata:
     "@types/xml2js": "npm:^0.4.14"
     "@typescript-eslint/eslint-plugin": "npm:^8.59.3"
     "@typescript-eslint/parser": "npm:^8.59.3"
-    axios: "npm:^1.16.0"
+    axios: "npm:^1.16.1"
     axios-retry: "npm:^4.5.0"
-    better-sqlite3: "npm:^12.9.0"
+    better-sqlite3: "npm:^12.10.0"
     canvas: "npm:^3.2.3"
     chalk: "npm:^4.1.2"
     cron-validator: "npm:^1.4.0"
@@ -3154,7 +3154,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.59.3"
     "@vitejs/plugin-react": "npm:^6.0.1"
     autoprefixer: "npm:10.5.0"
-    axios: "npm:^1.16.0"
+    axios: "npm:^1.16.1"
     bowser: "npm:^2.14.1"
     clsx: "npm:^2.1.1"
     compare-versions: "npm:^6.1.1"
@@ -5450,16 +5450,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/di.nestjs@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "@suites/di.nestjs@npm:3.0.1"
+"@suites/di.nestjs@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@suites/di.nestjs@npm:3.1.0"
   dependencies:
-    "@suites/types.common": "npm:^3.0.0"
-    "@suites/types.di": "npm:^3.0.0"
+    "@suites/types.common": "npm:^3.1.0"
+    "@suites/types.di": "npm:^3.1.0"
   peerDependencies:
     "@nestjs/common": ">= 8.0"
     reflect-metadata: <1.0.0
-  checksum: 10c0/1542fc58fe32cf1f040d6fc9d5b60c1bd7fe794fb8b4aa286b9d64fa7f43cb7b9c7feca422aa131f7ab5ceecae62fc92302dbfca6516649789ce89d87c31b9ee
+  checksum: 10c0/e65ad5f1d8c229ba4972ffd2fa1cb7a8649f1e70b3f65340fab03ca16cee8e77e4520280de8b549f52ac64824670ae72806b0333a9748e082e6cd87f8e132272
   languageName: node
   linkType: hard
 
@@ -5477,26 +5477,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/types.common@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@suites/types.common@npm:3.0.0"
-  checksum: 10c0/103ea3fef3c8a2502565094b8005cb3a2cd549a5a911a969c5745c89e35b4cf2327667d92daa060c68a4577fad80da1d0939b2dd6c050b0ddbc0368bf5fcf876
-  languageName: node
-  linkType: hard
-
 "@suites/types.common@npm:^3.1.0":
   version: 3.1.0
   resolution: "@suites/types.common@npm:3.1.0"
   checksum: 10c0/3ef414a6b1270494380c85906fb9aba67e9f997e87e3953b9c5afdf558879811648dd019e40a7cfd0d48b329ccb1a464c7757666e3e9c287ad4d4c164216206c
-  languageName: node
-  linkType: hard
-
-"@suites/types.di@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@suites/types.di@npm:3.0.0"
-  dependencies:
-    "@suites/types.common": "npm:^3.0.0"
-  checksum: 10c0/447789340dc6a062b82d49512c2e606bdda76a586ae2334a42f3c8f798f60e59e7f0e7b364ab97ff7f1f6fb86c140315bc806c8acafed83449fede5ce1f29718
   languageName: node
   linkType: hard
 
@@ -6133,12 +6117,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22, @types/node@npm:^22.19.17":
+"@types/node@npm:^22":
   version: 22.19.17
   resolution: "@types/node@npm:22.19.17"
   dependencies:
     undici-types: "npm:~6.21.0"
   checksum: 10c0/b66c484c0a9f6d88b1ef360b0f487717234ee1a482cb2551ff73d9f3c43a42a777daf4c8a5eee970960728f8fe1f3877d3d8c6ffabcbca74cb401a59db700fa4
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^22.19.19":
+  version: 22.19.19
+  resolution: "@types/node@npm:22.19.19"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/402e0f088c94cabda3cd721546bd8e4e75e098e0b342f6e03b90ca1e19c28986f9650112c64fcfd09fc8cebc0f8b20291a513153e90489331cf666e1e5503e16
   languageName: node
   linkType: hard
 
@@ -7147,6 +7140,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"agent-base@npm:6":
+  version: 6.0.2
+  resolution: "agent-base@npm:6.0.2"
+  dependencies:
+    debug: "npm:4"
+  checksum: 10c0/dc4f757e40b5f3e3d674bc9beb4f1048f4ee83af189bae39be99f57bf1f48dde166a8b0a5342a84b5944ee8e6ed1e5a9d801858f4ad44764e84957122fe46261
+  languageName: node
+  linkType: hard
+
 "agent-base@npm:^7.0.2, agent-base@npm:^7.1.0":
   version: 7.1.0
   resolution: "agent-base@npm:7.1.0"
@@ -7705,14 +7707,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.16.0":
-  version: 1.16.0
-  resolution: "axios@npm:1.16.0"
+"axios@npm:^1.16.1":
+  version: 1.16.1
+  resolution: "axios@npm:1.16.1"
   dependencies:
     follow-redirects: "npm:^1.16.0"
     form-data: "npm:^4.0.5"
+    https-proxy-agent: "npm:^5.0.1"
     proxy-from-env: "npm:^2.1.0"
-  checksum: 10c0/1c91a5221b77b76072026b4cc95ecdf38f7c3e33e63423abec09a85e6e9a12279637dcc9ac2ba1fc333e0c447fb3b0f46d7965acb5d7cea02d188e9c6d425c0b
+  checksum: 10c0/2f77e37e6552bbff8a772d058fb09500198e9188c6b20dc799d82dbe12a8cb506f6eed4e4e62a9ba612a35cbab496faa26d68f9bff14a53af6d15c3e136391a7
   languageName: node
   linkType: hard
 
@@ -7872,14 +7875,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"better-sqlite3@npm:^12.9.0":
-  version: 12.9.0
-  resolution: "better-sqlite3@npm:12.9.0"
+"better-sqlite3@npm:^12.10.0":
+  version: 12.10.0
+  resolution: "better-sqlite3@npm:12.10.0"
   dependencies:
     bindings: "npm:^1.5.0"
     node-gyp: "npm:latest"
     prebuild-install: "npm:^7.1.1"
-  checksum: 10c0/69ee0d908fa6a5c8643872aa664686ed02476e88cb654fe37f0fef5845081430d4280c82f5d370e169c2abe7a14a85d9bc718ea720058abf4f7cd9a8dbe227f0
+  checksum: 10c0/b269792c1e456201b16fb9abd1e3fa9284d7710929f991899cebbb61e56dc3703673be29dadcb2f4a2d02961c49145f53d7d7b13b7b47298c033ec9de524f34f
   languageName: node
   linkType: hard
 
@@ -12150,6 +12153,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"https-proxy-agent@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "https-proxy-agent@npm:5.0.1"
+  dependencies:
+    agent-base: "npm:6"
+    debug: "npm:4"
+  checksum: 10c0/6dd639f03434003577c62b27cafdb864784ef19b2de430d8ae2a1d45e31c4fd60719e5637b44db1a88a046934307da7089e03d6089ec3ddacc1189d8de8897d1
+  languageName: node
+  linkType: hard
+
 "https-proxy-agent@npm:^7.0.0, https-proxy-agent@npm:^7.0.1":
   version: 7.0.2
   resolution: "https-proxy-agent@npm:7.0.2"
@@ -14730,7 +14743,7 @@ __metadata:
     "@semantic-release/commit-analyzer": "npm:^13.0.1"
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^10.0.1"
-    "@types/node": "npm:^22.19.17"
+    "@types/node": "npm:^22.19.19"
     knip: "npm:^6.13.1"
     semantic-release: "npm:^25.0.3"
     turbo: "npm:^2.9.12"
