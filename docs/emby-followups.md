@@ -315,7 +315,18 @@ The Jellyfin adapter sets `isLocked: true` on collection creation with the comme
 
 ### O2. Wire `POST /Playlists/{Id}/Items/{ItemId}/Move/{NewIndex}` for playlist reorder
 
-Emby has a real playlist-item move endpoint at `Emby.Api:1841`, but the `ItemId` parameter is typed `long` (int64), not the string GUIDs the rest of the API uses. Emby internally maintains a numeric ID alongside the user-facing GUID, and that numeric ID isn't exposed by the queries we already make. Out of scope for this PR — file as a follow-up issue if anyone asks for playlist reorder support on Emby.
+Confirmed implementable against a live Emby — but deliberately deferred because the call site doesn't exist in Maintainerr.
+
+**What the source dig confirmed**:
+- The route is real (`Emby.Api:1841`) and the handler at `Emby.Api:1909-1919` delegates straight to `IPlaylistManager.MoveItem(playlist, request.ItemId, request.NewIndex)`.
+- The DTO declares `ItemId` as `long`, but the official Emby web client at `dashboard-ui/modules/emby-apiclient/apiclient.js` passes `items[i].PlaylistItemId` — a `string` field on `BaseItemDto` (`Emby.Api:6488`) returned by `GET /Playlists/{Id}/Items`. ServiceStack handles the string-to-long conversion at the path-binding layer. No client-side internal-ID mapping needed.
+
+**Why we still defer**:
+- `IMediaServerService` only declares `reorderCollectionItems` ([media-server.interface.ts:280](../apps/server/src/modules/api/media-server/media-server.interface.ts#L280)).
+- The sole call site for that method is the Plex `COLLECTION_SORT` path at [collections.service.ts:849](../apps/server/src/modules/collections/collections.service.ts#L849).
+- No `reorderPlaylistItems` method exists, no Maintainerr rule action generates one, and no UI flow asks for it.
+
+Shipping the Emby impl would mean adding an interface method, three adapter implementations (Plex/Jellyfin/Emby), and a feature flag — all unreachable from any user flow. File as a follow-up issue if a real use case appears.
 
 Collection reorder remains genuinely unavailable on Emby (no equivalent `/Collections/{Id}/Items/{ItemId}/Move` route in either the swagger spec or the decompiled handler set). The current `COLLECTION_SORT = false` capability is correct.
 
