@@ -419,13 +419,39 @@ export class EmbyAdapterService implements IMediaServerService {
     }
   }
 
-  async getChildrenMetadata(parentId: string): Promise<MediaItem[]> {
+  async getChildrenMetadata(
+    parentId: string,
+    childType?: MediaItemType,
+  ): Promise<MediaItem[]> {
     if (!this.http) return [];
     try {
+      // Seasons of a series live under /Shows/{seriesId}/Seasons, not under
+      // /Items?ParentId= (ParentId of a season points to the library folder,
+      // not the show). Same data model as Jellyfin.
+      if (childType === 'season') {
+        const { data } = await this.http.get<EmbyItemsQueryResponse>(
+          `/Shows/${parentId}/Seasons`,
+          {
+            params: {
+              userId: this.embyUserId,
+              Fields: 'ProviderIds,DateCreated,Overview,Tags',
+              EnableUserData: true,
+            },
+          },
+        );
+        return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      }
+
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
         params: {
           ParentId: parentId,
+          IncludeItemTypes: childType
+            ? EmbyMapper.toEmbyItemKind(childType)
+            : undefined,
+          // Skip virtual (unaired) episodes the same way the Jellyfin adapter does.
+          ExcludeLocationTypes: childType === 'episode' ? 'Virtual' : undefined,
           Fields: 'ProviderIds,DateCreated,Overview,Tags',
+          EnableUserData: true,
           Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
         },
       });
@@ -433,6 +459,124 @@ export class EmbyAdapterService implements IMediaServerService {
     } catch (error) {
       this.logger.debug(
         `Emby getChildrenMetadata(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * User IDs of every user with `IsFavorite=true` on this item. Mirrors
+   * `JellyfinAdapterService.getItemFavoritedBy` (per-user fan-out — Emby
+   * has no central favorites endpoint).
+   */
+  async getItemFavoritedBy(itemId: string): Promise<string[]> {
+    if (!this.http) return [];
+    try {
+      const users = await this.getUsers();
+      const favoritedBy: string[] = [];
+      for (const user of users) {
+        try {
+          const { data } = await this.http.get<EmbyBaseItemDto>(
+            `/Users/${user.id}/Items/${itemId}`,
+          );
+          if (data.UserData?.IsFavorite) favoritedBy.push(user.id);
+        } catch {
+          // user may lack visibility on this item — skip silently
+        }
+      }
+      return favoritedBy;
+    } catch (error) {
+      this.logger.debug(
+        `Emby getItemFavoritedBy(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Sum of `UserData.PlayCount` across all users (counts unfinished plays).
+   * Mirrors `JellyfinAdapterService.getTotalPlayCount`.
+   */
+  async getTotalPlayCount(itemId: string): Promise<number> {
+    if (!this.http) return 0;
+    try {
+      const users = await this.getUsers();
+      let total = 0;
+      for (const user of users) {
+        try {
+          const { data } = await this.http.get<EmbyBaseItemDto>(
+            `/Users/${user.id}/Items/${itemId}`,
+          );
+          total += data.UserData?.PlayCount ?? 0;
+        } catch {
+          // skip users without visibility
+        }
+      }
+      return total;
+    } catch (error) {
+      this.logger.debug(
+        `Emby getTotalPlayCount(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      );
+      return 0;
+    }
+  }
+
+  /**
+   * Users who watched at least one episode under `parentId` (season or show).
+   * Mirrors `JellyfinAdapterService.getDescendantEpisodeWatchers`. One
+   * /Items request per user, each scoped to that user with `IsPlayed=true`
+   * + `Limit=1` — we only need to know whether any played episode exists.
+   */
+  async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
+    if (!this.http) return [];
+    try {
+      const users = await this.getUsers();
+      const watchers = new Set<string>();
+      for (const user of users) {
+        try {
+          const { data } = await this.http.get<EmbyItemsQueryResponse>(
+            '/Items',
+            {
+              params: {
+                userId: user.id,
+                ParentId: parentId,
+                Recursive: true,
+                IncludeItemTypes: 'Episode',
+                ExcludeLocationTypes: 'Virtual',
+                IsPlayed: true,
+                Limit: 1,
+                EnableUserData: true,
+              },
+            },
+          );
+          if ((data.Items ?? []).length > 0) watchers.add(user.id);
+        } catch {
+          // skip users without visibility
+        }
+      }
+      return [...watchers];
+    } catch (error) {
+      this.logger.debug(
+        `Emby getDescendantEpisodeWatchers(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Items inside a playlist. Mirrors `JellyfinAdapterService.getPlaylistItems`.
+   */
+  async getPlaylistItems(playlistId: string): Promise<MediaItem[]> {
+    if (!this.http) return [];
+    try {
+      const { data } = await this.http.get<EmbyItemsQueryResponse>(
+        `/Playlists/${playlistId}/Items`,
+        { params: { userId: this.embyUserId } },
+      );
+      return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+    } catch (error) {
+      this.logger.debug(
+        `Emby getPlaylistItems(${playlistId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
