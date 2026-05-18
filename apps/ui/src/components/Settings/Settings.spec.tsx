@@ -8,9 +8,14 @@ const navigate = vi.fn()
 const toastError = vi.fn()
 
 const getMediaServerSettingsPath = (mediaServerType: MediaServerType) => {
-  return mediaServerType === MediaServerType.PLEX
-    ? '/settings/plex'
-    : '/settings/jellyfin'
+  switch (mediaServerType) {
+    case MediaServerType.PLEX:
+      return '/settings/plex'
+    case MediaServerType.EMBY:
+      return '/settings/emby'
+    default:
+      return '/settings/jellyfin'
+  }
 }
 
 let currentPath = getMediaServerSettingsPath(MediaServerType.JELLYFIN)
@@ -21,6 +26,8 @@ type MockSettingsResult = {
     plex_auth_token: string | null
     jellyfin_url?: string
     jellyfin_api_key?: string
+    emby_url?: string
+    emby_api_key?: string
   }
   isLoading: boolean
   error?: Error
@@ -257,6 +264,31 @@ describe('SettingsWrapper', () => {
         .getByRole('link', { name: 'Jellyfin' })
         .getAttribute('aria-disabled'),
     ).not.toBe('true')
+  })
+
+  it('renders the Emby tab when media_server_type is EMBY', () => {
+    currentPath = getMediaServerSettingsPath(MediaServerType.EMBY)
+    currentSettingsResult = {
+      data: {
+        media_server_type: MediaServerType.EMBY,
+        plex_auth_token: null,
+        emby_url: 'http://emby.local',
+        emby_api_key: 'token',
+      },
+      isLoading: false,
+      error: undefined,
+    }
+
+    const { container } = render(<SettingsWrapper />)
+
+    const labels = getDesktopTabLabels(container)
+    expect(labels).toContain('Emby')
+    expect(labels).not.toContain('Plex')
+    expect(labels).not.toContain('Jellyfin')
+
+    expect(
+      screen.getByRole('link', { name: 'Emby' }).getAttribute('href'),
+    ).toBe('/settings/emby')
   })
 
   it('shows an error toast when a blocked settings tab is clicked during first setup', () => {
