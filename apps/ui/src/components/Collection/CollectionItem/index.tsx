@@ -133,7 +133,7 @@ const CollectionItem = (props: ICollectionItem) => {
         <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white sm:text-lg">
           <div>
             {props.collection.manualCollection
-              ? `${props.collection.manualCollectionName} (manual)`
+              ? `${props.collection.manualCollectionName} (custom)`
               : props.collection.title}
           </div>
         </div>

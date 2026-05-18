@@ -107,19 +107,32 @@ const featCommits = () => {
   return out ? out.split("\n") : [];
 };
 
-// Files that, when touched by a `fix:` commit, suggest user-visible
-// behavior may have changed and the docs are worth a second look.
-// Greppable allowlist — extend as new user-facing surfaces emerge.
-const USER_VISIBLE_FIX_PATH_PREFIXES = [
+// A `fix:` commit is worth a docs second-look when it touches a doc-worthy
+// surface. Rather than an allowlist that silently misses newly added modules,
+// we flag everything under these roots — the whole UI and every server
+// module — and subtract a small denylist of internal-only surfaces below.
+const FIX_PATH_ROOTS = [
   "apps/ui/",
-  "apps/server/src/modules/notifications/",
-  "apps/server/src/modules/settings/",
-  "apps/server/src/modules/collections/",
-  "apps/server/src/modules/rules/tasks/",
+  "apps/server/src/modules/",
   "README.md",
 ];
 
+// Internal-only surfaces with no user- or API-facing behavior. Fixes that
+// touch *only* these would add noise, so they're subtracted from the roots
+// above. Keep this list tight — when in doubt, leave a module flaggable.
+const FIX_PATH_DENYLIST = [
+  "apps/server/src/modules/events/",
+  "apps/server/src/modules/logging/",
+];
+
+// Controllers are an HTTP surface wherever they live — always doc-worthy,
+// even under a denylisted directory.
 const USER_VISIBLE_FIX_PATH_SUFFIXES = [".controller.ts"];
+
+const isDocWorthyFixPath = (f) =>
+  USER_VISIBLE_FIX_PATH_SUFFIXES.some((s) => f.endsWith(s)) ||
+  (FIX_PATH_ROOTS.some((p) => f.startsWith(p)) &&
+    !FIX_PATH_DENYLIST.some((p) => f.startsWith(p)));
 
 const fixCommits = () => {
   const out = git([
@@ -146,17 +159,65 @@ const fixCommits = () => {
       sha,
     ]).trim();
     const files = filesOut ? filesOut.split("\n").filter(Boolean) : [];
-    const matched = files.filter(
-      (f) =>
-        USER_VISIBLE_FIX_PATH_PREFIXES.some((p) => f.startsWith(p)) ||
-        USER_VISIBLE_FIX_PATH_SUFFIXES.some((s) => f.endsWith(s)),
-    );
+    const matched = files.filter(isDocWorthyFixPath);
     if (matched.length > 0) {
       flagged.push({ line, matched });
     }
   }
 
   return flagged;
+};
+
+// Items a human has explicitly tagged for documentation. Anyone can apply the
+// `documentation` label to an issue or PR; the drift flow then picks it up so
+// it isn't lost. Needs a GitHub token + `gh` on PATH — degrades gracefully
+// when run locally without either.
+const ghJson = (args) => {
+  try {
+    return JSON.parse(
+      execFileSync("gh", args, {
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+      }),
+    );
+  } catch {
+    return null;
+  }
+};
+
+const docLabeledItems = () => {
+  const repo = process.env.GITHUB_REPOSITORY || "Maintainerr/Maintainerr";
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  if (!token) return { available: false, prs: [], issues: [] };
+
+  let sinceDate = "";
+  try {
+    sinceDate = git(["log", "-1", "--format=%aI", baseRef]).trim().slice(0, 10);
+  } catch {
+    return { available: false, prs: [], issues: [] };
+  }
+
+  const prs = ghJson([
+    "pr", "list",
+    "--repo", repo,
+    "--label", "documentation",
+    "--state", "merged",
+    "--search", `merged:>=${sinceDate}`,
+    "--json", "number,title,url",
+    "--limit", "100",
+  ]);
+  const issues = ghJson([
+    "issue", "list",
+    "--repo", repo,
+    "--label", "documentation",
+    "--state", "open",
+    "--json", "number,title,url",
+    "--limit", "100",
+  ]);
+  if (prs === null && issues === null) {
+    return { available: false, prs: [], issues: [] };
+  }
+  return { available: true, prs: prs || [], issues: issues || [] };
 };
 
 const codeKeys = parseCodeKeys();
@@ -169,6 +230,7 @@ const contracts = contractsChanges();
 const controllers = newControllers();
 const feats = featCommits();
 const behavioralFixes = fixCommits();
+const docLabeled = docLabeledItems();
 
 const lines = [];
 lines.push("<!-- maintainerr-docs-drift -->");
@@ -295,10 +357,45 @@ if (behavioralFixes.length) {
   }
   lines.push("");
   lines.push(
-    "_`fix:` commits that touched user-facing surfaces (UI, settings, notifications, collections, rule executor, controllers, README). Worth scanning to decide whether observable behavior changed enough to warrant a docs note._",
+    "_`fix:` commits that touched a doc-worthy surface — the UI, any server module except internal-only `events`/`logging`, any controller, or the README. Worth scanning to decide whether observable behavior changed enough to warrant a docs note._",
   );
 } else {
   lines.push("_No user-facing `fix:` commits detected._");
+}
+lines.push("");
+
+lines.push("### Documentation-labeled issues & PRs");
+lines.push("");
+if (!docLabeled.available) {
+  lines.push(
+    "_Skipped — no GitHub token available to query the `documentation` label._",
+  );
+} else if (!docLabeled.prs.length && !docLabeled.issues.length) {
+  lines.push(
+    "_No open issues or in-range merged PRs carry the `documentation` label._",
+  );
+} else {
+  if (docLabeled.prs.length) {
+    lines.push(
+      `**Merged PRs labeled \`documentation\` (${docLabeled.prs.length}):**`,
+    );
+    for (const pr of docLabeled.prs) {
+      lines.push(`- [ ] [#${pr.number}](${pr.url}) — ${pr.title}`);
+    }
+    lines.push("");
+  }
+  if (docLabeled.issues.length) {
+    lines.push(
+      `**Open issues labeled \`documentation\` (${docLabeled.issues.length}):**`,
+    );
+    for (const iss of docLabeled.issues) {
+      lines.push(`- [ ] [#${iss.number}](${iss.url}) — ${iss.title}`);
+    }
+    lines.push("");
+  }
+  lines.push(
+    "_Manually tagged with the `documentation` label — confirm each is reflected in Maintainerr_docs before release._",
+  );
 }
 lines.push("");
 
@@ -315,7 +412,9 @@ const meta = {
       0 ||
     controllers.length > 0 ||
     feats.length > 0 ||
-    behavioralFixes.length > 0,
+    behavioralFixes.length > 0 ||
+    docLabeled.prs.length > 0 ||
+    docLabeled.issues.length > 0,
   sections: {
     glossaryMissingFromDocs: missingFromDocs.length,
     glossaryMissingFromCode: missingFromCode.length,
@@ -327,6 +426,8 @@ const meta = {
     newControllers: controllers.length,
     featCommits: feats.length,
     behavioralFixCommits: behavioralFixes.length,
+    docLabeledPRs: docLabeled.prs.length,
+    docLabeledIssues: docLabeled.issues.length,
   },
 };
 

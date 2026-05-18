@@ -181,6 +181,23 @@ describe('SonarrApi', () => {
     expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/700');
   });
 
+  describe('cache coherency (issue #2757 / #2891)', () => {
+    it('getSeriesByTvdbId reads uncached so post-mutation state is never stale', async () => {
+      const series = createSonarrSeries({ id: 1, tvdbId: 555 });
+      const getSpy = jest
+        .spyOn(sonarrApi as any, 'get')
+        .mockResolvedValue([series]);
+      const getWithoutCacheSpy = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([series]);
+
+      await sonarrApi.getSeriesByTvdbId(555);
+
+      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/series?tvdbId=555');
+      expect(getSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('runPut / runDelete failure contract', () => {
     it('should return false when PUT returns undefined (API failure)', async () => {
       jest.spyOn(sonarrApi as any, 'put').mockResolvedValue(undefined);

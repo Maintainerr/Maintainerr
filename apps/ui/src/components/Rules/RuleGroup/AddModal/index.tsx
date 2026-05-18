@@ -42,6 +42,7 @@ import Button from '../../../Common/Button'
 import CommunityRuleModal from '../../../Common/CommunityRuleModal'
 import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
+import Modal from '../../../Common/Modal'
 import { getCollectionMediaSortConfig } from '../../../Common/MediaLibrarySortControl'
 import SaveButton from '../../../Common/SaveButton'
 import { Input } from '../../../Forms/Input'
@@ -503,6 +504,8 @@ const AddModal = (props: AddModal) => {
     [],
   )
   const [overlayTemplatesLoaded, setOverlayTemplatesLoaded] = useState(false)
+  const [pendingDisableSubmit, setPendingDisableSubmit] =
+    useState<RuleGroupFormOutput | null>(null)
 
   const overlayTemplateMode =
     selectedType === 'episode' ? 'titlecard' : 'poster'
@@ -750,6 +753,24 @@ const AddModal = (props: AddModal) => {
 
     setFormIncomplete(false)
 
+    // Disabling an active rule group freezes its tracked items rather than
+    // clearing them — confirm so users don't expect the linked collection to
+    // drain on its own.
+    const isDisablingActiveGroup =
+      props.editData &&
+      !props.isCloneMode &&
+      props.editData.isActive &&
+      !data.active
+
+    if (isDisablingActiveGroup) {
+      setPendingDisableSubmit(data)
+      return
+    }
+
+    await performSubmit(data)
+  }
+
+  const performSubmit = async (data: RuleGroupFormOutput) => {
     const creationObj: RuleGroupCreatePayload = {
       name: data.name,
       description: data.description ?? '',
@@ -1799,6 +1820,38 @@ const AddModal = (props: AddModal) => {
           </div>
         </form>
       </div>
+      {pendingDisableSubmit && (
+        <Modal
+          title="Disabling this rule group"
+          size="md"
+          backgroundClickable={false}
+          onCancel={() => setPendingDisableSubmit(null)}
+          cancelText="Cancel"
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => {
+                const data = pendingDisableSubmit
+                setPendingDisableSubmit(null)
+                void performSubmit(data)
+              }}
+            >
+              Got it
+            </Button>
+          }
+        >
+          <p>
+            Disabling won&apos;t remove items already tracked by this rule
+            group. The linked collection will keep them until this rule group is
+            re-enabled or deleted.
+          </p>
+          <p className="mt-2">
+            To clear them first, edit the rule&apos;s criteria so it matches
+            nothing, run the rule, and then disable it.
+          </p>
+        </Modal>
+      )}
     </>
   )
 }

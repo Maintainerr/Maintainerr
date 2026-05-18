@@ -39,6 +39,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
             text="Handle Collections"
             executing={collectionHandlerRunning}
             disabled={collectionHandlerRunning}
+            title="Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
           />
         }
         controls={

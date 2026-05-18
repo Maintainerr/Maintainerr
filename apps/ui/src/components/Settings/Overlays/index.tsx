@@ -14,6 +14,7 @@ import {
   resetAllOverlays,
   useUpdateOverlaySettings,
 } from '../../../api/overlays'
+import { formatOverlayProcessSummary } from '../../../utils/overlayProcessResult'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
@@ -127,10 +128,8 @@ const OverlaySettings = () => {
   const handleProcessAll = async () => {
     setProcessing(true)
     try {
-      const result = await processAllOverlays()
-      showInfo(
-        `Processed: ${result.processed}, Reverted: ${result.reverted}, Errors: ${result.errors}`,
-      )
+      const result = await processAllOverlays({ force: true })
+      showInfo(formatOverlayProcessSummary(result))
     } catch {
       showError('Failed to process overlays')
     } finally {
@@ -177,7 +176,7 @@ const OverlaySettings = () => {
                 <ToggleField
                   name="enabled"
                   label="Enable overlays"
-                  checked={field.value}
+                  checked={field.value ?? false}
                   onChange={field.onChange}
                   helpText="Master switch for overlay processing"
                 />
@@ -204,7 +203,7 @@ const OverlaySettings = () => {
                       <PendingButton
                         buttonType="default"
                         type="button"
-                        onClick={handleProcessAll}
+                        onClick={() => void handleProcessAll()}
                         disabled={processing || !loadedEnabled}
                         isPending={processing}
                         idleLabel="Run Now"
@@ -213,19 +212,12 @@ const OverlaySettings = () => {
                         idleIcon={<RefreshIcon />}
                       />
                     </span>
-                    <span
-                      className="flex rounded-md shadow-sm"
-                      title={
-                        !loadedEnabled
-                          ? 'Enable overlays and save to reset existing overlays'
-                          : undefined
-                      }
-                    >
+                    <span className="flex rounded-md shadow-sm">
                       <Button
                         buttonType="danger"
                         type="button"
                         onClick={handleResetAllRequest}
-                        disabled={resetting || !loadedEnabled}
+                        disabled={processing || resetting}
                       >
                         <span>
                           {resetting ? 'Resetting...' : 'Reset All Overlays'}
@@ -252,7 +244,7 @@ const OverlaySettings = () => {
 
       {confirmResetOpen && (
         <Modal
-          title="Reset all overlays?"
+          title="Restore original artwork for all collections?"
           size="sm"
           onCancel={() => setConfirmResetOpen(false)}
           footerActions={

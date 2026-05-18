@@ -3,6 +3,7 @@ import {
   CollectionLogMeta,
   CollectionMediaSortField,
   compareMediaItemsBySort,
+  type CompareMediaItemsOptions,
   ECollectionLogType,
   isMediaType,
   MaintainerrEvent,
@@ -758,6 +759,35 @@ export class CollectionsService {
       );
   }
 
+  /**
+   * Builds the comparator options that route `deleteSoonest` to each row's
+   * `collection_media.addDate` (when Maintainerr started the deletion timer)
+   * instead of `MediaItem.addedAt` (when the file landed in the underlying
+   * media-server library). Sorting must follow the user-visible
+   * "Leaving in X days" overlay so what Maintainerr UI shows matches what is
+   * pushed to the media server collection.
+   *
+   * `deleteSoonestReferenceTime` anchors the comparator's day buckets to the
+   * same `daysLeft` rollover the overlay shows, so two items with the same
+   * countdown tie even when their `addDate`s straddle UTC midnight.
+   */
+  private buildCollectionMediaCompareOptions(
+    rows: ReadonlyArray<{ mediaServerId: string; addDate: Date | string }>,
+    deleteAfterDays: number | null | undefined,
+  ): CompareMediaItemsOptions {
+    const addDateByMediaItemId = new Map<string, Date | string>(
+      rows.map((row) => [row.mediaServerId, row.addDate]),
+    );
+    const options: CompareMediaItemsOptions = {
+      deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
+    };
+    if (deleteAfterDays != null) {
+      options.deleteSoonestReferenceTime =
+        Date.now() - deleteAfterDays * 86400000;
+    }
+    return options;
+  }
+
   async applyCollectionSort(collection: Collection): Promise<void> {
     const sortKey = collection.mediaServerSort;
     const parsed = sortKey ? parseCollectionSortKey(sortKey) : undefined;
@@ -801,12 +831,18 @@ export class CollectionsService {
         return;
       }
 
+      const compareOptions = this.buildCollectionMediaCompareOptions(
+        sortable,
+        collection.deleteAfterDays,
+      );
+
       sortable.sort((a, b) =>
         compareMediaItemsBySort(
           a.mediaData,
           b.mediaData,
           parsed.sort,
           parsed.order,
+          compareOptions,
         ),
       );
 
@@ -881,8 +917,22 @@ export class CollectionsService {
       const itemCount = await queryBuilder.getCount();
 
       if (!sort || sort === 'deleteSoonest') {
-        // deleteSoonest is equivalent to addDate ordering because
-        // deleteAfterDays is constant for every item in a collection.
+        // SQL-paginate by `collection_media.addDate`. `deleteSoonest` is
+        // equivalent to `addDate` ordering because `deleteAfterDays` is
+        // constant for every item in a collection — so the only sort key
+        // that actually matters lives on the `collection_media` row and the
+        // database can paginate it directly without hydrating MediaItem
+        // metadata for every row in the collection. This keeps page loads
+        // fast on collections with hundreds of items.
+        //
+        // Trade-off: `applyCollectionSort` (the media-server push) still
+        // applies the day-bucketed title tiebreaker via `compareMediaItemsBySort`,
+        // so the polished alphabetical-within-day order is what users see
+        // when browsing the actual Plex/Jellyfin collection. The Maintainerr
+        // UI page may show same-day items in a slightly different order
+        // (by `addDate, id` instead of by title) — acceptable because the
+        // primary sort key is correct and Maintainerr's DB remains the
+        // source of truth driving the next push.
         const direction =
           sort === 'deleteSoonest' && sortOrder === 'asc' ? 'ASC' : 'DESC';
         const { entities } = await queryBuilder
@@ -902,15 +952,17 @@ export class CollectionsService {
         };
       }
 
+      // Explicit sort on a MediaItem-side key (airDate / rating / watchCount /
+      // title) — the sort value isn't on `collection_media`, so we have to
+      // hydrate the whole collection before paginating. Acceptable because
+      // these sorts are rarely used compared to `deleteSoonest` and the
+      // default load.
       const { entities } = await queryBuilder
         .clone()
         .orderBy('collection_media.addDate', 'DESC')
         .addOrderBy('collection_media.id', 'DESC')
         .getRawAndEntities();
 
-      // Metadata-backed sorts currently hydrate every matching row before
-      // pagination because these sort keys are not persisted locally.
-      // Replace this with cached DB-backed fields when available.
       this.logger.debug(
         `Collection ${id} sort ${sort} is hydrating ${itemCount} items before pagination`,
       );
@@ -924,6 +976,12 @@ export class CollectionsService {
         metadataByMediaServerId.has(entity.mediaServerId),
       );
 
+      const collectionRecord = await this.getCollection(id);
+      const compareOptions = this.buildCollectionMediaCompareOptions(
+        sortableEntities,
+        collectionRecord?.deleteAfterDays,
+      );
+
       const sortedPageEntities = sortableEntities
         .sort((leftItem, rightItem) =>
           compareMediaItemsBySort(
@@ -931,6 +989,7 @@ export class CollectionsService {
             metadataByMediaServerId.get(rightItem.mediaServerId)!,
             sort,
             sortOrder,
+            compareOptions,
           ),
         )
         .slice(offset, offset + size);

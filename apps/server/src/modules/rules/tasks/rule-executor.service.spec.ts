@@ -98,9 +98,11 @@ describe('RuleExecutorService', () => {
 
     const comparatorFactory = {
       create: jest.fn().mockReturnValue({
-        executeRulesWithData: jest
-          .fn()
-          .mockResolvedValue({ stats: [], data: [] }),
+        executeRulesWithData: jest.fn().mockResolvedValue({
+          stats: [],
+          data: [],
+          transientFailureMediaIds: new Set<string>(),
+        }),
       }),
     } as unknown as jest.Mocked<RuleComparatorServiceFactory>;
 
@@ -1245,5 +1247,291 @@ describe('RuleExecutorService', () => {
     expect(
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
+  });
+
+  // Issue #2858: Excluding a single episode previously cascaded to every
+  // sibling because Exclusion.parent (the entry-point of the exclusion
+  // request) was misused as a structural cascade key.
+  it('only filters the specifically excluded episode, leaving siblings of the same show eligible', async () => {
+    const { service, collectionService, rulesService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+    rulesService.getExclusions.mockResolvedValue([
+      // parent=showId mirrors what setExclusion writes when the AddModal is
+      // opened from a show overview — the regression hinges on this shape.
+      { mediaServerId: 'ep-1', parent: 'show-1', type: 'episode' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).statisticsData = [];
+    (service as any).resultData = [
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-2', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-3', parentId: 'season-2', grandparentId: 'show-1' },
+    ];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(
+      1,
+      expect.arrayContaining([
+        expect.objectContaining({ mediaServerId: 'ep-2' }),
+        expect.objectContaining({ mediaServerId: 'ep-3' }),
+      ]),
+    );
+    const addedIds = collectionService.addToCollection.mock.calls[0][1].map(
+      (m: { mediaServerId: string }) => m.mediaServerId,
+    );
+    expect(addedIds).not.toContain('ep-1');
+  });
+
+  it('cascades a season exclusion to its episodes only', async () => {
+    const { service, collectionService, rulesService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+    rulesService.getExclusions.mockResolvedValue([
+      { mediaServerId: 'season-1', parent: 'show-1', type: 'season' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).statisticsData = [];
+    (service as any).resultData = [
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-2', parentId: 'season-2', grandparentId: 'show-1' },
+    ];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    const addedIds = collectionService.addToCollection.mock.calls[0][1].map(
+      (m: { mediaServerId: string }) => m.mediaServerId,
+    );
+    expect(addedIds).toEqual(['ep-2']);
+  });
+
+  it('cascades a show exclusion to its seasons and episodes', async () => {
+    const { service, collectionService, rulesService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([] as any);
+    rulesService.getExclusions.mockResolvedValue([
+      { mediaServerId: 'show-1', parent: 'show-1', type: 'show' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).statisticsData = [];
+    (service as any).resultData = [
+      { id: 'season-1', parentId: 'show-1' },
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'season-other', parentId: 'show-2' },
+    ];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    const addedIds = collectionService.addToCollection.mock.calls[0][1].map(
+      (m: { mediaServerId: string }) => m.mediaServerId,
+    );
+    expect(addedIds).toEqual(['season-other']);
+  });
+
+  it('does not skip sibling episodes when syncing manually added children after a single-episode exclusion (issue #2858)', async () => {
+    const { service, mediaServer, rulesService, collectionService } =
+      createService(MediaServerType.JELLYFIN);
+
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'ep-1', parentId: 'season-1', grandparentId: 'show-1' },
+      { id: 'ep-2', parentId: 'season-1', grandparentId: 'show-1' },
+    ]);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    rulesService.getExclusions.mockResolvedValue([
+      { mediaServerId: 'ep-1', parent: 'show-1', type: 'episode' },
+    ] as any);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaServerId: 'coll-1' }),
+      [
+        {
+          mediaServerId: 'ep-2',
+          reason: { type: 'media_added_manually' },
+        },
+      ],
+      'local',
+    );
+  });
+
+  it('preserves items dropped from resultData due to transient getter failure', async () => {
+    const { service, collectionService, logger } = createService(
+      MediaServerType.PLEX,
+    );
+
+    const collection = {
+      id: 1,
+      title: 'Flap test',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm-transient' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+    (service as any).transientFailureMediaIds = new Set<string>([
+      'm-transient',
+    ]);
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Skipped rule-driven removal for 1 media item in 'Flap test'",
+      ),
+    );
+  });
+
+  it('still removes items that dropped out for non-transient reasons', async () => {
+    const { service, collectionService } = createService(MediaServerType.PLEX);
+
+    const collection = {
+      id: 1,
+      title: 'Flap test',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm-stopped-matching' },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+    (service as any).transientFailureMediaIds = new Set<string>();
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      [
+        {
+          mediaServerId: 'm-stopped-matching',
+          reason: {
+            type: 'media_removed_by_rule',
+            data: undefined,
+          },
+        },
+      ],
+      'rule',
+    );
+  });
+
+  it('accumulates transient failures across executor chunks before removal', async () => {
+    const {
+      service,
+      rulesService,
+      mediaServer,
+      collectionService,
+      eventEmitter,
+    } = createService(MediaServerType.PLEX);
+
+    const ruleGroup = {
+      id: 10,
+      name: 'Two-chunk run',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Two-chunk run' },
+    };
+
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Two-chunk run',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'A' },
+      { mediaServerId: 'B' },
+    ] as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'A' },
+      { id: 'B' },
+    ] as any);
+    mediaServer.getLibraryContents
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 50 }, (_, i) => ({ id: `chunk1-${i}` })),
+        totalSize: 60,
+      } as any)
+      .mockResolvedValueOnce({
+        items: Array.from({ length: 10 }, (_, i) => ({ id: `chunk2-${i}` })),
+        totalSize: 60,
+      } as any);
+    mediaServer.getLibraryContentCount.mockResolvedValue(60);
+
+    const comparator = (service as any).comparatorFactory.create();
+    comparator.executeRulesWithData
+      .mockResolvedValueOnce({
+        stats: [],
+        data: [],
+        transientFailureMediaIds: new Set<string>(['A']),
+      })
+      .mockResolvedValueOnce({
+        stats: [],
+        data: [],
+        transientFailureMediaIds: new Set<string>(['B']),
+      });
+
+    await service.executeForRuleGroups(10, new AbortController().signal);
+
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Removed,
+      expect.anything(),
+    );
   });
 });

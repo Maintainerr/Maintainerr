@@ -46,9 +46,14 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     }
   };
 
+  // Intentionally uncached: this drives rule evaluation and resolves the
+  // movie that actions then mutate — both need Radarr's current truth, not a
+  // snapshot that can be up to DEFAULT_TTL stale.
   public async getMovieByTmdbId(id: number): Promise<RadarrMovie> {
     try {
-      const response = await this.get<RadarrMovie[]>(`/movie?tmdbId=${id}`);
+      const response = await this.getWithoutCache<RadarrMovie[]>(
+        `/movie?tmdbId=${id}`,
+      );
 
       if (!response[0]) {
         this.logger.warn(`Could not find Movie with TMDb id ${id} in Radarr`);
@@ -100,7 +105,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     },
   ): Promise<boolean> {
     try {
-      const movieData: RadarrMovie = await this.get(`movie/${movieId}`);
+      const movieData: RadarrMovie = await this.getWithoutCache(
+        `movie/${movieId}`,
+      );
 
       if (!movieData) {
         return false;
@@ -117,7 +124,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       if (options?.deleteFiles) {
-        const movieFiles: RadarrMovieFile[] = await this.get(
+        const movieFiles: RadarrMovieFile[] = await this.getWithoutCache(
           `moviefile?movieId=${movieId}`,
         );
         for (const movieFile of movieFiles ?? []) {

@@ -30,6 +30,10 @@ import { SettingsService } from '../../settings/settings.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
+import {
+  buildExclusionCascadeSets,
+  isMediaItemExcluded,
+} from '../helpers/exclusion-cascade.helper';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
 import { RuleExecutorProgressService } from './rule-executor-progress.service';
@@ -88,6 +92,7 @@ export class RuleExecutorService {
   workerData: MediaItem[];
   resultData: MediaItem[];
   statisticsData: IComparisonStatistics[];
+  transientFailureMediaIds: Set<string> = new Set<string>();
   Data: MediaItem[];
   startTime: Date;
 
@@ -233,6 +238,7 @@ export class RuleExecutorService {
         this.workerData = [];
         this.resultData = [];
         this.statisticsData = [];
+        this.transientFailureMediaIds = new Set<string>();
         this.mediaData = { page: 0, finished: false, data: [] };
 
         this.mediaDataType = ruleGroup.dataType || undefined;
@@ -256,6 +262,9 @@ export class RuleExecutorService {
           if (ruleResult) {
             this.statisticsData.push(...ruleResult.stats);
             this.resultData.push(...ruleResult.data);
+            for (const id of ruleResult.transientFailureMediaIds) {
+              this.transientFailureMediaIds.add(id);
+            }
           }
         }
 
@@ -398,12 +407,7 @@ export class RuleExecutorService {
                   Boolean(mediaServerId),
                 ),
             );
-            const excludedMediaServerIds = new Set<string>(
-              exclusions.map((e) => e.mediaServerId),
-            );
-            const excludedParentIds = new Set<string>(
-              exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
-            );
+            const exclusionCascade = buildExclusionCascadeSets(exclusions);
             const missingManualChildren: CollectionMediaChange[] = [];
 
             for (const child of children) {
@@ -420,13 +424,7 @@ export class RuleExecutorService {
                 }
 
                 // Skip items that are excluded
-                if (
-                  excludedMediaServerIds.has(childId) ||
-                  (child.parentId &&
-                    excludedParentIds.has(child.parentId.toString())) ||
-                  (child.grandparentId &&
-                    excludedParentIds.has(child.grandparentId.toString()))
-                ) {
+                if (isMediaItemExcluded(exclusionCascade, child)) {
                   continue;
                 }
 
@@ -612,14 +610,7 @@ export class RuleExecutorService {
       );
 
       const exclusions = await this.rulesService.getExclusions(rulegroup?.id);
-
-      // Build sets of excluded IDs - both direct mediaServerId and parent IDs
-      const excludedMediaServerIds = new Set<string>(
-        exclusions.map((e) => e.mediaServerId),
-      );
-      const excludedParentIds = new Set<string>(
-        exclusions.filter((e) => e.parent).map((e) => String(e.parent)),
-      );
+      const exclusionCascade = buildExclusionCascadeSets(exclusions);
 
       const statsByMediaServerId = new Map<string, IComparisonStatistics>();
       for (const stat of this.statisticsData ?? []) {
@@ -629,24 +620,14 @@ export class RuleExecutorService {
         }
       }
 
-      // filter exclusions out of results & get correct media item ID
-      // Check both direct exclusion and parent exclusion (e.g., show excluded -> all seasons excluded)
+      // Filter exclusions out of results. Cascade is keyed off the show/season
+      // exclusion's own mediaServerId (via type), so a single-episode exclusion
+      // only skips that episode — not its siblings (issue #2858).
       const desiredMediaServerIds = new Set<string>();
 
       for (const item of this.resultData ?? []) {
-        const mediaServerId = item.id;
-        const isDirectlyExcluded = excludedMediaServerIds.has(mediaServerId);
-        const isParentExcluded =
-          item.parentId && excludedParentIds.has(item.parentId);
-        const isGrandparentExcluded =
-          item.grandparentId && excludedParentIds.has(item.grandparentId);
-
-        if (
-          !isDirectlyExcluded &&
-          !isParentExcluded &&
-          !isGrandparentExcluded
-        ) {
-          desiredMediaServerIds.add(mediaServerId);
+        if (!isMediaItemExcluded(exclusionCascade, item)) {
+          desiredMediaServerIds.add(item.id);
         }
       }
 
@@ -745,10 +726,28 @@ export class RuleExecutorService {
         );
 
         const mediaToRemove: string[] = [];
+        let preservedTransientRemovalCount = 0;
         for (const mediaServerId of currentMediaServerIds) {
-          if (!desiredMediaServerIds.has(mediaServerId)) {
-            mediaToRemove.push(mediaServerId);
+          if (desiredMediaServerIds.has(mediaServerId)) {
+            continue;
           }
+          if (this.transientFailureMediaIds.has(mediaServerId)) {
+            preservedTransientRemovalCount++;
+            continue;
+          }
+          mediaToRemove.push(mediaServerId);
+        }
+
+        if (preservedTransientRemovalCount > 0) {
+          this.logger.debug(
+            `Skipped rule-driven removal for ${preservedTransientRemovalCount} media item${
+              preservedTransientRemovalCount === 1 ? '' : 's'
+            } in '${
+              collection.manualCollection
+                ? collection.manualCollectionName
+                : collection.title
+            }' because rule data was transiently unavailable this run; will retry next pass.`,
+          );
         }
 
         const dataToRemove: CollectionMediaChange[] = this.prepareDataAmendment(

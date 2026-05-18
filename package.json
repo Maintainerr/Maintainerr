@@ -1,6 +1,6 @@
 {
   "name": "maintainerr",
-  "version": "3.10.2",
+  "version": "3.11.2",
   "private": true,
   "packageManager": "yarn@4.11.0",
   "repository": {
@@ -34,11 +34,11 @@
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
-    "@types/node": "^22.19.17",
-    "knip": "^6.9.0",
+    "@types/node": "^22.19.19",
+    "knip": "^6.13.1",
     "semantic-release": "^25.0.3",
-    "turbo": "^2.9.6",
-    "typescript": "^5.9.3"
+    "turbo": "^2.9.12",
+    "typescript": "^6.0.3"
   },
   "release": {
     "plugins": [
@@ -83,5 +83,12 @@
     "publish": [
       "@semantic-release/github"
     ]
+  },
+  "resolutions": {
+    "dompurify": ">=3.4.0",
+    "picomatch": ">=4.0.4",
+    "postcss": ">=8.5.10",
+    "lodash": ">=4.18.0",
+    "lodash-es": ">=4.18.0"
   }
 }
