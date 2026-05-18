@@ -90,7 +90,13 @@ yarn check-types
 
 ### CI Workflow Commands
 
-GitHub quality and test workflows use Node.js 24, then run:
+GitHub quality workflows include a separate YAML lint job:
+
+```bash
+yamllint -s .
+```
+
+The formatting, TypeScript lint, and test workflows use Node.js 24, then run:
 
 ```bash
 corepack install
