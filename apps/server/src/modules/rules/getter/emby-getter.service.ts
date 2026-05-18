@@ -324,19 +324,19 @@ export class EmbyGetterService {
           return await this.getLastEpisodeAiredAt(metadata.id, metadata.type);
         }
 
-        // Plex-only features - not supported in Jellyfin
+        // Plex-only features - not supported in Emby
         case 'watchlist_isListedByUsers':
         case 'watchlist_isWatchlisted': {
           return prop.name === 'watchlist_isWatchlisted' ? false : [];
         }
 
-        // Rating properties - Jellyfin provides CommunityRating and CriticRating.
+        // Rating properties - Emby provides CommunityRating and CriticRating.
         // CommunityRating is provider-dependent and is not guaranteed to be IMDb-specific.
         // CriticRating is typically from Rotten Tomatoes (0-100 scale, stored as 0-10 after mapping).
         case 'rating_imdb':
         case 'rating_tmdb': {
-          // Both rules fall back to Jellyfin CommunityRating because the API does not
-          // expose a dedicated IMDb numeric rating field in the published SDK/OpenAPI model.
+          // Both rules fall back to Emby CommunityRating because the API does not
+          // expose a dedicated IMDb numeric rating field.
           const communityRating = metadata.ratings?.find(
             (r) => r.source === 'community',
           );
@@ -351,7 +351,7 @@ export class EmbyGetterService {
         }
 
         case 'rating_rottenTomatoesAudience': {
-          // Jellyfin doesn't provide RT audience ratings separately
+          // Emby doesn't expose RT audience ratings separately
           // Could fall back to community rating as an approximation
           const communityRating = metadata.ratings?.find(
             (r) => r.source === 'community',
@@ -402,13 +402,14 @@ export class EmbyGetterService {
           return communityRating?.value ?? null;
         }
 
-        // Smart collection properties - Jellyfin doesn't have smart collections
+        // Smart collection properties — Emby Premiere supports smart
+        // collections, but this adapter doesn't yet differentiate them from
+        // regular BoxSets. Fall back to normal collection count/names; revisit
+        // when the adapter learns to tag smart collections distinctly.
         case 'collectionsIncludingSmart':
         case 'sw_collections_including_parent_and_smart':
         case 'sw_collection_names_including_parent_and_smart':
         case 'collection_names_including_smart': {
-          // Fall back to normal collection count/names
-          // Jellyfin doesn't distinguish between smart and regular collections
           if (
             prop.name === 'collectionsIncludingSmart' ||
             prop.name === 'sw_collections_including_parent_and_smart'
@@ -434,7 +435,7 @@ export class EmbyGetterService {
         }
 
         case 'collection_siblings_lastViewedAt': {
-          // Aggregate "last view date" across every movie that shares a Jellyfin
+          // Aggregate "last view date" across every movie that shares an Emby
           // BoxSet (collection) with this item. Mirrors the Plex implementation:
           // one recently-watched sibling keeps the whole set from being deleted
           // together.
@@ -577,7 +578,7 @@ export class EmbyGetterService {
 
   /**
    * Return the most recent `LastPlayedDate` found across every episode of a
-   * show or season, or null when nothing has been watched. Jellyfin does not
+   * show or season, or null when nothing has been watched. Emby does not
    * expose a watched timestamp on the parent item, so the only way to derive
    * a "last watched" signal for shows/seasons is to walk the children and
    * take the max. This is an aggregate — it is not the view date of the
@@ -936,7 +937,7 @@ export class EmbyGetterService {
       }
 
       for (const child of children) {
-        // getWatchHistory aggregates LastPlayedDate across all Jellyfin users
+        // getWatchHistory aggregates LastPlayedDate across all Emby users
         // (unlike child.lastViewedAt which is scoped to the admin user).
         const history = await this.embyAdapter.getWatchHistory(child.id);
         for (const record of history) {
