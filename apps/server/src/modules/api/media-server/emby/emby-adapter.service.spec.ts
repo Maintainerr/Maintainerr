@@ -1,4 +1,4 @@
-import { CreateCollectionParams, MediaServerFeature } from '@maintainerr/contracts';
+import { MediaServerFeature } from '@maintainerr/contracts';
 import { AxiosError } from 'axios';
 import cacheManager from '../../lib/cache';
 import { EmbyAdapterService } from './emby-adapter.service';
@@ -116,7 +116,10 @@ describe('EmbyAdapterService', () => {
       });
       expect(http.get).toHaveBeenCalledWith('/Users/user-1/Items/collection-1');
       expect(result).toEqual(
-        expect.objectContaining({ id: 'collection-1', title: 'Seeded Collection' }),
+        expect.objectContaining({
+          id: 'collection-1',
+          title: 'Seeded Collection',
+        }),
       );
     });
 

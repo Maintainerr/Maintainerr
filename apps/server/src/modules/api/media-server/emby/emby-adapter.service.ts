@@ -1259,9 +1259,7 @@ export class EmbyAdapterService implements IMediaServerService {
     }
   }
 
-  private async fetchUsersQuery(
-    client: AxiosInstance,
-  ): Promise<EmbyUserDto[]> {
+  private async fetchUsersQuery(client: AxiosInstance): Promise<EmbyUserDto[]> {
     const { data } = await client.get<
       EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>
     >('/Users/Query');

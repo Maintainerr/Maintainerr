@@ -7,9 +7,8 @@ describe('EmbyOverlayProvider', () => {
   let emby: Mocked<EmbyAdapterService>;
 
   beforeEach(async () => {
-    const { unit, unitRef } = await TestBed.solitary(
-      EmbyOverlayProvider,
-    ).compile();
+    const { unit, unitRef } =
+      await TestBed.solitary(EmbyOverlayProvider).compile();
 
     provider = unit;
     emby = unitRef.get(EmbyAdapterService);
