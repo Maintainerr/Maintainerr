@@ -1,5 +1,7 @@
 import {
   BasicResponseDto,
+  EmbyLoginRequest,
+  embyLoginRequestSchema,
   EmbySetting,
   embySettingSchema,
   JellyfinSetting,
@@ -21,11 +23,11 @@ import {
   TautulliSetting,
   tautulliSettingSchema,
   TmdbSetting,
-  tmdbSettingSchema,
   TmdbSettingForm,
+  tmdbSettingSchema,
   TvdbSetting,
-  tvdbSettingSchema,
   TvdbSettingForm,
+  tvdbSettingSchema,
 } from '@maintainerr/contracts';
 import {
   Body,
@@ -42,16 +44,16 @@ import {
   Res,
   StreamableFile,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
-import { MetadataProvider } from './metadata-provider';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataProvider } from './metadata-provider';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsService } from './settings.service';
 
@@ -440,12 +442,8 @@ export class SettingsController {
    */
   @Post('/emby/login')
   async loginEmby(
-    @Body()
-    payload: {
-      emby_url: string;
-      username: string;
-      password: string;
-    },
+    @Body(new ZodValidationPipe(embyLoginRequestSchema))
+    payload: EmbyLoginRequest,
   ) {
     return this.settingsService.loginEmby(
       payload.emby_url,

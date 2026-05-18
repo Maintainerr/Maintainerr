@@ -59,6 +59,8 @@ export interface EmbyBaseItemDto {
   Id: string;
   Name?: string;
   OriginalTitle?: string;
+  SortName?: string;
+  ForcedSortName?: string;
   ServerId?: string;
   Etag?: string;
   Type?: string;
@@ -88,6 +90,7 @@ export interface EmbyBaseItemDto {
   TagItems?: EmbyGenre[];
   People?: EmbyPerson[];
   CollectionType?: string;
+  IsLocked?: boolean;
   IsFolder?: boolean;
   ChildCount?: number;
   RecursiveItemCount?: number;

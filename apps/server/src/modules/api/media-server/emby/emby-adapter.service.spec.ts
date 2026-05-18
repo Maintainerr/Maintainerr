@@ -80,9 +80,9 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
-  it('reports create-with-items capability for Emby', () => {
+  it('reports bulk-collection-create capability for Emby', () => {
     expect(
-      service.supportsFeature(MediaServerFeature.COLLECTION_CREATE_WITH_ITEMS),
+      service.supportsFeature(MediaServerFeature.BULK_COLLECTION_CREATE),
     ).toBe(true);
     expect(cacheManager.getCache).toHaveBeenCalledWith('emby');
   });

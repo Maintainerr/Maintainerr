@@ -72,7 +72,6 @@ export class EmbyOverlayProvider implements IOverlayProvider {
   }
 
   async itemExists(itemId: string): Promise<boolean> {
-    const meta = await this.emby.getMetadata(itemId);
-    return meta !== undefined;
+    return this.emby.itemExists(itemId);
   }
 }

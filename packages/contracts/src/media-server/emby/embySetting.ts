@@ -11,3 +11,11 @@ export const embySettingSchema = z.object({
 })
 
 export type EmbySetting = z.infer<typeof embySettingSchema>
+
+export const embyLoginRequestSchema = z.object({
+  emby_url: serviceUrlSchema,
+  username: z.string().trim().min(1, 'Username is required'),
+  password: z.string(),
+})
+
+export type EmbyLoginRequest = z.infer<typeof embyLoginRequestSchema>

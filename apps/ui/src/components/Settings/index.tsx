@@ -274,7 +274,7 @@ const SettingsWrapper = () => {
                   Connect your media server to finish setup.
                 </p>
                 <p className="mt-2 leading-6 text-info-200">
-                  Choose Plex or Jellyfin, confirm the connection, and then you
+                  Choose your media server, confirm the connection, and then you
                   can continue configuring the rest of Maintainerr.
                 </p>
               </div>

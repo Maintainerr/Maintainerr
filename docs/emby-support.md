@@ -92,36 +92,36 @@ PR: [#2911](https://github.com/Maintainerr/Maintainerr/pull/2911) on the
 
 The following pre-existing files were extended with Emby cases:
 
-| File | Change |
-|---|---|
-| `packages/contracts/src/media-server/enums.ts` | `MediaServerType.EMBY = 'emby'` |
-| `packages/contracts/src/media-server/features.ts` | Emby entry in the feature matrix |
-| `packages/contracts/src/rules/constants.ts` | `Application.EMBY = 7` + ApplicationNames |
-| `apps/server/src/modules/api/lib/cache.ts` | `emby` cache in the static registry |
-| `apps/server/src/modules/api/media-server/media-server-id.utils.ts` | `isLikelyEmbyId`, `isForeignServerId`/`shouldRefreshMetadataItemId` Emby branches |
-| `apps/server/src/modules/api/media-server/media-server.factory.ts` | `EmbyAdapterService` injection + EMBY case in switches |
-| `apps/server/src/modules/api/media-server/media-server.module.ts` | `EmbyModule` import + provider |
-| `apps/server/src/modules/overlays/providers/overlay-provider.factory.ts` | EMBY case |
-| `apps/server/src/modules/overlays/providers/overlay-provider.module.ts` | `EmbyOverlayProvider` provider |
-| `apps/server/src/modules/rules/constants/rules.constants.ts` | Constructor pushes an Emby application that shares Jellyfin's `props[]` |
-| `apps/server/src/modules/rules/getter/getter.service.ts` | EMBY case in dispatch + `EmbyGetterService` injection |
-| `apps/server/src/modules/rules/rules.module.ts` | `EmbyGetterService` provider |
-| `apps/server/src/modules/rules/rules.service.ts` | Cache-reset branch for `emby` cache |
-| `apps/server/src/modules/rules/tasks/rule-executor.service.ts` | Empty-children BoxSet sync-lag workaround now covers Emby as well as Jellyfin |
-| `apps/server/src/modules/settings/entities/settings.entities.ts` | `emby_url`, `emby_api_key`, `emby_user_id`, `emby_server_name` columns |
-| `apps/server/src/modules/settings/media-server-switch.service.ts` | Null `emby_*` columns when switching away from Emby |
-| `apps/server/src/modules/settings/rule-migration.service.ts` | EMBY mapping in `getApplicationId` + `detectRuleSourceApp` |
-| `apps/server/src/modules/settings/settings.controller.ts` | Routes for `/api/settings/emby[/test|/login]` |
-| `apps/server/src/modules/settings/settings.service.ts` | `testEmby`, `loginEmby`, `saveEmbySettings`, `removeEmbySettings`, hydration, auto-detect, secret masking, `testSetup`, `testMediaServerConnection` |
-| `apps/ui/src/api/settings.ts` | `EmbySetting`, `useEmbySettings`, `useTestEmby`, `useSaveEmbySettings`, `useDeleteEmbySettings`, `useLoginEmby` hooks |
-| `apps/ui/src/components/Common/MediaCard/MediaModal/index.tsx` | Emby deep-link branch |
-| `apps/ui/src/components/Layout/MediaServerSetupGuard.tsx` | EMBY case in `getMediaServerSetupRoute` |
-| `apps/ui/src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx` | `shouldFilterApplication` updated to filter rule properties by server type with `isEmby` flag |
-| `apps/ui/src/components/Settings/MediaServerSelector/index.tsx` | Third selector option + `nameOf()` lookup replacing two-server ternaries |
-| `apps/ui/src/components/Settings/index.tsx` | Emby tab, path detection, setup route |
-| `apps/ui/src/hooks/useMediaServerType.ts` | `isEmby` flag |
-| `apps/ui/src/router.tsx` | `/settings/emby` lazy route |
-| `ARCHITECTURE.md` | Flowchart + module list updated |
+| File                                                                     | Change                                                                                                                                              |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `packages/contracts/src/media-server/enums.ts`                           | `MediaServerType.EMBY = 'emby'`                                                                                                                     |
+| `packages/contracts/src/media-server/features.ts`                        | Emby entry in the feature matrix                                                                                                                    |
+| `packages/contracts/src/rules/constants.ts`                              | `Application.EMBY = 7` + ApplicationNames                                                                                                           |
+| `apps/server/src/modules/api/lib/cache.ts`                               | `emby` cache in the static registry                                                                                                                 |
+| `apps/server/src/modules/api/media-server/media-server-id.utils.ts`      | `isLikelyEmbyId`, `isForeignServerId`/`shouldRefreshMetadataItemId` Emby branches                                                                   |
+| `apps/server/src/modules/api/media-server/media-server.factory.ts`       | `EmbyAdapterService` injection + EMBY case in switches                                                                                              |
+| `apps/server/src/modules/api/media-server/media-server.module.ts`        | `EmbyModule` import + provider                                                                                                                      |
+| `apps/server/src/modules/overlays/providers/overlay-provider.factory.ts` | EMBY case                                                                                                                                           |
+| `apps/server/src/modules/overlays/providers/overlay-provider.module.ts`  | `EmbyOverlayProvider` provider                                                                                                                      |
+| `apps/server/src/modules/rules/constants/rules.constants.ts`             | Constructor pushes an Emby application that shares Jellyfin's `props[]`                                                                             |
+| `apps/server/src/modules/rules/getter/getter.service.ts`                 | EMBY case in dispatch + `EmbyGetterService` injection                                                                                               |
+| `apps/server/src/modules/rules/rules.module.ts`                          | `EmbyGetterService` provider                                                                                                                        |
+| `apps/server/src/modules/rules/rules.service.ts`                         | Cache-reset branch for `emby` cache                                                                                                                 |
+| `apps/server/src/modules/rules/tasks/rule-executor.service.ts`           | Empty-children BoxSet sync-lag workaround now covers Emby as well as Jellyfin                                                                       |
+| `apps/server/src/modules/settings/entities/settings.entities.ts`         | `emby_url`, `emby_api_key`, `emby_user_id`, `emby_server_name` columns                                                                              |
+| `apps/server/src/modules/settings/media-server-switch.service.ts`        | Null `emby_*` columns when switching away from Emby                                                                                                 |
+| `apps/server/src/modules/settings/rule-migration.service.ts`             | EMBY mapping in `getApplicationId` + `detectRuleSourceApp`                                                                                          |
+| `apps/server/src/modules/settings/settings.controller.ts`                | Routes for `/api/settings/emby[/test                                                                                                                | /login]` |
+| `apps/server/src/modules/settings/settings.service.ts`                   | `testEmby`, `loginEmby`, `saveEmbySettings`, `removeEmbySettings`, hydration, auto-detect, secret masking, `testSetup`, `testMediaServerConnection` |
+| `apps/ui/src/api/settings.ts`                                            | `EmbySetting`, `useEmbySettings`, `useTestEmby`, `useSaveEmbySettings`, `useDeleteEmbySettings`, `useLoginEmby` hooks                               |
+| `apps/ui/src/components/Common/MediaCard/MediaModal/index.tsx`           | Emby deep-link branch                                                                                                                               |
+| `apps/ui/src/components/Layout/MediaServerSetupGuard.tsx`                | EMBY case in `getMediaServerSetupRoute`                                                                                                             |
+| `apps/ui/src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx`      | `shouldFilterApplication` updated to filter rule properties by server type with `isEmby` flag                                                       |
+| `apps/ui/src/components/Settings/MediaServerSelector/index.tsx`          | Third selector option + `nameOf()` lookup replacing two-server ternaries                                                                            |
+| `apps/ui/src/components/Settings/index.tsx`                              | Emby tab, path detection, setup route                                                                                                               |
+| `apps/ui/src/hooks/useMediaServerType.ts`                                | `isEmby` flag                                                                                                                                       |
+| `apps/ui/src/router.tsx`                                                 | `/settings/emby` lazy route                                                                                                                         |
+| `ARCHITECTURE.md`                                                        | Flowchart + module list updated                                                                                                                     |
 
 ---
 
@@ -165,10 +165,10 @@ it shares the **same `props[]` array reference** as the Jellyfin application:
 ```ts
 this.applications.push({
   id: Application.EMBY,
-  name: 'Emby',
+  name: "Emby",
   mediaType: MediaType.BOTH,
   props: jellyfinApp.props,
-})
+});
 ```
 
 This means rule migration between Jellyfin and Emby is a property-ID no-op
@@ -194,9 +194,10 @@ which previously caused valid items to be flagged as "manually removed".
 Emby shares the same .NET BoxSet backend so the workaround now covers both:
 
 ```ts
-const isJellyfin = this.settings.media_server_type === MediaServerType.JELLYFIN
-const isEmby = this.settings.media_server_type === MediaServerType.EMBY
-const shouldCheckRemovals = isJellyfin || isEmby ? children && children.length > 0 : true
+const isJellyfin = this.settings.media_server_type === MediaServerType.JELLYFIN;
+const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
+const shouldCheckRemovals =
+  isJellyfin || isEmby ? children && children.length > 0 : true;
 ```
 
 The two flags are kept separate (not folded into one) so future divergence
@@ -210,8 +211,8 @@ user-controlled input. Replaced with the codebase's established
 `modules/api/lib/requestLogging.ts:describeRequestTarget`):
 
 ```ts
-let cleanUrl = url
-while (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1)
+let cleanUrl = url;
+while (cleanUrl.endsWith("/")) cleanUrl = cleanUrl.slice(0, -1);
 ```
 
 ### 7. Cache key namespace
@@ -241,33 +242,33 @@ Cache invalidation in `rules.service.ts:requiresCacheReset` flushes
 
 Each unverified path is marked `TODO(emby-server-test):` in the code (10 sites).
 
-| Surface | Status |
-|---|---|
-| Collection write paths (`createCollection`, `addToCollection`, `removeFromCollection`, `updateCollection`, `deleteCollection`, `cleanupCollectionForLibrary`) | Code exists, endpoints look right per Emby docs, never hit a real Emby for confirmation |
-| `setCollectionImage` | Coded as base64 POST body with original Content-Type; unverified |
-| `deleteFromDisk`, `refreshItemMetadata` | Coded, unverified |
-| `getWatchHistory` per-user iteration, `getWatchState`, `getItemSeenBy` | Coded, unverified at scale |
-| `computeLibraryStorageSizes` | Coded, may report misleading totals if the `Size` field aggregates differently than expected |
-| `getAllIdsForContextAction` (show ↔ episode traversal) | Coded, unverified |
-| `EmbyGetterService` — all 50+ property cases | Ported 1:1 from the verified `JellyfinGetterService`; structurally correct but the underlying adapter HTTP calls are unverified |
-| `EmbyOverlayProvider` | `isAvailable`, `getSections`, `itemExists`, image upload have implementations; `getRandomItem`, `getRandomEpisode`, `downloadImage` return `null` with a TODO |
-| `supportsFeature()` matrix | Conservative defaults matching Jellyfin: COLLECTION_VISIBILITY, WATCHLIST, CENTRAL_WATCH_HISTORY, COLLECTION_SORT all off. The COLLECTION_SORT note is updated to reflect that Emby has no item-move endpoint (only DisplayOrder = PremiereDate \| SortName), so Maintainerr's "push an ordered list of IDs" contract is structurally unsatisfiable |
+| Surface                                                                                                                                                       | Status                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Collection write paths (`createCollection`, `addToCollection`, `removeFromCollection`, `updateCollection`, `deleteCollection`, `cleanupCollectionForLibrary`) | Code exists, endpoints look right per Emby docs, never hit a real Emby for confirmation                                                                                                                                                                                                                                                             |
+| `setCollectionImage`                                                                                                                                          | Coded as base64 POST body with original Content-Type; unverified                                                                                                                                                                                                                                                                                    |
+| `deleteFromDisk`, `refreshItemMetadata`                                                                                                                       | Coded, unverified                                                                                                                                                                                                                                                                                                                                   |
+| `getWatchHistory` per-user iteration, `getWatchState`, `getItemSeenBy`                                                                                        | Coded, unverified at scale                                                                                                                                                                                                                                                                                                                          |
+| `computeLibraryStorageSizes`                                                                                                                                  | Coded, may report misleading totals if the `Size` field aggregates differently than expected                                                                                                                                                                                                                                                        |
+| `getAllIdsForContextAction` (show ↔ episode traversal)                                                                                                        | Coded, unverified                                                                                                                                                                                                                                                                                                                                   |
+| `EmbyGetterService` — all 50+ property cases                                                                                                                  | Ported 1:1 from the verified `JellyfinGetterService`; structurally correct but the underlying adapter HTTP calls are unverified                                                                                                                                                                                                                     |
+| `EmbyOverlayProvider`                                                                                                                                         | `isAvailable`, `getSections`, `itemExists`, image upload have implementations; `getRandomItem`, `getRandomEpisode`, `downloadImage` return `null` with a TODO                                                                                                                                                                                       |
+| `supportsFeature()` matrix                                                                                                                                    | Conservative defaults matching Jellyfin: COLLECTION_VISIBILITY, WATCHLIST, CENTRAL_WATCH_HISTORY, COLLECTION_SORT all off. The COLLECTION_SORT note is updated to reflect that Emby has no item-move endpoint (only DisplayOrder = PremiereDate \| SortName), so Maintainerr's "push an ordered list of IDs" contract is structurally unsatisfiable |
 
 ### Tests landed in this PR
 
 These specs cover the in-process Maintainerr logic that branches on
 `MediaServerType.EMBY` — none of them call out to a live Emby server, so they
-verify *Maintainerr's* behaviour when configured for Emby rather than what
+verify _Maintainerr's_ behaviour when configured for Emby rather than what
 Emby itself returns:
 
-| Spec | What it pins |
-|---|---|
-| `media-server.factory.spec.ts` (extended) | Emby routing via `getServiceByType(EMBY)`, init-then-return path, uninitialize dispatch, configured-type inference from `emby_*` columns. Also fixes a stale "unsupported type" test that used `'EMBY'` as the example string |
-| `media-server-switch.service.spec.ts` (extended) | All four Emby switch directions (Plex→Emby, Jellyfin→Emby, Emby→Plex, Emby→Jellyfin) clear the right column sets |
-| `rule-migration.service.spec.ts` (extended) | Emby ↔ Plex migrations, Emby ↔ Jellyfin no-op remaps (shared `props[]` reference), incompatible-property skip + delete, EMBY source detection for community imports, `getApplicationId(EMBY)` resolution |
-| `rules.service.cacheReset.spec.ts` (new) | `resetCacheIfGroupUsesRuleThatRequiresIt` flushes `getCache('emby')` when configured for Emby (with peer assertions for Plex and Jellyfin so the dispatch table is fully covered) |
-| `emby.mapper.spec.ts` (new) | The pure `EmbyBaseItemDto → MediaItem/MediaLibrary/MediaCollection/MediaPlaylist/MediaUser/MediaServerStatus/WatchRecord` transforms, including parent/grandparent semantics, RunTimeTicks→ms conversion, AspectRatio parsing, Tags→labels mapping, and the "Emby has no smart collections" invariant |
-| `Settings.spec.tsx` (extended) | Emby render path — when `media_server_type === EMBY` the desktop tab list contains "Emby" and not "Plex"/"Jellyfin", and the link points at `/settings/emby` |
+| Spec                                             | What it pins                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `media-server.factory.spec.ts` (extended)        | Emby routing via `getServiceByType(EMBY)`, init-then-return path, uninitialize dispatch, configured-type inference from `emby_*` columns. Also fixes a stale "unsupported type" test that used `'EMBY'` as the example string                                                                         |
+| `media-server-switch.service.spec.ts` (extended) | All four Emby switch directions (Plex→Emby, Jellyfin→Emby, Emby→Plex, Emby→Jellyfin) clear the right column sets                                                                                                                                                                                      |
+| `rule-migration.service.spec.ts` (extended)      | Emby ↔ Plex migrations, Emby ↔ Jellyfin no-op remaps (shared `props[]` reference), incompatible-property skip + delete, EMBY source detection for community imports, `getApplicationId(EMBY)` resolution                                                                                              |
+| `rules.service.cacheReset.spec.ts` (new)         | `resetCacheIfGroupUsesRuleThatRequiresIt` flushes `getCache('emby')` when configured for Emby (with peer assertions for Plex and Jellyfin so the dispatch table is fully covered)                                                                                                                     |
+| `emby.mapper.spec.ts` (new)                      | The pure `EmbyBaseItemDto → MediaItem/MediaLibrary/MediaCollection/MediaPlaylist/MediaUser/MediaServerStatus/WatchRecord` transforms, including parent/grandparent semantics, RunTimeTicks→ms conversion, AspectRatio parsing, Tags→labels mapping, and the "Emby has no smart collections" invariant |
+| `Settings.spec.tsx` (extended)                   | Emby render path — when `media_server_type === EMBY` the desktop tab list contains "Emby" and not "Plex"/"Jellyfin", and the link points at `/settings/emby`                                                                                                                                          |
 
 ---
 
@@ -349,8 +350,8 @@ the full chain.
 Hostname blocklists (rejecting `192.168.*` / `10.*` / `fc*` / `fe80:*`,
 etc.) were **explicitly considered and rejected** — they would break the
 documented LAN use case for what is a non-issue here. The maintainer's
-own words: *"this is intended to be run locally so fixes like this seems
-super messy and hacky"*.
+own words: _"this is intended to be run locally so fixes like this seems
+super messy and hacky"_.
 
 ---
 
@@ -381,7 +382,7 @@ dev verification:
      -H "Content-Type: application/json" \
      -d '{"Username":"maintainerrAdmin","Pw":"maintainerr123"}' | jq -r .AccessToken)
    curl -X POST "http://localhost:8096/Auth/Keys?App=Maintainerr" -H "X-Emby-Token: $TOKEN"
-   curl -s http://localhost:8096/Auth/Keys -H "X-Emby-Token: $TOKEN" | jq -r '.Items[0].AccessToken'
+   APIKEY=$(curl -s http://localhost:8096/Auth/Keys -H "X-Emby-Token: $TOKEN" | jq -r '.Items[0].AccessToken')
    ```
 4. Create a sample media library:
    ```bash
@@ -407,7 +408,7 @@ These are deferred deliberately and tracked in code via `TODO(emby-server-test):
   `emby-getter.service.spec.ts`, or `emby-overlay.provider.spec.ts`.
   Writing synthetic fixtures against unverified endpoints would just
   codify assumptions about Emby's actual HTTP response shapes. The
-  in-process branching that does *not* depend on Emby HTTP is covered —
+  in-process branching that does _not_ depend on Emby HTTP is covered —
   see [Tests landed in this PR](#tests-landed-in-this-pr). Add the
   server-dependent specs once the live endpoints have been confirmed
   and the actual response shapes are known.
@@ -476,7 +477,7 @@ Caught while reviewing my own comments:
 7. **False claim that Emby retained pre-fork boxset Move endpoints** —
    verified against an [Emby forum thread](https://emby.media/community/topic/124081-set-display-order-of-a-collection-with-api/)
    where Luke (Emby CEO) confirmed the API exposes `DisplayOrder =
-   PremiereDate | SortName` only; no item-move/reorder endpoint exists.
+PremiereDate | SortName` only; no item-move/reorder endpoint exists.
    `EmbyAdapterService.reorderCollectionItems` was rewritten to simply
    throw "not supported"; the COLLECTION_SORT comment in
    `features.ts` was corrected to explain why.

@@ -224,6 +224,11 @@ describe('SettingsWrapper', () => {
       screen.getByText('Connect your media server to finish setup.'),
     ).toBeTruthy()
     expect(
+      screen.getByText(
+        'Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr.',
+      ),
+    ).toBeTruthy()
+    expect(
       screen.getByRole('button', { name: "Let's get started" }),
     ).toBeTruthy()
     expect(screen.queryByTestId('navigate')).toBeNull()
