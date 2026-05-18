@@ -402,10 +402,11 @@ export class EmbyGetterService {
           return communityRating?.value ?? null;
         }
 
-        // Smart collection properties — Emby Premiere supports smart
-        // collections, but this adapter doesn't yet differentiate them from
-        // regular BoxSets. Fall back to normal collection count/names; revisit
-        // when the adapter learns to tag smart collections distinctly.
+        // Smart collection properties — Emby has no native smart collections
+        // (TheMovieDb-driven "Automatic Creation of Collections" is metadata
+        // grouping, not filter rules; the third-party Smart Playlists plugin
+        // is out of scope here). Fall back to normal collection count/names,
+        // same as the Jellyfin getter does.
         case 'collectionsIncludingSmart':
         case 'sw_collections_including_parent_and_smart':
         case 'sw_collection_names_including_parent_and_smart':

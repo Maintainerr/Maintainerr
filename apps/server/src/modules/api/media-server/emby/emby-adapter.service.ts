@@ -955,26 +955,16 @@ export class EmbyAdapterService implements IMediaServerService {
     collectionId: string,
     orderedItemIds: string[],
   ): Promise<void> {
-    if (!this.http) throw new Error('Emby not initialized');
-    // TODO(emby-server-test): Emby retains POST /Items/{collectionId}/Items/{itemId}/Move?NewIndex={n}
-    // from before the Jellyfin fork. Verify endpoint shape against current
-    // Emby docs; until then leave guarded behind supportsFeature(COLLECTION_SORT).
-    if (!this.supportsFeature(MediaServerFeature.COLLECTION_SORT)) {
-      throw new Error('Collection sort not enabled for Emby');
-    }
-    for (let i = 0; i < orderedItemIds.length; i++) {
-      try {
-        await this.http.post(
-          `/Items/${collectionId}/Items/${orderedItemIds[i]}/Move`,
-          null,
-          { params: { NewIndex: i } },
-        );
-      } catch (error) {
-        this.logger.warn(
-          `Emby reorder move(${orderedItemIds[i]}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
-        );
-      }
-    }
+    void collectionId;
+    void orderedItemIds;
+    // Emby exposes DisplayOrder = PremiereDate | SortName on a BoxSet (via
+    // ItemUpdateService) but no item-move/reorder endpoint, so an explicit
+    // ordered list of item IDs can't be expressed. Gated by
+    // supportsFeature(COLLECTION_SORT) which is false for Emby — callers
+    // shouldn't reach here.
+    throw new Error(
+      'Collection sort is not supported on Emby (no item-move API)',
+    );
   }
 
   async setCollectionImage(

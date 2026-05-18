@@ -236,9 +236,9 @@ export class EmbyMapper {
       updatedAt: extras.DateLastSaved
         ? new Date(extras.DateLastSaved)
         : undefined,
-      // TODO(emby-server-test): Emby retains "Smart Collections" as a paid
-      // feature. Set this based on Type === 'BoxSet' vs. 'SmartCollection' or
-      // similar once verified against a Premiere-enabled server.
+      // Emby has no native smart collections — only manual BoxSets and the
+      // TheMovieDb-driven "Automatic Creation of Collections" (movie franchise
+      // grouping, not filter rules). Always false, matching the Jellyfin mapper.
       smart: false,
       libraryId: item.ParentId || undefined,
     };

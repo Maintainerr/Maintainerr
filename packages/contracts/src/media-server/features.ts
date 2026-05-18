@@ -30,13 +30,13 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.LABELS,
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
-    // Conservative defaults mirroring Jellyfin. Enable additional features once
-    // verified against a live Emby server:
+    // Conservative defaults mirroring Jellyfin:
     // - COLLECTION_VISIBILITY: Emby has no Plex-style home/recommended pinning.
     // - WATCHLIST: no public watchlist API.
     // - CENTRAL_WATCH_HISTORY: same per-user iteration model as Jellyfin.
-    // - COLLECTION_SORT: Emby retains boxset Move endpoints from before the fork;
-    //   enable when /Collections/{Id}/Items move semantics are confirmed.
+    // - COLLECTION_SORT: Emby exposes DisplayOrder = PremiereDate | SortName
+    //   on a BoxSet but no item-move/reorder endpoint, so Maintainerr's
+    //   "push an explicit ordered list of item IDs" contract isn't satisfiable.
   ]),
 }
 
