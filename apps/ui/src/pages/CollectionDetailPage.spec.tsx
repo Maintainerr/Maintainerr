@@ -31,9 +31,7 @@ const buildCollection = (
   ...overrides,
 })
 
-const buildRuleGroup = (
-  overrides: Partial<IRuleGroup> = {},
-): IRuleGroup => ({
+const buildRuleGroup = (overrides: Partial<IRuleGroup> = {}): IRuleGroup => ({
   id: 1,
   name: 'Regression Test Rule Group',
   description: '',
