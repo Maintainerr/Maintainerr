@@ -50,7 +50,8 @@ import type {
  * Implements IMediaServerService against Emby's HTTP API (https://dev.emby.media/).
  * Emby and Jellyfin share a common API ancestor (Jellyfin forked Emby in 2018),
  * so endpoint shapes are largely identical. Key Emby-specific differences:
- * - X-MediaBrowser-Authorization header requires Version="1.0.0" (pinned).
+ * - Uses X-Emby-Authorization. Emby's parser accepts either `Emby` or
+ *   `MediaBrowser` as the scheme prefix and stores Version without enforcing it.
  * - Recently-added uses /Users/{userId}/Items/Latest (vs Jellyfin /Items/Latest).
  * - Admin validation is stricter at setup.
  *
@@ -181,9 +182,7 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) return [];
     try {
       const cached = this.cache.data.get<EmbyUserDto[]>(EMBY_CACHE_KEYS.USERS);
-      const users = cached
-        ? cached
-        : (await this.http.get<EmbyUserDto[]>('/Users')).data;
+      const users = cached ? cached : await this.fetchUsersQuery(this.http);
       if (!cached) {
         this.cache.data.set(EMBY_CACHE_KEYS.USERS, users, EMBY_CACHE_TTL.USERS);
       }
@@ -433,7 +432,7 @@ export class EmbyAdapterService implements IMediaServerService {
           `/Shows/${parentId}/Seasons`,
           {
             params: {
-              userId: this.embyUserId,
+              UserId: this.embyUserId,
               Fields: 'ProviderIds,DateCreated,Overview,Tags',
               EnableUserData: true,
             },
@@ -538,7 +537,7 @@ export class EmbyAdapterService implements IMediaServerService {
             '/Items',
             {
               params: {
-                userId: user.id,
+                UserId: user.id,
                 ParentId: parentId,
                 Recursive: true,
                 IncludeItemTypes: 'Episode',
@@ -571,7 +570,7 @@ export class EmbyAdapterService implements IMediaServerService {
     try {
       const { data } = await this.http.get<EmbyItemsQueryResponse>(
         `/Playlists/${playlistId}/Items`,
-        { params: { userId: this.embyUserId } },
+        { params: { UserId: this.embyUserId } },
       );
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
@@ -669,36 +668,39 @@ export class EmbyAdapterService implements IMediaServerService {
 
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     if (!this.http) return [];
+    let users: EmbyUserDto[];
     try {
-      const users = await this.getUsers();
-      const records: WatchRecord[] = [];
-      for (const user of users) {
-        try {
-          const { data } = await this.http.get<EmbyBaseItemDto>(
-            `/Users/${user.id}/Items/${itemId}`,
-          );
-          if (data.UserData?.Played) {
-            records.push(
-              EmbyMapper.toWatchRecord(
-                user.id,
-                itemId,
-                data.UserData.LastPlayedDate
-                  ? new Date(data.UserData.LastPlayedDate)
-                  : undefined,
-              ),
-            );
-          }
-        } catch {
-          // Some users may not have access to this item — skip silently.
-        }
-      }
-      return records;
+      users = await this.fetchUsersQuery(this.http);
     } catch (error) {
       this.logger.debug(
         `Emby getWatchHistory(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return [];
+      throw error;
     }
+
+    const records: WatchRecord[] = [];
+    for (const user of users) {
+      try {
+        const { data } = await this.http.get<EmbyBaseItemDto>(
+          `/Users/${user.Id}/Items/${itemId}`,
+        );
+        if (data.UserData?.Played) {
+          records.push(
+            EmbyMapper.toWatchRecord(
+              user.Id,
+              itemId,
+              data.UserData.LastPlayedDate
+                ? new Date(data.UserData.LastPlayedDate)
+                : undefined,
+            ),
+          );
+        }
+      } catch {
+        // Some users may not have access to this item — skip silently.
+      }
+    }
+
+    return records;
   }
 
   async getWatchState(
@@ -774,11 +776,25 @@ export class EmbyAdapterService implements IMediaServerService {
           params: {
             Name: params.title,
             ParentId: params.libraryId,
+            Ids: params.initialItemIds?.join(','),
+            // IsLocked enables composite image generation from items, matching
+            // the Jellyfin adapter; without it, Emby may skip the auto-cover.
+            IsLocked: true,
           },
         },
       );
-      const collection = EmbyMapper.toMediaCollection(data);
-      if (params.summary) {
+      let collection = EmbyMapper.toMediaCollection(data);
+      if (!collection.id) {
+        throw new Error('Collection created but no ID returned');
+      }
+      if (!collection.title) {
+        const refreshed = await this.getCollection(collection.id, true);
+        if (!refreshed) {
+          throw new Error('Collection created but could not be fetched');
+        }
+        collection = refreshed;
+      }
+      if (params.summary || params.sortTitle) {
         try {
           await this.updateCollection({
             libraryId: params.libraryId,
@@ -823,7 +839,14 @@ export class EmbyAdapterService implements IMediaServerService {
   ): Promise<void> {
     if (!this.http) return;
     const children = await this.getCollectionChildren(collectionId);
-    const fromLibrary = children.filter((c) => c.library?.id === libraryId);
+    const fromLibrary: MediaItem[] = [];
+
+    for (const child of children) {
+      if (await this.itemIsInLibrary(child.id, libraryId)) {
+        fromLibrary.push(child);
+      }
+    }
+
     if (fromLibrary.length === 0) return;
     await this.removeBatchFromCollection(
       collectionId,
@@ -926,6 +949,7 @@ export class EmbyAdapterService implements IMediaServerService {
         ...current,
         Name: params.title ?? current.Name,
         Overview: params.summary ?? current.Overview,
+        ForcedSortName: params.sortTitle ?? current.ForcedSortName,
       };
       await this.http.post(`/Items/${params.collectionId}`, updated);
       const refreshed = await this.getCollection(params.collectionId);
@@ -1052,11 +1076,10 @@ export class EmbyAdapterService implements IMediaServerService {
       return seriesId ? [seriesId] : [];
     }
     if (collectionType === 'episode' && context.type === 'show') {
-      const children = await this.getChildrenMetadata(context.id);
-      // Children of a series are seasons; need to descend further for episodes.
+      const seasons = await this.getChildrenMetadata(context.id, 'season');
       const episodeIds: string[] = [];
-      for (const season of children) {
-        const eps = await this.getChildrenMetadata(season.id);
+      for (const season of seasons) {
+        const eps = await this.getChildrenMetadata(season.id, 'episode');
         episodeIds.push(...eps.map((e) => e.id));
       }
       return episodeIds;
@@ -1099,13 +1122,16 @@ export class EmbyAdapterService implements IMediaServerService {
     try {
       const [info, users] = await Promise.all([
         probe.get<EmbySystemInfo>('/System/Info'),
-        probe.get<EmbyUserDto[]>('/Users'),
+        probe.get<EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>>(
+          '/Users/Query',
+        ),
       ]);
+      const resolvedUsers = this.normalizeUsersResponse(users.data);
       return {
         success: true,
         serverName: info.data.ServerName,
         version: info.data.Version,
-        users: (users.data ?? [])
+        users: resolvedUsers
           .filter((u) => u.Policy?.IsAdministrator)
           .map((u) => ({ id: u.Id, name: u.Name ?? '' })),
       };
@@ -1161,14 +1187,17 @@ export class EmbyAdapterService implements IMediaServerService {
       const [info, libs, users] = await Promise.all([
         authed.get<EmbySystemInfo>('/System/Info'),
         authed.get<EmbyItemsQueryResponse>(`/Users/${data.User.Id}/Views`),
-        authed.get<EmbyUserDto[]>('/Users'),
+        authed.get<EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>>(
+          '/Users/Query',
+        ),
       ]);
+      const resolvedUsers = this.normalizeUsersResponse(users.data);
       return {
         success: true,
         token: data.AccessToken,
         userId: data.User.Id,
         serverName: info.data.ServerName,
-        users: (users.data ?? []).map((u) => ({
+        users: resolvedUsers.map((u) => ({
           id: u.Id,
           name: u.Name ?? '',
         })),
@@ -1190,9 +1219,61 @@ export class EmbyAdapterService implements IMediaServerService {
     }
   }
 
+  async itemExists(itemId: string): Promise<boolean> {
+    if (!this.http) {
+      throw new Error('Emby not initialized');
+    }
+
+    try {
+      const { data } = await this.http.get<EmbyBaseItemDto>(`/Items/${itemId}`);
+      return Boolean(data?.Id);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   // ============================================================================
   // Internal helpers
   // ============================================================================
+
+  private async itemIsInLibrary(
+    itemId: string,
+    libraryId: string,
+  ): Promise<boolean> {
+    if (!this.http) return false;
+
+    try {
+      const { data } = await this.http.get<EmbyBaseItemDto[]>(
+        `/Items/${itemId}/Ancestors`,
+      );
+
+      return (data ?? []).some((ancestor) => ancestor.Id === libraryId);
+    } catch (error) {
+      this.logger.debug(
+        `Emby itemIsInLibrary(${itemId}, ${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      );
+      return false;
+    }
+  }
+
+  private async fetchUsersQuery(
+    client: AxiosInstance,
+  ): Promise<EmbyUserDto[]> {
+    const { data } = await client.get<
+      EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>
+    >('/Users/Query');
+
+    return this.normalizeUsersResponse(data);
+  }
+
+  private normalizeUsersResponse(
+    data: EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>,
+  ): EmbyUserDto[] {
+    return Array.isArray(data) ? data : (data.Items ?? []);
+  }
 
   private buildAuthHeader(): string {
     return `MediaBrowser Client="${EMBY_CLIENT_INFO.name}", Device="${EMBY_DEVICE_INFO.name}", DeviceId="${this.deviceId}", Version="${EMBY_CLIENT_INFO.version}"`;
