@@ -199,6 +199,12 @@ Closest quality gates should run in this order where applicable: lint,
 typecheck, tests, then build. For doc-only changes, a targeted Prettier check is
 usually enough.
 
+GitHub CI mirrors the root workspace workflow on Node.js 24: quality jobs run
+`corepack install`, `corepack enable`, `yarn --immutable`, then formatting and
+linting; the test workflow builds `packages/*` before `yarn turbo test`. The
+development image workflow builds the production `Dockerfile` for `linux/amd64`
+and `linux/arm64`.
+
 Testing conventions:
 
 - Server tests use Jest, with `*.spec.ts` files near the code under
