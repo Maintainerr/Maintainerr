@@ -88,6 +88,29 @@ yarn test
 yarn check-types
 ```
 
+### CI Workflow Commands
+
+GitHub quality workflows include a separate YAML lint job:
+
+```bash
+yamllint -s .
+```
+
+The formatting, TypeScript lint, and test workflows use Node.js 24, then run:
+
+```bash
+corepack install
+corepack enable
+yarn --immutable
+yarn format:check
+yarn lint
+yarn turbo build --filter="./packages/*"
+yarn turbo test
+```
+
+The development Docker workflow builds the multi-stage `Dockerfile` for
+`linux/amd64` and `linux/arm64`.
+
 ### Package-Specific Commands
 
 ```bash
