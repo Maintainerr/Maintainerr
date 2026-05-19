@@ -1,0 +1,15 @@
+emby.png
+
+Source:   https://commons.wikimedia.org/wiki/File:Emby-logo.png
+Author:   sahebk (Emby community contributor, 2015)
+License:  Creative Commons Attribution-Share Alike 4.0 International (CC BY-SA 4.0)
+URL:      https://creativecommons.org/licenses/by-sa/4.0/
+
+This file is a derivative of the Wikimedia Commons source above: the
+original 1238×377 wordmark has been cropped to the leftmost 377×377 region
+to isolate the icon mark for use in square UI slots. Per CC BY-SA 4.0,
+this derivative is distributed under the same license.
+
+Note: "Emby" and the Emby logo are trademarks of Emby LLC. This icon is
+used to identify the Emby integration in the Maintainerr UI; nothing in
+this file implies endorsement by Emby LLC.

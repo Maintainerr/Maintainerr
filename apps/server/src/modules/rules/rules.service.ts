@@ -1451,6 +1451,11 @@ export class RulesService {
           this.logger.log(
             `Flushed Plex cache because a rule in the group required it`,
           );
+        } else if (serverType === MediaServerType.EMBY) {
+          cacheManager.getCache('emby').flush();
+          this.logger.log(
+            `Flushed Emby cache because a rule in the group required it`,
+          );
         }
       }
 

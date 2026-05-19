@@ -1,6 +1,7 @@
 export enum MediaServerType {
   PLEX = 'plex',
   JELLYFIN = 'jellyfin',
+  EMBY = 'emby',
 }
 
 export type MediaItemType = 'movie' | 'show' | 'season' | 'episode'
@@ -45,6 +46,8 @@ export function isValidMediaItemType(type: string): type is MediaItemType {
 export enum MediaServerFeature {
   /** Ability to set collection visibility (home/recommended) */
   COLLECTION_VISIBILITY = 'collection_visibility',
+  /** Adapter creates a collection and seeds initial items in one API call */
+  BULK_COLLECTION_CREATE = 'bulk_collection_create',
   /** Watchlist functionality via external API (Plex.tv) */
   WATCHLIST = 'watchlist',
   /** Central watch history endpoint (vs per-user iteration) */

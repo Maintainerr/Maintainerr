@@ -1059,7 +1059,7 @@ describe('CollectionsService', () => {
 
     expect(mediaServer.createCollection).toHaveBeenCalledWith(
       expect.not.objectContaining({
-        itemIds: expect.anything(),
+        initialItemIds: expect.anything(),
       }),
     );
     expect(addChildrenToCollectionSpy).toHaveBeenCalledWith(
@@ -1068,6 +1068,7 @@ describe('CollectionsService', () => {
         dbId: collection.id,
       },
       media,
+      false,
       false,
     );
   });
@@ -1765,6 +1766,49 @@ describe('CollectionsService', () => {
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('movie-1');
     expect(result).toHaveLength(1);
     expect(result[0].mediaData?.title).toBe('Fallback Movie');
+  });
+
+  it('passes initial item ids on create for servers that support seeded collection creation', async () => {
+    const collection = createCollection({
+      id: 21,
+      mediaServerId: null,
+      manualCollection: false,
+      libraryId: 'library-1',
+      type: 'show',
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionRepo.save.mockImplementation(async (entity) => entity as any);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    collectionPosterService.loadStoredPoster.mockResolvedValue(null);
+    mediaServer.supportsFeature.mockImplementation(
+      (feature) => feature === MediaServerFeature.BULK_COLLECTION_CREATE,
+    );
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    const addChildrenToCollection = jest
+      .spyOn(service as any, 'addChildrenToCollection')
+      .mockResolvedValue(undefined);
+
+    await service.addToCollection(collection.id, [
+      { mediaServerId: 'episode-1' },
+      { mediaServerId: 'episode-2' },
+    ]);
+
+    expect(mediaServer.createCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialItemIds: ['episode-1', 'episode-2'],
+      }),
+    );
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(addChildrenToCollection).toHaveBeenCalledWith(
+      { mediaServerId: 'remote-collection', dbId: collection.id },
+      [{ mediaServerId: 'episode-1' }, { mediaServerId: 'episode-2' }],
+      false,
+      true,
+      CollectionMediaManualMembershipSource.LOCAL,
+    );
   });
 
   it('reorders Plex collection items by collection_media.addDate, not media-server addedAt', async () => {

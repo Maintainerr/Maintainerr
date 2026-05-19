@@ -408,6 +408,11 @@ export class MediaServerSwitchService {
       updatedSettings.jellyfin_api_key = null;
       updatedSettings.jellyfin_user_id = null;
       updatedSettings.jellyfin_server_name = null;
+    } else if (currentServerType === MediaServerType.EMBY) {
+      updatedSettings.emby_url = null;
+      updatedSettings.emby_api_key = null;
+      updatedSettings.emby_user_id = null;
+      updatedSettings.emby_server_name = null;
     }
 
     await queryRunner.manager.save(Settings, updatedSettings);

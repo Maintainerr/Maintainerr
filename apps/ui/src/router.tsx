@@ -75,6 +75,9 @@ const settingsPlexRoute = createLazyRoute(
 const settingsJellyfinRoute = createLazyRoute(
   () => import('./components/Settings/Jellyfin'),
 )
+const settingsEmbyRoute = createLazyRoute(
+  () => import('./components/Settings/Emby'),
+)
 const settingsSonarrRoute = createLazyRoute(
   () => import('./components/Settings/Sonarr'),
 )
@@ -253,6 +256,11 @@ const appRoutes: AppRoute[] = [
         path: 'jellyfin',
         lazy: settingsJellyfinRoute.lazy,
         preload: settingsJellyfinRoute.preload,
+      },
+      {
+        path: 'emby',
+        lazy: settingsEmbyRoute.lazy,
+        preload: settingsEmbyRoute.preload,
       },
       {
         path: 'sonarr',

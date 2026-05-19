@@ -72,6 +72,7 @@ const shouldFilterApplication = (
   sonarrSettingsId: number | null | undefined,
   isPlex: boolean,
   isJellyfin: boolean,
+  isEmby: boolean = false,
 ): boolean => {
   // Filter out Radarr if no Radarr server is selected
   if (
@@ -87,15 +88,19 @@ const shouldFilterApplication = (
   ) {
     return true
   }
-  // Filter out Plex/Tautulli if on Jellyfin
+  // Filter out Plex/Tautulli on non-Plex servers (Jellyfin, Emby).
   if (
-    isJellyfin &&
+    (isJellyfin || isEmby) &&
     (appId === Application.PLEX || appId === Application.TAUTULLI)
   ) {
     return true
   }
-  // Filter out Jellyfin if on Plex
-  if (isPlex && appId === Application.JELLYFIN) {
+  // Filter out Jellyfin on Plex/Emby.
+  if ((isPlex || isEmby) && appId === Application.JELLYFIN) {
+    return true
+  }
+  // Filter out Emby on Plex/Jellyfin.
+  if ((isPlex || isJellyfin) && appId === Application.EMBY) {
     return true
   }
   return false
@@ -280,7 +285,7 @@ const RuleInput = (props: IRuleInput) => {
   )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
-  const { isPlex, isJellyfin } = useMediaServerType()
+  const { isPlex, isJellyfin, isEmby } = useMediaServerType()
 
   const availableApplications = useMemo(() => {
     return (
@@ -293,6 +298,7 @@ const RuleInput = (props: IRuleInput) => {
               props.sonarrSettingsId,
               isPlex,
               isJellyfin,
+              isEmby,
             ) &&
             (app.mediaType === MediaType.BOTH ||
               props.mediaType === app.mediaType),
@@ -311,6 +317,7 @@ const RuleInput = (props: IRuleInput) => {
     )
   }, [
     constants?.applications,
+    isEmby,
     isJellyfin,
     isPlex,
     props.dataType,
