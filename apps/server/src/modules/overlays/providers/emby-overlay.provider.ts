@@ -13,11 +13,6 @@ import { IOverlayProvider } from './overlay-provider.interface';
  * episodes), mirroring the Jellyfin provider's choice. Emby's image endpoint
  * surface matches Jellyfin's (same .NET ancestor): GET/POST/DELETE
  * /Items/{id}/Images/{imageType}.
- *
- * Random-item helpers depend on `EmbyAdapterService.findRandomItem` /
- * `findRandomEpisode`, which are intentionally not implemented in this PR.
- * Until those land, getRandomItem/getRandomEpisode return null so the overlay
- * UI degrades gracefully (no preview, no error).
  */
 @Injectable()
 export class EmbyOverlayProvider implements IOverlayProvider {
@@ -41,18 +36,22 @@ export class EmbyOverlayProvider implements IOverlayProvider {
   async getRandomItem(
     sectionKeys?: string[],
   ): Promise<OverlayPreviewItem | null> {
-    void sectionKeys;
-    // TODO(emby-server-test): port Jellyfin's findRandomItem helper —
-    // /Items?Recursive&IncludeItemTypes=Movie,Series&SortBy=Random&Limit=1
-    return null;
+    const item = await this.emby.findRandomItem(sectionKeys, [
+      'Movie',
+      'Series',
+    ]);
+    if (!item?.Id) return null;
+    return { itemId: item.Id, title: item.Name ?? '' };
   }
 
   async getRandomEpisode(
     sectionKeys?: string[],
   ): Promise<OverlayPreviewItem | null> {
-    void sectionKeys;
-    // TODO(emby-server-test): /Items?Recursive&IncludeItemTypes=Episode&SortBy=Random&Limit=1
-    return null;
+    const ep = await this.emby.findRandomEpisode(sectionKeys);
+    if (!ep?.Id) return null;
+    const name = ep.Name ?? '';
+    const title = ep.SeriesName ? `${ep.SeriesName} — ${name}` : name;
+    return { itemId: ep.Id, title };
   }
 
   async downloadImage(itemId: string): Promise<Buffer | null> {

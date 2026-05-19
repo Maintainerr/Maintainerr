@@ -639,6 +639,48 @@ export class EmbyAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Pick a single random item of the given kinds from a library section (or
+   * across all sections when `sectionIds` is omitted). Emby honours
+   * `SortBy=Random` server-side, mirroring Jellyfin's behaviour. Virtual
+   * (unaired) entries are excluded so episode previews never land on a
+   * placeholder. Returns null on failure or empty result.
+   */
+  async findRandomItem(
+    sectionIds: string[] | undefined,
+    kinds: string[],
+  ): Promise<EmbyBaseItemDto | null> {
+    if (!this.http) return null;
+    try {
+      const parentId = sectionIds?.[0];
+      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+        params: {
+          userId: this.embyUserId,
+          ParentId: parentId,
+          IncludeItemTypes: kinds.join(','),
+          Recursive: true,
+          SortBy: 'Random',
+          SortOrder: 'Ascending',
+          Limit: 1,
+          ExcludeLocationTypes: 'Virtual',
+          Fields: 'ProviderIds,DateCreated,Overview',
+          ImageTypeLimit: 1,
+        },
+      });
+      return data.Items?.[0] ?? null;
+    } catch (error) {
+      this.logger.warn('Failed to pick random Emby item');
+      this.logger.debug(error);
+      return null;
+    }
+  }
+
+  async findRandomEpisode(
+    sectionIds: string[] | undefined,
+  ): Promise<EmbyBaseItemDto | null> {
+    return this.findRandomItem(sectionIds, ['Episode']);
+  }
+
   async refreshItemMetadata(itemId: string): Promise<void> {
     if (!this.http) return;
     try {
