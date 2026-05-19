@@ -1380,9 +1380,12 @@ export class SettingsService implements SettingDto {
     setting?: StreamystatsSetting,
   ): Promise<BasicResponseDto> {
     if (setting) {
+      // testConnection only hits Streamystats's unauthenticated /api/version
+      // endpoint, so we deliberately do not send the stored Jellyfin API key
+      // here. This avoids handing the stored credential to a URL the caller
+      // just supplied via the test endpoint.
       return await this.streamystats.testConnection({
         url: setting.url,
-        apiKey: this.jellyfin_api_key,
       });
     }
 
