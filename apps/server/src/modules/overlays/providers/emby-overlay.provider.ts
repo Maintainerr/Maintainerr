@@ -56,9 +56,7 @@ export class EmbyOverlayProvider implements IOverlayProvider {
   }
 
   async downloadImage(itemId: string): Promise<Buffer | null> {
-    void itemId;
-    // TODO(emby-server-test): GET /Items/{id}/Images/Primary returns binary
-    return null;
+    return this.emby.getItemImageBuffer(itemId, 'Primary');
   }
 
   async uploadImage(

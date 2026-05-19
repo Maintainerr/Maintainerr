@@ -991,6 +991,34 @@ export class EmbyAdapterService implements IMediaServerService {
     );
   }
 
+  /**
+   * Fetches a single image off an item as a Buffer. Returns null when the
+   * item has no image of that type (Emby responds 404) or any other request
+   * failure. Mirrors JellyfinAdapterService.getItemImageBuffer.
+   */
+  async getItemImageBuffer(
+    itemId: string,
+    imageType = 'Primary',
+  ): Promise<Buffer | null> {
+    if (!this.http) return null;
+    try {
+      const response = await this.http.get<ArrayBuffer>(
+        `/Items/${itemId}/Images/${imageType}`,
+        { responseType: 'arraybuffer' },
+      );
+      return Buffer.from(response.data);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return null;
+      }
+      this.logger.warn(
+        `Failed to download ${imageType} image for item ${itemId}`,
+      );
+      this.logger.debug(error);
+      return null;
+    }
+  }
+
   async setCollectionImage(
     collectionId: string,
     buffer: Buffer,
