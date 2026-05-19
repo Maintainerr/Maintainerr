@@ -49,6 +49,7 @@ Currently, <b>Maintainerr</b> supports rule parameters from the following apps:
 - [Radarr](https://radarr.video/)
 - [Sonarr](https://sonarr.tv/)
 - [Tautulli](https://tautulli.com/)
+- [Streamystats](https://github.com/fredrikburmester/streamystats) (Jellyfin only)
 
 # Preview
 

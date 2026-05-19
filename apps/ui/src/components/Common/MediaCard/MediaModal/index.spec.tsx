@@ -43,6 +43,7 @@ describe('MediaModal', () => {
       isLoading: false,
       isPlex: false,
       isJellyfin: false,
+      isEmby: false,
       isMediaServerTypeSelected: false,
       isSetupComplete: false,
       isNotConfigured: true,
@@ -84,6 +85,10 @@ describe('MediaModal', () => {
 
       if (path.startsWith('/metadata/backdrop/show?')) {
         return secondBackdrop.promise
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -166,6 +171,10 @@ describe('MediaModal', () => {
         })
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -212,6 +221,10 @@ describe('MediaModal', () => {
             },
           ],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -265,6 +278,10 @@ describe('MediaModal', () => {
 
       if (path === '/media-server/meta/9/maintainerr-status') {
         return maintainerrStatus.promise
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -324,6 +341,10 @@ describe('MediaModal', () => {
           ],
           manuallyAddedTo: [],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -386,6 +407,10 @@ describe('MediaModal', () => {
         })
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -434,6 +459,10 @@ describe('MediaModal', () => {
             },
           ],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -487,6 +516,10 @@ describe('MediaModal', () => {
         })
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -520,6 +553,10 @@ describe('MediaModal', () => {
 
       if (path === '/media-server/meta/91') {
         return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -572,6 +609,10 @@ describe('MediaModal', () => {
           excludedFrom: [],
           manuallyAddedTo: [],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)

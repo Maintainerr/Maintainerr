@@ -47,6 +47,7 @@ flowchart LR
   API --> Servarr["Radarr / Sonarr"]
   API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
+  API --> Streamystats["Streamystats"]
   API --> Metadata["TMDB / TVDB"]
   API --> GitHub["GitHub releases"]
 ```
@@ -96,7 +97,7 @@ integrations, and production static serving.
   `src/modules/api/media-server/emby/` contain server-specific adapters,
   constants, mappers, caching, and SDK/API calls.
 - Other `src/modules/api/` submodules wrap integration clients and helper
-  APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, TMDB, TVDB,
+  APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, Streamystats, TMDB, TVDB,
   GitHub, external API, internal API, and shared request/cache helpers.
 - `src/modules/rules/` evaluates rule groups against media-server and external
   service data.
@@ -147,6 +148,9 @@ Maintainerr integrates with:
 - Radarr and Sonarr for unmonitoring, deleting, and quality profile actions.
 - Seerr-compatible services for request cleanup.
 - Tautulli for Plex analytics and rule data.
+- Streamystats for Jellyfin item-level analytics surfaced on the media modal.
+  Authentication reuses the configured Jellyfin API key. Emby is not supported
+  upstream.
 - TMDB and TVDB for metadata resolution.
 - GitHub for release/version checks.
 - Notification providers such as Discord, Slack, Telegram, Pushover, Gotify,

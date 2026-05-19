@@ -17,6 +17,8 @@ import {
   seerrSettingSchema,
   SonarrSetting,
   sonarrSettingSchema,
+  StreamystatsSetting,
+  streamystatsSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   switchMediaServerSchema,
@@ -33,6 +35,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   Param,
@@ -219,6 +222,55 @@ export class SettingsController {
     payload: TautulliSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testTautulli(payload);
+  }
+
+  @Get('/streamystats')
+  async getStreamystatsSetting(): Promise<
+    StreamystatsSetting | BasicResponseDto
+  > {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    this.assertJellyfinActive();
+
+    return {
+      url: settings.streamystats_url,
+    };
+  }
+
+  @Post('/streamystats')
+  async updateStreamystatsSetting(
+    @Body(new ZodValidationPipe(streamystatsSettingSchema))
+    payload: StreamystatsSetting,
+  ) {
+    this.assertJellyfinActive();
+    return await this.settingsService.updateStreamystatsSetting(payload);
+  }
+
+  @Delete('/streamystats')
+  async removeStreamystatsSetting() {
+    this.assertJellyfinActive();
+    return await this.settingsService.removeStreamystatsSetting();
+  }
+
+  @Post('/test/streamystats')
+  testStreamystats(
+    @Body(new ZodValidationPipe(streamystatsSettingSchema))
+    payload: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    this.assertJellyfinActive();
+    return this.settingsService.testStreamystats(payload);
+  }
+
+  private assertJellyfinActive(): void {
+    if (this.settingsService.media_server_type !== MediaServerType.JELLYFIN) {
+      throw new ForbiddenException(
+        'Streamystats is only available when Jellyfin is the active media server.',
+      );
+    }
   }
 
   @Get('/tmdb')

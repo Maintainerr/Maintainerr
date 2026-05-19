@@ -16,6 +16,7 @@ import {
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
+import StreamystatsStatsPanel from './StreamystatsStatsPanel'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
@@ -159,6 +160,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
       null,
     )
+    const [streamystatsItemUrl, setStreamystatsItemUrl] = useState<
+      string | null
+    >(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
     const [maintainerrDetailsState, setMaintainerrDetailsState] = useState<{
       key: string
@@ -308,6 +312,18 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         .then((resp) => {
           if (!active) return
           setTautulliModalUrl(resp?.tautulli_url || null)
+        })
+        .catch(() => {})
+      GetApiHandler<{ url: string; serverId: number | null }>(
+        '/streamystats/info',
+      )
+        .then((info) => {
+          if (!active) return
+          if (info?.url && info.serverId != null) {
+            setStreamystatsItemUrl(
+              `${info.url}/servers/${info.serverId}/library/${id}`,
+            )
+          }
         })
         .catch(() => {})
       GetApiHandler<MediaItem>(`/media-server/meta/${id}`)
@@ -588,6 +604,23 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {isJellyfin && streamystatsItemUrl && (
+                    <div>
+                      <a
+                        href={streamystatsItemUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/streamystats.svg`}
+                          alt="Streamystats"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 object-contain p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {metadata?.genres && metadata.genres.length > 0 ? (
                   <div className="pointer-events-none flex flex-wrap-reverse items-end justify-end gap-1">
@@ -617,6 +650,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="mt-2 text-gray-300">
               <p>{metadata?.summary || summary || 'No summary available.'}</p>
             </div>
+
+            {isJellyfin && streamystatsItemUrl ? (
+              <StreamystatsStatsPanel
+                itemId={String(id)}
+                itemUrl={streamystatsItemUrl}
+              />
+            ) : null}
 
             {showMaintainerrDetails ? (
               <div

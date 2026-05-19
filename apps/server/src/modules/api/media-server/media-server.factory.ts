@@ -83,7 +83,43 @@ export class MediaServerFactory {
       throw new Error('No media server type configured');
     }
 
+    // Surface the "selected but not yet configured" transition state as a
+    // typed, recognizable exception. This window opens between a media-server
+    // switch (which nulls the old credentials) and the user saving the new
+    // credentials. Callers can treat this as transient rather than a real
+    // failure (see NotificationService.transformMessageContent).
+    const settings = await this.settingsService.getSettings();
+    if (
+      isSettings(settings) &&
+      !this.areCredentialsPresent(serverType, settings)
+    ) {
+      throw new ServiceUnavailableException(
+        `${serverType} is selected but credentials are not yet configured.`,
+      );
+    }
+
     return await this.getServiceByType(serverType);
+  }
+
+  private areCredentialsPresent(
+    type: MediaServerType,
+    settings: Settings,
+  ): boolean {
+    switch (type) {
+      case MediaServerType.JELLYFIN:
+        return Boolean(settings.jellyfin_url && settings.jellyfin_api_key);
+      case MediaServerType.PLEX:
+        return Boolean(
+          settings.plex_hostname &&
+          settings.plex_name &&
+          settings.plex_port &&
+          settings.plex_auth_token,
+        );
+      case MediaServerType.EMBY:
+        return Boolean(settings.emby_url && settings.emby_api_key);
+      default:
+        return false;
+    }
   }
 
   /**

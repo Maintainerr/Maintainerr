@@ -408,6 +408,7 @@ export class MediaServerSwitchService {
       updatedSettings.jellyfin_api_key = null;
       updatedSettings.jellyfin_user_id = null;
       updatedSettings.jellyfin_server_name = null;
+      updatedSettings.streamystats_url = null;
     } else if (currentServerType === MediaServerType.EMBY) {
       updatedSettings.emby_url = null;
       updatedSettings.emby_api_key = null;

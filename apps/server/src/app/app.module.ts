@@ -14,6 +14,8 @@ import { PlexApiModule } from '../modules/api/plex-api/plex-api.module';
 import { SeerrApiModule } from '../modules/api/seerr-api/seerr-api.module';
 import { SeerrApiService } from '../modules/api/seerr-api/seerr-api.service';
 import { ServarrApiModule } from '../modules/api/servarr-api/servarr-api.module';
+import { StreamystatsApiModule } from '../modules/api/streamystats-api/streamystats-api.module';
+import { StreamystatsApiService } from '../modules/api/streamystats-api/streamystats-api.service';
 import { TautulliApiModule } from '../modules/api/tautulli-api/tautulli-api.module';
 import { TautulliApiService } from '../modules/api/tautulli-api/tautulli-api.service';
 import { CollectionsModule } from '../modules/collections/collections.module';
@@ -48,6 +50,7 @@ import ormConfig from './config/typeOrmConfig';
     ServarrApiModule,
     SeerrApiModule,
     TautulliApiModule,
+    StreamystatsApiModule,
     RulesModule,
     CollectionsModule,
     NotificationsModule,
@@ -85,6 +88,7 @@ export class AppModule implements OnModuleInit {
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly seerrApi: SeerrApiService,
     private readonly tautulliApi: TautulliApiService,
+    private readonly streamystatsApi: StreamystatsApiService,
     private readonly notificationService: NotificationService,
   ) {}
   async onModuleInit() {
@@ -96,6 +100,7 @@ export class AppModule implements OnModuleInit {
 
     this.seerrApi.init();
     this.tautulliApi.init();
+    this.streamystatsApi.init();
 
     // intialize notification agents
     await this.notificationService.registerConfiguredAgents();
