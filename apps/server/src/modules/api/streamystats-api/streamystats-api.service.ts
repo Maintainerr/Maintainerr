@@ -182,14 +182,12 @@ export class StreamystatsApiService {
       }
 
       const targetName = this.settings.jellyfin_server_name?.toLowerCase();
-      const targetUrl = this.settings.jellyfin_url?.replace(/\/+$/, '');
+      const targetUrl = this.settings.jellyfin_url;
 
       // Match by URL first (more unique than name, which can collide).
       // Fall back to name only when no URL match exists.
       const byUrl = targetUrl
-        ? servers.find(
-            (server) => server.url?.replace(/\/+$/, '') === targetUrl,
-          )
+        ? servers.find((server) => server.url === targetUrl)
         : undefined;
       const match =
         byUrl ??
