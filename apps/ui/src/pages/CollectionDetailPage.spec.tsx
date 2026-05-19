@@ -2,11 +2,47 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'
+import type { ICollection } from '../components/Collection'
+import type { IRuleGroup } from '../components/Rules/RuleGroup'
+import { buildQuerySuccessResult } from '../test-utils/queryResults'
 import CollectionDetailPage from './CollectionDetailPage'
 
 const navigate = vi.fn()
 const useLocation = vi.fn()
 const useParams = vi.fn()
+
+const buildCollection = (
+  overrides: Partial<ICollection> = {},
+): ICollection => ({
+  id: 42,
+  libraryId: 'library-1',
+  title: 'Regression Test Collection',
+  isActive: true,
+  overlayEnabled: false,
+  type: 'movie',
+  arrAction: 0,
+  media: [],
+  manualCollection: false,
+  manualCollectionName: '',
+  addDate: new Date('2026-01-01T00:00:00.000Z'),
+  handledMediaAmount: 0,
+  lastDurationInSeconds: 0,
+  keepLogsForMonths: 0,
+  ...overrides,
+})
+
+const buildRuleGroup = (overrides: Partial<IRuleGroup> = {}): IRuleGroup => ({
+  id: 1,
+  name: 'Regression Test Rule Group',
+  description: '',
+  libraryId: 'library-1',
+  isActive: true,
+  collectionId: 42,
+  rules: [],
+  useRules: false,
+  dataType: 'movie',
+  ...overrides,
+})
 
 vi.mock('../api/collections', () => ({
   useCollection: vi.fn(),
@@ -80,19 +116,12 @@ describe('CollectionDetailPage', () => {
 
     useLocation.mockReturnValue({ pathname: '/collections/42' })
     useParams.mockReturnValue({ id: '42' })
-    useCollectionMock.mockReturnValue({
-      data: {
-        id: 42,
-        title: 'Regression Test Collection',
-        overlayEnabled: false,
-      },
-      error: null,
-      isLoading: false,
-    } as ReturnType<typeof useCollection>)
-    useRuleGroupForCollectionMock.mockReturnValue({
-      data: { useRules: false },
-      isLoading: false,
-    } as ReturnType<typeof useRuleGroupForCollection>)
+    useCollectionMock.mockReturnValue(
+      buildQuerySuccessResult(buildCollection()),
+    )
+    useRuleGroupForCollectionMock.mockReturnValue(
+      buildQuerySuccessResult(buildRuleGroup()),
+    )
   })
 
   afterEach(() => {
