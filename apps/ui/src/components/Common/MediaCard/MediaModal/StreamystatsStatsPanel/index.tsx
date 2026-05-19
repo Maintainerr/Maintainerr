@@ -1,10 +1,12 @@
 import type { StreamystatsItemDetails } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
+import BrandLink from '../../../BrandLink'
 import { SmallLoadingSpinner } from '../../../LoadingSpinner'
 
 interface StreamystatsStatsPanelProps {
   itemId: string
+  itemUrl: string
 }
 
 type FetchState =
@@ -29,7 +31,10 @@ const formatWatchTime = (seconds: number): string => {
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
 }
 
-const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
+const StreamystatsStatsPanel = ({
+  itemId,
+  itemUrl,
+}: StreamystatsStatsPanelProps) => {
   const [state, setState] = useState<FetchState>({ status: 'loading' })
 
   useEffect(() => {
@@ -46,7 +51,6 @@ const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
       })
       .catch((error: unknown) => {
         if (!active) return
-        // 404 = configured but no data for this item — show empty state, not an error
         if (
           error instanceof Error &&
           /404|not found|no streamystats data/i.test(error.message)
@@ -66,30 +70,35 @@ const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
   }, [itemId])
 
   return (
-    <div className="mt-4 min-h-[7.5rem] rounded-xl bg-zinc-800/60 p-3">
-      <p className="text-sm font-semibold text-zinc-200">Streamystats</p>
+    <div className="mt-4 min-h-[7.5rem] rounded-xl bg-zinc-900/70 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-white">Streamystats</p>
+        <BrandLink external href={itemUrl} className="text-xs no-underline">
+          View on Streamystats →
+        </BrandLink>
+      </div>
 
       {state.status === 'loading' ? (
         <div className="mt-3 flex h-16 items-center">
           <SmallLoadingSpinner className="h-6 w-6" />
         </div>
       ) : state.status === 'error' ? (
-        <p className="mt-2 text-sm text-rose-400">{state.message}</p>
+        <p className="mt-2 text-sm text-error-400">{state.message}</p>
       ) : state.status === 'empty' ? (
-        <p className="mt-2 text-sm text-zinc-400">
+        <p className="mt-2 text-sm text-zinc-100/80">
           No watch history recorded yet.
         </p>
       ) : (
-        <div className="mt-2 space-y-3 text-sm text-zinc-200">
+        <div className="mt-2 space-y-3 text-sm text-zinc-100">
           <dl className="grid grid-cols-3 gap-3">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-400">
+              <dt className="text-xs uppercase tracking-wide text-zinc-100/60">
                 Plays
               </dt>
               <dd className="font-medium">{state.data.totalViews}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-400">
+              <dt className="text-xs uppercase tracking-wide text-zinc-100/60">
                 Completion
               </dt>
               <dd className="font-medium">
@@ -97,7 +106,7 @@ const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-400">
+              <dt className="text-xs uppercase tracking-wide text-zinc-100/60">
                 Last watched
               </dt>
               <dd className="font-medium">
@@ -107,7 +116,7 @@ const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
           </dl>
 
           {state.data.episodeStats ? (
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-zinc-100/60">
               {state.data.episodeStats.watchedEpisodes}/
               {state.data.episodeStats.totalEpisodes} episodes watched ·{' '}
               {state.data.episodeStats.watchedSeasons}/
@@ -118,7 +127,7 @@ const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
           {state.data.usersWatched.length > 0 ? (
             <div className="overflow-hidden rounded-lg border border-zinc-700/50">
               <table className="w-full text-left text-xs">
-                <thead className="bg-zinc-700/40 text-zinc-300">
+                <thead className="bg-zinc-800/60 text-zinc-100">
                   <tr>
                     <th className="px-2 py-1 font-medium">User</th>
                     <th className="px-2 py-1 text-right font-medium">Plays</th>
@@ -136,7 +145,7 @@ const StreamystatsStatsPanel = ({ itemId }: StreamystatsStatsPanelProps) => {
                       key={row.user.id}
                       className="border-t border-zinc-700/50"
                     >
-                      <td className="px-2 py-1 text-zinc-200">
+                      <td className="px-2 py-1 text-zinc-100">
                         {row.user.name ?? row.user.id}
                       </td>
                       <td className="px-2 py-1 text-right">{row.watchCount}</td>

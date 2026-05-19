@@ -72,15 +72,19 @@ describe('StreamystatsApiService', () => {
         streamystats_url: 'http://streamystats',
         jellyfin_api_key: 'jellyfin-key',
         jellyfin_server_name: 'My Server',
+        jellyfin_url: 'http://jellyfin.local',
       });
       service.init();
+      // /api/servers resolution returns a matching server for "My Server"
+      apiMock.getWithoutCache.mockResolvedValue([
+        { id: 7, url: 'http://jellyfin.local', name: 'My Server' },
+      ]);
     });
 
-    it('returns null when no server identifier is available', async () => {
-      Object.assign(settings, {
-        jellyfin_server_name: undefined,
-        jellyfin_url: undefined,
-      });
+    it('returns null when no Streamystats server matches the configured Jellyfin', async () => {
+      apiMock.getWithoutCache.mockResolvedValueOnce([
+        { id: 99, url: 'http://other.local', name: 'Other Server' },
+      ]);
 
       const result = await service.getItemDetails('item-1');
       expect(result).toBeNull();
@@ -94,7 +98,7 @@ describe('StreamystatsApiService', () => {
       expect(result).toBeNull();
     });
 
-    it('returns parsed details on a valid response', async () => {
+    it('returns parsed details and passes the resolved serverId', async () => {
       apiMock.get.mockResolvedValue({
         item: { id: 'item-1', name: 'Item One', type: 'Movie' },
         totalViews: 3,
@@ -112,8 +116,27 @@ describe('StreamystatsApiService', () => {
       expect(result?.completionRate).toBeCloseTo(87.5);
       expect(apiMock.get).toHaveBeenCalledWith(
         '/api/get-item-details/item-1',
-        expect.objectContaining({ params: { serverName: 'My Server' } }),
+        expect.objectContaining({ params: { serverId: '7' } }),
       );
+    });
+
+    it('caches the resolved serverId across calls', async () => {
+      apiMock.get.mockResolvedValue({
+        item: { id: 'item-1', type: 'Movie' },
+        totalViews: 1,
+        totalWatchTime: 100,
+        completionRate: 100,
+        firstWatched: null,
+        lastWatched: null,
+        usersWatched: [],
+        watchHistory: [],
+        watchCountByMonth: [],
+      });
+
+      await service.getItemDetails('item-1');
+      await service.getItemDetails('item-2');
+
+      expect(apiMock.getWithoutCache).toHaveBeenCalledTimes(1);
     });
   });
 

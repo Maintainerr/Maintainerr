@@ -40,7 +40,12 @@ describe('StreamystatsStatsPanel', () => {
       watchCountByMonth: [],
     })
 
-    render(<StreamystatsStatsPanel itemId="abc" />)
+    render(
+      <StreamystatsStatsPanel
+        itemId="abc"
+        itemUrl="http://streamystats.local/servers/1/library/abc"
+      />,
+    )
 
     await waitFor(() => {
       expect(screen.getByText('12')).toBeTruthy()
@@ -53,7 +58,12 @@ describe('StreamystatsStatsPanel', () => {
   it('shows an empty-state message when no data exists for the item (404)', async () => {
     getApiHandler.mockRejectedValue(new Error('404 not found'))
 
-    render(<StreamystatsStatsPanel itemId="abc" />)
+    render(
+      <StreamystatsStatsPanel
+        itemId="abc"
+        itemUrl="http://streamystats.local/servers/1/library/abc"
+      />,
+    )
 
     await waitFor(() => {
       expect(screen.getByText(/no watch history/i)).toBeTruthy()
@@ -63,7 +73,12 @@ describe('StreamystatsStatsPanel', () => {
   it('shows an inline error message when the fetch fails for unexpected reasons', async () => {
     getApiHandler.mockRejectedValue(new Error('boom'))
 
-    render(<StreamystatsStatsPanel itemId="abc" />)
+    render(
+      <StreamystatsStatsPanel
+        itemId="abc"
+        itemUrl="http://streamystats.local/servers/1/library/abc"
+      />,
+    )
 
     await waitFor(() => {
       expect(screen.getByText(/failed to load streamystats/i)).toBeTruthy()
@@ -72,7 +87,12 @@ describe('StreamystatsStatsPanel', () => {
 
   it('reserves vertical space so the modal layout does not jump', () => {
     getApiHandler.mockReturnValue(new Promise(() => {}))
-    const { container } = render(<StreamystatsStatsPanel itemId="abc" />)
+    const { container } = render(
+      <StreamystatsStatsPanel
+        itemId="abc"
+        itemUrl="http://streamystats.local/servers/1/library/abc"
+      />,
+    )
     const panel = container.firstChild as HTMLElement
     expect(panel?.className).toMatch(/min-h-/)
   })

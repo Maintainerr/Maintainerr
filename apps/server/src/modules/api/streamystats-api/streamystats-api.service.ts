@@ -23,9 +23,16 @@ interface StreamystatsVersionInfo {
   buildTime: number;
 }
 
+interface StreamystatsServer {
+  id: number;
+  url?: string | null;
+  name?: string | null;
+}
+
 @Injectable()
 export class StreamystatsApiService {
   api: StreamystatsApi;
+  private resolvedServerId: number | null = null;
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
@@ -37,6 +44,7 @@ export class StreamystatsApiService {
   }
 
   public init() {
+    this.resolvedServerId = null;
     if (!this.settings.streamystats_url || !this.settings.jellyfin_api_key) {
       return;
     }
@@ -68,10 +76,13 @@ export class StreamystatsApiService {
   public async getItemDetails(
     itemId: string,
   ): Promise<StreamystatsItemDetails | null> {
-    const serverIdentifier = this.resolveServerIdentifier();
-    if (!serverIdentifier) {
+    // /api/get-item-details/[itemId] only accepts the internal Streamystats
+    // serverId (not serverName/serverUrl). Resolve it via /api/servers once
+    // and cache for subsequent calls.
+    const serverId = await this.resolveServerId();
+    if (serverId == null) {
       this.logger.warn(
-        'Skipping Streamystats item details: no Jellyfin server identifier available in settings.',
+        'Skipping Streamystats item details: could not resolve Streamystats serverId for the configured Jellyfin server.',
       );
       return null;
     }
@@ -80,7 +91,7 @@ export class StreamystatsApiService {
       const raw = await this.api.get<unknown>(
         `/api/get-item-details/${itemId}`,
         {
-          params: serverIdentifier,
+          params: { serverId: String(serverId) },
         },
       );
       if (raw == null) {
@@ -146,14 +157,42 @@ export class StreamystatsApiService {
     }
   }
 
-  private resolveServerIdentifier(): Record<string, string> | null {
-    const serverName = this.settings.jellyfin_server_name;
-    if (serverName) {
-      return { serverName };
+  public async getResolvedServerId(): Promise<number | null> {
+    return this.resolveServerId();
+  }
+
+  private async resolveServerId(): Promise<number | null> {
+    if (this.resolvedServerId != null) {
+      return this.resolvedServerId;
     }
-    const jellyfinUrl = this.settings.jellyfin_url;
-    if (jellyfinUrl) {
-      return { serverUrl: jellyfinUrl };
+    if (!this.api) {
+      return null;
+    }
+
+    try {
+      const servers =
+        await this.api.getWithoutCache<StreamystatsServer[]>('/api/servers');
+      if (!Array.isArray(servers)) {
+        return null;
+      }
+
+      const targetName = this.settings.jellyfin_server_name?.toLowerCase();
+      const targetUrl = this.settings.jellyfin_url?.replace(/\/+$/, '');
+
+      const match = servers.find((server) => {
+        if (targetName && server.name?.toLowerCase() === targetName)
+          return true;
+        if (targetUrl && server.url?.replace(/\/+$/, '') === targetUrl)
+          return true;
+        return false;
+      });
+
+      if (match) {
+        this.resolvedServerId = match.id;
+        return match.id;
+      }
+    } catch (error) {
+      this.logger.debug(error);
     }
     return null;
   }
