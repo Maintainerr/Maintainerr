@@ -265,9 +265,7 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) return result;
 
     const libraries = await this.getLibraries();
-    const path = this.embyUserId
-      ? `/Users/${this.embyUserId}/Items`
-      : '/Items';
+    const path = this.embyUserId ? `/Users/${this.embyUserId}/Items` : '/Items';
 
     for (const lib of libraries) {
       try {
@@ -1003,9 +1001,7 @@ export class EmbyAdapterService implements IMediaServerService {
       const path = this.embyUserId
         ? `/Users/${this.embyUserId}/Items/${params.collectionId}`
         : `/Items/${params.collectionId}`;
-      const { data: current } = await this.http.get<EmbyBaseItemDto>(
-        path,
-      );
+      const { data: current } = await this.http.get<EmbyBaseItemDto>(path);
       const updated: EmbyBaseItemDto = {
         ...current,
         Name: params.title ?? current.Name,

@@ -212,36 +212,28 @@ describe('EmbyAdapterService', () => {
         new Map([['library-1', 600]]),
       );
 
-      expect(http.get).toHaveBeenNthCalledWith(
-        1,
-        '/Users/user-1/Items',
-        {
-          params: {
-            ParentId: 'library-1',
-            Recursive: true,
-            IncludeItemTypes: 'Movie,Episode',
-            Limit: 500,
-            StartIndex: 0,
-            EnableTotalRecordCount: true,
-            CollapseBoxSetItems: false,
-          },
+      expect(http.get).toHaveBeenNthCalledWith(1, '/Users/user-1/Items', {
+        params: {
+          ParentId: 'library-1',
+          Recursive: true,
+          IncludeItemTypes: 'Movie,Episode',
+          Limit: 500,
+          StartIndex: 0,
+          EnableTotalRecordCount: true,
+          CollapseBoxSetItems: false,
         },
-      );
-      expect(http.get).toHaveBeenNthCalledWith(
-        2,
-        '/Users/user-1/Items',
-        {
-          params: {
-            ParentId: 'library-1',
-            Recursive: true,
-            IncludeItemTypes: 'Movie,Episode',
-            Limit: 500,
-            StartIndex: 2,
-            EnableTotalRecordCount: true,
-            CollapseBoxSetItems: false,
-          },
+      });
+      expect(http.get).toHaveBeenNthCalledWith(2, '/Users/user-1/Items', {
+        params: {
+          ParentId: 'library-1',
+          Recursive: true,
+          IncludeItemTypes: 'Movie,Episode',
+          Limit: 500,
+          StartIndex: 2,
+          EnableTotalRecordCount: true,
+          CollapseBoxSetItems: false,
         },
-      );
+      });
     });
   });
 
