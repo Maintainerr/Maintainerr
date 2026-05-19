@@ -565,7 +565,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt="Emby Logo"
                           width={128}
                           height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 object-contain p-1 shadow-lg"
                         />
                       </a>
                     </div>

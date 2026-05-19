@@ -222,7 +222,7 @@ const MediaServerSelector = ({
                     <img
                       src={option.icon}
                       alt={option.name}
-                      className="h-10 w-10 rounded"
+                      className="h-10 w-10 rounded object-contain"
                     />
                     <div className="ml-4 text-left">
                       <p className="font-medium text-zinc-100">{option.name}</p>

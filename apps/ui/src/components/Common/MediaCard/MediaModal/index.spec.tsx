@@ -590,6 +590,60 @@ describe('MediaModal', () => {
     expect(await screen.findByText('trigger-rule-action')).toBeTruthy()
   })
 
+  it('renders the Emby badge with the shared external-logo footprint', async () => {
+    useMediaServerTypeMock.mockReturnValue({
+      mediaServerType: 'emby',
+      isLoading: false,
+      isPlex: false,
+      isJellyfin: false,
+      isEmby: true,
+      isMediaServerTypeSelected: true,
+      isSetupComplete: true,
+      isNotConfigured: false,
+    })
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({
+          machineId: 'emby-server-1',
+          url: 'https://emby.local',
+        })
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/88') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={88}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+      />,
+    )
+
+    const embyLogo = await screen.findByRole('img', { name: 'Emby Logo' })
+
+    expect(embyLogo.closest('a')?.getAttribute('href')).toBe(
+      'https://emby.local/web/index.html#!/item?id=88&serverId=emby-server-1',
+    )
+    expect(embyLogo.getAttribute('class')).toContain('h-8 w-32')
+    expect(embyLogo.getAttribute('class')).toContain('object-contain')
+  })
+
   it('hides the trigger rule action control for excluded collection items', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {
