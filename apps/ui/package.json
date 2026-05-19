@@ -81,6 +81,6 @@
     "vitest": "^4.1.6"
   },
   "optionalDependencies": {
-    "rolldown": "^1.0.0-rc.18"
+    "rolldown": "^1.0.1"
   }
 }
