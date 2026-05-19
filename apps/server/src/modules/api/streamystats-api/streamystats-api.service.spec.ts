@@ -64,6 +64,37 @@ describe('StreamystatsApiService', () => {
 
       expect(service.api).toBeDefined();
     });
+
+    it('clears the cached client and serverId when settings are removed', async () => {
+      Object.assign(settings, {
+        streamystats_url: 'http://streamystats',
+        jellyfin_api_key: 'jellyfin-key',
+        jellyfin_server_name: 'My Server',
+      });
+      service.init();
+      apiMock.getWithoutCache.mockResolvedValueOnce([
+        { id: 7, url: null, name: 'My Server' },
+      ]);
+      apiMock.get.mockResolvedValueOnce({
+        item: { id: 'item-1', type: 'Movie' },
+        totalViews: 1,
+        totalWatchTime: 0,
+        completionRate: 0,
+        firstWatched: null,
+        lastWatched: null,
+        usersWatched: [],
+        watchHistory: [],
+        watchCountByMonth: [],
+      });
+      await service.getItemDetails('item-1');
+      expect(service.api).toBeDefined();
+
+      // Streamystats URL removed
+      Object.assign(settings, { streamystats_url: undefined });
+      service.init();
+
+      expect(service.api).toBeUndefined();
+    });
   });
 
   describe('getItemDetails', () => {
@@ -161,6 +192,37 @@ describe('StreamystatsApiService', () => {
       expect(result?.usersWatched[0].watchCount).toBe(5);
       expect(result?.watchCountByMonth[0].month).toBe(5);
       expect(result?.episodeStats?.watchedEpisodes).toBe(8);
+    });
+
+    it('matches by URL first and falls back to name only when no URL match exists', async () => {
+      // Two servers share the name "Jellyfin" but only one matches the URL.
+      apiMock.getWithoutCache.mockResolvedValueOnce([
+        { id: 99, url: 'http://other.local', name: 'Jellyfin' },
+        { id: 42, url: 'http://jellyfin.local', name: 'Jellyfin' },
+      ]);
+      Object.assign(settings, {
+        jellyfin_server_name: 'Jellyfin',
+        jellyfin_url: 'http://jellyfin.local',
+      });
+      service.init();
+      apiMock.get.mockResolvedValue({
+        item: { id: 'item-1', type: 'Movie' },
+        totalViews: 1,
+        totalWatchTime: 0,
+        completionRate: 0,
+        firstWatched: null,
+        lastWatched: null,
+        usersWatched: [],
+        watchHistory: [],
+        watchCountByMonth: [],
+      });
+
+      await service.getItemDetails('item-1');
+
+      expect(apiMock.get).toHaveBeenCalledWith(
+        '/api/get-item-details/item-1',
+        expect.objectContaining({ params: { serverId: '42' } }),
+      );
     });
 
     it('caches the resolved serverId across calls', async () => {

@@ -35,6 +35,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   Param,
@@ -233,6 +234,8 @@ export class SettingsController {
       return settings;
     }
 
+    this.assertJellyfinActive();
+
     return {
       url: settings.streamystats_url,
     };
@@ -243,11 +246,13 @@ export class SettingsController {
     @Body(new ZodValidationPipe(streamystatsSettingSchema))
     payload: StreamystatsSetting,
   ) {
+    this.assertJellyfinActive();
     return await this.settingsService.updateStreamystatsSetting(payload);
   }
 
   @Delete('/streamystats')
   async removeStreamystatsSetting() {
+    this.assertJellyfinActive();
     return await this.settingsService.removeStreamystatsSetting();
   }
 
@@ -256,7 +261,16 @@ export class SettingsController {
     @Body(new ZodValidationPipe(streamystatsSettingSchema))
     payload: StreamystatsSetting,
   ): Promise<BasicResponseDto> {
+    this.assertJellyfinActive();
     return this.settingsService.testStreamystats(payload);
+  }
+
+  private assertJellyfinActive(): void {
+    if (this.settingsService.media_server_type !== MediaServerType.JELLYFIN) {
+      throw new ForbiddenException(
+        'Streamystats is only available when Jellyfin is the active media server.',
+      );
+    }
   }
 
   @Get('/tmdb')

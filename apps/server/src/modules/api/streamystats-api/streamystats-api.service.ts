@@ -31,7 +31,7 @@ interface StreamystatsServer {
 
 @Injectable()
 export class StreamystatsApiService {
-  api: StreamystatsApi;
+  api: StreamystatsApi | undefined;
   private resolvedServerId: number | null = null;
 
   constructor(
@@ -44,7 +44,12 @@ export class StreamystatsApiService {
   }
 
   public init() {
+    // Always clear cached client + resolved serverId so consumers don't
+    // operate against stale Streamystats URL or stale Jellyfin credentials
+    // after any settings change.
+    this.api = undefined;
     this.resolvedServerId = null;
+
     if (!this.settings.streamystats_url || !this.settings.jellyfin_api_key) {
       return;
     }
@@ -179,13 +184,18 @@ export class StreamystatsApiService {
       const targetName = this.settings.jellyfin_server_name?.toLowerCase();
       const targetUrl = this.settings.jellyfin_url?.replace(/\/+$/, '');
 
-      const match = servers.find((server) => {
-        if (targetName && server.name?.toLowerCase() === targetName)
-          return true;
-        if (targetUrl && server.url?.replace(/\/+$/, '') === targetUrl)
-          return true;
-        return false;
-      });
+      // Match by URL first (more unique than name, which can collide).
+      // Fall back to name only when no URL match exists.
+      const byUrl = targetUrl
+        ? servers.find(
+            (server) => server.url?.replace(/\/+$/, '') === targetUrl,
+          )
+        : undefined;
+      const match =
+        byUrl ??
+        (targetName
+          ? servers.find((server) => server.name?.toLowerCase() === targetName)
+          : undefined);
 
       if (match) {
         this.resolvedServerId = match.id;

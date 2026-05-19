@@ -688,6 +688,10 @@ export class SettingsService implements SettingDto {
       this.jellyfin_server_name = testResult.serverName;
       this.media_server_type = MediaServerType.JELLYFIN;
 
+      // Streamystats uses the Jellyfin API key + server identity. Re-init so
+      // the cached client and resolved serverId track the new credentials.
+      this.streamystats.init();
+
       this.logger.log('Jellyfin settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
@@ -750,12 +754,15 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
+      // Streamystats can't authenticate without Jellyfin credentials; clear
+      // its URL alongside Jellyfin so we don't leave a half-configured state.
       await this.saveSettings({
         ...settingsDb,
         jellyfin_url: null,
         jellyfin_api_key: null,
         jellyfin_user_id: null,
         jellyfin_server_name: null,
+        streamystats_url: null,
       });
 
       // Uninitialize service to clear credentials
@@ -765,6 +772,8 @@ export class SettingsService implements SettingDto {
       this.jellyfin_api_key = undefined;
       this.jellyfin_user_id = undefined;
       this.jellyfin_server_name = undefined;
+      this.streamystats_url = null;
+      this.streamystats.init();
 
       this.logger.log('Jellyfin settings cleared');
       return { status: 'OK', code: 1, message: 'Success' };

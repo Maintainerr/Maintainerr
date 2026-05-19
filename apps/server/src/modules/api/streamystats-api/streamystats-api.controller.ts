@@ -1,5 +1,14 @@
-import { StreamystatsItemDetails } from '@maintainerr/contracts';
-import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
+import {
+  MediaServerType,
+  StreamystatsItemDetails,
+} from '@maintainerr/contracts';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  NotFoundException,
+  Param,
+} from '@nestjs/common';
 import { SettingsService } from '../../settings/settings.service';
 import { StreamystatsApiService } from './streamystats-api.service';
 
@@ -17,6 +26,7 @@ export class StreamystatsApiController {
 
   @Get('/info')
   async getInfo(): Promise<StreamystatsInfoResponse> {
+    this.assertJellyfinActive();
     const url = this.settingsService.streamystats_url;
     if (!url || !this.streamystatsApiService.api) {
       throw new NotFoundException('Streamystats is not configured');
@@ -29,6 +39,7 @@ export class StreamystatsApiController {
   async getItemDetails(
     @Param('itemId') itemId: string,
   ): Promise<StreamystatsItemDetails> {
+    this.assertJellyfinActive();
     if (!this.streamystatsApiService.api) {
       throw new NotFoundException('Streamystats is not configured');
     }
@@ -41,5 +52,13 @@ export class StreamystatsApiController {
     }
 
     return details;
+  }
+
+  private assertJellyfinActive(): void {
+    if (this.settingsService.media_server_type !== MediaServerType.JELLYFIN) {
+      throw new ForbiddenException(
+        'Streamystats is only available when Jellyfin is the active media server.',
+      );
+    }
   }
 }

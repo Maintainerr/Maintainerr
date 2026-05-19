@@ -1,5 +1,7 @@
 import { streamystatsSettingSchema } from '@maintainerr/contracts'
+import { Navigate } from 'react-router-dom'
 import { z } from 'zod'
+import { useMediaServerType } from '../../../hooks/useMediaServerType'
 import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -34,6 +36,19 @@ const fields: ExternalServiceFieldConfig[] = [
 ]
 
 const StreamystatsSettings = () => {
+  const { isJellyfin, isLoading } = useMediaServerType()
+
+  if (isLoading) {
+    return null
+  }
+
+  // Streamystats is Jellyfin-only upstream; redirect away from the route if
+  // the active media server is anything else (e.g. Plex/Emby user typing
+  // /settings/streamystats directly).
+  if (!isJellyfin) {
+    return <Navigate to="/settings/main" replace />
+  }
+
   return (
     <ExternalServiceSettingsPage
       scope="Streamystats settings"
