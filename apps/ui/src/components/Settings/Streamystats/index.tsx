@@ -23,11 +23,13 @@ const fields: ExternalServiceFieldConfig[] = [
     placeholder: 'http://localhost:3000',
     helpText: (
       <>
-        <div>Example URL formats:</div>
-        <div className="whitespace-nowrap">http://localhost:3000</div>
-        <div className="whitespace-nowrap">
+        Example URL formats:
+        <br />
+        <span className="whitespace-nowrap">http://localhost:3000</span>
+        <br />
+        <span className="whitespace-nowrap">
           https://streamystats.example.com
-        </div>
+        </span>
       </>
     ),
     normalize: stripTrailingSlashes,
