@@ -58,6 +58,8 @@ export class SettingDto {
 
   tautulli_api_key: string;
 
+  streamystats_url: string;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;

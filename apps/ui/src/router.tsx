@@ -93,6 +93,9 @@ const settingsSeerrRoute = createLazyRoute(
 const settingsTautulliRoute = createLazyRoute(
   () => import('./components/Settings/Tautulli'),
 )
+const settingsStreamystatsRoute = createLazyRoute(
+  () => import('./components/Settings/Streamystats'),
+)
 const settingsNotificationsRoute = createLazyRoute(
   () => import('./components/Settings/Notifications'),
 )
@@ -286,6 +289,11 @@ const appRoutes: AppRoute[] = [
         path: 'tautulli',
         lazy: settingsTautulliRoute.lazy,
         preload: settingsTautulliRoute.preload,
+      },
+      {
+        path: 'streamystats',
+        lazy: settingsStreamystatsRoute.lazy,
+        preload: settingsStreamystatsRoute.preload,
       },
       {
         path: 'notifications',

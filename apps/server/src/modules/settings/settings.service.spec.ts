@@ -7,6 +7,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
+import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { RadarrSettings } from './entities/radarr_settings.entities';
@@ -21,6 +22,7 @@ describe('SettingsService', () => {
   let plexApi: Mocked<PlexApiService>;
   let seerr: Mocked<SeerrApiService>;
   let tautulli: Mocked<TautulliApiService>;
+  let streamystats: Mocked<StreamystatsApiService>;
   let internalApi: Mocked<InternalApiService>;
   let eventEmitter: Mocked<EventEmitter2>;
 
@@ -59,6 +61,7 @@ describe('SettingsService', () => {
     unitRef.get(ServarrService);
     seerr = unitRef.get(SeerrApiService);
     tautulli = unitRef.get(TautulliApiService);
+    streamystats = unitRef.get(StreamystatsApiService);
     internalApi = unitRef.get(InternalApiService);
     eventEmitter = unitRef.get(EventEmitter2);
     unitRef.get(MaintainerrLogger);
@@ -73,6 +76,7 @@ describe('SettingsService', () => {
     plexApi.getStatus.mockResolvedValue({ version: '1.0.0' } as never);
     seerr.init.mockImplementation();
     tautulli.init.mockImplementation();
+    streamystats.init.mockImplementation();
     internalApi.init.mockImplementation();
     eventEmitter.emit.mockImplementation();
   });
@@ -220,5 +224,48 @@ describe('SettingsService', () => {
       message: 'Authenticate with Plex before validating the connection.',
     });
     expect(plexApi.validateAuthToken).not.toHaveBeenCalled();
+  });
+
+  it('re-initialises Streamystats after a successful Jellyfin save', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({ media_server_type: MediaServerType.JELLYFIN }),
+    );
+    mediaServerFactory.testJellyfinConnection.mockResolvedValue({
+      success: true,
+      serverName: 'My Server',
+      version: '10.11.8',
+      users: [{ id: 'user-1', name: 'admin' }],
+    });
+    mediaServerFactory.uninitializeServer.mockImplementation();
+
+    const result = await service.saveJellyfinSettings({
+      jellyfin_url: 'http://jellyfin.local',
+      jellyfin_api_key: 'jf-key',
+      jellyfin_user_id: 'user-1',
+    });
+
+    expect(result.code).toBe(1);
+    // Streamystats reuses jellyfin_api_key + jellyfin_server_name; it must
+    // re-init when those change.
+    expect(streamystats.init).toHaveBeenCalled();
+  });
+
+  it('clears streamystats_url and re-initialises Streamystats when Jellyfin is removed', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jf-key',
+        streamystats_url: 'http://streamystats.local',
+      }),
+    );
+    mediaServerFactory.uninitializeServer.mockImplementation();
+
+    const result = await service.removeJellyfinSettings();
+
+    expect(result.code).toBe(1);
+    const saved = settingsRepo.save.mock.calls.at(-1)?.[0] as Settings;
+    expect(saved.streamystats_url).toBeNull();
+    expect(streamystats.init).toHaveBeenCalled();
   });
 });

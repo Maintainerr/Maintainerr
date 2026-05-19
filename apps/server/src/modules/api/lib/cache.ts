@@ -8,6 +8,7 @@ type AvailableCacheIds =
   | 'seerr'
   | 'plexcommunity'
   | 'tautulli'
+  | 'streamystats'
   | 'github'
   | 'jellyfin'
   | 'emby';
@@ -71,6 +72,7 @@ class CacheManager {
       'plexcommunity',
     ),
     tautulli: new Cache('tautulli', 'Tautulli API', 'tautulli'),
+    streamystats: new Cache('streamystats', 'Streamystats API', 'streamystats'),
     github: new Cache('github', 'GitHub API', 'github', {
       stdTtl: 86400, // 24 hours
       checkPeriod: 60 * 60, // Check every hour

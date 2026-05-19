@@ -117,12 +117,14 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
             </p>
             <div className="space-y-3">
               <InputGroup
+                name="username"
                 label="Username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
               <InputGroup
+                name="password"
                 label="Password"
                 type="password"
                 value={password}

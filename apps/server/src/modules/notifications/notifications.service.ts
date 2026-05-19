@@ -4,7 +4,11 @@ import {
   MediaItem,
   RuleHandlerQueueStatusUpdatedEventDto,
 } from '@maintainerr/contracts';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import _ from 'lodash';
@@ -909,6 +913,16 @@ export class NotificationService implements OnModuleInit {
 
       return message;
     } catch (error) {
+      if (error instanceof ServiceUnavailableException) {
+        // Media server in transition (switched but not yet configured, or
+        // mid-switch). Leave the message untransformed; downstream handlers
+        // will still see the raw template.
+        this.logger.debug(
+          'Skipping notification message transformation; media server not ready',
+        );
+        this.logger.debug(error);
+        return message;
+      }
       this.logger.error("Couldn't transform notification message");
       this.logger.debug(error);
     }
