@@ -133,6 +133,7 @@ export class StreamystatsApiService {
       };
     } catch (error) {
       logConnectionTestError(this.logger, 'Streamystats');
+      this.logger.debug(error);
 
       return {
         status: 'NOK',
