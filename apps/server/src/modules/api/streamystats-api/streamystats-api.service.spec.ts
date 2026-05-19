@@ -1,5 +1,6 @@
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsService } from '../../settings/settings.service';
+import { StreamystatsApi } from './helpers/streamystats-api.helper';
 import { StreamystatsApiService } from './streamystats-api.service';
 
 const apiMock = {
@@ -274,6 +275,30 @@ describe('StreamystatsApiService', () => {
       });
 
       expect(result.status).toBe('NOK');
+    });
+
+    it('supports being called without an apiKey (no Authorization header)', async () => {
+      const StreamystatsApiMock = StreamystatsApi as unknown as jest.Mock;
+      StreamystatsApiMock.mockClear();
+      apiMock.getRawWithoutCache.mockResolvedValue({
+        data: {
+          currentVersion: '2.18.0',
+          latestVersion: '2.18.0',
+          hasUpdate: false,
+          buildTime: 0,
+        },
+      });
+
+      const result = await service.testConnection({
+        url: 'http://streamystats',
+      });
+
+      expect(result.status).toBe('OK');
+      // The helper is constructed with url only — no apiKey leaks to a
+      // user-supplied URL via /api/settings/test/streamystats.
+      const callArgs = StreamystatsApiMock.mock.calls.at(-1)?.[0];
+      expect(callArgs?.url).toBe('http://streamystats');
+      expect(callArgs?.apiKey).toBeUndefined();
     });
   });
 });
