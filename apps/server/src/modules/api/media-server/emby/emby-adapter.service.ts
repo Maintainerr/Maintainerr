@@ -279,6 +279,9 @@ export class EmbyAdapterService implements IMediaServerService {
               ParentId: lib.id,
               Recursive: true,
               IncludeItemTypes: 'Movie,Episode',
+              // Size lives in MediaSources[].Size; without requesting it,
+              // Emby omits the field entirely and every item sums to 0.
+              Fields: 'MediaSources',
               Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
               StartIndex: offset,
               EnableTotalRecordCount: true,

@@ -217,6 +217,7 @@ describe('EmbyAdapterService', () => {
           ParentId: 'library-1',
           Recursive: true,
           IncludeItemTypes: 'Movie,Episode',
+          Fields: 'MediaSources',
           Limit: 500,
           StartIndex: 0,
           EnableTotalRecordCount: true,
@@ -228,12 +229,41 @@ describe('EmbyAdapterService', () => {
           ParentId: 'library-1',
           Recursive: true,
           IncludeItemTypes: 'Movie,Episode',
+          Fields: 'MediaSources',
           Limit: 500,
           StartIndex: 2,
           EnableTotalRecordCount: true,
           CollapseBoxSetItems: false,
         },
       });
+    });
+
+    it('requests the MediaSources field so size data is populated', async () => {
+      jest.spyOn(service, 'getLibraries').mockResolvedValue([
+        {
+          id: 'library-1',
+          title: 'Movies',
+          type: 'movie',
+        } as any,
+      ]);
+      http.get.mockResolvedValueOnce({
+        data: {
+          Items: [{ Id: 'movie-1', MediaSources: [{ Size: 100 }] }],
+          TotalRecordCount: 1,
+        },
+      });
+
+      await service.computeLibraryStorageSizes();
+
+      // Regression guard for #2924: omitting Fields makes Emby return items
+      // without MediaSources, so every size sums to 0 and the library map is
+      // empty. The query must explicitly request MediaSources.
+      expect(http.get).toHaveBeenCalledWith(
+        '/Users/user-1/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Fields: 'MediaSources' }),
+        }),
+      );
     });
   });
 
