@@ -9,7 +9,8 @@ type AvailableCacheIds =
   | 'plexcommunity'
   | 'tautulli'
   | 'github'
-  | 'jellyfin';
+  | 'jellyfin'
+  | 'emby';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr';
 
@@ -75,6 +76,7 @@ class CacheManager {
       checkPeriod: 60 * 60, // Check every hour
     }),
     jellyfin: new Cache('jellyfin', 'Jellyfin API', 'jellyfin'),
+    emby: new Cache('emby', 'Emby API', 'emby'),
   };
 
   public createCache(

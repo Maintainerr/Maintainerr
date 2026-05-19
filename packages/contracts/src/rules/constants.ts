@@ -68,6 +68,7 @@ export enum Application {
   SEERR = 3,
   TAUTULLI = 4,
   JELLYFIN = 6,
+  EMBY = 7,
 }
 
 /**
@@ -80,6 +81,7 @@ export const ApplicationNames: Record<Application, string> = {
   [Application.SEERR]: 'Seerr',
   [Application.TAUTULLI]: 'Tautulli',
   [Application.JELLYFIN]: 'Jellyfin',
+  [Application.EMBY]: 'Emby',
 }
 
 /**

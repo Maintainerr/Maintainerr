@@ -18,6 +18,7 @@ import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
 import { Rules } from './entities/rules.entities';
+import { EmbyGetterService } from './getter/emby-getter.service';
 import { ValueGetterService } from './getter/getter.service';
 import { JellyfinGetterService } from './getter/jellyfin-getter.service';
 import { SeerrGetterService } from './getter/seerr-getter.service';
@@ -71,6 +72,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     ExclusionTypeCorrectorService,
     PlexGetterService,
     JellyfinGetterService,
+    EmbyGetterService,
     RadarrGetterService,
     SonarrGetterService,
     SeerrGetterService,

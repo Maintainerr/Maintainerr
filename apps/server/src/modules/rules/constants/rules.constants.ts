@@ -1386,4 +1386,25 @@ export class RuleConstants {
       ],
     },
   ];
+
+  constructor() {
+    // Emby shares Jellyfin's data model and rule properties. We mirror the
+    // Jellyfin property list verbatim (same IDs and names) so rule migration
+    // between Jellyfin and Emby is a no-op on the property side. The Emby
+    // getter implements the same property names against Emby's HTTP endpoints.
+    const jellyfinApp = this.applications.find(
+      (a) => a.id === Application.JELLYFIN,
+    );
+    if (
+      jellyfinApp &&
+      !this.applications.some((a) => a.id === Application.EMBY)
+    ) {
+      this.applications.push({
+        id: Application.EMBY,
+        name: 'Emby',
+        mediaType: MediaType.BOTH,
+        props: jellyfinApp.props,
+      });
+    }
+  }
 }

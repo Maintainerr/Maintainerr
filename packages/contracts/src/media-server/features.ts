@@ -9,6 +9,7 @@ export const MEDIA_SERVER_FEATURES: Record<
   ReadonlySet<MediaServerFeature>
 > = {
   [MediaServerType.PLEX]: new Set([
+    MediaServerFeature.BULK_COLLECTION_CREATE,
     MediaServerFeature.COLLECTION_VISIBILITY,
     MediaServerFeature.WATCHLIST,
     MediaServerFeature.CENTRAL_WATCH_HISTORY,
@@ -18,6 +19,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.COLLECTION_SORT,
   ]),
   [MediaServerType.JELLYFIN]: new Set([
+    MediaServerFeature.BULK_COLLECTION_CREATE,
     MediaServerFeature.LABELS, // Tags in Jellyfin
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
@@ -25,6 +27,19 @@ export const MEDIA_SERVER_FEATURES: Record<
     // Note: WATCHLIST not supported (no API)
     // Note: CENTRAL_WATCH_HISTORY not supported (requires user iteration)
     // Note: COLLECTION_SORT not supported — no boxset reorder API; ForcedSortName has global side-effects.
+  ]),
+  [MediaServerType.EMBY]: new Set([
+    MediaServerFeature.BULK_COLLECTION_CREATE,
+    MediaServerFeature.LABELS,
+    MediaServerFeature.PLAYLISTS,
+    MediaServerFeature.COLLECTION_POSTER,
+    // Conservative defaults mirroring Jellyfin:
+    // - COLLECTION_VISIBILITY: Emby has no Plex-style home/recommended pinning.
+    // - WATCHLIST: no public watchlist API.
+    // - CENTRAL_WATCH_HISTORY: same per-user iteration model as Jellyfin.
+    // - COLLECTION_SORT: Emby exposes DisplayOrder = PremiereDate | SortName
+    //   on a BoxSet but no item-move/reorder endpoint, so Maintainerr's
+    //   "push an explicit ordered list of item IDs" contract isn't satisfiable.
   ]),
 }
 

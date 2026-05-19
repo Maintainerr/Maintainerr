@@ -21,6 +21,10 @@ export const getMediaServerSetupRoute = (
     return '/settings/jellyfin'
   }
 
+  if (mediaServerType === MediaServerType.EMBY) {
+    return '/settings/emby'
+  }
+
   if (mediaServerType === MediaServerType.PLEX) {
     return '/settings/plex'
   }
