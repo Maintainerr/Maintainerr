@@ -61,6 +61,7 @@ export interface EmbyBaseItemDto {
   OriginalTitle?: string;
   SortName?: string;
   ForcedSortName?: string;
+  Size?: number;
   ServerId?: string;
   Etag?: string;
   Type?: string;
