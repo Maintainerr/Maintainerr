@@ -120,6 +120,49 @@ describe('StreamystatsApiService', () => {
       );
     });
 
+    it('coerces string-encoded aggregation numbers to real numbers', async () => {
+      apiMock.get.mockResolvedValue({
+        item: { id: 'item-1', type: 'Series' },
+        totalViews: '18',
+        totalWatchTime: '14400',
+        completionRate: '36.5',
+        firstWatched: '2026-05-17T13:38:00Z',
+        lastWatched: '2026-05-18T21:56:00Z',
+        usersWatched: [
+          {
+            user: { id: 'u1', name: 'beate' },
+            watchCount: '5',
+            totalWatchTime: '14400',
+            completionRate: '36.5',
+            firstWatched: '2026-05-17T13:38:00Z',
+            lastWatched: '2026-05-18T21:56:00Z',
+          },
+        ],
+        watchHistory: [],
+        watchCountByMonth: [
+          {
+            month: '5',
+            year: '2026',
+            watchCount: '18',
+            uniqueUsers: '2',
+            totalWatchTime: '14400',
+          },
+        ],
+        episodeStats: {
+          totalSeasons: '2',
+          totalEpisodes: '18',
+          watchedEpisodes: '8',
+          watchedSeasons: '1',
+        },
+      });
+
+      const result = await service.getItemDetails('item-1');
+      expect(result?.totalViews).toBe(18);
+      expect(result?.usersWatched[0].watchCount).toBe(5);
+      expect(result?.watchCountByMonth[0].month).toBe(5);
+      expect(result?.episodeStats?.watchedEpisodes).toBe(8);
+    });
+
     it('caches the resolved serverId across calls', async () => {
       apiMock.get.mockResolvedValue({
         item: { id: 'item-1', type: 'Movie' },

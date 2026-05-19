@@ -1,5 +1,11 @@
 import z from 'zod'
 
+// Streamystats's getItemDetails surfaces aggregation results (COUNT/SUM/AVG)
+// straight from Drizzle, which serialises them as strings even though the
+// upstream TypeScript interface declares them as `number`. Coerce defensively
+// so the schema stays robust to that wire-format quirk.
+const numberLike = z.coerce.number()
+
 const streamystatsUserSchema = z
   .object({
     id: z.string(),
@@ -9,9 +15,9 @@ const streamystatsUserSchema = z
 
 const streamystatsItemUserStatsSchema = z.object({
   user: streamystatsUserSchema,
-  watchCount: z.number(),
-  totalWatchTime: z.number(),
-  completionRate: z.number(),
+  watchCount: numberLike,
+  totalWatchTime: numberLike,
+  completionRate: numberLike,
   firstWatched: z.string().nullable(),
   lastWatched: z.string().nullable(),
 })
@@ -20,8 +26,8 @@ const streamystatsItemWatchHistorySchema = z
   .object({
     user: streamystatsUserSchema.nullable(),
     watchDate: z.string(),
-    watchDuration: z.number(),
-    completionPercentage: z.number(),
+    watchDuration: numberLike,
+    completionPercentage: numberLike,
     playMethod: z.string().nullable().optional(),
     deviceName: z.string().nullable().optional(),
     clientName: z.string().nullable().optional(),
@@ -29,18 +35,18 @@ const streamystatsItemWatchHistorySchema = z
   .loose()
 
 const streamystatsItemWatchCountByMonthSchema = z.object({
-  month: z.number(),
-  year: z.number(),
-  watchCount: z.number(),
-  uniqueUsers: z.number(),
-  totalWatchTime: z.number(),
+  month: numberLike,
+  year: numberLike,
+  watchCount: numberLike,
+  uniqueUsers: numberLike,
+  totalWatchTime: numberLike,
 })
 
 const streamystatsSeriesEpisodeStatsSchema = z.object({
-  totalSeasons: z.number(),
-  totalEpisodes: z.number(),
-  watchedEpisodes: z.number(),
-  watchedSeasons: z.number(),
+  totalSeasons: numberLike,
+  totalEpisodes: numberLike,
+  watchedEpisodes: numberLike,
+  watchedSeasons: numberLike,
 })
 
 export const streamystatsItemDetailsSchema = z.object({
@@ -51,9 +57,9 @@ export const streamystatsItemDetailsSchema = z.object({
       type: z.string().nullable().optional(),
     })
     .loose(),
-  totalViews: z.number(),
-  totalWatchTime: z.number(),
-  completionRate: z.number(),
+  totalViews: numberLike,
+  totalWatchTime: numberLike,
+  completionRate: numberLike,
   firstWatched: z.string().nullable(),
   lastWatched: z.string().nullable(),
   usersWatched: z.array(streamystatsItemUserStatsSchema),
