@@ -17,6 +17,8 @@ import {
   seerrSettingSchema,
   SonarrSetting,
   sonarrSettingSchema,
+  StreamystatsSetting,
+  streamystatsSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   switchMediaServerSchema,
@@ -219,6 +221,42 @@ export class SettingsController {
     payload: TautulliSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testTautulli(payload);
+  }
+
+  @Get('/streamystats')
+  async getStreamystatsSetting(): Promise<
+    StreamystatsSetting | BasicResponseDto
+  > {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      url: settings.streamystats_url,
+    };
+  }
+
+  @Post('/streamystats')
+  async updateStreamystatsSetting(
+    @Body(new ZodValidationPipe(streamystatsSettingSchema))
+    payload: StreamystatsSetting,
+  ) {
+    return await this.settingsService.updateStreamystatsSetting(payload);
+  }
+
+  @Delete('/streamystats')
+  async removeStreamystatsSetting() {
+    return await this.settingsService.removeStreamystatsSetting();
+  }
+
+  @Post('/test/streamystats')
+  testStreamystats(
+    @Body(new ZodValidationPipe(streamystatsSettingSchema))
+    payload: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsService.testStreamystats(payload);
   }
 
   @Get('/tmdb')

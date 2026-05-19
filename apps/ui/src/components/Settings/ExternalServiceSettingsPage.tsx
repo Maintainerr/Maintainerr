@@ -24,10 +24,17 @@ import { InputGroup } from '../Forms/Input'
 import SettingsAlertSlot from './SettingsAlertSlot'
 import { useSettingsFeedback } from './useSettingsFeedback'
 
-interface UrlApiKeySettingsValues {
-  url: string
-  api_key: string
+export interface ExternalServiceFieldConfig {
+  name: string
+  label: string
+  type?: 'text' | 'password'
+  placeholder?: string
+  helpText?: JSX.Element | string
+  normalize?: (value: string) => string
+  required?: boolean
 }
+
+type SettingsValues = Record<string, string>
 
 interface TestStatus {
   status: boolean
@@ -43,14 +50,19 @@ interface ExternalServiceSettingsPageProps {
   settingsPath: string
   testPath: string
   schema: z.ZodTypeAny
-  urlPlaceholder: string
-  urlHelpText?: JSX.Element | string
+  fields: ExternalServiceFieldConfig[]
   testSuccessTitle: string
   testFailureMessage: string
-  normalizeUrl?: (url: string) => string
 }
 
-const identity = (value: string) => value
+const allEmpty = (
+  values: SettingsValues,
+  fields: ExternalServiceFieldConfig[],
+) => fields.every((field) => (values[field.name] ?? '') === '')
+
+const valuesEqual = (a: SettingsValues, b: SettingsValues): boolean =>
+  Object.keys(a).length === Object.keys(b).length &&
+  Object.keys(a).every((key) => a[key] === b[key])
 
 const ExternalServiceSettingsPage = ({
   scope,
@@ -61,45 +73,37 @@ const ExternalServiceSettingsPage = ({
   settingsPath,
   testPath,
   schema,
-  urlPlaceholder,
-  urlHelpText,
+  fields,
   testSuccessTitle,
   testFailureMessage,
-  normalizeUrl = identity,
 }: ExternalServiceSettingsPageProps) => {
-  const [testedSettings, setTestedSettings] =
-    useState<UrlApiKeySettingsValues>()
+  const [testedSettings, setTestedSettings] = useState<SettingsValues>()
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
   const { feedback, showUpdated, showUpdateError, clearError } =
     useSettingsFeedback(scope)
 
   const {
-    register,
     control,
     clearErrors,
     getValues,
     reset,
     setError,
     formState: { errors, isSubmitting, isLoading },
-  } = useForm<UrlApiKeySettingsValues>({
+  } = useForm<SettingsValues>({
     defaultValues: async () => {
       const response =
-        await GetApiHandler<UrlApiKeySettingsValues>(settingsPath)
-
-      return {
-        url: response.url ?? '',
-        api_key: response.api_key ?? '',
-      }
+        await GetApiHandler<Record<string, string | undefined>>(settingsPath)
+      return Object.fromEntries(
+        fields.map((field) => [field.name, response?.[field.name] ?? '']),
+      )
     },
   })
 
-  const url = useWatch({ control, name: 'url' }) ?? ''
-  const apiKey = useWatch({ control, name: 'api_key' }) ?? ''
-
-  const isGoingToRemove = url === '' && apiKey === ''
+  const currentValues = (useWatch({ control }) ?? {}) as SettingsValues
+  const isGoingToRemove = allEmpty(currentValues, fields)
   const testFeedbackStatus =
-    url === testedSettings?.url && apiKey === testedSettings?.api_key
+    testedSettings && valuesEqual(currentValues, testedSettings)
       ? testResult?.status
       : undefined
   const canSave = !isSubmitting && !isLoading
@@ -110,8 +114,8 @@ const ExternalServiceSettingsPage = ({
     setTestResult(undefined)
   }
 
-  const validateValues = (values: UrlApiKeySettingsValues) => {
-    if (values.url === '' && values.api_key === '') {
+  const validateValues = (values: SettingsValues) => {
+    if (allEmpty(values, fields)) {
       clearErrors()
       return true
     }
@@ -124,11 +128,11 @@ const ExternalServiceSettingsPage = ({
     }
 
     clearErrors()
+    const fieldNames = new Set(fields.map((field) => field.name))
 
     result.error.issues.forEach((issue) => {
-      const fieldName = issue.path[0]
-
-      if (fieldName === 'url' || fieldName === 'api_key') {
+      const fieldName = String(issue.path[0])
+      if (fieldNames.has(fieldName)) {
         setError(fieldName, {
           type: 'manual',
           message: issue.message,
@@ -139,18 +143,12 @@ const ExternalServiceSettingsPage = ({
     return false
   }
 
-  const registerApiKey = register('api_key', {
-    onChange: () => {
-      clearTransientState()
-    },
-  })
-
   const onSubmit = async () => {
     const data = getValues()
 
     clearError()
 
-    const removingSetting = data.api_key === '' && data.url === ''
+    const removingSetting = allEmpty(data, fields)
 
     if (!removingSetting && !validateValues(data)) {
       return
@@ -181,10 +179,7 @@ const ExternalServiceSettingsPage = ({
 
     setTesting(true)
 
-    await PostApiHandler<BasicResponseDto>(testPath, {
-      api_key: values.api_key,
-      url: values.url,
-    } satisfies UrlApiKeySettingsValues)
+    await PostApiHandler<BasicResponseDto>(testPath, values)
       .then((response: BasicResponseDto) => {
         setTestResult({
           status: response.code === 1,
@@ -245,38 +240,42 @@ const ExternalServiceSettingsPage = ({
               void onSubmit()
             }}
           >
-            <Controller
-              name="url"
-              defaultValue=""
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label="URL"
-                  value={field.value}
-                  placeholder={urlPlaceholder}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                    clearTransientState()
-                    field.onChange(event)
-                  }}
-                  onBlur={(event: FocusEvent<HTMLInputElement>) =>
-                    field.onChange(normalizeUrl(event.target.value))
-                  }
-                  ref={field.ref}
-                  name={field.name}
-                  type="text"
-                  error={errors.url?.message}
-                  helpText={urlHelpText ?? undefined}
-                  required
-                />
-              )}
-            />
-
-            <InputGroup
-              label="API key"
-              type="password"
-              {...registerApiKey}
-              error={errors.api_key?.message}
-            />
+            {fields.map((fieldConfig) => (
+              <Controller
+                key={fieldConfig.name}
+                name={fieldConfig.name}
+                defaultValue=""
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    label={fieldConfig.label}
+                    value={field.value}
+                    placeholder={fieldConfig.placeholder}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                      clearTransientState()
+                      field.onChange(event)
+                    }}
+                    onBlur={(event: FocusEvent<HTMLInputElement>) => {
+                      if (fieldConfig.normalize) {
+                        field.onChange(
+                          fieldConfig.normalize(event.target.value),
+                        )
+                      } else {
+                        field.onBlur()
+                      }
+                    }}
+                    ref={field.ref}
+                    name={field.name}
+                    type={fieldConfig.type ?? 'text'}
+                    error={
+                      errors[fieldConfig.name]?.message as string | undefined
+                    }
+                    helpText={fieldConfig.helpText ?? undefined}
+                    required={fieldConfig.required}
+                  />
+                )}
+              />
+            ))}
 
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">

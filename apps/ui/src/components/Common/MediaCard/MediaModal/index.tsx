@@ -16,6 +16,7 @@ import {
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
+import StreamystatsStatsPanel from './StreamystatsStatsPanel'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
@@ -159,6 +160,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
       null,
     )
+    const [streamystatsModalUrl, setStreamystatsModalUrl] = useState<
+      string | null
+    >(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
     const [maintainerrDetailsState, setMaintainerrDetailsState] = useState<{
       key: string
@@ -308,6 +312,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         .then((resp) => {
           if (!active) return
           setTautulliModalUrl(resp?.tautulli_url || null)
+          setStreamystatsModalUrl(resp?.streamystats_url || null)
         })
         .catch(() => {})
       GetApiHandler<MediaItem>(`/media-server/meta/${id}`)
@@ -588,6 +593,18 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {isJellyfin && streamystatsModalUrl && (
+                    <div>
+                      <a
+                        href={`${streamystatsModalUrl}/library/${id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-flex h-8 w-32 items-center justify-center rounded-lg bg-black bg-opacity-70 px-2 text-xs font-semibold tracking-wide text-amber-300 shadow-lg"
+                      >
+                        Streamystats
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {metadata?.genres && metadata.genres.length > 0 ? (
                   <div className="pointer-events-none flex flex-wrap-reverse items-end justify-end gap-1">
@@ -617,6 +634,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="mt-2 text-gray-300">
               <p>{metadata?.summary || summary || 'No summary available.'}</p>
             </div>
+
+            {isJellyfin && streamystatsModalUrl ? (
+              <StreamystatsStatsPanel itemId={String(id)} />
+            ) : null}
 
             {showMaintainerrDetails ? (
               <div

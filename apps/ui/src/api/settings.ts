@@ -58,6 +58,7 @@ export interface ISettings {
   seerr_api_key: string
   tautulli_url: string
   tautulli_api_key: string
+  streamystats_url: string
   collection_handler_job_cron: string
   rules_handler_job_cron: string
   metadata_provider_preference?: MetadataProviderPreference

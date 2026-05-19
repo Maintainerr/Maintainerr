@@ -6,6 +6,7 @@ import {
   MediaServerType,
   MetadataProviderPreference,
   SeerrSetting,
+  StreamystatsSetting,
   TautulliSetting,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
@@ -25,6 +26,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
+import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
@@ -114,6 +116,8 @@ export class SettingsService implements SettingDto {
 
   tautulli_api_key: string;
 
+  streamystats_url: string;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;
@@ -129,6 +133,8 @@ export class SettingsService implements SettingDto {
     private readonly seerr: SeerrApiService,
     @Inject(forwardRef(() => TautulliApiService))
     private readonly tautulli: TautulliApiService,
+    @Inject(forwardRef(() => StreamystatsApiService))
+    private readonly streamystats: StreamystatsApiService,
     @Inject(forwardRef(() => InternalApiService))
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
@@ -179,6 +185,7 @@ export class SettingsService implements SettingDto {
         MetadataProviderPreference.TMDB_PRIMARY;
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
+      this.streamystats_url = settingsDb?.streamystats_url;
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
@@ -477,6 +484,48 @@ export class SettingsService implements SettingDto {
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
       this.logger.error('Error while updating Tautulli settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async removeStreamystatsSetting() {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        streamystats_url: null,
+      });
+
+      this.streamystats_url = null;
+      this.streamystats.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing Streamystats settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateStreamystatsSetting(
+    settings: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        streamystats_url: settings.url,
+      });
+
+      this.streamystats_url = settings.url;
+      this.streamystats.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating Streamystats settings');
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
@@ -1313,6 +1362,38 @@ export class SettingsService implements SettingDto {
         message: formatConnectionFailureMessage(
           error,
           'Failed to connect to Tautulli. Verify URL and API key.',
+        ),
+      };
+    }
+  }
+
+  public async testStreamystats(
+    setting?: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    if (setting) {
+      return await this.streamystats.testConnection({
+        url: setting.url,
+        apiKey: this.jellyfin_api_key,
+      });
+    }
+
+    try {
+      const info = await this.streamystats.info();
+      return info?.currentVersion
+        ? {
+            status: 'OK',
+            code: 1,
+            message: info.currentVersion,
+          }
+        : { status: 'NOK', code: 0, message: 'Failure' };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Streamystats');
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to connect to Streamystats. Verify URL and that the service is running.',
         ),
       };
     }
