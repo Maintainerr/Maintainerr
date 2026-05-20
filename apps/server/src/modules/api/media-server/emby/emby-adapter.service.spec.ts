@@ -174,9 +174,95 @@ describe('EmbyAdapterService', () => {
         sortTitle: 'New Sort',
       });
 
+      expect(http.get).toHaveBeenCalledWith('/Users/user-1/Items/collection-1');
       expect(http.post).toHaveBeenCalledWith(
         '/Items/collection-1',
         expect.objectContaining({ ForcedSortName: 'New Sort' }),
+      );
+    });
+  });
+
+  describe('computeLibraryStorageSizes', () => {
+    it('pages through user-scoped items and sums item sizes', async () => {
+      jest.spyOn(service, 'getLibraries').mockResolvedValue([
+        {
+          id: 'library-1',
+          title: 'Movies',
+          type: 'movie',
+        } as any,
+      ]);
+      http.get
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              { Id: 'movie-1', Size: 100 },
+              { Id: 'episode-1', MediaSources: [{ Size: 200 }] },
+            ],
+            TotalRecordCount: 3,
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            Items: [{ Id: 'episode-2', Size: 300 }],
+            TotalRecordCount: 3,
+          },
+        });
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([['library-1', 600]]),
+      );
+
+      expect(http.get).toHaveBeenNthCalledWith(1, '/Users/user-1/Items', {
+        params: {
+          ParentId: 'library-1',
+          Recursive: true,
+          IncludeItemTypes: 'Movie,Episode',
+          Fields: 'MediaSources',
+          Limit: 500,
+          StartIndex: 0,
+          EnableTotalRecordCount: true,
+          CollapseBoxSetItems: false,
+        },
+      });
+      expect(http.get).toHaveBeenNthCalledWith(2, '/Users/user-1/Items', {
+        params: {
+          ParentId: 'library-1',
+          Recursive: true,
+          IncludeItemTypes: 'Movie,Episode',
+          Fields: 'MediaSources',
+          Limit: 500,
+          StartIndex: 2,
+          EnableTotalRecordCount: true,
+          CollapseBoxSetItems: false,
+        },
+      });
+    });
+
+    it('requests the MediaSources field so size data is populated', async () => {
+      jest.spyOn(service, 'getLibraries').mockResolvedValue([
+        {
+          id: 'library-1',
+          title: 'Movies',
+          type: 'movie',
+        } as any,
+      ]);
+      http.get.mockResolvedValueOnce({
+        data: {
+          Items: [{ Id: 'movie-1', MediaSources: [{ Size: 100 }] }],
+          TotalRecordCount: 1,
+        },
+      });
+
+      await service.computeLibraryStorageSizes();
+
+      // Regression guard for #2924: omitting Fields makes Emby return items
+      // without MediaSources, so every size sums to 0 and the library map is
+      // empty. The query must explicitly request MediaSources.
+      expect(http.get).toHaveBeenCalledWith(
+        '/Users/user-1/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Fields: 'MediaSources' }),
+        }),
       );
     });
   });

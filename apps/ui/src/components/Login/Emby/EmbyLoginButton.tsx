@@ -2,6 +2,7 @@ import { LoginIcon } from '@heroicons/react/outline'
 import { useState } from 'react'
 import { type EmbyLoginResult, useLoginEmby } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
+import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import Modal from '../../Common/Modal'
 import { InputGroup } from '../../Forms/Input'
@@ -131,11 +132,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            {error ? (
-              <div className="mt-4 rounded bg-error-900/30 p-3 text-sm text-error-400">
-                {error}
-              </div>
-            ) : null}
+            {error ? <Alert type="error" title={error} /> : null}
           </div>
         </Modal>
       ) : null}

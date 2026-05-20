@@ -265,28 +265,45 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) return result;
 
     const libraries = await this.getLibraries();
+    const path = this.embyUserId ? `/Users/${this.embyUserId}/Items` : '/Items';
+
     for (const lib of libraries) {
       try {
-        const { data } = await this.http.get<EmbyItemsQueryResponse>(`/Items`, {
-          params: {
-            ParentId: lib.id,
-            Recursive: true,
-            IncludeItemTypes: 'Movie,Episode',
-            Fields: 'MediaSources',
-            Limit: 0,
-          },
-        });
-        // Some Emby versions return aggregated stats via separate endpoints.
-        // TODO(emby-server-test): verify whether /Items?Recursive&Fields=Size
-        // returns Size as an aggregate or per item; for now we treat 0 as
-        // unknown rather than reporting a misleading value.
-        const total = (data.Items ?? []).reduce(
-          (sum, item) =>
-            sum +
-            (item.MediaSources?.reduce((s, src) => s + (src.Size ?? 0), 0) ??
-              0),
-          0,
-        );
+        let total = 0;
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data } = await this.http.get<EmbyItemsQueryResponse>(path, {
+            params: {
+              ParentId: lib.id,
+              Recursive: true,
+              IncludeItemTypes: 'Movie,Episode',
+              // Size lives in MediaSources[].Size; without requesting it,
+              // Emby omits the field entirely and every item sums to 0.
+              Fields: 'MediaSources',
+              Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
+              StartIndex: offset,
+              EnableTotalRecordCount: true,
+              ...this.libraryQueryDefaults(),
+            },
+          });
+
+          const items = data.Items ?? [];
+          total += items.reduce(
+            (sum, item) =>
+              sum +
+              (item.Size ??
+                item.MediaSources?.reduce((s, src) => s + (src.Size ?? 0), 0) ??
+                0),
+            0,
+          );
+
+          offset += items.length;
+          const totalCount = data.TotalRecordCount ?? offset;
+          hasMore = items.length > 0 && offset < totalCount;
+        }
+
         if (total > 0) result.set(lib.id, total);
       } catch (error) {
         this.logger.debug(
@@ -984,9 +1001,10 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) throw new Error('Emby not initialized');
     try {
       // Emby's POST /Items/{id} expects the full updated item. Fetch, mutate, send.
-      const { data: current } = await this.http.get<EmbyBaseItemDto>(
-        `/Items/${params.collectionId}`,
-      );
+      const path = this.embyUserId
+        ? `/Users/${this.embyUserId}/Items/${params.collectionId}`
+        : `/Items/${params.collectionId}`;
+      const { data: current } = await this.http.get<EmbyBaseItemDto>(path);
       const updated: EmbyBaseItemDto = {
         ...current,
         Name: params.title ?? current.Name,
