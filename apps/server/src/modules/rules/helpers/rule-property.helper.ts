@@ -4,7 +4,7 @@ import { buildCollectionExcludeNames } from './collection-exclude.helper';
 
 type RuleUserId = string | number;
 
-export function normaliseRulePropertyName(name: string): string {
+export function normalizeRulePropertyName(name: string): string {
   return name.toLowerCase().trim();
 }
 
@@ -20,10 +20,10 @@ export function uniqueTrimmedRulePropertyNames(
 
   for (const name of names) {
     const trimmedName = name.trim();
-    const normalisedName = normaliseRulePropertyName(trimmedName);
+    const normalizedName = normalizeRulePropertyName(trimmedName);
 
-    if (!seenNames.has(normalisedName)) {
-      seenNames.add(normalisedName);
+    if (!seenNames.has(normalizedName)) {
+      seenNames.add(normalizedName);
       uniqueNames.push(trimmedName);
     }
   }
@@ -40,7 +40,7 @@ export function filterRuleCollectionNames(
   );
 
   return trimRulePropertyNames(collectionNames).filter(
-    (name) => !excludedCollectionNames.has(normaliseRulePropertyName(name)),
+    (name) => !excludedCollectionNames.has(normalizeRulePropertyName(name)),
   );
 }
 
