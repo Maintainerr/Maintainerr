@@ -382,6 +382,17 @@ export const useTestJellyfin = (options?: UseTestJellyfinOptions) => {
 
 export type UseTestJellyfinResult = ReturnType<typeof useTestJellyfin>
 
+const assertSettingsMutationSucceeded = (
+  response: BasicResponseDto,
+  fallbackMessage: string,
+): BasicResponseDto => {
+  if (response.code === 1) {
+    return response
+  }
+
+  throw new Error(response.message || fallbackMessage)
+}
+
 type UseSaveJellyfinSettingsOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, JellyfinSetting>,
   'mutationFn' | 'mutationKey' | 'onSuccess'
@@ -395,9 +406,14 @@ export const useSaveJellyfinSettings = (
   return useMutation<BasicResponseDto, Error, JellyfinSetting>({
     mutationKey: ['settings', 'saveJellyfin'],
     mutationFn: async (payload) => {
-      return await PostApiHandler<BasicResponseDto>(
+      const response = await PostApiHandler<BasicResponseDto>(
         '/settings/jellyfin',
         payload,
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Jellyfin settings could not be updated',
       )
     },
     onSuccess: () => {
@@ -426,7 +442,13 @@ export const useDeleteJellyfinSettings = (
   return useMutation<BasicResponseDto, Error, void>({
     mutationKey: ['settings', 'deleteJellyfin'],
     mutationFn: async () => {
-      return await DeleteApiHandler<BasicResponseDto>('/settings/jellyfin')
+      const response =
+        await DeleteApiHandler<BasicResponseDto>('/settings/jellyfin')
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Jellyfin settings could not be updated',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -496,7 +518,15 @@ export const useSaveEmbySettings = (options?: UseSaveEmbySettingsOptions) => {
   return useMutation<BasicResponseDto, Error, EmbySetting>({
     mutationKey: ['settings', 'saveEmby'],
     mutationFn: async (payload) => {
-      return await PostApiHandler<BasicResponseDto>('/settings/emby', payload)
+      const response = await PostApiHandler<BasicResponseDto>(
+        '/settings/emby',
+        payload,
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Emby settings could not be updated',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -522,7 +552,13 @@ export const useDeleteEmbySettings = (
   return useMutation<BasicResponseDto, Error, void>({
     mutationKey: ['settings', 'deleteEmby'],
     mutationFn: async () => {
-      return await DeleteApiHandler<BasicResponseDto>('/settings/emby')
+      const response =
+        await DeleteApiHandler<BasicResponseDto>('/settings/emby')
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Emby settings could not be updated',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

@@ -1,4 +1,4 @@
-import type { MediaItem } from '@maintainerr/contracts'
+import { MediaServerType, type MediaItem } from '@maintainerr/contracts'
 import {
   cleanup,
   fireEvent,
@@ -592,7 +592,7 @@ describe('MediaModal', () => {
 
   it('renders the Emby badge with the shared external-logo footprint', async () => {
     useMediaServerTypeMock.mockReturnValue({
-      mediaServerType: 'emby',
+      mediaServerType: MediaServerType.EMBY,
       isLoading: false,
       isPlex: false,
       isJellyfin: false,
@@ -642,6 +642,42 @@ describe('MediaModal', () => {
     )
     expect(embyLogo.getAttribute('class')).toContain('h-8 w-32')
     expect(embyLogo.getAttribute('class')).toContain('object-contain')
+  })
+
+  it('does not request Streamystats info when Jellyfin is not active', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/93') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/streamystats/info') {
+        throw new Error('Streamystats should not be requested')
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={93}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+      />,
+    )
+
+    await screen.findByText('Movie summary')
+
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/streamystats/info')
   })
 
   it('hides the trigger rule action control for excluded collection items', async () => {

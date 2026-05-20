@@ -1,5 +1,5 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "./node_modules/turbo/schema.json",
   "ui": "stream",
   "tasks": {
     "build": {
@@ -26,11 +26,8 @@
     "format:check": {
       "dependsOn": ["^format:check"]
     },
-    "transit": {
-      "dependsOn": ["^transit"]
-    },
     "check-types": {
-      "dependsOn": ["transit"]
+      "dependsOn": ["^build"]
     }
   }
 }

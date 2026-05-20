@@ -229,7 +229,7 @@ export function OverlayCanvas({
       let targetX = node.x()
       let targetY = node.y()
 
-      if (el.shapeType === 'ellipse') {
+      if (el.type === 'shape' && el.shapeType === 'ellipse') {
         targetX -= node.width() / 2
         targetY -= node.height() / 2
       }
@@ -265,7 +265,7 @@ export function OverlayCanvas({
       let targetX = node.x()
       let targetY = node.y()
 
-      if (el.shapeType === 'ellipse') {
+      if (el.type === 'shape' && el.shapeType === 'ellipse') {
         targetX -= (node.width() * scaleXNode) / 2
         targetY -= (node.height() * scaleYNode) / 2
       }

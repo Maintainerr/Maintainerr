@@ -50,7 +50,7 @@ const JellyfinSettings = () => {
   const [jellyfinUsers, setJellyfinUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showUpdateError, showError, clearError } =
+  const { feedback, showUpdated, showError, clearError } =
     useSettingsFeedback('Jellyfin settings')
 
   const { settings } = useSettingsOutletContext()
@@ -185,8 +185,10 @@ const JellyfinSettings = () => {
         setTestedSettings(null)
         setJellyfinUsers([])
         showUpdated()
-      } catch {
-        showUpdateError()
+      } catch (error) {
+        showError(
+          getApiErrorMessage(error, 'Jellyfin settings could not be updated'),
+        )
       }
       return
     }
@@ -196,11 +198,8 @@ const JellyfinSettings = () => {
       reset(data)
       showUpdated()
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Failed to save settings')
       showError(
-        message === 'Failed to save settings'
-          ? 'Jellyfin settings could not be updated'
-          : message,
+        getApiErrorMessage(error, 'Jellyfin settings could not be updated'),
       )
     }
   }

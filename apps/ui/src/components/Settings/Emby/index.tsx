@@ -51,7 +51,7 @@ const EmbySettings = () => {
   const [embyUsers, setEmbyUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showUpdateError, showError, clearError } =
+  const { feedback, showUpdated, showError, clearError } =
     useSettingsFeedback('Emby settings')
 
   const { settings } = useSettingsOutletContext()
@@ -178,8 +178,10 @@ const EmbySettings = () => {
         setTestedSettings(null)
         setEmbyUsers([])
         showUpdated()
-      } catch {
-        showUpdateError()
+      } catch (error) {
+        showError(
+          getApiErrorMessage(error, 'Emby settings could not be updated'),
+        )
       }
       return
     }
@@ -189,12 +191,7 @@ const EmbySettings = () => {
       reset(data)
       showUpdated()
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Failed to save settings')
-      showError(
-        message === 'Failed to save settings'
-          ? 'Emby settings could not be updated'
-          : message,
-      )
+      showError(getApiErrorMessage(error, 'Emby settings could not be updated'))
     }
   }
 

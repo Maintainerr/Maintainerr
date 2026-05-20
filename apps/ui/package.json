@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
+    "check-types": "tsc --noEmit",
     "preview": "vite preview",
     "start": "vite preview --port 80 --host 0.0.0.0",
     "lint": "eslint .",
