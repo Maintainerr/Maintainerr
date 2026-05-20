@@ -314,18 +314,22 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           setTautulliModalUrl(resp?.tautulli_url || null)
         })
         .catch(() => {})
-      GetApiHandler<{ url: string; serverId: number | null }>(
-        '/streamystats/info',
-      )
-        .then((info) => {
-          if (!active) return
-          if (info?.url && info.serverId != null) {
-            setStreamystatsItemUrl(
-              `${info.url}/servers/${info.serverId}/library/${id}`,
-            )
-          }
-        })
-        .catch(() => {})
+      // Streamystats is Jellyfin-only (Emby is unsupported upstream), so only
+      // resolve the item link when Jellyfin is the active media server.
+      if (isJellyfin) {
+        GetApiHandler<{ url: string; serverId: number | null }>(
+          '/streamystats/info',
+        )
+          .then((info) => {
+            if (!active) return
+            if (info?.url && info.serverId != null) {
+              setStreamystatsItemUrl(
+                `${info.url}/servers/${info.serverId}/library/${id}`,
+              )
+            }
+          })
+          .catch(() => {})
+      }
       GetApiHandler<MediaItem>(`/media-server/meta/${id}`)
         .then((data) => {
           if (!active) return
@@ -339,7 +343,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       return () => {
         active = false
       }
-    }, [id])
+    }, [id, isJellyfin])
 
     useEffect(() => {
       if (!backdropRequestPath) {

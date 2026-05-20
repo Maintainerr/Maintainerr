@@ -71,3 +71,25 @@ jobs:
         run: yarn --immutable
       - name: Run linter
         run: yarn lint
+
+  type-checking:
+    name: Type checking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Activate corepack
+        run: |
+          corepack install
+          corepack enable
+      - name: Install dependencies
+        run: yarn --immutable
+      - name: Check types
+        run: yarn check-types
