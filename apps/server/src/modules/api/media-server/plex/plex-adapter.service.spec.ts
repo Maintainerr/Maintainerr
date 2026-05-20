@@ -618,6 +618,40 @@ describe('PlexAdapterService', () => {
       ).rejects.toThrow('Failed to create collection');
     });
 
+    it('forwards initialItemIds to PlexApiService for bulk create', async () => {
+      plexApi.createCollection.mockResolvedValue(
+        createPlexCollection({
+          ratingKey: 'col456',
+          key: '/library/collections/col456',
+          guid: 'plex://collection/col456',
+          title: 'Seeded',
+          subtype: 'movie',
+          summary: '',
+          index: 0,
+          ratingCount: 0,
+          thumb: '/thumb/col456',
+          addedAt: 1609459200,
+          updatedAt: 1609459200,
+          childCount: '2',
+          maxYear: '2021',
+          minYear: '2021',
+        }),
+      );
+
+      await service.createCollection({
+        libraryId: 'lib1',
+        title: 'Seeded',
+        type: 'movie',
+        initialItemIds: ['item-1', 'item-2'],
+      });
+
+      expect(plexApi.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          initialItemIds: ['item-1', 'item-2'],
+        }),
+      );
+    });
+
     it('should delegate deleteCollection to PlexApiService', async () => {
       plexApi.deleteCollection.mockResolvedValue(undefined);
       await service.deleteCollection('col123');

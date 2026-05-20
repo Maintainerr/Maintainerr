@@ -38,8 +38,15 @@ const mediaServerTabContent = (label?: string) => {
 const getMediaServerTypeFromPath = (
   pathname: string,
 ): MediaServerType | undefined => {
-  if (pathname.startsWith('/settings/jellyfin')) {
+  if (
+    pathname.startsWith('/settings/jellyfin') ||
+    pathname.startsWith('/settings/streamystats')
+  ) {
     return MediaServerType.JELLYFIN
+  }
+
+  if (pathname.startsWith('/settings/emby')) {
+    return MediaServerType.EMBY
   }
 
   if (
@@ -62,6 +69,15 @@ const getMediaServerRoute = (
       content: mediaServerTabContent('Jellyfin'),
       route: '/settings/jellyfin',
       regex: /^\/settings\/jellyfin$/,
+    }
+  }
+
+  if (mediaServerType === MediaServerType.EMBY) {
+    return {
+      text: 'Emby',
+      content: mediaServerTabContent('Emby'),
+      route: '/settings/emby',
+      regex: /^\/settings\/emby$/,
     }
   }
 
@@ -151,6 +167,15 @@ const SettingsWrapper = () => {
         text: 'Tautulli',
         route: '/settings/tautulli',
         regex: /^\/settings\/tautulli$/,
+      })
+    }
+
+    // Streamystats is a Jellyfin-only integration (no Emby support upstream)
+    if (mediaServerType === MediaServerType.JELLYFIN) {
+      baseRoutes.push({
+        text: 'Streamystats',
+        route: '/settings/streamystats',
+        regex: /^\/settings\/streamystats$/,
       })
     }
 
@@ -261,7 +286,7 @@ const SettingsWrapper = () => {
                   Connect your media server to finish setup.
                 </p>
                 <p className="mt-2 leading-6 text-info-200">
-                  Choose Plex or Jellyfin, confirm the connection, and then you
+                  Choose your media server, confirm the connection, and then you
                   can continue configuring the rest of Maintainerr.
                 </p>
               </div>

@@ -1402,6 +1402,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const response = await getCollectionApi(this.api).createCollection({
         name: params.title,
+        ids: params.initialItemIds,
         parentId: params.libraryId,
         // isLocked enables composite image generation from collection items
         isLocked: true,

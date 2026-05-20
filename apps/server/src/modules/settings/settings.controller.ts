@@ -1,5 +1,9 @@
 import {
   BasicResponseDto,
+  EmbyLoginRequest,
+  embyLoginRequestSchema,
+  EmbySetting,
+  embySettingSchema,
   JellyfinSetting,
   jellyfinSettingSchema,
   MediaServerSwitchPreview,
@@ -13,22 +17,25 @@ import {
   seerrSettingSchema,
   SonarrSetting,
   sonarrSettingSchema,
+  StreamystatsSetting,
+  streamystatsSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   switchMediaServerSchema,
   TautulliSetting,
   tautulliSettingSchema,
   TmdbSetting,
-  tmdbSettingSchema,
   TmdbSettingForm,
+  tmdbSettingSchema,
   TvdbSetting,
-  tvdbSettingSchema,
   TvdbSettingForm,
+  tvdbSettingSchema,
 } from '@maintainerr/contracts';
 import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   Param,
@@ -40,16 +47,16 @@ import {
   Res,
   StreamableFile,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
 import { CronScheduleDto } from "./dto's/cron.schedule.dto";
 import { SettingDto } from "./dto's/setting.dto";
 import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
-import { MetadataProvider } from './metadata-provider';
 import { MediaServerSwitchService } from './media-server-switch.service';
+import { MetadataProvider } from './metadata-provider';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsService } from './settings.service';
 
@@ -215,6 +222,55 @@ export class SettingsController {
     payload: TautulliSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsService.testTautulli(payload);
+  }
+
+  @Get('/streamystats')
+  async getStreamystatsSetting(): Promise<
+    StreamystatsSetting | BasicResponseDto
+  > {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    this.assertJellyfinActive();
+
+    return {
+      url: settings.streamystats_url,
+    };
+  }
+
+  @Post('/streamystats')
+  async updateStreamystatsSetting(
+    @Body(new ZodValidationPipe(streamystatsSettingSchema))
+    payload: StreamystatsSetting,
+  ) {
+    this.assertJellyfinActive();
+    return await this.settingsService.updateStreamystatsSetting(payload);
+  }
+
+  @Delete('/streamystats')
+  async removeStreamystatsSetting() {
+    this.assertJellyfinActive();
+    return await this.settingsService.removeStreamystatsSetting();
+  }
+
+  @Post('/test/streamystats')
+  testStreamystats(
+    @Body(new ZodValidationPipe(streamystatsSettingSchema))
+    payload: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    this.assertJellyfinActive();
+    return this.settingsService.testStreamystats(payload);
+  }
+
+  private assertJellyfinActive(): void {
+    if (this.settingsService.media_server_type !== MediaServerType.JELLYFIN) {
+      throw new ForbiddenException(
+        'Streamystats is only available when Jellyfin is the active media server.',
+      );
+    }
   }
 
   @Get('/tmdb')
@@ -390,6 +446,62 @@ export class SettingsController {
   @Delete('/jellyfin')
   async removeJellyfinSettings(): Promise<BasicResponseDto> {
     return await this.settingsService.removeJellyfinSettings();
+  }
+
+  // --------------------------------------------------------------------------
+  // Emby
+  // --------------------------------------------------------------------------
+
+  @Get('/emby')
+  async getEmbySetting(): Promise<EmbySetting | BasicResponseDto> {
+    const settings = await this.settingsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      emby_url: settings.emby_url,
+      emby_api_key: settings.emby_api_key,
+      emby_user_id: settings.emby_user_id,
+    };
+  }
+
+  @Post('/emby/test')
+  testEmby(
+    @Body(new ZodValidationPipe(embySettingSchema))
+    payload: EmbySetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsService.testEmby(payload);
+  }
+
+  @Post('/emby')
+  async saveEmbySettings(
+    @Body(new ZodValidationPipe(embySettingSchema))
+    payload: EmbySetting,
+  ): Promise<BasicResponseDto> {
+    return await this.settingsService.saveEmbySettings(payload);
+  }
+
+  @Delete('/emby')
+  async removeEmbySettings(): Promise<BasicResponseDto> {
+    return await this.settingsService.removeEmbySettings();
+  }
+
+  /**
+   * Authenticate against an Emby server with username/password (Plex-style
+   * login UX). Returns library/user lists for confirmation before save.
+   */
+  @Post('/emby/login')
+  async loginEmby(
+    @Body(new ZodValidationPipe(embyLoginRequestSchema))
+    payload: EmbyLoginRequest,
+  ) {
+    return this.settingsService.loginEmby(
+      payload.emby_url,
+      payload.username,
+      payload.password,
+    );
   }
 
   @Delete('/sonarr/:id')

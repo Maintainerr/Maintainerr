@@ -43,9 +43,11 @@ flowchart LR
   API --> Media["Media-server abstraction"]
   Media --> Plex["Plex adapter"]
   Media --> Jellyfin["Jellyfin adapter"]
+  Media --> Emby["Emby adapter"]
   API --> Servarr["Radarr / Sonarr"]
   API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
+  API --> Streamystats["Streamystats"]
   API --> Metadata["TMDB / TVDB"]
   API --> GitHub["GitHub releases"]
 ```
@@ -90,11 +92,12 @@ integrations, and production static serving.
   server switching.
 - `src/modules/api/media-server/` provides the server-agnostic media server
   interface, factory, controller, and shared utilities.
-- `src/modules/api/media-server/plex/` and
-  `src/modules/api/media-server/jellyfin/` contain server-specific adapters,
+- `src/modules/api/media-server/plex/`,
+  `src/modules/api/media-server/jellyfin/`, and
+  `src/modules/api/media-server/emby/` contain server-specific adapters,
   constants, mappers, caching, and SDK/API calls.
 - Other `src/modules/api/` submodules wrap integration clients and helper
-  APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, TMDB, TVDB,
+  APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, Streamystats, TMDB, TVDB,
   GitHub, external API, internal API, and shared request/cache helpers.
 - `src/modules/rules/` evaluates rule groups against media-server and external
   service data.
@@ -141,10 +144,13 @@ runtime assets. The Docker image exposes `/opt/data` as a volume.
 
 Maintainerr integrates with:
 
-- Plex and Jellyfin through the media-server abstraction.
+- Plex, Jellyfin, and Emby through the media-server abstraction.
 - Radarr and Sonarr for unmonitoring, deleting, and quality profile actions.
 - Seerr-compatible services for request cleanup.
 - Tautulli for Plex analytics and rule data.
+- Streamystats for Jellyfin item-level analytics surfaced on the media modal.
+  Authentication reuses the configured Jellyfin API key. Emby is not supported
+  upstream.
 - TMDB and TVDB for metadata resolution.
 - GitHub for release/version checks.
 - Notification providers such as Discord, Slack, Telegram, Pushover, Gotify,
@@ -199,6 +205,13 @@ Closest quality gates should run in this order where applicable: lint,
 typecheck, tests, then build. For doc-only changes, a targeted Prettier check is
 usually enough.
 
+GitHub CI mirrors the root workspace workflow on Node.js 24: the formatting
+and TypeScript lint jobs run `corepack install`, `corepack enable`, and
+`yarn --immutable`, while the quality workflow also includes a separate
+`yaml-lint` job running `yamllint -s .`; the test workflow builds `packages/*`
+before `yarn turbo test`. The development image workflow builds the production
+`Dockerfile` for `linux/amd64` and `linux/arm64`.
+
 Testing conventions:
 
 - Server tests use Jest, with `*.spec.ts` files near the code under
@@ -212,8 +225,8 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 
 - Keep `modules/api/media-server/` server-agnostic. The shared interface,
   factory, controller, and utilities must not import Plex or Jellyfin types.
-- Put Plex-specific logic under `plex/` and Jellyfin-specific logic under
-  `jellyfin/`.
+- Put server-specific logic under the matching adapter directory (`plex/`,
+  `jellyfin/`, or `emby/`).
 - Use `supportsFeature()` for conditional media-server capabilities.
 - Implement every new media-server interface method for all supported media
   servers. Put partial support behind feature checks, not optional interface
@@ -244,8 +257,8 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 - Data directory: Runtime directory containing the SQLite database and local
   files such as logs, posters, and overlays.
 - Media-server abstraction: Server-side interface that lets Maintainerr support
-  Plex and Jellyfin without leaking their implementation details into shared
-  code.
+  Plex, Jellyfin, and Emby without leaking their implementation details into
+  shared code.
 - Rule group: A configured set of rules that selects media and links it to a
   Maintainerr collection.
 - Seerr: The request-management integration family covering Overseerr,

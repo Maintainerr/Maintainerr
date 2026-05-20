@@ -9,6 +9,7 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import { SettingsService } from '../../settings/settings.service';
+import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { IMediaServerService } from './media-server.interface';
 import { PlexAdapterService } from './plex/plex-adapter.service';
@@ -38,6 +39,7 @@ export class MediaServerFactory {
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly plexAdapter: PlexAdapterService,
     private readonly jellyfinAdapter: JellyfinAdapterService,
+    private readonly embyAdapter: EmbyAdapterService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(MediaServerFactory.name);
@@ -81,7 +83,43 @@ export class MediaServerFactory {
       throw new Error('No media server type configured');
     }
 
+    // Surface the "selected but not yet configured" transition state as a
+    // typed, recognizable exception. This window opens between a media-server
+    // switch (which nulls the old credentials) and the user saving the new
+    // credentials. Callers can treat this as transient rather than a real
+    // failure (see NotificationService.transformMessageContent).
+    const settings = await this.settingsService.getSettings();
+    if (
+      isSettings(settings) &&
+      !this.areCredentialsPresent(serverType, settings)
+    ) {
+      throw new ServiceUnavailableException(
+        `${serverType} is selected but credentials are not yet configured.`,
+      );
+    }
+
     return await this.getServiceByType(serverType);
+  }
+
+  private areCredentialsPresent(
+    type: MediaServerType,
+    settings: Settings,
+  ): boolean {
+    switch (type) {
+      case MediaServerType.JELLYFIN:
+        return Boolean(settings.jellyfin_url && settings.jellyfin_api_key);
+      case MediaServerType.PLEX:
+        return Boolean(
+          settings.plex_hostname &&
+          settings.plex_name &&
+          settings.plex_port &&
+          settings.plex_auth_token,
+        );
+      case MediaServerType.EMBY:
+        return Boolean(settings.emby_url && settings.emby_api_key);
+      default:
+        return false;
+    }
   }
 
   /**
@@ -98,6 +136,9 @@ export class MediaServerFactory {
 
       case MediaServerType.PLEX:
         return await this.ensureAdapterReady(serverType, this.plexAdapter);
+
+      case MediaServerType.EMBY:
+        return await this.ensureAdapterReady(serverType, this.embyAdapter);
 
       default:
         throw new Error(`Unsupported media server type: ${serverType}`);
@@ -124,9 +165,11 @@ export class MediaServerFactory {
       settings.plex_port &&
       settings.plex_auth_token,
     );
+    const embyConfigured = Boolean(settings.emby_url && settings.emby_api_key);
     const inferredType = this.resolveServerType(
       plexConfigured,
       jellyfinConfigured,
+      embyConfigured,
     );
 
     if (!configuredType) {
@@ -156,6 +199,9 @@ export class MediaServerFactory {
       case MediaServerType.JELLYFIN:
         this.jellyfinAdapter.uninitialize();
         break;
+      case MediaServerType.EMBY:
+        this.embyAdapter.uninitialize();
+        break;
       default:
         throw new Error(`Unsupported media server type: ${serverType}`);
     }
@@ -178,19 +224,53 @@ export class MediaServerFactory {
     return this.jellyfinAdapter.testConnection(url, apiKey);
   }
 
+  /**
+   * Test an Emby connection with the given credentials (API key flow).
+   */
+  async testEmbyConnection(
+    url: string,
+    apiKey: string,
+  ): Promise<{
+    success: boolean;
+    serverName?: string;
+    version?: string;
+    error?: string;
+    users?: Array<{ id: string; name: string }>;
+  }> {
+    return this.embyAdapter.testConnection(url, apiKey);
+  }
+
+  /**
+   * Authenticate against an Emby server with admin credentials, mirroring
+   * the Plex-flavoured login flow. Returns the resulting access token plus
+   * library/user lists for the post-login confirmation step.
+   */
+  async loginEmbyWithCredentials(
+    url: string,
+    username: string,
+    password: string,
+  ) {
+    return this.embyAdapter.loginWithCredentials(url, username, password);
+  }
+
   private resolveServerType(
     plexConfigured: boolean,
     jellyfinConfigured: boolean,
+    embyConfigured: boolean,
   ): MediaServerType | null {
-    if (jellyfinConfigured && !plexConfigured) {
+    if (jellyfinConfigured && !plexConfigured && !embyConfigured) {
       return MediaServerType.JELLYFIN;
     }
 
-    if (plexConfigured && !jellyfinConfigured) {
+    if (plexConfigured && !jellyfinConfigured && !embyConfigured) {
       return MediaServerType.PLEX;
     }
 
-    // Both configured or neither configured - can't infer
+    if (embyConfigured && !plexConfigured && !jellyfinConfigured) {
+      return MediaServerType.EMBY;
+    }
+
+    // Multiple configured or none configured - can't infer
     return null;
   }
 

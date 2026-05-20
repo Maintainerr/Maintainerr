@@ -1454,12 +1454,35 @@ describe('JellyfinAdapterService', () => {
           isLocked: true,
         }),
       );
+      // When no initialItemIds are supplied, `ids` is forwarded as undefined
+      // rather than omitted — the SDK signature accepts undefined and the
+      // server treats it the same as absent.
       expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          ids: expect.anything(),
-        }),
+        expect.objectContaining({ ids: undefined }),
       );
       expect(result.id).toBe('collection-1');
+    });
+
+    it('forwards initialItemIds to the Jellyfin SDK as ids', async () => {
+      collectionApiMocks.createCollection.mockResolvedValueOnce({
+        data: { Id: 'collection-2' },
+      });
+
+      await service.createCollection({
+        libraryId: 'library-1',
+        title: 'Seeded',
+        type: 'movie',
+        initialItemIds: ['item-1', 'item-2'],
+      });
+
+      expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Seeded',
+          parentId: 'library-1',
+          isLocked: true,
+          ids: ['item-1', 'item-2'],
+        }),
+      );
     });
 
     it('should add a batch of items in one Jellyfin request', async () => {

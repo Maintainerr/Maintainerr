@@ -1,10 +1,12 @@
 import {
   BasicResponseDto,
+  EmbySetting,
   JellyfinSetting,
   MaintainerrEvent,
   MediaServerType,
   MetadataProviderPreference,
   SeerrSetting,
+  StreamystatsSetting,
   TautulliSetting,
 } from '@maintainerr/contracts';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
@@ -24,6 +26,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
+import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
@@ -90,6 +93,14 @@ export class SettingsService implements SettingDto {
 
   jellyfin_server_name?: string;
 
+  emby_url?: string;
+
+  emby_api_key?: string;
+
+  emby_user_id?: string;
+
+  emby_server_name?: string;
+
   // Seerr settings
   seerr_url: string;
 
@@ -104,6 +115,8 @@ export class SettingsService implements SettingDto {
   tautulli_url: string;
 
   tautulli_api_key: string;
+
+  streamystats_url: string;
 
   collection_handler_job_cron: string;
 
@@ -120,6 +133,8 @@ export class SettingsService implements SettingDto {
     private readonly seerr: SeerrApiService,
     @Inject(forwardRef(() => TautulliApiService))
     private readonly tautulli: TautulliApiService,
+    @Inject(forwardRef(() => StreamystatsApiService))
+    private readonly streamystats: StreamystatsApiService,
     @Inject(forwardRef(() => InternalApiService))
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
@@ -157,6 +172,10 @@ export class SettingsService implements SettingDto {
       this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
       this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
       this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
+      this.emby_url = settingsDb?.emby_url;
+      this.emby_api_key = settingsDb?.emby_api_key;
+      this.emby_user_id = settingsDb?.emby_user_id;
+      this.emby_server_name = settingsDb?.emby_server_name;
       this.seerr_url = settingsDb?.seerr_url;
       this.seerr_api_key = settingsDb?.seerr_api_key;
       this.tmdb_api_key = settingsDb?.tmdb_api_key;
@@ -166,6 +185,7 @@ export class SettingsService implements SettingDto {
         MetadataProviderPreference.TMDB_PRIMARY;
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
+      this.streamystats_url = settingsDb?.streamystats_url;
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
@@ -182,6 +202,15 @@ export class SettingsService implements SettingDto {
           await this.settingsRepo.update(
             { id: this.id },
             { media_server_type: MediaServerType.JELLYFIN },
+          );
+        } else if (this.emby_api_key) {
+          this.logger.log(
+            'Detected existing Emby configuration without media_server_type set. Setting to emby.',
+          );
+          this.media_server_type = MediaServerType.EMBY;
+          await this.settingsRepo.update(
+            { id: this.id },
+            { media_server_type: MediaServerType.EMBY },
           );
         } else if (this.plex_auth_token) {
           this.logger.log(
@@ -258,6 +287,7 @@ export class SettingsService implements SettingDto {
       ...settings,
       plex_auth_token: maskSecret(settings.plex_auth_token),
       jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
+      emby_api_key: maskSecret(settings.emby_api_key),
       seerr_api_key: maskSecret(settings.seerr_api_key),
       tmdb_api_key: maskSecret(settings.tmdb_api_key),
       tvdb_api_key: maskSecret(settings.tvdb_api_key),
@@ -459,6 +489,48 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  public async removeStreamystatsSetting() {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        streamystats_url: null,
+      });
+
+      this.streamystats_url = null;
+      this.streamystats.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing Streamystats settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateStreamystatsSetting(
+    settings: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        streamystats_url: settings.url,
+      });
+
+      this.streamystats_url = settings.url;
+      this.streamystats.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating Streamystats settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async removeSeerrSetting() {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
@@ -616,6 +688,10 @@ export class SettingsService implements SettingDto {
       this.jellyfin_server_name = testResult.serverName;
       this.media_server_type = MediaServerType.JELLYFIN;
 
+      // Streamystats uses the Jellyfin API key + server identity. Re-init so
+      // the cached client and resolved serverId track the new credentials.
+      this.streamystats.init();
+
       this.logger.log('Jellyfin settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
@@ -678,12 +754,15 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
+      // Streamystats can't authenticate without Jellyfin credentials; clear
+      // its URL alongside Jellyfin so we don't leave a half-configured state.
       await this.saveSettings({
         ...settingsDb,
         jellyfin_url: null,
         jellyfin_api_key: null,
         jellyfin_user_id: null,
         jellyfin_server_name: null,
+        streamystats_url: null,
       });
 
       // Uninitialize service to clear credentials
@@ -693,11 +772,208 @@ export class SettingsService implements SettingDto {
       this.jellyfin_api_key = undefined;
       this.jellyfin_user_id = undefined;
       this.jellyfin_server_name = undefined;
+      this.streamystats_url = null;
+      this.streamystats.init();
 
       this.logger.log('Jellyfin settings cleared');
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
       this.logger.error('Error removing Jellyfin settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  // ==========================================================================
+  // Emby
+  // ==========================================================================
+
+  /**
+   * Test connection to an Emby server using the API-key flow.
+   */
+  public async testEmby(settings: EmbySetting): Promise<
+    BasicResponseDto & {
+      serverName?: string;
+      version?: string;
+      users?: Array<{ id: string; name: string }>;
+    }
+  > {
+    try {
+      const result = await this.mediaServerFactory.testEmbyConnection(
+        settings.emby_url,
+        settings.emby_api_key,
+      );
+
+      if (result.success) {
+        return {
+          status: 'OK',
+          code: 1,
+          message: `Connected to ${result.serverName}`,
+          serverName: result.serverName,
+          version: result.version,
+          users: result.users,
+        };
+      }
+
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          result.error,
+          'Failed to connect to Emby. Verify URL and API key.',
+        ),
+      };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Emby');
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to connect to Emby. Verify URL and API key.',
+        ),
+      };
+    }
+  }
+
+  /**
+   * Authenticate against Emby with admin username/password and return the
+   * library/user lists for the post-login confirmation step (Plex-style UX).
+   */
+  public async loginEmby(
+    url: string,
+    username: string,
+    password: string,
+  ): Promise<
+    BasicResponseDto & {
+      token?: string;
+      userId?: string;
+      serverName?: string;
+      users?: Array<{ id: string; name: string }>;
+      libraries?: Array<{ id: string; name: string; type: string }>;
+    }
+  > {
+    try {
+      const result = await this.mediaServerFactory.loginEmbyWithCredentials(
+        url,
+        username,
+        password,
+      );
+      if (result.success) {
+        return {
+          status: 'OK',
+          code: 1,
+          message: `Authenticated against ${result.serverName ?? url}`,
+          token: result.token,
+          userId: result.userId,
+          serverName: result.serverName,
+          users: result.users,
+          libraries: result.libraries,
+        };
+      }
+      return {
+        status: 'NOK',
+        code: 0,
+        message: result.error || 'Emby authentication failed',
+      };
+    } catch (error) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to authenticate with Emby. Verify URL and credentials.',
+        ),
+      };
+    }
+  }
+
+  /**
+   * Save Emby settings and initialize the service.
+   */
+  public async saveEmbySettings(
+    settings: EmbySetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      const testResult = await this.testEmby(settings);
+      if (testResult.code !== 1) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: testResult.message || 'Connection test failed',
+        };
+      }
+
+      // Validate selected user is an admin when provided
+      const userId = settings.emby_user_id;
+      if (userId && testResult.users && testResult.users.length > 0) {
+        const selectedUser = testResult.users.find((u) => u.id === userId);
+        if (!selectedUser) {
+          return {
+            status: 'NOK',
+            code: 0,
+            message:
+              'Selected Emby user must be an admin. Re-test the connection and pick a valid admin.',
+          };
+        }
+      }
+
+      await this.saveSettings({
+        ...settingsDb,
+        emby_url: settings.emby_url,
+        emby_api_key: settings.emby_api_key,
+        emby_user_id: userId || null,
+        emby_server_name: testResult.serverName || null,
+        media_server_type: MediaServerType.EMBY,
+      });
+
+      this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
+
+      this.emby_url = settings.emby_url;
+      this.emby_api_key = settings.emby_api_key;
+      this.emby_user_id = userId;
+      this.emby_server_name = testResult.serverName;
+      this.media_server_type = MediaServerType.EMBY;
+
+      this.logger.log('Emby settings saved successfully');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while saving Emby settings');
+      this.logger.debug(error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to save settings';
+      return { status: 'NOK', code: 0, message };
+    }
+  }
+
+  /**
+   * Remove Emby settings.
+   */
+  public async removeEmbySettings(): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.saveSettings({
+        ...settingsDb,
+        emby_url: null,
+        emby_api_key: null,
+        emby_user_id: null,
+        emby_server_name: null,
+      });
+
+      this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
+
+      this.emby_url = undefined;
+      this.emby_api_key = undefined;
+      this.emby_user_id = undefined;
+      this.emby_server_name = undefined;
+
+      this.logger.log('Emby settings cleared');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing Emby settings');
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
@@ -1100,6 +1376,41 @@ export class SettingsService implements SettingDto {
     }
   }
 
+  public async testStreamystats(
+    setting?: StreamystatsSetting,
+  ): Promise<BasicResponseDto> {
+    if (setting) {
+      // testConnection only hits Streamystats's unauthenticated /api/version
+      // endpoint, so we deliberately do not send the stored Jellyfin API key
+      // here. This avoids handing the stored credential to a URL the caller
+      // just supplied via the test endpoint.
+      return await this.streamystats.testConnection({
+        url: setting.url,
+      });
+    }
+
+    try {
+      const info = await this.streamystats.info();
+      return info?.currentVersion
+        ? {
+            status: 'OK',
+            code: 1,
+            message: info.currentVersion,
+          }
+        : { status: 'NOK', code: 0, message: 'Failure' };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Streamystats');
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to connect to Streamystats. Verify URL and that the service is running.',
+        ),
+      };
+    }
+  }
+
   public async testRadarr(
     id: number | RadarrSettingRawDto,
   ): Promise<BasicResponseDto> {
@@ -1243,6 +1554,20 @@ export class SettingsService implements SettingDto {
           ).status === 'OK'
         );
       }
+      case MediaServerType.EMBY: {
+        if (!this.emby_url || !this.emby_api_key) {
+          return false;
+        }
+        return (
+          (
+            await this.testEmby({
+              emby_url: this.emby_url,
+              emby_api_key: this.emby_api_key,
+              emby_user_id: this.emby_user_id,
+            })
+          ).status === 'OK'
+        );
+      }
       case MediaServerType.PLEX:
         return (await this.testPlex()).status === 'OK';
       default:
@@ -1346,6 +1671,11 @@ export class SettingsService implements SettingDto {
       if (this.media_server_type === MediaServerType.JELLYFIN) {
         // Jellyfin requires URL and API key (user ID is optional, can be auto-detected later)
         if (this.jellyfin_url && this.jellyfin_api_key) {
+          return true;
+        }
+      } else if (this.media_server_type === MediaServerType.EMBY) {
+        // Emby requires URL and API key (user ID is optional, can be auto-detected later)
+        if (this.emby_url && this.emby_api_key) {
           return true;
         }
       } else if (this.media_server_type === MediaServerType.PLEX) {

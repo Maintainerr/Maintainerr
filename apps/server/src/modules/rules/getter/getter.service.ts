@@ -9,6 +9,7 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import { Application } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
+import { EmbyGetterService } from './emby-getter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
 import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
@@ -25,6 +26,7 @@ export class ValueGetterService {
     private readonly seerrGetter: SeerrGetterService,
     private readonly tautulliGetter: TautulliGetterService,
     private readonly jellyfinGetter: JellyfinGetterService,
+    private readonly embyGetter: EmbyGetterService,
     private readonly mediaServerFactory: MediaServerFactory,
   ) {}
 
@@ -36,10 +38,13 @@ export class ValueGetterService {
     currentRule?: RuleDto,
   ): Promise<RuleValueType> {
     switch (val1) {
-      // Route both PLEX and JELLYFIN to the configured media server's getter
-      // This handles community rules that may reference the wrong server type
+      // Route Plex/Jellyfin/Emby Application IDs to the configured media
+      // server's getter. This handles community rules that reference the
+      // "wrong" server type — e.g. a rule authored with Application.JELLYFIN
+      // can still evaluate against a configured Emby server.
       case Application.PLEX:
-      case Application.JELLYFIN: {
+      case Application.JELLYFIN:
+      case Application.EMBY: {
         const serverType =
           await this.mediaServerFactory.getConfiguredServerType();
 
@@ -48,7 +53,9 @@ export class ValueGetterService {
             ? this.jellyfinGetter
             : serverType === MediaServerType.PLEX
               ? this.plexGetter
-              : null;
+              : serverType === MediaServerType.EMBY
+                ? this.embyGetter
+                : null;
 
         return getter?.get(val2, libItem, dataType, ruleGroup) ?? null;
       }

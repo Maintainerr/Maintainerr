@@ -16,6 +16,7 @@ import {
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
+import StreamystatsStatsPanel from './StreamystatsStatsPanel'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
@@ -150,7 +151,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
   }) => {
     useLockBodyScroll(true)
 
-    const { isPlex, isJellyfin } = useMediaServerType()
+    const { isPlex, isJellyfin, isEmby } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdropResult, setBackdropResult] =
       useState<BackdropResult>(emptyBackdropResult)
@@ -159,6 +160,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [tautulliModalUrl, setTautulliModalUrl] = useState<string | null>(
       null,
     )
+    const [streamystatsItemUrl, setStreamystatsItemUrl] = useState<
+      string | null
+    >(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
     const [maintainerrDetailsState, setMaintainerrDetailsState] = useState<{
       key: string
@@ -310,6 +314,22 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           setTautulliModalUrl(resp?.tautulli_url || null)
         })
         .catch(() => {})
+      // Streamystats is Jellyfin-only (Emby is unsupported upstream), so only
+      // resolve the item link when Jellyfin is the active media server.
+      if (isJellyfin) {
+        GetApiHandler<{ url: string; serverId: number | null }>(
+          '/streamystats/info',
+        )
+          .then((info) => {
+            if (!active) return
+            if (info?.url && info.serverId != null) {
+              setStreamystatsItemUrl(
+                `${info.url}/servers/${info.serverId}/library/${id}`,
+              )
+            }
+          })
+          .catch(() => {})
+      }
       GetApiHandler<MediaItem>(`/media-server/meta/${id}`)
         .then((data) => {
           if (!active) return
@@ -323,7 +343,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       return () => {
         active = false
       }
-    }, [id])
+    }, [id, isJellyfin])
 
     useEffect(() => {
       if (!backdropRequestPath) {
@@ -533,6 +553,27 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {isEmby && serverUrl && (
+                    <div>
+                      <a
+                        href={
+                          machineId
+                            ? `${serverUrl}/web/index.html#!/item?id=${id}&serverId=${machineId}`
+                            : `${serverUrl}/web/index.html#!/item?id=${id}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/emby.png`}
+                          alt="Emby Logo"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 object-contain p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
                   {isJellyfin && serverUrl && (
                     <div>
                       <a
@@ -567,6 +608,23 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {isJellyfin && streamystatsItemUrl && (
+                    <div>
+                      <a
+                        href={streamystatsItemUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/streamystats.svg`}
+                          alt="Streamystats"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 object-contain p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {metadata?.genres && metadata.genres.length > 0 ? (
                   <div className="pointer-events-none flex flex-wrap-reverse items-end justify-end gap-1">
@@ -596,6 +654,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="mt-2 text-gray-300">
               <p>{metadata?.summary || summary || 'No summary available.'}</p>
             </div>
+
+            {isJellyfin && streamystatsItemUrl ? (
+              <StreamystatsStatsPanel
+                itemId={String(id)}
+                itemUrl={streamystatsItemUrl}
+              />
+            ) : null}
 
             {showMaintainerrDetails ? (
               <div

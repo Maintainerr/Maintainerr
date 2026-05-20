@@ -1,4 +1,4 @@
-import type { MediaItem } from '@maintainerr/contracts'
+import { MediaServerType, type MediaItem } from '@maintainerr/contracts'
 import {
   cleanup,
   fireEvent,
@@ -43,6 +43,7 @@ describe('MediaModal', () => {
       isLoading: false,
       isPlex: false,
       isJellyfin: false,
+      isEmby: false,
       isMediaServerTypeSelected: false,
       isSetupComplete: false,
       isNotConfigured: true,
@@ -84,6 +85,10 @@ describe('MediaModal', () => {
 
       if (path.startsWith('/metadata/backdrop/show?')) {
         return secondBackdrop.promise
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -166,6 +171,10 @@ describe('MediaModal', () => {
         })
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -212,6 +221,10 @@ describe('MediaModal', () => {
             },
           ],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -265,6 +278,10 @@ describe('MediaModal', () => {
 
       if (path === '/media-server/meta/9/maintainerr-status') {
         return maintainerrStatus.promise
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -324,6 +341,10 @@ describe('MediaModal', () => {
           ],
           manuallyAddedTo: [],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -386,6 +407,10 @@ describe('MediaModal', () => {
         })
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -434,6 +459,10 @@ describe('MediaModal', () => {
             },
           ],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)
@@ -487,6 +516,10 @@ describe('MediaModal', () => {
         })
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -522,6 +555,10 @@ describe('MediaModal', () => {
         return Promise.resolve({} as MediaItem)
       }
 
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
       throw new Error(`Unexpected request: ${path}`)
     })
 
@@ -553,6 +590,96 @@ describe('MediaModal', () => {
     expect(await screen.findByText('trigger-rule-action')).toBeTruthy()
   })
 
+  it('renders the Emby badge with the shared external-logo footprint', async () => {
+    useMediaServerTypeMock.mockReturnValue({
+      mediaServerType: MediaServerType.EMBY,
+      isLoading: false,
+      isPlex: false,
+      isJellyfin: false,
+      isEmby: true,
+      isMediaServerTypeSelected: true,
+      isSetupComplete: true,
+      isNotConfigured: false,
+    })
+
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({
+          machineId: 'emby-server-1',
+          url: 'https://emby.local',
+        })
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/88') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={88}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+      />,
+    )
+
+    const embyLogo = await screen.findByRole('img', { name: 'Emby Logo' })
+
+    expect(embyLogo.closest('a')?.getAttribute('href')).toBe(
+      'https://emby.local/web/index.html#!/item?id=88&serverId=emby-server-1',
+    )
+    expect(embyLogo.getAttribute('class')).toContain('h-8 w-32')
+    expect(embyLogo.getAttribute('class')).toContain('object-contain')
+  })
+
+  it('does not request Streamystats info when Jellyfin is not active', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/93') {
+        return Promise.resolve({} as MediaItem)
+      }
+
+      if (path === '/streamystats/info') {
+        throw new Error('Streamystats should not be requested')
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={93}
+        mediaType="movie"
+        title="Movie"
+        summary="Movie summary"
+      />,
+    )
+
+    await screen.findByText('Movie summary')
+
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/streamystats/info')
+  })
+
   it('hides the trigger rule action control for excluded collection items', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {
@@ -572,6 +699,10 @@ describe('MediaModal', () => {
           excludedFrom: [],
           manuallyAddedTo: [],
         })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
       }
 
       throw new Error(`Unexpected request: ${path}`)

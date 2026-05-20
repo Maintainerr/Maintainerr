@@ -5,6 +5,7 @@ import { MediaServerModule } from '../api/media-server/media-server.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
+import { StreamystatsApiModule } from '../api/streamystats-api/streamystats-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
 import { TmdbApiModule } from '../api/tmdb-api/tmdb.module';
 import { TvdbApiModule } from '../api/tvdb-api/tvdb.module';
@@ -32,6 +33,7 @@ import { SettingsService } from './settings.service';
     forwardRef(() => ServarrApiModule),
     forwardRef(() => SeerrApiModule),
     forwardRef(() => TautulliApiModule),
+    forwardRef(() => StreamystatsApiModule),
     forwardRef(() => TmdbApiModule),
     forwardRef(() => TvdbApiModule),
     forwardRef(() => InternalApiModule),

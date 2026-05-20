@@ -1,6 +1,7 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
+import { EmbyOverlayProvider } from './emby-overlay.provider';
 import { JellyfinOverlayProvider } from './jellyfin-overlay.provider';
 import { IOverlayProvider } from './overlay-provider.interface';
 import { PlexOverlayProvider } from './plex-overlay.provider';
@@ -24,6 +25,7 @@ export class OverlayProviderFactory {
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly plexProvider: PlexOverlayProvider,
     private readonly jellyfinProvider: JellyfinOverlayProvider,
+    private readonly embyProvider: EmbyOverlayProvider,
   ) {}
 
   async getProvider(): Promise<IOverlayProvider | null> {
@@ -33,6 +35,8 @@ export class OverlayProviderFactory {
         return this.plexProvider;
       case MediaServerType.JELLYFIN:
         return this.jellyfinProvider;
+      case MediaServerType.EMBY:
+        return this.embyProvider;
       default:
         return null;
     }

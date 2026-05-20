@@ -810,5 +810,230 @@ describe('RuleMigrationService', () => {
         ),
       ).rejects.toThrow(/Unknown media server type/);
     });
+
+    it('should resolve EMBY to Application.EMBY when migrating', async () => {
+      const originalRule: Partial<Rules> = {
+        id: 1,
+        ruleGroupId: 1,
+        ruleJson: JSON.stringify({
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0], // addDate
+          customVal: { ruleTypeId: 1, value: '30' },
+          section: 0,
+        }),
+        ruleGroup: { id: 1, name: 'Date Group' } as RuleGroup,
+      };
+
+      rulesRepo.find.mockResolvedValue([originalRule as Rules]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.EMBY,
+        true,
+      );
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.EMBY);
+    });
+  });
+
+  describe('Emby migrations', () => {
+    it('migrates Plex addDate rules to Emby', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 0],
+            customVal: { ruleTypeId: 1, value: '30' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Date Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.EMBY,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.EMBY);
+      expect(updatedJson.firstVal[1]).toBe(0);
+    });
+
+    it('migrates Emby rules back to Plex', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.EMBY, 0],
+            customVal: { ruleTypeId: 1, value: '30' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Date Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.EMBY,
+        MediaServerType.PLEX,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.PLEX);
+      expect(updatedJson.firstVal[1]).toBe(0);
+    });
+
+    it('migrates Plex watchlist rules into Emby as incompatible (skip + delete)', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 30], // watchlist_isWatchlisted
+            customVal: { ruleTypeId: 3, value: 'true' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.delete.mockResolvedValue({ affected: 1 } as any);
+      ruleGroupRepo.delete.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.EMBY,
+        true,
+      );
+
+      expect(result.skippedRules).toBe(1);
+      expect(result.skippedDetails[0].propertyName).toBe(
+        'watchlist_isWatchlisted',
+      );
+      expect(rulesRepo.delete).toHaveBeenCalledWith(1);
+    });
+
+    it('migrates Jellyfin rules to Emby as a no-op property remap (shared props)', async () => {
+      // Emby and Jellyfin share the same props[] array reference in
+      // RuleConstants, so every property ID stays identical.
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.JELLYFIN, 44], // rating_imdb in Jellyfin
+            customVal: { ruleTypeId: 0, value: '7' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'IMDb Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.JELLYFIN,
+        MediaServerType.EMBY,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.EMBY);
+      // Property ID is unchanged because Emby and Jellyfin share props[].
+      expect(updatedJson.firstVal[1]).toBe(44);
+    });
+
+    it('migrates Emby rules to Jellyfin as a no-op property remap (shared props)', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.CONTAINS,
+            firstVal: [Application.EMBY, 6], // collections
+            customVal: { ruleTypeId: 4, value: 'Movies I love' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Collections Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.EMBY,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal[0]).toBe(Application.JELLYFIN);
+      expect(updatedJson.firstVal[1]).toBe(6);
+    });
+
+    it('detects EMBY source apps when importing community rule DTOs', () => {
+      const rules: RuleDto[] = [
+        {
+          operator: RuleOperators.AND,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.EMBY, 0],
+          customVal: { ruleTypeId: 1, value: '30' },
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.PLEX,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.rules[0].firstVal?.[0]).toBe(Application.PLEX);
+    });
   });
 });

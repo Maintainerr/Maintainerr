@@ -300,6 +300,7 @@ export class PlexAdapterService implements IMediaServerService {
       title: params.title,
       summary: params.summary,
       sortTitle: params.sortTitle,
+      initialItemIds: params.initialItemIds,
     });
 
     if (!result) {

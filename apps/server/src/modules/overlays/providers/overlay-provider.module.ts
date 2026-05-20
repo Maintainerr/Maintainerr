@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MediaServerModule } from '../../api/media-server/media-server.module';
 import { PlexApiModule } from '../../api/plex-api/plex-api.module';
 import { LogsModule } from '../../logging/logs.module';
+import { EmbyOverlayProvider } from './emby-overlay.provider';
 import { JellyfinOverlayProvider } from './jellyfin-overlay.provider';
 import { OverlayProviderFactory } from './overlay-provider.factory';
 import { PlexOverlayProvider } from './plex-overlay.provider';
@@ -20,6 +21,7 @@ import { PlexOverlayProvider } from './plex-overlay.provider';
   providers: [
     PlexOverlayProvider,
     JellyfinOverlayProvider,
+    EmbyOverlayProvider,
     OverlayProviderFactory,
   ],
   exports: [OverlayProviderFactory],

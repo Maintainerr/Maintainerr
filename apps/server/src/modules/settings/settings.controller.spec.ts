@@ -1,4 +1,7 @@
-import { radarrSettingSchema } from '@maintainerr/contracts';
+import {
+  embyLoginRequestSchema,
+  radarrSettingSchema,
+} from '@maintainerr/contracts';
 import { StreamableFile } from '@nestjs/common';
 import { Response } from 'express';
 import { createReadStream } from 'fs';
@@ -210,6 +213,25 @@ describe('SettingsController', () => {
           serverName: 'radarr',
           url: 'radarr.local',
           apiKey: 'key',
+        },
+        {
+          type: 'body',
+          metatype: Object,
+          data: '',
+        },
+      ),
+    ).toThrow('Validation failed');
+  });
+
+  it('rejects invalid Emby login requests with the shared Zod schema', () => {
+    const pipe = new ZodValidationPipe(embyLoginRequestSchema);
+
+    expect(() =>
+      pipe.transform(
+        {
+          emby_url: 'emby.local',
+          username: 'admin',
+          password: 'secret',
         },
         {
           type: 'body',

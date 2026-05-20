@@ -75,6 +75,9 @@ const settingsPlexRoute = createLazyRoute(
 const settingsJellyfinRoute = createLazyRoute(
   () => import('./components/Settings/Jellyfin'),
 )
+const settingsEmbyRoute = createLazyRoute(
+  () => import('./components/Settings/Emby'),
+)
 const settingsSonarrRoute = createLazyRoute(
   () => import('./components/Settings/Sonarr'),
 )
@@ -89,6 +92,9 @@ const settingsSeerrRoute = createLazyRoute(
 )
 const settingsTautulliRoute = createLazyRoute(
   () => import('./components/Settings/Tautulli'),
+)
+const settingsStreamystatsRoute = createLazyRoute(
+  () => import('./components/Settings/Streamystats'),
 )
 const settingsNotificationsRoute = createLazyRoute(
   () => import('./components/Settings/Notifications'),
@@ -255,6 +261,11 @@ const appRoutes: AppRoute[] = [
         preload: settingsJellyfinRoute.preload,
       },
       {
+        path: 'emby',
+        lazy: settingsEmbyRoute.lazy,
+        preload: settingsEmbyRoute.preload,
+      },
+      {
         path: 'sonarr',
         lazy: settingsSonarrRoute.lazy,
         preload: settingsSonarrRoute.preload,
@@ -278,6 +289,11 @@ const appRoutes: AppRoute[] = [
         path: 'tautulli',
         lazy: settingsTautulliRoute.lazy,
         preload: settingsTautulliRoute.preload,
+      },
+      {
+        path: 'streamystats',
+        lazy: settingsStreamystatsRoute.lazy,
+        preload: settingsStreamystatsRoute.preload,
       },
       {
         path: 'notifications',

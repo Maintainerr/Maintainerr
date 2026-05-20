@@ -1,5 +1,6 @@
 import {
   BasicResponseDto,
+  EmbySetting,
   JellyfinSetting,
   MediaServerSwitchPreview,
   MediaServerType,
@@ -48,6 +49,11 @@ export interface ISettings {
   jellyfin_api_key?: string
   jellyfin_user_id?: string
   jellyfin_server_name?: string
+  // Emby settings
+  emby_url?: string
+  emby_api_key?: string
+  emby_user_id?: string
+  emby_server_name?: string
   // Seerr integration
   seerr_api_key: string
   tautulli_url: string
@@ -67,6 +73,20 @@ export interface JellyfinTestResult {
   users?: Array<{
     id: string
     name: string
+  }>
+}
+
+// Emby shares the Jellyfin test-result shape; aliased for call-site clarity.
+export type EmbyTestResult = JellyfinTestResult
+
+// Login response shape for the Plex-style Emby credentials login flow.
+export interface EmbyLoginResult extends JellyfinTestResult {
+  token?: string
+  userId?: string
+  libraries?: Array<{
+    id: string
+    name: string
+    type: string
   }>
 }
 
@@ -362,6 +382,17 @@ export const useTestJellyfin = (options?: UseTestJellyfinOptions) => {
 
 export type UseTestJellyfinResult = ReturnType<typeof useTestJellyfin>
 
+const assertSettingsMutationSucceeded = (
+  response: BasicResponseDto,
+  fallbackMessage: string,
+): BasicResponseDto => {
+  if (response.code === 1) {
+    return response
+  }
+
+  throw new Error(response.message || fallbackMessage)
+}
+
 type UseSaveJellyfinSettingsOptions = Omit<
   UseMutationOptions<BasicResponseDto, Error, JellyfinSetting>,
   'mutationFn' | 'mutationKey' | 'onSuccess'
@@ -375,9 +406,14 @@ export const useSaveJellyfinSettings = (
   return useMutation<BasicResponseDto, Error, JellyfinSetting>({
     mutationKey: ['settings', 'saveJellyfin'],
     mutationFn: async (payload) => {
-      return await PostApiHandler<BasicResponseDto>(
+      const response = await PostApiHandler<BasicResponseDto>(
         '/settings/jellyfin',
         payload,
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Jellyfin settings could not be updated',
       )
     },
     onSuccess: () => {
@@ -406,7 +442,13 @@ export const useDeleteJellyfinSettings = (
   return useMutation<BasicResponseDto, Error, void>({
     mutationKey: ['settings', 'deleteJellyfin'],
     mutationFn: async () => {
-      return await DeleteApiHandler<BasicResponseDto>('/settings/jellyfin')
+      const response =
+        await DeleteApiHandler<BasicResponseDto>('/settings/jellyfin')
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Jellyfin settings could not be updated',
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -420,6 +462,145 @@ export const useDeleteJellyfinSettings = (
 export type UseDeleteJellyfinSettingsResult = ReturnType<
   typeof useDeleteJellyfinSettings
 >
+
+// --------------------------------------------------------------------------
+// Emby
+// --------------------------------------------------------------------------
+
+type UseEmbySettingsQueryKey = ['settings', 'emby']
+
+type UseEmbySettingsOptions = Omit<
+  UseQueryOptions<EmbySetting, Error, EmbySetting, UseEmbySettingsQueryKey>,
+  'queryKey' | 'queryFn'
+>
+
+export const useEmbySettings = (options?: UseEmbySettingsOptions) => {
+  return useQuery<EmbySetting, Error, EmbySetting, UseEmbySettingsQueryKey>({
+    queryKey: ['settings', 'emby'],
+    queryFn: async () => {
+      return await GetApiHandler<EmbySetting>(`/settings/emby`)
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseEmbySettingsResult = ReturnType<typeof useEmbySettings>
+
+type UseTestEmbyOptions = Omit<
+  UseMutationOptions<EmbyTestResult, Error, EmbySetting>,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useTestEmby = (options?: UseTestEmbyOptions) => {
+  return useMutation<EmbyTestResult, Error, EmbySetting>({
+    mutationKey: ['settings', 'testEmby'],
+    mutationFn: async (payload) => {
+      return await PostApiHandler<EmbyTestResult>(
+        '/settings/emby/test',
+        payload,
+      )
+    },
+    ...options,
+  })
+}
+
+export type UseTestEmbyResult = ReturnType<typeof useTestEmby>
+
+type UseSaveEmbySettingsOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, EmbySetting>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useSaveEmbySettings = (options?: UseSaveEmbySettingsOptions) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, EmbySetting>({
+    mutationKey: ['settings', 'saveEmby'],
+    mutationFn: async (payload) => {
+      const response = await PostApiHandler<BasicResponseDto>(
+        '/settings/emby',
+        payload,
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Emby settings could not be updated',
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseSaveEmbySettingsResult = ReturnType<typeof useSaveEmbySettings>
+
+type UseDeleteEmbySettingsOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, void>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useDeleteEmbySettings = (
+  options?: UseDeleteEmbySettingsOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, void>({
+    mutationKey: ['settings', 'deleteEmby'],
+    mutationFn: async () => {
+      const response =
+        await DeleteApiHandler<BasicResponseDto>('/settings/emby')
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Emby settings could not be updated',
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseDeleteEmbySettingsResult = ReturnType<
+  typeof useDeleteEmbySettings
+>
+
+// Login (Plex-style): URL + admin username/password → access token + lists
+type UseLoginEmbyOptions = Omit<
+  UseMutationOptions<
+    EmbyLoginResult,
+    Error,
+    { emby_url: string; username: string; password: string }
+  >,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useLoginEmby = (options?: UseLoginEmbyOptions) => {
+  return useMutation<
+    EmbyLoginResult,
+    Error,
+    { emby_url: string; username: string; password: string }
+  >({
+    mutationKey: ['settings', 'loginEmby'],
+    mutationFn: async (payload) => {
+      return await PostApiHandler<EmbyLoginResult>(
+        '/settings/emby/login',
+        payload,
+      )
+    },
+    ...options,
+  })
+}
+
+export type UseLoginEmbyResult = ReturnType<typeof useLoginEmby>
 
 type UsePreviewMediaServerSwitchOptions = Omit<
   UseMutationOptions<MediaServerSwitchPreview, Error, MediaServerType>,
