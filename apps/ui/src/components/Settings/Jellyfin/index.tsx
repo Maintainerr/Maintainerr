@@ -4,7 +4,7 @@ import {
   jellyfinSettingSchema,
   maskSecret,
 } from '@maintainerr/contracts'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useSettingsOutletContext } from '..'
@@ -60,6 +60,17 @@ const JellyfinSettings = () => {
   })
   const isJellyfinLoading = settings != null && jellyfinData == null
 
+  // Sync the form to the loaded settings once they arrive. react-hook-form's
+  // `values` option deep-compares, so an unstable reference with equal contents
+  // won't re-trigger a reset (no effect, no render loop).
+  const formValues = jellyfinData
+    ? {
+        jellyfin_url: jellyfinData.jellyfin_url ?? '',
+        jellyfin_api_key: jellyfinData.jellyfin_api_key ?? '',
+        jellyfin_user_id: jellyfinData.jellyfin_user_id ?? '',
+      }
+    : undefined
+
   const { mutateAsync: testJellyfin, isPending: isTestPending } =
     useTestJellyfin()
   const { mutateAsync: saveSettings, isPending: isSavePending } =
@@ -83,21 +94,11 @@ const JellyfinSettings = () => {
       jellyfin_api_key: '',
       jellyfin_user_id: '',
     },
+    values: formValues,
   })
 
   const jellyfinUrl = useWatch({ control, name: 'jellyfin_url' })
   const jellyfinApiKey = useWatch({ control, name: 'jellyfin_api_key' })
-
-  // Initialize form when jellyfin settings load (from dedicated endpoint with real values)
-  useEffect(() => {
-    if (jellyfinData) {
-      reset({
-        jellyfin_url: jellyfinData.jellyfin_url ?? '',
-        jellyfin_api_key: jellyfinData.jellyfin_api_key ?? '',
-        jellyfin_user_id: jellyfinData.jellyfin_user_id ?? '',
-      })
-    }
-  }, [jellyfinData, reset])
 
   const isGoingToRemoveSettings = jellyfinUrl === '' && jellyfinApiKey === ''
   const enteredSettingsHaveBeenTested =

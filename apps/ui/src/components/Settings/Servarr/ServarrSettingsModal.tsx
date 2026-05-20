@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
   getApiErrorMessage,
@@ -184,9 +184,12 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
 
-  const { register, handleSubmit, control, getValues, reset } =
+  const { register, handleSubmit, control, getValues } =
     useForm<ServarrFormState>({
       defaultValues: initialState,
+      // `values` keeps the form synced to the loaded setting via deep compare;
+      // no effect needed and no render loop on an unstable reference.
+      values: initialState,
     })
 
   const serverName = useWatch({ control, name: 'serverName' }) ?? ''
@@ -213,10 +216,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     testedConnectionStateKey === settingsKey
       ? testedConnectionState
       : savedConnectionState
-
-  useEffect(() => {
-    reset(initialState)
-  }, [initialState, reset, settings])
 
   const isClearingExistingSetting =
     settings?.id != null && isEmptyServarrState(currentState)
