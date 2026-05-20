@@ -4,7 +4,7 @@ import {
   embySettingSchema,
   maskSecret,
 } from '@maintainerr/contracts'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useSettingsOutletContext } from '..'
@@ -59,6 +59,17 @@ const EmbySettings = () => {
   const { data: embyData } = useEmbySettings({ enabled: !!settings })
   const isEmbyLoading = settings != null && embyData == null
 
+  // Sync the form to the loaded settings once they arrive. react-hook-form's
+  // `values` option deep-compares, so an unstable reference with equal contents
+  // won't re-trigger a reset (no effect, no render loop).
+  const formValues = embyData
+    ? {
+        emby_url: embyData.emby_url ?? '',
+        emby_api_key: embyData.emby_api_key ?? '',
+        emby_user_id: embyData.emby_user_id ?? '',
+      }
+    : undefined
+
   const { mutateAsync: testEmby, isPending: isTestPending } = useTestEmby()
   const { mutateAsync: saveSettings, isPending: isSavePending } =
     useSaveEmbySettings()
@@ -81,20 +92,11 @@ const EmbySettings = () => {
       emby_api_key: '',
       emby_user_id: '',
     },
+    values: formValues,
   })
 
   const embyUrl = useWatch({ control, name: 'emby_url' })
   const embyApiKey = useWatch({ control, name: 'emby_api_key' })
-
-  useEffect(() => {
-    if (embyData) {
-      reset({
-        emby_url: embyData.emby_url ?? '',
-        emby_api_key: embyData.emby_api_key ?? '',
-        emby_user_id: embyData.emby_user_id ?? '',
-      })
-    }
-  }, [embyData, reset])
 
   const isGoingToRemoveSettings = embyUrl === '' && embyApiKey === ''
   const enteredSettingsHaveBeenTested =
