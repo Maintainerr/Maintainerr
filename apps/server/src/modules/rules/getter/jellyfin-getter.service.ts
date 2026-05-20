@@ -16,7 +16,6 @@ import {
 import { RulesDto } from '../dtos/rules.dto';
 import {
   filterRuleCollectionNames,
-  getParentBackedRuleItem,
   mapRuleUserIdsToNames,
   uniqueTrimmedRulePropertyNames,
 } from '../helpers/rule-property.helper';
@@ -220,14 +219,15 @@ export class JellyfinGetterService {
         }
 
         case 'genre': {
-          const item = await getParentBackedRuleItem(
-            metadata.type,
-            metadata,
-            getParent,
-            getGrandparent,
-          );
-
-          return item.genres?.map((genre) => genre.name) ?? [];
+          if (isMediaType(metadata.type, 'episode')) {
+            const grandparent = await getGrandparent();
+            return grandparent?.genres?.map((genre) => genre.name) ?? [];
+          }
+          if (isMediaType(metadata.type, 'season')) {
+            const parent = await getParent();
+            return parent?.genres?.map((genre) => genre.name) ?? [];
+          }
+          return metadata.genres?.map((genre) => genre.name) ?? [];
         }
 
         case 'sw_allEpisodesSeenBy': {
