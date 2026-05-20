@@ -112,7 +112,8 @@
       ]
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk)/)"
+      "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk)/)",
+      "/packages/contracts/dist/"
     ],
     "collectCoverageFrom": [
       "**/*.ts"
