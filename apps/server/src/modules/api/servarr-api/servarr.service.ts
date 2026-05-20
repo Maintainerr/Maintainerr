@@ -1,5 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SettingsService } from '../../../modules/settings/settings.service';
+import type { SettingsService as SettingsServiceType } from '../../../modules/settings/settings.service';
 import { MaintainerrLoggerFactory } from '../../logging/logs.service';
 import { RadarrSettingRawDto } from "../../settings/dto's/radarr-setting.dto";
 import { SonarrSettingRawDto } from "../../settings/dto's/sonarr-setting.dto";
@@ -15,7 +16,7 @@ export class ServarrService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsServiceType,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {}
 

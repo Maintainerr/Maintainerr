@@ -75,6 +75,8 @@
     "@suites/di.nestjs": "^3.1.0",
     "@suites/doubles.jest": "^3.1.0",
     "@suites/unit": "^3.1.1",
+    "@swc/core": "^1.15.33",
+    "@swc/jest": "^0.2.39",
     "@types/email-templates": "^10.0.4",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.24",
@@ -102,11 +104,23 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(ts|js)$": [
-        "ts-jest",
+      "^.+\\.(t|j)s$": [
+        "@swc/jest",
         {
-          "tsconfig": {
-            "allowJs": true
+          "jsc": {
+            "target": "es2022",
+            "parser": {
+              "syntax": "typescript",
+              "decorators": true
+            },
+            "transform": {
+              "legacyDecorator": true,
+              "decoratorMetadata": true
+            },
+            "keepClassNames": true
+          },
+          "module": {
+            "type": "commonjs"
           }
         }
       ]

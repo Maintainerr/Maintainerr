@@ -13,6 +13,7 @@ import cacheManager from '../api/lib/cache';
 import { shouldRefreshMetadataItemId } from '../api/media-server/media-server-id.utils';
 import { MEDIA_SERVER_BATCH_SIZE } from '../api/media-server/media-server.constants';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import type { IMediaServerService } from '../api/media-server/media-server.interface';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
@@ -32,7 +33,7 @@ export class MetadataSettingsService {
     @InjectRepository(CollectionMedia)
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
     @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaServerFactory: MediaServerFactoryType,
     private readonly eventEmitter: EventEmitter2,
     private readonly tmdbApi: TmdbApiService,
     private readonly tvdbApi: TvdbApiService,

@@ -21,6 +21,7 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 import { PlexApiService } from '../../plex-api/plex-api.service';
+import type { PlexApiService as PlexApiServiceType } from '../../plex-api/plex-api.service';
 import {
   isBlankMediaServerId,
   isForeignServerId,
@@ -44,7 +45,7 @@ import { PlexMapper } from './plex.mapper';
 export class PlexAdapterService implements IMediaServerService {
   constructor(
     @Inject(forwardRef(() => PlexApiService))
-    private readonly plexApi: PlexApiService,
+    private readonly plexApi: PlexApiServiceType,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(PlexAdapterService.name);

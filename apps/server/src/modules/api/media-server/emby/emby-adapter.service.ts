@@ -21,6 +21,7 @@ import { type AxiosInstance, AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
+import type { SettingsService as SettingsServiceType } from '../../../settings/settings.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -70,7 +71,7 @@ export class EmbyAdapterService implements IMediaServerService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsServiceType,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(EmbyAdapterService.name);

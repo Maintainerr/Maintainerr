@@ -11,6 +11,7 @@ import {
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { CollectionLog } from '../../collections/entities/collection_log.entities';
 import { OverlayTemplateEntity } from '../../overlays/entities/overlay-template.entities';
@@ -74,7 +75,7 @@ export class Collection {
   keepLogsForMonths: number;
 
   @OneToOne(() => RuleGroup, (rg) => rg.collection)
-  ruleGroup: RulesDto;
+  ruleGroup: Relation<RulesDto>;
 
   @Column({ type: 'date', nullable: true, default: () => 'CURRENT_TIMESTAMP' }) // nullable = true for old collections
   addDate: Date;
@@ -93,14 +94,14 @@ export class Collection {
 
   @ManyToOne(() => RadarrSettings, { nullable: true })
   @JoinColumn({ name: 'radarrSettingsId', referencedColumnName: 'id' })
-  radarrSettings: RadarrSettings;
+  radarrSettings: Relation<RadarrSettings>;
 
   @Column({ nullable: true })
   sonarrSettingsId: number;
 
   @ManyToOne(() => SonarrSettings, { nullable: true })
   @JoinColumn({ name: 'sonarrSettingsId', referencedColumnName: 'id' })
-  sonarrSettings: SonarrSettings;
+  sonarrSettings: Relation<SonarrSettings>;
 
   @Column({ nullable: true })
   sortTitle: string;
@@ -125,7 +126,7 @@ export class Collection {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'overlayTemplateId' })
-  overlayTemplate: OverlayTemplateEntity | null;
+  overlayTemplate: Relation<OverlayTemplateEntity> | null;
 
   @Column({ nullable: true })
   radarrQualityProfileId: number;

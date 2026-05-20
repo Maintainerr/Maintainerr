@@ -22,12 +22,19 @@ import {
 } from '../../utils/connection-error';
 import { maskSecret } from '../../utils/secretMasking';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
+import type { InternalApiService as InternalApiServiceType } from '../api/internal-api/internal-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
+import type { PlexApiService as PlexApiServiceType } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import type { SeerrApiService as SeerrApiServiceType } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
+import type { ServarrService as ServarrServiceType } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
+import type { StreamystatsApiService as StreamystatsApiServiceType } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
+import type { TautulliApiService as TautulliApiServiceType } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import {
   DeleteRadarrSettingResponseDto,
@@ -124,19 +131,19 @@ export class SettingsService implements SettingDto {
 
   constructor(
     @Inject(forwardRef(() => PlexApiService))
-    private readonly plexApi: PlexApiService,
+    private readonly plexApi: PlexApiServiceType,
     @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaServerFactory: MediaServerFactoryType,
     @Inject(forwardRef(() => ServarrService))
-    private readonly servarr: ServarrService,
+    private readonly servarr: ServarrServiceType,
     @Inject(forwardRef(() => SeerrApiService))
-    private readonly seerr: SeerrApiService,
+    private readonly seerr: SeerrApiServiceType,
     @Inject(forwardRef(() => TautulliApiService))
-    private readonly tautulli: TautulliApiService,
+    private readonly tautulli: TautulliApiServiceType,
     @Inject(forwardRef(() => StreamystatsApiService))
-    private readonly streamystats: StreamystatsApiService,
+    private readonly streamystats: StreamystatsApiServiceType,
     @Inject(forwardRef(() => InternalApiService))
-    private readonly internalApi: InternalApiService,
+    private readonly internalApi: InternalApiServiceType,
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
     @InjectRepository(RadarrSettings)
