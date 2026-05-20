@@ -226,10 +226,18 @@ export function OverlayCanvas({
   const handleDragEnd = useCallback(
     (el: OverlayElement, e: Konva.KonvaEventObject<DragEvent>) => {
       const node = e.target
+      let targetX = node.x()
+      let targetY = node.y()
+
+      if (el.shapeType === 'ellipse') {
+        targetX -= node.width() / 2
+        targetY -= node.height() / 2
+      }
+
       onUpdate({
         ...el,
-        x: Math.round(node.x() / scale),
-        y: Math.round(node.y() / scale),
+        x: Math.round(targetX / scale),
+        y: Math.round(targetY / scale),
       })
     },
     [onUpdate, scale],
@@ -245,12 +253,29 @@ export function OverlayCanvas({
       node.scaleX(1)
       node.scaleY(1)
 
+      const finalW = Math.max(
+        1,
+        Math.round((node.width() * scaleXNode) / scale),
+      )
+      const finalH = Math.max(
+        1,
+        Math.round((node.height() * scaleYNode) / scale),
+      )
+
+      let targetX = node.x()
+      let targetY = node.y()
+
+      if (el.shapeType === 'ellipse') {
+        targetX -= (node.width() * scaleXNode) / 2
+        targetY -= (node.height() * scaleYNode) / 2
+      }
+
       onUpdate({
         ...el,
-        x: Math.round(node.x() / scale),
-        y: Math.round(node.y() / scale),
-        width: Math.max(1, Math.round((node.width() * scaleXNode) / scale)),
-        height: Math.max(1, Math.round((node.height() * scaleYNode) / scale)),
+        x: Math.round(targetX / scale),
+        y: Math.round(targetY / scale),
+        width: finalW,
+        height: finalH,
         rotation: Math.round(node.rotation()),
       })
     },
