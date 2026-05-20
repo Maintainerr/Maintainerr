@@ -64,6 +64,11 @@ describe('OverlaySettings', () => {
     render(<OverlaySettings />)
 
     const runNow = await screen.findByRole('button', { name: 'Run Now' })
+    // Run Now stays disabled until the server's enabled state finishes loading;
+    // clicking a disabled button is a no-op, so wait for it to enable first.
+    await waitFor(() =>
+      expect((runNow as HTMLButtonElement).disabled).toBe(false),
+    )
     fireEvent.click(runNow)
 
     await waitFor(() => {
