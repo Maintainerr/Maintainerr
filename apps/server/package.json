@@ -10,6 +10,7 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "check-types": "tsc --noEmit -p tsconfig.json",
     "test": "yarn test:runtime:jellyfin-sdk && jest",
     "test:runtime:jellyfin-sdk": "node ./test/jellyfin-sdk-runtime-smoke.cjs",
     "test:clear": "jest --clearCache",

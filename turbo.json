@@ -15,7 +15,9 @@
       "cache": false,
       "persistent": true
     },
-    "test": {},
+    "test": {
+      "dependsOn": ["check-types"]
+    },
     "test:watch": {
       "cache": false,
       "persistent": true

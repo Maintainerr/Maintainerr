@@ -91,8 +91,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should not handle media for Do Nothing collections', async () => {
-    settings.testConnections.mockResolvedValue(true);
-
     const collection = createCollection({
       arrAction: ServarrAction.DO_NOTHING,
     });
@@ -108,7 +106,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should handle media for collection and trigger availability syncs', async () => {
-    settings.testConnections.mockResolvedValue(true);
     settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
@@ -129,7 +126,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should not report failed media as handled', async () => {
-    settings.testConnections.mockResolvedValue(true);
     settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
@@ -155,7 +151,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should emit failure and continue when media handling throws', async () => {
-    settings.testConnections.mockResolvedValue(true);
     settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
@@ -188,8 +183,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should not emit collection progress when no media exceeds the delete threshold', async () => {
-    settings.testConnections.mockResolvedValue(true);
-
     const firstCollection = createCollection({
       arrAction: ServarrAction.DELETE,
       type: 'show',
