@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createMockLogger } from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { CollectionsService } from '../../collections/collections.service';
+import { CollectionMediaManualMembershipSource } from '../../collections/entities/collection_media.entities';
 import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
@@ -1462,6 +1463,40 @@ describe('RuleExecutorService', () => {
     expect(
       collectionService.setCollectionMediaRuleEvaluationFailed,
     ).toHaveBeenCalledWith(1, ['m-recovered'], false);
+  });
+
+  it('clears transient rule evaluation flags for manual-only rows', async () => {
+    const { service, collectionService } = createService(MediaServerType.PLEX);
+
+    const collection = {
+      id: 1,
+      title: 'Manual recovery',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      {
+        mediaServerId: 'm-manual',
+        includedByRule: false,
+        isManual: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+        ruleEvaluationFailed: true,
+      },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+    (service as any).transientFailureMediaIds = new Set<string>();
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(
+      collectionService.setCollectionMediaRuleEvaluationFailed,
+    ).toHaveBeenCalledWith(1, ['m-manual'], false);
   });
 
   it('still removes items that dropped out for non-transient reasons', async () => {

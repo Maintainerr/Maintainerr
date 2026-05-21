@@ -2553,6 +2553,7 @@ export class CollectionsService {
       membership.manualMembershipSource !== undefined
         ? membership.manualMembershipSource
         : collectionMedia.manualMembershipSource;
+    const nextRuleEvaluationFailed = false;
 
     if (!nextIncludedByRule && nextManualMembershipSource == null) {
       await this.CollectionMediaRepo.delete({ id: collectionMedia.id });
@@ -2562,7 +2563,9 @@ export class CollectionsService {
     if (
       (collectionMedia.includedByRule ?? null) === nextIncludedByRule &&
       (collectionMedia.manualMembershipSource ?? null) ===
-        (nextManualMembershipSource ?? null)
+        (nextManualMembershipSource ?? null) &&
+      (collectionMedia.ruleEvaluationFailed ?? false) ===
+        nextRuleEvaluationFailed
     ) {
       return collectionMedia;
     }
@@ -2572,6 +2575,7 @@ export class CollectionsService {
         ...collectionMedia,
         includedByRule: nextIncludedByRule,
         manualMembershipSource: nextManualMembershipSource,
+        ruleEvaluationFailed: nextRuleEvaluationFailed,
       }),
     );
   }

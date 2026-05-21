@@ -680,13 +680,9 @@ export class RuleExecutorService {
             .filter((mediaItem) => hasCollectionMediaRuleMembership(mediaItem))
             .map((mediaItem) => mediaItem.mediaServerId),
         );
-        const flaggedRuleOwnedCurrentMediaServerIds = new Set<string>(
+        const flaggedCurrentMediaServerIds = new Set<string>(
           collMediaData
-            .filter(
-              (mediaItem) =>
-                hasCollectionMediaRuleMembership(mediaItem) &&
-                mediaItem.ruleEvaluationFailed,
-            )
+            .filter((mediaItem) => mediaItem.ruleEvaluationFailed)
             .map((mediaItem) => mediaItem.mediaServerId),
         );
 
@@ -761,7 +757,7 @@ export class RuleExecutorService {
           preservedTransientRemovalMediaServerIds,
         );
         const clearedTransientFailureMediaServerIds = [
-          ...flaggedRuleOwnedCurrentMediaServerIds,
+          ...flaggedCurrentMediaServerIds,
         ].filter(
           (mediaServerId) =>
             !preservedTransientRemovalMediaServerIdSet.has(mediaServerId),
