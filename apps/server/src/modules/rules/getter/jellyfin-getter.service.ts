@@ -14,7 +14,11 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
-import { buildCollectionExcludeNames } from '../helpers/collection-exclude.helper';
+import {
+  filterRuleCollectionNames,
+  mapRuleUserIdsToNames,
+  uniqueTrimmedRulePropertyNames,
+} from '../helpers/rule-property.helper';
 
 /**
  * Jellyfin Getter Service
@@ -103,16 +107,24 @@ export class JellyfinGetterService {
             metadata.id,
           );
           const users = await this.jellyfinAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return seenByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            seenByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         case 'favoritedBy': {
           const favoritedByUserIds =
             await this.jellyfinAdapter.getItemFavoritedBy(metadata.id);
           const users = await this.jellyfinAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            favoritedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         case 'releaseDate': {
@@ -207,16 +219,15 @@ export class JellyfinGetterService {
         }
 
         case 'genre': {
-          // For episodes/seasons, get genres from the show
           if (isMediaType(metadata.type, 'episode')) {
             const grandparent = await getGrandparent();
-            return grandparent?.genres?.map((g) => g.name) ?? [];
+            return grandparent?.genres?.map((genre) => genre.name) ?? [];
           }
           if (isMediaType(metadata.type, 'season')) {
             const parent = await getParent();
-            return parent?.genres?.map((g) => g.name) ?? [];
+            return parent?.genres?.map((genre) => genre.name) ?? [];
           }
-          return metadata.genres?.map((g) => g.name) ?? [];
+          return metadata.genres?.map((genre) => genre.name) ?? [];
         }
 
         case 'sw_allEpisodesSeenBy': {
@@ -255,8 +266,12 @@ export class JellyfinGetterService {
           const favoritedByUserIds =
             await this.jellyfinAdapter.getItemFavoritedBy(metadata.id);
           const users = await this.jellyfinAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            favoritedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         case 'sw_favoritedBy_including_parent': {
@@ -268,8 +283,12 @@ export class JellyfinGetterService {
             grandparent?.id,
           );
           const users = await this.jellyfinAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            favoritedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         // At season/show level this returns the UNION of users that watched
@@ -519,9 +538,12 @@ export class JellyfinGetterService {
       episodeWatchers.every((watchers) => watchers.includes(userId)),
     );
 
-    // Map to usernames
-    const userMap = new Map(users.map((u) => [u.id, u.name]));
-    return usersWhoWatchedAll.map((id) => userMap.get(id) || id);
+    return mapRuleUserIdsToNames(
+      usersWhoWatchedAll,
+      users,
+      (user) => user.id,
+      (user) => user.name,
+    );
   }
 
   /**
@@ -760,8 +782,12 @@ export class JellyfinGetterService {
     }
 
     const users = await this.jellyfinAdapter.getUsers();
-    const userMap = new Map(users.map((u) => [u.id, u.name]));
-    return watcherIds.map((id) => userMap.get(id) || id);
+    return mapRuleUserIdsToNames(
+      watcherIds,
+      users,
+      (user) => user.id,
+      (user) => user.name,
+    );
   }
 
   private async getCollectionNames(
@@ -791,12 +817,7 @@ export class JellyfinGetterService {
       this.cache.data.set(cacheKey, allCollectionNames, 600);
     }
 
-    const excludeNames = buildCollectionExcludeNames(ruleGroup);
-    return excludeNames.length > 0
-      ? allCollectionNames.filter(
-          (name) => !excludeNames.includes(name.toLowerCase().trim()),
-        )
-      : allCollectionNames;
+    return filterRuleCollectionNames(allCollectionNames, ruleGroup);
   }
 
   private async getFavoritedByIncludingParent(
@@ -890,13 +911,11 @@ export class JellyfinGetterService {
     ruleGroup?: RulesDto,
   ): Promise<string[]> {
     const collections = await this.jellyfinAdapter.getCollections(libraryId);
-    const collectionNames = new Set<string>();
+    const collectionNames: string[] = [];
 
     const idsToCheck = [itemId, parentId, grandparentId].filter(
       (id): id is string => id !== undefined,
     );
-
-    const excludeNames = buildCollectionExcludeNames(ruleGroup);
 
     for (const collection of collections) {
       const children = await this.jellyfinAdapter.getCollectionChildren(
@@ -906,14 +925,13 @@ export class JellyfinGetterService {
       const hasMatch = children.some((child) => idsToCheck.includes(child.id));
 
       if (hasMatch) {
-        const collectionNameLower = collection.title.toLowerCase().trim();
-        if (!excludeNames.includes(collectionNameLower)) {
-          collectionNames.add(collection.title.trim());
-        }
+        collectionNames.push(collection.title);
       }
     }
 
-    return Array.from(collectionNames);
+    return uniqueTrimmedRulePropertyNames(
+      filterRuleCollectionNames(collectionNames, ruleGroup),
+    );
   }
 
   private async getCollectionSiblingsLastViewedAt(
@@ -922,11 +940,16 @@ export class JellyfinGetterService {
     ruleGroup?: RulesDto,
   ): Promise<Date | null> {
     const collections = await this.jellyfinAdapter.getCollections(libraryId);
-    const excludeNames = buildCollectionExcludeNames(ruleGroup);
+    const includedCollectionNames = new Set(
+      filterRuleCollectionNames(
+        collections.map((collection) => collection.title),
+        ruleGroup,
+      ),
+    );
 
     let latestMs = 0;
     for (const collection of collections) {
-      if (excludeNames.includes(collection.title.toLowerCase().trim())) {
+      if (!includedCollectionNames.has(collection.title.trim())) {
         continue;
       }
 
