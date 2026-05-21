@@ -12,7 +12,7 @@ import {
   RuleOperators,
   RulePossibility,
   RuleType,
-  WATCH_HISTORY_CONCURRENCY,
+  RULE_EVALUATION_CONCURRENCY,
 } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RuleDbDto } from '../dtos/ruleDb.dto';
@@ -205,24 +205,29 @@ export class RuleComparatorService {
     }
 
     // Value resolution (firstVal/secondVal) is the slow part: each item may
-    // trigger a per-item Plex watch-history round-trip with no bulk endpoint
-    // (see feature #2936). Those getters are pure reads and touch no comparator
-    // state, so we resolve them up front in bounded parallel batches — the same
-    // chunk + Promise.all idiom used for Plex collection writes. The mutation
-    // pass below then stays strictly sequential and in the original backward
-    // order, preserving the index-based splice semantics exactly.
+    // trigger an external lookup with no bulk equivalent — most expensively a
+    // Plex watch-history round-trip (no bulk endpoint, see feature #2936).
+    // Those getters are pure reads and touch no comparator state, so we resolve
+    // them up front in bounded parallel batches — the same chunk + Promise.all
+    // idiom used for Plex collection writes. Batching lives only here, so the
+    // total in-flight lookups never exceed RULE_EVALUATION_CONCURRENCY. The
+    // mutation pass below then stays strictly sequential and in the original
+    // backward order, preserving the index-based splice semantics exactly.
     const firstVals: RuleValueType[] = new Array(data.length);
     const secondVals: RuleValueType[] = new Array(data.length);
     for (
       let start = 0;
       start < data.length;
-      start += WATCH_HISTORY_CONCURRENCY
+      start += RULE_EVALUATION_CONCURRENCY
     ) {
       this.abortSignal?.throwIfAborted();
-      const end = Math.min(start + WATCH_HISTORY_CONCURRENCY, data.length);
+      const end = Math.min(start + RULE_EVALUATION_CONCURRENCY, data.length);
       await Promise.all(
         Array.from({ length: end - start }, (_, offset) => start + offset).map(
           async (i) => {
+            // Check abort inside each task so a long-running batch stops
+            // resolving values promptly once the job is cancelled/superseded.
+            this.abortSignal?.throwIfAborted();
             const mediaItem = data[i];
             firstVals[i] = await this.valueGetter.get(
               rule.firstVal,
@@ -231,6 +236,7 @@ export class RuleComparatorService {
               this.plexDataType,
               rule,
             );
+            this.abortSignal?.throwIfAborted();
             secondVals[i] = this.isUnaryRuleAction(rule.action)
               ? null
               : await this.getSecondValue(
