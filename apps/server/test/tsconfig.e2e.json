@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "../dist-test",
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false
+  },
+  "include": ["./rules-test-matrix.e2e.ts", "./utils/**/*.ts"],
+  "exclude": ["../node_modules", "../dist", "../dist-test"]
+}

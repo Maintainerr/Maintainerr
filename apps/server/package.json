@@ -15,8 +15,8 @@
     "test:clear": "jest --clearCache",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:debug": "yarn node --inspect-brk $(yarn bin jest) --runInBand",
+    "test:e2e": "yarn exec tsc -p ./test/tsconfig.e2e.json && node ./dist-test/test/rules-test-matrix.e2e.js",
     "migration:create": "yarn exec typeorm-ts-node-commonjs migration:create",
     "migration:run": "yarn exec typeorm-ts-node-commonjs migration:run -d ./src/datasource-config.ts",
     "migration:revert": "yarn exec typeorm-ts-node-commonjs migration:revert -d ./src/datasource-config.ts",
@@ -90,9 +90,7 @@
     "eslint-plugin-jest": "^29.15.2",
     "jest": "^30.4.2",
     "prettier": "^3.8.3",
-    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3"
   },
   "jest": {
