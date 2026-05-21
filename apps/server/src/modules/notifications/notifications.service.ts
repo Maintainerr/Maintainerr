@@ -929,11 +929,19 @@ export class NotificationService implements OnModuleInit {
   }
 
   private getTitle(item: MediaItem): string {
-    return item.grandparentId
-      ? `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`
-      : item.parentId
-        ? `${item.parentTitle} - season ${item.index}`
-        : item.title;
+    // Branch on the server-agnostic item type, not on parentId/grandparentId
+    // presence. Plex leaves a movie's parent empty, but Emby/Jellyfin set
+    // parentId to the containing library folder — so keying off parentId
+    // misclassified Emby movies as seasons and rendered them as
+    // "undefined - season undefined".
+    switch (item.type) {
+      case 'episode':
+        return `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`;
+      case 'season':
+        return `${item.parentTitle} - season ${item.index}`;
+      default:
+        return item.title;
+    }
   }
 
   // OnEvent handlers
