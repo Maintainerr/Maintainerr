@@ -18,6 +18,7 @@ import { RuleDto } from '../dtos/rule.dto';
 import { RuleDbDto } from '../dtos/ruleDb.dto';
 import { RulesDto } from '../dtos/rules.dto';
 import { ValueGetterService } from '../getter/getter.service';
+import { ArrLookupCache } from './arr-lookup-cache';
 
 interface IComparatorReturnValue {
   stats: IComparisonStatistics[];
@@ -56,6 +57,7 @@ export class RuleComparatorService {
   private resultIds: Set<string>;
   private statsById: Map<string, IComparisonStatistics>;
   private transientFailureIds: Set<string>;
+  private arrLookupCache?: ArrLookupCache;
 
   private static readonly UNARY_RULE_ACTIONS = new Set<RulePossibility>([
     RulePossibility.EXISTS,
@@ -75,6 +77,7 @@ export class RuleComparatorService {
     plexData: MediaItem[],
     onRuleProgress?: (processingRule: number) => void,
     abortSignal?: AbortSignal,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<IComparatorReturnValue> {
     try {
       // prepare
@@ -85,6 +88,7 @@ export class RuleComparatorService {
       this.statistics = [];
       this.statisticWorker = [];
       this.abortSignal = abortSignal;
+      this.arrLookupCache = arrLookupCache;
 
       this.workerIds = new Set<string>();
       this.resultIds = new Set<string>();
@@ -235,6 +239,7 @@ export class RuleComparatorService {
               ruleGroup,
               this.plexDataType,
               rule,
+              this.arrLookupCache,
             );
             this.abortSignal?.throwIfAborted();
             secondVals[i] = this.isUnaryRuleAction(rule.action)
@@ -367,6 +372,7 @@ export class RuleComparatorService {
         rulegroup,
         this.plexDataType,
         rule,
+        this.arrLookupCache,
       );
     } else {
       secondVal =

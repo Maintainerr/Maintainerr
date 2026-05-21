@@ -15,6 +15,7 @@ import {
 } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
 
 @Injectable()
@@ -37,6 +38,7 @@ export class RadarrGetterService {
     libItem: MediaItem,
     ruleGroup?: RulesDto,
     rule?: RuleDto,
+    arrLookupCache?: ArrLookupCache,
   ) {
     if (!ruleGroup.collection?.radarrSettingsId) {
       this.logger.error(
@@ -79,8 +81,22 @@ export class RadarrGetterService {
         ruleGroup.collection.radarrSettingsId,
       );
 
+      // Same uncached-at-the-API-layer lookup as Sonarr (#2897): keep it
+      // uncached for the cleanup's post-deletion freshness, but dedupe it
+      // through the run-scoped memo during rule evaluation. Evict on a failed
+      // (undefined) lookup so a transient error doesn't stick for the run.
+      const settingsId = ruleGroup.collection.radarrSettingsId;
+      const resolveMovie = (lookupId: number) =>
+        arrLookupCache
+          ? arrLookupCache.memoize(
+              `radarr:${settingsId}:movie:${lookupId}`,
+              () => radarrApiClient.getMovieByTmdbId(lookupId),
+              (movie) => movie === undefined,
+            )
+          : radarrApiClient.getMovieByTmdbId(lookupId);
+
       const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
-        tmdb: (lookupId) => radarrApiClient.getMovieByTmdbId(lookupId),
+        tmdb: (lookupId) => resolveMovie(lookupId),
       });
       const movieResponse = matchedResult?.result;
 
