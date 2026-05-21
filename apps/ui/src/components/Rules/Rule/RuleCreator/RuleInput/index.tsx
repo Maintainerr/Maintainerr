@@ -857,7 +857,7 @@ const RuleInput = (props: IRuleInput) => {
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
-                value={customVal ? +customVal / 86400 : undefined}
+                value={customVal ? +customVal / 86400 : ''}
                 placeholder="Amount of days"
               />
             ) : (customValType === RuleType.TEXT &&
@@ -868,7 +868,7 @@ const RuleInput = (props: IRuleInput) => {
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
-                value={customVal}
+                value={customVal ?? ''}
                 placeholder={
                   ruleType === RuleType.TEXT_LIST ||
                   customValType === RuleType.TEXT_LIST
@@ -882,7 +882,7 @@ const RuleInput = (props: IRuleInput) => {
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
-                value={customVal}
+                value={customVal ?? ''}
                 placeholder="Date"
               />
             ) : customValType === RuleType.BOOL ? (
@@ -901,7 +901,7 @@ const RuleInput = (props: IRuleInput) => {
                 name="custom_val"
                 id="custom_val"
                 onChange={updateCustomValue}
-                value={customVal}
+                value={customVal ?? ''}
                 placeholder="Number"
               />
             )}

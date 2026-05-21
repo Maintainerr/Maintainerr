@@ -16,11 +16,11 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { type AxiosInstance, AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
+import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -69,8 +69,7 @@ export class EmbyAdapterService implements IMediaServerService {
   private readonly cache: Cache;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(EmbyAdapterService.name);
@@ -1093,6 +1092,23 @@ export class EmbyAdapterService implements IMediaServerService {
         headers: { 'Content-Type': contentType },
       });
     } catch (error) {
+      // The request shape matches Emby's documented (and source-confirmed)
+      // contract: base64 body + the image MIME on Content-Type. A 500 here is
+      // therefore raised inside Emby's own handler — most often when the POST
+      // body is truncated upstream (reverse-proxy/server request-size limit, so
+      // Convert.FromBase64String throws) or the image processor cannot save it.
+      // Surface Emby's response body so the actual cause is visible instead of
+      // a bare "500"; the GET download on the same path succeeding rules out
+      // auth, the item id, and connectivity.
+      if (error instanceof AxiosError && error.response?.data != null) {
+        const body =
+          typeof error.response.data === 'string'
+            ? error.response.data
+            : JSON.stringify(error.response.data);
+        this.logger.debug(
+          `Emby rejected image upload for item ${collectionId} (status ${error.response.status}): ${body.slice(0, 500)}`,
+        );
+      }
       const message = formatConnectionFailureMessage(
         error,
         'Connection failed',

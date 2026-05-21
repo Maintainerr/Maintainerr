@@ -5,7 +5,7 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import { CollectionsService } from '../../collections/collections.service';
 import { Collection } from '../../collections/entities/collection.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsOperationsService } from '../../settings/settings-operations.service';
 import { TaskBase } from '../../tasks/task.base';
 import { TasksService } from '../../tasks/tasks.service';
 import { RulesService } from '../rules.service';
@@ -18,7 +18,7 @@ export class RuleMaintenanceService extends TaskBase {
   constructor(
     protected readonly taskService: TasksService,
     protected readonly logger: MaintainerrLogger,
-    private readonly settings: SettingsService,
+    private readonly settingsOperationsService: SettingsOperationsService,
     private readonly rulesService: RulesService,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
@@ -33,7 +33,7 @@ export class RuleMaintenanceService extends TaskBase {
     try {
       this.logger.log('Starting maintenance');
       const mediaServerReachable =
-        await this.settings.testMediaServerConnection();
+        await this.settingsOperationsService.testMediaServerConnection();
 
       if (mediaServerReachable) {
         // remove media exclusions that are no longer available

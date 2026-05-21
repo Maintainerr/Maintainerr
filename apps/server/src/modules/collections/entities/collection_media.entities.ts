@@ -7,6 +7,7 @@ import {
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { Collection } from './collection.entities';
 
@@ -61,7 +62,7 @@ export class CollectionMedia {
   @ManyToOne(() => Collection, (collection) => collection.collectionMedia, {
     onDelete: 'CASCADE',
   })
-  collection: Collection;
+  collection: Relation<Collection>;
 }
 
 export const hasCollectionMediaRuleMembership = (

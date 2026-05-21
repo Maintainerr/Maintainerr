@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { get } from 'lodash';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
 import {
   NotificationAgentKey,
@@ -26,7 +26,7 @@ const KeyMap: Record<string, string | KeyMapFunction> = {
 
 class WebhookAgent implements NotificationAgent {
   public constructor(
-    private readonly appSettings: SettingsService,
+    private readonly appSettings: SettingsDataService,
     private readonly settings: NotificationAgentWebhook,
     private readonly logger: MaintainerrLogger,
     readonly notification: Notification,

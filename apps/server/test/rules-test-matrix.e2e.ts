@@ -6,7 +6,7 @@
 // - complement targeted unit specs rather than duplicate every getter-specific case
 //
 // How to use:
-// - run the script directly with ts-node from apps/server
+// - run `yarn workspace @maintainerr/server test:e2e` from the workspace root
 // - capture the JSON output and compare it across refactors or against a release tag
 // - treat this as a regression harness, not a replacement for dedicated unit tests
 //
