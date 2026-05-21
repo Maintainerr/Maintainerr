@@ -27,7 +27,7 @@ import {
   RuleHandlerFailedDto,
 } from '../../events/events.dto';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
@@ -101,7 +101,7 @@ export class RuleExecutorService {
     private readonly rulesService: RulesService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly collectionService: CollectionsService,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsDataService,
     private readonly comparatorFactory: RuleComparatorServiceFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly progressManager: RuleExecutorProgressService,

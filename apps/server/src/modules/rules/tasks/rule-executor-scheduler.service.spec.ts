@@ -36,7 +36,7 @@ describe('RuleExecutorSchedulerService', () => {
       getRuleGroups: jest.fn(),
     };
 
-    const settingsService = {
+    const settingsDataService = {
       rules_handler_job_cron: '*/5 * * * * *',
     } as const;
 
@@ -51,7 +51,7 @@ describe('RuleExecutorSchedulerService', () => {
     const service = new RuleExecutorSchedulerService(
       schedulerRegistry as any,
       rulesService as any,
-      settingsService as any,
+      settingsDataService as any,
       queueManager as any,
       logger as any,
     );
@@ -60,7 +60,7 @@ describe('RuleExecutorSchedulerService', () => {
       service,
       schedulerRegistry,
       rulesService,
-      settingsService,
+      settingsDataService,
       queueManager,
     };
   };
@@ -70,7 +70,7 @@ describe('RuleExecutorSchedulerService', () => {
   });
 
   it('registers cron jobs for scheduled rule groups and global schedule on bootstrap', async () => {
-    const { service, schedulerRegistry, rulesService, settingsService } =
+    const { service, schedulerRegistry, rulesService, settingsDataService } =
       createScheduler();
 
     rulesService.getRuleGroups.mockResolvedValue([
@@ -94,7 +94,7 @@ describe('RuleExecutorSchedulerService', () => {
     expect(schedulerRegistry.addCronJob).toHaveBeenCalledWith(
       'execute-global-schedule-rules',
       expect.objectContaining({
-        cronTime: settingsService.rules_handler_job_cron,
+        cronTime: settingsDataService.rules_handler_job_cron,
       }),
     );
   });

@@ -1,11 +1,11 @@
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
+import { SettingsOperationsService } from '../../../settings/settings-operations.service';
 import { MediaServerSetupGuard } from './media-server-setup.guard';
 
 describe('MediaServerSetupGuard', () => {
-  const settingsService = {
+  const settingsOperationsService = {
     testSetup: jest.fn(),
-  } as unknown as jest.Mocked<SettingsService>;
+  } as unknown as jest.Mocked<SettingsOperationsService>;
 
   const logger = {
     setContext: jest.fn(),
@@ -17,11 +17,13 @@ describe('MediaServerSetupGuard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    guard = new MediaServerSetupGuard(settingsService, logger);
+    guard = new MediaServerSetupGuard(settingsOperationsService, logger);
   });
 
   it('returns false and logs when media server setup test throws', async () => {
-    settingsService.testSetup.mockRejectedValue(new Error('connection failed'));
+    settingsOperationsService.testSetup.mockRejectedValue(
+      new Error('connection failed'),
+    );
 
     await expect(guard.canActivate()).resolves.toBe(false);
     expect(logger.error).toHaveBeenCalledWith(

@@ -16,7 +16,7 @@ import {
   UpdateCollectionParams,
   WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
@@ -43,7 +43,6 @@ import { PlexMapper } from './plex.mapper';
 @Injectable()
 export class PlexAdapterService implements IMediaServerService {
   constructor(
-    @Inject(forwardRef(() => PlexApiService))
     private readonly plexApi: PlexApiService,
     private readonly logger: MaintainerrLogger,
   ) {

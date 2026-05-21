@@ -6,6 +6,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { Collection } from '../../collections/entities/collection.entities';
 
@@ -38,5 +39,5 @@ export class OverlayItemStateEntity {
 
   @ManyToOne(() => Collection, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collectionId' })
-  collection: Collection;
+  collection: Relation<Collection>;
 }

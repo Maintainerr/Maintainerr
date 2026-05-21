@@ -29,7 +29,7 @@ import {
   MaintainerrLoggerFactory,
 } from '../logging/logs.service';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import type { NotificationAgent, NotificationPayload } from './agents/agent';
 import DiscordAgent from './agents/discord';
 import EmailAgent from './agents/email';
@@ -84,7 +84,7 @@ export class NotificationService implements OnModuleInit {
     @InjectRepository(RuleGroup)
     private readonly ruleGroupRepo: Repository<RuleGroup>,
     private readonly connection: DataSource,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsDataService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
@@ -929,11 +929,19 @@ export class NotificationService implements OnModuleInit {
   }
 
   private getTitle(item: MediaItem): string {
-    return item.grandparentId
-      ? `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`
-      : item.parentId
-        ? `${item.parentTitle} - season ${item.index}`
-        : item.title;
+    // Branch on the server-agnostic item type, not on parentId/grandparentId
+    // presence. Plex leaves a movie's parent empty, but Emby/Jellyfin set
+    // parentId to the containing library folder — so keying off parentId
+    // misclassified Emby movies as seasons and rendered them as
+    // "undefined - season undefined".
+    switch (item.type) {
+      case 'episode':
+        return `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`;
+      case 'season':
+        return `${item.parentTitle} - season ${item.index}`;
+      default:
+        return item.title;
+    }
   }
 
   // OnEvent handlers

@@ -16,6 +16,7 @@ import * as path from 'path';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -24,7 +25,7 @@ import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Settings } from './entities/settings.entities';
 import { RuleMigrationService } from './rule-migration.service';
-import { SettingsService } from './settings.service';
+import { SettingsDataService } from './settings-data.service';
 
 interface MediaServerDataCounts {
   collections: number;
@@ -39,7 +40,7 @@ const COLLECTION_POSTER_EXTENSION = '.jpg';
 /**
  * Service for handling media server switching operations.
  *
- * Extracted from SettingsService to follow Single Responsibility Principle.
+ * Extracted from SettingsOperationsService to follow Single Responsibility Principle.
  * This service orchestrates the complex process of switching between
  * Plex and Jellyfin, including data cleanup and rule migration.
  */
@@ -56,10 +57,9 @@ export class MediaServerSwitchService {
   }
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsService,
+    private readonly settingsDataService: SettingsDataService,
     @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaServerFactory: MediaServerFactoryType,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
     @InjectRepository(CollectionMedia)
@@ -69,7 +69,6 @@ export class MediaServerSwitchService {
     @InjectRepository(Exclusion)
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
-    @Inject(forwardRef(() => RuleMigrationService))
     private readonly ruleMigrationService: RuleMigrationService,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -82,7 +81,7 @@ export class MediaServerSwitchService {
   async previewSwitch(
     targetServerType: MediaServerType,
   ): Promise<MediaServerSwitchPreview> {
-    const currentServerType = this.settingsService.getMediaServerType();
+    const currentServerType = this.settingsDataService.getMediaServerType();
     const dataToBeCleared = await this.getMediaServerDataCounts();
 
     // Preview rule migration
@@ -99,14 +98,14 @@ export class MediaServerSwitchService {
       dataToBeCleared,
       dataToBeKept: {
         generalSettings: true,
-        radarrSettings: await this.settingsService.getRadarrSettingsCount(),
-        sonarrSettings: await this.settingsService.getSonarrSettingsCount(),
-        seerrSettings: this.settingsService.seerrConfigured(),
+        radarrSettings: await this.settingsDataService.getRadarrSettingsCount(),
+        sonarrSettings: await this.settingsDataService.getSonarrSettingsCount(),
+        seerrSettings: this.settingsDataService.seerrConfigured(),
         // Tautulli is Plex-specific and gets cleared when switching away from Plex
         tautulliSettings:
           currentServerType === MediaServerType.PLEX
             ? false
-            : this.settingsService.tautulliConfigured(),
+            : this.settingsDataService.tautulliConfigured(),
         notificationSettings: true,
       },
       ruleMigration: ruleMigrationPreview,
@@ -143,7 +142,7 @@ export class MediaServerSwitchService {
     const { targetServerType, migrateRules } = request;
 
     // Get current server type - don't default to PLEX on fresh install
-    const currentServerType = this.settingsService.getMediaServerType();
+    const currentServerType = this.settingsDataService.getMediaServerType();
 
     // Check if already on target server type (only if currentServerType is actually set)
     if (currentServerType && currentServerType === targetServerType) {
@@ -224,7 +223,7 @@ export class MediaServerSwitchService {
       }
 
       // Refresh in-memory settings and uninitialize old server after commit
-      await this.settingsService.init();
+      await this.settingsDataService.init();
 
       // Uninitialize old media server adapter
       this.uninitializeOldServer(currentServerType);

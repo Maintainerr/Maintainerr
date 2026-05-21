@@ -8,7 +8,8 @@ import {
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
-import { SettingsService } from '../../settings/settings.service';
+import type { MediaServerSwitchService as MediaServerSwitchServiceType } from '../../settings/media-server-switch.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { IMediaServerService } from './media-server.interface';
@@ -33,10 +34,9 @@ function isSettings(obj: unknown): obj is Settings {
 @Injectable()
 export class MediaServerFactory {
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsService,
+    private readonly settingsDataService: SettingsDataService,
     @Inject(forwardRef(() => MediaServerSwitchService))
-    private readonly mediaServerSwitchService: MediaServerSwitchService,
+    private readonly mediaServerSwitchService: MediaServerSwitchServiceType,
     private readonly plexAdapter: PlexAdapterService,
     private readonly jellyfinAdapter: JellyfinAdapterService,
     private readonly embyAdapter: EmbyAdapterService,
@@ -88,7 +88,7 @@ export class MediaServerFactory {
     // switch (which nulls the old credentials) and the user saving the new
     // credentials. Callers can treat this as transient rather than a real
     // failure (see NotificationService.transformMessageContent).
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsDataService.getSettings();
     if (
       isSettings(settings) &&
       !this.areCredentialsPresent(serverType, settings)
@@ -149,7 +149,7 @@ export class MediaServerFactory {
    * Get the currently configured media server type.
    */
   async getConfiguredServerType(): Promise<MediaServerType | null> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsDataService.getSettings();
 
     if (!isSettings(settings)) {
       return null;

@@ -5,7 +5,7 @@ import {
   TmdbSetting,
   TvdbSetting,
 } from '@maintainerr/contracts';
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -31,7 +31,6 @@ export class MetadataSettingsService {
     private readonly settingsRepo: Repository<Settings>,
     @InjectRepository(CollectionMedia)
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
-    @Inject(forwardRef(() => MediaServerFactory))
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly tmdbApi: TmdbApiService,

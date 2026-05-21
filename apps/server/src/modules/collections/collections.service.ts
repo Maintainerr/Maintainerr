@@ -32,7 +32,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionPosterService } from './collection-poster.service';
 import { Collection } from './entities/collection.entities';
 import {
@@ -100,7 +100,7 @@ export class CollectionsService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly settingsService: SettingsService,
+    private readonly settingsDataService: SettingsDataService,
     private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionPosterService: CollectionPosterService,
@@ -1813,7 +1813,7 @@ export class CollectionsService {
       // Skip for Jellyfin because API lag causes false positives.
       // Jellyfin natively auto-deletes empty collections, so no manual cleanup needed.
       if (
-        this.settingsService.media_server_type === MediaServerType.PLEX &&
+        this.settingsDataService.media_server_type === MediaServerType.PLEX &&
         serverColl &&
         collection.mediaServerId !== null &&
         originalMediaServerId !== null

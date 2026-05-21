@@ -3,6 +3,7 @@ import type { RouteObject } from 'react-router-dom'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
 import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
+import LoadingSpinner from './components/Common/LoadingSpinner'
 import Overview from './components/Overview'
 // Settings is kept eager because it wraps an <Outlet /> — making it lazy
 // would cause two sequential fetches (wrapper then child) on every settings navigation.
@@ -423,6 +424,10 @@ export const router = createBrowserRouter(
       path: '/',
       element: <Layout />,
       errorElement: <LayoutErrorBoundary />,
+      // Rendered during initial hydration while the matched lazy route module
+      // is still loading. Without it, React Router logs a "No HydrateFallback
+      // element provided" warning on a cold load onto any lazy route.
+      hydrateFallbackElement: <LoadingSpinner containerClassName="h-screen" />,
       children: appRoutes,
     },
   ],
