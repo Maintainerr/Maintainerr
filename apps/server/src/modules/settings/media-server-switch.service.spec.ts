@@ -342,6 +342,7 @@ describe('MediaServerSwitchService', () => {
           jellyfin_api_key: 'jf-key',
           jellyfin_user_id: 'jf-user',
           jellyfin_server_name: 'Jellyfin',
+          streamystats_url: 'http://streamystats.local:3000',
         },
         clearedFields: {
           media_server_type: MediaServerType.PLEX,
@@ -349,6 +350,7 @@ describe('MediaServerSwitchService', () => {
           jellyfin_api_key: null,
           jellyfin_user_id: null,
           jellyfin_server_name: null,
+          streamystats_url: null,
         },
       },
       {
@@ -416,6 +418,7 @@ describe('MediaServerSwitchService', () => {
           jellyfin_api_key: 'jf-key',
           jellyfin_user_id: 'jf-user',
           jellyfin_server_name: 'Jellyfin',
+          streamystats_url: 'http://streamystats.local:3000',
         },
         clearedFields: {
           media_server_type: MediaServerType.EMBY,
@@ -423,6 +426,7 @@ describe('MediaServerSwitchService', () => {
           jellyfin_api_key: null,
           jellyfin_user_id: null,
           jellyfin_server_name: null,
+          streamystats_url: null,
         },
       },
     ])(

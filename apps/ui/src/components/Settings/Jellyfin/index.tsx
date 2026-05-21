@@ -4,7 +4,7 @@ import {
   jellyfinSettingSchema,
   maskSecret,
 } from '@maintainerr/contracts'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useSettingsOutletContext } from '..'
@@ -50,7 +50,7 @@ const JellyfinSettings = () => {
   const [jellyfinUsers, setJellyfinUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showUpdateError, showError, clearError } =
+  const { feedback, showUpdated, showError, clearError } =
     useSettingsFeedback('Jellyfin settings')
 
   const { settings } = useSettingsOutletContext()
@@ -59,6 +59,17 @@ const JellyfinSettings = () => {
     enabled: !!settings,
   })
   const isJellyfinLoading = settings != null && jellyfinData == null
+
+  // Sync the form to the loaded settings once they arrive. react-hook-form's
+  // `values` option deep-compares, so an unstable reference with equal contents
+  // won't re-trigger a reset (no effect, no render loop).
+  const formValues = jellyfinData
+    ? {
+        jellyfin_url: jellyfinData.jellyfin_url ?? '',
+        jellyfin_api_key: jellyfinData.jellyfin_api_key ?? '',
+        jellyfin_user_id: jellyfinData.jellyfin_user_id ?? '',
+      }
+    : undefined
 
   const { mutateAsync: testJellyfin, isPending: isTestPending } =
     useTestJellyfin()
@@ -83,21 +94,11 @@ const JellyfinSettings = () => {
       jellyfin_api_key: '',
       jellyfin_user_id: '',
     },
+    values: formValues,
   })
 
   const jellyfinUrl = useWatch({ control, name: 'jellyfin_url' })
   const jellyfinApiKey = useWatch({ control, name: 'jellyfin_api_key' })
-
-  // Initialize form when jellyfin settings load (from dedicated endpoint with real values)
-  useEffect(() => {
-    if (jellyfinData) {
-      reset({
-        jellyfin_url: jellyfinData.jellyfin_url ?? '',
-        jellyfin_api_key: jellyfinData.jellyfin_api_key ?? '',
-        jellyfin_user_id: jellyfinData.jellyfin_user_id ?? '',
-      })
-    }
-  }, [jellyfinData, reset])
 
   const isGoingToRemoveSettings = jellyfinUrl === '' && jellyfinApiKey === ''
   const enteredSettingsHaveBeenTested =
@@ -185,8 +186,10 @@ const JellyfinSettings = () => {
         setTestedSettings(null)
         setJellyfinUsers([])
         showUpdated()
-      } catch {
-        showUpdateError()
+      } catch (error) {
+        showError(
+          getApiErrorMessage(error, 'Jellyfin settings could not be updated'),
+        )
       }
       return
     }
@@ -196,11 +199,8 @@ const JellyfinSettings = () => {
       reset(data)
       showUpdated()
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Failed to save settings')
       showError(
-        message === 'Failed to save settings'
-          ? 'Jellyfin settings could not be updated'
-          : message,
+        getApiErrorMessage(error, 'Jellyfin settings could not be updated'),
       )
     }
   }

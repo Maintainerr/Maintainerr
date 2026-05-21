@@ -241,14 +241,42 @@ jobs:
           DOCS_REPO: Maintainerr/Maintainerr_docs
           MARKER: maintainerr-docs-drift
         run: |
-          issue_num=$(gh issue list --repo "$DOCS_REPO" --state open \
-            --search "\"$MARKER\" in:body" --json number --jq '.[0].number // empty')
+          issue_num=''
+          for attempt in 1 2 3 4 5 6; do
+            issue_num=$(gh issue list --repo "$DOCS_REPO" --state open \
+              --search "\"$MARKER\" in:body" --json number --jq '.[0].number // empty')
+            if [ -n "$issue_num" ]; then
+              break
+            fi
+
+            if [ "$attempt" -lt 6 ]; then
+              echo "Waiting 5 seconds for the drift issue to become visible before requesting a docs PR..."
+              sleep 5
+            fi
+          done
+
           if [ -z "$issue_num" ]; then
-            echo "No open drift issue found; cannot request a PR."
+            echo "No open drift issue found after waiting 30 seconds; cannot request a PR."
+            echo "- Skipped docs PR request because no open drift issue was visible after waiting 30 seconds." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          gh issue edit "$issue_num" --repo "$DOCS_REPO" --add-assignee Copilot
-          echo "- Requested docs PR: assigned Copilot to [$DOCS_REPO#$issue_num](https://github.com/$DOCS_REPO/issues/$issue_num)" >> "$GITHUB_STEP_SUMMARY"
+
+          if output=$(gh issue edit "$issue_num" --repo "$DOCS_REPO" --add-assignee Copilot 2>&1); then
+            echo "$output"
+            echo "- Requested docs PR: assigned Copilot to [$DOCS_REPO#$issue_num](https://github.com/$DOCS_REPO/issues/$issue_num)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "$output"
+          if echo "$output" | grep -Fq 'Assigning agents is not supported with GitHub App installation tokens'; then
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          - Skipped docs PR request for [$DOCS_REPO#$issue_num](https://github.com/$DOCS_REPO/issues/$issue_num)
+            because GitHub does not support assigning Copilot agents with GitHub App installation tokens.
+          EOF
+            exit 0
+          fi
+
+          exit 1
 
       - name: Close docs drift issue if clean
         if: >-

@@ -38,7 +38,10 @@ const mediaServerTabContent = (label?: string) => {
 const getMediaServerTypeFromPath = (
   pathname: string,
 ): MediaServerType | undefined => {
-  if (pathname.startsWith('/settings/jellyfin')) {
+  if (
+    pathname.startsWith('/settings/jellyfin') ||
+    pathname.startsWith('/settings/streamystats')
+  ) {
     return MediaServerType.JELLYFIN
   }
 
@@ -164,6 +167,15 @@ const SettingsWrapper = () => {
         text: 'Tautulli',
         route: '/settings/tautulli',
         regex: /^\/settings\/tautulli$/,
+      })
+    }
+
+    // Streamystats is a Jellyfin-only integration (no Emby support upstream)
+    if (mediaServerType === MediaServerType.JELLYFIN) {
+      baseRoutes.push({
+        text: 'Streamystats',
+        route: '/settings/streamystats',
+        regex: /^\/settings\/streamystats$/,
       })
     }
 
