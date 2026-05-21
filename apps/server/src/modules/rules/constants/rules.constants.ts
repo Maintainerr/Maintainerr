@@ -16,7 +16,7 @@ export { Application, MediaType, RuleOperators, RulePossibility };
 // global cap on concurrent operand lookups (batching happens only here, never
 // nested inside the getters). Kept conservative to avoid hammering those
 // services / spiking CPU the way large Plex collection writes did; tune here.
-export const RULE_EVALUATION_CONCURRENCY = 10;
+export const RULE_EVALUATION_CONCURRENCY = 16;
 
 export const enum ArrAction {
   DELETE,
