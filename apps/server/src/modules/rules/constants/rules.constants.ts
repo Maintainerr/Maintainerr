@@ -8,6 +8,16 @@ import {
 
 export { Application, MediaType, RuleOperators, RulePossibility };
 
+// How many media items a rule is evaluated against concurrently. Each item's
+// operand lookup can hit an external service (Plex, Tautulli, Sonarr, …) with
+// no bulk equivalent — most expensively Plex watch history, which has no bulk
+// endpoint (see feature #2936). Resolving a bounded number of items in parallel
+// turns a long sequential chain of round-trips into batches. This is the single
+// global cap on concurrent operand lookups (batching happens only here, never
+// nested inside the getters). Kept conservative to avoid hammering those
+// services / spiking CPU the way large Plex collection writes did; tune here.
+export const RULE_EVALUATION_CONCURRENCY = 16;
+
 export const enum ArrAction {
   DELETE,
   UNMONITOR,
