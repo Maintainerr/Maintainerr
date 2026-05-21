@@ -8,11 +8,16 @@ import {
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
+import type { MediaServerSwitchService as MediaServerSwitchServiceType } from '../../settings/media-server-switch.service';
 import { SettingsService } from '../../settings/settings.service';
+import type { SettingsService as SettingsServiceType } from '../../settings/settings.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
+import type { EmbyAdapterService as EmbyAdapterServiceType } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
+import type { JellyfinAdapterService as JellyfinAdapterServiceType } from './jellyfin/jellyfin-adapter.service';
 import { IMediaServerService } from './media-server.interface';
 import { PlexAdapterService } from './plex/plex-adapter.service';
+import type { PlexAdapterService as PlexAdapterServiceType } from './plex/plex-adapter.service';
 
 /**
  * Type guard to check if settings response is a Settings object
@@ -34,12 +39,15 @@ function isSettings(obj: unknown): obj is Settings {
 export class MediaServerFactory {
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsServiceType,
     @Inject(forwardRef(() => MediaServerSwitchService))
-    private readonly mediaServerSwitchService: MediaServerSwitchService,
-    private readonly plexAdapter: PlexAdapterService,
-    private readonly jellyfinAdapter: JellyfinAdapterService,
-    private readonly embyAdapter: EmbyAdapterService,
+    private readonly mediaServerSwitchService: MediaServerSwitchServiceType,
+    @Inject(forwardRef(() => PlexAdapterService))
+    private readonly plexAdapter: PlexAdapterServiceType,
+    @Inject(forwardRef(() => JellyfinAdapterService))
+    private readonly jellyfinAdapter: JellyfinAdapterServiceType,
+    @Inject(forwardRef(() => EmbyAdapterService))
+    private readonly embyAdapter: EmbyAdapterServiceType,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(MediaServerFactory.name);

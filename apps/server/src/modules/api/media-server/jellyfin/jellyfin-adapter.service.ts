@@ -49,6 +49,7 @@ import { formatConnectionFailureMessage } from '../../../../utils/connection-err
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsService } from '../../../settings/settings.service';
+import type { SettingsService as SettingsServiceType } from '../../../settings/settings.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import {
   isBlankMediaServerId,
@@ -119,7 +120,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsServiceType,
     private readonly logger: MaintainerrLogger,
   ) {
     this.cache = cacheManager.getCache('jellyfin');

@@ -16,6 +16,7 @@ import * as path from 'path';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -24,7 +25,9 @@ import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Settings } from './entities/settings.entities';
 import { RuleMigrationService } from './rule-migration.service';
+import type { RuleMigrationService as RuleMigrationServiceType } from './rule-migration.service';
 import { SettingsService } from './settings.service';
+import type { SettingsService as SettingsServiceType } from './settings.service';
 
 interface MediaServerDataCounts {
   collections: number;
@@ -57,9 +60,9 @@ export class MediaServerSwitchService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsServiceType,
     @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaServerFactory: MediaServerFactoryType,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
     @InjectRepository(CollectionMedia)
@@ -70,7 +73,7 @@ export class MediaServerSwitchService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     @Inject(forwardRef(() => RuleMigrationService))
-    private readonly ruleMigrationService: RuleMigrationService,
+    private readonly ruleMigrationService: RuleMigrationServiceType,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(MediaServerSwitchService.name);

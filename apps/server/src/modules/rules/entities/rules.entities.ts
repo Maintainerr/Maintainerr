@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  type Relation,
+} from 'typeorm';
 import { RuleGroup } from './rule-group.entities';
 
 @Entity()
@@ -21,5 +27,5 @@ export class Rules {
   @ManyToOne(() => RuleGroup, (ruleGroup) => ruleGroup.rules, {
     onDelete: 'CASCADE',
   })
-  ruleGroup: RuleGroup;
+  ruleGroup: Relation<RuleGroup>;
 }

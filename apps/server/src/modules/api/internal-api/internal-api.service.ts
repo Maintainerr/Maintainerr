@@ -1,5 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SettingsService } from '../../../modules/settings/settings.service';
+import type { SettingsService as SettingsServiceType } from '../../../modules/settings/settings.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { InternalApi } from './helpers/internal-api.helper';
 
@@ -9,7 +10,7 @@ export class InternalApiService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsServiceType,
     private readonly logger: MaintainerrLogger,
   ) {}
 

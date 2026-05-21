@@ -4,6 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import axios, { AxiosError } from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsService } from '../../settings/settings.service';
+import type { SettingsService as SettingsServiceType } from '../../settings/settings.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
@@ -29,7 +30,7 @@ export class TvdbApiService extends ExternalApiService {
 
   constructor(
     @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsServiceType,
     protected readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TvdbApiService.name);
