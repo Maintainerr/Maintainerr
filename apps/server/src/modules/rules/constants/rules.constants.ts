@@ -8,6 +8,13 @@ import {
 
 export { Application, MediaType, RuleOperators, RulePossibility };
 
+// Number of per-item watch-history reads to run concurrently during rule
+// execution. Plex has no bulk watch-history endpoint, so these lookups are
+// fired in parallel batches instead of one-at-a-time (see feature #2936).
+// Kept conservative to avoid hammering the media server / spiking CPU the way
+// large Plex collection writes did; tune here if a server can take more.
+export const WATCH_HISTORY_CONCURRENCY = 10;
+
 export const enum ArrAction {
   DELETE,
   UNMONITOR,

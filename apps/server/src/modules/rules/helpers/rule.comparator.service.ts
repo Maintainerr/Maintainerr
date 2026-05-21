@@ -12,6 +12,7 @@ import {
   RuleOperators,
   RulePossibility,
   RuleType,
+  WATCH_HISTORY_CONCURRENCY,
 } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RuleDbDto } from '../dtos/ruleDb.dto';
@@ -203,30 +204,54 @@ export class RuleComparatorService {
       data = this.workerData;
     }
 
+    // Value resolution (firstVal/secondVal) is the slow part: each item may
+    // trigger a per-item Plex watch-history round-trip with no bulk endpoint
+    // (see feature #2936). Those getters are pure reads and touch no comparator
+    // state, so we resolve them up front in bounded parallel batches — the same
+    // chunk + Promise.all idiom used for Plex collection writes. The mutation
+    // pass below then stays strictly sequential and in the original backward
+    // order, preserving the index-based splice semantics exactly.
+    const firstVals: RuleValueType[] = new Array(data.length);
+    const secondVals: RuleValueType[] = new Array(data.length);
+    for (
+      let start = 0;
+      start < data.length;
+      start += WATCH_HISTORY_CONCURRENCY
+    ) {
+      this.abortSignal?.throwIfAborted();
+      const end = Math.min(start + WATCH_HISTORY_CONCURRENCY, data.length);
+      await Promise.all(
+        Array.from({ length: end - start }, (_, offset) => start + offset).map(
+          async (i) => {
+            const mediaItem = data[i];
+            firstVals[i] = await this.valueGetter.get(
+              rule.firstVal,
+              mediaItem,
+              ruleGroup,
+              this.plexDataType,
+              rule,
+            );
+            secondVals[i] = this.isUnaryRuleAction(rule.action)
+              ? null
+              : await this.getSecondValue(
+                  rule,
+                  mediaItem,
+                  ruleGroup,
+                  firstVals[i],
+                );
+          },
+        ),
+      );
+    }
+    this.abortSignal?.throwIfAborted();
+
     // loop media items
     for (let i = data.length - 1; i >= 0; i--) {
-      // fetch values
+      // read pre-resolved values
       const mediaItem = data[i];
       const mediaId = mediaItem.id;
-      firstVal = await this.valueGetter.get(
-        rule.firstVal,
-        mediaItem,
-        ruleGroup,
-        this.plexDataType,
-        rule,
-      );
-      this.abortSignal?.throwIfAborted();
-
-      secondVal = null;
-      if (!this.isUnaryRuleAction(rule.action)) {
-        secondVal = await this.getSecondValue(
-          rule,
-          mediaItem,
-          ruleGroup,
-          firstVal,
-        );
-        this.abortSignal?.throwIfAborted();
-      }
+      firstVal = firstVals[i];
+      secondVal = secondVals[i];
 
       const firstValTransient = firstVal === undefined;
       const secondValTransient =

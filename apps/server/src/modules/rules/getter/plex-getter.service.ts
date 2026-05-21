@@ -13,6 +13,7 @@ import {
   Application,
   Property,
   RuleConstants,
+  WATCH_HISTORY_CONCURRENCY,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { buildCollectionExcludeNames } from '../helpers/collection-exclude.helper';
@@ -32,6 +33,43 @@ export class PlexGetterService {
     this.plexProperties = ruleConstanst.applications.find(
       (el) => el.id === Application.PLEX,
     ).props;
+  }
+
+  // Resolve every episode's watch history across the given seasons, fetched in
+  // bounded parallel batches rather than one episode at a time. Plex has no
+  // bulk watch-history endpoint, so for shows with thousands of episodes the
+  // old sequential loop dominated rule runtime (see feature #2936). Rejections
+  // propagate so a failed lookup is never silently treated as "no views".
+  private async getEpisodeWatchHistories(
+    seasons: PlexMetadata[],
+  ): Promise<Awaited<ReturnType<PlexApiService['getWatchHistory']>>[]> {
+    const episodeKeys: string[] = [];
+    for (const season of seasons) {
+      const episodes = await this.plexApi.getChildrenMetadata(season.ratingKey);
+      episodeKeys.push(...episodes.map((episode) => episode.ratingKey));
+    }
+
+    const histories: Awaited<ReturnType<PlexApiService['getWatchHistory']>>[] =
+      new Array(episodeKeys.length);
+    for (
+      let start = 0;
+      start < episodeKeys.length;
+      start += WATCH_HISTORY_CONCURRENCY
+    ) {
+      const end = Math.min(
+        start + WATCH_HISTORY_CONCURRENCY,
+        episodeKeys.length,
+      );
+      const batch = await Promise.all(
+        episodeKeys
+          .slice(start, end)
+          .map((ratingKey) => this.plexApi.getWatchHistory(ratingKey)),
+      );
+      for (let offset = 0; offset < batch.length; offset++) {
+        histories[start + offset] = batch[offset];
+      }
+    }
+    return histories;
   }
 
   async get(
@@ -284,31 +322,20 @@ export class PlexGetterService {
             metadata.type !== 'season'
               ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
               : [metadata];
-          const allViewers = plexUsers.slice();
-          for (const season of seasons) {
-            const episodes = await this.plexApi.getChildrenMetadata(
-              season.ratingKey,
-            );
-            for (const episode of episodes) {
-              // Errors propagate to the outer catch — silently treating a
-              // failed lookup as "no viewers" would drop genuine viewers from
-              // `allViewers` and mark the show as unwatched-by-everyone.
-              const viewers = await this.plexApi.getWatchHistory(
-                episode.ratingKey,
-              );
 
-              const arrLength = allViewers.length - 1;
-              allViewers
-                .slice()
-                .reverse()
-                .forEach((el, idx) => {
-                  if (
-                    !viewers.find((viewEl) => el.plexId === viewEl.accountID)
-                  ) {
-                    allViewers.splice(arrLength - idx, 1);
-                  }
-                });
-            }
+          // Errors propagate to the outer catch — silently treating a failed
+          // lookup as "no viewers" would drop genuine viewers and mark the
+          // show as unwatched-by-everyone.
+          const episodeHistories = await this.getEpisodeWatchHistories(seasons);
+
+          // Keep only users present in every episode's viewer list — the set
+          // of users that have seen all episodes. Intersection order does not
+          // affect the result.
+          let allViewers = plexUsers.slice();
+          for (const viewers of episodeHistories) {
+            allViewers = allViewers.filter((el) =>
+              viewers.find((viewEl) => el.plexId === viewEl.accountID),
+            );
           }
 
           if (allViewers && allViewers.length > 0) {
@@ -368,56 +395,32 @@ export class PlexGetterService {
           return metadata.leafCount ? +metadata.leafCount : 0;
         }
         case 'sw_viewedEpisodes': {
-          let viewCount = 0;
           const seasons =
             metadata.type !== 'season'
               ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
               : [metadata];
-          for (const season of seasons) {
-            const episodes = await this.plexApi.getChildrenMetadata(
-              season.ratingKey,
-            );
-            for (const episode of episodes) {
-              const views = await this.plexApi.getWatchHistory(
-                episode.ratingKey,
-              );
-              if (views?.length > 0) {
-                viewCount++;
-              }
-            }
-          }
-          return viewCount;
+          const episodeHistories = await this.getEpisodeWatchHistories(seasons);
+          return episodeHistories.filter((views) => views?.length > 0).length;
         }
         case 'sw_amountOfViews': {
-          let viewCount = 0;
-
           // for episodes
           if (metadata.type === 'episode') {
             const views = await this.plexApi.getWatchHistory(
               metadata.ratingKey,
             );
-            viewCount =
-              views?.length > 0 ? viewCount + views.length : viewCount;
-          } else {
-            // for seasons & shows
-            const seasons =
-              metadata.type !== 'season'
-                ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
-                : [metadata];
-            for (const season of seasons) {
-              const episodes = await this.plexApi.getChildrenMetadata(
-                season.ratingKey,
-              );
-              for (const episode of episodes) {
-                const views = await this.plexApi.getWatchHistory(
-                  episode.ratingKey,
-                );
-                viewCount =
-                  views?.length > 0 ? viewCount + views.length : viewCount;
-              }
-            }
+            return views?.length > 0 ? views.length : 0;
           }
-          return viewCount;
+
+          // for seasons & shows
+          const seasons =
+            metadata.type !== 'season'
+              ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
+              : [metadata];
+          const episodeHistories = await this.getEpisodeWatchHistories(seasons);
+          return episodeHistories.reduce(
+            (total, views) => total + (views?.length > 0 ? views.length : 0),
+            0,
+          );
         }
         case 'sw_lastEpisodeAddedAt': {
           const seasons =
