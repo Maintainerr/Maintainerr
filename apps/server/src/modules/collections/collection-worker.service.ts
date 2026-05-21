@@ -13,7 +13,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionMediaHandledDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsStoreService } from '../settings/settings-store.service';
 import {
   ExecutionLockService,
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
@@ -38,7 +38,7 @@ export class CollectionWorkerService extends TaskBase {
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
     private readonly seerrApi: SeerrApiService,
     protected readonly taskService: TasksService,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsStoreService,
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionHandler: CollectionHandler,
     private readonly collectionsService: CollectionsService,

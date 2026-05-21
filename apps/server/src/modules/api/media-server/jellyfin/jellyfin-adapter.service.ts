@@ -43,13 +43,12 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../../settings/settings.service';
+import { SettingsStoreService } from '../../../settings/settings-store.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import {
   isBlankMediaServerId,
@@ -119,8 +118,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   private readonly cache: Cache;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsServiceType,
+    private readonly settingsService: SettingsStoreService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.cache = cacheManager.getCache('jellyfin');

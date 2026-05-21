@@ -1,5 +1,5 @@
 import { Mocked, TestBed } from '@suites/unit';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import { StreamystatsApi } from './helpers/streamystats-api.helper';
 import { StreamystatsApiService } from './streamystats-api.service';
 
@@ -15,7 +15,7 @@ jest.mock('./helpers/streamystats-api.helper', () => ({
 
 describe('StreamystatsApiService', () => {
   let service: StreamystatsApiService;
-  let settings: Mocked<SettingsService>;
+  let settings: Mocked<SettingsStoreService>;
 
   beforeEach(async () => {
     apiMock.get.mockReset();
@@ -28,8 +28,8 @@ describe('StreamystatsApiService', () => {
 
     service = unit;
     settings = unitRef.get(
-      SettingsService,
-    ) as unknown as Mocked<SettingsService>;
+      SettingsStoreService,
+    ) as unknown as Mocked<SettingsStoreService>;
   });
 
   describe('init', () => {

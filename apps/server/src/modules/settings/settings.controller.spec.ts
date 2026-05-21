@@ -12,6 +12,7 @@ import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
+import { SettingsStoreService } from './settings-store.service';
 
 describe('SettingsController', () => {
   let controller: SettingsController;
@@ -28,6 +29,10 @@ describe('SettingsController', () => {
     testPlexAuthToken: jest.fn(),
     removeJellyfinSettings: jest.fn(),
   } as unknown as jest.Mocked<SettingsService>;
+
+  const settingsStore = {
+    media_server_type: undefined,
+  } as unknown as jest.Mocked<SettingsStoreService>;
 
   const mediaServerSwitchService = {
     previewSwitch: jest.fn(),
@@ -64,6 +69,7 @@ describe('SettingsController', () => {
     jest.clearAllMocks();
     controller = new SettingsController(
       settingsService,
+      settingsStore,
       metadataSettingsService,
       mediaServerSwitchService,
       databaseDownloadService,

@@ -12,7 +12,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsStoreService } from '../settings/settings-store.service';
 import { CollectionPosterService } from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
@@ -31,7 +31,7 @@ describe('CollectionsService', () => {
   let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
-  let settingsService: Mocked<SettingsService>;
+  let settingsService: Mocked<SettingsStoreService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
 
   beforeEach(async () => {
@@ -48,7 +48,7 @@ describe('CollectionsService', () => {
     ruleGroupRepo = unitRef.get(getRepositoryToken(RuleGroup) as string);
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
-    settingsService = unitRef.get(SettingsService);
+    settingsService = unitRef.get(SettingsStoreService);
     collectionPosterService = unitRef.get(CollectionPosterService);
     metadataService.resolveIds.mockResolvedValue({
       tmdb: 1,

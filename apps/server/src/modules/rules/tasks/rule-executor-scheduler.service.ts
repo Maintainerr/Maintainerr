@@ -9,7 +9,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
 import { RulesService } from '../rules.service';
@@ -30,7 +30,7 @@ export class RuleExecutorSchedulerService
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly rulesService: RulesService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsStoreService,
     private readonly queueManager: RuleExecutorJobManagerService,
     private readonly logger: MaintainerrLogger,
   ) {

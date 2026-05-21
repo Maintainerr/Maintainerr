@@ -7,7 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsStoreService } from '../settings/settings-store.service';
 import {
   MetadataLookupPolicy,
   metadataLookupPoliciesByService,
@@ -33,7 +33,7 @@ export class MetadataService {
     @Inject(MetadataProviders)
     private readonly providers: IMetadataProvider[],
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsStoreService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(MetadataService.name);

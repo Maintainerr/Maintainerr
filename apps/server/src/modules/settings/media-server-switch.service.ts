@@ -25,9 +25,7 @@ import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Settings } from './entities/settings.entities';
 import { RuleMigrationService } from './rule-migration.service';
-import type { RuleMigrationService as RuleMigrationServiceType } from './rule-migration.service';
-import { SettingsService } from './settings.service';
-import type { SettingsService as SettingsServiceType } from './settings.service';
+import { SettingsStoreService } from './settings-store.service';
 
 interface MediaServerDataCounts {
   collections: number;
@@ -59,8 +57,7 @@ export class MediaServerSwitchService {
   }
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsServiceType,
+    private readonly settingsService: SettingsStoreService,
     @Inject(forwardRef(() => MediaServerFactory))
     private readonly mediaServerFactory: MediaServerFactoryType,
     @InjectRepository(Collection)
@@ -72,8 +69,7 @@ export class MediaServerSwitchService {
     @InjectRepository(Exclusion)
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
-    @Inject(forwardRef(() => RuleMigrationService))
-    private readonly ruleMigrationService: RuleMigrationServiceType,
+    private readonly ruleMigrationService: RuleMigrationService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(MediaServerSwitchService.name);

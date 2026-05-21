@@ -24,6 +24,7 @@ import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
+import { SettingsStoreService } from './settings-store.service';
 
 @Global()
 @Module({
@@ -50,13 +51,19 @@ import { SettingsService } from './settings.service';
     ]),
   ],
   providers: [
+    SettingsStoreService,
     SettingsService,
     MetadataSettingsService,
     RuleMigrationService,
     MediaServerSwitchService,
     DatabaseDownloadService,
   ],
-  exports: [SettingsService, RuleMigrationService, MediaServerSwitchService],
+  exports: [
+    SettingsStoreService,
+    SettingsService,
+    RuleMigrationService,
+    MediaServerSwitchService,
+  ],
   controllers: [SettingsController],
 })
 export class SettingsModule {}

@@ -4,7 +4,7 @@ import {
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import { PlexConnection } from './interfaces/server.interface';
 import { PlexApiService } from './plex-api.service';
 
@@ -93,7 +93,7 @@ describe('PlexApiService.getMetadata', () => {
 
     service = unit;
     settingsService = unitRef.get(
-      SettingsService,
+      SettingsStoreService,
     ) as unknown as PlexApiSettingsStub;
     logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
@@ -386,7 +386,7 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
 
     service = unit;
     settingsService = unitRef.get(
-      SettingsService,
+      SettingsStoreService,
     ) as unknown as PlexApiSettingsStub;
     logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
@@ -494,7 +494,7 @@ describe('PlexApiService.initialize', () => {
 
     service = unit;
     settingsService = unitRef.get(
-      SettingsService,
+      SettingsStoreService,
     ) as unknown as PlexApiSettingsStub;
     logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);

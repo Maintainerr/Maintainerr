@@ -9,7 +9,7 @@ import {
   NotFoundException,
   Param,
 } from '@nestjs/common';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import { StreamystatsApiService } from './streamystats-api.service';
 
 interface StreamystatsInfoResponse {
@@ -21,7 +21,7 @@ interface StreamystatsInfoResponse {
 export class StreamystatsApiController {
   constructor(
     private readonly streamystatsApiService: StreamystatsApiService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsStoreService,
   ) {}
 
   @Get('/info')

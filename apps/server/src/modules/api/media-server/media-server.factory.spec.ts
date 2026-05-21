@@ -3,7 +3,7 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { MediaServerFactory } from './media-server.factory';
@@ -19,7 +19,7 @@ describe('MediaServerFactory', () => {
 
   const settingsService = {
     getSettings: jest.fn(),
-  } as unknown as jest.Mocked<SettingsService>;
+  } as unknown as jest.Mocked<SettingsStoreService>;
 
   const mediaServerSwitchService = {
     isSwitching: jest.fn(),

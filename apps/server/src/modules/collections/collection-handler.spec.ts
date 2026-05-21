@@ -12,7 +12,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MetadataService } from '../metadata/metadata.service';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsStoreService } from '../settings/settings-store.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { ServarrAction } from './interfaces/collection.interface';
@@ -25,7 +25,7 @@ describe('CollectionHandler', () => {
   let radarrActionHandler: Mocked<RadarrActionHandler>;
   let sonarrActionHandler: Mocked<SonarrActionHandler>;
   let seerrApi: Mocked<SeerrApiService>;
-  let settings: Mocked<SettingsService>;
+  let settings: Mocked<SettingsStoreService>;
   let metadataService: Mocked<MetadataService>;
 
   beforeEach(async () => {
@@ -38,7 +38,7 @@ describe('CollectionHandler', () => {
     radarrActionHandler = unitRef.get(RadarrActionHandler);
     sonarrActionHandler = unitRef.get(SonarrActionHandler);
     seerrApi = unitRef.get(SeerrApiService);
-    settings = unitRef.get(SettingsService);
+    settings = unitRef.get(SettingsStoreService);
     metadataService = unitRef.get(MetadataService);
 
     metadataService.resolveIdsForService.mockResolvedValue(undefined);

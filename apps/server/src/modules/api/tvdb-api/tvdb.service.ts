@@ -1,10 +1,9 @@
 import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import axios, { AxiosError } from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
@@ -29,8 +28,7 @@ export class TvdbApiService extends ExternalApiService {
   private refreshPromise: Promise<boolean> | undefined;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsServiceType,
+    private readonly settings: SettingsStoreService,
     protected readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TvdbApiService.name);

@@ -32,7 +32,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsStoreService } from '../settings/settings-store.service';
 import { CollectionPosterService } from './collection-poster.service';
 import { Collection } from './entities/collection.entities';
 import {
@@ -100,7 +100,7 @@ export class CollectionsService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsStoreService,
     private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionPosterService: CollectionPosterService,

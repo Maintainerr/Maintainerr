@@ -8,7 +8,7 @@ import { Mocked, TestBed } from '@suites/unit';
 import { AxiosError } from 'axios';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
+import { SettingsStoreService } from '../../../settings/settings-store.service';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
 import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
 
@@ -193,7 +193,7 @@ jest.mock('../../lib/cache', () => ({
 
 describe('JellyfinAdapterService', () => {
   let service: JellyfinAdapterService;
-  let settingsService: Mocked<SettingsService>;
+  let settingsService: Mocked<SettingsStoreService>;
   let logger: Mocked<MaintainerrLogger>;
 
   const mockSettings = {
@@ -247,7 +247,7 @@ describe('JellyfinAdapterService', () => {
     ).compile();
 
     service = unit;
-    settingsService = unitRef.get(SettingsService);
+    settingsService = unitRef.get(SettingsStoreService);
     logger = unitRef.get(MaintainerrLogger);
   });
 
@@ -283,7 +283,7 @@ describe('JellyfinAdapterService', () => {
     it('should initialize successfully with valid settings', async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -309,7 +309,9 @@ describe('JellyfinAdapterService', () => {
 
     it('should throw error when settings are missing', async () => {
       settingsService.getSettings.mockResolvedValue(
-        null as unknown as Awaited<ReturnType<SettingsService['getSettings']>>,
+        null as unknown as Awaited<
+          ReturnType<SettingsStoreService['getSettings']>
+        >,
       );
       await expect(service.initialize()).rejects.toThrow(
         'Settings not available',
@@ -320,7 +322,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_url: undefined,
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await expect(service.initialize()).rejects.toThrow(
         'Jellyfin settings not configured',
       );
@@ -330,7 +332,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_api_key: undefined,
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await expect(service.initialize()).rejects.toThrow(
         'Jellyfin settings not configured',
       );
@@ -339,7 +341,7 @@ describe('JellyfinAdapterService', () => {
     it('should uninitialize correctly', async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -374,7 +376,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await service.initialize();
     });
 
@@ -448,7 +450,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: null,
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
 
       await service.initialize();
       settingsService.getSettings.mockClear();
@@ -528,7 +530,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await service.initialize();
       jellyfinApiMocks.getItems.mockResolvedValue({
         data: { Items: [], TotalRecordCount: 0 },
@@ -590,7 +592,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -666,7 +668,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await service.initialize();
     });
 
@@ -732,7 +734,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -785,7 +787,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -946,7 +948,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -1119,7 +1121,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -1186,7 +1188,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -1275,7 +1277,7 @@ describe('JellyfinAdapterService', () => {
     beforeEach(async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();
@@ -1614,7 +1616,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await service.initialize();
 
       jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
@@ -1660,7 +1662,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await service.initialize();
 
       jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
@@ -1701,7 +1703,7 @@ describe('JellyfinAdapterService', () => {
       settingsService.getSettings.mockResolvedValue({
         ...mockSettings,
         jellyfin_user_id: 'user-1',
-      } as unknown as Awaited<ReturnType<SettingsService['getSettings']>>);
+      } as unknown as Awaited<ReturnType<SettingsStoreService['getSettings']>>);
       await service.initialize();
 
       jest.spyOn(service, 'getCollectionChildren').mockResolvedValue([
@@ -1944,7 +1946,7 @@ describe('JellyfinAdapterService', () => {
     const initializeAdapter = async () => {
       settingsService.getSettings.mockResolvedValue(
         mockSettings as unknown as Awaited<
-          ReturnType<SettingsService['getSettings']>
+          ReturnType<SettingsStoreService['getSettings']>
         >,
       );
       await service.initialize();

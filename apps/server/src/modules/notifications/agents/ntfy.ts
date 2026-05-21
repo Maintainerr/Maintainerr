@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsStoreService } from '../../settings/settings-store.service';
 import { Notification } from '../entities/notification.entities';
 import {
   NotificationAgentKey,
@@ -17,7 +17,7 @@ interface NtfyPayload {
 
 class NtfyAgent implements NotificationAgent {
   public constructor(
-    private readonly appSettings: SettingsService,
+    private readonly appSettings: SettingsStoreService,
     private readonly settings: NotificationAgentNtfy,
     private readonly logger: MaintainerrLogger,
     readonly notification: Notification,

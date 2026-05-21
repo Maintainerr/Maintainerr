@@ -58,6 +58,7 @@ import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataProvider } from './metadata-provider';
 import { MetadataSettingsService } from './metadata-settings.service';
+import { SettingsStoreService } from './settings-store.service';
 import { SettingsService } from './settings.service';
 
 @ApiTags('settings')
@@ -65,6 +66,7 @@ import { SettingsService } from './settings.service';
 export class SettingsController {
   constructor(
     private readonly settingsService: SettingsService,
+    private readonly settingsStore: SettingsStoreService,
     private readonly metadataSettingsService: MetadataSettingsService,
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly databaseDownloadService: DatabaseDownloadService,
@@ -266,7 +268,7 @@ export class SettingsController {
   }
 
   private assertJellyfinActive(): void {
-    if (this.settingsService.media_server_type !== MediaServerType.JELLYFIN) {
+    if (this.settingsStore.media_server_type !== MediaServerType.JELLYFIN) {
       throw new ForbiddenException(
         'Streamystats is only available when Jellyfin is the active media server.',
       );

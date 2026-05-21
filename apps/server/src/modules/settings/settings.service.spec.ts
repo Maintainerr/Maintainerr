@@ -1,5 +1,4 @@
 import { MediaServerType } from '@maintainerr/contracts';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TestBed, type Mocked } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
@@ -10,13 +9,15 @@ import { ServarrService } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
+import { RadarrSettings } from './entities/radarr_settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 import { SettingsService } from './settings.service';
+import { SettingsStoreService } from './settings-store.service';
 
 describe('SettingsService', () => {
   let service: SettingsService;
+  let settingsStore: Mocked<SettingsStoreService>;
   let settingsRepo: Mocked<Repository<Settings>>;
   let mediaServerFactory: Mocked<MediaServerFactory>;
   let plexApi: Mocked<PlexApiService>;
@@ -24,7 +25,6 @@ describe('SettingsService', () => {
   let tautulli: Mocked<TautulliApiService>;
   let streamystats: Mocked<StreamystatsApiService>;
   let internalApi: Mocked<InternalApiService>;
-  let eventEmitter: Mocked<EventEmitter2>;
 
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
     Object.assign(new Settings(), {
@@ -53,6 +53,7 @@ describe('SettingsService', () => {
     const { unit, unitRef } = await TestBed.solitary(SettingsService).compile();
 
     service = unit;
+    settingsStore = unitRef.get(SettingsStoreService);
     settingsRepo = unitRef.get('SettingsRepository');
     unitRef.get<Mocked<Repository<RadarrSettings>>>('RadarrSettingsRepository');
     unitRef.get<Mocked<Repository<SonarrSettings>>>('SonarrSettingsRepository');
@@ -63,13 +64,21 @@ describe('SettingsService', () => {
     tautulli = unitRef.get(TautulliApiService);
     streamystats = unitRef.get(StreamystatsApiService);
     internalApi = unitRef.get(InternalApiService);
-    eventEmitter = unitRef.get(EventEmitter2);
     unitRef.get(MaintainerrLogger);
 
     settingsRepo.findOne.mockResolvedValue(createSettings());
     settingsRepo.save.mockImplementation(
       async (settings) => settings as Settings,
     );
+    settingsStore.saveSettings.mockImplementation(
+      async (settings) => settings as Settings,
+    );
+    settingsStore.init.mockResolvedValue(undefined);
+    settingsStore.cronIsValid.mockImplementation((schedule) =>
+      Boolean(schedule),
+    );
+    // SettingsService delegates field reads to the store snapshot.
+    settingsStore.plex_auth_token = 'plex-token';
     mediaServerFactory.initialize.mockResolvedValue(undefined);
     plexApi.initialize.mockResolvedValue(undefined);
     plexApi.validateAuthToken.mockResolvedValue(true);
@@ -78,7 +87,6 @@ describe('SettingsService', () => {
     tautulli.init.mockImplementation();
     streamystats.init.mockImplementation();
     internalApi.init.mockImplementation();
-    eventEmitter.emit.mockImplementation();
   });
 
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
@@ -98,7 +106,7 @@ describe('SettingsService', () => {
       code: 0,
       message: 'Authenticate with Plex before saving Plex server settings.',
     });
-    expect(settingsRepo.save).not.toHaveBeenCalled();
+    expect(settingsStore.saveSettings).not.toHaveBeenCalled();
   });
 
   it('still allows unrelated settings updates when Plex server settings are unchanged', async () => {
@@ -107,7 +115,7 @@ describe('SettingsService', () => {
     );
 
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
-    expect(settingsRepo.save).toHaveBeenCalledTimes(1);
+    expect(settingsStore.saveSettings).toHaveBeenCalledTimes(1);
     expect(mediaServerFactory.initialize).toHaveBeenCalledTimes(1);
   });
 
@@ -169,7 +177,7 @@ describe('SettingsService', () => {
     );
 
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
-    expect(settingsRepo.save).toHaveBeenCalledTimes(1);
+    expect(settingsStore.saveSettings).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes Plex hostname and derives ssl before saving', async () => {
@@ -181,7 +189,7 @@ describe('SettingsService', () => {
       }),
     );
 
-    expect(settingsRepo.save).toHaveBeenCalledWith(
+    expect(settingsStore.saveSettings).toHaveBeenCalledWith(
       expect.objectContaining({
         plex_hostname: 'plex.local',
         plex_port: 32400,
@@ -191,7 +199,7 @@ describe('SettingsService', () => {
   });
 
   it('returns a clear Plex auth message before calling the Plex API test endpoint', async () => {
-    service.plex_auth_token = null;
+    settingsStore.plex_auth_token = null;
 
     const response = await service.testPlex();
 
@@ -204,7 +212,7 @@ describe('SettingsService', () => {
   });
 
   it('validates stored Plex auth tokens without requiring server settings', async () => {
-    service.plex_auth_token = 'masked-plex-token';
+    settingsStore.plex_auth_token = 'masked-plex-token';
 
     const response = await service.testPlexAuthToken();
 
@@ -214,7 +222,7 @@ describe('SettingsService', () => {
   });
 
   it('returns a clear message when no Plex auth token exists for auth validation', async () => {
-    service.plex_auth_token = null;
+    settingsStore.plex_auth_token = null;
 
     const response = await service.testPlexAuthToken();
 
@@ -264,7 +272,7 @@ describe('SettingsService', () => {
     const result = await service.removeJellyfinSettings();
 
     expect(result.code).toBe(1);
-    const saved = settingsRepo.save.mock.calls.at(-1)?.[0] as Settings;
+    const saved = settingsStore.saveSettings.mock.calls.at(-1)?.[0] as Settings;
     expect(saved.streamystats_url).toBeNull();
     expect(streamystats.init).toHaveBeenCalled();
   });

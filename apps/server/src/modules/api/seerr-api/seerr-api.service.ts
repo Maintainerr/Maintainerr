@@ -1,7 +1,6 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { SettingsService } from '../../../modules/settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../../modules/settings/settings.service';
+import { Injectable } from '@nestjs/common';
+import { SettingsStoreService } from '../../../modules/settings/settings-store.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
@@ -166,8 +165,7 @@ export class SeerrApiService {
   api: SeerrApi;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsServiceType,
+    private readonly settings: SettingsStoreService,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {

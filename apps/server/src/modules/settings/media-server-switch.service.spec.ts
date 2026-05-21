@@ -11,13 +11,13 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { RuleMigrationService } from './rule-migration.service';
-import { SettingsService } from './settings.service';
+import { SettingsStoreService } from './settings-store.service';
 
 const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
 
 describe('MediaServerSwitchService', () => {
   let service: MediaServerSwitchService;
-  let settingsService: Mocked<SettingsService>;
+  let settingsStore: Mocked<SettingsStoreService>;
   let ruleMigrationService: Mocked<RuleMigrationService>;
   let dataSource: Mocked<DataSource>;
   let collectionRepo: Mocked<Repository<Collection>>;
@@ -31,7 +31,7 @@ describe('MediaServerSwitchService', () => {
     ).compile();
 
     service = unit;
-    settingsService = unitRef.get(SettingsService);
+    settingsStore = unitRef.get(SettingsStoreService);
     ruleMigrationService = unitRef.get(RuleMigrationService);
     dataSource = unitRef.get(DataSource);
     collectionRepo = unitRef.get('CollectionRepository');
@@ -53,10 +53,10 @@ describe('MediaServerSwitchService', () => {
   });
 
   const setupCommonPreviewMocks = () => {
-    settingsService.getRadarrSettingsCount.mockResolvedValue(0);
-    settingsService.getSonarrSettingsCount.mockResolvedValue(0);
-    settingsService.seerrConfigured.mockReturnValue(false);
-    settingsService.tautulliConfigured.mockReturnValue(false);
+    settingsStore.getRadarrSettingsCount.mockResolvedValue(0);
+    settingsStore.getSonarrSettingsCount.mockResolvedValue(0);
+    settingsStore.seerrConfigured.mockReturnValue(false);
+    settingsStore.tautulliConfigured.mockReturnValue(false);
 
     collectionRepo.count.mockResolvedValue(3);
     collectionMediaRepo.count.mockResolvedValue(10);
@@ -67,7 +67,7 @@ describe('MediaServerSwitchService', () => {
   describe('previewSwitch', () => {
     it('should not call rule migration preview when current server type is null', async () => {
       setupCommonPreviewMocks();
-      settingsService.getMediaServerType.mockReturnValue(null);
+      settingsStore.getMediaServerType.mockReturnValue(null);
 
       const result = await service.previewSwitch(MediaServerType.JELLYFIN);
 
@@ -78,7 +78,7 @@ describe('MediaServerSwitchService', () => {
 
     it('should call rule migration preview when current server type exists', async () => {
       setupCommonPreviewMocks();
-      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+      settingsStore.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
       ruleMigrationService.previewMigration.mockResolvedValue({
         canMigrate: true,
         totalGroups: 1,
@@ -130,8 +130,8 @@ describe('MediaServerSwitchService', () => {
       const queryRunner = createQueryRunnerMock();
       dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
 
-      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
-      settingsService.init.mockResolvedValue(undefined);
+      settingsStore.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+      settingsStore.init.mockResolvedValue(undefined);
 
       collectionRepo.count.mockResolvedValue(1);
       collectionMediaRepo.count.mockResolvedValue(2);
@@ -165,7 +165,7 @@ describe('MediaServerSwitchService', () => {
         queryRunner.manager,
       );
 
-      expect(settingsService.init).toHaveBeenCalled();
+      expect(settingsStore.init).toHaveBeenCalled();
       expect(
         (
           service as unknown as {
@@ -182,7 +182,7 @@ describe('MediaServerSwitchService', () => {
       const queryRunner = createQueryRunnerMock();
       dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
 
-      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+      settingsStore.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
       collectionRepo.count.mockResolvedValue(1);
       collectionMediaRepo.count.mockResolvedValue(2);
       collectionLogRepo.count.mockResolvedValue(3);
@@ -201,7 +201,7 @@ describe('MediaServerSwitchService', () => {
       expect(queryRunner.startTransaction).toHaveBeenCalled();
       expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
-      expect(settingsService.init).not.toHaveBeenCalled();
+      expect(settingsStore.init).not.toHaveBeenCalled();
       expect(
         (
           service as unknown as {
@@ -215,7 +215,7 @@ describe('MediaServerSwitchService', () => {
     });
 
     it('should return NOK when target server matches current server', async () => {
-      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+      settingsStore.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
 
       const result = await service.executeSwitch({
         targetServerType: MediaServerType.PLEX,
@@ -239,8 +239,8 @@ describe('MediaServerSwitchService', () => {
       fs.writeFileSync(path.join(STORAGE_DIR, '3.jpg'), 'poster-3');
       fs.writeFileSync(path.join(STORAGE_DIR, '7.jpg'), 'poster-7');
 
-      settingsService.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
-      settingsService.init.mockResolvedValue(undefined);
+      settingsStore.getMediaServerType.mockReturnValue(MediaServerType.PLEX);
+      settingsStore.init.mockResolvedValue(undefined);
       collectionRepo.count.mockResolvedValue(2);
       collectionMediaRepo.count.mockResolvedValue(0);
       collectionLogRepo.count.mockResolvedValue(0);
@@ -439,8 +439,8 @@ describe('MediaServerSwitchService', () => {
         });
         dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
 
-        settingsService.getMediaServerType.mockReturnValue(from);
-        settingsService.init.mockResolvedValue(undefined);
+        settingsStore.getMediaServerType.mockReturnValue(from);
+        settingsStore.init.mockResolvedValue(undefined);
         collectionRepo.count.mockResolvedValue(0);
         collectionMediaRepo.count.mockResolvedValue(0);
         collectionLogRepo.count.mockResolvedValue(0);

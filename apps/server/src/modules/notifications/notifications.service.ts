@@ -29,7 +29,7 @@ import {
   MaintainerrLoggerFactory,
 } from '../logging/logs.service';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsStoreService } from '../settings/settings-store.service';
 import type { NotificationAgent, NotificationPayload } from './agents/agent';
 import DiscordAgent from './agents/discord';
 import EmailAgent from './agents/email';
@@ -84,7 +84,7 @@ export class NotificationService implements OnModuleInit {
     @InjectRepository(RuleGroup)
     private readonly ruleGroupRepo: Repository<RuleGroup>,
     private readonly connection: DataSource,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsStoreService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
