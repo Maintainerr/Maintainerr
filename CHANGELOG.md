@@ -1,3 +1,40 @@
+## Highlights
+- Added Emby as a third supported media server, alongside Plex and Jellyfin (#2911).
+- Introduced Jellyfin-only Streamystats integration, including a new settings tab and per-user stats panel (#2923).
+- Fixed Emby library size computation and collection metadata updates to follow documented API behavior (#2924).
+
+## Breaking Changes
+- None.
+
+## Features
+- Added Emby as a third supported media server (#2911).
+- Introduced Jellyfin-only Streamystats integration, including a new settings tab and per-user stats panel (#2923).
+
+## Fixes
+- Fixed Emby library size computation and collection metadata updates to follow documented API behavior (#2924).
+- Resolved transitive security vulnerabilities in dependencies.
+- Fixed Emby library size computation to include MediaSources field.
+- Prevented stored Jellyfin API key from being sent during Streamystats connection tests (#2925).
+- Fixed Emby login error styling.
+- Fixed Emby icon placement to align with existing UI logo patterns (#2924).
+- Fixed overlays to keep ellipse anchored during drag and resize (#2938).
+- Fixed settings forms to sync via react-hook-form values, resolving render loop issues.
+
+## Performance
+- None.
+
+## Database migrations
+- Added support for Emby by introducing new columns to the `settings` table: `emby_url`, `emby_api_key`, `emby_user_id`, and `emby_server_name`.
+- Added support for Streamystats by introducing a new column `streamystats_url` to the `settings` table.
+
+## Internal
+- Replaced partial-cast query mocks in `CollectionDetailPage` tests with typed helpers (#2914).
+- Documented GitHub CI workflow commands, including multi-architecture Docker build targets (#2912).
+- Improved CI documentation drift scanner to include documentation-labeled items.
+
+## Dependencies
+- Updated 29 dependencies, including @tanstack/react-query, @vitejs/plugin-react, vitest, react-router-dom, and tar.
+
 ## Fixes
 - Fixed an issue in Sonarr where the "Unmonitor and delete season + delete show if empty" action failed to delete the now-empty show after removing a season's files (#2897).
 
