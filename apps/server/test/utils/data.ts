@@ -120,6 +120,7 @@ export const createCollectionMedia = (
     includedByRule: true,
     manualMembershipSource:
       null as CollectionMediaManualMembershipSource | null,
+    ruleEvaluationFailed: false,
     mediaServerId: faker.number.int().toString(),
     tmdbId: faker.number.int(),
     sizeBytes: null,

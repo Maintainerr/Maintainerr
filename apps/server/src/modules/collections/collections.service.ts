@@ -162,6 +162,32 @@ export class CollectionsService {
     });
   }
 
+  async setCollectionMediaRuleEvaluationFailed(
+    collectionId: number,
+    mediaServerIds: string[],
+    ruleEvaluationFailed: boolean,
+  ): Promise<void> {
+    if (mediaServerIds.length === 0) {
+      return;
+    }
+
+    try {
+      await this.CollectionMediaRepo.update(
+        {
+          collectionId,
+          mediaServerId: In(mediaServerIds),
+        },
+        { ruleEvaluationFailed },
+      );
+    } catch (error) {
+      this.logger.warn(
+        'Failed to update collection media rule evaluation state',
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
   public async getCollectionsByMediaServerId(
     mediaServerId: string,
   ): Promise<Collection[]> {
@@ -2571,6 +2597,7 @@ export class CollectionsService {
         image_path: artwork.imagePath,
         includedByRule: membership.includedByRule,
         manualMembershipSource: membership.manualMembershipSource,
+        ruleEvaluationFailed: false,
       }),
     );
 

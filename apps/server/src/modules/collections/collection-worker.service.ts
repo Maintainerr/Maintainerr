@@ -122,6 +122,7 @@ export class CollectionWorkerService extends TaskBase {
           where: {
             collectionId: collection.id,
             addDate: LessThanOrEqual(dangerDate),
+            ruleEvaluationFailed: false,
           },
         });
 

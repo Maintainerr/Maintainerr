@@ -124,6 +124,12 @@ describe('CollectionWorkerService', () => {
     await collectionWorkerService.execute();
 
     expect(executionLock.acquire).toHaveBeenCalled();
+    expect(collectionMediaRepository.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        collectionId: collection.id,
+        ruleEvaluationFailed: false,
+      }),
+    });
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
   });

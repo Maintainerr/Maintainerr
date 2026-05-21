@@ -51,8 +51,14 @@ describe('RuleExecutorService', () => {
       getCollectionMedia: jest.fn().mockResolvedValue([
         {
           mediaServerId: 'm1',
+          isManual: false,
+          includedByRule: true,
+          manualMembershipSource: null,
         },
       ]),
+      setCollectionMediaRuleEvaluationFailed: jest
+        .fn()
+        .mockResolvedValue(undefined),
       addToCollection: jest.fn().mockImplementation(async (_id, items) => {
         return {
           id: 1,
@@ -1414,11 +1420,48 @@ describe('RuleExecutorService', () => {
     expect(
       collectionService.removeFromCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
+    expect(
+      collectionService.setCollectionMediaRuleEvaluationFailed,
+    ).toHaveBeenCalledWith(1, ['m-transient'], true);
     expect(logger.debug).toHaveBeenCalledWith(
       expect.stringContaining(
         "Skipped rule-driven removal for 1 media item in 'Flap test'",
       ),
     );
+  });
+
+  it('clears transient rule evaluation flags when a preserved item matches again', async () => {
+    const { service, collectionService } = createService(MediaServerType.PLEX);
+
+    const collection = {
+      id: 1,
+      title: 'Recovered data',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      {
+        mediaServerId: 'm-recovered',
+        includedByRule: true,
+        isManual: false,
+        manualMembershipSource: null,
+        ruleEvaluationFailed: true,
+      },
+    ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm-recovered' }];
+    (service as any).statisticsData = [];
+    (service as any).transientFailureMediaIds = new Set<string>();
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(
+      collectionService.setCollectionMediaRuleEvaluationFailed,
+    ).toHaveBeenCalledWith(1, ['m-recovered'], false);
   });
 
   it('still removes items that dropped out for non-transient reasons', async () => {
