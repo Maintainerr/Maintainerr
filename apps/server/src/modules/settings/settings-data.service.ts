@@ -35,11 +35,11 @@ type PlexConnectionSettingsUpdate = Partial<
  * This service hydrates the persisted settings into a synchronously-readable
  * in-memory snapshot and exposes the pure read helpers used across the app. It
  * deliberately injects ZERO other services (only repositories + the logger),
- * which keeps it free of circular dependencies. SettingsService coordinates
+ * which keeps it free of circular dependencies. SettingsOperationsService coordinates
  * test/save/reinit flows on top of this store and delegates its read API here.
  */
 @Injectable()
-export class SettingsStoreService implements SettingDto {
+export class SettingsDataService implements SettingDto {
   id: number;
 
   clientId: string;
@@ -115,7 +115,7 @@ export class SettingsStoreService implements SettingDto {
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
-    logger.setContext(SettingsStoreService.name);
+    logger.setContext(SettingsDataService.name);
   }
 
   public async init() {
@@ -379,7 +379,7 @@ export class SettingsStoreService implements SettingDto {
   /**
    * Persist a full settings object and emit the Settings_Updated event.
    *
-   * Low-level persistence used by SettingsService's coordination methods. It
+   * Low-level persistence used by SettingsOperationsService's coordination methods. It
    * does not re-hydrate the in-memory snapshot; callers that need the snapshot
    * refreshed call init() afterwards.
    */

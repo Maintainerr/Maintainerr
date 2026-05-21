@@ -11,13 +11,13 @@ import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsController } from './settings.controller';
-import { SettingsService } from './settings.service';
-import { SettingsStoreService } from './settings-store.service';
+import { SettingsOperationsService } from './settings-operations.service';
+import { SettingsDataService } from './settings-data.service';
 
 describe('SettingsController', () => {
   let controller: SettingsController;
 
-  const settingsService = {
+  const settingsOperationsService = {
     getSettings: jest.fn(),
     getPublicSettings: jest.fn(),
     cronIsValid: jest.fn(),
@@ -28,11 +28,11 @@ describe('SettingsController', () => {
     testPlex: jest.fn(),
     testPlexAuthToken: jest.fn(),
     removeJellyfinSettings: jest.fn(),
-  } as unknown as jest.Mocked<SettingsService>;
+  } as unknown as jest.Mocked<SettingsOperationsService>;
 
-  const settingsStore = {
+  const settingsDataService = {
     media_server_type: undefined,
-  } as unknown as jest.Mocked<SettingsStoreService>;
+  } as unknown as jest.Mocked<SettingsDataService>;
 
   const mediaServerSwitchService = {
     previewSwitch: jest.fn(),
@@ -68,8 +68,8 @@ describe('SettingsController', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new SettingsController(
-      settingsService,
-      settingsStore,
+      settingsOperationsService,
+      settingsDataService,
       metadataSettingsService,
       mediaServerSwitchService,
       databaseDownloadService,
@@ -119,7 +119,7 @@ describe('SettingsController', () => {
     ])(
       'maps $name settings from entity values',
       async ({ method, entityOverrides, expected }) => {
-        settingsService.getSettings.mockResolvedValue(
+        settingsOperationsService.getSettings.mockResolvedValue(
           createSettings(entityOverrides),
         );
 
@@ -139,7 +139,7 @@ describe('SettingsController', () => {
           code: 0 as const,
           message: 'settings not found',
         };
-        settingsService.getSettings.mockResolvedValue(response);
+        settingsOperationsService.getSettings.mockResolvedValue(response);
 
         await expect(controller[method]()).resolves.toEqual(response);
       },
@@ -203,7 +203,7 @@ describe('SettingsController', () => {
     async ({ method, serviceMethod, id, payload }) => {
       await controller[method](id, payload);
 
-      expect(settingsService[serviceMethod]).toHaveBeenCalledWith({
+      expect(settingsOperationsService[serviceMethod]).toHaveBeenCalledWith({
         id,
         ...payload,
       });
@@ -249,7 +249,7 @@ describe('SettingsController', () => {
   });
 
   it('delegates Plex connectivity testing to the settings service', async () => {
-    settingsService.testPlex.mockResolvedValue({
+    settingsOperationsService.testPlex.mockResolvedValue({
       status: 'OK',
       code: 1,
       message: '1.0.0',
@@ -261,11 +261,11 @@ describe('SettingsController', () => {
       message: '1.0.0',
     });
 
-    expect(settingsService.testPlex).toHaveBeenCalledTimes(1);
+    expect(settingsOperationsService.testPlex).toHaveBeenCalledTimes(1);
   });
 
   it('delegates Plex auth validation to the settings service', async () => {
-    settingsService.testPlexAuthToken.mockResolvedValue({
+    settingsOperationsService.testPlexAuthToken.mockResolvedValue({
       status: 'OK',
       code: 1,
       message: 'Success',
@@ -277,6 +277,8 @@ describe('SettingsController', () => {
       message: 'Success',
     });
 
-    expect(settingsService.testPlexAuthToken).toHaveBeenCalledTimes(1);
+    expect(settingsOperationsService.testPlexAuthToken).toHaveBeenCalledTimes(
+      1,
+    );
   });
 });

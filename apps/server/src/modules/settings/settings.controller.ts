@@ -58,15 +58,15 @@ import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataProvider } from './metadata-provider';
 import { MetadataSettingsService } from './metadata-settings.service';
-import { SettingsStoreService } from './settings-store.service';
-import { SettingsService } from './settings.service';
+import { SettingsDataService } from './settings-data.service';
+import { SettingsOperationsService } from './settings-operations.service';
 
 @ApiTags('settings')
 @Controller('/api/settings')
 export class SettingsController {
   constructor(
-    private readonly settingsService: SettingsService,
-    private readonly settingsStore: SettingsStoreService,
+    private readonly settingsOperationsService: SettingsOperationsService,
+    private readonly settingsDataService: SettingsDataService,
     private readonly metadataSettingsService: MetadataSettingsService,
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly databaseDownloadService: DatabaseDownloadService,
@@ -74,19 +74,19 @@ export class SettingsController {
 
   @Get()
   getSettings() {
-    return this.settingsService.getPublicSettings();
+    return this.settingsOperationsService.getPublicSettings();
   }
   @Get('/radarr')
   getRadarrSettings() {
-    return this.settingsService.getRadarrSettings();
+    return this.settingsOperationsService.getRadarrSettings();
   }
   @Get('/sonarr')
   getSonarrSettings() {
-    return this.settingsService.getSonarrSettings();
+    return this.settingsOperationsService.getSonarrSettings();
   }
   @Get('/version')
   getVersion() {
-    return this.settingsService.appVersion();
+    return this.settingsOperationsService.appVersion();
   }
 
   @Get('/database/download')
@@ -107,35 +107,37 @@ export class SettingsController {
 
   @Get('/api/generate')
   generateApiKey() {
-    return this.settingsService.generateApiKey();
+    return this.settingsOperationsService.generateApiKey();
   }
 
   @Delete('/plex/auth')
   deletePlexApiAuth() {
-    return this.settingsService.deletePlexApiAuth();
+    return this.settingsOperationsService.deletePlexApiAuth();
   }
   @Post()
   updateSettings(@Body() payload: SettingDto) {
-    return this.settingsService.updateSettings(payload);
+    return this.settingsOperationsService.updateSettings(payload);
   }
   @Patch()
   patchSettings(@Body() payload: UpdateSettingDto) {
-    return this.settingsService.patchSettings(payload);
+    return this.settingsOperationsService.patchSettings(payload);
   }
   @Post('/plex/token')
   updateAuthToken(@Body() payload: { plex_auth_token: string }) {
-    return this.settingsService.savePlexApiAuthToken(payload.plex_auth_token);
+    return this.settingsOperationsService.savePlexApiAuthToken(
+      payload.plex_auth_token,
+    );
   }
   @Get('/test/setup')
   testSetup() {
-    return this.settingsService.testSetup();
+    return this.settingsOperationsService.testSetup();
   }
   @Post('/test/radarr')
   testRadarr(
     @Body(new ZodValidationPipe(radarrSettingSchema))
     payload: RadarrSetting,
   ) {
-    return this.settingsService.testRadarr(payload);
+    return this.settingsOperationsService.testRadarr(payload);
   }
 
   @Post('/radarr')
@@ -143,7 +145,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(radarrSettingSchema))
     payload: RadarrSetting,
   ) {
-    return await this.settingsService.addRadarrSetting(payload);
+    return await this.settingsOperationsService.addRadarrSetting(payload);
   }
 
   @Put('/radarr/:id')
@@ -152,7 +154,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(radarrSettingSchema))
     payload: RadarrSetting,
   ) {
-    return await this.settingsService.updateRadarrSetting({
+    return await this.settingsOperationsService.updateRadarrSetting({
       id,
       ...payload,
     });
@@ -160,7 +162,7 @@ export class SettingsController {
 
   @Delete('/radarr/:id')
   async deleteRadarrSetting(@Param('id', new ParseIntPipe()) id: number) {
-    return await this.settingsService.deleteRadarrSetting(id);
+    return await this.settingsOperationsService.deleteRadarrSetting(id);
   }
 
   @Post('/test/sonarr')
@@ -168,7 +170,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(sonarrSettingSchema))
     payload: SonarrSetting,
   ) {
-    return this.settingsService.testSonarr(payload);
+    return this.settingsOperationsService.testSonarr(payload);
   }
 
   @Post('/sonarr')
@@ -176,7 +178,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(sonarrSettingSchema))
     payload: SonarrSetting,
   ) {
-    return await this.settingsService.addSonarrSetting(payload);
+    return await this.settingsOperationsService.addSonarrSetting(payload);
   }
 
   @Put('/sonarr/:id')
@@ -185,7 +187,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(sonarrSettingSchema))
     payload: SonarrSetting,
   ) {
-    return await this.settingsService.updateSonarrSetting({
+    return await this.settingsOperationsService.updateSonarrSetting({
       id,
       ...payload,
     });
@@ -193,7 +195,7 @@ export class SettingsController {
 
   @Get('/tautulli')
   async getTautulliSetting(): Promise<TautulliSetting | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -210,12 +212,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(tautulliSettingSchema))
     payload: TautulliSetting,
   ) {
-    return await this.settingsService.updateTautulliSetting(payload);
+    return await this.settingsOperationsService.updateTautulliSetting(payload);
   }
 
   @Delete('/tautulli')
   async removeTautlliSetting() {
-    return await this.settingsService.removeTautulliSetting();
+    return await this.settingsOperationsService.removeTautulliSetting();
   }
 
   @Post('/test/tautulli')
@@ -223,14 +225,14 @@ export class SettingsController {
     @Body(new ZodValidationPipe(tautulliSettingSchema))
     payload: TautulliSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testTautulli(payload);
+    return this.settingsOperationsService.testTautulli(payload);
   }
 
   @Get('/streamystats')
   async getStreamystatsSetting(): Promise<
     StreamystatsSetting | BasicResponseDto
   > {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -249,13 +251,15 @@ export class SettingsController {
     payload: StreamystatsSetting,
   ) {
     this.assertJellyfinActive();
-    return await this.settingsService.updateStreamystatsSetting(payload);
+    return await this.settingsOperationsService.updateStreamystatsSetting(
+      payload,
+    );
   }
 
   @Delete('/streamystats')
   async removeStreamystatsSetting() {
     this.assertJellyfinActive();
-    return await this.settingsService.removeStreamystatsSetting();
+    return await this.settingsOperationsService.removeStreamystatsSetting();
   }
 
   @Post('/test/streamystats')
@@ -264,11 +268,13 @@ export class SettingsController {
     payload: StreamystatsSetting,
   ): Promise<BasicResponseDto> {
     this.assertJellyfinActive();
-    return this.settingsService.testStreamystats(payload);
+    return this.settingsOperationsService.testStreamystats(payload);
   }
 
   private assertJellyfinActive(): void {
-    if (this.settingsStore.media_server_type !== MediaServerType.JELLYFIN) {
+    if (
+      this.settingsDataService.media_server_type !== MediaServerType.JELLYFIN
+    ) {
       throw new ForbiddenException(
         'Streamystats is only available when Jellyfin is the active media server.',
       );
@@ -277,7 +283,7 @@ export class SettingsController {
 
   @Get('/tmdb')
   async getTmdbSetting(): Promise<TmdbSettingForm | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -311,7 +317,7 @@ export class SettingsController {
 
   @Get('/tvdb')
   async getTvdbSetting(): Promise<TvdbSettingForm | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -347,7 +353,7 @@ export class SettingsController {
   async getMetadataProviderPreference(): Promise<{
     preference: MetadataProviderPreference;
   }> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return { preference: MetadataProviderPreference.TMDB_PRIMARY };
@@ -381,7 +387,7 @@ export class SettingsController {
   // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)
   @Get(['/seerr', '/overseerr', '/jellyseerr'])
   async getSeerrSetting(): Promise<SeerrSetting | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -398,12 +404,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(seerrSettingSchema))
     payload: SeerrSetting,
   ) {
-    return await this.settingsService.updateSeerrSetting(payload);
+    return await this.settingsOperationsService.updateSeerrSetting(payload);
   }
 
   @Delete(['/seerr', '/overseerr', '/jellyseerr'])
   async removeSeerrSetting() {
-    return await this.settingsService.removeSeerrSetting();
+    return await this.settingsOperationsService.removeSeerrSetting();
   }
 
   @Post(['/test/seerr', '/test/overseerr', '/test/jellyseerr'])
@@ -411,12 +417,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(seerrSettingSchema))
     payload: SeerrSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testSeerr(payload);
+    return this.settingsOperationsService.testSeerr(payload);
   }
 
   @Get('/jellyfin')
   async getJellyfinSetting(): Promise<JellyfinSetting | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -434,7 +440,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(jellyfinSettingSchema))
     payload: JellyfinSetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testJellyfin(payload);
+    return this.settingsOperationsService.testJellyfin(payload);
   }
 
   @Post('/jellyfin')
@@ -442,12 +448,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(jellyfinSettingSchema))
     payload: JellyfinSetting,
   ): Promise<BasicResponseDto> {
-    return await this.settingsService.saveJellyfinSettings(payload);
+    return await this.settingsOperationsService.saveJellyfinSettings(payload);
   }
 
   @Delete('/jellyfin')
   async removeJellyfinSettings(): Promise<BasicResponseDto> {
-    return await this.settingsService.removeJellyfinSettings();
+    return await this.settingsOperationsService.removeJellyfinSettings();
   }
 
   // --------------------------------------------------------------------------
@@ -456,7 +462,7 @@ export class SettingsController {
 
   @Get('/emby')
   async getEmbySetting(): Promise<EmbySetting | BasicResponseDto> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsOperationsService.getSettings();
 
     if (!(settings instanceof Settings)) {
       return settings;
@@ -474,7 +480,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(embySettingSchema))
     payload: EmbySetting,
   ): Promise<BasicResponseDto> {
-    return this.settingsService.testEmby(payload);
+    return this.settingsOperationsService.testEmby(payload);
   }
 
   @Post('/emby')
@@ -482,12 +488,12 @@ export class SettingsController {
     @Body(new ZodValidationPipe(embySettingSchema))
     payload: EmbySetting,
   ): Promise<BasicResponseDto> {
-    return await this.settingsService.saveEmbySettings(payload);
+    return await this.settingsOperationsService.saveEmbySettings(payload);
   }
 
   @Delete('/emby')
   async removeEmbySettings(): Promise<BasicResponseDto> {
-    return await this.settingsService.removeEmbySettings();
+    return await this.settingsOperationsService.removeEmbySettings();
   }
 
   /**
@@ -499,7 +505,7 @@ export class SettingsController {
     @Body(new ZodValidationPipe(embyLoginRequestSchema))
     payload: EmbyLoginRequest,
   ) {
-    return this.settingsService.loginEmby(
+    return this.settingsOperationsService.loginEmby(
       payload.emby_url,
       payload.username,
       payload.password,
@@ -508,14 +514,14 @@ export class SettingsController {
 
   @Delete('/sonarr/:id')
   async deleteSonarrSetting(@Param('id', new ParseIntPipe()) id: number) {
-    return await this.settingsService.deleteSonarrSetting(id);
+    return await this.settingsOperationsService.deleteSonarrSetting(id);
   }
 
   @Get('/test/plex')
   @ApiOperation({ summary: 'Test Plex server connectivity' })
   @ApiResponse({ status: 200, description: 'Plex connectivity test result' })
   testPlex() {
-    return this.settingsService.testPlex();
+    return this.settingsOperationsService.testPlex();
   }
 
   @Get('/test/plex/auth')
@@ -525,17 +531,17 @@ export class SettingsController {
     description: 'Plex auth token validation result',
   })
   testPlexAuth() {
-    return this.settingsService.testPlexAuthToken();
+    return this.settingsOperationsService.testPlexAuthToken();
   }
 
   @Get('/plex/devices/servers')
   async getPlexServers() {
-    return await this.settingsService.getPlexServers();
+    return await this.settingsOperationsService.getPlexServers();
   }
 
   @Post('/cron/validate')
   validateSingleCron(@Body() payload: CronScheduleDto) {
-    return this.settingsService.cronIsValid(payload.schedule)
+    return this.settingsOperationsService.cronIsValid(payload.schedule)
       ? { status: 'OK', code: 1, message: 'Success' }
       : { status: 'NOK', code: 0, message: 'Failure' };
   }

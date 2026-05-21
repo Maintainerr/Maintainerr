@@ -9,7 +9,7 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import type { MediaServerSwitchService as MediaServerSwitchServiceType } from '../../settings/media-server-switch.service';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { IMediaServerService } from './media-server.interface';
@@ -34,7 +34,7 @@ function isSettings(obj: unknown): obj is Settings {
 @Injectable()
 export class MediaServerFactory {
   constructor(
-    private readonly settingsService: SettingsStoreService,
+    private readonly settingsDataService: SettingsDataService,
     @Inject(forwardRef(() => MediaServerSwitchService))
     private readonly mediaServerSwitchService: MediaServerSwitchServiceType,
     private readonly plexAdapter: PlexAdapterService,
@@ -88,7 +88,7 @@ export class MediaServerFactory {
     // switch (which nulls the old credentials) and the user saving the new
     // credentials. Callers can treat this as transient rather than a real
     // failure (see NotificationService.transformMessageContent).
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsDataService.getSettings();
     if (
       isSettings(settings) &&
       !this.areCredentialsPresent(serverType, settings)
@@ -149,7 +149,7 @@ export class MediaServerFactory {
    * Get the currently configured media server type.
    */
   async getConfiguredServerType(): Promise<MediaServerType | null> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsDataService.getSettings();
 
     if (!isSettings(settings)) {
       return null;

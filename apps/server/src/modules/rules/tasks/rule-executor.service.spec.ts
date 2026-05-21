@@ -4,7 +4,7 @@ import { createMockLogger } from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { CollectionsService } from '../../collections/collections.service';
 import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
 import { RuleExecutorProgressService } from './rule-executor-progress.service';
@@ -94,7 +94,7 @@ describe('RuleExecutorService', () => {
     const settings = {
       media_server_type: mediaServerType,
       testSetup: jest.fn().mockResolvedValue(true),
-    } as unknown as jest.Mocked<SettingsStoreService>;
+    } as unknown as jest.Mocked<SettingsDataService>;
 
     const comparatorFactory = {
       create: jest.fn().mockReturnValue({

@@ -2,7 +2,7 @@ import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import { SettingsStoreService } from '../../..//modules/settings/settings-store.service';
+import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
@@ -106,7 +106,7 @@ export class TautulliApiService {
   api: TautulliApi;
 
   constructor(
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {

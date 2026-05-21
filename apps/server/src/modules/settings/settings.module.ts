@@ -23,8 +23,8 @@ import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsController } from './settings.controller';
-import { SettingsService } from './settings.service';
-import { SettingsStoreService } from './settings-store.service';
+import { SettingsOperationsService } from './settings-operations.service';
+import { SettingsDataService } from './settings-data.service';
 
 @Global()
 @Module({
@@ -51,16 +51,16 @@ import { SettingsStoreService } from './settings-store.service';
     ]),
   ],
   providers: [
-    SettingsStoreService,
-    SettingsService,
+    SettingsDataService,
+    SettingsOperationsService,
     MetadataSettingsService,
     RuleMigrationService,
     MediaServerSwitchService,
     DatabaseDownloadService,
   ],
   exports: [
-    SettingsStoreService,
-    SettingsService,
+    SettingsDataService,
+    SettingsOperationsService,
     RuleMigrationService,
     MediaServerSwitchService,
   ],

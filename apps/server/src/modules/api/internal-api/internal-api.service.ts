@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SettingsStoreService } from '../../../modules/settings/settings-store.service';
+import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { InternalApi } from './helpers/internal-api.helper';
 
@@ -8,7 +8,7 @@ export class InternalApiService {
   private api: InternalApi;
 
   constructor(
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
   ) {}
 

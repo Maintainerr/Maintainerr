@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SettingsStoreService } from '../../../modules/settings/settings-store.service';
+import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import { MaintainerrLoggerFactory } from '../../logging/logs.service';
 import { RadarrSettingRawDto } from "../../settings/dto's/radarr-setting.dto";
 import { SonarrSettingRawDto } from "../../settings/dto's/sonarr-setting.dto";
@@ -14,7 +14,7 @@ export class ServarrService {
   private sonarrApiCache: Record<string, SonarrApi> = {};
 
   constructor(
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {}
 

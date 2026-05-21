@@ -12,12 +12,12 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { Settings } from './entities/settings.entities';
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
-import { SettingsService } from './settings.service';
-import { SettingsStoreService } from './settings-store.service';
+import { SettingsOperationsService } from './settings-operations.service';
+import { SettingsDataService } from './settings-data.service';
 
-describe('SettingsService', () => {
-  let service: SettingsService;
-  let settingsStore: Mocked<SettingsStoreService>;
+describe('SettingsOperationsService', () => {
+  let service: SettingsOperationsService;
+  let settingsDataService: Mocked<SettingsDataService>;
   let settingsRepo: Mocked<Repository<Settings>>;
   let mediaServerFactory: Mocked<MediaServerFactory>;
   let plexApi: Mocked<PlexApiService>;
@@ -50,10 +50,12 @@ describe('SettingsService', () => {
     });
 
   beforeEach(async () => {
-    const { unit, unitRef } = await TestBed.solitary(SettingsService).compile();
+    const { unit, unitRef } = await TestBed.solitary(
+      SettingsOperationsService,
+    ).compile();
 
     service = unit;
-    settingsStore = unitRef.get(SettingsStoreService);
+    settingsDataService = unitRef.get(SettingsDataService);
     settingsRepo = unitRef.get('SettingsRepository');
     unitRef.get<Mocked<Repository<RadarrSettings>>>('RadarrSettingsRepository');
     unitRef.get<Mocked<Repository<SonarrSettings>>>('SonarrSettingsRepository');
@@ -70,15 +72,15 @@ describe('SettingsService', () => {
     settingsRepo.save.mockImplementation(
       async (settings) => settings as Settings,
     );
-    settingsStore.saveSettings.mockImplementation(
+    settingsDataService.saveSettings.mockImplementation(
       async (settings) => settings as Settings,
     );
-    settingsStore.init.mockResolvedValue(undefined);
-    settingsStore.cronIsValid.mockImplementation((schedule) =>
+    settingsDataService.init.mockResolvedValue(undefined);
+    settingsDataService.cronIsValid.mockImplementation((schedule) =>
       Boolean(schedule),
     );
-    // SettingsService delegates field reads to the store snapshot.
-    settingsStore.plex_auth_token = 'plex-token';
+    // SettingsOperationsService delegates field reads to the store snapshot.
+    settingsDataService.plex_auth_token = 'plex-token';
     mediaServerFactory.initialize.mockResolvedValue(undefined);
     plexApi.initialize.mockResolvedValue(undefined);
     plexApi.validateAuthToken.mockResolvedValue(true);
@@ -106,7 +108,7 @@ describe('SettingsService', () => {
       code: 0,
       message: 'Authenticate with Plex before saving Plex server settings.',
     });
-    expect(settingsStore.saveSettings).not.toHaveBeenCalled();
+    expect(settingsDataService.saveSettings).not.toHaveBeenCalled();
   });
 
   it('still allows unrelated settings updates when Plex server settings are unchanged', async () => {
@@ -115,7 +117,7 @@ describe('SettingsService', () => {
     );
 
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
-    expect(settingsStore.saveSettings).toHaveBeenCalledTimes(1);
+    expect(settingsDataService.saveSettings).toHaveBeenCalledTimes(1);
     expect(mediaServerFactory.initialize).toHaveBeenCalledTimes(1);
   });
 
@@ -177,7 +179,7 @@ describe('SettingsService', () => {
     );
 
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
-    expect(settingsStore.saveSettings).toHaveBeenCalledTimes(1);
+    expect(settingsDataService.saveSettings).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes Plex hostname and derives ssl before saving', async () => {
@@ -189,7 +191,7 @@ describe('SettingsService', () => {
       }),
     );
 
-    expect(settingsStore.saveSettings).toHaveBeenCalledWith(
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
       expect.objectContaining({
         plex_hostname: 'plex.local',
         plex_port: 32400,
@@ -199,7 +201,7 @@ describe('SettingsService', () => {
   });
 
   it('returns a clear Plex auth message before calling the Plex API test endpoint', async () => {
-    settingsStore.plex_auth_token = null;
+    settingsDataService.plex_auth_token = null;
 
     const response = await service.testPlex();
 
@@ -212,7 +214,7 @@ describe('SettingsService', () => {
   });
 
   it('validates stored Plex auth tokens without requiring server settings', async () => {
-    settingsStore.plex_auth_token = 'masked-plex-token';
+    settingsDataService.plex_auth_token = 'masked-plex-token';
 
     const response = await service.testPlexAuthToken();
 
@@ -222,7 +224,7 @@ describe('SettingsService', () => {
   });
 
   it('returns a clear message when no Plex auth token exists for auth validation', async () => {
-    settingsStore.plex_auth_token = null;
+    settingsDataService.plex_auth_token = null;
 
     const response = await service.testPlexAuthToken();
 
@@ -272,7 +274,9 @@ describe('SettingsService', () => {
     const result = await service.removeJellyfinSettings();
 
     expect(result.code).toBe(1);
-    const saved = settingsStore.saveSettings.mock.calls.at(-1)?.[0] as Settings;
+    const saved = settingsDataService.saveSettings.mock.calls.at(
+      -1,
+    )?.[0] as Settings;
     expect(saved.streamystats_url).toBeNull();
     expect(streamystats.init).toHaveBeenCalled();
   });

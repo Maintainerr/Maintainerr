@@ -6,7 +6,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
-import { SettingsStoreService } from '../settings/settings-store.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
@@ -19,7 +19,7 @@ export class CollectionHandler {
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly collectionService: CollectionsService,
     private readonly seerrApi: SeerrApiService,
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     private readonly metadataService: MetadataService,
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,

@@ -9,7 +9,7 @@ import {
   NotFoundException,
   Param,
 } from '@nestjs/common';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { StreamystatsApiService } from './streamystats-api.service';
 
 interface StreamystatsInfoResponse {
@@ -21,13 +21,13 @@ interface StreamystatsInfoResponse {
 export class StreamystatsApiController {
   constructor(
     private readonly streamystatsApiService: StreamystatsApiService,
-    private readonly settingsService: SettingsStoreService,
+    private readonly settingsDataService: SettingsDataService,
   ) {}
 
   @Get('/info')
   async getInfo(): Promise<StreamystatsInfoResponse> {
     this.assertJellyfinActive();
-    const url = this.settingsService.streamystats_url;
+    const url = this.settingsDataService.streamystats_url;
     if (!url || !this.streamystatsApiService.api) {
       throw new NotFoundException('Streamystats is not configured');
     }
@@ -55,7 +55,9 @@ export class StreamystatsApiController {
   }
 
   private assertJellyfinActive(): void {
-    if (this.settingsService.media_server_type !== MediaServerType.JELLYFIN) {
+    if (
+      this.settingsDataService.media_server_type !== MediaServerType.JELLYFIN
+    ) {
       throw new ForbiddenException(
         'Streamystats is only available when Jellyfin is the active media server.',
       );

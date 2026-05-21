@@ -2,7 +2,7 @@ import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
@@ -21,7 +21,7 @@ const TMDB_DEFAULT_API_KEY = 'db55323b8d3e4154498498a75642b381';
 @Injectable()
 export class TmdbApiService extends ExternalApiService {
   constructor(
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     protected readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TmdbApiService.name);

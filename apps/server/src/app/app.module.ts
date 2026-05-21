@@ -27,7 +27,7 @@ import { NotificationService } from '../modules/notifications/notifications.serv
 import { OverlaysModule } from '../modules/overlays/overlays.module';
 import { RulesModule } from '../modules/rules/rules.module';
 import { SettingsModule } from '../modules/settings/settings.module';
-import { SettingsService } from '../modules/settings/settings.service';
+import { SettingsDataService } from '../modules/settings/settings-data.service';
 import { StorageMetricsModule } from '../modules/storage-metrics/storage-metrics.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -84,7 +84,7 @@ import ormConfig from './config/typeOrmConfig';
 })
 export class AppModule implements OnModuleInit {
   constructor(
-    private readonly settings: SettingsService,
+    private readonly settingsDataService: SettingsDataService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly seerrApi: SeerrApiService,
     private readonly tautulliApi: TautulliApiService,
@@ -93,7 +93,7 @@ export class AppModule implements OnModuleInit {
   ) {}
   async onModuleInit() {
     // Initialize modules requiring settings
-    await this.settings.init();
+    await this.settingsDataService.init();
 
     // Initialize configured media server (Plex or Jellyfin)
     await this.mediaServerFactory.initialize();

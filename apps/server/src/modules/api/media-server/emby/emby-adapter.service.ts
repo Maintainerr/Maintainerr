@@ -20,7 +20,7 @@ import { Injectable } from '@nestjs/common';
 import { type AxiosInstance, AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsStoreService } from '../../../settings/settings-store.service';
+import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -69,7 +69,7 @@ export class EmbyAdapterService implements IMediaServerService {
   private readonly cache: Cache;
 
   constructor(
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(EmbyAdapterService.name);

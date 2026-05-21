@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
 import {
   NotificationAgentKey,
@@ -12,7 +12,7 @@ import type { NotificationAgent, NotificationPayload } from './agent';
 
 class LunaSeaAgent implements NotificationAgent {
   public constructor(
-    private readonly appSettings: SettingsStoreService,
+    private readonly appSettings: SettingsDataService,
     private readonly settings: NotificationAgentLunaSea,
     private readonly logger: MaintainerrLogger,
     readonly notification: Notification,

@@ -18,7 +18,7 @@ import {
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
@@ -67,7 +67,7 @@ export class PlexApiService {
   private machineId: string;
 
   constructor(
-    private readonly settings: SettingsStoreService,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {

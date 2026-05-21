@@ -1,18 +1,18 @@
 import { Mocked, TestBed } from '@suites/unit';
-import { SettingsStoreService } from '../../settings/settings-store.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { SeerrApiService, SeerrRequestStatus } from './seerr-api.service';
 
 describe('SeerrApiService', () => {
   let service: SeerrApiService;
-  let settings: Mocked<SettingsStoreService>;
+  let settings: Mocked<SettingsDataService>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(SeerrApiService).compile();
 
     service = unit;
     settings = unitRef.get(
-      SettingsStoreService,
-    ) as unknown as Mocked<SettingsStoreService>;
+      SettingsDataService,
+    ) as unknown as Mocked<SettingsDataService>;
     settings.seerrConfigured.mockReturnValue(true);
   });
 

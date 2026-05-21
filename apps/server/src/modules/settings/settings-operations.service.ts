@@ -23,7 +23,7 @@ import { ServarrService } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { SettingsStoreService } from './settings-store.service';
+import { SettingsDataService } from './settings-data.service';
 import {
   DeleteRadarrSettingResponseDto,
   RadarrSettingRawDto,
@@ -39,9 +39,9 @@ import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 
 @Injectable()
-export class SettingsService {
+export class SettingsOperationsService {
   constructor(
-    private readonly settingsStore: SettingsStoreService,
+    private readonly settingsDataService: SettingsDataService,
     private readonly plexApi: PlexApiService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly servarr: ServarrService,
@@ -57,7 +57,7 @@ export class SettingsService {
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
     private readonly logger: MaintainerrLogger,
   ) {
-    logger.setContext(SettingsService.name);
+    logger.setContext(SettingsOperationsService.name);
   }
 
   // ==========================================================================
@@ -65,63 +65,63 @@ export class SettingsService {
   // ==========================================================================
 
   public init() {
-    return this.settingsStore.init();
+    return this.settingsDataService.init();
   }
 
   public getSettings() {
-    return this.settingsStore.getSettings();
+    return this.settingsDataService.getSettings();
   }
 
   public getPublicSettings() {
-    return this.settingsStore.getPublicSettings();
+    return this.settingsDataService.getPublicSettings();
   }
 
   public getMediaServerType(): MediaServerType | null {
-    return this.settingsStore.getMediaServerType();
+    return this.settingsDataService.getMediaServerType();
   }
 
   public seerrConfigured(): boolean {
-    return this.settingsStore.seerrConfigured();
+    return this.settingsDataService.seerrConfigured();
   }
 
   public tautulliConfigured(): boolean {
-    return this.settingsStore.tautulliConfigured();
+    return this.settingsDataService.tautulliConfigured();
   }
 
   public getRadarrSettings() {
-    return this.settingsStore.getRadarrSettings();
+    return this.settingsDataService.getRadarrSettings();
   }
 
   public getRadarrSetting(id: number) {
-    return this.settingsStore.getRadarrSetting(id);
+    return this.settingsDataService.getRadarrSetting(id);
   }
 
   public getSonarrSettings() {
-    return this.settingsStore.getSonarrSettings();
+    return this.settingsDataService.getSonarrSettings();
   }
 
   public getSonarrSetting(id: number) {
-    return this.settingsStore.getSonarrSetting(id);
+    return this.settingsDataService.getSonarrSetting(id);
   }
 
   public getRadarrSettingsCount(): Promise<number> {
-    return this.settingsStore.getRadarrSettingsCount();
+    return this.settingsDataService.getRadarrSettingsCount();
   }
 
   public getSonarrSettingsCount(): Promise<number> {
-    return this.settingsStore.getSonarrSettingsCount();
+    return this.settingsDataService.getSonarrSettingsCount();
   }
 
   public generateApiKey(): string {
-    return this.settingsStore.generateApiKey();
+    return this.settingsDataService.generateApiKey();
   }
 
   public appVersion(): string {
-    return this.settingsStore.appVersion();
+    return this.settingsDataService.appVersion();
   }
 
   public cronIsValid(schedule: string) {
-    return this.settingsStore.cronIsValid(schedule);
+    return this.settingsDataService.cronIsValid(schedule);
   }
 
   public async updatePlexConnectionDetails(
@@ -136,7 +136,7 @@ export class SettingsService {
       >
     >,
   ): Promise<void> {
-    return this.settingsStore.updatePlexConnectionDetails(details);
+    return this.settingsDataService.updatePlexConnectionDetails(details);
   }
 
   // ==========================================================================
@@ -231,13 +231,13 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         tautulli_url: null,
         tautulli_api_key: null,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -254,13 +254,13 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         tautulli_url: settings.url,
         tautulli_api_key: settings.api_key,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -275,12 +275,12 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         streamystats_url: null,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.streamystats.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -297,12 +297,12 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         streamystats_url: settings.url,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.streamystats.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -317,13 +317,13 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         seerr_url: null,
         seerr_api_key: null,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -340,13 +340,13 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         seerr_url: settings.url,
         seerr_api_key: settings.api_key,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -450,7 +450,7 @@ export class SettingsService {
         }
       }
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         jellyfin_url: settings.jellyfin_url,
         jellyfin_api_key: settings.jellyfin_api_key,
@@ -462,7 +462,7 @@ export class SettingsService {
       // Uninitialize service so it reinitializes with new credentials on next use
       this.mediaServerFactory.uninitializeServer(MediaServerType.JELLYFIN);
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
 
       // Streamystats uses the Jellyfin API key + server identity. Re-init so
       // the cached client and resolved serverId track the new credentials.
@@ -532,7 +532,7 @@ export class SettingsService {
 
       // Streamystats can't authenticate without Jellyfin credentials; clear
       // its URL alongside Jellyfin so we don't leave a half-configured state.
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         jellyfin_url: null,
         jellyfin_api_key: null,
@@ -544,7 +544,7 @@ export class SettingsService {
       // Uninitialize service to clear credentials
       this.mediaServerFactory.uninitializeServer(MediaServerType.JELLYFIN);
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.streamystats.init();
 
       this.logger.log('Jellyfin settings cleared');
@@ -692,7 +692,7 @@ export class SettingsService {
         }
       }
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         emby_url: settings.emby_url,
         emby_api_key: settings.emby_api_key,
@@ -703,7 +703,7 @@ export class SettingsService {
 
       this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
 
       this.logger.log('Emby settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -723,7 +723,7 @@ export class SettingsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         emby_url: null,
         emby_api_key: null,
@@ -733,7 +733,7 @@ export class SettingsService {
 
       this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
 
       this.logger.log('Emby settings cleared');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -839,7 +839,7 @@ export class SettingsService {
         { plex_auth_token: null },
       );
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.plexApi.uninitialize();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -869,7 +869,7 @@ export class SettingsService {
         },
       );
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
@@ -1016,12 +1016,12 @@ export class SettingsService {
       settings.plex_hostname = normalizedPlexServerSettings.hostname;
       settings.plex_ssl = normalizedPlexServerSettings.ssl;
 
-      await this.settingsStore.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         ...settings,
       });
 
-      await this.settingsStore.init();
+      await this.settingsDataService.init();
       this.logger.log('Settings updated');
       await this.mediaServerFactory.initialize();
       this.seerr.init();
@@ -1193,7 +1193,7 @@ export class SettingsService {
   }
 
   public async testPlex(): Promise<BasicResponseDto> {
-    if (!this.settingsStore.plex_auth_token) {
+    if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
         code: 0,
@@ -1220,7 +1220,7 @@ export class SettingsService {
   }
 
   public async testPlexAuthToken(): Promise<BasicResponseDto> {
-    if (!this.settingsStore.plex_auth_token) {
+    if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
         code: 0,
@@ -1253,15 +1253,15 @@ export class SettingsService {
   }
 
   public async testMediaServerConnection(): Promise<boolean> {
-    if (!this.settingsStore.media_server_type) {
+    if (!this.settingsDataService.media_server_type) {
       return false;
     }
 
-    switch (this.settingsStore.media_server_type) {
+    switch (this.settingsDataService.media_server_type) {
       case MediaServerType.JELLYFIN: {
         if (
-          !this.settingsStore.jellyfin_url ||
-          !this.settingsStore.jellyfin_api_key
+          !this.settingsDataService.jellyfin_url ||
+          !this.settingsDataService.jellyfin_api_key
         ) {
           return false;
         }
@@ -1269,23 +1269,26 @@ export class SettingsService {
         return (
           (
             await this.testJellyfin({
-              jellyfin_url: this.settingsStore.jellyfin_url,
-              jellyfin_api_key: this.settingsStore.jellyfin_api_key,
-              jellyfin_user_id: this.settingsStore.jellyfin_user_id,
+              jellyfin_url: this.settingsDataService.jellyfin_url,
+              jellyfin_api_key: this.settingsDataService.jellyfin_api_key,
+              jellyfin_user_id: this.settingsDataService.jellyfin_user_id,
             })
           ).status === 'OK'
         );
       }
       case MediaServerType.EMBY: {
-        if (!this.settingsStore.emby_url || !this.settingsStore.emby_api_key) {
+        if (
+          !this.settingsDataService.emby_url ||
+          !this.settingsDataService.emby_api_key
+        ) {
           return false;
         }
         return (
           (
             await this.testEmby({
-              emby_url: this.settingsStore.emby_url,
-              emby_api_key: this.settingsStore.emby_api_key,
-              emby_user_id: this.settingsStore.emby_user_id,
+              emby_url: this.settingsDataService.emby_url,
+              emby_api_key: this.settingsDataService.emby_api_key,
+              emby_user_id: this.settingsDataService.emby_user_id,
             })
           ).status === 'OK'
         );
@@ -1301,7 +1304,7 @@ export class SettingsService {
   public async testConnections(): Promise<boolean> {
     try {
       // If no media server type is configured, connections cannot be tested
-      if (!this.settingsStore.media_server_type) {
+      if (!this.settingsDataService.media_server_type) {
         return false;
       }
 
@@ -1356,35 +1359,40 @@ export class SettingsService {
   public async testSetup(): Promise<boolean> {
     try {
       // If no media server type is selected, setup is not complete
-      if (!this.settingsStore.media_server_type) {
+      if (!this.settingsDataService.media_server_type) {
         return false;
       }
 
       // Check based on configured media server type
-      if (this.settingsStore.media_server_type === MediaServerType.JELLYFIN) {
+      if (
+        this.settingsDataService.media_server_type === MediaServerType.JELLYFIN
+      ) {
         // Jellyfin requires URL and API key (user ID is optional, can be auto-detected later)
         if (
-          this.settingsStore.jellyfin_url &&
-          this.settingsStore.jellyfin_api_key
+          this.settingsDataService.jellyfin_url &&
+          this.settingsDataService.jellyfin_api_key
         ) {
           return true;
         }
       } else if (
-        this.settingsStore.media_server_type === MediaServerType.EMBY
+        this.settingsDataService.media_server_type === MediaServerType.EMBY
       ) {
         // Emby requires URL and API key (user ID is optional, can be auto-detected later)
-        if (this.settingsStore.emby_url && this.settingsStore.emby_api_key) {
+        if (
+          this.settingsDataService.emby_url &&
+          this.settingsDataService.emby_api_key
+        ) {
           return true;
         }
       } else if (
-        this.settingsStore.media_server_type === MediaServerType.PLEX
+        this.settingsDataService.media_server_type === MediaServerType.PLEX
       ) {
         // Plex requires hostname, name, port, and auth token
         if (
-          this.settingsStore.plex_hostname &&
-          this.settingsStore.plex_name &&
-          this.settingsStore.plex_port &&
-          this.settingsStore.plex_auth_token
+          this.settingsDataService.plex_hostname &&
+          this.settingsDataService.plex_name &&
+          this.settingsDataService.plex_port &&
+          this.settingsDataService.plex_auth_token
         ) {
           return true;
         }

@@ -10,7 +10,7 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { SettingsStoreService } from '../settings/settings-store.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
@@ -24,7 +24,7 @@ jest.mock('../../utils/delay');
 describe('CollectionWorkerService', () => {
   let collectionWorkerService: CollectionWorkerService;
   let taskService: Mocked<TasksService>;
-  let settings: Mocked<SettingsStoreService>;
+  let settings: Mocked<SettingsDataService>;
   let collectionRepository: Mocked<Repository<Collection>>;
   let collectionMediaRepository: Mocked<Repository<CollectionMedia>>;
   let seerrApi: Mocked<SeerrApiService>;
@@ -41,7 +41,7 @@ describe('CollectionWorkerService', () => {
 
     collectionWorkerService = unit;
     taskService = unitRef.get(TasksService);
-    settings = unitRef.get(SettingsStoreService);
+    settings = unitRef.get(SettingsDataService);
     collectionRepository = unitRef.get(
       getRepositoryToken(Collection) as string,
     );
