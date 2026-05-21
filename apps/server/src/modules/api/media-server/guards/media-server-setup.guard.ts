@@ -1,6 +1,6 @@
 import { CanActivate, Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
+import { SettingsOperationsService } from '../../../settings/settings-operations.service';
 
 /**
  * Guard that checks if a media server (Plex or Jellyfin) is configured.
@@ -13,7 +13,7 @@ import { SettingsService } from '../../../settings/settings.service';
 @Injectable()
 export class MediaServerSetupGuard implements CanActivate {
   constructor(
-    private readonly settingsService: SettingsService,
+    private readonly settingsOperationsService: SettingsOperationsService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(MediaServerSetupGuard.name);
@@ -21,7 +21,7 @@ export class MediaServerSetupGuard implements CanActivate {
 
   async canActivate(): Promise<boolean> {
     try {
-      return await this.settingsService.testSetup();
+      return await this.settingsOperationsService.testSetup();
     } catch (error) {
       this.logger.error('Media server setup check failed');
       this.logger.debug(error);

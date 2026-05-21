@@ -4,7 +4,7 @@ import {
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { PlexConnection } from './interfaces/server.interface';
 import { PlexApiService } from './plex-api.service';
 
@@ -84,7 +84,7 @@ describe('PlexApiService.rankConnections', () => {
 
 describe('PlexApiService.getMetadata', () => {
   let service: PlexApiService;
-  let settingsService: PlexApiSettingsStub;
+  let settingsDataService: PlexApiSettingsStub;
   let logger: Mocked<MaintainerrLogger>;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
 
@@ -92,16 +92,16 @@ describe('PlexApiService.getMetadata', () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
 
     service = unit;
-    settingsService = unitRef.get(
-      SettingsService,
+    settingsDataService = unitRef.get(
+      SettingsDataService,
     ) as unknown as PlexApiSettingsStub;
     logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
 
-    settingsService.plex_hostname = 'plex.local';
-    settingsService.plex_port = 32400;
-    settingsService.plex_ssl = 0;
-    settingsService.plex_auth_token = 'token';
+    settingsDataService.plex_hostname = 'plex.local';
+    settingsDataService.plex_port = 32400;
+    settingsDataService.plex_ssl = 0;
+    settingsDataService.plex_auth_token = 'token';
     loggerFactory.createLogger.mockReturnValue({
       setContext: jest.fn(),
       log: jest.fn(),
@@ -301,7 +301,7 @@ describe('PlexApiService.getMetadata', () => {
   });
 
   it('throws when auth validation is attempted without a token', async () => {
-    settingsService.plex_auth_token = null as any;
+    settingsDataService.plex_auth_token = null as any;
 
     await expect(service.validateAuthToken()).rejects.toThrow(
       'Plex auth token is required for validation',
@@ -377,7 +377,7 @@ describe('PlexApiService.getMetadata', () => {
 
 describe('PlexApiService.getCollections (invalid section vs auth)', () => {
   let service: PlexApiService;
-  let settingsService: PlexApiSettingsStub;
+  let settingsDataService: PlexApiSettingsStub;
   let logger: Mocked<MaintainerrLogger>;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
 
@@ -385,16 +385,16 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
 
     service = unit;
-    settingsService = unitRef.get(
-      SettingsService,
+    settingsDataService = unitRef.get(
+      SettingsDataService,
     ) as unknown as PlexApiSettingsStub;
     logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
 
-    settingsService.plex_hostname = 'plex.local';
-    settingsService.plex_port = 32400;
-    settingsService.plex_ssl = 0;
-    settingsService.plex_auth_token = 'token';
+    settingsDataService.plex_hostname = 'plex.local';
+    settingsDataService.plex_port = 32400;
+    settingsDataService.plex_ssl = 0;
+    settingsDataService.plex_auth_token = 'token';
     loggerFactory.createLogger.mockReturnValue({
       setContext: jest.fn(),
       log: jest.fn(),
@@ -485,7 +485,7 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
 
 describe('PlexApiService.initialize', () => {
   let service: PlexApiService;
-  let settingsService: PlexApiSettingsStub;
+  let settingsDataService: PlexApiSettingsStub;
   let logger: Mocked<MaintainerrLogger>;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
 
@@ -493,19 +493,19 @@ describe('PlexApiService.initialize', () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
 
     service = unit;
-    settingsService = unitRef.get(
-      SettingsService,
+    settingsDataService = unitRef.get(
+      SettingsDataService,
     ) as unknown as PlexApiSettingsStub;
     logger = unitRef.get(MaintainerrLogger);
     loggerFactory = unitRef.get(MaintainerrLoggerFactory);
 
-    settingsService.plex_hostname = 'plex.local';
-    settingsService.plex_port = 32400;
-    settingsService.plex_ssl = 0;
-    settingsService.plex_auth_token = 'token';
-    settingsService.plex_manual_mode = 0;
-    settingsService.plex_machine_id = 'machine123';
-    settingsService.updatePlexConnectionDetails = jest
+    settingsDataService.plex_hostname = 'plex.local';
+    settingsDataService.plex_port = 32400;
+    settingsDataService.plex_ssl = 0;
+    settingsDataService.plex_auth_token = 'token';
+    settingsDataService.plex_manual_mode = 0;
+    settingsDataService.plex_machine_id = 'machine123';
+    settingsDataService.updatePlexConnectionDetails = jest
       .fn()
       .mockResolvedValue(undefined);
     loggerFactory.createLogger.mockReturnValue({
@@ -533,7 +533,7 @@ describe('PlexApiService.initialize', () => {
   });
 
   it('skips rediscovery in manual mode when primary connection fails', async () => {
-    settingsService.plex_manual_mode = 1;
+    settingsDataService.plex_manual_mode = 1;
     const getServersSpy = jest
       .spyOn(service, 'getAvailableServers')
       .mockResolvedValue([]);

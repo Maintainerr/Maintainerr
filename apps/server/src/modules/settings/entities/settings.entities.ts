@@ -11,7 +11,7 @@ export class Settings implements SettingDto {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // clientId is set explicitly via randomUUID() in SettingsService.init()
+  // clientId is set explicitly via randomUUID() in SettingsOperationsService.init()
   @Column({ nullable: true })
   clientId: string;
 

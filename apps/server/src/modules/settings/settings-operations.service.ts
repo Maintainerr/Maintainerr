@@ -2,46 +2,33 @@ import {
   BasicResponseDto,
   EmbySetting,
   JellyfinSetting,
-  MaintainerrEvent,
   MediaServerType,
-  MetadataProviderPreference,
   SeerrSetting,
   StreamystatsSetting,
   TautulliSetting,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { isValidCron } from 'cron-validator';
-import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import {
   formatConnectionFailureMessage,
   getErrorMessage,
   logConnectionTestError,
 } from '../../utils/connection-error';
-import { maskSecret } from '../../utils/secretMasking';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
-import type { InternalApiService as InternalApiServiceType } from '../api/internal-api/internal-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
-import type { PlexApiService as PlexApiServiceType } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import type { SeerrApiService as SeerrApiServiceType } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
-import type { ServarrService as ServarrServiceType } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
-import type { StreamystatsApiService as StreamystatsApiServiceType } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
-import type { TautulliApiService as TautulliApiServiceType } from '../api/tautulli-api/tautulli-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { SettingsDataService } from './settings-data.service';
 import {
   DeleteRadarrSettingResponseDto,
   RadarrSettingRawDto,
   RadarrSettingResponseDto,
 } from "./dto's/radarr-setting.dto";
-import { SettingDto } from "./dto's/setting.dto";
 import {
   DeleteSonarrSettingResponseDto,
   SonarrSettingRawDto,
@@ -51,288 +38,110 @@ import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
 
-type PlexConnectionSettingsUpdate = Partial<
-  Pick<
-    Settings,
-    | 'plex_hostname'
-    | 'plex_port'
-    | 'plex_ssl'
-    | 'plex_machine_id'
-    | 'plex_manual_mode'
-  >
->;
-
 @Injectable()
-export class SettingsService implements SettingDto {
-  id: number;
-
-  clientId: string;
-
-  applicationTitle: string;
-
-  applicationUrl: string;
-
-  apikey: string;
-
-  locale: string;
-
-  media_server_type?: MediaServerType;
-
-  plex_name: string;
-
-  plex_hostname: string;
-
-  plex_port: number;
-
-  plex_ssl: number;
-
-  plex_auth_token: string;
-
-  plex_machine_id?: string;
-
-  plex_manual_mode?: number;
-
-  jellyfin_url?: string;
-
-  jellyfin_api_key?: string;
-
-  jellyfin_user_id?: string;
-
-  jellyfin_server_name?: string;
-
-  emby_url?: string;
-
-  emby_api_key?: string;
-
-  emby_user_id?: string;
-
-  emby_server_name?: string;
-
-  // Seerr settings
-  seerr_url: string;
-
-  seerr_api_key: string;
-
-  tmdb_api_key?: string;
-
-  tvdb_api_key?: string;
-
-  metadata_provider_preference?: MetadataProviderPreference;
-
-  tautulli_url: string;
-
-  tautulli_api_key: string;
-
-  streamystats_url: string;
-
-  collection_handler_job_cron: string;
-
-  rules_handler_job_cron: string;
-
+export class SettingsOperationsService {
   constructor(
-    @Inject(forwardRef(() => PlexApiService))
-    private readonly plexApi: PlexApiServiceType,
-    @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactoryType,
-    @Inject(forwardRef(() => ServarrService))
-    private readonly servarr: ServarrServiceType,
-    @Inject(forwardRef(() => SeerrApiService))
-    private readonly seerr: SeerrApiServiceType,
-    @Inject(forwardRef(() => TautulliApiService))
-    private readonly tautulli: TautulliApiServiceType,
-    @Inject(forwardRef(() => StreamystatsApiService))
-    private readonly streamystats: StreamystatsApiServiceType,
-    @Inject(forwardRef(() => InternalApiService))
-    private readonly internalApi: InternalApiServiceType,
+    private readonly settingsDataService: SettingsDataService,
+    private readonly plexApi: PlexApiService,
+    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly servarr: ServarrService,
+    private readonly seerr: SeerrApiService,
+    private readonly tautulli: TautulliApiService,
+    private readonly streamystats: StreamystatsApiService,
+    private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
     @InjectRepository(RadarrSettings)
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
-    private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
-    logger.setContext(SettingsService.name);
+    logger.setContext(SettingsOperationsService.name);
   }
 
-  public async init() {
-    const settingsDb = await this.settingsRepo.findOne({
-      where: {},
-    });
-    if (settingsDb) {
-      this.id = settingsDb?.id;
-      this.clientId = settingsDb?.clientId;
-      this.applicationTitle = settingsDb?.applicationTitle;
-      this.applicationUrl = settingsDb?.applicationUrl;
-      this.apikey = settingsDb?.apikey;
-      this.locale = settingsDb?.locale;
-      this.media_server_type = settingsDb?.media_server_type;
-      this.plex_name = settingsDb?.plex_name;
-      this.plex_hostname = settingsDb?.plex_hostname;
-      this.plex_port = settingsDb?.plex_port;
-      this.plex_ssl = settingsDb?.plex_ssl;
-      this.plex_auth_token = settingsDb?.plex_auth_token;
-      this.plex_machine_id = settingsDb?.plex_machine_id;
-      this.plex_manual_mode = settingsDb?.plex_manual_mode ?? 0;
-      this.jellyfin_url = settingsDb?.jellyfin_url;
-      this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
-      this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
-      this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
-      this.emby_url = settingsDb?.emby_url;
-      this.emby_api_key = settingsDb?.emby_api_key;
-      this.emby_user_id = settingsDb?.emby_user_id;
-      this.emby_server_name = settingsDb?.emby_server_name;
-      this.seerr_url = settingsDb?.seerr_url;
-      this.seerr_api_key = settingsDb?.seerr_api_key;
-      this.tmdb_api_key = settingsDb?.tmdb_api_key;
-      this.tvdb_api_key = settingsDb?.tvdb_api_key;
-      this.metadata_provider_preference =
-        settingsDb?.metadata_provider_preference ??
-        MetadataProviderPreference.TMDB_PRIMARY;
-      this.tautulli_url = settingsDb?.tautulli_url;
-      this.tautulli_api_key = settingsDb?.tautulli_api_key;
-      this.streamystats_url = settingsDb?.streamystats_url;
-      this.collection_handler_job_cron =
-        settingsDb?.collection_handler_job_cron;
-      this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
+  // ==========================================================================
+  // Read API — delegated to the passive settings store
+  // ==========================================================================
 
-      // Auto-detect media server type when not set but credentials exist.
-      // This handles upgrades from pre-Jellyfin versions (Plex) and any future
-      // scenario where media_server_type is missing but a server is configured.
-      if (!this.media_server_type) {
-        if (this.jellyfin_api_key) {
-          this.logger.log(
-            'Detected existing Jellyfin configuration without media_server_type set. Setting to jellyfin.',
-          );
-          this.media_server_type = MediaServerType.JELLYFIN;
-          await this.settingsRepo.update(
-            { id: this.id },
-            { media_server_type: MediaServerType.JELLYFIN },
-          );
-        } else if (this.emby_api_key) {
-          this.logger.log(
-            'Detected existing Emby configuration without media_server_type set. Setting to emby.',
-          );
-          this.media_server_type = MediaServerType.EMBY;
-          await this.settingsRepo.update(
-            { id: this.id },
-            { media_server_type: MediaServerType.EMBY },
-          );
-        } else if (this.plex_auth_token) {
-          this.logger.log(
-            'Detected existing Plex configuration without media_server_type set. Setting to plex.',
-          );
-          this.media_server_type = MediaServerType.PLEX;
-          await this.settingsRepo.update(
-            { id: this.id },
-            { media_server_type: MediaServerType.PLEX },
-          );
-        }
-      }
-    } else {
-      this.logger.log('Settings not found.. Creating initial settings');
-      await this.settingsRepo.insert({
-        apikey: this.generateApiKey(),
-        clientId: randomUUID(),
-      });
-      await this.init();
-    }
+  public init() {
+    return this.settingsDataService.init();
   }
 
-  @OnEvent(MaintainerrEvent.Settings_Updated)
-  handleMetadataSettingsUpdate(payload: {
-    settings: {
-      tmdb_api_key?: string | null;
-      tvdb_api_key?: string | null;
-      metadata_provider_preference?: MetadataProviderPreference;
-    };
-  }) {
-    if ('tmdb_api_key' in payload.settings) {
-      this.tmdb_api_key = payload.settings.tmdb_api_key ?? undefined;
-    }
-
-    if ('tvdb_api_key' in payload.settings) {
-      this.tvdb_api_key = payload.settings.tvdb_api_key ?? undefined;
-    }
-
-    if ('metadata_provider_preference' in payload.settings) {
-      this.metadata_provider_preference =
-        payload.settings.metadata_provider_preference ??
-        MetadataProviderPreference.TMDB_PRIMARY;
-    }
+  public getSettings() {
+    return this.settingsDataService.getSettings();
   }
 
-  public async getSettings() {
-    try {
-      return this.settingsRepo.findOne({ where: {} });
-    } catch (error) {
-      this.logger.error(
-        'Something went wrong while getting settings. Is the database file locked?',
-      );
-      this.logger.debug(error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: getErrorMessage(error, 'Failed to get settings'),
-      } as BasicResponseDto;
-    }
+  public getPublicSettings() {
+    return this.settingsDataService.getPublicSettings();
   }
 
-  /**
-   * Returns settings with sensitive fields masked.
-   * Used for the public GET /settings endpoint to avoid exposing secrets.
-   */
-  public async getPublicSettings() {
-    const settings = await this.getSettings();
-
-    if (!settings || !(settings instanceof Settings)) {
-      return settings;
-    }
-
-    return {
-      ...settings,
-      plex_auth_token: maskSecret(settings.plex_auth_token),
-      jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
-      emby_api_key: maskSecret(settings.emby_api_key),
-      seerr_api_key: maskSecret(settings.seerr_api_key),
-      tmdb_api_key: maskSecret(settings.tmdb_api_key),
-      tvdb_api_key: maskSecret(settings.tvdb_api_key),
-      tautulli_api_key: maskSecret(settings.tautulli_api_key),
-    };
+  public getMediaServerType(): MediaServerType | null {
+    return this.settingsDataService.getMediaServerType();
   }
 
-  public async getRadarrSettings() {
-    try {
-      return this.radarrSettingsRepo.find();
-    } catch (error) {
-      this.logger.error(
-        'Something went wrong while getting radarr settings. Is the database file locked?',
-      );
-      this.logger.debug(error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: getErrorMessage(error, 'Failed to get Radarr settings'),
-      } as BasicResponseDto;
-    }
+  public seerrConfigured(): boolean {
+    return this.settingsDataService.seerrConfigured();
   }
 
-  public async getRadarrSetting(id: number) {
-    try {
-      return this.radarrSettingsRepo.findOne({ where: { id: id } });
-    } catch (error) {
-      this.logger.error(
-        `Something went wrong while getting radarr setting ${id}. Is the database file locked?`,
-      );
-      this.logger.debug(error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: getErrorMessage(error, 'Failed to get Radarr setting'),
-      } as BasicResponseDto;
-    }
+  public tautulliConfigured(): boolean {
+    return this.settingsDataService.tautulliConfigured();
   }
+
+  public getRadarrSettings() {
+    return this.settingsDataService.getRadarrSettings();
+  }
+
+  public getRadarrSetting(id: number) {
+    return this.settingsDataService.getRadarrSetting(id);
+  }
+
+  public getSonarrSettings() {
+    return this.settingsDataService.getSonarrSettings();
+  }
+
+  public getSonarrSetting(id: number) {
+    return this.settingsDataService.getSonarrSetting(id);
+  }
+
+  public getRadarrSettingsCount(): Promise<number> {
+    return this.settingsDataService.getRadarrSettingsCount();
+  }
+
+  public getSonarrSettingsCount(): Promise<number> {
+    return this.settingsDataService.getSonarrSettingsCount();
+  }
+
+  public generateApiKey(): string {
+    return this.settingsDataService.generateApiKey();
+  }
+
+  public appVersion(): string {
+    return this.settingsDataService.appVersion();
+  }
+
+  public cronIsValid(schedule: string) {
+    return this.settingsDataService.cronIsValid(schedule);
+  }
+
+  public async updatePlexConnectionDetails(
+    details: Partial<
+      Pick<
+        Settings,
+        | 'plex_hostname'
+        | 'plex_port'
+        | 'plex_ssl'
+        | 'plex_machine_id'
+        | 'plex_manual_mode'
+      >
+    >,
+  ): Promise<void> {
+    return this.settingsDataService.updatePlexConnectionDetails(details);
+  }
+
+  // ==========================================================================
+  // Coordination — test / save / reinit flows
+  // ==========================================================================
 
   public async addRadarrSetting(
     settings: Omit<RadarrSettings, 'id' | 'collections'>,
@@ -418,50 +227,17 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  public async getSonarrSettings() {
-    try {
-      return this.sonarrSettingsRepo.find();
-    } catch (error) {
-      this.logger.error(
-        'Something went wrong while getting sonarr settings. Is the database file locked?',
-      );
-      this.logger.debug(error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: getErrorMessage(error, 'Failed to get Sonarr settings'),
-      } as BasicResponseDto;
-    }
-  }
-
-  public async getSonarrSetting(id: number) {
-    try {
-      return this.sonarrSettingsRepo.findOne({ where: { id: id } });
-    } catch (error) {
-      this.logger.error(
-        `Something went wrong while getting sonarr setting ${id}. Is the database file locked?`,
-      );
-      this.logger.debug(error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: getErrorMessage(error, 'Failed to get Sonarr setting'),
-      } as BasicResponseDto;
-    }
-  }
-
   public async removeTautulliSetting() {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         tautulli_url: null,
         tautulli_api_key: null,
       });
 
-      this.tautulli_url = null;
-      this.tautulli_api_key = null;
+      await this.settingsDataService.init();
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -478,14 +254,13 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         tautulli_url: settings.url,
         tautulli_api_key: settings.api_key,
       });
 
-      this.tautulli_url = settings.url;
-      this.tautulli_api_key = settings.api_key;
+      await this.settingsDataService.init();
       this.tautulli.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -500,12 +275,12 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         streamystats_url: null,
       });
 
-      this.streamystats_url = null;
+      await this.settingsDataService.init();
       this.streamystats.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -522,12 +297,12 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         streamystats_url: settings.url,
       });
 
-      this.streamystats_url = settings.url;
+      await this.settingsDataService.init();
       this.streamystats.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -542,14 +317,13 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         seerr_url: null,
         seerr_api_key: null,
       });
 
-      this.seerr_url = null;
-      this.seerr_api_key = null;
+      await this.settingsDataService.init();
       this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -566,14 +340,13 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         seerr_url: settings.url,
         seerr_api_key: settings.api_key,
       });
 
-      this.seerr_url = settings.url;
-      this.seerr_api_key = settings.api_key;
+      await this.settingsDataService.init();
       this.seerr.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -677,7 +450,7 @@ export class SettingsService implements SettingDto {
         }
       }
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         jellyfin_url: settings.jellyfin_url,
         jellyfin_api_key: settings.jellyfin_api_key,
@@ -689,11 +462,7 @@ export class SettingsService implements SettingDto {
       // Uninitialize service so it reinitializes with new credentials on next use
       this.mediaServerFactory.uninitializeServer(MediaServerType.JELLYFIN);
 
-      this.jellyfin_url = settings.jellyfin_url;
-      this.jellyfin_api_key = settings.jellyfin_api_key;
-      this.jellyfin_user_id = userId;
-      this.jellyfin_server_name = testResult.serverName;
-      this.media_server_type = MediaServerType.JELLYFIN;
+      await this.settingsDataService.init();
 
       // Streamystats uses the Jellyfin API key + server identity. Re-init so
       // the cached client and resolved serverId track the new credentials.
@@ -763,7 +532,7 @@ export class SettingsService implements SettingDto {
 
       // Streamystats can't authenticate without Jellyfin credentials; clear
       // its URL alongside Jellyfin so we don't leave a half-configured state.
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         jellyfin_url: null,
         jellyfin_api_key: null,
@@ -775,11 +544,7 @@ export class SettingsService implements SettingDto {
       // Uninitialize service to clear credentials
       this.mediaServerFactory.uninitializeServer(MediaServerType.JELLYFIN);
 
-      this.jellyfin_url = undefined;
-      this.jellyfin_api_key = undefined;
-      this.jellyfin_user_id = undefined;
-      this.jellyfin_server_name = undefined;
-      this.streamystats_url = null;
+      await this.settingsDataService.init();
       this.streamystats.init();
 
       this.logger.log('Jellyfin settings cleared');
@@ -927,7 +692,7 @@ export class SettingsService implements SettingDto {
         }
       }
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         emby_url: settings.emby_url,
         emby_api_key: settings.emby_api_key,
@@ -938,11 +703,7 @@ export class SettingsService implements SettingDto {
 
       this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
 
-      this.emby_url = settings.emby_url;
-      this.emby_api_key = settings.emby_api_key;
-      this.emby_user_id = userId;
-      this.emby_server_name = testResult.serverName;
-      this.media_server_type = MediaServerType.EMBY;
+      await this.settingsDataService.init();
 
       this.logger.log('Emby settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -962,7 +723,7 @@ export class SettingsService implements SettingDto {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         emby_url: null,
         emby_api_key: null,
@@ -972,10 +733,7 @@ export class SettingsService implements SettingDto {
 
       this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
 
-      this.emby_url = undefined;
-      this.emby_api_key = undefined;
-      this.emby_user_id = undefined;
-      this.emby_server_name = undefined;
+      await this.settingsDataService.init();
 
       this.logger.log('Emby settings cleared');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -1081,7 +839,7 @@ export class SettingsService implements SettingDto {
         { plex_auth_token: null },
       );
 
-      this.plex_auth_token = null;
+      await this.settingsDataService.init();
       this.plexApi.uninitialize();
 
       return { status: 'OK', code: 1, message: 'Success' };
@@ -1111,7 +869,7 @@ export class SettingsService implements SettingDto {
         },
       );
 
-      this.plex_auth_token = plex_auth_token;
+      await this.settingsDataService.init();
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
@@ -1208,46 +966,6 @@ export class SettingsService implements SettingDto {
     );
   }
 
-  /**
-   * Update specific Plex connection fields without triggering a full settings
-   * reload or re-initialization cycle. Used by PlexApiService during failover
-   * to persist the new connection details and machineId.
-   */
-  public async updatePlexConnectionDetails(
-    details: PlexConnectionSettingsUpdate,
-  ): Promise<void> {
-    const settingsDb = await this.settingsRepo.findOne({ where: {} });
-    if (!settingsDb) return;
-
-    await this.settingsRepo.save({ ...settingsDb, ...details });
-
-    // Sync in-memory state so subsequent reads are consistent
-    if (details.plex_hostname !== undefined)
-      this.plex_hostname = details.plex_hostname;
-    if (details.plex_port !== undefined) this.plex_port = details.plex_port;
-    if (details.plex_ssl !== undefined) this.plex_ssl = details.plex_ssl;
-    if (details.plex_machine_id !== undefined)
-      this.plex_machine_id = details.plex_machine_id;
-    if (details.plex_manual_mode !== undefined)
-      this.plex_manual_mode = details.plex_manual_mode;
-  }
-
-  private async saveSettings(settings: Settings): Promise<Settings> {
-    const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-    const updatedSettings = await this.settingsRepo.save({
-      ...settingsDb,
-      ...settings,
-    });
-
-    this.eventEmitter.emit(MaintainerrEvent.Settings_Updated, {
-      oldSettings: settingsDb,
-      settings: updatedSettings,
-    });
-
-    return updatedSettings;
-  }
-
   public async updateSettings(settings: Settings): Promise<BasicResponseDto> {
     if (
       !this.cronIsValid(settings.collection_handler_job_cron) ||
@@ -1298,12 +1016,12 @@ export class SettingsService implements SettingDto {
       settings.plex_hostname = normalizedPlexServerSettings.hostname;
       settings.plex_ssl = normalizedPlexServerSettings.ssl;
 
-      await this.saveSettings({
+      await this.settingsDataService.saveSettings({
         ...settingsDb,
         ...settings,
       });
 
-      await this.init();
+      await this.settingsDataService.init();
       this.logger.log('Settings updated');
       await this.mediaServerFactory.initialize();
       this.seerr.init();
@@ -1332,12 +1050,6 @@ export class SettingsService implements SettingDto {
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failure' };
     }
-  }
-
-  public generateApiKey(): string {
-    return Buffer.from(`Maintainerr${Date.now()}${randomUUID()})`).toString(
-      'base64',
-    );
   }
 
   public async testSeerr(setting?: SeerrSetting): Promise<BasicResponseDto> {
@@ -1481,7 +1193,7 @@ export class SettingsService implements SettingDto {
   }
 
   public async testPlex(): Promise<BasicResponseDto> {
-    if (!this.plex_auth_token) {
+    if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
         code: 0,
@@ -1508,7 +1220,7 @@ export class SettingsService implements SettingDto {
   }
 
   public async testPlexAuthToken(): Promise<BasicResponseDto> {
-    if (!this.plex_auth_token) {
+    if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
         code: 0,
@@ -1541,36 +1253,42 @@ export class SettingsService implements SettingDto {
   }
 
   public async testMediaServerConnection(): Promise<boolean> {
-    if (!this.media_server_type) {
+    if (!this.settingsDataService.media_server_type) {
       return false;
     }
 
-    switch (this.media_server_type) {
+    switch (this.settingsDataService.media_server_type) {
       case MediaServerType.JELLYFIN: {
-        if (!this.jellyfin_url || !this.jellyfin_api_key) {
+        if (
+          !this.settingsDataService.jellyfin_url ||
+          !this.settingsDataService.jellyfin_api_key
+        ) {
           return false;
         }
 
         return (
           (
             await this.testJellyfin({
-              jellyfin_url: this.jellyfin_url,
-              jellyfin_api_key: this.jellyfin_api_key,
-              jellyfin_user_id: this.jellyfin_user_id,
+              jellyfin_url: this.settingsDataService.jellyfin_url,
+              jellyfin_api_key: this.settingsDataService.jellyfin_api_key,
+              jellyfin_user_id: this.settingsDataService.jellyfin_user_id,
             })
           ).status === 'OK'
         );
       }
       case MediaServerType.EMBY: {
-        if (!this.emby_url || !this.emby_api_key) {
+        if (
+          !this.settingsDataService.emby_url ||
+          !this.settingsDataService.emby_api_key
+        ) {
           return false;
         }
         return (
           (
             await this.testEmby({
-              emby_url: this.emby_url,
-              emby_api_key: this.emby_api_key,
-              emby_user_id: this.emby_user_id,
+              emby_url: this.settingsDataService.emby_url,
+              emby_api_key: this.settingsDataService.emby_api_key,
+              emby_user_id: this.settingsDataService.emby_user_id,
             })
           ).status === 'OK'
         );
@@ -1586,7 +1304,7 @@ export class SettingsService implements SettingDto {
   public async testConnections(): Promise<boolean> {
     try {
       // If no media server type is configured, connections cannot be tested
-      if (!this.media_server_type) {
+      if (!this.settingsDataService.media_server_type) {
         return false;
       }
 
@@ -1637,61 +1355,44 @@ export class SettingsService implements SettingDto {
     }
   }
 
-  public seerrConfigured(): boolean {
-    return this.seerr_url !== null && this.seerr_api_key !== null;
-  }
-
-  public tautulliConfigured(): boolean {
-    return this.tautulli_url !== null && this.tautulli_api_key !== null;
-  }
-
-  /**
-   * Get the current media server type
-   */
-  public getMediaServerType(): MediaServerType | null {
-    return (this.media_server_type as MediaServerType) || null;
-  }
-
-  /**
-   * Get count of Radarr settings (for switch preview)
-   */
-  public async getRadarrSettingsCount(): Promise<number> {
-    return this.radarrSettingsRepo.count();
-  }
-
-  /**
-   * Get count of Sonarr settings (for switch preview)
-   */
-  public async getSonarrSettingsCount(): Promise<number> {
-    return this.sonarrSettingsRepo.count();
-  }
-
   // Test if all required settings are set.
   public async testSetup(): Promise<boolean> {
     try {
       // If no media server type is selected, setup is not complete
-      if (!this.media_server_type) {
+      if (!this.settingsDataService.media_server_type) {
         return false;
       }
 
       // Check based on configured media server type
-      if (this.media_server_type === MediaServerType.JELLYFIN) {
+      if (
+        this.settingsDataService.media_server_type === MediaServerType.JELLYFIN
+      ) {
         // Jellyfin requires URL and API key (user ID is optional, can be auto-detected later)
-        if (this.jellyfin_url && this.jellyfin_api_key) {
+        if (
+          this.settingsDataService.jellyfin_url &&
+          this.settingsDataService.jellyfin_api_key
+        ) {
           return true;
         }
-      } else if (this.media_server_type === MediaServerType.EMBY) {
+      } else if (
+        this.settingsDataService.media_server_type === MediaServerType.EMBY
+      ) {
         // Emby requires URL and API key (user ID is optional, can be auto-detected later)
-        if (this.emby_url && this.emby_api_key) {
+        if (
+          this.settingsDataService.emby_url &&
+          this.settingsDataService.emby_api_key
+        ) {
           return true;
         }
-      } else if (this.media_server_type === MediaServerType.PLEX) {
+      } else if (
+        this.settingsDataService.media_server_type === MediaServerType.PLEX
+      ) {
         // Plex requires hostname, name, port, and auth token
         if (
-          this.plex_hostname &&
-          this.plex_name &&
-          this.plex_port &&
-          this.plex_auth_token
+          this.settingsDataService.plex_hostname &&
+          this.settingsDataService.plex_name &&
+          this.settingsDataService.plex_port &&
+          this.settingsDataService.plex_auth_token
         ) {
           return true;
         }
@@ -1704,19 +1405,6 @@ export class SettingsService implements SettingDto {
       );
       return false;
     }
-  }
-
-  public appVersion(): string {
-    return process.env.npm_package_version
-      ? process.env.npm_package_version
-      : '0.0.0';
-  }
-
-  public cronIsValid(schedule: string) {
-    if (isValidCron(schedule)) {
-      return true;
-    }
-    return false;
   }
 
   public async getPlexServers() {

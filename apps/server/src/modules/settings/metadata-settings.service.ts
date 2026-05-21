@@ -5,7 +5,7 @@ import {
   TmdbSetting,
   TvdbSetting,
 } from '@maintainerr/contracts';
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,7 +13,6 @@ import cacheManager from '../api/lib/cache';
 import { shouldRefreshMetadataItemId } from '../api/media-server/media-server-id.utils';
 import { MEDIA_SERVER_BATCH_SIZE } from '../api/media-server/media-server.constants';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import type { IMediaServerService } from '../api/media-server/media-server.interface';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
@@ -32,8 +31,7 @@ export class MetadataSettingsService {
     private readonly settingsRepo: Repository<Settings>,
     @InjectRepository(CollectionMedia)
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
-    @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactoryType,
+    private readonly mediaServerFactory: MediaServerFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly tmdbApi: TmdbApiService,
     private readonly tvdbApi: TvdbApiService,

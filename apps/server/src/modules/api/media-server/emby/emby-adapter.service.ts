@@ -16,12 +16,11 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { type AxiosInstance, AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../../settings/settings.service';
+import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { supportsFeature } from '../media-server.constants';
@@ -70,8 +69,7 @@ export class EmbyAdapterService implements IMediaServerService {
   private readonly cache: Cache;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsServiceType,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(EmbyAdapterService.name);

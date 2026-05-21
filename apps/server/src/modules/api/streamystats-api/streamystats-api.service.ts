@@ -3,9 +3,8 @@ import {
   StreamystatsItemDetails,
   streamystatsItemDetailsSchema,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { SettingsService } from '../../../modules/settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../../modules/settings/settings.service';
+import { Injectable } from '@nestjs/common';
+import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
@@ -36,8 +35,7 @@ export class StreamystatsApiService {
   private resolvedServerId: number | null = null;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsServiceType,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {

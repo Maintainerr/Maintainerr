@@ -3,7 +3,7 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { MediaServerFactory } from './media-server.factory';
@@ -17,9 +17,9 @@ describe('MediaServerFactory', () => {
     warn: jest.fn(),
   } as unknown as jest.Mocked<MaintainerrLogger>;
 
-  const settingsService = {
+  const settingsDataService = {
     getSettings: jest.fn(),
-  } as unknown as jest.Mocked<SettingsService>;
+  } as unknown as jest.Mocked<SettingsDataService>;
 
   const mediaServerSwitchService = {
     isSwitching: jest.fn(),
@@ -63,7 +63,7 @@ describe('MediaServerFactory', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     factory = new MediaServerFactory(
-      settingsService,
+      settingsDataService,
       mediaServerSwitchService,
       plexAdapter,
       jellyfinAdapter,
@@ -86,7 +86,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('throws when no media server type is configured', async () => {
-    settingsService.getSettings.mockResolvedValue({
+    settingsDataService.getSettings.mockResolvedValue({
       status: 'NOK',
       code: 0,
       message: 'missing settings',
@@ -98,7 +98,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('returns and initializes Jellyfin adapter when configured', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.JELLYFIN,
         jellyfin_url: 'http://jellyfin.local:8096',
@@ -116,7 +116,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('throws when Jellyfin remains uninitialized after initialize', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.JELLYFIN,
         jellyfin_url: 'http://jellyfin.local:8096',
@@ -131,7 +131,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('throws ServiceUnavailableException when the configured server has no credentials yet', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({ media_server_type: MediaServerType.JELLYFIN }),
     );
 
@@ -142,7 +142,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('throws when Plex remains uninitialized after initialize', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.PLEX,
         plex_hostname: 'plex.local',
@@ -159,7 +159,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('returns Plex adapter without initialization if already setup', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.PLEX,
         plex_hostname: 'plex.local',
@@ -177,7 +177,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('infers Jellyfin when only Jellyfin credentials exist and type is unset', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: null,
         jellyfin_url: 'http://jellyfin.local:8096',
@@ -191,7 +191,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('prefers explicit configured type over inferred mismatch', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.JELLYFIN,
         plex_hostname: 'plex.local',
@@ -207,7 +207,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('returns and initializes Emby adapter when configured', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.EMBY,
         emby_url: 'http://emby.local:8096',
@@ -223,7 +223,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('throws when Emby remains uninitialized after initialize', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: MediaServerType.EMBY,
         emby_url: 'http://emby.local:8096',
@@ -238,7 +238,7 @@ describe('MediaServerFactory', () => {
   });
 
   it('infers Emby when only Emby credentials exist and type is unset', async () => {
-    settingsService.getSettings.mockResolvedValue(
+    settingsDataService.getSettings.mockResolvedValue(
       createSettings({
         media_server_type: null,
         emby_url: 'http://emby.local:8096',
@@ -285,7 +285,7 @@ describe('MediaServerFactory', () => {
 
   describe('verifyConnection', () => {
     beforeEach(() => {
-      settingsService.getSettings.mockResolvedValue(
+      settingsDataService.getSettings.mockResolvedValue(
         createSettings({ media_server_type: MediaServerType.PLEX }),
       );
       plexAdapter.isSetup.mockReturnValue(true);

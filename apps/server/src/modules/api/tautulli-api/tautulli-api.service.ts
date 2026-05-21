@@ -1,9 +1,8 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import { SettingsService } from '../../..//modules/settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../..//modules/settings/settings.service';
+import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
@@ -107,8 +106,7 @@ export class TautulliApiService {
   api: TautulliApi;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: SettingsServiceType,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {

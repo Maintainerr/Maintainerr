@@ -1,5 +1,5 @@
 import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { isIP } from 'net';
 import {
@@ -18,7 +18,7 @@ import {
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import PlexApi from '../lib/plexApi';
 import PlexTvApi, { PlexUser } from '../lib/plextvApi';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
@@ -51,18 +51,6 @@ import {
 } from './interfaces/server.interface';
 import { PLEX_PAGE_SIZE, PLEX_REQUEST_TIMEOUT_MS } from './plex-api.constants';
 
-type PlexApiSettings = SettingsService &
-  Pick<
-    Settings,
-    | 'plex_name'
-    | 'plex_hostname'
-    | 'plex_port'
-    | 'plex_ssl'
-    | 'plex_auth_token'
-    | 'plex_machine_id'
-    | 'plex_manual_mode'
-  >;
-
 type PlexDiscoverUserState = Record<string, unknown>;
 
 type PlexDiscoverUserStateResponse = {
@@ -79,8 +67,7 @@ export class PlexApiService {
   private machineId: string;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settings: PlexApiSettings,
+    private readonly settings: SettingsDataService,
     private readonly logger: MaintainerrLogger,
     private readonly loggerFactory: MaintainerrLoggerFactory,
   ) {

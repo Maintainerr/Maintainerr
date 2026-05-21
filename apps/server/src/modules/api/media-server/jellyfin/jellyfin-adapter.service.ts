@@ -43,13 +43,12 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SettingsService } from '../../../settings/settings.service';
-import type { SettingsService as SettingsServiceType } from '../../../settings/settings.service';
+import { SettingsDataService } from '../../../settings/settings-data.service';
 import cacheManager, { type Cache } from '../../lib/cache';
 import {
   isBlankMediaServerId,
@@ -119,8 +118,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   private readonly cache: Cache;
 
   constructor(
-    @Inject(forwardRef(() => SettingsService))
-    private readonly settingsService: SettingsServiceType,
+    private readonly settingsDataService: SettingsDataService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.cache = cacheManager.getCache('jellyfin');
@@ -201,7 +199,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async initialize(): Promise<void> {
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsDataService.getSettings();
 
     if (!settings || !('jellyfin_url' in settings)) {
       throw new Error('Settings not available');
@@ -293,7 +291,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       }
 
       const response = await getSystemApi(this.api).getPublicSystemInfo();
-      const settings = await this.settingsService.getSettings();
+      const settings = await this.settingsDataService.getSettings();
       // Extract jellyfin_url if settings is a valid Settings object (not an error response)
       const jellyfinUrl =
         settings && 'jellyfin_url' in settings
@@ -1299,7 +1297,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       return this.jellyfinUserId;
     }
 
-    const settings = await this.settingsService.getSettings();
+    const settings = await this.settingsDataService.getSettings();
     this.jellyfinUserId =
       settings && 'jellyfin_user_id' in settings
         ? (settings.jellyfin_user_id ?? undefined)
