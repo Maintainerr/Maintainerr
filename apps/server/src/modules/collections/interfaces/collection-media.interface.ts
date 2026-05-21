@@ -10,6 +10,7 @@ export interface CollectionMediaRecord {
   isManual?: boolean;
   includedByRule?: boolean | null;
   manualMembershipSource?: 'legacy' | 'local' | 'shared' | null;
+  ruleEvaluationFailed?: boolean;
 }
 
 export interface CollectionMediaChange {

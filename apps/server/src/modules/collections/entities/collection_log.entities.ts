@@ -30,7 +30,7 @@ export class CollectionLog {
   @Column()
   message: string;
 
-  @Column({ nullable: false })
+  @Column({ type: 'integer', nullable: false })
   type: ECollectionLogType;
 
   @Column('simple-json', { nullable: true })

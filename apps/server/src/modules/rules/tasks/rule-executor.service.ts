@@ -17,6 +17,7 @@ import { Collection } from '../../collections/entities/collection.entities';
 import {
   CollectionMediaManualMembershipSource,
   hasCollectionMediaManualMembership,
+  hasCollectionMediaRuleMembership,
 } from '../../collections/entities/collection_media.entities';
 import { CollectionMediaChange } from '../../collections/interfaces/collection-media.interface';
 import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
@@ -674,6 +675,16 @@ export class RuleExecutorService {
             return e.mediaServerId;
           }),
         );
+        const ruleOwnedCurrentMediaServerIds = new Set<string>(
+          collMediaData
+            .filter((mediaItem) => hasCollectionMediaRuleMembership(mediaItem))
+            .map((mediaItem) => mediaItem.mediaServerId),
+        );
+        const flaggedCurrentMediaServerIds = new Set<string>(
+          collMediaData
+            .filter((mediaItem) => mediaItem.ruleEvaluationFailed)
+            .map((mediaItem) => mediaItem.mediaServerId),
+        );
 
         // Suppress re-adds for items the collection handler just processed.
         // Conditions like "watched" / "lastViewedAt before N days" stay true
@@ -727,22 +738,46 @@ export class RuleExecutorService {
         );
 
         const mediaToRemove: string[] = [];
-        let preservedTransientRemovalCount = 0;
+        const preservedTransientRemovalMediaServerIds: string[] = [];
         for (const mediaServerId of currentMediaServerIds) {
           if (desiredMediaServerIds.has(mediaServerId)) {
             continue;
           }
-          if (this.transientFailureMediaIds.has(mediaServerId)) {
-            preservedTransientRemovalCount++;
+          if (
+            ruleOwnedCurrentMediaServerIds.has(mediaServerId) &&
+            this.transientFailureMediaIds.has(mediaServerId)
+          ) {
+            preservedTransientRemovalMediaServerIds.push(mediaServerId);
             continue;
           }
           mediaToRemove.push(mediaServerId);
         }
 
-        if (preservedTransientRemovalCount > 0) {
+        const preservedTransientRemovalMediaServerIdSet = new Set(
+          preservedTransientRemovalMediaServerIds,
+        );
+        const clearedTransientFailureMediaServerIds = [
+          ...flaggedCurrentMediaServerIds,
+        ].filter(
+          (mediaServerId) =>
+            !preservedTransientRemovalMediaServerIdSet.has(mediaServerId),
+        );
+
+        await this.collectionService.setCollectionMediaRuleEvaluationFailed(
+          collection.id,
+          preservedTransientRemovalMediaServerIds,
+          true,
+        );
+        await this.collectionService.setCollectionMediaRuleEvaluationFailed(
+          collection.id,
+          clearedTransientFailureMediaServerIds,
+          false,
+        );
+
+        if (preservedTransientRemovalMediaServerIds.length > 0) {
           this.logger.debug(
-            `Skipped rule-driven removal for ${preservedTransientRemovalCount} media item${
-              preservedTransientRemovalCount === 1 ? '' : 's'
+            `Skipped rule-driven removal for ${preservedTransientRemovalMediaServerIds.length} media item${
+              preservedTransientRemovalMediaServerIds.length === 1 ? '' : 's'
             } in '${
               collection.manualCollection
                 ? collection.manualCollectionName

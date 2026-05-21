@@ -16,7 +16,10 @@ import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { Collection } from './entities/collection.entities';
-import { CollectionMedia } from './entities/collection_media.entities';
+import {
+  CollectionMedia,
+  CollectionMediaManualMembershipSource,
+} from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
 
 jest.mock('../../utils/delay');
@@ -121,8 +124,53 @@ describe('CollectionWorkerService', () => {
     await collectionWorkerService.execute();
 
     expect(executionLock.acquire).toHaveBeenCalled();
+    expect(collectionMediaRepository.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        collectionId: collection.id,
+      }),
+    });
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
+  });
+
+  it('skips flagged rule-owned media but still handles flagged manual media', async () => {
+    settings.testConnections.mockResolvedValue(true);
+
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'movie',
+    });
+    const flaggedRuleOwnedMedia = createCollectionMedia(collection, {
+      mediaServerId: 'rule-owned',
+      includedByRule: true,
+      manualMembershipSource: null,
+      ruleEvaluationFailed: true,
+    });
+    const flaggedManualMedia = createCollectionMedia(collection, {
+      mediaServerId: 'manual',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      ruleEvaluationFailed: true,
+    });
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([
+      flaggedRuleOwnedMedia,
+      flaggedManualMedia,
+    ]);
+    collectionHandler.handleMedia.mockResolvedValue(true);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).toHaveBeenCalledTimes(1);
+    expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
+      collection,
+      flaggedManualMedia,
+    );
+    expect(collectionHandler.handleMedia).not.toHaveBeenCalledWith(
+      collection,
+      flaggedRuleOwnedMedia,
+    );
   });
 
   it('should not report failed media as handled', async () => {

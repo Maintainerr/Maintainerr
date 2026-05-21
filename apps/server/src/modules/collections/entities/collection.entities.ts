@@ -67,7 +67,7 @@ export class Collection {
   @Column({ nullable: false, default: false })
   forceSeerr: boolean;
 
-  @Column({ nullable: false, default: 'movie' })
+  @Column({ type: 'varchar', nullable: false, default: 'movie' })
   type: MediaItemType;
 
   @Column({ nullable: false, default: 6 })
