@@ -1,4 +1,4 @@
-import { forwardRef, Global, Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InternalApiModule } from '../api/internal-api/internal-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
@@ -29,15 +29,15 @@ import { SettingsDataService } from './settings-data.service';
 @Global()
 @Module({
   imports: [
-    forwardRef(() => PlexApiModule),
-    forwardRef(() => MediaServerModule),
-    forwardRef(() => ServarrApiModule),
-    forwardRef(() => SeerrApiModule),
-    forwardRef(() => TautulliApiModule),
-    forwardRef(() => StreamystatsApiModule),
-    forwardRef(() => TmdbApiModule),
-    forwardRef(() => TvdbApiModule),
-    forwardRef(() => InternalApiModule),
+    PlexApiModule,
+    MediaServerModule,
+    ServarrApiModule,
+    SeerrApiModule,
+    TautulliApiModule,
+    StreamystatsApiModule,
+    TmdbApiModule,
+    TvdbApiModule,
+    InternalApiModule,
     TypeOrmModule.forFeature([
       Settings,
       RadarrSettings,
