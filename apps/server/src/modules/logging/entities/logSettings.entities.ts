@@ -10,7 +10,7 @@ export class LogSettings implements LogSetting {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false, default: DEFAULT_LOG_LEVEL })
+  @Column({ type: 'varchar', nullable: false, default: DEFAULT_LOG_LEVEL })
   level: LogLevel;
 
   @Column({ nullable: false, default: DEFAULT_LOG_MAX_SIZE })

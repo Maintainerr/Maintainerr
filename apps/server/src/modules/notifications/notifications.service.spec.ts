@@ -34,6 +34,39 @@ describe('NotificationService', () => {
     return { service, mediaServerFactory };
   };
 
+  it('renders a movie by title even when the server reports a parent (Emby/Jellyfin library folder)', async () => {
+    // Emby/Jellyfin set parentId to the containing library folder for movies;
+    // keying the title off parentId presence used to render them as
+    // "undefined - season undefined". Branching on type fixes that.
+    const mediaServerFactory = {
+      getService: jest.fn().mockResolvedValue({
+        getMetadata: jest.fn().mockResolvedValue({
+          title: 'A Sample Movie',
+          type: 'movie',
+          parentId: 'lib-movies',
+        }),
+      }),
+    };
+    const service = new NotificationService(
+      { find: jest.fn().mockResolvedValue([]) } as any,
+      { findOne: jest.fn().mockResolvedValue(null) } as any,
+      {} as any,
+      {} as any,
+      mediaServerFactory as any,
+      createMockLogger() as any,
+      { createLogger: jest.fn().mockReturnValue(createMockLogger()) } as any,
+    );
+
+    const content = await (service as any).transformMessageContent(
+      "🖼️ Overlays applied in '{collection_name}'.\n\n{media_items}",
+      [{ mediaServerId: '1' }, { mediaServerId: '2' }],
+      'All Collections',
+    );
+
+    expect(content).toContain('* A Sample Movie');
+    expect(content).not.toContain('season undefined');
+  });
+
   it('builds a single overlay applied notification message', async () => {
     const { service } = createService();
 

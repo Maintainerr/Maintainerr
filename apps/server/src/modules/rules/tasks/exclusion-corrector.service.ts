@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Collection } from '../../collections/entities/collection.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsOperationsService } from '../../settings/settings-operations.service';
 import { Exclusion } from '../entities/exclusion.entities';
 import { RuleGroup } from '../entities/rule-group.entities';
 import { RulesService } from '../rules.service';
@@ -25,7 +25,7 @@ const LEGACY_INT_TO_MEDIA_TYPE: Record<string, MediaItemType> = {
 export class ExclusionTypeCorrectorService implements OnModuleInit {
   constructor(
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly settings: SettingsService,
+    private readonly settingsOperationsService: SettingsOperationsService,
     private readonly rulesService: RulesService,
     @InjectRepository(Exclusion)
     private readonly exclusionRepo: Repository<Exclusion>,
@@ -48,7 +48,7 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
       // Backfill null exclusion types by fetching metadata from the media server.
       // Only runs work when there are exclusions with null types (typically once
       // after migration). Subsequent startups return immediately.
-      const isSetup = await this.settings.testSetup();
+      const isSetup = await this.settingsOperationsService.testSetup();
       if (isSetup) {
         await this.correctExclusionTypes();
       }

@@ -5,6 +5,7 @@ import {
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { Collection } from '../../collections/entities/collection.entities';
 
@@ -18,7 +19,7 @@ export class CollectionLog {
     nullable: false,
     onDelete: 'CASCADE',
   })
-  collection: Collection;
+  collection: Relation<Collection>;
 
   @Column({
     type: 'datetime',
@@ -29,7 +30,7 @@ export class CollectionLog {
   @Column()
   message: string;
 
-  @Column({ nullable: false })
+  @Column({ type: 'integer', nullable: false })
   type: ECollectionLogType;
 
   @Column('simple-json', { nullable: true })

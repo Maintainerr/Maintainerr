@@ -12,7 +12,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionPosterService } from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
@@ -31,7 +31,7 @@ describe('CollectionsService', () => {
   let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let metadataService: Mocked<MetadataService>;
-  let settingsService: Mocked<SettingsService>;
+  let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
 
   beforeEach(async () => {
@@ -48,7 +48,7 @@ describe('CollectionsService', () => {
     ruleGroupRepo = unitRef.get(getRepositoryToken(RuleGroup) as string);
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     metadataService = unitRef.get(MetadataService);
-    settingsService = unitRef.get(SettingsService);
+    settingsDataService = unitRef.get(SettingsDataService);
     collectionPosterService = unitRef.get(CollectionPosterService);
     metadataService.resolveIds.mockResolvedValue({
       tmdb: 1,
@@ -80,7 +80,7 @@ describe('CollectionsService', () => {
     mediaServerFactory.getConfiguredServerType.mockResolvedValue(
       MediaServerType.PLEX,
     );
-    settingsService.media_server_type = MediaServerType.PLEX;
+    settingsDataService.media_server_type = MediaServerType.PLEX;
     jest
       .spyOn(service, 'updateCollectionTotalSize')
       .mockResolvedValue(undefined);
@@ -715,6 +715,45 @@ describe('CollectionsService', () => {
         mediaServerId: 'item-1',
         includedByRule: true,
         manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    );
+  });
+
+  it('clears stale rule evaluation flags when refreshing manual membership', async () => {
+    const collection = createCollection({
+      id: 9,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    const flaggedManualItem = createCollectionMedia(collection, {
+      id: 91,
+      mediaServerId: 'item-1',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      ruleEvaluationFailed: true,
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([flaggedManualItem]);
+    collectionMediaRepo.save.mockImplementation(async (value) => value as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    await service.addToCollection(
+      collection.id,
+      [{ mediaServerId: 'item-1' }],
+      true,
+    );
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(collectionMediaRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 91,
+        mediaServerId: 'item-1',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+        ruleEvaluationFailed: false,
       }),
     );
   });

@@ -10,13 +10,16 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { Collection } from './entities/collection.entities';
-import { CollectionMedia } from './entities/collection_media.entities';
+import {
+  CollectionMedia,
+  CollectionMediaManualMembershipSource,
+} from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
 
 jest.mock('../../utils/delay');
@@ -24,7 +27,7 @@ jest.mock('../../utils/delay');
 describe('CollectionWorkerService', () => {
   let collectionWorkerService: CollectionWorkerService;
   let taskService: Mocked<TasksService>;
-  let settings: Mocked<SettingsService>;
+  let settings: Mocked<SettingsDataService>;
   let collectionRepository: Mocked<Repository<Collection>>;
   let collectionMediaRepository: Mocked<Repository<CollectionMedia>>;
   let seerrApi: Mocked<SeerrApiService>;
@@ -41,7 +44,7 @@ describe('CollectionWorkerService', () => {
 
     collectionWorkerService = unit;
     taskService = unitRef.get(TasksService);
-    settings = unitRef.get(SettingsService);
+    settings = unitRef.get(SettingsDataService);
     collectionRepository = unitRef.get(
       getRepositoryToken(Collection) as string,
     );
@@ -91,8 +94,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should not handle media for Do Nothing collections', async () => {
-    settings.testConnections.mockResolvedValue(true);
-
     const collection = createCollection({
       arrAction: ServarrAction.DO_NOTHING,
     });
@@ -108,7 +109,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should handle media for collection and trigger availability syncs', async () => {
-    settings.testConnections.mockResolvedValue(true);
     settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
@@ -124,12 +124,54 @@ describe('CollectionWorkerService', () => {
     await collectionWorkerService.execute();
 
     expect(executionLock.acquire).toHaveBeenCalled();
+    expect(collectionMediaRepository.find).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        collectionId: collection.id,
+      }),
+    });
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
   });
 
+  it('skips flagged rule-owned media but still handles flagged manual media', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'movie',
+    });
+    const flaggedRuleOwnedMedia = createCollectionMedia(collection, {
+      mediaServerId: 'rule-owned',
+      includedByRule: true,
+      manualMembershipSource: null,
+      ruleEvaluationFailed: true,
+    });
+    const flaggedManualMedia = createCollectionMedia(collection, {
+      mediaServerId: 'manual',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      ruleEvaluationFailed: true,
+    });
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([
+      flaggedRuleOwnedMedia,
+      flaggedManualMedia,
+    ]);
+    collectionHandler.handleMedia.mockResolvedValue(true);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).toHaveBeenCalledTimes(1);
+    expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
+      collection,
+      flaggedManualMedia,
+    );
+    expect(collectionHandler.handleMedia).not.toHaveBeenCalledWith(
+      collection,
+      flaggedRuleOwnedMedia,
+    );
+  });
+
   it('should not report failed media as handled', async () => {
-    settings.testConnections.mockResolvedValue(true);
     settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
@@ -155,7 +197,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should emit failure and continue when media handling throws', async () => {
-    settings.testConnections.mockResolvedValue(true);
     settings.seerrConfigured.mockReturnValue(true);
 
     const collection = createCollection({
@@ -188,8 +229,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('should not emit collection progress when no media exceeds the delete threshold', async () => {
-    settings.testConnections.mockResolvedValue(true);
-
     const firstCollection = createCollection({
       arrAction: ServarrAction.DELETE,
       type: 'show',

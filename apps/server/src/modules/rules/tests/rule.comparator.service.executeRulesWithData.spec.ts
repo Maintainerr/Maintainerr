@@ -7,6 +7,7 @@ import {
   RulePossibility,
   RuleType,
 } from '../constants/rules.constants';
+import { RULE_EVALUATION_CONCURRENCY } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RuleDbDto } from '../dtos/ruleDb.dto';
 import { ValueGetterService } from '../getter/getter.service';
@@ -40,6 +41,18 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     values.forEach((value) => {
       valueGetterService.get.mockResolvedValueOnce(value as never);
     });
+  };
+
+  const waitForCondition = async (check: () => boolean): Promise<void> => {
+    for (let attempt = 0; attempt < 25; attempt++) {
+      if (check()) {
+        return;
+      }
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+
+    throw new Error('Condition was not met in time');
   };
 
   beforeEach(async () => {
@@ -561,6 +574,70 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       );
 
       expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
+    });
+  });
+
+  describe('rule evaluation batching', () => {
+    it('resolves operand reads in batches capped by RULE_EVALUATION_CONCURRENCY', async () => {
+      const mediaItems = Array.from(
+        { length: RULE_EVALUATION_CONCURRENCY + 2 },
+        (_, index) =>
+          createMediaItem({
+            id: `media-${index + 1}`,
+            type: 'movie' as const,
+          }),
+      );
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.EXISTS,
+          firstVal: [Application.PLEX, 8],
+          section: 0,
+        }),
+      ];
+
+      let inFlight = 0;
+      let maxInFlight = 0;
+      let startedCalls = 0;
+      const resolvers: Array<() => void> = [];
+
+      valueGetterService.get.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            startedCalls++;
+            inFlight++;
+            maxInFlight = Math.max(maxInFlight, inFlight);
+            resolvers.push(() => {
+              inFlight--;
+              resolve('present');
+            });
+          }) as never,
+      );
+
+      const resultPromise = ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        mediaItems,
+      );
+
+      await waitForCondition(
+        () => startedCalls === RULE_EVALUATION_CONCURRENCY,
+      );
+      expect(maxInFlight).toBe(RULE_EVALUATION_CONCURRENCY);
+      expect(startedCalls).toBe(RULE_EVALUATION_CONCURRENCY);
+
+      resolvers.splice(0).forEach((resolve) => resolve());
+
+      await waitForCondition(
+        () => startedCalls === RULE_EVALUATION_CONCURRENCY + 2,
+      );
+      expect(maxInFlight).toBe(RULE_EVALUATION_CONCURRENCY);
+
+      resolvers.splice(0).forEach((resolve) => resolve());
+
+      const result = await resultPromise;
+
+      expect(result.data).toHaveLength(mediaItems.length);
+      expect(valueGetterService.get).toHaveBeenCalledTimes(mediaItems.length);
     });
   });
 });

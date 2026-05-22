@@ -1,4 +1,4 @@
-import { forwardRef, Global, Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InternalApiModule } from '../api/internal-api/internal-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
@@ -23,20 +23,21 @@ import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsController } from './settings.controller';
-import { SettingsService } from './settings.service';
+import { SettingsOperationsService } from './settings-operations.service';
+import { SettingsDataService } from './settings-data.service';
 
 @Global()
 @Module({
   imports: [
-    forwardRef(() => PlexApiModule),
-    forwardRef(() => MediaServerModule),
-    forwardRef(() => ServarrApiModule),
-    forwardRef(() => SeerrApiModule),
-    forwardRef(() => TautulliApiModule),
-    forwardRef(() => StreamystatsApiModule),
-    forwardRef(() => TmdbApiModule),
-    forwardRef(() => TvdbApiModule),
-    forwardRef(() => InternalApiModule),
+    PlexApiModule,
+    MediaServerModule,
+    ServarrApiModule,
+    SeerrApiModule,
+    TautulliApiModule,
+    StreamystatsApiModule,
+    TmdbApiModule,
+    TvdbApiModule,
+    InternalApiModule,
     TypeOrmModule.forFeature([
       Settings,
       RadarrSettings,
@@ -50,13 +51,19 @@ import { SettingsService } from './settings.service';
     ]),
   ],
   providers: [
-    SettingsService,
+    SettingsDataService,
+    SettingsOperationsService,
     MetadataSettingsService,
     RuleMigrationService,
     MediaServerSwitchService,
     DatabaseDownloadService,
   ],
-  exports: [SettingsService, RuleMigrationService, MediaServerSwitchService],
+  exports: [
+    SettingsDataService,
+    SettingsOperationsService,
+    RuleMigrationService,
+    MediaServerSwitchService,
+  ],
   controllers: [SettingsController],
 })
 export class SettingsModule {}

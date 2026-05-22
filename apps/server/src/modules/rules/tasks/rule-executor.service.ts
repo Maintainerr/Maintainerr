@@ -17,6 +17,7 @@ import { Collection } from '../../collections/entities/collection.entities';
 import {
   CollectionMediaManualMembershipSource,
   hasCollectionMediaManualMembership,
+  hasCollectionMediaRuleMembership,
 } from '../../collections/entities/collection_media.entities';
 import { CollectionMediaChange } from '../../collections/interfaces/collection-media.interface';
 import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
@@ -26,7 +27,7 @@ import {
   RuleHandlerFailedDto,
 } from '../../events/events.dto';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { SettingsService } from '../../settings/settings.service';
+import { SettingsDataService } from '../../settings/settings-data.service';
 import { RuleConstants } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
@@ -34,6 +35,7 @@ import {
   buildExclusionCascadeSets,
   isMediaItemExcluded,
 } from '../helpers/exclusion-cascade.helper';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
 import { RuleExecutorProgressService } from './rule-executor-progress.service';
@@ -100,7 +102,7 @@ export class RuleExecutorService {
     private readonly rulesService: RulesService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly collectionService: CollectionsService,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsDataService,
     private readonly comparatorFactory: RuleComparatorServiceFactory,
     private readonly eventEmitter: EventEmitter2,
     private readonly progressManager: RuleExecutorProgressService,
@@ -243,6 +245,12 @@ export class RuleExecutorService {
 
         this.mediaDataType = ruleGroup.dataType || undefined;
 
+        // Run-scoped dedupe for the Sonarr/Radarr identity lookups that stay
+        // uncached at the API layer (#2897). Scoped to the evaluation loop only
+        // and never handed to the collection/action phase below, so a deletion
+        // can never read a pre-deletion entry from it.
+        const arrLookupCache = new ArrLookupCache();
+
         // Run rules data chunks of 50
         while (!this.mediaData.finished) {
           abortSignal.throwIfAborted();
@@ -257,6 +265,7 @@ export class RuleExecutorService {
               );
             },
             abortSignal,
+            arrLookupCache,
           );
 
           if (ruleResult) {
@@ -674,6 +683,16 @@ export class RuleExecutorService {
             return e.mediaServerId;
           }),
         );
+        const ruleOwnedCurrentMediaServerIds = new Set<string>(
+          collMediaData
+            .filter((mediaItem) => hasCollectionMediaRuleMembership(mediaItem))
+            .map((mediaItem) => mediaItem.mediaServerId),
+        );
+        const flaggedCurrentMediaServerIds = new Set<string>(
+          collMediaData
+            .filter((mediaItem) => mediaItem.ruleEvaluationFailed)
+            .map((mediaItem) => mediaItem.mediaServerId),
+        );
 
         // Suppress re-adds for items the collection handler just processed.
         // Conditions like "watched" / "lastViewedAt before N days" stay true
@@ -727,22 +746,46 @@ export class RuleExecutorService {
         );
 
         const mediaToRemove: string[] = [];
-        let preservedTransientRemovalCount = 0;
+        const preservedTransientRemovalMediaServerIds: string[] = [];
         for (const mediaServerId of currentMediaServerIds) {
           if (desiredMediaServerIds.has(mediaServerId)) {
             continue;
           }
-          if (this.transientFailureMediaIds.has(mediaServerId)) {
-            preservedTransientRemovalCount++;
+          if (
+            ruleOwnedCurrentMediaServerIds.has(mediaServerId) &&
+            this.transientFailureMediaIds.has(mediaServerId)
+          ) {
+            preservedTransientRemovalMediaServerIds.push(mediaServerId);
             continue;
           }
           mediaToRemove.push(mediaServerId);
         }
 
-        if (preservedTransientRemovalCount > 0) {
+        const preservedTransientRemovalMediaServerIdSet = new Set(
+          preservedTransientRemovalMediaServerIds,
+        );
+        const clearedTransientFailureMediaServerIds = [
+          ...flaggedCurrentMediaServerIds,
+        ].filter(
+          (mediaServerId) =>
+            !preservedTransientRemovalMediaServerIdSet.has(mediaServerId),
+        );
+
+        await this.collectionService.setCollectionMediaRuleEvaluationFailed(
+          collection.id,
+          preservedTransientRemovalMediaServerIds,
+          true,
+        );
+        await this.collectionService.setCollectionMediaRuleEvaluationFailed(
+          collection.id,
+          clearedTransientFailureMediaServerIds,
+          false,
+        );
+
+        if (preservedTransientRemovalMediaServerIds.length > 0) {
           this.logger.debug(
-            `Skipped rule-driven removal for ${preservedTransientRemovalCount} media item${
-              preservedTransientRemovalCount === 1 ? '' : 's'
+            `Skipped rule-driven removal for ${preservedTransientRemovalMediaServerIds.length} media item${
+              preservedTransientRemovalMediaServerIds.length === 1 ? '' : 's'
             } in '${
               collection.manualCollection
                 ? collection.manualCollectionName

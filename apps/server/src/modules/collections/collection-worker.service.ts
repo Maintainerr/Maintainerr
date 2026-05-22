@@ -13,7 +13,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionMediaHandledDto } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { SettingsService } from '../settings/settings.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import {
   ExecutionLockService,
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
@@ -23,7 +23,10 @@ import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
-import { CollectionMedia } from './entities/collection_media.entities';
+import {
+  CollectionMedia,
+  hasCollectionMediaManualMembership,
+} from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
 
 @Injectable()
@@ -38,7 +41,7 @@ export class CollectionWorkerService extends TaskBase {
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
     private readonly seerrApi: SeerrApiService,
     protected readonly taskService: TasksService,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsDataService,
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionHandler: CollectionHandler,
     private readonly collectionsService: CollectionsService,
@@ -118,12 +121,18 @@ export class CollectionWorkerService extends TaskBase {
           new Date().getTime() - +collection.deleteAfterDays * 86400000,
         );
 
-        const mediaToHandle = await this.collectionMediaRepo.find({
-          where: {
-            collectionId: collection.id,
-            addDate: LessThanOrEqual(dangerDate),
-          },
-        });
+        const mediaToHandle = (
+          await this.collectionMediaRepo.find({
+            where: {
+              collectionId: collection.id,
+              addDate: LessThanOrEqual(dangerDate),
+            },
+          })
+        ).filter(
+          (media) =>
+            !media.ruleEvaluationFailed ||
+            hasCollectionMediaManualMembership(media),
+        );
 
         if (mediaToHandle.length === 0) {
           noDueMediaCollectionCount++;
