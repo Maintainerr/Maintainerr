@@ -343,6 +343,46 @@ export class SettingsDataService implements SettingDto {
     return (this.media_server_type as MediaServerType) || null;
   }
 
+  // Test if all required media server settings are set.
+  public async testSetup(): Promise<boolean> {
+    try {
+      // If no media server type is selected, setup is not complete
+      if (!this.media_server_type) {
+        return false;
+      }
+
+      // Check based on configured media server type
+      if (this.media_server_type === MediaServerType.JELLYFIN) {
+        // Jellyfin requires URL and API key (user ID is optional, can be auto-detected later)
+        if (this.jellyfin_url && this.jellyfin_api_key) {
+          return true;
+        }
+      } else if (this.media_server_type === MediaServerType.EMBY) {
+        // Emby requires URL and API key (user ID is optional, can be auto-detected later)
+        if (this.emby_url && this.emby_api_key) {
+          return true;
+        }
+      } else if (this.media_server_type === MediaServerType.PLEX) {
+        // Plex requires hostname, name, port, and auth token
+        if (
+          this.plex_hostname &&
+          this.plex_name &&
+          this.plex_port &&
+          this.plex_auth_token
+        ) {
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to determine whether the application setup is complete',
+        error,
+      );
+      return false;
+    }
+  }
+
   /**
    * Get count of Radarr settings (for switch preview)
    */

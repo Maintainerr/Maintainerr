@@ -7,6 +7,7 @@ import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { MediaServerSwitchState } from '../api/media-server/media-server-switch-state.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
@@ -49,6 +50,16 @@ describe('MediaServerSwitchService', () => {
     jest
       .spyOn(mediaServerFactory, 'uninitializeServer')
       .mockImplementation(() => undefined);
+
+    // Back the switch-state holder with real state so the concurrency guard
+    // (executeSwitch rejecting a second switch while one is in progress) works.
+    const switchState = unitRef.get(MediaServerSwitchState);
+    let switching = false;
+    switchState.isSwitching.mockImplementation(() => switching);
+    switchState.setSwitching.mockImplementation((value: boolean) => {
+      switching = value;
+    });
+
     unitRef.get(MaintainerrLogger);
   });
 

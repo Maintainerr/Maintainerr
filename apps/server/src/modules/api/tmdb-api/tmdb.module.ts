@@ -1,10 +1,9 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { SettingsModule } from '../../settings/settings.module';
+import { Module } from '@nestjs/common';
 import { ExternalApiModule } from '../external-api/external-api.module';
 import { TmdbApiService } from './tmdb.service';
 
 @Module({
-  imports: [ExternalApiModule, forwardRef(() => SettingsModule)],
+  imports: [ExternalApiModule],
   providers: [TmdbApiService],
   exports: [TmdbApiService],
 })
