@@ -329,6 +329,81 @@ describe('SonarrActionHandler', () => {
     );
   });
 
+  // Regression guard for #2897 and the rule-evaluation ArrLookupCache: the
+  // empty-show cleanup must resolve the series from the (uncached) Sonarr
+  // client on every run, never from a memo that could hold a pre-deletion
+  // snapshot. The rule-evaluation memo is intentionally never threaded into
+  // this path — if a future refactor did so, the second run below would re-use
+  // the stale "still has files" series and wrongly skip the deletion.
+  it('resolves the series fresh from the client each run, never via a memo', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    seerrApi.hasRemainingSeasonRequests.mockResolvedValue(false);
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    const baseSeries = {
+      id: 42,
+      status: 'continuing' as const,
+      seasons: [
+        { seasonNumber: 0, monitored: false },
+        { seasonNumber: 1, monitored: false },
+      ],
+    };
+    const seriesWithFiles = createSonarrSeries({
+      ...baseSeries,
+      statistics: {
+        seasonCount: 1,
+        episodeFileCount: 8,
+        episodeCount: 10,
+        totalEpisodeCount: 10,
+        sizeOnDisk: 1000,
+        percentOfEpisodes: 80,
+      },
+    });
+    const emptySeries = createSonarrSeries({
+      ...baseSeries,
+      statistics: {
+        seasonCount: 1,
+        episodeFileCount: 0,
+        episodeCount: 10,
+        totalEpisodeCount: 10,
+        sizeOnDisk: 0,
+        percentOfEpisodes: 0,
+      },
+    });
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    const getSeries = jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId');
+    jest
+      .spyOn(mockedSonarrApi, 'unmonitorSeasons')
+      .mockResolvedValue(emptySeries);
+
+    // First run: Sonarr still reports files, so the show is not empty.
+    getSeries.mockResolvedValue(seriesWithFiles);
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+    expect(mockedSonarrApi.deleteShow).not.toHaveBeenCalled();
+
+    // Second run: the files are now gone. The handler must observe the new
+    // client value (a fresh read, not a cached one) and delete the empty show.
+    getSeries.mockResolvedValue(emptySeries);
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(getSeries).toHaveBeenCalled();
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      emptySeries.id,
+      true,
+      collection.listExclusions,
+    );
+  });
+
   it('should not delete ended empty show when Seerr still has another requested season', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,

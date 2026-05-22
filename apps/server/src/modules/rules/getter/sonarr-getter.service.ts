@@ -25,6 +25,7 @@ import {
 } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
 
 @Injectable()
@@ -54,6 +55,7 @@ export class SonarrGetterService {
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
     rule?: RuleDto,
+    arrLookupCache?: ArrLookupCache,
   ) {
     if (!ruleGroup.collection?.sonarrSettingsId) {
       this.logger.error(
@@ -112,8 +114,24 @@ export class SonarrGetterService {
         ruleGroup.collection.sonarrSettingsId,
       );
 
+      // The series lookup is keyed on the resolved tvdbId and is identical for
+      // every episode/season of a show. The API call stays uncached (the
+      // cleanup needs post-deletion truth — #2757/#2891), but during rule
+      // evaluation we dedupe it through the run-scoped memo, which is gone
+      // before any deletion runs. Evict on a failed (undefined) lookup so a
+      // transient error doesn't mark the whole series unresolved for the run.
+      const settingsId = ruleGroup.collection.sonarrSettingsId;
+      const resolveSeries = (lookupId: number) =>
+        arrLookupCache
+          ? arrLookupCache.memoize(
+              `sonarr:${settingsId}:series:${lookupId}`,
+              () => sonarrApiClient.getSeriesByTvdbId(lookupId),
+              (series) => series === undefined,
+            )
+          : sonarrApiClient.getSeriesByTvdbId(lookupId);
+
       const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
-        tvdb: (lookupId) => sonarrApiClient.getSeriesByTvdbId(lookupId),
+        tvdb: (lookupId) => resolveSeries(lookupId),
       });
       const showResponse: SonarrSeries | undefined = matchedResult?.result;
 
