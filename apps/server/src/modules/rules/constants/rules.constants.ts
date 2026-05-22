@@ -8,6 +8,22 @@ import {
 
 export { Application, MediaType, RuleOperators, RulePossibility };
 
+// How many media items a rule is evaluated against concurrently. Each item's
+// operand lookup can hit an external service (Plex, Tautulli, Sonarr, …) with
+// no bulk equivalent — most expensively Plex watch history, which has no bulk
+// endpoint (see feature #2936). Resolving a bounded number of items in parallel
+// turns a long sequential chain of round-trips into batches. This is the single
+// global cap on concurrent operand lookups (batching happens only here, never
+// nested inside the getters).
+//
+// Deliberately conservative: the binding constraint is the slowest co-located
+// backend, not the host's core count. On an all-in-one box (e.g. Tautulli's
+// CPU-heavy history queries sharing a 4-core N100 with the media server and
+// Maintainerr), too many concurrent lookups starve each request past its 10s
+// timeout, which then retries and amplifies the load. 8 keeps that in check
+// while still being far faster than sequential.
+export const RULE_EVALUATION_CONCURRENCY = 8;
+
 export const enum ArrAction {
   DELETE,
   UNMONITOR,

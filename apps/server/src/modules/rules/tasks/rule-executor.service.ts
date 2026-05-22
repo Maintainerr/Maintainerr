@@ -35,6 +35,7 @@ import {
   buildExclusionCascadeSets,
   isMediaItemExcluded,
 } from '../helpers/exclusion-cascade.helper';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { RuleComparatorServiceFactory } from '../helpers/rule.comparator.service';
 import { RulesService } from '../rules.service';
 import { RuleExecutorProgressService } from './rule-executor-progress.service';
@@ -244,6 +245,12 @@ export class RuleExecutorService {
 
         this.mediaDataType = ruleGroup.dataType || undefined;
 
+        // Run-scoped dedupe for the Sonarr/Radarr identity lookups that stay
+        // uncached at the API layer (#2897). Scoped to the evaluation loop only
+        // and never handed to the collection/action phase below, so a deletion
+        // can never read a pre-deletion entry from it.
+        const arrLookupCache = new ArrLookupCache();
+
         // Run rules data chunks of 50
         while (!this.mediaData.finished) {
           abortSignal.throwIfAborted();
@@ -258,6 +265,7 @@ export class RuleExecutorService {
               );
             },
             abortSignal,
+            arrLookupCache,
           );
 
           if (ruleResult) {

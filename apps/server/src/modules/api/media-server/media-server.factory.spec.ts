@@ -2,10 +2,10 @@ import { MediaServerType } from '@maintainerr/contracts';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
+import { MediaServerSwitchState } from './media-server-switch-state.service';
 import { MediaServerFactory } from './media-server.factory';
 import { PlexAdapterService } from './plex/plex-adapter.service';
 
@@ -21,9 +21,9 @@ describe('MediaServerFactory', () => {
     getSettings: jest.fn(),
   } as unknown as jest.Mocked<SettingsDataService>;
 
-  const mediaServerSwitchService = {
+  const mediaServerSwitchState = {
     isSwitching: jest.fn(),
-  } as unknown as jest.Mocked<MediaServerSwitchService>;
+  } as unknown as jest.Mocked<MediaServerSwitchState>;
 
   const plexAdapter = {
     isSetup: jest.fn(),
@@ -64,21 +64,21 @@ describe('MediaServerFactory', () => {
     jest.clearAllMocks();
     factory = new MediaServerFactory(
       settingsDataService,
-      mediaServerSwitchService,
+      mediaServerSwitchState,
       plexAdapter,
       jellyfinAdapter,
       embyAdapter,
       logger,
     );
 
-    mediaServerSwitchService.isSwitching.mockReturnValue(false);
+    mediaServerSwitchState.isSwitching.mockReturnValue(false);
     plexAdapter.isSetup.mockReturnValue(true);
     jellyfinAdapter.isSetup.mockReturnValue(true);
     embyAdapter.isSetup.mockReturnValue(true);
   });
 
   it('throws ServiceUnavailableException while switch is in progress', async () => {
-    mediaServerSwitchService.isSwitching.mockReturnValue(true);
+    mediaServerSwitchState.isSwitching.mockReturnValue(true);
 
     await expect(factory.getService()).rejects.toBeInstanceOf(
       ServiceUnavailableException,

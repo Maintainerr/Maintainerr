@@ -9,6 +9,7 @@ import { MediaServerFactory } from '../../api/media-server/media-server.factory'
 import { Application } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
 import { PlexGetterService } from './plex-getter.service';
@@ -36,6 +37,7 @@ export class ValueGetterService {
     ruleGroup?: RulesDto,
     dataType?: MediaItemType,
     currentRule?: RuleDto,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<RuleValueType> {
     switch (val1) {
       // Route Plex/Jellyfin/Emby Application IDs to the configured media
@@ -65,6 +67,7 @@ export class ValueGetterService {
           libItem,
           ruleGroup,
           currentRule,
+          arrLookupCache,
         );
       }
       case Application.SONARR: {
@@ -74,6 +77,7 @@ export class ValueGetterService {
           dataType,
           ruleGroup,
           currentRule,
+          arrLookupCache,
         );
       }
       case Application.SEERR: {
