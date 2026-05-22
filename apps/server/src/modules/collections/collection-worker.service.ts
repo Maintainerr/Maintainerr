@@ -121,13 +121,14 @@ export class CollectionWorkerService extends TaskBase {
           new Date().getTime() - +collection.deleteAfterDays * 86400000,
         );
 
-        const dueMedia = await this.collectionMediaRepo.find({
-          where: {
-            collectionId: collection.id,
-            addDate: LessThanOrEqual(dangerDate),
-          },
-        });
-        const mediaToHandle = dueMedia.filter(
+        const mediaToHandle = (
+          await this.collectionMediaRepo.find({
+            where: {
+              collectionId: collection.id,
+              addDate: LessThanOrEqual(dangerDate),
+            },
+          })
+        ).filter(
           (media) =>
             !media.ruleEvaluationFailed ||
             hasCollectionMediaManualMembership(media),

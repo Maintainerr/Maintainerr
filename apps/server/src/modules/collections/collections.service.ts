@@ -180,11 +180,12 @@ export class CollectionsService {
         { ruleEvaluationFailed },
       );
     } catch (error) {
+      // Best-effort persistence: a failed flag write must not abort the
+      // surrounding rule run. Worst case the worker re-evaluates next pass.
       this.logger.warn(
         'Failed to update collection media rule evaluation state',
       );
       this.logger.debug(error);
-      throw error;
     }
   }
 

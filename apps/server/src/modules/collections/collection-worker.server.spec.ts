@@ -134,8 +134,6 @@ describe('CollectionWorkerService', () => {
   });
 
   it('skips flagged rule-owned media but still handles flagged manual media', async () => {
-    settings.testConnections.mockResolvedValue(true);
-
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       type: 'movie',
