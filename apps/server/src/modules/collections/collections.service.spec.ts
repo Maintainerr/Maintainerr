@@ -719,6 +719,45 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('clears stale rule evaluation flags when refreshing manual membership', async () => {
+    const collection = createCollection({
+      id: 9,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+    const flaggedManualItem = createCollectionMedia(collection, {
+      id: 91,
+      mediaServerId: 'item-1',
+      includedByRule: false,
+      manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      ruleEvaluationFailed: true,
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([flaggedManualItem]);
+    collectionMediaRepo.save.mockImplementation(async (value) => value as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    await service.addToCollection(
+      collection.id,
+      [{ mediaServerId: 'item-1' }],
+      true,
+    );
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(collectionMediaRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 91,
+        mediaServerId: 'item-1',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+        ruleEvaluationFailed: false,
+      }),
+    );
+  });
+
   it('removes only the rule membership when an item is also manually included', async () => {
     const collection = createCollection({
       id: 10,
