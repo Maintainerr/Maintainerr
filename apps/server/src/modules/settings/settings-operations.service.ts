@@ -1357,54 +1357,7 @@ export class SettingsOperationsService {
 
   // Test if all required settings are set.
   public async testSetup(): Promise<boolean> {
-    try {
-      // If no media server type is selected, setup is not complete
-      if (!this.settingsDataService.media_server_type) {
-        return false;
-      }
-
-      // Check based on configured media server type
-      if (
-        this.settingsDataService.media_server_type === MediaServerType.JELLYFIN
-      ) {
-        // Jellyfin requires URL and API key (user ID is optional, can be auto-detected later)
-        if (
-          this.settingsDataService.jellyfin_url &&
-          this.settingsDataService.jellyfin_api_key
-        ) {
-          return true;
-        }
-      } else if (
-        this.settingsDataService.media_server_type === MediaServerType.EMBY
-      ) {
-        // Emby requires URL and API key (user ID is optional, can be auto-detected later)
-        if (
-          this.settingsDataService.emby_url &&
-          this.settingsDataService.emby_api_key
-        ) {
-          return true;
-        }
-      } else if (
-        this.settingsDataService.media_server_type === MediaServerType.PLEX
-      ) {
-        // Plex requires hostname, name, port, and auth token
-        if (
-          this.settingsDataService.plex_hostname &&
-          this.settingsDataService.plex_name &&
-          this.settingsDataService.plex_port &&
-          this.settingsDataService.plex_auth_token
-        ) {
-          return true;
-        }
-      }
-      return false;
-    } catch (error) {
-      this.logger.debug(
-        'Failed to determine whether the application setup is complete',
-        error,
-      );
-      return false;
-    }
+    return this.settingsDataService.testSetup();
   }
 
   public async getPlexServers() {
