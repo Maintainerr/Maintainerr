@@ -1092,28 +1092,28 @@ export class EmbyAdapterService implements IMediaServerService {
         headers: { 'Content-Type': contentType },
       });
     } catch (error) {
-      // The request shape matches Emby's documented (and source-confirmed)
-      // contract: base64 body + the image MIME on Content-Type. A 500 here is
-      // therefore raised inside Emby's own handler — most often when the POST
-      // body is truncated upstream (reverse-proxy/server request-size limit, so
-      // Convert.FromBase64String throws) or the image processor cannot save it.
-      // Surface Emby's response body so the actual cause is visible instead of
-      // a bare "500"; the GET download on the same path succeeding rules out
-      // auth, the item id, and connectivity.
+      const message = formatConnectionFailureMessage(
+        error,
+        'Connection failed',
+      );
+      // A 500 here is raised inside Emby's own image handler — most often the
+      // library's "Save artwork into media folders" setting (per library, not
+      // global) makes Emby write the poster next to the media file, and that
+      // path is read-only (e.g. a movie library mounted read-only while the TV
+      // library is writable). Emby's response body carries the real cause, so
+      // fold it into the thrown error: the formatted message keeps only the
+      // bare status, and the caller logs this via debug(error).
+      let detail = '';
       if (error instanceof AxiosError && error.response?.data != null) {
         const body =
           typeof error.response.data === 'string'
             ? error.response.data
             : JSON.stringify(error.response.data);
-        this.logger.debug(
-          `Emby rejected image upload for item ${collectionId} (status ${error.response.status}): ${body.slice(0, 500)}`,
-        );
+        if (body) detail = ` — ${body.slice(0, 500)}`;
       }
-      const message = formatConnectionFailureMessage(
-        error,
-        'Connection failed',
+      throw new Error(
+        `Failed to upload Emby collection image: ${message}${detail}`,
       );
-      throw new Error(`Failed to upload Emby collection image: ${message}`);
     }
   }
 
