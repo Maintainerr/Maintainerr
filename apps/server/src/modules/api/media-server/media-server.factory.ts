@@ -1,17 +1,11 @@
 import { MediaServerType } from '@maintainerr/contracts';
-import {
-  forwardRef,
-  Inject,
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
-import { MediaServerSwitchService } from '../../settings/media-server-switch.service';
-import type { MediaServerSwitchService as MediaServerSwitchServiceType } from '../../settings/media-server-switch.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
+import { MediaServerSwitchState } from './media-server-switch-state.service';
 import { IMediaServerService } from './media-server.interface';
 import { PlexAdapterService } from './plex/plex-adapter.service';
 
@@ -35,8 +29,7 @@ function isSettings(obj: unknown): obj is Settings {
 export class MediaServerFactory {
   constructor(
     private readonly settingsDataService: SettingsDataService,
-    @Inject(forwardRef(() => MediaServerSwitchService))
-    private readonly mediaServerSwitchService: MediaServerSwitchServiceType,
+    private readonly mediaServerSwitchState: MediaServerSwitchState,
     private readonly plexAdapter: PlexAdapterService,
     private readonly jellyfinAdapter: JellyfinAdapterService,
     private readonly embyAdapter: EmbyAdapterService,
@@ -72,7 +65,7 @@ export class MediaServerFactory {
    * This method reads from settings on each call to support runtime configuration changes.
    */
   async getService(): Promise<IMediaServerService> {
-    if (this.mediaServerSwitchService.isSwitching()) {
+    if (this.mediaServerSwitchState.isSwitching()) {
       throw new ServiceUnavailableException(
         'Media server switch is in progress. Please try again shortly.',
       );

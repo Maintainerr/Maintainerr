@@ -1,9 +1,8 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
-import { SettingsModule } from '../../settings/settings.module';
 import { PlexApiModule } from '../plex-api/plex-api.module';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { EmbyModule } from './emby/emby.module';
@@ -11,6 +10,7 @@ import { MediaServerSetupGuard } from './guards/media-server-setup.guard';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { JellyfinModule } from './jellyfin/jellyfin.module';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
+import { MediaServerSwitchState } from './media-server-switch-state.service';
 import { MediaServerController } from './media-server.controller';
 import { MediaServerFactory } from './media-server.factory';
 import { PlexAdapterService } from './plex/plex-adapter.service';
@@ -39,7 +39,6 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
   imports: [
     TypeOrmModule.forFeature([Exclusion, CollectionMedia, RuleGroup]),
     PlexApiModule,
-    forwardRef(() => SettingsModule),
     JellyfinModule,
     EmbyModule,
   ],
@@ -49,6 +48,7 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
     JellyfinAdapterService,
     EmbyAdapterService,
     MediaServerFactory,
+    MediaServerSwitchState,
     MediaServerSetupGuard,
     MediaItemEnrichmentService,
   ],
@@ -64,6 +64,7 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
     // EmbyAdapterService is exported for EmbyGetterService (mirrors Jellyfin pattern).
     EmbyAdapterService,
     MediaServerFactory,
+    MediaServerSwitchState,
     MediaServerSetupGuard,
   ],
 })
