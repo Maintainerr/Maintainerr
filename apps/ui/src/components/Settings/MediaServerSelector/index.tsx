@@ -211,7 +211,7 @@ const MediaServerSelector = ({
                 type="button"
                 onClick={() => handleServerClick(option.value)}
                 disabled={isPreviewPending || isSwitchPending}
-                className={`relative flex cursor-pointer rounded-lg border p-4 shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-maintainerr ${
+                className={`relative flex cursor-pointer rounded-lg border p-4 shadow-xs transition-colors duration-150 focus:ring-2 focus:ring-maintainerr focus:outline-hidden ${
                   isSelected
                     ? 'border-maintainerr bg-maintainerr/10'
                     : 'border-zinc-700 bg-zinc-800 hover:border-zinc-600'
@@ -222,7 +222,7 @@ const MediaServerSelector = ({
                     <img
                       src={option.icon}
                       alt={option.name}
-                      className="h-10 w-10 rounded object-contain"
+                      className="h-10 w-10 rounded-sm object-contain"
                     />
                     <div className="ml-4 text-left">
                       <p className="font-medium text-zinc-100">{option.name}</p>
@@ -386,13 +386,13 @@ const MediaServerSelector = ({
 
             {/* Result indicator */}
             {isSwitchComplete && (
-              <div className="mb-4 flex items-center justify-center space-x-2 rounded bg-success-900/30 p-3 text-success-400">
+              <div className="mb-4 flex items-center justify-center space-x-2 rounded-sm bg-success-900/30 p-3 text-success-400">
                 <CheckCircleIcon className="h-5 w-5" />
                 <span className="text-sm font-medium">Success</span>
               </div>
             )}
             {switchError && (
-              <div className="mb-4 rounded bg-error-900/30 p-3 text-error-400">
+              <div className="mb-4 rounded-sm bg-error-900/30 p-3 text-error-400">
                 <div className="flex items-center space-x-2">
                   <XCircleIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium">
@@ -415,7 +415,7 @@ const MediaServerSelector = ({
                     checked={migrateRules}
                     onChange={(e) => setMigrateRules(e.target.checked)}
                     disabled={isSwitchPending || isSwitchComplete}
-                    className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-700 text-maintainerr focus:ring-maintainerr"
+                    className="checkbox mt-1"
                   />
                   <label htmlFor="migrateRules" className="ml-3 cursor-pointer">
                     <span className="block font-medium text-zinc-100">

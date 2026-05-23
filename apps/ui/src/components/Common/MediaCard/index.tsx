@@ -27,9 +27,9 @@ const renderBadge = (
 ) => (
   <div className={className}>
     <div
-      className={`pointer-events-none z-40 rounded-full shadow ${tone === 'danger' ? 'bg-error-700' : mediaBadgeClasses[tone]}`}
+      className={`pointer-events-none z-40 rounded-full shadow-sm ${tone === 'danger' ? 'bg-error-700' : mediaBadgeClasses[tone]}`}
     >
-      <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-zinc-200 sm:h-5">
+      <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium tracking-wider text-zinc-200 uppercase sm:h-5">
         {label}
       </div>
     </div>
@@ -125,7 +125,7 @@ const MediaCard: React.FC<IMediaCard> = ({
         mediaType={mediaType}
         providerIds={providerIds}
         itemId={id}
-        className={`media-card relative transform-gpu cursor-pointer overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300 ${showDetail ? 'show-detail' : ''}`}
+        className={`media-card relative transform-gpu cursor-pointer overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] ring-1 outline-hidden transition duration-300 ${showDetail ? 'show-detail' : ''}`}
         onMouseEnter={() => setShowDetail(true)}
         onMouseLeave={() => setShowDetail(false)}
         onClick={() => {
@@ -140,7 +140,7 @@ const MediaCard: React.FC<IMediaCard> = ({
       >
         {(image) => (
           <>
-            <div className="absolute left-0 right-0 flex items-center justify-between p-2">
+            <div className="absolute right-0 left-0 flex items-center justify-between p-2">
               {renderBadge(mediaType, mediaType)}
               {!collectionPage && exclusionType === 'global'
                 ? renderBadge('EXCL', mediaType)
@@ -196,7 +196,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                     )}
 
                     <h1
-                      className="w-full whitespace-normal text-sm font-bold leading-tight"
+                      className="w-full text-sm leading-tight font-bold whitespace-normal"
                       style={{
                         WebkitLineClamp: 3,
                         display: '-webkit-box',
@@ -209,7 +209,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                     </h1>
                     {mediaType == 'episode' && (
                       <div
-                        className="whitespace-normal text-xs"
+                        className="text-xs whitespace-normal"
                         style={{
                           WebkitLineClamp: 5,
                           display: '-webkit-box',
@@ -227,7 +227,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                         <Button
                           buttonType="twin-primary-l"
                           buttonSize="md"
-                          className="mb-1 mt-2 h-6 w-1/2 text-zinc-200 shadow-md"
+                          className="mt-2 mb-1 h-6 w-1/2 text-zinc-200 shadow-md"
                           onClick={(e) => {
                             e.stopPropagation()
                             setAddModal(true)

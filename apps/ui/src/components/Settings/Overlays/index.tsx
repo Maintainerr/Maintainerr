@@ -55,7 +55,7 @@ function ToggleField({
             type="checkbox"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
-            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+            className="checkbox"
           />
         </div>
       </div>
@@ -189,11 +189,11 @@ const OverlaySettings = () => {
                 className="mb-0"
                 actions={
                   <>
-                    <span className="flex rounded-md shadow-sm">
+                    <span className="flex rounded-md shadow-xs">
                       <DocsButton page="overlays" />
                     </span>
                     <span
-                      className="flex rounded-md shadow-sm"
+                      className="flex rounded-md shadow-xs"
                       title={
                         !loadedEnabled
                           ? 'Enable overlays and save to run manually'
@@ -212,7 +212,7 @@ const OverlaySettings = () => {
                         idleIcon={<RefreshIcon />}
                       />
                     </span>
-                    <span className="flex rounded-md shadow-sm">
+                    <span className="flex rounded-md shadow-xs">
                       <Button
                         buttonType="danger"
                         type="button"
@@ -227,7 +227,7 @@ const OverlaySettings = () => {
                   </>
                 }
                 controls={
-                  <span className="flex rounded-md shadow-sm sm:ml-auto">
+                  <span className="flex rounded-md shadow-xs sm:ml-auto">
                     <SaveButton
                       type="submit"
                       disabled={isSubmitting || isLoading}

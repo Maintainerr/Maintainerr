@@ -481,7 +481,7 @@ const Overview = () => {
           />
         ) : undefined}
         {showBootstrapLoading ? (
-          <div className="min-h-[20rem]">
+          <div className="min-h-80">
             <LoadingSpinner />
           </div>
         ) : selectedLibrary ? (

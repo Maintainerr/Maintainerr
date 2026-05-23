@@ -41,7 +41,7 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
       <td
         onClick={onClick}
         onDoubleClick={onDoubleClick}
-        className="whitespace-wrap inline-block max-h-44 w-60 overflow-hidden overflow-ellipsis px-4 py-4 text-left text-sm leading-5 text-white md:w-96"
+        className="whitespace-wrap inline-block max-h-44 w-60 overflow-hidden px-4 py-4 text-left text-sm leading-5 text-ellipsis text-white md:w-96"
       >
         {props.rule.name}
       </td>

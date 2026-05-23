@@ -66,7 +66,7 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
         <Button
           buttonType="primary"
           buttonSize="md"
-          className="mb-1 mt-2 h-6 w-full text-zinc-200 shadow-md"
+          className="mt-2 mb-1 h-6 w-full text-zinc-200 shadow-md"
           title={
             isCreatingExclusion ? 'Exclude from collection' : 'Remove exclusion'
           }
@@ -86,7 +86,7 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
         <Button
           buttonType="primary"
           buttonSize="md"
-          className="mb-1 mt-2 h-6 w-full text-zinc-200 shadow-md"
+          className="mt-2 mb-1 h-6 w-full text-zinc-200 shadow-md"
           disabled={removing}
           onClick={(e) => {
             if (props.popup) {

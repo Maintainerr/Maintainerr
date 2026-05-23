@@ -60,9 +60,9 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
   const [isModalOpen, setModalOpen] = useState(false)
 
   return (
-    <div className="flex w-full flex-col space-y-3 rounded-md bg-zinc-700 px-4 py-2 shadow-md ring-1 ring-gray-700 sm:flex-row sm:space-x-3 sm:space-y-0">
+    <div className="flex w-full flex-col space-y-3 rounded-md bg-zinc-700 px-4 py-2 shadow-md ring-1 ring-gray-700 sm:flex-row sm:space-y-0 sm:space-x-3">
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <Modal
             onCancel={() => setModalOpen(false)}
             title={messages.versionChangelog.replace('{version}', release.name)}
@@ -83,9 +83,9 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
           </Modal>
         </div>
       )}
-      <div className="flex w-full flex-grow items-center justify-center space-x-2 truncate sm:justify-start">
+      <div className="flex w-full grow items-center justify-center space-x-2 truncate sm:justify-start">
         <span className="truncate text-lg font-bold">
-          <span className="mr-2 whitespace-nowrap text-xs font-normal">
+          <span className="mr-2 text-xs font-normal whitespace-nowrap">
             {calculateRelativeTime(release.created_at)}
           </span>
           {release.name}
