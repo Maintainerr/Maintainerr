@@ -169,14 +169,14 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
       <div className="lg:hidden">
         <Transition show={open}>
           <TransitionChild>
-            <div className="fixed inset-0 z-40 bg-zinc-900 opacity-90 transition-opacity duration-300 ease-linear data-[closed]:opacity-0"></div>
+            <div className="fixed inset-0 z-40 bg-zinc-900 opacity-90 transition-opacity duration-300 ease-linear data-closed:opacity-0"></div>
           </TransitionChild>
           <TransitionChild>
-            <div className="fixed inset-y-0 z-40 flex translate-x-0 transform transition duration-300 ease-in-out data-[closed]:-translate-x-full">
+            <div className="fixed inset-y-0 z-40 flex translate-x-0 transform transition duration-300 ease-in-out data-closed:-translate-x-full">
               <div className="sidebar relative flex w-full max-w-xs flex-1 flex-col bg-zinc-800">
-                <div className="sidebar-close-button absolute right-0 top-0 -mr-14 p-1">
+                <div className="sidebar-close-button absolute top-0 right-0 -mr-14 p-1">
                   <button
-                    className="flex h-12 w-12 items-center justify-center rounded-full text-white focus:bg-zinc-600 focus:outline-none"
+                    className="flex h-12 w-12 items-center justify-center rounded-full text-white focus:bg-zinc-600 focus:outline-hidden"
                     aria-label="Close sidebar"
                     onClick={() => setClosed()}
                   >
@@ -185,7 +185,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                 </div>
                 <div
                   ref={navRef}
-                  className="flex h-0 flex-1 flex-col overflow-y-auto pb-8 pt-4 sm:pb-4"
+                  className="flex h-0 flex-1 flex-col overflow-y-auto pt-4 pb-8 sm:pb-4"
                 >
                   <div className="flex h-[60px] flex-shrink-0 items-center px-6">
                     {logo}
@@ -207,13 +207,13 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                           role="button"
                           tabIndex={0}
                           aria-disabled={isDisabled}
-                          className={`flex items-center rounded-md px-2 py-2 text-base font-medium leading-6 text-white transition duration-150 ease-in-out ${
+                          className={`flex items-center rounded-md px-2 py-2 text-base leading-6 font-medium text-white transition duration-150 ease-in-out ${
                             linkIsActive(link)
-                              ? 'bg-gradient-to-br from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700'
+                              ? 'bg-linear-to-br from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700'
                               : isDisabled
                                 ? 'cursor-not-allowed opacity-50'
                                 : 'hover:bg-zinc-700'
-                          } focus:bg-maintainerrdark-800 focus:outline-none`}
+                          } focus:bg-maintainerrdark-800 focus:outline-hidden`}
                         >
                           {link.svgIcon}
                           {link.name}
@@ -235,10 +235,10 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         </Transition>
       </div>
 
-      <div className="fixed bottom-0 left-0 top-0 z-30 hidden lg:flex lg:flex-shrink-0">
+      <div className="fixed top-0 bottom-0 left-0 z-30 hidden lg:flex lg:shrink-0">
         <div className="sidebar flex w-64 flex-col">
           <div className="flex h-0 flex-1 flex-col">
-            <div className="flex flex-1 flex-col overflow-y-auto pb-4 pt-4">
+            <div className="flex flex-1 flex-col overflow-y-auto pt-4 pb-4">
               <div className="flex h-[60px] flex-shrink-0 items-center px-6">
                 {logo}
               </div>
@@ -256,13 +256,13 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                       to={navBarLink.href}
                       {...linkHandlers}
                       aria-disabled={isDisabled}
-                      className={`group flex items-center rounded-md px-2 py-2 text-lg font-medium leading-6 text-white transition duration-150 ease-in-out ${
+                      className={`group flex items-center rounded-md px-2 py-2 text-lg leading-6 font-medium text-white transition duration-150 ease-in-out ${
                         linkIsActive(navBarLink)
-                          ? 'bg-gradient-to-br from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700'
+                          ? 'bg-linear-to-br from-maintainerr-600 to-maintainerrdark-800 hover:from-maintainerr hover:to-maintainerrdark-700'
                           : isDisabled
                             ? 'cursor-not-allowed opacity-50'
                             : 'hover:bg-zinc-700'
-                      } focus:bg-maintainerrdark-800 focus:outline-none`}
+                      } focus:bg-maintainerrdark-800 focus:outline-hidden`}
                     >
                       {navBarLink.svgIcon}
                       {navBarLink.name}

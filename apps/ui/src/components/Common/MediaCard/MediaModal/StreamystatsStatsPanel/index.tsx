@@ -70,7 +70,7 @@ const StreamystatsStatsPanel = ({
   }, [itemId])
 
   return (
-    <div className="mt-4 min-h-[7.5rem] rounded-xl bg-zinc-900/70 p-3">
+    <div className="mt-4 min-h-30 rounded-xl bg-zinc-900/70 p-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-white">Streamystats</p>
         <BrandLink external href={itemUrl} className="text-xs no-underline">
@@ -92,13 +92,13 @@ const StreamystatsStatsPanel = ({
         <div className="mt-2 space-y-3 text-sm text-zinc-100">
           <dl className="grid grid-cols-3 gap-3">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-100/60">
+              <dt className="text-xs tracking-wide text-zinc-100/60 uppercase">
                 Plays
               </dt>
               <dd className="font-medium">{state.data.totalViews}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-100/60">
+              <dt className="text-xs tracking-wide text-zinc-100/60 uppercase">
                 Completion
               </dt>
               <dd className="font-medium">
@@ -106,7 +106,7 @@ const StreamystatsStatsPanel = ({
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-100/60">
+              <dt className="text-xs tracking-wide text-zinc-100/60 uppercase">
                 Last watched
               </dt>
               <dd className="font-medium">

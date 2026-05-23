@@ -58,7 +58,7 @@ const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed bottom-0 left-0 right-0 top-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800 bg-opacity-70"
+      className="fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70"
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           if (typeof onCancel === 'function' && backgroundClickable) {
@@ -83,7 +83,7 @@ const Modal: React.FC<ModalProps> = ({
       <Transition
         appear
         as="div"
-        className={`relative inline-block w-full transform overflow-auto bg-zinc-700 px-4 pb-4 pt-5 text-left align-bottom shadow-xl ring-1 ring-zinc-700 transition duration-300 sm:my-8 ${maxWidthMap[size]} sm:rounded-lg sm:align-middle`}
+        className={`relative inline-block w-full transform overflow-auto bg-zinc-700 px-4 pt-5 pb-4 text-left align-bottom shadow-xl ring-1 ring-zinc-700 transition duration-300 sm:my-8 ${maxWidthMap[size]} sm:rounded-lg sm:align-middle`}
         enterFrom="scale-75 opacity-0"
         enterTo="scale-100 opacity-100"
         leaveFrom="opacity-100"
@@ -106,7 +106,7 @@ const Modal: React.FC<ModalProps> = ({
           >
             {title && (
               <span
-                className="truncate text-lg font-bold leading-6"
+                className="truncate text-lg leading-6 font-bold"
                 id="modal-headline"
               >
                 {title}

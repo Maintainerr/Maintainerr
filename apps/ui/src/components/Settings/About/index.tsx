@@ -68,7 +68,7 @@ const AboutSettings = () => {
     <>
       <title>About - Maintainerr</title>
       <div className="h-full w-full">
-        <div className="mt-6 rounded-md border border-maintainerr-600 bg-maintainerr bg-opacity-20 p-4 backdrop-blur">
+        <div className="mt-6 rounded-md border border-maintainerr-600 bg-maintainerr/20 p-4 backdrop-blur-sm">
           <div className="flex">
             <div className="flex-shrink-0">
               <InformationCircleIcon className="h-5 w-5 text-gray-100" />
@@ -78,10 +78,10 @@ const AboutSettings = () => {
                 This is BETA software. Features may be broken and/or unstable.
                 Please report any issues on GitHub!
               </p>
-              <p className="mt-3 text-sm leading-5 md:ml-6 md:mt-0">
+              <p className="mt-3 text-sm leading-5 md:mt-0 md:ml-6">
                 <a
                   href="https://github.com/Maintainerr/Maintainerr"
-                  className="whitespace-nowrap font-medium text-gray-100 transition duration-150 ease-in-out hover:text-white"
+                  className="font-medium whitespace-nowrap text-gray-100 transition duration-150 ease-in-out hover:text-white"
                   target="_blank"
                   rel="noreferrer"
                 >

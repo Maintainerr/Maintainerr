@@ -130,14 +130,14 @@ const CollectionItem = (props: ICollectionItem) => {
         </div>
       ) : undefined}
       <div className="inset-0 z-0 h-fit p-3">
-        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-base font-bold text-white sm:text-lg">
+        <div className="overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap text-white sm:text-lg">
           <div>
             {props.collection.manualCollection
               ? `${props.collection.manualCollectionName} (custom)`
               : props.collection.title}
           </div>
         </div>
-        <div className="tiny-scrollbar mb-2 mt-1 h-12 max-h-12 overflow-y-hidden whitespace-normal pr-2 text-base text-zinc-400 hover:overflow-y-auto">
+        <div className="tiny-scrollbar mt-1 mb-2 h-12 max-h-12 overflow-y-hidden pr-2 text-base whitespace-normal text-zinc-400 hover:overflow-y-auto">
           {props.collection.manualCollection
             ? `Handled by rule: '${props.collection.title}'`
             : props.collection.description}
@@ -147,7 +147,7 @@ const CollectionItem = (props: ICollectionItem) => {
       <div className="inset-0 z-0 mt-2 px-3">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(0,1fr)] sm:gap-y-2 [&>div:nth-child(2n)]:text-right sm:[&>div:nth-child(2n)]:text-left sm:[&>div:nth-child(3n)]:text-right sm:[&>div:nth-child(3n-1)]:text-center">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
               Library
             </p>
             <p
@@ -168,7 +168,7 @@ const CollectionItem = (props: ICollectionItem) => {
 
           {props.collection.type !== 'movie' ? (
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                 Media Type
               </p>
               <p className="text-maintainerr">
@@ -178,9 +178,9 @@ const CollectionItem = (props: ICollectionItem) => {
           ) : (
             <div
               aria-hidden="true"
-              className="pointer-events-none min-w-0 select-none opacity-0"
+              className="pointer-events-none min-w-0 opacity-0 select-none"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide">
+              <p className="text-xs font-semibold tracking-wide uppercase">
                 Media Type
               </p>
               <p>-</p>
@@ -188,14 +188,14 @@ const CollectionItem = (props: ICollectionItem) => {
           )}
 
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
               Items
             </p>
             <p className="text-maintainerr">{`${mediaCount}`}</p>
           </div>
 
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
               Size
             </p>
             <p className="text-maintainerr">
@@ -204,7 +204,7 @@ const CollectionItem = (props: ICollectionItem) => {
           </div>
 
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
               Delete
             </p>
             <p
@@ -216,7 +216,7 @@ const CollectionItem = (props: ICollectionItem) => {
           </div>
 
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
               Status
             </p>
             <p>

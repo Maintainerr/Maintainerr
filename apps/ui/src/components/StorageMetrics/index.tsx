@@ -43,9 +43,9 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   <div
     role="region"
     aria-label={title}
-    className="transparent-glass-bg flex flex-col rounded-lg border border-zinc-700 p-4 shadow"
+    className="transparent-glass-bg flex flex-col rounded-lg border border-zinc-700 p-4 shadow-sm"
   >
-    <div className="flex items-center text-sm font-medium uppercase tracking-wide text-zinc-400">
+    <div className="flex items-center text-sm font-medium tracking-wide text-zinc-400 uppercase">
       <span className="mr-2 text-maintainerr-500">{icon}</span>
       {title}
     </div>
@@ -115,7 +115,7 @@ const StorageMetrics: React.FC = () => {
     return (
       <>
         <title>Storage Metrics - Maintainerr</title>
-        <div className="min-h-[20rem]">
+        <div className="min-h-80">
           <LoadingSpinner />
         </div>
       </>
@@ -492,7 +492,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${pillBadgeClasses}`}
+              className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-semibold ${pillBadgeClasses}`}
             >
               {typeLabel}
             </span>
@@ -546,7 +546,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
               {mediaServer.libraries.map((library) => (
                 <div
                   key={library.id}
-                  className="rounded border border-zinc-800 bg-zinc-900/40 p-3"
+                  className="rounded-sm border border-zinc-800 bg-zinc-900/40 p-3"
                 >
                   <div className="flex items-center gap-2 text-sm text-zinc-200">
                     {library.type === 'movie' ? (
@@ -621,7 +621,7 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${pillBadgeClasses}`}
+            className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-semibold ${pillBadgeClasses}`}
           >
             {instance.type === 'radarr' ? 'Radarr' : 'Sonarr'}
           </span>
@@ -651,7 +651,7 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
             return (
               <div
                 key={`${instance.type}-${instance.id}-${mount.path ?? idx}`}
-                className="rounded border border-zinc-800 bg-zinc-900/40 p-3"
+                className="rounded-sm border border-zinc-800 bg-zinc-900/40 p-3"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                   <span className="flex items-center gap-2 font-mono text-zinc-100">
@@ -689,7 +689,7 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
   return (
     <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-700">
       <table className="min-w-full divide-y divide-zinc-700 text-sm">
-        <thead className="bg-zinc-800/60 text-left text-xs uppercase tracking-wide text-zinc-400">
+        <thead className="bg-zinc-800/60 text-left text-xs tracking-wide text-zinc-400 uppercase">
           <tr>
             <th scope="col" className="px-3 py-2">
               Collection
@@ -716,7 +716,7 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
                   {collection.title}
                 </BrandLink>
               </td>
-              <td className="px-3 py-2 capitalize text-zinc-300">
+              <td className="px-3 py-2 text-zinc-300 capitalize">
                 {collection.type}
               </td>
               <td className="px-3 py-2 text-zinc-300">

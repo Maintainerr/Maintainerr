@@ -239,7 +239,7 @@ const RuleCreator = (props: iRuleCreator) => {
                     type="button"
                     data-movable-handle
                     tabIndex={-1}
-                    className="mr-2 flex h-10 w-10 cursor-grab items-center justify-center rounded text-zinc-400 hover:bg-zinc-600 hover:text-zinc-100 active:cursor-grabbing md:h-6 md:w-6"
+                    className="mr-2 flex h-10 w-10 cursor-grab items-center justify-center rounded-sm text-zinc-400 hover:bg-zinc-600 hover:text-zinc-100 active:cursor-grabbing md:h-6 md:w-6"
                     title="Drag to reorder section"
                     aria-label={`Drag handle for section ${sectionNumber}`}
                   >
@@ -289,7 +289,7 @@ const RuleCreator = (props: iRuleCreator) => {
                             type="button"
                             data-movable-handle
                             tabIndex={-1}
-                            className="mr-2 mt-3 flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 active:cursor-grabbing md:mt-5 md:h-6 md:w-6"
+                            className="mt-3 mr-2 flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-sm text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 active:cursor-grabbing md:mt-5 md:h-6 md:w-6"
                             title="Drag to reorder rule"
                             aria-label={`Drag handle for rule ${tagId} in section ${sectionNumber}`}
                           >

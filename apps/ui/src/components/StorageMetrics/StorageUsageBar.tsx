@@ -39,7 +39,7 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
         </span>
       </div>
       <div
-        className="mt-1 h-2 w-full overflow-hidden rounded bg-zinc-700"
+        className="mt-1 h-2 w-full overflow-hidden rounded-sm bg-zinc-700"
         role="progressbar"
         aria-valuenow={accurateTotalSpace ? Math.round(percent) : undefined}
         aria-valuemin={0}

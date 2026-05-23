@@ -121,7 +121,7 @@ const OverviewContent = (props: IOverviewContent) => {
   return (
     <>
       {showInitialLoading ? (
-        <div className="min-h-[20rem]">
+        <div className="min-h-80">
           <LoadingSpinner />
         </div>
       ) : hasData ? (
@@ -203,7 +203,7 @@ const OverviewContent = (props: IOverviewContent) => {
           ) : null}
         </ul>
       ) : (
-        <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
+        <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
           No items found.
         </div>
       )}

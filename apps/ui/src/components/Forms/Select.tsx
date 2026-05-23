@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
 
 const selectClassNames = {
-  base: 'block h-10 w-full min-w-0 flex-1 appearance-none rounded-md border border-zinc-600 bg-zinc-600 px-3 text-left text-white shadow-none transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
+  base: 'block h-10 w-full min-w-0 flex-1 appearance-none rounded-md border border-zinc-600 bg-zinc-600 px-3 text-left text-white shadow-none transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-hidden focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
   leadingAdornment:
     'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-600 bg-zinc-600 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
   joinedLeft: 'rounded-l-only rounded-r-none border-r-0',
@@ -36,7 +36,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             join === 'right' && selectClassNames.joinedRight,
             !props.disabled &&
               error &&
-              '!border-error-500 outline-error-500 focus:border-error-500 focus:ring-0',
+              'border-error-500! outline-error-500 focus:border-error-500 focus:ring-0',
             className,
           )}
           aria-required={required}
@@ -45,7 +45,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           {children}
         </select>
         {showChevron ? (
-          <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
         ) : null}
       </div>
     )

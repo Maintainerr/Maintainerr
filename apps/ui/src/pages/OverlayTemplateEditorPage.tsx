@@ -496,7 +496,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                 {selectedSection && (
                   <button
                     type="button"
-                    className="shrink-0 rounded p-1 text-zinc-400 transition hover:text-zinc-200"
+                    className="shrink-0 rounded-sm p-1 text-zinc-400 transition hover:text-zinc-200"
                     onClick={loadRandomPoster}
                     title="Load different poster"
                   >
@@ -512,10 +512,10 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
         {/* Main editor area — desktop: 3 columns, mobile: stacked.
             Uses h-[60vh] with a hard min so it stays stable regardless of
             header/tab/control-row height changes above it. */}
-        <div className="mt-4 flex h-[60vh] min-h-[24rem] flex-col border-t border-zinc-700 lg:flex-row">
+        <div className="mt-4 flex h-[60vh] min-h-96 flex-col border-t border-zinc-700 lg:flex-row">
           {isLoading ? (
             <div className="flex min-h-0 flex-1 items-center justify-center bg-zinc-900/50 p-4">
-              <LoadingSpinner containerClassName="min-h-[20rem] w-full" />
+              <LoadingSpinner containerClassName="min-h-80 w-full" />
             </div>
           ) : (
             <>
@@ -580,7 +580,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                     <button
                       key={tab}
                       type="button"
-                      className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition ${
+                      className={`flex-1 px-3 py-2 text-xs font-medium tracking-wider uppercase transition ${
                         mobileTab === tab
                           ? 'border-b-2 border-amber-500 text-amber-300'
                           : 'text-zinc-400 hover:text-zinc-200'

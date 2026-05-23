@@ -173,8 +173,8 @@ const OverlayTemplateListPage = () => {
         />
 
         {isLoading ? (
-          <div className="min-h-[16rem] rounded-lg border border-zinc-700 bg-zinc-900/20">
-            <LoadingSpinner containerClassName="min-h-[16rem]" />
+          <div className="min-h-64 rounded-lg border border-zinc-700 bg-zinc-900/20">
+            <LoadingSpinner containerClassName="min-h-64" />
           </div>
         ) : (
           <>
@@ -252,7 +252,7 @@ function TemplateSection({
 
   return (
     <div className="mb-8">
-      <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
+      <h3 className="mb-3 text-sm font-medium tracking-wider text-zinc-400 uppercase">
         {title}
       </h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -294,12 +294,12 @@ function TemplateCard({
           <div className="flex items-center gap-2">
             <span className="font-medium text-zinc-100">{t.name}</span>
             {t.isDefault && (
-              <span className="rounded bg-amber-600 px-1.5 py-0.5 text-xs text-white">
+              <span className="rounded-sm bg-amber-600 px-1.5 py-0.5 text-xs text-white">
                 Default
               </span>
             )}
             {t.isPreset && (
-              <span className="rounded bg-zinc-600/50 px-1.5 py-0.5 text-xs text-zinc-400">
+              <span className="rounded-sm bg-zinc-600/50 px-1.5 py-0.5 text-xs text-zinc-400">
                 Preset
               </span>
             )}
@@ -308,7 +308,7 @@ function TemplateCard({
             <p className="mt-0.5 text-xs text-zinc-400">{t.description}</p>
           )}
         </div>
-        <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+        <span className="rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
           {t.elements.length} element{t.elements.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -322,7 +322,7 @@ function TemplateCard({
       <div className="flex flex-wrap gap-1.5">
         <button
           type="button"
-          className="flex items-center gap-1 rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
+          className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
           onClick={() => onEdit(t.id)}
           title={t.isPreset ? 'Editing a preset will save a copy' : 'Edit'}
         >
@@ -331,7 +331,7 @@ function TemplateCard({
         </button>
         <button
           type="button"
-          className="flex items-center gap-1 rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
+          className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
           onClick={() => onDuplicate(t.id)}
           title="Duplicate"
         >
@@ -340,7 +340,7 @@ function TemplateCard({
         {!t.isDefault && (
           <button
             type="button"
-            className="flex items-center gap-1 rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-amber-600/30 hover:text-amber-300"
+            className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-amber-600/30 hover:text-amber-300"
             onClick={() => onSetDefault(t.id)}
             title="Set as default"
           >
@@ -349,7 +349,7 @@ function TemplateCard({
         )}
         <button
           type="button"
-          className="flex items-center gap-1 rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
+          className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
           onClick={() => onExport(t.id)}
           title="Export"
         >
@@ -358,7 +358,7 @@ function TemplateCard({
         {!t.isPreset && (
           <button
             type="button"
-            className="flex items-center gap-1 rounded bg-zinc-700 px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
+            className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
             onClick={() => onDelete(t.id, t.name)}
             title="Delete"
           >

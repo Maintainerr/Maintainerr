@@ -6,7 +6,7 @@ export interface ISectionHeading {
 
 const SectionHeading = (props: ISectionHeading) => {
   return (
-    <div className="section mb-4 mt-4 h-full w-full">
+    <div className="section mt-4 mb-4 h-full w-full">
       <h3 className="sm-heading flex max-w-6xl">
         {props.id ? `${props.name} #${props.id}` : `${props.name} #1`}
       </h3>

@@ -252,20 +252,20 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
           <div className="flex flex-col">
             <div className="-mx-4 overflow-x-auto md:mx-0 lg:mx-0">
               <div className="inline-block min-w-full py-2 align-middle">
-                <div className="overflow-hidden shadow md:mx-0 lg:mx-0">
-                  <table className="ml-2 mr-2 min-w-full table-fixed">
+                <div className="overflow-hidden shadow-sm md:mx-0 lg:mx-0">
+                  <table className="mr-2 ml-2 min-w-full table-fixed">
                     <tbody className="divide-y divide-zinc-600 bg-zinc-800">
                       <tr>
-                        <th className="w-60 truncate bg-gray-500 px-4 py-3 text-xs font-medium uppercase text-gray-200 md:w-80">
+                        <th className="w-60 truncate bg-gray-500 px-4 py-3 text-xs font-medium text-gray-200 uppercase md:w-80">
                           <span>Name</span>
                         </th>
-                        <th className="truncate bg-gray-500 text-center text-xs font-medium uppercase text-gray-200">
+                        <th className="truncate bg-gray-500 text-center text-xs font-medium text-gray-200 uppercase">
                           <span>Karma</span>
                         </th>
-                        <th className="truncate bg-gray-500 px-3 text-center text-xs font-medium uppercase text-gray-200">
+                        <th className="truncate bg-gray-500 px-3 text-center text-xs font-medium text-gray-200 uppercase">
                           <span>Uploaded By</span>
                         </th>
-                        <th className="truncate bg-gray-500 px-3 text-center text-xs font-medium uppercase text-gray-200">
+                        <th className="truncate bg-gray-500 px-3 text-center text-xs font-medium text-gray-200 uppercase">
                           <span>Made with Version</span>
                         </th>
                       </tr>
@@ -347,13 +347,13 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
               <span className="float-right">
                 <button
                   disabled={false}
-                  className="mb-2 flex h-9 w-fit rounded bg-zinc-900 text-zinc-200 shadow-md hover:bg-zinc-800 disabled:opacity-50 md:ml-2"
+                  className="mb-2 flex h-9 w-fit rounded-sm bg-zinc-900 text-zinc-200 shadow-md hover:bg-zinc-800 disabled:opacity-50 md:ml-2"
                   onClick={() => {
                     setUploadMyRules(true)
                   }}
                 >
                   {<UploadIcon className="m-auto ml-5 h-5" />}{' '}
-                  <p className="rules-button-text m-auto ml-1 mr-5">
+                  <p className="rules-button-text m-auto mr-5 ml-1">
                     Upload my rules
                   </p>
                 </button>

@@ -437,7 +437,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 px-3"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3"
         onClick={onClose}
       >
         <div
@@ -454,7 +454,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               }}
             ></div>
             {loading && (
-              <div className="absolute bottom-0 left-0 right-0 top-0 bg-black bg-opacity-50">
+              <div className="absolute top-0 right-0 bottom-0 left-0 bg-black/50">
                 <LoadingSpinner
                   className="h-16 w-16"
                   containerClassName="h-full w-full"
@@ -462,24 +462,24 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
             )}
 
-            <div className="absolute left-0 top-0 z-10 flex h-full w-full gap-x-4 p-4">
+            <div className="absolute top-0 left-0 z-10 flex h-full w-full gap-x-4 p-4">
               <div className="flex grow flex-col">
                 <div className="max-w-fit grow">
                   <div
-                    className={`pointer-events-none flex justify-center rounded-lg bg-opacity-70 p-2 text-xs font-medium uppercase text-zinc-200 ${
+                    className={`pointer-events-none flex justify-center rounded-lg p-2 text-xs font-medium text-zinc-200 uppercase ${
                       mediaType === 'movie'
-                        ? 'bg-black'
+                        ? 'bg-black/70'
                         : mediaType === 'show'
-                          ? 'bg-maintainerrdark'
+                          ? 'bg-maintainerrdark/70'
                           : mediaType === 'season'
-                            ? 'bg-yellow-700'
-                            : 'bg-rose-900'
+                            ? 'bg-yellow-700/70'
+                            : 'bg-rose-900/70'
                     }`}
                   >
                     {mediaType}
                   </div>
                   {metadata?.contentRating && (
-                    <div className="pointer-events-none mt-1 rounded-lg bg-black bg-opacity-70 p-2 text-xs font-medium uppercase text-zinc-200">
+                    <div className="pointer-events-none mt-1 rounded-lg bg-black/70 p-2 text-xs font-medium text-zinc-200 uppercase">
                       {`Rated: ${metadata.contentRating}`}
                     </div>
                   )}
@@ -493,7 +493,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       return (
                         <div
                           key={index}
-                          className="flex items-center justify-center space-x-1.5 rounded-lg bg-black bg-opacity-70 px-3 py-1 text-white shadow-lg"
+                          className="flex items-center justify-center space-x-1.5 rounded-lg bg-black/70 px-3 py-1 text-white shadow-lg"
                         >
                           {icon && (
                             <img
@@ -531,7 +531,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt={providerLogo.alt}
                           width={128}
                           height={32}
-                          className="h-8 w-32 rounded-lg bg-black bg-opacity-70 p-2 shadow-lg"
+                          className="h-8 w-32 rounded-lg bg-black/70 p-2 shadow-lg"
                         />
                       </a>
                     )}
@@ -548,7 +548,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt="Plex Logo"
                           width={128}
                           height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 p-1 shadow-lg"
                         />
                       </a>
                     </div>
@@ -569,7 +569,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt="Emby Logo"
                           width={128}
                           height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 object-contain p-1 shadow-lg"
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 object-contain p-1 shadow-lg"
                         />
                       </a>
                     </div>
@@ -586,7 +586,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt="Jellyfin Logo"
                           width={128}
                           height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1 shadow-lg"
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 p-1 shadow-lg"
                         />
                       </a>
                     </div>
@@ -603,7 +603,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt="Tautulli Logo"
                           width={128}
                           height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 p-1.5 shadow-lg"
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 p-1.5 shadow-lg"
                         />
                       </a>
                     </div>
@@ -620,7 +620,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           alt="Streamystats"
                           width={128}
                           height={32}
-                          className="mt-1 h-8 w-32 rounded-lg bg-black bg-opacity-70 object-contain p-1 shadow-lg"
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 object-contain p-1 shadow-lg"
                         />
                       </a>
                     </div>
@@ -631,7 +631,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     {metadata.genres.map((genre, index) => (
                       <span
                         key={index}
-                        className="flex items-center rounded-lg bg-black bg-opacity-70 p-2 text-xs font-medium text-white shadow-lg"
+                        className="flex items-center rounded-lg bg-black/70 p-2 text-xs font-medium text-white shadow-lg"
                       >
                         {genre.name}
                       </span>
@@ -668,7 +668,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               >
                 {shouldShowExcludedDetails ? (
                   <div
-                    className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
+                    className={`min-h-23 rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
                   >
                     <p
                       className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
@@ -696,7 +696,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                 ) : null}
                 {shouldShowManualDetails ? (
                   <div
-                    className={`min-h-[5.75rem] rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
+                    className={`min-h-23 rounded-xl p-3 ${maintainerrStatusCardStyles.cardClassName}`}
                   >
                     <p
                       className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
@@ -725,7 +725,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
             ) : undefined}
 
-            <div className="mr-0.5 mt-6 flex flex-row items-center justify-between gap-4">
+            <div className="mt-6 mr-0.5 flex flex-row items-center justify-between gap-4">
               {providerIds &&
                 ['movie', 'show'].includes(mediaType) &&
                 (providerIds.tmdb?.length ||

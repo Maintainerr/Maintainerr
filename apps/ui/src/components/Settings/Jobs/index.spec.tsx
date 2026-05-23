@@ -88,7 +88,11 @@ describe('JobSettings', () => {
 
     expect((saveButton as HTMLButtonElement).disabled).toBe(true)
     expect((overlayInput as HTMLInputElement).disabled).toBe(true)
-    expect(screen.getByText('Loading current overlay schedule...')).toBeTruthy()
+    // The loading hint is intentionally delayed (~500ms) so fast loads don't
+    // flash it; wait for it rather than asserting it synchronously.
+    expect(
+      await screen.findByText('Loading current overlay schedule...'),
+    ).toBeTruthy()
 
     deferred.resolve({ cronSchedule: '0 2 * * *' })
 
