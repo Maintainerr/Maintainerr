@@ -162,6 +162,33 @@ export class CollectionsService {
     });
   }
 
+  async setCollectionMediaRuleEvaluationFailed(
+    collectionId: number,
+    mediaServerIds: string[],
+    ruleEvaluationFailed: boolean,
+  ): Promise<void> {
+    if (mediaServerIds.length === 0) {
+      return;
+    }
+
+    try {
+      await this.CollectionMediaRepo.update(
+        {
+          collectionId,
+          mediaServerId: In(mediaServerIds),
+        },
+        { ruleEvaluationFailed },
+      );
+    } catch (error) {
+      // Best-effort persistence: a failed flag write must not abort the
+      // surrounding rule run. Worst case the worker re-evaluates next pass.
+      this.logger.warn(
+        'Failed to update collection media rule evaluation state',
+      );
+      this.logger.debug(error);
+    }
+  }
+
   public async getCollectionsByMediaServerId(
     mediaServerId: string,
   ): Promise<Collection[]> {
@@ -2527,6 +2554,7 @@ export class CollectionsService {
       membership.manualMembershipSource !== undefined
         ? membership.manualMembershipSource
         : collectionMedia.manualMembershipSource;
+    const nextRuleEvaluationFailed = false;
 
     if (!nextIncludedByRule && nextManualMembershipSource == null) {
       await this.CollectionMediaRepo.delete({ id: collectionMedia.id });
@@ -2536,7 +2564,9 @@ export class CollectionsService {
     if (
       (collectionMedia.includedByRule ?? null) === nextIncludedByRule &&
       (collectionMedia.manualMembershipSource ?? null) ===
-        (nextManualMembershipSource ?? null)
+        (nextManualMembershipSource ?? null) &&
+      (collectionMedia.ruleEvaluationFailed ?? false) ===
+        nextRuleEvaluationFailed
     ) {
       return collectionMedia;
     }
@@ -2546,6 +2576,7 @@ export class CollectionsService {
         ...collectionMedia,
         includedByRule: nextIncludedByRule,
         manualMembershipSource: nextManualMembershipSource,
+        ruleEvaluationFailed: nextRuleEvaluationFailed,
       }),
     );
   }
@@ -2571,6 +2602,7 @@ export class CollectionsService {
         image_path: artwork.imagePath,
         includedByRule: membership.includedByRule,
         manualMembershipSource: membership.manualMembershipSource,
+        ruleEvaluationFailed: false,
       }),
     );
 

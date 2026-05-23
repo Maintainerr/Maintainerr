@@ -15,7 +15,7 @@ export class Exclusion {
   @Column({ nullable: true })
   parent: string;
 
-  @Column({ nullable: true }) // nullable because old exclusions don't have the type. They'll be added by a maintenance task
+  @Column({ type: 'varchar', nullable: true }) // nullable because old exclusions don't have the type. They'll be added by a maintenance task
   type: MediaItemType | undefined;
 
   mediaData: MediaItemWithParent;

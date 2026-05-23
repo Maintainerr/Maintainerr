@@ -191,10 +191,10 @@ const MainSettingsForm = ({
           className="mb-0"
           actions={
             <>
-              <span className="flex rounded-md shadow-sm">
+              <span className="flex rounded-md shadow-xs">
                 <DocsButton />
               </span>
-              <span className="flex rounded-md shadow-sm">
+              <span className="flex rounded-md shadow-xs">
                 <Button
                   buttonType="default"
                   type="button"
@@ -207,7 +207,7 @@ const MainSettingsForm = ({
             </>
           }
           controls={
-            <span className="flex rounded-md shadow-sm sm:ml-auto">
+            <span className="flex rounded-md shadow-xs sm:ml-auto">
               <SaveButton
                 type="submit"
                 disabled={!canSave}

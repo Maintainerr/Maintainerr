@@ -68,7 +68,7 @@ const DatabaseBackupModal = ({
       <div className="space-y-2">
         <p>Choose the filename for your database backup.</p>
         {error && <Alert type="error" title={error} />}
-        <div className="form-row !mb-0">
+        <div className="form-row mb-0!">
           <label htmlFor="database-filename" className="text-label">
             File name
           </label>

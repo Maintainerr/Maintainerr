@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/server",
-  "version": "3.12.0",
+  "version": "3.12.1",
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
@@ -52,7 +52,7 @@
     "mime-types": "^3.0.2",
     "nestjs-zod": "^5.4.0",
     "node-cache": "^5.1.2",
-    "nodemailer": "8.0.7",
+    "nodemailer": "8.0.8",
     "octokit": "^3.2.2",
     "openpgp": "^6.3.0",
     "read-last-lines": "^1.8.0",

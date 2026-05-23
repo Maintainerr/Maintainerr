@@ -179,7 +179,7 @@ const PosterCard = ({
       ref={cardRef}
       className={
         className ??
-        'relative transform-gpu overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] outline-none ring-1 transition duration-300'
+        'relative transform-gpu overflow-hidden rounded-xl bg-zinc-800 bg-cover pb-[150%] ring-1 outline-hidden transition duration-300'
       }
       {...props}
     >

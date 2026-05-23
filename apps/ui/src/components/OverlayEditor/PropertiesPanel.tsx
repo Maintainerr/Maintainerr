@@ -48,7 +48,7 @@ export function PropertiesPanel({
 
   return (
     <div className="flex flex-col gap-3 text-xs">
-      <h3 className="font-medium uppercase tracking-wider text-zinc-400">
+      <h3 className="font-medium tracking-wider text-zinc-400 uppercase">
         Properties
       </h3>
 
@@ -150,7 +150,7 @@ function TextProperties({
     <>
       <FieldGroup label="Text">
         <textarea
-          className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 px-3 py-1.5 text-sm text-white shadow-sm transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-none focus:ring-0 disabled:opacity-50"
+          className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 px-3 py-1.5 text-sm text-white shadow-xs transition duration-150 ease-in-out focus:border-maintainerr-600 focus:ring-0 focus:outline-hidden disabled:opacity-50"
           rows={2}
           value={el.text}
           onChange={(e) => update('text', e.target.value)}
@@ -277,14 +277,14 @@ function VariableProperties({
         <div className="mt-1 flex gap-1">
           <button
             type="button"
-            className="rounded bg-zinc-700 px-2 py-0.5 text-zinc-300 hover:bg-zinc-600"
+            className="rounded-sm bg-zinc-700 px-2 py-0.5 text-zinc-300 hover:bg-zinc-600"
             onClick={() => addSegment('text')}
           >
             + Text
           </button>
           <button
             type="button"
-            className="rounded bg-zinc-700 px-2 py-0.5 text-zinc-300 hover:bg-zinc-600"
+            className="rounded-sm bg-zinc-700 px-2 py-0.5 text-zinc-300 hover:bg-zinc-600"
             onClick={() => addSegment('variable')}
           >
             + Variable
@@ -538,7 +538,7 @@ function FieldGroup({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+      <label className="mb-1 block text-[10px] font-medium tracking-wider text-zinc-500 uppercase">
         {label}
       </label>
       <div className="flex flex-col gap-1">{children}</div>
@@ -686,7 +686,7 @@ function CheckboxField({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500"
+        className="checkbox"
       />
       {label}
     </label>

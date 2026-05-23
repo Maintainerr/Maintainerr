@@ -12,7 +12,7 @@ interface IExecuteButton {
 const ExecuteButton = (props: IExecuteButton) => {
   return (
     <button
-      className="edit-button m-auto flex h-9 rounded text-zinc-200 shadow-md"
+      className="edit-button m-auto flex h-9 rounded-sm text-zinc-200 shadow-md"
       onClick={props.onClick}
       disabled={props.disabled}
       title={props.title}
@@ -22,7 +22,7 @@ const ExecuteButton = (props: IExecuteButton) => {
       ) : (
         <PlayIcon className="m-auto ml-4 h-5" />
       )}{' '}
-      <p className="rules-button-text m-auto ml-1 mr-4">{props.text}</p>
+      <p className="rules-button-text m-auto mr-4 ml-1">{props.text}</p>
     </button>
   )
 }

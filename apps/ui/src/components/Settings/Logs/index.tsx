@@ -249,7 +249,7 @@ export const Logs = () => {
 
       <div className="section">
         <div className="mb-4 flex flex-col-reverse justify-between gap-4 sm:flex-row">
-          <div className="form-input grow !p-0">
+          <div className="form-input grow p-0!">
             <div className="form-input-field">
               <Input
                 name="logFilter"
@@ -267,7 +267,7 @@ export const Logs = () => {
                 <input
                   type="checkbox"
                   name="scrollToBottom"
-                  className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                  className="checkbox"
                   checked={scrollToBottom}
                   onChange={() => {
                     setScrollToBottom(!scrollToBottom)
@@ -279,7 +279,7 @@ export const Logs = () => {
         </div>
 
         <div
-          className="h-[60vh] overflow-auto rounded bg-zinc-700 p-2"
+          className="h-[60vh] overflow-auto rounded-sm bg-zinc-700 p-2"
           ref={logsRef}
         >
           {filteredLogLines.map((row, index: number) => {
@@ -300,7 +300,7 @@ export const Logs = () => {
                 <span className={`font-semibold ${levelColor} px-2`}>
                   {row.level}
                 </span>
-                <pre className="inline whitespace-pre-wrap break-words text-white">
+                <pre className="inline wrap-break-word whitespace-pre-wrap text-white">
                   {row.message}
                 </pre>
               </div>

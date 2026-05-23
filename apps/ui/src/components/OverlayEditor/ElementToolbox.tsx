@@ -123,7 +123,7 @@ export function ElementToolbox({ onAdd, nextLayerOrder }: ElementToolboxProps) {
 
   return (
     <div>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-400">
+      <h3 className="mb-2 text-xs font-medium tracking-wider text-zinc-400 uppercase">
         Elements
       </h3>
       <div className="flex flex-col gap-1.5">
@@ -161,7 +161,7 @@ function ToolButton({
   return (
     <button
       type="button"
-      className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-zinc-300 transition hover:bg-zinc-700"
+      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-zinc-300 transition hover:bg-zinc-700"
       onClick={onClick}
     >
       <Icon className="h-4 w-4 shrink-0 text-zinc-400" />

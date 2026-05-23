@@ -1,4 +1,37 @@
 ## Highlights
+- Added `ruleEvaluationFailed` field to `collection_media` table to track rule evaluation failures for collection media.
+- Improved performance of rule evaluation by reducing concurrency and introducing deduplication for uncached media lookups.
+
+## Breaking Changes
+- Renamed `SettingsService` to `SettingsOperationsService` and `SettingsStoreService` to `SettingsDataService`. Updated all related fields, files, and import paths.
+
+## Features
+- Added detailed error logging for Emby image upload failures, including server response body for better debugging.
+
+## Fixes
+- Resolved issue where Emby overlays would not revert after media was removed from a collection.
+- Fixed incorrect rendering of overlay notification titles for Emby/Jellyfin movies.
+- Corrected collection `ruleGroup` entity type in the server.
+- Addressed issues with rule evaluation failure tracking for collection media.
+
+## Performance
+- Reduced `RULE_EVALUATION_CONCURRENCY` from 16 to 8 to prevent overloading co-located backends.
+- Improved rule evaluation performance by deduplicating uncached Sonarr/Radarr identity lookups per run.
+- Batched rule operand reads with bounded concurrency for better efficiency.
+- Parallelized per-item Plex watch-history reads during rule execution.
+
+## Database migrations
+- Added `ruleEvaluationFailed` column to the `collection_media` table to track rule evaluation failures.
+
+## Internal
+- Removed unused `forwardRef` imports from `SettingsModule` after refactoring.
+- Added tests for `ArrLookupCache` deduplication and eviction on failure.
+- Added tests to ensure fresh series reads during empty-show cleanup.
+
+## Dependencies
+- Updated 13 dependencies, including nodemailer, glob, qs, postcss, @hookform/resolvers, typescript-eslint, and vite.
+
+## Highlights
 - Added Emby as a third supported media server, alongside Plex and Jellyfin (#2911).
 - Introduced Jellyfin-only Streamystats integration, including a new settings tab and per-user stats panel (#2923).
 - Fixed Emby library size computation and collection metadata updates to follow documented API behavior (#2924).

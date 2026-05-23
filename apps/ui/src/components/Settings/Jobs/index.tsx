@@ -41,6 +41,9 @@ const JobSettings = () => {
   const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
     usePatchSettings()
   const [overlayLoaded, setOverlayLoaded] = useState(false)
+  // Only surface the "loading…" hint if the fetch is slow, so the typical
+  // fast load doesn't flash it. Space is reserved regardless (see min-h-5).
+  const [showOverlayLoadingHint, setShowOverlayLoadingHint] = useState(false)
   const [overlayPending, setOverlayPending] = useState(false)
   const { register, handleSubmit, setValue, reset, control } =
     useForm<JobSettingsFormValues>({
@@ -68,6 +71,12 @@ const JobSettings = () => {
       cancelled = true
     }
   }, [setValue])
+
+  useEffect(() => {
+    if (overlayLoaded) return
+    const timer = setTimeout(() => setShowOverlayLoadingHint(true), 500)
+    return () => clearTimeout(timer)
+  }, [overlayLoaded])
 
   const ruleHandlerCron =
     useWatch({ control, name: 'rules_handler_job_cron' }) ?? ''
@@ -223,7 +232,7 @@ const JobSettings = () => {
                     error={!firstCronValid}
                     className={
                       !firstCronValid
-                        ? '!border-error-700 focus:!border-error-700'
+                        ? 'border-error-700! focus:border-error-700!'
                         : undefined
                     }
                     onBlur={normalizeRuleHandler}
@@ -254,7 +263,7 @@ const JobSettings = () => {
                     error={!secondCronValid}
                     className={
                       !secondCronValid
-                        ? '!border-error-700 focus:!border-error-700'
+                        ? 'border-error-700! focus:border-error-700!'
                         : undefined
                     }
                     onBlur={normalizeCollectionHandler}
@@ -286,7 +295,7 @@ const JobSettings = () => {
                     error={!overlayCronValid}
                     className={
                       !overlayCronValid
-                        ? '!border-error-700 focus:!border-error-700'
+                        ? 'border-error-700! focus:border-error-700!'
                         : undefined
                     }
                     onBlur={normalizeOverlayHandler}
@@ -296,7 +305,7 @@ const JobSettings = () => {
                   />
                 </div>
                 <div className="mt-2 min-h-5">
-                  {!overlayLoaded ? (
+                  {!overlayLoaded && showOverlayLoadingHint ? (
                     <div className="flex items-center gap-2 text-xs text-zinc-400">
                       <SmallLoadingSpinner className="h-4 w-4" />
                       <span>Loading current overlay schedule...</span>
@@ -308,7 +317,7 @@ const JobSettings = () => {
 
             <div className="actions mt-5 w-full">
               <div className="flex justify-end">
-                <span className="ml-3 inline-flex rounded-md shadow-sm">
+                <span className="ml-3 inline-flex rounded-md shadow-xs">
                   <SaveButton
                     type="submit"
                     disabled={!canSave}

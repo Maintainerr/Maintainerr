@@ -1,12 +1,144 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms' {
+  strategy: base;
+}
+@plugin '@tailwindcss/typography';
+
+/*
+  CSS-first theme (replaces the former tailwind.config.js). Every --color-*
+  entry generates the matching bg-/text-/border- utilities; the bare name
+  (e.g. --color-error) is the old DEFAULT. `info` mirrors zinc and `warning`
+  mirrors amber, referenced from the built-in scales so they stay in sync.
+*/
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --breakpoint-xs: 440px;
+
+  --color-error-50: #fff4f2;
+  --color-error-100: #f8d7d1;
+  --color-error-200: #ebb2a8;
+  --color-error-300: #d88b7e;
+  --color-error-400: #bd6051;
+  --color-error-500: #9d3a2d;
+  --color-error-600: #7d2117;
+  --color-error-700: #67160f;
+  --color-error-800: #4b100c;
+  --color-error-900: #310907;
+  --color-error-950: #1e0403;
+  --color-error: #7d2117;
+
+  --color-success-50: #f3fbf6;
+  --color-success-100: #d9efe0;
+  --color-success-200: #b7dcc4;
+  --color-success-300: #8fc2a2;
+  --color-success-400: #66977b;
+  --color-success-500: #47745c;
+  --color-success-600: #315b46;
+  --color-success-700: #254637;
+  --color-success-800: #193127;
+  --color-success-900: #0f1f19;
+  --color-success-950: #07110d;
+  --color-success: #315b46;
+
+  --color-info-50: var(--color-zinc-50);
+  --color-info-100: var(--color-zinc-100);
+  --color-info-200: var(--color-zinc-200);
+  --color-info-300: var(--color-zinc-300);
+  --color-info-400: var(--color-zinc-400);
+  --color-info-500: var(--color-zinc-500);
+  --color-info-600: var(--color-zinc-600);
+  --color-info-700: var(--color-zinc-700);
+  --color-info-800: var(--color-zinc-800);
+  --color-info-900: var(--color-zinc-900);
+  --color-info-950: var(--color-zinc-950);
+  --color-info: var(--color-zinc-700);
+
+  --color-warning-50: var(--color-amber-50);
+  --color-warning-100: var(--color-amber-100);
+  --color-warning-200: var(--color-amber-200);
+  --color-warning-300: var(--color-amber-300);
+  --color-warning-400: var(--color-amber-400);
+  --color-warning-500: var(--color-amber-500);
+  --color-warning-600: var(--color-amber-600);
+  --color-warning-700: var(--color-amber-700);
+  --color-warning-800: var(--color-amber-800);
+  --color-warning-900: var(--color-amber-900);
+  --color-warning-950: var(--color-amber-950);
+
+  --color-maintainerr-50: #fffbeb;
+  --color-maintainerr-100: #fef3c7;
+  --color-maintainerr-200: #fde68a;
+  --color-maintainerr-300: #fcd34d;
+  --color-maintainerr-400: #fbbf24;
+  --color-maintainerr-500: #f59e0b;
+  --color-maintainerr-600: #d97706;
+  --color-maintainerr-700: #b45309;
+  --color-maintainerr-800: #92400e;
+  --color-maintainerr-900: #78350f;
+  --color-maintainerr-950: #451a03;
+  --color-maintainerr: #f59e0b;
+
+  --color-maintainerrdark-50: #fffbeb;
+  --color-maintainerrdark-100: #fef3c7;
+  --color-maintainerrdark-200: #fde68a;
+  --color-maintainerrdark-300: #fcd34d;
+  --color-maintainerrdark-400: #fbbf24;
+  --color-maintainerrdark-500: #f59e0b;
+  --color-maintainerrdark-600: #d97706;
+  --color-maintainerrdark-700: #b45309;
+  --color-maintainerrdark-800: #92400e;
+  --color-maintainerrdark-900: #78350f;
+  --color-maintainerrdark-950: #451a03;
+  --color-maintainerrdark: #78350f;
+}
+
+/* v4 has no transition-property theme namespace; expose the two we rely on. */
+@utility transition-max-height {
+  transition-property: max-height;
+}
+@utility transition-width {
+  transition-property: width;
+}
+
+/*
+  Tailwind CSS v4 changed the default border color to `currentColor`.
+  Preserve the v3 default so existing bordered elements look unchanged.
+  To drop this shim, add an explicit border-color utility wherever a border
+  relies on the old gray-200 default.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 :root {
-  --toastify-color-success: theme('colors.success.DEFAULT');
-  --toastify-color-error: theme('colors.error.DEFAULT');
-  --toastify-color-info: theme('colors.info.DEFAULT');
-  --toastify-color-warning: theme('colors.warning.700');
+  --toastify-color-success: var(--color-success);
+  --toastify-color-error: var(--color-error);
+  --toastify-color-info: var(--color-info);
+  --toastify-color-warning: var(--color-warning-700);
+}
+
+/*
+  Prose colors for dark backgrounds (formerly the typography() block in
+  tailwind.config.js). Kept unlayered so these win over @tailwindcss/typography's
+  own layered `.prose` defaults; `.prose a` (below, in components) recolors links.
+*/
+.prose {
+  --tw-prose-body: var(--color-gray-300);
+  --tw-prose-headings: var(--color-gray-300);
+  --tw-prose-links: var(--color-indigo-500);
+  --tw-prose-bold: var(--color-gray-400);
+  --tw-prose-code: var(--color-gray-300);
+  --tw-prose-captions: var(--color-gray-500);
 }
 
 @layer base {
@@ -83,9 +215,6 @@
   }
 
   .rules-button-text {
-    /* padding-top: 0.17rem;
-    margin-left: 0.25rem;
-    margin-right: 0.75rem; */
     --tw-text-opacity: 1;
     color: rgb(228 228 231 / var(--tw-text-opacity));
     font-weight: 600;
@@ -97,7 +226,7 @@
 
   /* Media card hover effects - only on devices that support hover */
   .media-card {
-    @apply scale-100 shadow ring-zinc-700;
+    @apply scale-100 shadow-sm ring-zinc-700;
   }
 
   @media (hover: hover) {
@@ -155,11 +284,11 @@
   }
 
   .edit-button {
-    @apply /* background-color: #3f3f46; */ bg-maintainerrdark;
+    @apply bg-maintainerrdark;
   }
 
   .edit-button:hover {
-    @apply /* background: #3a3a42; */ bg-maintainerrdark-800;
+    @apply bg-maintainerrdark-800;
   }
 
   .delete-button {
@@ -199,11 +328,11 @@
   }
 
   .slider-header {
-    @apply relative mb-4 mt-6 flex;
+    @apply relative mt-6 mb-4 flex;
   }
 
   .slider-title {
-    @apply inline-flex items-center text-xl font-bold leading-7 text-zinc-300 sm:truncate sm:text-2xl sm:leading-9;
+    @apply inline-flex items-center text-xl leading-7 font-bold text-zinc-300 sm:truncate sm:text-2xl sm:leading-9;
   }
 
   a.slider-title {
@@ -230,7 +359,7 @@
   }
 
   .media-poster {
-    @apply w-32 overflow-hidden rounded shadow md:w-44 md:rounded-lg md:shadow-2xl xl:mr-4 xl:w-52;
+    @apply w-32 overflow-hidden rounded-sm shadow-sm md:w-44 md:rounded-lg md:shadow-2xl xl:mr-4 xl:w-52;
   }
 
   .media-status {
@@ -238,7 +367,7 @@
   }
 
   .media-title {
-    @apply mt-4 flex flex-1 flex-col text-center text-white xl:mr-4 xl:mt-0 xl:text-left;
+    @apply mt-4 flex flex-1 flex-col text-center text-white xl:mt-0 xl:mr-4 xl:text-left;
   }
 
   .media-title > h1 {
@@ -258,7 +387,7 @@
   }
 
   .media-actions {
-    @apply relative mt-4 flex flex-shrink-0 flex-wrap items-center justify-center sm:flex-nowrap sm:justify-end xl:mt-0;
+    @apply relative mt-4 flex shrink-0 flex-wrap items-center justify-center sm:flex-nowrap sm:justify-end xl:mt-0;
   }
 
   .media-actions > * {
@@ -266,7 +395,7 @@
   }
 
   .media-overview {
-    @apply flex flex-col pb-4 pt-8 text-white lg:flex-row;
+    @apply flex flex-col pt-8 pb-4 text-white lg:flex-row;
   }
 
   .media-overview-left {
@@ -274,7 +403,7 @@
   }
 
   .tagline {
-    @apply mb-4 text-xl italic text-zinc-400 lg:text-2xl;
+    @apply mb-4 text-xl text-zinc-400 italic lg:text-2xl;
   }
 
   .media-overview h2 {
@@ -304,7 +433,7 @@
   }
 
   .media-facts {
-    @apply rounded-lg border border-zinc-700 bg-zinc-900 text-sm font-bold text-zinc-300 shadow;
+    @apply rounded-lg border border-zinc-700 bg-zinc-900 text-sm font-bold text-zinc-300 shadow-sm;
   }
 
   .media-fact {
@@ -324,15 +453,15 @@
   }
 
   .error-message {
-    @apply relative bottom-0 left-0 right-0 top-0 flex h-screen flex-col items-center justify-center text-center text-zinc-300;
+    @apply relative top-0 right-0 bottom-0 left-0 flex h-screen flex-col items-center justify-center text-center text-zinc-300;
   }
 
   .heading {
-    @apply text-2xl font-bold leading-8 text-zinc-100;
+    @apply text-2xl leading-8 font-bold text-zinc-100;
   }
 
   .sm-heading {
-    @apply text-lg font-bold leading-8 text-zinc-100;
+    @apply text-lg leading-8 font-bold text-zinc-100;
   }
 
   .description {
@@ -360,7 +489,7 @@
   }
 
   .section {
-    @apply mb-10 mt-6 text-white;
+    @apply mt-6 mb-10 text-white;
   }
 
   .form-row {
@@ -372,7 +501,7 @@
   }
 
   .form-input-field {
-    @apply flex max-w-xl rounded-md shadow-sm;
+    @apply flex max-w-xl rounded-md shadow-xs;
   }
 
   .actions {
@@ -381,7 +510,7 @@
 
   label,
   .group-label {
-    @apply mb-1 block text-sm font-bold leading-5 text-zinc-400;
+    @apply mb-1 block text-sm leading-5 font-bold text-zinc-400;
   }
 
   label.checkbox-label {
@@ -411,8 +540,15 @@
     @apply disabled:cursor-not-allowed;
   }
 
-  input[type='checkbox'] {
-    @apply h-6 w-6 rounded-md text-maintainerr-600 transition duration-150 ease-in-out default:ring-maintainerr-600 checked:ring-maintainerrdark-800;
+  /*
+    The single source of truth for checkboxes. Add `className="checkbox"` to any
+    `<input type="checkbox">` and it is fully and identically styled — nothing else
+    is needed. `focus:ring-0` + `focus:ring-offset-0` together remove the
+    @tailwindcss/forms focus ring (its blue ring AND white offset ring); a subtle
+    border change is the focus affordance instead.
+  */
+  .checkbox {
+    @apply h-6 w-6 rounded-md border-zinc-600 text-maintainerr-600 transition duration-150 ease-in-out hover:border-zinc-500 focus:border-zinc-500 focus:ring-0 focus:ring-offset-0 focus:outline-hidden;
   }
 
   input[type='text'],
@@ -449,21 +585,21 @@
   }
 
   button.input-action {
-    @apply relative -ml-px inline-flex items-center border border-zinc-500 bg-maintainerr-600 px-3 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out last:rounded-r-md hover:bg-maintainerr active:bg-zinc-100 active:text-zinc-700 sm:px-3.5;
+    @apply relative -ml-px inline-flex items-center border border-zinc-500 bg-maintainerr-600 px-3 py-2 text-sm leading-5 font-medium text-white transition duration-150 ease-in-out last:rounded-r-md hover:bg-maintainerr active:bg-maintainerr-700 sm:px-3.5;
   }
 
   .button-md svg,
   button.input-action svg,
   .plex-button svg {
-    @apply ml-2 mr-2 h-5 w-5 first:ml-0 last:mr-0;
+    @apply mr-2 ml-2 h-5 w-5 first:ml-0 last:mr-0;
   }
 
   .button-sm svg {
-    @apply ml-1.5 mr-1.5 h-4 w-4 first:ml-0 last:mr-0;
+    @apply mr-1.5 ml-1.5 h-4 w-4 first:ml-0 last:mr-0;
   }
 
   .modal-icon {
-    @apply mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-zinc-800 text-white ring-1 ring-zinc-500 sm:mx-0 sm:h-10 sm:w-10;
+    @apply mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-white ring-1 ring-zinc-500 sm:mx-0 sm:h-10 sm:w-10;
   }
 
   .modal-icon svg {
@@ -509,7 +645,7 @@
   }
 
   .react-select-container .react-select__control--is-focused {
-    @apply rounded-md border border-zinc-500 bg-zinc-700 text-white shadow;
+    @apply rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm;
   }
 
   .react-select-container-dark .react-select__control--is-focused {
@@ -557,7 +693,7 @@
   }
 
   .react-select-container .react-select__input {
-    @apply border-none text-base shadow-sm ring-0;
+    @apply border-none text-base shadow-xs ring-0;
   }
 
   .react-select-container .react-select__input input:focus {

@@ -37,7 +37,7 @@ export class RuleGroup {
   @Column({ nullable: false, default: true })
   useRules: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   dataType: MediaItemType | null;
 
   @Column({ nullable: true, default: null })

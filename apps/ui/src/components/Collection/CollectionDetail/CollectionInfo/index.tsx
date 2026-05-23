@@ -67,11 +67,11 @@ const CollectionInfo = (props: ICollectionInfo) => {
           <h2>{'Logs'}</h2>
         </div>
 
-        <div className="w-full pl-2 pr-2">
+        <div className="w-full pr-2 pl-2">
           {/* full container */}
-          <div className="mb-2 flex flex-grow flex-col sm:flex-grow-0 sm:flex-row sm:justify-end">
+          <div className="mb-2 flex grow flex-col sm:grow-0 sm:flex-row sm:justify-end">
             {/* search */}
-            <div className="mr-2 mt-4 flex w-full flex-grow sm:w-1/2">
+            <div className="mt-4 mr-2 flex w-full grow sm:w-1/2">
               <FieldJoin>
                 <InputAdornment>
                   <SearchIcon className="h-6 w-6" />
@@ -89,7 +89,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
             {/* sort/filter container */}
             <div className="mb-2 flex flex-1 flex-row justify-between sm:mb-0 sm:flex-none">
               {/* sort */}
-              <div className="mr-2 mt-4 flex flex-grow sm:w-auto">
+              <div className="mt-4 mr-2 flex grow sm:w-auto">
                 <FieldJoin>
                   <SelectAdornment>
                     {currentSort === 'DESC' ? (
@@ -116,7 +116,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
               </div>
 
               {/* filter */}
-              <div className="mt-4 flex flex-grow sm:w-auto">
+              <div className="mt-4 flex grow sm:w-auto">
                 <FieldJoin>
                   <SelectAdornment>
                     <FilterIcon className="h-6 w-6" />

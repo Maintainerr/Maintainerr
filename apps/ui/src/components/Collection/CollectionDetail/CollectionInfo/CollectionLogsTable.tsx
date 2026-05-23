@@ -122,7 +122,7 @@ const CollectionLogsTable = ({
                       isMetaActionedByRule(row.meta) && (
                         <button
                           type="button"
-                          className="rounded bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
+                          className="rounded-sm bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
                           title="View Metadata"
                           onClick={() => {
                             if (!isMetaActionedByRule(row.meta)) return
@@ -144,7 +144,7 @@ const CollectionLogsTable = ({
             {isLoadingExtra ? (
               <tr>
                 <Table.TD colSpan={2} noPadding>
-                  <SmallLoadingSpinner className="m-auto mb-2 mt-2 w-8" />
+                  <SmallLoadingSpinner className="m-auto mt-2 mb-2 w-8" />
                 </Table.TD>
               </tr>
             ) : undefined}

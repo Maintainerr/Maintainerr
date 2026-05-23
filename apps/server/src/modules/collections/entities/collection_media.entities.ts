@@ -53,6 +53,9 @@ export class CollectionMedia {
   @Column({ type: 'bigint', nullable: true, default: null })
   sizeBytes: number | null;
 
+  @Column({ default: false })
+  ruleEvaluationFailed: boolean;
+
   @BeforeInsert()
   @BeforeUpdate()
   syncLegacyManualFlag(): void {

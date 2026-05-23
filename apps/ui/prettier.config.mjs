@@ -5,7 +5,7 @@
 const config = {
   singleQuote: true,
   semi: false,
-  tailwindConfig: './tailwind.config.js',
+  tailwindStylesheet: './styles/globals.css',
   plugins: ['prettier-plugin-tailwindcss'],
 }
 

@@ -114,7 +114,7 @@ const ColorPickerModal = ({
           />
         </div>
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wider text-zinc-400">
+          <p className="mb-2 text-xs tracking-wider text-zinc-400 uppercase">
             Presets
           </p>
           <div className="grid grid-cols-7 gap-2">

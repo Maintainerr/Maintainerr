@@ -566,17 +566,17 @@ const PlexSettings = () => {
                               {selectedServer.hostname}:{selectedServer.port}
                             </span>
                             {selectedServer.ssl && (
-                              <span className="inline-flex items-center rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                                 SSL/TLS
                               </span>
                             )}
                             {selectedServer.local !== undefined && (
-                              <span className="inline-flex items-center rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                                 {selectedServer.local ? 'Local' : 'Remote'}
                               </span>
                             )}
                             {selectedServer.latency !== undefined && (
-                              <span className="inline-flex items-center rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                                 {selectedServer.latency}ms
                               </span>
                             )}
@@ -680,7 +680,7 @@ const PlexSettings = () => {
                   )}
                   Advanced Settings
                   {manualMode && (
-                    <span className="ml-1.5 inline-flex items-center rounded bg-amber-700 px-1.5 py-0.5 text-xs text-amber-200">
+                    <span className="ml-1.5 inline-flex items-center rounded-sm bg-maintainerr-600 px-1.5 py-0.5 text-xs text-white">
                       Manual
                     </span>
                   )}
@@ -721,7 +721,7 @@ const PlexSettings = () => {
                                   clearTestBanner()
                                 }
                               }}
-                              className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
+                              className="checkbox"
                             />
                             <span className="text-sm text-zinc-300">
                               Enable manual mode
@@ -813,7 +813,7 @@ const PlexSettings = () => {
                                       }),
                                     )
                                   }}
-                                  className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
+                                  className="checkbox"
                                 />
                                 <span className="text-sm text-zinc-300">
                                   Use HTTPS
@@ -831,7 +831,7 @@ const PlexSettings = () => {
 
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
                   <DocsButton page="Configuration/#plex" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
@@ -865,7 +865,7 @@ const PlexSettings = () => {
                               : undefined
                     }
                   />
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
+                  <span className="ml-3 inline-flex rounded-md shadow-xs">
                     <SaveButton
                       type="button"
                       onClick={() => void submit()}
