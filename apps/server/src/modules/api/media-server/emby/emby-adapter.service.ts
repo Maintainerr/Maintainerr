@@ -1329,7 +1329,14 @@ export class EmbyAdapterService implements IMediaServerService {
     }
 
     try {
-      const { data } = await this.http.get<EmbyBaseItemDto>(`/Items/${itemId}`);
+      // User-scope the lookup like every other single-item read in this
+      // adapter (e.g. getMetadata): Emby returns 404 on the unscoped
+      // /Items/{id} route for an item that exists, which would otherwise make
+      // a still-present item look deleted.
+      const path = this.embyUserId
+        ? `/Users/${this.embyUserId}/Items/${itemId}`
+        : `/Items/${itemId}`;
+      const { data } = await this.http.get<EmbyBaseItemDto>(path);
       return Boolean(data?.Id);
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 404) {
