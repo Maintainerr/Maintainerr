@@ -53,7 +53,7 @@
       [
         "@semantic-release/exec",
         {
-          "generateNotesCmd": "node tools/generate-release-notes.mjs",
+          "generateNotesCmd": "NEXT_RELEASE_VERSION=\"${nextRelease.version}\" LAST_RELEASE_GITTAG=\"${lastRelease.gitTag}\" NEXT_RELEASE_GITHEAD=\"${nextRelease.gitHead}\" node tools/generate-release-notes.mjs",
           "prepareCmd": "yarn --cwd apps/server version ${nextRelease.version} && yarn --cwd apps/ui version ${nextRelease.version}"
         }
       ],

@@ -1,9 +1,8 @@
+# [3.12.1](https://github.com/Maintainerr/Maintainerr/compare/v3.12.0...v3.12.1) (2026-05-23)
+
 ## Highlights
 - Added `ruleEvaluationFailed` field to `collection_media` table to track rule evaluation failures for collection media.
 - Improved performance of rule evaluation by reducing concurrency and introducing deduplication for uncached media lookups.
-
-## Breaking Changes
-- Renamed `SettingsService` to `SettingsOperationsService` and `SettingsStoreService` to `SettingsDataService`. Updated all related fields, files, and import paths.
 
 ## Features
 - Added detailed error logging for Emby image upload failures, including server response body for better debugging.
@@ -24,12 +23,15 @@
 - Added `ruleEvaluationFailed` column to the `collection_media` table to track rule evaluation failures.
 
 ## Internal
+- Renamed internal settings services and decoupled them into separate operations and data layers.
 - Removed unused `forwardRef` imports from `SettingsModule` after refactoring.
 - Added tests for `ArrLookupCache` deduplication and eviction on failure.
 - Added tests to ensure fresh series reads during empty-show cleanup.
 
 ## Dependencies
 - Updated 13 dependencies, including nodemailer, glob, qs, postcss, @hookform/resolvers, typescript-eslint, and vite.
+
+# [3.12.0](https://github.com/Maintainerr/Maintainerr/compare/v3.11.2...v3.12.0) (2026-05-21)
 
 ## Highlights
 - Added Emby as a third supported media server, alongside Plex and Jellyfin (#2911).
@@ -67,6 +69,8 @@
 
 ## Dependencies
 - Updated 29 dependencies, including @tanstack/react-query, @vitejs/plugin-react, vitest, react-router-dom, and tar.
+
+# [3.11.2](https://github.com/Maintainerr/Maintainerr/compare/v3.11.1...v3.11.2) (2026-05-14)
 
 ## Fixes
 - Fixed an issue in Sonarr where the "Unmonitor and delete season + delete show if empty" action failed to delete the now-empty show after removing a season's files (#2897).

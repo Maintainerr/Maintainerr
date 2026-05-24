@@ -48,7 +48,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     type: 'movie' | 'tv',
   ): Promise<MetadataDetails | undefined> {
     const record = await this.getRecord(tvdbId, type);
-    if (!record) {
+    if (!record || typeof record !== 'object') {
       return undefined;
     }
 

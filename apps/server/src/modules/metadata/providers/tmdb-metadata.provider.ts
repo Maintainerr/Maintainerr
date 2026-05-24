@@ -57,7 +57,7 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     type: 'movie' | 'tv',
   ): Promise<MetadataDetails | undefined> {
     const record = await this.getRecord(tmdbId, type);
-    if (!record) {
+    if (!record || typeof record !== 'object') {
       return undefined;
     }
 
