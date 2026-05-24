@@ -150,7 +150,7 @@ function TextProperties({
     <>
       <FieldGroup label="Text">
         <textarea
-          className="block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 px-3 py-1.5 text-sm text-white shadow-xs transition duration-150 ease-in-out focus:border-maintainerr-600 focus:ring-0 focus:outline-hidden disabled:opacity-50"
+          className="block field-sizing-content min-h-14 w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 px-3 py-1.5 text-sm text-white shadow-xs transition duration-150 ease-in-out focus:border-maintainerr-600 focus:ring-0 focus:outline-hidden disabled:opacity-50"
           rows={2}
           value={el.text}
           onChange={(e) => update('text', e.target.value)}

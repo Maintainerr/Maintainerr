@@ -642,7 +642,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
           </div>
           <div className="p-4">
-            <div className="flex items-center justify-between border-b pb-4">
+            <div className="flex items-center justify-between border-b border-zinc-700 pb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-100">
                   {title}

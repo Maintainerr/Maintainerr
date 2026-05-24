@@ -131,9 +131,12 @@ const CollectionInfo = (props: ICollectionInfo) => {
                       value={currentFilter}
                       join="right"
                     >
-                      <option key={`filter-option-all`} value={-1}>
-                        -
-                      </option>
+                      <option
+                        key={`filter-option-all`}
+                        value={-1}
+                        aria-label="No filter"
+                      />
+
                       {Object.values(ECollectionLogType)
                         .filter((value) => typeof value === 'number')
                         .map((value, index) => {
