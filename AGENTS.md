@@ -16,7 +16,7 @@ yarn test | tail -20
 
 ## Project Overview
 
-Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, and Tautulli to provide comprehensive media lifecycle management.
+Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -110,6 +110,14 @@ yarn turbo test
 
 The development Docker workflow builds the multi-stage `Dockerfile` for
 `linux/amd64` and `linux/arm64`.
+
+### Workspace MCP Servers
+
+Project MCP server config lives in `.codex/config.toml` for Codex, `.mcp.json`
+for Claude Code, and `.vscode/mcp.json` for VS Code. Keep all three files in
+sync when adding or changing servers. The configured GitHub MCP server is
+read-only, and Playwright MCP screenshots should be written under
+`.playwright-mcp/`.
 
 ### Package-Specific Commands
 
@@ -230,9 +238,11 @@ When modifying existing code, follow these specific refactoring priorities:
 The application integrates with several external services:
 
 - **Plex**: Media server API for collections and metadata
+- **Jellyfin/Emby**: Media server APIs through the shared media-server abstraction
 - **Radarr/Sonarr**: Movie/TV show management APIs
 - **Overseerr/Jellyseerr**: Request management systems
 - **Tautulli**: Plex analytics and statistics
+- **Streamystats**: Jellyfin item-level analytics surfaced on media details
 
 When working with these integrations:
 
