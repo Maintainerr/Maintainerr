@@ -731,7 +731,7 @@ describe('JellyfinGetterService', () => {
       expect(jellyfinAdapter.getCollectionChildren).toHaveBeenCalledTimes(3);
     });
 
-    it('sw collection rules (ids: 25, 26) include parent and grandparent matches with deduped trimmed names', async () => {
+    it('sw collection rules (ids: 25, 26) include parent and grandparent matches with case-sensitive deduped names', async () => {
       const episodeItem = createMediaItem({
         id: 'episode-collections-1',
         type: 'episode' as MediaItemType,
@@ -758,6 +758,10 @@ describe('JellyfinGetterService', () => {
         createMediaCollection({ id: 'collection-episode', title: ' Episode ' }),
         createMediaCollection({ id: 'collection-season-a', title: 'Season' }),
         createMediaCollection({ id: 'collection-season-b', title: ' season ' }),
+        createMediaCollection({
+          id: 'collection-season-c',
+          title: 'Season ',
+        }),
         createMediaCollection({ id: 'collection-show', title: 'Show' }),
         createMediaCollection({
           id: 'collection-own',
@@ -769,6 +773,7 @@ describe('JellyfinGetterService', () => {
           if (collectionId === 'collection-episode') return [episodeItem];
           if (collectionId === 'collection-season-a') return [seasonItem];
           if (collectionId === 'collection-season-b') return [seasonItem];
+          if (collectionId === 'collection-season-c') return [seasonItem];
           if (collectionId === 'collection-show') return [showItem];
           if (collectionId === 'collection-own') return [episodeItem];
           return [];
@@ -793,8 +798,8 @@ describe('JellyfinGetterService', () => {
         ruleGroup,
       );
 
-      expect(names).toEqual(['Episode', 'Season', 'Show']);
-      expect(count).toBe(3);
+      expect(names).toEqual(['Episode', 'Season', 'season', 'Show']);
+      expect(count).toBe(4);
     });
   });
 

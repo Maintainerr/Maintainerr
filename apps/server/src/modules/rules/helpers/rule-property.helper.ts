@@ -61,7 +61,10 @@ export function mapRuleUserIdsToNames<TUser, TId extends RuleUserId>(
     users.map((user) => [getUserId(user), getUserName(user)]),
   );
 
-  return userIds.map((id) => userNamesById.get(id) ?? String(id));
+  return userIds.map((id) => {
+    const name = userNamesById.get(id);
+    return name?.trim() ? name : String(id);
+  });
 }
 
 export function mapMatchingRuleUsersToNames<TUser, TId extends RuleUserId>(

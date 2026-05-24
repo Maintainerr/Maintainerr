@@ -71,6 +71,20 @@ describe('rule-property.helper', () => {
       ).toEqual(['Bob', 'missing']);
     });
 
+    it('falls back to the backend user id when a mapped name is blank', () => {
+      expect(
+        mapRuleUserIdsToNames(
+          ['u2', 'missing', 'u1'],
+          [
+            { id: 'u1', name: 'Alice' },
+            { id: 'u2', name: '  ' },
+          ],
+          (user) => user.id,
+          (user) => user.name,
+        ),
+      ).toEqual(['u2', 'missing', 'Alice']);
+    });
+
     it('matches known users once in configured user order', () => {
       expect(
         mapMatchingRuleUsersToNames(

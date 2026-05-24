@@ -17,7 +17,6 @@ import { RulesDto } from '../dtos/rules.dto';
 import {
   filterRuleCollectionNames,
   mapRuleUserIdsToNames,
-  uniqueTrimmedRulePropertyNames,
 } from '../helpers/rule-property.helper';
 
 /**
@@ -929,8 +928,8 @@ export class JellyfinGetterService {
       }
     }
 
-    return uniqueTrimmedRulePropertyNames(
-      filterRuleCollectionNames(collectionNames, ruleGroup),
+    return Array.from(
+      new Set(filterRuleCollectionNames(collectionNames, ruleGroup)),
     );
   }
 
