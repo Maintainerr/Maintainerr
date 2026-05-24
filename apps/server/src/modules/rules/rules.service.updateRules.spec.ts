@@ -146,6 +146,43 @@ describe('RulesService.updateRules', () => {
     });
   });
 
+  it('rejects missing operators on non-first rules before saving', async () => {
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = createRulesService({ ruleGroupRepository });
+
+    const result = await service.updateRules({
+      id: 999,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'Test',
+      description: '',
+      rules: [
+        {
+          operator: null,
+          action: RulePossibility.EXISTS,
+          firstVal: [Application.PLEX, 10],
+          section: 0,
+        },
+        {
+          operator: null,
+          action: RulePossibility.EXISTS,
+          firstVal: [Application.PLEX, 10],
+          section: 1,
+        },
+      ],
+    } as any);
+
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      code: 0,
+      result: 'Operator is required for every rule after the first',
+      message: 'Operator is required for every rule after the first',
+    });
+  });
+
   it('cleans up the previous library when a rule moves libraries', async () => {
     const rulesRepository = {
       delete: jest.fn().mockResolvedValue(undefined),

@@ -147,11 +147,15 @@ export class RuleYamlService {
       }
 
       for (const section of decoded.rules) {
-        for (const rule of section[idRef]) {
+        for (const [ruleIndex, rule] of section[idRef].entries()) {
           rules.push({
             operator: rule.operator
               ? +RuleOperators[rule.operator.toUpperCase()]
-              : null,
+              : rules.length === 0
+                ? null
+                : ruleIndex === 0
+                  ? RuleOperators.AND
+                  : RuleOperators.OR,
             action: +RulePossibility[rule.action.toUpperCase()],
             section: idRef,
             firstVal: this.ruleConstanstService.getValueFromIdentifier(
