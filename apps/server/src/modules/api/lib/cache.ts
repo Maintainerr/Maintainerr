@@ -21,6 +21,9 @@ const DEFAULT_CHECK_PERIOD = 120; // 2 min
 type CacheOptions = {
   stdTtl?: number;
   checkPeriod?: number;
+  // If true, this cache is NOT flushed by flushAll(). Use for external metadata
+  // caches (e.g. TMDB, TVDB) whose data doesn't change between rule group runs.
+  persistent?: boolean;
 };
 
 export class Cache {
@@ -28,6 +31,7 @@ export class Cache {
   public data: NodeCache;
   public name: string;
   public type?: CacheType;
+  public persistent: boolean;
 
   constructor(
     id: string,
@@ -38,6 +42,7 @@ export class Cache {
     this.id = id;
     this.name = name;
     this.type = type;
+    this.persistent = options.persistent ?? false;
     this.data = new NodeCache({
       stdTTL: options.stdTtl ?? DEFAULT_TTL,
       checkperiod: options.checkPeriod ?? DEFAULT_CHECK_PERIOD,
@@ -58,10 +63,12 @@ class CacheManager {
     tmdb: new Cache('tmdb', 'The Movie Database API', 'tmdb', {
       stdTtl: 21600, // 6 hours
       checkPeriod: 60 * 30,
+      persistent: true,
     }),
     tvdb: new Cache('tvdb', 'TheTVDB API', 'tvdb', {
       stdTtl: 21600, // 6 hours
       checkPeriod: 60 * 30,
+      persistent: true,
     }),
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
     plextv: new Cache('plextv', 'Plex.tv', 'plextv'),
@@ -110,7 +117,9 @@ class CacheManager {
 
   public flushAll(): void {
     for (const [, value] of Object.entries(this.getAllCaches())) {
-      value.flush();
+      if (!value.persistent) {
+        value.flush();
+      }
     }
   }
 }
