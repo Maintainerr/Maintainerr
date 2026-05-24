@@ -1,5 +1,6 @@
 # compiled output
 /dist
+/dist-test
 /node_modules
 .package-lock.json
 

@@ -6,7 +6,7 @@ import { ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
 // globals.css (single source of truth). Only select-specific deltas live here
 // (hide the native arrow for the custom chevron, left-align, horizontal pad).
 const selectClassNames = {
-  base: 'h-10 appearance-none px-3 text-left',
+  base: 'appearance-none px-3 text-left',
   leadingAdornment:
     'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-500 bg-zinc-700 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
   joinedLeft: 'rounded-l-only rounded-r-none border-r-0',

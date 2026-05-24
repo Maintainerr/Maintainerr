@@ -46,6 +46,7 @@ export interface ReturnStatus {
   code: 0 | 1;
   result?: string;
   message?: string;
+  skipped?: number;
 }
 
 @Injectable()
@@ -304,7 +305,13 @@ export class RulesService {
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -406,7 +413,13 @@ export class RulesService {
   async updateRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -904,8 +917,18 @@ export class RulesService {
   private validateRule(rule: RuleDto): ReturnStatus {
     try {
       const val1: Property = this.ruleConstants.applications
-        .find((el) => el.id === rule.firstVal[0])
-        .props.find((el) => el.id === rule.firstVal[1]);
+        .find((el) => el.id === rule.firstVal?.[0])
+        ?.props.find((el) => el.id === rule.firstVal?.[1]);
+      // Guard against a first value whose application/property no longer exists
+      // (e.g. an imported rule referencing an unconfigured service). Returning a
+      // clean status beats throwing a TypeError that surfaces as a generic
+      // "Unexpected error occurred".
+      if (!val1) {
+        return this.createReturnStatus(
+          false,
+          'First value is not available for this server',
+        );
+      }
       if (
         [RulePossibility.EXISTS, RulePossibility.NOT_EXISTS].includes(
           +rule.action,
@@ -919,7 +942,13 @@ export class RulesService {
       if (rule.lastVal) {
         const val2: Property = this.ruleConstants.applications
           .find((el) => el.id === rule.lastVal[0])
-          .props.find((el) => el.id === rule.lastVal[1]);
+          ?.props.find((el) => el.id === rule.lastVal[1]);
+        if (!val2) {
+          return this.createReturnStatus(
+            false,
+            'Second value is not available for this server',
+          );
+        }
         if (
           val1.type === val2.type ||
           ([RuleType.TEXT_LIST, RuleType.TEXT].includes(val1.type) &&
@@ -1144,11 +1173,19 @@ export class RulesService {
             .loadMany(),
         );
 
-      // Associate new notifications to the RuleGroup
-      await connection
-        .relation(RuleGroup, 'notifications')
-        .of(id)
-        .add(notifications?.map((notification) => notification.id));
+      // Associate new notifications to the RuleGroup. Guard against an
+      // empty/omitted list: `.add(undefined)` (when `notifications` is omitted
+      // by an API/import client) inserts a join row with a null notificationId
+      // and fails the whole rule-group create.
+      const notificationIds = notifications?.map(
+        (notification) => notification.id,
+      );
+      if (notificationIds?.length) {
+        await connection
+          .relation(RuleGroup, 'notifications')
+          .of(id)
+          .add(notificationIds);
+      }
 
       return id;
     } catch (error) {
@@ -1306,11 +1343,17 @@ export class RulesService {
     // Migrate decoded rules to the configured media server
     if (result.code === 1 && result.result) {
       const parsed = JSON.parse(result.result);
+      const beforeMigrate = parsed.rules.length;
       const migrationResult = await this.migrateRules(parsed.rules);
       if (migrationResult.code === 1 && migrationResult.result) {
         parsed.rules = JSON.parse(migrationResult.result);
-        result.result = JSON.stringify(parsed);
       }
+      // Combine rules dropped by decode (unresolved identifier) and by
+      // migration (no equivalent on the target server) into the single
+      // top-level skipped count so the UI reads it the same way as export.
+      result.skipped =
+        (result.skipped ?? 0) + (beforeMigrate - parsed.rules.length);
+      result.result = JSON.stringify(parsed);
     }
 
     return result;

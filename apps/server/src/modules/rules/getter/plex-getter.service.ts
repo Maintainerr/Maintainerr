@@ -402,6 +402,13 @@ export class PlexGetterService {
           }
           return viewCount;
         }
+        case 'sw_markedWatchedEpisodes': {
+          // Uses Plex's watched STATE (viewedLeafCount) instead of play history.
+          // Unlike sw_viewedEpisodes (which counts episodes with a play-history
+          // entry), this also counts episodes manually marked as watched: Plex
+          // updates viewedLeafCount for manual marks but records no play history.
+          return metadata.viewedLeafCount ? +metadata.viewedLeafCount : 0;
+        }
         case 'sw_amountOfViews': {
           let viewCount = 0;
 

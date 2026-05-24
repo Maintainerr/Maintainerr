@@ -259,6 +259,14 @@ export class RuleConstants {
           showType: ['show', 'season'],
         },
         {
+          id: 45,
+          name: 'sw_markedWatchedEpisodes',
+          humanName: 'Amount of episodes marked as watched',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season'],
+        },
+        {
           id: 16,
           name: 'sw_lastEpisodeAddedAt',
           humanName: 'Last episode added at',
