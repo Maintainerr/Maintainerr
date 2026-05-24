@@ -54,9 +54,8 @@ describe('EmbyGetterService', () => {
   let embyAdapter: Mocked<EmbyAdapterService>;
 
   beforeEach(async () => {
-    const { unit, unitRef } = await TestBed.solitary(
-      EmbyGetterService,
-    ).compile();
+    const { unit, unitRef } =
+      await TestBed.solitary(EmbyGetterService).compile();
 
     embyGetterService = unit;
     embyAdapter = unitRef.get(EmbyAdapterService);
