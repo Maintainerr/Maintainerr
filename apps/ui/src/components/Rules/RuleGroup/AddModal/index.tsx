@@ -402,6 +402,25 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
+/**
+ * Tell the user that some rules were dropped because a property isn't available
+ * (no equivalent on the configured media server, or an unresolved identifier).
+ * Shared by the community import, YAML import and YAML export paths, so the copy
+ * stays neutral about direction.
+ */
+const notifySkippedRules = (skipped: number) => {
+  if (skipped <= 0) return
+  const plural = skipped !== 1
+  toast.warn(
+    `${skipped} rule${plural ? 's' : ''} ${plural ? 'were' : 'was'} skipped — ${
+      plural
+        ? "they use properties that aren't available"
+        : "it uses a property that isn't available"
+    }.`,
+    { autoClose: 6000 },
+  )
+}
+
 const AddModal = (props: AddModal) => {
   const navigate = useNavigate()
   const { isPlex, isJellyfin, mediaServerType } = useMediaServerType()
@@ -677,6 +696,7 @@ const AddModal = (props: AddModal) => {
 
     if (response.code === 1) {
       setYaml(response.result)
+      notifySkippedRules(response.skipped ?? 0)
 
       if (!yamlImporterModal) {
         setYamlImporterModal(true)
@@ -713,6 +733,7 @@ const AddModal = (props: AddModal) => {
       toast.success('Successfully imported rules from Yaml.', {
         autoClose: 5000,
       })
+      notifySkippedRules(response.skipped ?? 0)
     } else {
       toast.error(response.message, { autoClose: 5000 })
     }
@@ -727,6 +748,7 @@ const AddModal = (props: AddModal) => {
     if (response && response.code === 1) {
       const migratedRules = JSON.parse(response.result) as IRule[]
       updateRules(migratedRules)
+      notifySkippedRules(rules.length - migratedRules.length)
     } else {
       // If migration fails, use original rules
       updateRules(rules)
@@ -1777,7 +1799,7 @@ const AddModal = (props: AddModal) => {
                 label="Save"
                 pendingLabel="Save"
                 contentSize="compact"
-                className="w-full max-w-[160px]"
+                className="w-full max-w-40"
                 isPending={isCreatePending || isUpdatePending}
                 disabled={isCreatePending || isUpdatePending}
                 type="submit"
@@ -1785,7 +1807,7 @@ const AddModal = (props: AddModal) => {
 
               <Button
                 buttonType="default"
-                className="w-full max-w-[160px] justify-center"
+                className="w-full max-w-40 justify-center"
                 type="button"
                 onClick={cancel}
                 disabled={isCreatePending || isUpdatePending}

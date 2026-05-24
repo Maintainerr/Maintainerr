@@ -64,16 +64,25 @@ export class RuleConstanstService {
     return this.ruleConstants;
   }
 
-  public getValueIdentifier(location: [number, number]) {
+  /**
+   * Build the `App.property` identifier for a rule value, or return null when
+   * the application/property no longer exists in the constants (e.g. a rule
+   * authored on an older version referencing a since-removed property). Callers
+   * must skip such values rather than emit `App.undefined`, which produces YAML
+   * that cannot be decoded again.
+   */
+  public getValueIdentifier(location: [number, number]): string | null {
     const application = this.ruleConstants.applications.find(
       (el) => el.id === location[0],
-    )?.name;
+    );
 
-    const rule = this.ruleConstants.applications
-      .find((el) => el.id === location[0])
-      ?.props.find((el) => el.id === location[1])?.name;
+    const rule = application?.props.find((el) => el.id === location[1]);
 
-    return application + '.' + rule;
+    if (!application || !rule) {
+      return null;
+    }
+
+    return application.name + '.' + rule.name;
   }
 
   public getValueHumanName(location: [number, number]) {
@@ -103,17 +112,28 @@ export class RuleConstanstService {
     return buildDynamicNullReason(prop, application?.name);
   }
 
-  public getValueFromIdentifier(identifier: string): [number, number] {
+  /**
+   * Resolve an `App.property` identifier back to its `[appId, propId]` pair, or
+   * return null when either part is unknown. Callers must skip the rule rather
+   * than crash the whole import, so a single stale identifier (e.g. from an
+   * older export) doesn't reject an otherwise-valid YAML document.
+   */
+  public getValueFromIdentifier(identifier: string): [number, number] | null {
     const application = identifier.split('.')[0];
     const rule = identifier.split('.')[1];
 
     const applicationConstant = this.ruleConstants.applications.find(
-      (el) => el.name.toLowerCase() === application.toLowerCase(),
+      (el) => el.name.toLowerCase() === application?.toLowerCase(),
     );
 
-    const ruleConstant = applicationConstant.props.find(
-      (el) => el.name.toLowerCase() === rule.toLowerCase(),
+    const ruleConstant = applicationConstant?.props.find(
+      (el) => el.name.toLowerCase() === rule?.toLowerCase(),
     );
+
+    if (!applicationConstant || !ruleConstant) {
+      return null;
+    }
+
     return [applicationConstant.id, ruleConstant.id];
   }
 

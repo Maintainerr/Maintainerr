@@ -359,6 +359,135 @@ describe('RuleMigrationService', () => {
       expect(result.migratedRules).toBe(1);
       expect(result.rules[0].firstVal?.[0]).toBe(6); // 6 = JELLYFIN
     });
+
+    it('migrates a media-server firstVal while leaving a foreign-app lastVal untouched (mixed-app rule)', () => {
+      // The common real-world shape: compare a media-server property against a
+      // value sourced from another app (here a Seerr value in lastVal). The
+      // firstVal must migrate; the Seerr lastVal must be left alone.
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0], // addDate - compatible
+          lastVal: [Application.SEERR, 0], // Seerr - media-server independent
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+      expect(result.rules).toHaveLength(1);
+      expect(result.rules[0].firstVal).toEqual([Application.JELLYFIN, 0]);
+      expect(result.rules[0].lastVal).toEqual([Application.SEERR, 0]); // untouched
+    });
+
+    it('migrates a media-server lastVal when firstVal belongs to another app', () => {
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.SEERR, 0], // foreign - untouched
+          lastVal: [Application.PLEX, 0], // addDate - must migrate
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.rules[0].firstVal).toEqual([Application.SEERR, 0]);
+      expect(result.rules[0].lastVal).toEqual([Application.JELLYFIN, 0]);
+    });
+
+    it('drops a rule whose media-server property has no target equivalent', () => {
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.PLEX, 30], // watchlist_isWatchlisted - Plex only
+          customVal: { ruleTypeId: 3, value: '1' },
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(result.skippedRules).toBe(1);
+      expect(result.migratedRules).toBe(0);
+      expect(result.rules).toHaveLength(0);
+    });
+
+    it('leaves non-media-server rules (Radarr/Sonarr/Seerr) unchanged', () => {
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.RADARR, 0],
+          customVal: { ruleTypeId: 1, value: '30' },
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(result.migratedRules).toBe(0);
+      expect(result.skippedRules).toBe(0);
+      expect(result.rules[0].firstVal).toEqual([Application.RADARR, 0]);
+    });
+
+    it("keeps a section's combine operator when its first rule is dropped as incompatible", () => {
+      // section 1's boundary rule uses a Jellyfin-only property (favoritedBy,
+      // id 39) that has no Plex equivalent, so it is dropped. Its AND must be
+      // inherited by the next surviving rule instead of that rule's own OR
+      // silently becoming the new section boundary (AND -> OR flip).
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.JELLYFIN, 0], // addDate - compatible, first of group
+          section: 0,
+        },
+        {
+          operator: RuleOperators.AND,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.JELLYFIN, 39], // favoritedBy - Jellyfin only -> dropped
+          section: 1,
+        },
+        {
+          operator: RuleOperators.OR,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.JELLYFIN, 0], // within-section rule -> becomes section 1's survivor
+          section: 1,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.PLEX,
+      );
+
+      expect(result.skippedRules).toBe(1);
+      const sectionOne = result.rules.filter((r) => r.section === 1);
+      expect(sectionOne).toHaveLength(1);
+      // Inherits the dropped boundary's AND — does NOT keep its own OR.
+      expect(sectionOne[0].operator).toBe(RuleOperators.AND);
+      // Group's first rule still null.
+      expect(result.rules[0].operator).toBeNull();
+    });
   });
 
   describe('rating property migration', () => {

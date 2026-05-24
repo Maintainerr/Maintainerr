@@ -183,6 +183,41 @@ describe('RulesService.updateRules', () => {
     });
   });
 
+  it('returns a clean status (not a crash) when a rule references a property not on this server', async () => {
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = createRulesService({ ruleGroupRepository });
+
+    const result = await service.updateRules({
+      id: 999,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'Test',
+      description: '',
+      rules: [
+        {
+          operator: null,
+          action: RulePossibility.EQUALS,
+          // Application/property that does not exist (e.g. an imported rule for
+          // an unconfigured service). Previously threw a TypeError that surfaced
+          // as a generic "Unexpected error occurred".
+          firstVal: [999, 999],
+          customVal: { ruleTypeId: 0, value: '1' },
+          section: 0,
+        },
+      ],
+    } as any);
+
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      code: 0,
+      result: 'First value is not available for this server',
+      message: 'First value is not available for this server',
+    });
+  });
+
   it('cleans up the previous library when a rule moves libraries', async () => {
     const rulesRepository = {
       delete: jest.fn().mockResolvedValue(undefined),
