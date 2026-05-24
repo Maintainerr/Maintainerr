@@ -1,0 +1,7 @@
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+http_headers = { "X-MCP-Readonly" = "true" }
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest", "--headless", "--isolated", "--output-dir", ".playwright-mcp"]
