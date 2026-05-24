@@ -902,7 +902,7 @@ const AddModal = (props: AddModal) => {
                 General
               </h2>
               <div className="flex w-full flex-col rounded-lg bg-zinc-800 px-3 py-1">
-                <div className="space-y-2 md:p-4">
+                <div className="md:p-4">
                   <div className="form-row items-center">
                     <label htmlFor="name" className="text-label">
                       Name *
@@ -931,7 +931,7 @@ const AddModal = (props: AddModal) => {
                       <div className="form-input-field">
                         <textarea
                           id="description"
-                          className="field-sizing-content"
+                          className="field-sizing-content min-h-30"
                           rows={5}
                           {...register('description')}
                         ></textarea>

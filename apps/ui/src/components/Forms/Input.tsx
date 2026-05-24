@@ -6,8 +6,9 @@ import {
   InputHTMLAttributes,
 } from 'react'
 
+// Field base styling lives in the global `input/select/textarea` rule in
+// globals.css (single source of truth). Only deltas live here.
 const inputClassNames = {
-  base: 'block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-xs transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-hidden focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
   leadingAdornment:
     'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-500 bg-zinc-700 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
   joinedLeft: 'rounded-l-only rounded-r-none border-r-0',
@@ -49,7 +50,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         id={props.id || props.name}
         className={clsx(
-          inputClassNames.base,
           join === 'left' && inputClassNames.joinedLeft,
           join === 'right' && inputClassNames.joinedRight,
           !props.disabled &&
