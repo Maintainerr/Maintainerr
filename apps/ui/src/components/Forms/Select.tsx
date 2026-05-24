@@ -2,10 +2,13 @@ import { ChevronDownIcon } from '@heroicons/react/solid'
 import clsx from 'clsx'
 import { ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
 
+// Field base styling lives in the global `input/select/textarea` rule in
+// globals.css (single source of truth). Only select-specific deltas live here
+// (hide the native arrow for the custom chevron, left-align, horizontal pad).
 const selectClassNames = {
-  base: 'block h-10 w-full min-w-0 flex-1 appearance-none rounded-md border border-zinc-600 bg-zinc-600 px-3 text-left text-white shadow-none transition duration-150 ease-in-out focus:border-maintainerr-600 focus:outline-hidden focus:ring-0 disabled:opacity-50 sm:text-sm sm:leading-5',
+  base: 'appearance-none px-3 text-left',
   leadingAdornment:
-    'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-600 bg-zinc-600 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
+    'inline-flex cursor-default items-center rounded-l-md border border-r-0 border-zinc-500 bg-zinc-700 px-3 text-sm text-zinc-100 transition duration-150 ease-in-out group-focus-within:border-maintainerr-600',
   joinedLeft: 'rounded-l-only rounded-r-none border-r-0',
   joinedRight: 'rounded-r-only border-l-0',
 } as const

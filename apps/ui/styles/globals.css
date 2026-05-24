@@ -104,22 +104,6 @@
   transition-property: width;
 }
 
-/*
-  Tailwind CSS v4 changed the default border color to `currentColor`.
-  Preserve the v3 default so existing bordered elements look unchanged.
-  To drop this shim, add an explicit border-color utility wherever a border
-  relies on the old gray-200 default.
-*/
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-}
-
 :root {
   --toastify-color-success: var(--color-success);
   --toastify-color-error: var(--color-error);
@@ -143,6 +127,12 @@
 
 @layer base {
   html {
+    /*
+      The app is dark-only. `color-scheme: dark` tells the browser to render
+      native controls (date pickers, <select> dropdowns, scrollbars, autofill,
+      spin buttons) with their dark UA styling instead of the light default.
+    */
+    color-scheme: dark;
     min-height: calc(100% + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -317,7 +307,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  @media (min-width: 440px) {
+  /* Sizes to the nearest `@container` ancestor (see Overview/Content), so the
+     grid reflows by its own width rather than the viewport's. */
+  @container (min-width: 440px) {
     ul.cards-vertical {
       grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
     }
@@ -551,13 +543,21 @@
     @apply h-6 w-6 rounded-md border-zinc-600 text-maintainerr-600 transition duration-150 ease-in-out hover:border-zinc-500 focus:border-zinc-500 focus:ring-0 focus:ring-offset-0 focus:outline-hidden;
   }
 
+  /*
+    Single source of truth for form field styling. Applies to every native
+    field element (raw or rendered by Forms/Input, Forms/Select, etc.), so
+    changing it here restyles all inputs, selects, and textareas at once. The
+    components only add element-specific deltas (select chevron, adornments,
+    error states) on top — they must not re-declare this base.
+  */
   input[type='text'],
   input[type='password'],
   input[type='number'],
   input[type='date'],
+  input[type='search'],
   select,
   textarea {
-    @apply block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white transition duration-150 ease-in-out sm:text-sm sm:leading-5;
+    @apply block w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-xs transition duration-150 ease-in-out focus:border-maintainerr-600 focus:ring-0 focus:outline-hidden disabled:opacity-50 sm:text-sm sm:leading-5;
   }
 
   input.rounded-l-only,
