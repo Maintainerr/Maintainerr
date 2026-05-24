@@ -281,7 +281,7 @@ const SettingsWrapper = () => {
             }
           >
             <div className="space-y-4 text-zinc-100">
-              <div className="rounded-md border border-info-500/40 bg-info-900/30 p-4 backdrop-blur">
+              <div className="rounded-md border border-info-500/40 bg-info-900/30 p-4 backdrop-blur-sm">
                 <p className="text-base font-medium text-info-100">
                   Connect your media server to finish setup.
                 </p>

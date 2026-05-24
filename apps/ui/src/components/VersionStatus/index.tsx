@@ -108,10 +108,10 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
         aria-hidden="true"
         className={`${containerClassName} bg-zinc-900 text-zinc-300`}
       >
-        <div className="h-6 w-6 rounded bg-zinc-800" />
+        <div className="h-6 w-6 rounded-sm bg-zinc-800" />
         <div className="flex min-w-0 flex-1 flex-col gap-1 px-2 last:pr-0">
-          <div className="h-3 w-28 rounded bg-zinc-800" />
-          <div className="h-3 w-20 rounded bg-zinc-800" />
+          <div className="h-3 w-28 rounded-sm bg-zinc-800" />
+          <div className="h-3 w-20 rounded-sm bg-zinc-800" />
         </div>
       </div>
     )

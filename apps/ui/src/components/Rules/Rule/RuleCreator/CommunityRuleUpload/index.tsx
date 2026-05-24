@@ -88,7 +88,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
               <div className="form-input">
                 <div className="form-input-field">
                   <Input
-                    className="!bg-zinc-800"
+                    className="bg-zinc-800!"
                     name="name"
                     id="name"
                     type="text"
@@ -105,7 +105,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
               <div className="form-input">
                 <div className="form-input-field">
                   <textarea
-                    className="!bg-zinc-800"
+                    className="bg-zinc-800!"
                     name="description"
                     id="description"
                     rows={5}
@@ -122,7 +122,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
               <div className="form-input">
                 <div className="form-input-field items-center">
                   <Input
-                    className="!bg-zinc-800"
+                    className="bg-zinc-800!"
                     name="uploadedBy"
                     id="uploadedBy"
                     type="text"

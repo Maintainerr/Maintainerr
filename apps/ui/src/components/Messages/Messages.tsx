@@ -115,7 +115,7 @@ const RuleHandlerMessages = () => {
     >
       <div
         className={
-          'mx-2 flex flex-col rounded-lg bg-zinc-900 py-2 pl-2 pr-4 text-xs font-bold text-zinc-300 ring-1 ring-zinc-700'
+          'mx-2 flex flex-col rounded-lg bg-zinc-900 py-2 pr-4 pl-2 text-xs font-bold text-zinc-300 ring-1 ring-zinc-700'
         }
       >
         <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ const RuleHandlerMessages = () => {
           )}
         </div>
         {event && isRuleHandlerProgressedEvent(event) && (
-          <div className="ml-8 mt-2 bg-zinc-800">
+          <div className="mt-2 ml-8 bg-zinc-800">
             <div
               data-testid="rule-handler-total-progress"
               className="h-1.5 bg-maintainerrdark-700 transition-width duration-150 ease-in-out"
@@ -192,7 +192,7 @@ const CollectionHandlerMessages = () => {
     <Transition
       as="div"
       show={show}
-      className="mx-2 flex flex-col rounded-lg bg-zinc-900 py-2 pl-2 pr-4 text-xs font-bold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800"
+      className="mx-2 flex flex-col rounded-lg bg-zinc-900 py-2 pr-4 pl-2 text-xs font-bold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800"
       enter="transition opacity-0 duration-1000"
       enterFrom="opacity-0"
       enterTo="opacity-100"
@@ -212,7 +212,7 @@ const CollectionHandlerMessages = () => {
           )}
       </div>
       {showCollectionProgressBars && (
-        <div className="ml-8 mt-2 bg-zinc-800">
+        <div className="mt-2 ml-8 bg-zinc-800">
           {event.totalCollections > 1 && (
             <div
               data-testid="collection-handler-current-progress"

@@ -71,9 +71,9 @@ const OverlaysWrapper = () => {
           onBlockedNavigate={showOverlaysDisabledToast}
         />
       </div>
-      <div className="mt-10 min-h-[16rem] text-white">
+      <div className="mt-10 min-h-64 text-white">
         {isLoading ? (
-          <LoadingSpinner containerClassName="min-h-[16rem]" />
+          <LoadingSpinner containerClassName="min-h-64" />
         ) : shouldRedirectFromTemplates ? (
           <Navigate to="/overlays/settings" replace />
         ) : (

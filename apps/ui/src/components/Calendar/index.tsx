@@ -311,7 +311,7 @@ const Calendar = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden w-[7.5rem] sm:block">
+          <div className="hidden w-30 sm:block">
             <Select
               className="hover:border-zinc-500"
               value={viewMode}
@@ -341,12 +341,12 @@ const Calendar = () => {
         </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-700/60 bg-zinc-700/40 shadow-lg backdrop-blur">
+      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-700/60 bg-zinc-700/40 shadow-lg backdrop-blur-sm">
         <div className="hidden grid-cols-7 border-b border-zinc-700/60 bg-zinc-700/70 sm:grid">
           {DAY_NAMES.map((d) => (
             <div
               key={d}
-              className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-200"
+              className="px-3 py-3 text-left text-xs font-semibold tracking-wide text-zinc-200 uppercase"
             >
               {d}
             </div>
@@ -383,7 +383,7 @@ const Calendar = () => {
               <div
                 key={date.toISOString()}
                 className={[
-                  isMobile ? 'min-h-[4.5rem]' : 'min-h-[7.25rem]',
+                  isMobile ? 'min-h-18' : 'min-h-29',
                   'bg-zinc-800/60 p-2 transition-colors hover:bg-zinc-800/80',
                   outside ? 'opacity-60' : '',
                 ].join(' ')}
@@ -392,7 +392,7 @@ const Calendar = () => {
                   <div className="flex items-center gap-2">
                     <div
                       className={[
-                        'flex h-7 min-w-[1.75rem] items-center justify-center rounded-md px-2 text-xs font-semibold',
+                        'flex h-7 min-w-7 items-center justify-center rounded-md px-2 text-xs font-semibold',
                         isToday
                           ? 'bg-maintainerr-600 text-white'
                           : 'border border-zinc-700/60 bg-zinc-800 text-zinc-100',
@@ -421,7 +421,7 @@ const Calendar = () => {
 
                 <div className="mt-2 flex flex-col gap-1">
                   {items.length === 0 ? (
-                    <div className="select-none text-xs text-zinc-400/70">
+                    <div className="text-xs text-zinc-400/70 select-none">
                       {isLoading ? 'Loading...' : 'No scheduled actions'}
                     </div>
                   ) : (
@@ -471,7 +471,7 @@ const Calendar = () => {
           size="4xl"
         >
           {modalLoading ? (
-            <div className="flex min-h-[12rem] flex-col items-center justify-center gap-3 py-6 text-center text-sm text-zinc-300">
+            <div className="flex min-h-48 flex-col items-center justify-center gap-3 py-6 text-center text-sm text-zinc-300">
               <SmallLoadingSpinner className="h-8 w-8" />
               <div>Loading scheduled items...</div>
             </div>
@@ -522,7 +522,7 @@ const Calendar = () => {
                       <col className="w-[10%]" />
                     </colgroup>
                     <thead>
-                      <tr className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                      <tr className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                         <th className="border-b border-zinc-600 px-3 pb-2 text-left">
                           Media
                         </th>
@@ -541,7 +541,7 @@ const Calendar = () => {
                 </div>
                 <div
                   ref={modalTableBodyRef}
-                  className="max-h-[26rem] overflow-y-auto"
+                  className="max-h-104 overflow-y-auto"
                 >
                   <table className="w-full table-fixed border-separate border-spacing-y-2">
                     <colgroup>

@@ -23,7 +23,10 @@ import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
-import { CollectionMedia } from './entities/collection_media.entities';
+import {
+  CollectionMedia,
+  hasCollectionMediaManualMembership,
+} from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
 
 @Injectable()
@@ -118,12 +121,18 @@ export class CollectionWorkerService extends TaskBase {
           new Date().getTime() - +collection.deleteAfterDays * 86400000,
         );
 
-        const mediaToHandle = await this.collectionMediaRepo.find({
-          where: {
-            collectionId: collection.id,
-            addDate: LessThanOrEqual(dangerDate),
-          },
-        });
+        const mediaToHandle = (
+          await this.collectionMediaRepo.find({
+            where: {
+              collectionId: collection.id,
+              addDate: LessThanOrEqual(dangerDate),
+            },
+          })
+        ).filter(
+          (media) =>
+            !media.ruleEvaluationFailed ||
+            hasCollectionMediaManualMembership(media),
+        );
 
         if (mediaToHandle.length === 0) {
           noDueMediaCollectionCount++;

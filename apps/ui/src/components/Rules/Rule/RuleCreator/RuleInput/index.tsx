@@ -632,7 +632,7 @@ const RuleInput = (props: IRuleInput) => {
 
       {props.id !== 1 ? (
         (props.id && props.id > 0) || (props.section && props.section > 1) ? (
-          <div className="mb-3 mt-2 md:flex md:items-center">
+          <div className="mt-2 mb-3 md:flex md:items-center">
             {!props.id || (props.tagId ? props.tagId === 1 : props.id === 1) ? (
               <label htmlFor="operator">Section Operator</label>
             ) : (

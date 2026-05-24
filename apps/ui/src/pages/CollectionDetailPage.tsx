@@ -113,14 +113,14 @@ const CollectionDetailPage = () => {
       <title>{collection.title} - Maintainerr</title>
       <div className="w-full px-4">
         <div className="m-auto mb-3 flex w-full">
-          <h1 className="flex w-full justify-center overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-zinc-200 sm:m-0 sm:justify-start xl:m-0">
+          <h1 className="flex w-full justify-center overflow-hidden text-lg font-bold text-ellipsis whitespace-nowrap text-zinc-200 sm:m-0 sm:justify-start xl:m-0">
             {collection.title}
           </h1>
         </div>
 
         <div>
           <div className="flex h-full items-center justify-center">
-            <div className="mb-4 mt-0 w-fit sm:w-full">
+            <div className="mt-0 mb-4 w-fit sm:w-full">
               <TabbedLinks
                 onChange={handleTabChange}
                 onPrefetch={handleTabPrefetch}

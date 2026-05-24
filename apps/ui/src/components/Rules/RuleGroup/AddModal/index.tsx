@@ -902,7 +902,7 @@ const AddModal = (props: AddModal) => {
                 General
               </h2>
               <div className="flex w-full flex-col rounded-lg bg-zinc-800 px-3 py-1">
-                <div className="space-y-2 md:p-4">
+                <div className="md:p-4">
                   <div className="form-row items-center">
                     <label htmlFor="name" className="text-label">
                       Name *
@@ -931,6 +931,7 @@ const AddModal = (props: AddModal) => {
                       <div className="form-input-field">
                         <textarea
                           id="description"
+                          className="field-sizing-content min-h-30"
                           rows={5}
                           {...register('description')}
                         ></textarea>
@@ -1162,7 +1163,7 @@ const AddModal = (props: AddModal) => {
                           <input
                             type="checkbox"
                             id="is_active"
-                            className=""
+                            className="checkbox"
                             {...register('active')}
                           />
                         </div>
@@ -1188,7 +1189,7 @@ const AddModal = (props: AddModal) => {
                               <input
                                 type="checkbox"
                                 id="collection_visible_library"
-                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                className="checkbox"
                                 {...register('showRecommended')}
                               />
                             </div>
@@ -1211,7 +1212,7 @@ const AddModal = (props: AddModal) => {
                               <input
                                 type="checkbox"
                                 id="collection_visible"
-                                className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                                className="checkbox"
                                 {...register('showHome')}
                               />
                             </div>
@@ -1233,7 +1234,7 @@ const AddModal = (props: AddModal) => {
                           <input
                             type="checkbox"
                             id="overlay_enabled"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                            className="checkbox"
                             {...register('overlayEnabled')}
                           />
                         </div>
@@ -1319,7 +1320,7 @@ const AddModal = (props: AddModal) => {
                             <input
                               type="checkbox"
                               id="list_exclusions"
-                              className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                              className="checkbox"
                               {...register('listExclusions')}
                             />
                           </div>
@@ -1342,7 +1343,7 @@ const AddModal = (props: AddModal) => {
                             <input
                               type="checkbox"
                               id="force_seerr"
-                              className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                              className="checkbox"
                               {...register('forceSeerr')}
                             />
                           </div>
@@ -1362,7 +1363,7 @@ const AddModal = (props: AddModal) => {
                           <input
                             type="checkbox"
                             id="use_rules"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                            className="checkbox"
                             {...register('useRules')}
                           />
                         </div>
@@ -1380,7 +1381,7 @@ const AddModal = (props: AddModal) => {
                           <input
                             type="checkbox"
                             id="manual_collection"
-                            className="border-zinc-600 hover:border-zinc-500 focus:border-zinc-500 focus:bg-opacity-100 focus:placeholder-zinc-400 focus:outline-none focus:ring-0"
+                            className="checkbox"
                             {...register('manualCollection')}
                           />
                         </div>
@@ -1436,7 +1437,7 @@ const AddModal = (props: AddModal) => {
                             buttonType="default"
                             type="button"
                             name="notifications"
-                            className="w-full !bg-maintainerr-600 hover:!bg-maintainerr"
+                            className="w-full bg-maintainerr-600! hover:bg-maintainerr!"
                             onClick={() => {
                               setConfigureNotificationModal(
                                 !configureNotificionModal,
@@ -1640,14 +1641,14 @@ const AddModal = (props: AddModal) => {
                     </div>
                     <div className="ml-auto">
                       <button
-                        className="ml-3 flex h-fit rounded bg-maintainerrdark p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
+                        className="ml-3 flex h-fit rounded-sm bg-maintainerrdark p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
                         onClick={toggleCommunityRuleModal}
                         type="button"
                       >
                         {
                           <CloudDownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
                         }
-                        <p className="button-text m-auto ml-1 mr-4 text-zinc-100">
+                        <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
                           Community
                         </p>
                       </button>
@@ -1655,27 +1656,27 @@ const AddModal = (props: AddModal) => {
                   </div>
                   <div className="mt-4 flex items-center justify-center sm:justify-end">
                     <button
-                      className="ml-3 flex h-fit rounded bg-maintainerr-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerr md:h-10 md:text-base"
+                      className="ml-3 flex h-fit rounded-sm bg-maintainerr-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerr md:h-10 md:text-base"
                       onClick={toggleYamlImporter}
                       type="button"
                     >
                       {
                         <DownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200 md:h-6" />
                       }
-                      <p className="button-text m-auto ml-1 mr-4 text-zinc-100">
+                      <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
                         Import
                       </p>
                     </button>
 
                     <button
-                      className="ml-3 flex h-fit rounded bg-maintainerrdark p-1 text-sm shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
+                      className="ml-3 flex h-fit rounded-sm bg-maintainerrdark p-1 text-sm shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
                       onClick={toggleYamlExporter}
                       type="button"
                     >
                       {
                         <UploadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
                       }
-                      <p className="button-text m-auto ml-1 mr-4 text-zinc-100">
+                      <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
                         Export
                       </p>
                     </button>
@@ -1754,7 +1755,7 @@ const AddModal = (props: AddModal) => {
               <SaveButton
                 label="Save"
                 pendingLabel="Save"
-                className="ml-auto mr-3"
+                className="mr-3 ml-auto"
                 isPending={isCreatePending || isUpdatePending}
                 disabled={isCreatePending || isUpdatePending}
                 type="submit"
@@ -1770,7 +1771,7 @@ const AddModal = (props: AddModal) => {
               </Button>
             </div>
           </div>
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
+          <div className="fixed right-0 bottom-0 left-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
             <div className="flex justify-center gap-3">
               <SaveButton
                 label="Save"
@@ -1794,7 +1795,7 @@ const AddModal = (props: AddModal) => {
             </div>
           </div>
 
-          <div className="fixed bottom-6 right-6 z-40 hidden md:block">
+          <div className="fixed right-6 bottom-6 z-40 hidden md:block">
             <button
               type="button"
               onClick={() => {
@@ -1809,7 +1810,7 @@ const AddModal = (props: AddModal) => {
                   })
                 }
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-maintainerr-600 shadow-lg transition-colors hover:bg-maintainerr focus:outline-none"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-maintainerr-600 shadow-lg transition-colors hover:bg-maintainerr focus:outline-hidden"
             >
               {atBottom ? (
                 <ChevronUpIcon className="h-5 w-5 text-zinc-900" />

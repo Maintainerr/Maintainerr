@@ -442,7 +442,7 @@ function ProviderSection({
   const apiKeyStatus = isConfigured ? 'Configured' : config.emptyStateLabel
 
   return (
-    <div className="flex h-full flex-col rounded-xl bg-zinc-800 px-4 pb-4 pt-5 text-zinc-400 shadow ring-1 ring-zinc-700">
+    <div className="flex h-full flex-col rounded-xl bg-zinc-800 px-4 pt-5 pb-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="text-base font-medium text-white sm:text-lg">
@@ -498,7 +498,7 @@ function ProviderSection({
 
         <div className="mt-auto pt-4">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
-            <span className="inline-flex w-full rounded-md shadow-sm sm:w-auto">
+            <span className="inline-flex w-full rounded-md shadow-xs sm:w-auto">
               <TestingButton
                 buttonType="success"
                 className="h-10 w-full sm:w-auto"
@@ -510,7 +510,7 @@ function ProviderSection({
                 feedbackStatus={testStatus}
               />
             </span>
-            <span className="inline-flex w-full rounded-md shadow-sm sm:w-auto">
+            <span className="inline-flex w-full rounded-md shadow-xs sm:w-auto">
               <SaveButton
                 className="h-10 w-full sm:w-auto"
                 type="submit"

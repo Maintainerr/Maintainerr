@@ -469,7 +469,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
       <div className="actions mt-5 w-full">
         <div className="flex w-full flex-wrap sm:flex-nowrap">
-          <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+          <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
             <DocsButton page={docsPage} />
           </span>
         </div>

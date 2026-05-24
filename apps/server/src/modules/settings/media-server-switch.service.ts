@@ -4,19 +4,14 @@ import {
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
 } from '@maintainerr/contracts';
-import {
-  ConflictException,
-  forwardRef,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
+import { MediaServerSwitchState } from '../api/media-server/media-server-switch-state.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import type { MediaServerFactory as MediaServerFactoryType } from '../api/media-server/media-server.factory';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionLog } from '../collections/entities/collection_log.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -46,20 +41,10 @@ const COLLECTION_POSTER_EXTENSION = '.jpg';
  */
 @Injectable()
 export class MediaServerSwitchService {
-  private switching = false;
-
-  /**
-   * Whether a media server switch is currently in progress.
-   * Used by MediaServerFactory to reject requests during the switch window.
-   */
-  public isSwitching(): boolean {
-    return this.switching;
-  }
-
   constructor(
     private readonly settingsDataService: SettingsDataService,
-    @Inject(forwardRef(() => MediaServerFactory))
-    private readonly mediaServerFactory: MediaServerFactoryType,
+    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaServerSwitchState: MediaServerSwitchState,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
     @InjectRepository(CollectionMedia)
@@ -122,17 +107,17 @@ export class MediaServerSwitchService {
   async executeSwitch(
     request: SwitchMediaServerRequest,
   ): Promise<SwitchMediaServerResponse> {
-    if (this.switching) {
+    if (this.mediaServerSwitchState.isSwitching()) {
       throw new ConflictException(
         'A media server switch is already in progress',
       );
     }
-    this.switching = true;
+    this.mediaServerSwitchState.setSwitching(true);
 
     try {
       return await this.executeSwitchInternal(request);
     } finally {
-      this.switching = false;
+      this.mediaServerSwitchState.setSwitching(false);
     }
   }
 

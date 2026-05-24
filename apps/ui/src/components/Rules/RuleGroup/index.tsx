@@ -141,7 +141,7 @@ const RuleGroup = (props: {
             </button>
           )}
         </div>
-        <div className="tiny-scrollbar mb-2 mt-2 h-12 max-h-12 overflow-y-hidden whitespace-normal pr-2 text-base text-zinc-400 hover:overflow-y-auto">
+        <div className="tiny-scrollbar mt-2 mb-2 h-12 max-h-12 overflow-y-hidden pr-2 text-base whitespace-normal text-zinc-400 hover:overflow-y-auto">
           {props.group.description}
         </div>
       </div>
@@ -149,7 +149,7 @@ const RuleGroup = (props: {
         <div className="mt-2">
           <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 sm:gap-y-2 [&>div:nth-child(2n)]:text-right sm:[&>div:nth-child(2n)]:text-left sm:[&>div:nth-child(3n)]:text-right sm:[&>div:nth-child(3n-1)]:text-center">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                 Status
               </p>
               <p>
@@ -161,7 +161,7 @@ const RuleGroup = (props: {
               </p>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                 Library
               </p>
               {hasNoLibrary ? (
@@ -185,7 +185,7 @@ const RuleGroup = (props: {
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                 Rules
               </p>
               <p className="text-maintainerr">{props.group.rules.length}</p>

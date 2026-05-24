@@ -378,10 +378,11 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('itemExists', () => {
-    it('returns true when Emby returns the item', async () => {
+    it('returns true when Emby returns the item, scoped to the user', async () => {
       http.get.mockResolvedValueOnce({ data: { Id: '42' } });
 
       await expect(service.itemExists('42')).resolves.toBe(true);
+      expect(http.get).toHaveBeenCalledWith('/Users/user-1/Items/42');
     });
 
     it('returns false on a 404 from Emby', async () => {
