@@ -173,4 +173,68 @@ describe('RuleInput', () => {
       expect(committedRule.customVal).toBeUndefined()
     })
   })
+
+  it('does not commit a non-first rule until its operator is chosen', async () => {
+    render(
+      <RuleInput
+        id={2}
+        tagId={1}
+        section={2}
+        mediaType={MediaType.MOVIE}
+        radarrSettingsId={1}
+        onCommit={onCommit}
+        onIncomplete={onIncomplete}
+        onDelete={onDelete}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('First Value'), {
+      target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
+    })
+    fireEvent.change(screen.getByLabelText('Action'), {
+      target: { value: String(RulePossibility.EXISTS) },
+    })
+
+    // First value and action are complete, but the (required) section operator
+    // is still empty, so the rule must be reported incomplete, not committed.
+    await waitFor(() => {
+      expect(onIncomplete).toHaveBeenCalled()
+    })
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('commits a non-first rule once an operator is selected', async () => {
+    render(
+      <RuleInput
+        id={2}
+        tagId={1}
+        section={2}
+        mediaType={MediaType.MOVIE}
+        radarrSettingsId={1}
+        onCommit={onCommit}
+        onIncomplete={onIncomplete}
+        onDelete={onDelete}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('First Value'), {
+      target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
+    })
+    fireEvent.change(screen.getByLabelText('Action'), {
+      target: { value: String(RulePossibility.EXISTS) },
+    })
+    // "1" is the OR operator value emitted by the operator dropdown.
+    fireEvent.change(screen.getByLabelText('Section Operator'), {
+      target: { value: '1' },
+    })
+
+    await waitFor(() => {
+      const committedRule = onCommit.mock.calls.at(-1)?.[1]
+      expect(committedRule).toMatchObject({
+        firstVal: [Application.RADARR, listPropertyId],
+        action: RulePossibility.EXISTS,
+        operator: '1',
+      })
+    })
+  })
 })

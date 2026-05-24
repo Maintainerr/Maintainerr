@@ -4,6 +4,7 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { RuleConstanstService } from '../constants/constants.service';
 import {
   Application,
+  RuleOperators,
   RulePossibility,
   RuleType,
 } from '../constants/rules.constants';
@@ -484,6 +485,195 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       );
 
       expect(result.data).toEqual([]);
+    });
+  });
+
+  describe('OR sections', () => {
+    // section 0: viewCount EQUALS 0  (operator: null = OR boundary)
+    // section 1: viewCount BIGGER 0  (operator: null = OR boundary)
+    // These two conditions are mutually exclusive, which proves OR semantics —
+    // if AND were used, no item could satisfy both simultaneously.
+    //
+    // Field [Application.PLEX, 5] = viewCount
+    // RulePossibility.EQUALS = 2, RulePossibility.BIGGER = 0
+    // operator null  = first condition of a new OR section
+    // operator RuleOperators.AND (0) = AND within a section
+
+    const buildTwoSectionRules = () => [
+      createStoredRule(
+        1,
+        {
+          operator: null,
+          action: RulePossibility.EQUALS,
+          firstVal: [Application.PLEX, 5],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '0' },
+          section: 0,
+        },
+        0,
+      ),
+      createStoredRule(
+        2,
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 5],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '0' },
+          section: 1,
+        },
+        1,
+      ),
+    ];
+
+    it('includes an item matching only section 0 (mutually exclusive sections prove OR not AND)', async () => {
+      // viewCount = 0 matches section 0 (EQUALS 0) but not section 1 (BIGGER 0)
+      const mediaItem = createSingleMedia();
+      const rules = buildTwoSectionRules();
+
+      // getter called twice per item: first for section 0 rule, then for section 1 rule
+      mockGetterSequence(0, 0);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toHaveLength(1);
+      expect(result.stats[0].result).toBe(true);
+    });
+
+    it('includes an item matching only section 1', async () => {
+      // viewCount = 5 does not match section 0 (EQUALS 0) but does match section 1 (BIGGER 0)
+      const mediaItem = createSingleMedia();
+      const rules = buildTwoSectionRules();
+
+      mockGetterSequence(5, 5);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toHaveLength(1);
+      expect(result.stats[0].result).toBe(true);
+    });
+
+    it('excludes an item matching neither section', async () => {
+      // viewCount = null matches neither EQUALS 0 nor BIGGER 0
+      const mediaItem = createSingleMedia();
+      const rules = buildTwoSectionRules();
+
+      mockGetterSequence(null, null);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.stats[0].result).toBe(false);
+    });
+
+    it('includes an item matching both overlapping sections exactly once (no duplicate)', async () => {
+      // Overlapping (non-exclusive) sections so a single item can satisfy both:
+      //   section 0: viewCount EQUALS 0
+      //   section 1: viewCount SMALLER 1
+      // An item with viewCount = 0 matches both sections. OR semantics must
+      // union the sections and dedupe, so the item appears exactly once — a
+      // regression here (e.g. pushing per matching section) would yield two.
+      const overlappingRules = [
+        createStoredRule(
+          1,
+          {
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 5],
+            customVal: { ruleTypeId: +RuleType.NUMBER, value: '0' },
+            section: 0,
+          },
+          0,
+        ),
+        createStoredRule(
+          2,
+          {
+            operator: null,
+            action: RulePossibility.SMALLER,
+            firstVal: [Application.PLEX, 5],
+            customVal: { ruleTypeId: +RuleType.NUMBER, value: '1' },
+            section: 1,
+          },
+          1,
+        ),
+      ];
+      const mediaItem = createSingleMedia();
+
+      // viewCount = 0 for both the section 0 and section 1 evaluations
+      mockGetterSequence(0, 0);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules: overlappingRules }),
+        [mediaItem],
+      );
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe('media-1');
+      expect(result.stats[0].result).toBe(true);
+    });
+
+    it('honours an explicit AND section operator (intersection), not OR', async () => {
+      // The section operator is persisted as a string. An explicit AND is "0",
+      // so the section combine must use null-guarded coercion: +"0" === 0.
+      // A naive strict comparison ("0" === 0) would be false and silently
+      // turn the section into OR, including items that match only one section.
+      //   section 0: viewCount BIGGER 0        (operator null = first section)
+      //   section 1: viewCount SMALLER 10      (operator "0" = AND)
+      const andRules = [
+        createStoredRule(
+          1,
+          {
+            operator: null,
+            action: RulePossibility.BIGGER,
+            firstVal: [Application.PLEX, 5],
+            customVal: { ruleTypeId: +RuleType.NUMBER, value: '0' },
+            section: 0,
+          },
+          0,
+        ),
+        createStoredRule(
+          2,
+          {
+            // Persisted as a string by the UI (RuleDto types it loosely as the
+            // enum, but the stored value is "0"/"1"); cast to match real data.
+            operator: '0' as unknown as RuleOperators,
+            action: RulePossibility.SMALLER,
+            firstVal: [Application.PLEX, 5],
+            customVal: { ruleTypeId: +RuleType.NUMBER, value: '10' },
+            section: 1,
+          },
+          1,
+        ),
+      ];
+      const inRange = createMediaItem({
+        id: 'in-range',
+        type: 'movie' as const,
+      });
+      const tooHigh = createMediaItem({
+        id: 'too-high',
+        type: 'movie' as const,
+      });
+
+      // getter order: section 0 over [inRange, tooHigh], then section 1 over
+      // [inRange, tooHigh]. viewCount: inRange = 5, tooHigh = 15.
+      mockGetterSequence(5, 15, 5, 15);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules: andRules }),
+        [inRange, tooHigh],
+      );
+
+      // AND: only inRange satisfies both (>0 and <10). tooHigh (>0 but not <10)
+      // is excluded. Under the OR regression both would be included.
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe('in-range');
     });
   });
 

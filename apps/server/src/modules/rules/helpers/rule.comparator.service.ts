@@ -126,7 +126,19 @@ export class RuleComparatorService {
           this.handleSectionAction(sectionActionAnd);
 
           // save new section action
-          sectionActionAnd = +parsedRule.operator === 0;
+          // Null-guarded coercion. The section operator lives on the first
+          // condition of the new section and is persisted as a string
+          // ("0"/"1"), or null when unset. +null === 0 is true in JS, so the
+          // bare `+operator === 0` check coerced an unset operator to AND.
+          // Guard against null first, then coerce — mirroring the
+          // within-section idiom (`operator != null && +operator === ...`)
+          // used elsewhere in this service — so an unset operator falls
+          // through to OR while an explicit AND ("0") is still honoured.
+          // Persisted rules are normalised to an explicit operator by
+          // migration, so null should not reach here in practice.
+          sectionActionAnd =
+            parsedRule.operator != null &&
+            +parsedRule.operator === RuleOperators.AND;
           // reset first operator of new section
           parsedRule.operator = null;
           // add new section to stats

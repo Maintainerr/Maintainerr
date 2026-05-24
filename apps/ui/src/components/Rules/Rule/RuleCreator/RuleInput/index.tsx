@@ -529,10 +529,20 @@ const RuleInput = (props: IRuleInput) => {
       secondVal !== CustomParams.CUSTOM_TEXT_LIST &&
       secondVal !== CustomParams.CUSTOM_BOOLEAN
 
+    // Every rule except the very first one renders an operator dropdown
+    // (mirrors the render gate below): the section operator for the first
+    // rule of a section, otherwise the within-section operator. Require an
+    // explicit choice so the combine semantics are never inferred from an
+    // unset (null) value — see the comparator's section-action handling.
+    const operatorRequired =
+      props.id !== 1 &&
+      (!!(props.id && props.id > 0) || !!(props.section && props.section > 1))
+
     if (
       validFirstVal &&
       action != null &&
-      (!requiresSecondValue || hasSecondValue || !!customVal)
+      (!requiresSecondValue || hasSecondValue || !!customVal) &&
+      (!operatorRequired || !!operator)
     ) {
       const ruleValues = {
         operator: operator ? operator : null,

@@ -562,6 +562,27 @@ function buildScenarioMatrix(): Scenario[] {
       values: [10, null],
     },
     {
+      // Regression: an unset section operator (null) must behave as OR, not AND.
+      // `+null === 0` previously coerced it to AND, so an item matching only the
+      // earlier section was dropped. The item below matches section 0 (10 > 5)
+      // but not section 1 (0 > 5); OR must keep it, so result stays true.
+      name: 'or-section-unset-operator-keeps-single-section-match',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 3],
+          customVal: { ruleTypeId: 0, value: '5' },
+        }),
+        createStoredRule(2, 1, {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 3],
+          customVal: { ruleTypeId: 0, value: '5' },
+        }),
+      ],
+      values: [10, 0],
+    },
+    {
       name: 'three-section-and-or-chain-keeps-earlier-match',
       rules: [
         createStoredRule(1, 0, {
