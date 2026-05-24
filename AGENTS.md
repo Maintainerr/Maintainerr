@@ -16,7 +16,7 @@ yarn test | tail -20
 
 ## Project Overview
 
-Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, Tautulli, and Streamystats to provide comprehensive media lifecycle management.
+Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
