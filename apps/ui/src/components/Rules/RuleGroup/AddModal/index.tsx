@@ -931,6 +931,7 @@ const AddModal = (props: AddModal) => {
                       <div className="form-input-field">
                         <textarea
                           id="description"
+                          className="field-sizing-content"
                           rows={5}
                           {...register('description')}
                         ></textarea>

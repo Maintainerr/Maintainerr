@@ -104,22 +104,6 @@
   transition-property: width;
 }
 
-/*
-  Tailwind CSS v4 changed the default border color to `currentColor`.
-  Preserve the v3 default so existing bordered elements look unchanged.
-  To drop this shim, add an explicit border-color utility wherever a border
-  relies on the old gray-200 default.
-*/
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-}
-
 :root {
   --toastify-color-success: var(--color-success);
   --toastify-color-error: var(--color-error);
@@ -143,6 +127,12 @@
 
 @layer base {
   html {
+    /*
+      The app is dark-only. `color-scheme: dark` tells the browser to render
+      native controls (date pickers, <select> dropdowns, scrollbars, autofill,
+      spin buttons) with their dark UA styling instead of the light default.
+    */
+    color-scheme: dark;
     min-height: calc(100% + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -317,7 +307,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  @media (min-width: 440px) {
+  /* Sizes to the nearest `@container` ancestor (see Overview/Content), so the
+     grid reflows by its own width rather than the viewport's. */
+  @container (min-width: 440px) {
     ul.cards-vertical {
       grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
     }

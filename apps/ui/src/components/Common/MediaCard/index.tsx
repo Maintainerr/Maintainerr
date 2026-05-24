@@ -192,11 +192,13 @@ const MediaCard: React.FC<IMediaCard> = ({
                 <div className="flex h-full w-full items-end">
                   <div className={`w-full px-2 pb-1 text-zinc-200`}>
                     {displayYear && (
-                      <div className="text-sm font-medium">{displayYear}</div>
+                      <div className="text-sm font-medium text-shadow-sm">
+                        {displayYear}
+                      </div>
                     )}
 
                     <h1
-                      className="w-full text-sm leading-tight font-bold whitespace-normal"
+                      className="w-full text-sm leading-tight font-bold whitespace-normal text-shadow-sm"
                       style={{
                         WebkitLineClamp: 3,
                         display: '-webkit-box',
@@ -209,7 +211,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                     </h1>
                     {mediaType == 'episode' && (
                       <div
-                        className="text-xs whitespace-normal"
+                        className="text-xs whitespace-normal text-shadow-sm"
                         style={{
                           WebkitLineClamp: 5,
                           display: '-webkit-box',
