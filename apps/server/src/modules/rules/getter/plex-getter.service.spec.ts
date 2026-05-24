@@ -77,6 +77,32 @@ describe('PlexGetterService', () => {
     });
   });
 
+  describe('sw_markedWatchedEpisodes (id 45)', () => {
+    const MARKED_WATCHED_PROP_ID = 45;
+
+    it('returns Plex viewedLeafCount (watched state, including manual marks)', async () => {
+      const libItem = createMediaItem({ id: PLEX_ITEM_ID, type: 'show' });
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ type: 'show', leafCount: 22, viewedLeafCount: 22 }),
+      );
+
+      const result = await service.get(MARKED_WATCHED_PROP_ID, libItem);
+
+      expect(result).toBe(22);
+    });
+
+    it('returns 0 when no episodes are marked as watched', async () => {
+      const libItem = createMediaItem({ id: PLEX_ITEM_ID, type: 'show' });
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ type: 'show', leafCount: 10, viewedLeafCount: 0 }),
+      );
+
+      const result = await service.get(MARKED_WATCHED_PROP_ID, libItem);
+
+      expect(result).toBe(0);
+    });
+  });
+
   it('requests external media metadata for IMDb ratings', async () => {
     const mediaItem = createMediaItem({ id: PLEX_ITEM_ID });
 
