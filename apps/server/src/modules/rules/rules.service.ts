@@ -304,7 +304,13 @@ export class RulesService {
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -406,7 +412,13 @@ export class RulesService {
   async updateRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);

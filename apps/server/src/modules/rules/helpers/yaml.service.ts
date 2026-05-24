@@ -57,7 +57,12 @@ export class RuleYamlService {
 
         // transform rule and add to workingSection
         workingSection.rules.push({
-          ...(rule.operator ? { operator: RuleOperators[+rule.operator] } : {}),
+          // Use a null check, not a truthy check: the AND operator is 0, which
+          // is falsy, so `rule.operator ?` would silently drop an AND section
+          // operator (stored numerically by YAML imports) on export.
+          ...(rule.operator != null
+            ? { operator: RuleOperators[+rule.operator] }
+            : {}),
           firstValue: this.ruleConstanstService.getValueIdentifier(
             rule.firstVal,
           ),
@@ -142,11 +147,15 @@ export class RuleYamlService {
       }
 
       for (const section of decoded.rules) {
-        for (const rule of section[idRef]) {
+        for (const [ruleIndex, rule] of section[idRef].entries()) {
           rules.push({
             operator: rule.operator
               ? +RuleOperators[rule.operator.toUpperCase()]
-              : null,
+              : rules.length === 0
+                ? null
+                : ruleIndex === 0
+                  ? RuleOperators.AND
+                  : RuleOperators.OR,
             action: +RulePossibility[rule.action.toUpperCase()],
             section: idRef,
             firstVal: this.ruleConstanstService.getValueFromIdentifier(
