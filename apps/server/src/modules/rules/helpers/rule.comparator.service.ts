@@ -523,9 +523,17 @@ export class RuleComparatorService {
   }
 
   private getSecondValueName(rule: RuleDto): string {
-    return rule.lastVal
-      ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-      : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;
+    if (rule.lastVal) {
+      return this.ruleConstanstService.getValueHumanName(rule.lastVal);
+    }
+    // Unary actions (EXISTS / NOT_EXISTS) have neither a second value nor a
+    // custom value. Guard against it so this diagnostic-only helper never
+    // throws while logging a skipped comparison (which would abort the run).
+    if (rule.customVal) {
+      return this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
+        .type;
+    }
+    return 'none';
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {

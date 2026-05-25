@@ -486,6 +486,52 @@ describe('RuleComparatorService.executeRulesWithData', () => {
 
       expect(result.data).toEqual([]);
     });
+
+    it('completes the run and logs a skip (not a crash) when a unary rule value is unavailable', async () => {
+      // getCustomValueIdentifier dereferences customValue.ruleTypeId. A unary
+      // rule (EXISTS/NOT_EXISTS) carries no customVal, so logging the skipped
+      // comparison must not reach this helper — otherwise the run threw
+      // "Cannot read properties of undefined (reading 'ruleTypeId')" and aborted.
+      ruleConstanstService.getCustomValueIdentifier.mockImplementation(
+        (customValue: { ruleTypeId: number; value: string }) => ({
+          type: ['number', 'date', 'text', 'boolean', 'text list'][
+            customValue.ruleTypeId
+          ],
+          value: customValue.value,
+        }),
+      );
+
+      const mediaItem = createSingleMedia();
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.NOT_EXISTS,
+          firstVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(undefined);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      );
+
+      // The run completes (the bug aborted via the catch and returned undefined),
+      expect(result).toBeDefined();
+      // the item is not matched,
+      expect(result.data).toEqual([]);
+      // and the skip is logged rather than crashing the run.
+      expect(logger.debug).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Skipping rule comparison because a value is unavailable',
+        ),
+      );
+      expect(logger.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('Something went wrong'),
+      );
+    });
   });
 
   describe('OR sections', () => {
