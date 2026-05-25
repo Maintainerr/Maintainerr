@@ -860,7 +860,7 @@ describe('PlexGetterService', () => {
       expect(plexApi.getCollections).toHaveBeenCalledWith('lib-1');
     });
 
-    it('dedupes trimmed collection names when aggregating parent and smart collections (id 41)', async () => {
+    it('de-duplicates on raw value then trims when aggregating parent and smart collections (id 41)', async () => {
       const episode = makeMetadata({
         ratingKey: 'episode-1',
         type: 'episode',
@@ -871,12 +871,12 @@ describe('PlexGetterService', () => {
       const season = makeMetadata({
         ratingKey: 'season-1',
         type: 'season',
-        Collection: [{ tag: 'space saga' }, { tag: ' Season Set ' }],
+        Collection: [{ tag: 'Space Saga' }, { tag: ' Season Set ' }],
       });
       const show = makeMetadata({
         ratingKey: 'show-1',
         type: 'show',
-        Collection: [{ tag: ' Show Set ' }],
+        Collection: [{ tag: 'Space Saga' }],
       });
       plexApi.getMetadata.mockImplementation(async (ratingKey) => {
         if (ratingKey === 'season-1') return season;
@@ -886,20 +886,13 @@ describe('PlexGetterService', () => {
       plexApi.getCollections.mockResolvedValue([
         makeCollection({
           ratingKey: 'smart-1',
-          title: ' space saga ',
-          smart: true,
-        }),
-        makeCollection({
-          ratingKey: 'smart-2',
-          title: ' Finale Smart ',
+          title: 'Space Saga',
           smart: true,
         }),
       ]);
-      plexApi.getCollectionChildren.mockImplementation(async (ratingKey) =>
-        ratingKey === 'smart-1'
-          ? [makeLibraryItem({ ratingKey: 'episode-1' })]
-          : [makeLibraryItem({ ratingKey: 'show-1' })],
-      );
+      plexApi.getCollectionChildren.mockResolvedValue([
+        makeLibraryItem({ ratingKey: 'episode-1' }),
+      ]);
 
       const result = await service.get(
         41,
@@ -908,39 +901,35 @@ describe('PlexGetterService', () => {
         createRulesDto({ dataType: 'show', libraryId: 'lib-1' }),
       );
 
-      expect(result).toEqual([
-        'Space Saga',
-        'Season Set',
-        'Show Set',
-        'Finale Smart',
-      ]);
+      // Pre-refactor behaviour (#1630): dedupe runs on the RAW tag, so the
+      // exact-equal 'Space Saga' from season, show and the smart collection
+      // collapse to one — but the episode's ' Space Saga ' (whitespace variant)
+      // survives the raw dedupe and only trims afterwards, leaving two entries.
+      expect(result).toEqual(['Space Saga', 'Space Saga', 'Season Set']);
     });
 
-    it('dedupes movie collection names when including smart collections (id 42)', async () => {
+    it('de-duplicates on raw value then trims when including smart collections (id 42)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({
           ratingKey: 'movie-1',
           type: 'movie',
-          Collection: [{ tag: ' Space Saga ' }, { tag: 'Movies' }],
+          Collection: [
+            { tag: 'Space Saga' },
+            { tag: ' Space Saga ' },
+            { tag: 'Movies' },
+          ],
         }),
       );
       plexApi.getCollections.mockResolvedValue([
         makeCollection({
           ratingKey: 'smart-1',
-          title: 'space saga',
-          smart: true,
-        }),
-        makeCollection({
-          ratingKey: 'smart-2',
-          title: ' Late Night ',
+          title: 'Space Saga',
           smart: true,
         }),
       ]);
-      plexApi.getCollectionChildren.mockImplementation(async (ratingKey) =>
-        ratingKey === 'smart-1'
-          ? [makeLibraryItem({ ratingKey: 'movie-1' })]
-          : [makeLibraryItem({ ratingKey: 'movie-1' })],
-      );
+      plexApi.getCollectionChildren.mockResolvedValue([
+        makeLibraryItem({ ratingKey: 'movie-1' }),
+      ]);
 
       const result = await service.get(
         42,
@@ -949,7 +938,9 @@ describe('PlexGetterService', () => {
         createRulesDto({ dataType: 'movie', libraryId: 'lib-1' }),
       );
 
-      expect(result).toEqual(['Space Saga', 'Movies', 'Late Night']);
+      // The exact-equal 'Space Saga' (metadata + smart) collapse; the whitespace
+      // variant ' Space Saga ' survives the raw dedupe -> a post-trim duplicate.
+      expect(result).toEqual(['Space Saga', 'Space Saga', 'Movies']);
       expect(plexApi.getCollections).toHaveBeenCalledWith('lib-1', 'movie');
     });
 

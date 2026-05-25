@@ -15,20 +15,15 @@ export function trimRulePropertyNames(names: readonly string[]): string[] {
 export function uniqueTrimmedRulePropertyNames(
   names: readonly string[],
 ): string[] {
-  const seenNames = new Set<string>();
-  const uniqueNames: string[] = [];
-
-  for (const name of names) {
-    const trimmedName = name.trim();
-    const normalizedName = normalizeRulePropertyName(trimmedName);
-
-    if (!seenNames.has(normalizedName)) {
-      seenNames.add(normalizedName);
-      uniqueNames.push(trimmedName);
-    }
-  }
-
-  return uniqueNames;
+  // Behaviour-preserving extraction of the Plex smart-collection name logic
+  // from #1630: de-duplicate on the RAW value first — collapsing a collection
+  // that appears at several parent levels or as a smart collection — and trim
+  // only afterwards. Because dedupe runs before trimming, names that differ
+  // only in surrounding whitespace (or case) remain separate list entries.
+  // That distinction is user-visible: these feed COUNT_* comparators on the
+  // *_including_smart TEXT_LIST rules, so list length must match what shipped.
+  // Do NOT switch this to trim-then-dedupe.
+  return Array.from(new Set(names), (name) => name.trim());
 }
 
 export function filterRuleCollectionNames(

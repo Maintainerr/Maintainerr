@@ -47,10 +47,30 @@ describe('rule-property.helper', () => {
       ).toBe(1);
     });
 
-    it('deduplicates property names after trimming and normalising case', () => {
+    it('de-duplicates on the raw value, then trims (preserves #1630 behaviour)', () => {
+      // Exact raw duplicates collapse ('Saga' x2 -> one). A value that differs
+      // only in surrounding whitespace (' Saga ') is de-duplicated BEFORE the
+      // trim, so it survives as its own entry -> a post-trim duplicate. Same for
+      // a case variant ('saga'). This list length is what COUNT_* rules see.
       expect(
-        uniqueTrimmedRulePropertyNames([' Franchise ', 'franchise', 'Saga']),
-      ).toEqual(['Franchise', 'Saga']);
+        uniqueTrimmedRulePropertyNames([
+          'Saga',
+          'Saga',
+          ' Saga ',
+          'saga',
+          'Movies',
+        ]),
+      ).toEqual(['Saga', 'Saga', 'saga', 'Movies']);
+    });
+
+    it('returns an empty list for empty input', () => {
+      expect(uniqueTrimmedRulePropertyNames([])).toEqual([]);
+    });
+
+    it('preserves first-seen order', () => {
+      expect(
+        uniqueTrimmedRulePropertyNames(['Beta', 'Alpha', 'Beta', 'Gamma']),
+      ).toEqual(['Beta', 'Alpha', 'Gamma']);
     });
   });
 
