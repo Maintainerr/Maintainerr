@@ -360,6 +360,46 @@ describe('RuleMigrationService', () => {
       expect(result.rules[0].firstVal?.[0]).toBe(6); // 6 = JELLYFIN
     });
 
+    it('backfills an unset within-section operator to OR (pre-explicit-operator community rule)', () => {
+      // Mirrors a real community rule (appVersion 2.19.0): three rules in one
+      // section with the third operator left unset. reassert only fixes section
+      // boundaries, so the within-section null would survive and trip the #2971
+      // "operator is required for every rule after the first" save validation on
+      // import. It must be normalised to OR, exactly as the DB migration does.
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0],
+          section: 0,
+        },
+        {
+          operator: RuleOperators.AND,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0],
+          section: 0,
+        },
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0],
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      // first rule stays null; AND boundary preserved; unset within-section -> OR
+      expect(result.rules.map((r) => r.operator)).toEqual([
+        null,
+        RuleOperators.AND,
+        RuleOperators.OR,
+      ]);
+    });
+
     it('migrates a media-server firstVal while leaving a foreign-app lastVal untouched (mixed-app rule)', () => {
       // The common real-world shape: compare a media-server property against a
       // value sourced from another app (here a Seerr value in lastVal). The

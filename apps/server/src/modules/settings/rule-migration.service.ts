@@ -8,7 +8,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { Application, RuleConstants } from '../rules/constants/rules.constants';
+import {
+  Application,
+  RuleConstants,
+  RuleOperators,
+} from '../rules/constants/rules.constants';
 import { RuleDto } from '../rules/dtos/rule.dto';
 import { reassertSectionBoundaryOperators } from '../rules/helpers/section-operators';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
@@ -447,6 +451,18 @@ export class RuleMigrationService {
     // Carry each section's original combine operator onto its first surviving
     // rule so a dropped boundary can't silently flip the section AND<->OR.
     reassertSectionBoundaryOperators(result, sectionCombineOp);
+
+    // Backfill any remaining unset within-section operator to OR — the default
+    // the comparator and the NormalizeRuleSectionOperators migration both apply.
+    // reassert only sets section-boundary operators, so a pre-explicit-operator
+    // community rule can still carry a null within-section operator here, which
+    // the "operator is required for every rule after the first" save validation
+    // would otherwise reject on import. The first rule of the group stays null.
+    for (let i = 1; i < result.length; i++) {
+      if (result[i].operator == null) {
+        result[i] = { ...result[i], operator: RuleOperators.OR };
+      }
+    }
 
     return { rules: result, migratedRules, skippedRules };
   }
