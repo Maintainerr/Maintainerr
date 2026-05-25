@@ -26,9 +26,9 @@
  *
  * Usage
  * -----
- *   node dev/fake-plex.mjs                  # listens on :32400
- *   FAKE_PLEX_PORT=32400 node dev/fake-plex.mjs
- *   FAKE_PLEX_LOG=1 node dev/fake-plex.mjs   # log every request
+ *   node tools/dev/fake-plex.mjs                  # listens on :32400
+ *   FAKE_PLEX_PORT=32400 node tools/dev/fake-plex.mjs
+ *   FAKE_PLEX_LOG=1 node tools/dev/fake-plex.mjs   # log every request
  *
  * Point Maintainerr at it (settings): plex_hostname=localhost, plex_port=32400,
  * plex_ssl=0, any non-empty plex_auth_token, media_server_type='plex'. The

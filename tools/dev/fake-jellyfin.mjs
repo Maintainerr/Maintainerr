@@ -15,11 +15,11 @@
  *
  * Usage
  * -----
- *   node dev/fake-jellyfin.mjs            # listens on :8096 (matches dev seed)
- *   FAKE_JELLYFIN_PORT=8096 node dev/fake-jellyfin.mjs
- *   FAKE_JELLYFIN_LOG=1 node dev/fake-jellyfin.mjs   # log every request
+ *   node tools/dev/fake-jellyfin.mjs            # listens on :8096 (matches dev seed)
+ *   FAKE_JELLYFIN_PORT=8096 node tools/dev/fake-jellyfin.mjs
+ *   FAKE_JELLYFIN_LOG=1 node tools/dev/fake-jellyfin.mjs   # log every request
  *
- * The dev seed (dev/seed-db.mjs) already points settings.jellyfin_url at
+ * The dev seed (tools/dev/seed-db.mjs) already points settings.jellyfin_url at
  * http://localhost:8096 with a fixed api key + user id, so no settings change is
  * needed — just start this before (or alongside) `yarn dev`.
  */

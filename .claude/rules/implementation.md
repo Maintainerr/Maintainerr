@@ -1,3 +1,3 @@
-At the start of every conversation, read `.github/instructions/implementation.instructions.md` and follow it for implementation-specific guidance.
+At the start of every conversation, read [AGENTS.md](../../AGENTS.md) first — it indexes all project docs: implementation guidance, conventions, architecture, and the release-review checklist.
 
-Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overview before changing cross-module boundaries.
+Before writing any code, read and follow the standing rules: [.github/instructions/implementation.instructions.md](../../.github/instructions/implementation.instructions.md) and [.github/instructions/project-notes.instructions.md](../../.github/instructions/project-notes.instructions.md). Other docs in `.github/instructions/` are task-specific — read them when the task calls for it (AGENTS.md lists which).
