@@ -1,5 +1,9 @@
 ---
-applyTo: "**"
+# Task-specific: not auto-loaded on every interaction. Copilot's applyTo is a
+# file-path glob and can't express "during a release review", so this triggers
+# on release artifacts (changelogs, release workflows) as a proxy. For an
+# explicit release audit, read this file directly — AGENTS.md links it.
+applyTo: "CHANGELOG.md,apps/*/CHANGELOG.md,.github/workflows/release_*.yml"
 ---
 
 ## Release review — how to audit a release candidate before tagging
@@ -158,6 +162,36 @@ scope is broad.
 
 A green build and test run is necessary but not sufficient — tests only
 catch regressions that someone thought to write a test for.
+
+### 5a. Exercise the affected flows end-to-end (seeded DB + Playwright)
+
+Automated suites do not cover rendering, navigation, or the
+media-server-dependent flows (rules, collections, overview, calendar,
+storage). Always drive those in a real browser before signing off — and
+always against the **seeded dev DB + mock media server**, never a hand-set
+or empty database, so every reviewer hits the same deterministic dataset.
+
+1. Start the matching mock media server:
+   - `node tools/dev/fake-jellyfin.mjs` (`:8096`), or
+   - `node tools/dev/fake-plex.mjs` (`:32400`) for the Plex-only getter paths.
+2. Stop `yarn dev` (SQLite is single-writer), seed, then restart:
+   - `node tools/dev/seed-db.mjs` (Jellyfin, default) or
+     `MEDIA_SERVER=plex node tools/dev/seed-db.mjs`.
+   - Re-run the seed after any DB-shape migration in the release so the
+     dataset matches the migrated schema.
+3. Drive the UI with **Playwright** (the `playwright` MCP server) — do not
+   rely on eyeballing screenshots alone. At minimum, for the areas the diff
+   touches: load the page, perform the changed interaction, and assert on
+   the resulting DOM/network. Capture a screenshot of each flow you touched
+   for the report.
+4. For server-side rule/getter changes, confirm live output through the
+   seeded stack: `POST /api/rules/test {"mediaId","rulegroupId"}` or
+   `POST /api/rules/:id/execute`. After editing server code, **restart
+   `yarn dev`** — a long-lived dev server serves stale getter logic.
+
+Note what you exercised (and what you could not — e.g. plex.tv watchlist
+enrichment can't be mocked locally) in the report. A flow you did not drive
+is an untested flow; say so rather than implying coverage.
 
 ### 6. Write the report
 

@@ -1,6 +1,8 @@
 ---
-description: Project overview and coding standards
+description: Project entrypoint and standing rules
 alwaysApply: true
 ---
 
-At the start of every conversation, read `AGENTS.md` for the full project overview, technology stack, coding standards, and contribution guidelines. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overview.
+At the start of every conversation, read [AGENTS.md](../../AGENTS.md) first — it indexes all project docs: implementation guidance, conventions, architecture, and the release-review checklist.
+
+Before writing any code, read and follow the standing rules: [.github/instructions/implementation.instructions.md](../../.github/instructions/implementation.instructions.md) and [.github/instructions/project-notes.instructions.md](../../.github/instructions/project-notes.instructions.md). Other docs in `.github/instructions/` are task-specific — read them when the task calls for it (AGENTS.md lists which).

@@ -10,8 +10,8 @@
  *
  * This is the only one of the three dev scripts that touches the DB; the
  * companion mocks are stateless HTTP servers:
- *   - dev/fake-jellyfin.mjs  (mock Jellyfin, :8096) — pairs with MEDIA_SERVER=jellyfin
- *   - dev/fake-plex.mjs      (mock Plex, :32400)    — pairs with MEDIA_SERVER=plex
+ *   - tools/dev/fake-jellyfin.mjs  (mock Jellyfin, :8096) — pairs with MEDIA_SERVER=jellyfin
+ *   - tools/dev/fake-plex.mjs      (mock Plex, :32400)    — pairs with MEDIA_SERVER=plex
  *
  * Notes
  * -----
@@ -31,10 +31,10 @@
  *
  * Usage
  * -----
- *   1. Start the matching mock (dev/fake-jellyfin.mjs or dev/fake-plex.mjs).
+ *   1. Start the matching mock (tools/dev/fake-jellyfin.mjs or tools/dev/fake-plex.mjs).
  *   2. Stop `yarn dev` (SQLite allows a single writer).
- *   3. node dev/seed-db.mjs                 # Jellyfin (default)
- *      MEDIA_SERVER=plex node dev/seed-db.mjs   # Plex
+ *   3. node tools/dev/seed-db.mjs                 # Jellyfin (default)
+ *      MEDIA_SERVER=plex node tools/dev/seed-db.mjs   # Plex
  *   4. Start `yarn dev` and open http://localhost:3000/collections
  */
 import { createRequire } from "node:module";
@@ -42,7 +42,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, "..");
+// This script lives in tools/dev/, so the repo root is two levels up.
+const repoRoot = resolve(__dirname, "..", "..");
 // better-sqlite3 lives in the server workspace; resolve it from there.
 const require = createRequire(resolve(repoRoot, "apps/server/package.json"));
 const Database = require("better-sqlite3");
@@ -69,8 +70,8 @@ const TARGET = process.env.MEDIA_SERVER === "plex" ? "plex" : "jellyfin";
 const APP = TARGET === "plex" ? 0 : 6; // Application id: Plex=0, Jellyfin=6
 const LIB =
   TARGET === "plex"
-    ? { movie: "1", show: "2" } // dev/fake-plex.mjs section ids
-    : { movie: "jellyfin-movies", show: "jellyfin-shows" }; // dev/fake-jellyfin.mjs
+    ? { movie: "1", show: "2" } // tools/dev/fake-plex.mjs section ids
+    : { movie: "jellyfin-movies", show: "jellyfin-shows" }; // tools/dev/fake-jellyfin.mjs
 
 // ruleTypeId: NUMBER=0 DATE=1 TEXT=2 BOOL=3 TEXT_LIST=4. Property ids/types
 // differ per server, so keep one map each (mirrors RuleConstants).
@@ -163,7 +164,7 @@ const run = db.transaction(() => {
 
   // 2) Configure the active media server + metadata + integrations.
   if (TARGET === "plex") {
-    // Points at dev/fake-plex.mjs. The fixed machine id lets the primary
+    // Points at tools/dev/fake-plex.mjs. The fixed machine id lets the primary
     // connection succeed without plex.tv re-discovery.
     db.prepare(
       `UPDATE settings SET

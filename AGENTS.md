@@ -20,6 +20,21 @@ Maintainerr is a media management application that helps users automatically man
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Documentation map
+
+**Standing rules — read before writing any code (they apply to all work):**
+
+- [implementation.instructions.md](.github/instructions/implementation.instructions.md) — implementation rules and API-doc references.
+- [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) — non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
+
+**Task-specific — read only when the task calls for it (don't load them every session):**
+
+- [release-review.instructions.md](.github/instructions/release-review.instructions.md) — when auditing a release candidate before tagging.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — before changing cross-module boundaries.
+
+When you add a doc, list it under the matching heading here. For how each agent
+(Claude, Copilot, Cursor, Codex) loads these docs, see [README_AGENTS.md](README_AGENTS.md).
+
 ## Repository Structure
 
 This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspaces**:
@@ -289,15 +304,15 @@ These specifications provide comprehensive type definitions and endpoint documen
 ### Local dev mocks & seeding (manual / Playwright testing)
 
 For end-to-end checks of media-server-dependent flows (rules, collections,
-overview, calendar, storage) without a real Plex/Jellyfin, the `dev/` folder has
-three scripts that **complement Playwright** — Playwright drives the UI, these
+overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
+has three scripts that **complement Playwright** — Playwright drives the UI, these
 provide the backend data:
 
-- `dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
-- `dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
+- `tools/dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
+- `tools/dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
   getter paths (smart collections, watch history, accounts, ratings,
   shows/seasons/episodes) that the Jellyfin mock can't.
-- `dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
+- `tools/dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
   collections, and rule groups **with rules** covering ~all rule properties, plus
   notifications, cron, logs, exclusions, and overlays. Target a server with
   `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
