@@ -632,84 +632,78 @@
   .prose a:hover {
     color: #8d4c1c;
   }
-  .react-select-container {
-    @apply w-full;
-  }
+}
 
-  .react-select-container .react-select__control {
-    @apply rounded-md border border-zinc-500 bg-zinc-700 text-white hover:border-zinc-500;
-  }
+/*
+  react-select's control/menu styles come from emotion, which is unlayered and
+  therefore wins over @layer components under Tailwind v4. Keep this theme
+  unlayered (like .prose above) so the dark field styling keeps winning;
+  otherwise the control falls back to react-select's white default.
+*/
+.react-select-container {
+  @apply w-full;
+}
 
-  .react-select-container-dark .react-select__control {
-    @apply border border-zinc-700 bg-zinc-800;
-  }
+/* Control mirrors the native field (the input/select rule in this file):
+   same border, background, radius, text size, and shadow. The :hover variant
+   matches the base so, like a native field, hovering never changes the border. */
+.react-select-container .react-select__control,
+.react-select-container .react-select__control:hover {
+  @apply rounded-md border border-zinc-500 bg-zinc-700 text-sm text-white shadow-xs;
+}
 
-  .react-select-container .react-select__control--is-focused {
-    @apply rounded-md border border-zinc-500 bg-zinc-700 text-white shadow-sm;
-  }
+/* Focus: maintainerr border, no ring (react-select paints a blue box-shadow
+   ring by default) — mirrors the field's focus:border-maintainerr-600 + ring-0.
+   The :hover variant keeps the focus colour while hovering. */
+.react-select-container .react-select__control--is-focused,
+.react-select-container .react-select__control--is-focused:hover {
+  @apply border-maintainerr-600 shadow-none;
+}
 
-  .react-select-container-dark .react-select__control--is-focused {
-    @apply border-zinc-600 bg-zinc-800;
-  }
+/* Selected value, placeholder, and typed input: same size/weight/colour as a
+   native field (not bold, muted placeholder). */
+.react-select-container .react-select__single-value,
+.react-select-container .react-select__input-container {
+  @apply text-sm text-white;
+}
 
-  .react-select-container .react-select__menu {
-    @apply bg-zinc-700 text-zinc-300;
-  }
+.react-select-container .react-select__placeholder {
+  @apply text-sm text-zinc-400;
+}
 
-  .react-select-container-dark .react-select__menu {
-    @apply bg-zinc-800;
-  }
+/* The inner <input> must stay borderless/ringless, otherwise the forms plugin
+   gives it its own nested field box. */
+.react-select-container .react-select__input,
+.react-select-container .react-select__input input,
+.react-select-container .react-select__input input:focus {
+  @apply border-none shadow-none ring-0;
+}
 
-  .react-select-container .react-select__option--is-focused {
-    @apply bg-zinc-600 text-white;
-  }
+/* Muted chevron, no separator (native selects have neither). */
+.react-select-container .react-select__indicator {
+  @apply text-zinc-400;
+}
 
-  .react-select-container-dark .react-select__option--is-focused {
-    @apply bg-zinc-700;
-  }
+.react-select-container .react-select__indicator-separator {
+  @apply hidden;
+}
 
-  .react-select-container .react-select__indicator-separator {
-    @apply bg-zinc-500;
-  }
+/* Menu is a step darker than the control (bg-zinc-800), matching the native
+   select dropdown in the rule settings: no border, just a shadow. */
+.react-select-container .react-select__menu {
+  @apply mt-1 rounded-md bg-zinc-800 text-sm text-white shadow-lg;
+}
 
-  .react-select-container .react-select__indicator {
-    @apply text-zinc-500;
-  }
+.react-select-container .react-select__option {
+  @apply text-zinc-200;
+}
 
-  .react-select-container .react-select__placeholder {
-    @apply text-zinc-400;
-  }
+.react-select-container .react-select__option--is-focused {
+  @apply bg-zinc-700 text-white;
+}
 
-  .react-select-container .react-select__multi-value {
-    @apply rounded-md border border-zinc-500 bg-zinc-800;
-  }
-
-  .react-select-container .react-select__multi-value__label {
-    @apply text-white;
-  }
-
-  .react-select-container .react-select__multi-value__remove {
-    @apply cursor-pointer rounded-r-md hover:bg-red-700 hover:text-red-100;
-  }
-
-  .react-select-container .react-select__input {
-    @apply border-none text-base shadow-xs ring-0;
-  }
-
-  .react-select-container .react-select__input input:focus {
-    @apply border-none;
-    box-shadow: none;
-  }
-
-  .react-select-container .react-select__input-container {
-    @apply text-white;
-  }
-
-  .react-select-container .react-select__input-container,
-  .react-select-container .react-select__placeholder,
-  .react-select-container .react-select__single-value {
-    @apply font-semibold text-white;
-  }
+.react-select-container .react-select__option--is-selected {
+  @apply bg-maintainerr-600 text-white;
 }
 
 @layer utilities {
