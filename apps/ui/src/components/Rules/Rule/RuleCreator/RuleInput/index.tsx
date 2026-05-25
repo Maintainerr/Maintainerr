@@ -95,8 +95,11 @@ const shouldFilterApplication = (
   ) {
     return true
   }
-  // Filter out Jellyfin on Plex/Emby.
-  if ((isPlex || isEmby) && appId === Application.JELLYFIN) {
+  // Filter out Jellyfin and its Streamystats companion on Plex/Emby.
+  if (
+    (isPlex || isEmby) &&
+    (appId === Application.JELLYFIN || appId === Application.STREAMYSTATS)
+  ) {
     return true
   }
   // Filter out Emby on Plex/Jellyfin.

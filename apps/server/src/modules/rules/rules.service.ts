@@ -122,6 +122,14 @@ export class RulesService {
           (el) => el.id !== Application.TAUTULLI,
         );
       }
+
+      // remove streamystats if not configured. It is Jellyfin-only and reuses
+      // the Jellyfin API key; the UI further restricts it to Jellyfin servers.
+      if (!settings.streamystats_url || !settings.jellyfin_api_key) {
+        localConstants.applications = localConstants.applications.filter(
+          (el) => el.id !== Application.STREAMYSTATS,
+        );
+      }
     }
 
     return localConstants;
