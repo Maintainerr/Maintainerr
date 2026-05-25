@@ -260,6 +260,40 @@ scenarios here to regression-test comparator / section-combine behavior end-to-e
 through the HTTP path. Use this when you want "real results" without standing up a
 mock HTTP media server. (For a fuller live setup, see the dev mocks below.)
 
+### Testing YAML import/export and community-rule import
+
+Two distinct import paths — they do **not** share code, so test both:
+
+- **YAML file export/import** → `POST /api/rules/yaml/encode` and `/yaml/decode`.
+  `decode` runs `getCustomValueFromIdentifier` (it does not).
+- **Community rules** → fetched from `https://community.maintainerr.info`, served
+  by `GET /api/rules/community` as `JsonRules` (an **array**, already parsed — not
+  a string; `repr()` just makes it look Python-styled). Imported via the
+  cross-server converter `POST /api/rules/migrate` (`migrateImportedRuleDtos`).
+  This path never touches the YAML decoder.
+
+No media server is required for either (both are parse + migrate, no live getter
+calls); just `yarn dev`. `mediaType` is the **string** union (`"movie"`/`"show"`,
+from `@maintainerr/contracts`), not a number — encode/decode reject a mismatch.
+
+Quick checks (Jellyfin server configured):
+
+- **Round-trip:** `GET /api/rules/<id>/rules` → parse each row's `ruleJson` →
+  `encode` → `decode` and assert the rule count is preserved and the YAML has no
+  `App.undefined`.
+- **AND survives export (#2971):** encode a 2-section group whose section-1 first
+  rule has `operator: 0` and assert the YAML contains `operator: AND`.
+- **Unresolved property is skipped, not rejected (#2976):** corrupt one
+  `firstValue` in encoded YAML, decode, assert `code:1` with `skipped: 1`.
+- **Cross-server remap (#2976):** `POST /api/rules/migrate` with a rule mixing a
+  Plex media-server prop (`[0, …]`) and a Seerr value (`[3, …]`); assert the
+  media-server field remaps to the configured app and the Seerr field is left
+  untouched (firstVal/lastVal migrate independently).
+- **All v2.0.0+ community rules import:** fetch `/api/rules/community`, filter
+  `appVersion >= 2.0.0`, POST each rule's `JsonRules` array to `/api/rules/migrate`,
+  assert every one returns `code:1` (incompatible props for the configured server
+  come back as `skipped > 0`, which is correct, not a failure).
+
 ---
 
 ## Cross-server media abstraction
