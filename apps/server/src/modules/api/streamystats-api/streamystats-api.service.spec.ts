@@ -301,4 +301,109 @@ describe('StreamystatsApiService', () => {
       expect(callArgs?.apiKey).toBeUndefined();
     });
   });
+
+  describe('getWatchlistMembership', () => {
+    beforeEach(() => {
+      Object.assign(settings, {
+        streamystats_url: 'http://streamystats',
+        jellyfin_api_key: 'jellyfin-key',
+      });
+      service.init();
+    });
+
+    it('returns null when Streamystats is not configured', async () => {
+      Object.assign(settings, { streamystats_url: undefined });
+      service.init();
+
+      expect(await service.getWatchlistMembership()).toBeNull();
+      expect(apiMock.get).not.toHaveBeenCalled();
+    });
+
+    it('returns null when the watchlists payload fails schema validation', async () => {
+      apiMock.get.mockResolvedValueOnce({ unexpected: true });
+
+      expect(await service.getWatchlistMembership()).toBeNull();
+    });
+
+    it('maps each Jellyfin item ID to the owners of public lists containing it', async () => {
+      apiMock.get.mockImplementation(async (endpoint: string) => {
+        if (endpoint === '/api/watchlists') {
+          return {
+            data: [
+              { id: 1, name: 'List A', userId: 'user-a' },
+              { id: 2, name: 'List B', userId: 'user-b' },
+            ],
+          };
+        }
+        if (endpoint === '/api/watchlists/1') {
+          return {
+            data: { id: 1, name: 'List A', items: ['item-1', 'item-2'] },
+          };
+        }
+        if (endpoint === '/api/watchlists/2') {
+          return { data: { id: 2, name: 'List B', items: ['item-2'] } };
+        }
+        return undefined;
+      });
+
+      const membership = await service.getWatchlistMembership();
+
+      expect(membership.ownersByItemId['item-1']).toEqual(['user-a']);
+      expect([...membership.ownersByItemId['item-2']].sort()).toEqual([
+        'user-a',
+        'user-b',
+      ]);
+      expect(membership.ownersByItemId['item-3']).toBeUndefined();
+    });
+
+    it('authenticates watchlist calls with the MediaBrowser token scheme', async () => {
+      apiMock.get.mockResolvedValue({ data: [] });
+
+      await service.getWatchlistMembership();
+
+      expect(apiMock.get).toHaveBeenCalledWith(
+        '/api/watchlists',
+        expect.objectContaining({
+          headers: { Authorization: 'MediaBrowser Token="jellyfin-key"' },
+        }),
+        expect.any(Number),
+      );
+    });
+
+    it('reuses the cached snapshot across calls within a run', async () => {
+      apiMock.get.mockResolvedValue({ data: [] });
+
+      await service.getWatchlistMembership();
+      await service.getWatchlistMembership();
+
+      // Only the first call hits /api/watchlists; the second is served from the
+      // shared cache (which init() / flushAll clears between runs).
+      const listCalls = apiMock.get.mock.calls.filter(
+        (call) => call[0] === '/api/watchlists',
+      );
+      expect(listCalls).toHaveLength(1);
+    });
+
+    it('skips lists whose item payload is malformed but keeps the rest', async () => {
+      apiMock.get.mockImplementation(async (endpoint: string) => {
+        if (endpoint === '/api/watchlists') {
+          return {
+            data: [
+              { id: 1, name: 'Good', userId: 'user-a' },
+              { id: 2, name: 'Bad', userId: 'user-b' },
+            ],
+          };
+        }
+        if (endpoint === '/api/watchlists/1') {
+          return { data: { id: 1, name: 'Good', items: ['item-1'] } };
+        }
+        return { nope: true };
+      });
+
+      const membership = await service.getWatchlistMembership();
+
+      expect(membership.ownersByItemId['item-1']).toEqual(['user-a']);
+      expect(Object.keys(membership.ownersByItemId)).toHaveLength(1);
+    });
+  });
 });

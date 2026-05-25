@@ -2,6 +2,8 @@ import {
   BasicResponseDto,
   StreamystatsItemDetails,
   streamystatsItemDetailsSchema,
+  streamystatsWatchlistItemIdsResponseSchema,
+  streamystatsWatchlistsResponseSchema,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
@@ -14,6 +16,12 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
+import cacheManager from '../lib/cache';
+import {
+  STREAMYSTATS_CACHE_ID,
+  WATCHLIST_HTTP_TTL_S,
+  WATCHLIST_MEMBERSHIP_CACHE_KEY,
+} from './streamystats-api.constants';
 import { StreamystatsApi } from './helpers/streamystats-api.helper';
 
 interface StreamystatsVersionInfo {
@@ -27,6 +35,14 @@ interface StreamystatsServer {
   id: number;
   url?: string | null;
   name?: string | null;
+}
+
+/**
+ * Public-watchlist membership for the configured Jellyfin server: for each
+ * Jellyfin item ID, the owner Jellyfin user IDs whose public lists contain it.
+ */
+export interface StreamystatsWatchlistMembership {
+  ownersByItemId: Record<string, string[]>;
 }
 
 @Injectable()
@@ -48,6 +64,9 @@ export class StreamystatsApiService {
     // after any settings change.
     this.api = undefined;
     this.resolvedServerId = null;
+    cacheManager
+      .getCache(STREAMYSTATS_CACHE_ID)
+      ?.data.del(WATCHLIST_MEMBERSHIP_CACHE_KEY);
 
     if (!this.settings.streamystats_url || !this.settings.jellyfin_api_key) {
       return;
@@ -116,6 +135,93 @@ export class StreamystatsApiService {
       this.logger.debug(error);
       return null;
     }
+  }
+
+  /**
+   * Resolve which public Streamystats watchlists each Jellyfin item belongs to.
+   * Returns null when it can't be determined (not configured or unreachable)
+   * so callers can skip rather than treat absence as "not watchlisted".
+   *
+   * The watchlist endpoints authenticate via Jellyfin's MediaBrowser token
+   * scheme — unlike the item-details endpoint, the `Bearer` header is rejected
+   * — so each call overrides the Authorization header accordingly.
+   */
+  public async getWatchlistMembership(): Promise<StreamystatsWatchlistMembership | null> {
+    if (!this.api || !this.settings.jellyfin_api_key) {
+      return null;
+    }
+
+    // Reuse the snapshot built earlier in this rule-group run. The shared
+    // Streamystats cache is flushed between runs, so this is rebuilt each run.
+    const cache = cacheManager.getCache(STREAMYSTATS_CACHE_ID)?.data;
+    const cached = cache?.get<StreamystatsWatchlistMembership>(
+      WATCHLIST_MEMBERSHIP_CACHE_KEY,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    const config = {
+      headers: { Authorization: this.mediaBrowserAuthHeader() },
+    };
+
+    try {
+      const watchlists = await this.api.get<unknown>(
+        '/api/watchlists',
+        config,
+        WATCHLIST_HTTP_TTL_S,
+      );
+      // The HTTP helper swallows request failures and returns undefined; treat
+      // that as transient (skip) rather than a schema mismatch.
+      if (watchlists == null) {
+        return null;
+      }
+
+      const parsed = streamystatsWatchlistsResponseSchema.safeParse(watchlists);
+      if (!parsed.success) {
+        this.logger.warn(
+          'Streamystats watchlists payload did not match expected schema',
+        );
+        this.logger.debug(parsed.error);
+        return null;
+      }
+
+      const ownersByItemId: Record<string, string[]> = {};
+      for (const watchlist of parsed.data.data) {
+        const detail = await this.api.get<unknown>(
+          `/api/watchlists/${watchlist.id}`,
+          { ...config, params: { format: 'ids' } },
+          WATCHLIST_HTTP_TTL_S,
+        );
+        const detailParsed =
+          streamystatsWatchlistItemIdsResponseSchema.safeParse(detail);
+        if (!detailParsed.success) {
+          this.logger.debug(
+            `Skipping Streamystats watchlist "${watchlist.name ?? watchlist.id}": unexpected item payload`,
+          );
+          continue;
+        }
+
+        for (const itemId of detailParsed.data.data.items) {
+          const owners = (ownersByItemId[itemId] ??= []);
+          if (!owners.includes(watchlist.userId)) {
+            owners.push(watchlist.userId);
+          }
+        }
+      }
+
+      const value: StreamystatsWatchlistMembership = { ownersByItemId };
+      cache?.set(WATCHLIST_MEMBERSHIP_CACHE_KEY, value);
+      return value;
+    } catch (error) {
+      this.logger.log("Couldn't fetch Streamystats watchlists");
+      this.logger.debug(error);
+      return null;
+    }
+  }
+
+  private mediaBrowserAuthHeader(): string {
+    return `MediaBrowser Token="${this.settings.jellyfin_api_key}"`;
   }
 
   public async testConnection(

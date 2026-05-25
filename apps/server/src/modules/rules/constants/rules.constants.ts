@@ -1409,6 +1409,35 @@ export class RuleConstants {
         },
       ],
     },
+    {
+      // Streamystats is an optional, Jellyfin-only companion (the Jellyfin
+      // analog of Tautulli for Plex). It is removed from the constants unless
+      // configured and Jellyfin is the active server (see RulesService).
+      //
+      // A Streamystats "watchlist" is a user-created curated list, and only
+      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key — see
+      // the StreamystatsWatchlistMembership contract for why. These properties
+      // act as a "users curated this" protection signal.
+      id: Application.STREAMYSTATS,
+      name: 'Streamystats',
+      mediaType: MediaType.BOTH,
+      props: [
+        {
+          id: 0,
+          name: 'isInWatchlist',
+          humanName: 'Is in a watchlist',
+          mediaType: MediaType.BOTH,
+          type: RuleType.BOOL,
+        },
+        {
+          id: 1,
+          name: 'watchlistedByUsers',
+          humanName: '[list] In watchlist of (username)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST, // returns usernames []
+        },
+      ],
+    },
   ];
 
   constructor() {
