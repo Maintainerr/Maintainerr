@@ -88,13 +88,19 @@ describe('RuleConstanstService', () => {
     // it; otherwise the whole YAML import throws. Regression for the spaced key.
     it('resolves a spaced "text list" type to TEXT_LIST without throwing', () => {
       expect(
-        service.getCustomValueFromIdentifier({ type: 'text list', value: 'a,b' }),
+        service.getCustomValueFromIdentifier({
+          type: 'text list',
+          value: 'a,b',
+        }),
       ).toEqual({ ruleTypeId: 4, value: 'a,b' });
     });
 
     it('resolves single-word custom value types', () => {
       expect(
-        service.getCustomValueFromIdentifier({ type: 'date', value: '2026-01-01' }),
+        service.getCustomValueFromIdentifier({
+          type: 'date',
+          value: '2026-01-01',
+        }),
       ).toEqual({ ruleTypeId: 1, value: '2026-01-01' });
       expect(
         service.getCustomValueFromIdentifier({ type: 'number', value: '5' }),
