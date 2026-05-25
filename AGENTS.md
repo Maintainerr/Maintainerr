@@ -286,6 +286,30 @@ These specifications provide comprehensive type definitions and endpoint documen
 - **Test Runner**: Vitest with React Testing Library
 - Keep tests focused on critical user flows
 
+### Local dev mocks & seeding (manual / Playwright testing)
+
+For end-to-end checks of media-server-dependent flows (rules, collections,
+overview, calendar, storage) without a real Plex/Jellyfin, the `dev/` folder has
+three scripts that **complement Playwright** — Playwright drives the UI, these
+provide the backend data:
+
+- `dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
+- `dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
+  getter paths (smart collections, watch history, accounts, ratings,
+  shows/seasons/episodes) that the Jellyfin mock can't.
+- `dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
+  collections, and rule groups **with rules** covering ~all rule properties, plus
+  notifications, cron, logs, exclusions, and overlays. Target a server with
+  `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
+
+Workflow: start the matching mock, stop `yarn dev` (SQLite is single-writer),
+run the seed, restart `yarn dev`. Inspect a getter's live output with
+`POST /api/rules/test {"mediaId","rulegroupId"}` or run a rule with
+`POST /api/rules/:id/execute`. Note: after editing server code, **restart
+`yarn dev`** — a long-lived dev server can serve stale getter logic. Watchlist
+and plex.tv user enrichment can't be mocked locally (they hit plex.tv) and
+degrade gracefully.
+
 ## Development Notes
 
 ### Environment Setup

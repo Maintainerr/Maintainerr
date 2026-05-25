@@ -14,7 +14,10 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
-import { buildCollectionExcludeNames } from '../helpers/collection-exclude.helper';
+import {
+  filterRuleCollectionNames,
+  mapRuleUserIdsToNames,
+} from '../helpers/rule-property.helper';
 
 /**
  * Emby Getter Service
@@ -103,8 +106,12 @@ export class EmbyGetterService {
             metadata.id,
           );
           const users = await this.embyAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return seenByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            seenByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         case 'favoritedBy': {
@@ -112,8 +119,12 @@ export class EmbyGetterService {
             metadata.id,
           );
           const users = await this.embyAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            favoritedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         case 'releaseDate': {
@@ -253,8 +264,12 @@ export class EmbyGetterService {
             metadata.id,
           );
           const users = await this.embyAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            favoritedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         case 'sw_favoritedBy_including_parent': {
@@ -266,8 +281,12 @@ export class EmbyGetterService {
             grandparent?.id,
           );
           const users = await this.embyAdapter.getUsers();
-          const userMap = new Map(users.map((u) => [u.id, u.name]));
-          return favoritedByUserIds.map((id) => userMap.get(id) || id);
+          return mapRuleUserIdsToNames(
+            favoritedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
         }
 
         // At season/show level this returns the UNION of users that watched
@@ -519,9 +538,12 @@ export class EmbyGetterService {
       episodeWatchers.every((watchers) => watchers.includes(userId)),
     );
 
-    // Map to usernames
-    const userMap = new Map(users.map((u) => [u.id, u.name]));
-    return usersWhoWatchedAll.map((id) => userMap.get(id) || id);
+    return mapRuleUserIdsToNames(
+      usersWhoWatchedAll,
+      users,
+      (user) => user.id,
+      (user) => user.name,
+    );
   }
 
   /**
@@ -760,8 +782,12 @@ export class EmbyGetterService {
     }
 
     const users = await this.embyAdapter.getUsers();
-    const userMap = new Map(users.map((u) => [u.id, u.name]));
-    return watcherIds.map((id) => userMap.get(id) || id);
+    return mapRuleUserIdsToNames(
+      watcherIds,
+      users,
+      (user) => user.id,
+      (user) => user.name,
+    );
   }
 
   private async getCollectionNames(
@@ -791,12 +817,7 @@ export class EmbyGetterService {
       this.cache.data.set(cacheKey, allCollectionNames, 600);
     }
 
-    const excludeNames = buildCollectionExcludeNames(ruleGroup);
-    return excludeNames.length > 0
-      ? allCollectionNames.filter(
-          (name) => !excludeNames.includes(name.toLowerCase().trim()),
-        )
-      : allCollectionNames;
+    return filterRuleCollectionNames(allCollectionNames, ruleGroup);
   }
 
   private async getFavoritedByIncludingParent(
@@ -890,13 +911,11 @@ export class EmbyGetterService {
     ruleGroup?: RulesDto,
   ): Promise<string[]> {
     const collections = await this.embyAdapter.getCollections(libraryId);
-    const collectionNames = new Set<string>();
+    const collectionNames: string[] = [];
 
     const idsToCheck = [itemId, parentId, grandparentId].filter(
       (id): id is string => id !== undefined,
     );
-
-    const excludeNames = buildCollectionExcludeNames(ruleGroup);
 
     for (const collection of collections) {
       const children = await this.embyAdapter.getCollectionChildren(
@@ -906,14 +925,13 @@ export class EmbyGetterService {
       const hasMatch = children.some((child) => idsToCheck.includes(child.id));
 
       if (hasMatch) {
-        const collectionNameLower = collection.title.toLowerCase().trim();
-        if (!excludeNames.includes(collectionNameLower)) {
-          collectionNames.add(collection.title.trim());
-        }
+        collectionNames.push(collection.title);
       }
     }
 
-    return Array.from(collectionNames);
+    return Array.from(
+      new Set(filterRuleCollectionNames(collectionNames, ruleGroup)),
+    );
   }
 
   private async getCollectionSiblingsLastViewedAt(
@@ -922,11 +940,16 @@ export class EmbyGetterService {
     ruleGroup?: RulesDto,
   ): Promise<Date | null> {
     const collections = await this.embyAdapter.getCollections(libraryId);
-    const excludeNames = buildCollectionExcludeNames(ruleGroup);
+    const includedCollectionNames = new Set(
+      filterRuleCollectionNames(
+        collections.map((collection) => collection.title),
+        ruleGroup,
+      ),
+    );
 
     let latestMs = 0;
     for (const collection of collections) {
-      if (excludeNames.includes(collection.title.toLowerCase().trim())) {
+      if (!includedCollectionNames.has(collection.title.trim())) {
         continue;
       }
 
