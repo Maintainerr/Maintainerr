@@ -183,7 +183,11 @@ export class RuleConstanstService {
     let ruleType: RuleType;
     let value: string;
 
-    switch (identifier.type.toUpperCase()) {
+    // The encoder writes the RuleType humanName (e.g. TEXT_LIST -> "text list"),
+    // so normalise spaces to underscores before matching — otherwise "TEXT LIST"
+    // misses the 'TEXT_LIST' case, leaving ruleType undefined and throwing on the
+    // return's .toString(), which fails the whole YAML import.
+    switch (identifier.type.toUpperCase().split(' ').join('_')) {
       case 'NUMBER':
         ruleType = RuleType.NUMBER;
         value = identifier.value.toString();
