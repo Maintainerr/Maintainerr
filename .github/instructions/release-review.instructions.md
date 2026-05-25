@@ -74,9 +74,13 @@ Always read these diffs end-to-end, even if small:
 #### Migrations
 
 - Up and down paths both present and symmetric
-- `INSERT INTO temporary_*` column list matches the `SELECT` column list
+- In TypeORM-**generated** schema migrations, raw `queryRunner.query(...)`
+  DDL is expected (SQLite table rebuilds) — audit it, don't reject it. Verify
+  each `INSERT INTO temporary_*` column list matches its `SELECT` column list.
+  Hand-written **data**/backfill migrations are different: those must use
+  `QueryBuilder`, never raw query strings (see project-notes.instructions.md)
 - No manually written DDL — must be TypeORM-generated
-  (see `.github/instructions/typeorm_instructions.txt`)
+  (see [typeorm_instructions.txt](../../typeorm_instructions.txt))
 - Default values provided for every new `NOT NULL` column
 - Indexes recreated after the table rebuild
 - Data transforms (e.g. backfill from a legacy flag) are lossless on
@@ -132,8 +136,9 @@ Always read these diffs end-to-end, even if small:
 
 #### Security checklist (OWASP top 10)
 
-- No new SQL built by string concatenation — all queries go through
-  TypeORM repositories or `QueryBuilder` with parameters
+- No new SQL built by string concatenation — application/runtime queries go
+  through TypeORM repositories or `QueryBuilder` with parameters. (The raw DDL
+  inside generated schema migrations is the documented exception above.)
 - No `exec`/`spawn` of a shell with user input
 - No new `fs` reads where the path is derived from request input
   without `path.resolve` + allow-list check
