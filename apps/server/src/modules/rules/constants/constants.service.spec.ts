@@ -81,4 +81,30 @@ describe('RuleConstanstService', () => {
       'Value unavailable',
     );
   });
+
+  describe('getCustomValueFromIdentifier', () => {
+    // The encoder emits the RuleType humanName, so a TEXT_LIST custom value
+    // serialises as "text list" (with a space). The decoder must still resolve
+    // it; otherwise the whole YAML import throws. Regression for the spaced key.
+    it('resolves a spaced "text list" type to TEXT_LIST without throwing', () => {
+      expect(
+        service.getCustomValueFromIdentifier({
+          type: 'text list',
+          value: 'a,b',
+        }),
+      ).toEqual({ ruleTypeId: 4, value: 'a,b' });
+    });
+
+    it('resolves single-word custom value types', () => {
+      expect(
+        service.getCustomValueFromIdentifier({
+          type: 'date',
+          value: '2026-01-01',
+        }),
+      ).toEqual({ ruleTypeId: 1, value: '2026-01-01' });
+      expect(
+        service.getCustomValueFromIdentifier({ type: 'number', value: '5' }),
+      ).toEqual({ ruleTypeId: 0, value: '5' });
+    });
+  });
 });
