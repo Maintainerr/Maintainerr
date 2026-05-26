@@ -198,7 +198,7 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.radarrSettingsRepo.findOne({
         where: { id: id },
-        relations: ['collections'],
+        relations: { collections: true },
       });
 
       if (settingsDb.collections.length > 0) {
@@ -800,7 +800,7 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.sonarrSettingsRepo.findOne({
         where: { id: id },
-        relations: ['collections'],
+        relations: { collections: true },
       });
 
       if (settingsDb.collections.length > 0) {
