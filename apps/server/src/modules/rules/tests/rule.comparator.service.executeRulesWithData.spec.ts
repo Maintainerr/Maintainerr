@@ -876,4 +876,71 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       expect(valueGetterService.get).toHaveBeenCalledTimes(mediaItems.length);
     });
   });
+
+  // Parity with the NormalizeRuleSectionOperators migration. The migration makes
+  // an unset operator explicit using the value each rule evaluated as on 3.12.1:
+  // section boundary -> "0" (AND), within-section -> "1" (OR). These tests pin
+  // the comparator side of that contract — note a section-boundary backfill is
+  // intentionally NOT equal to leaving it unset (the comparator now treats an
+  // unset boundary as OR), which is why the migration exists.
+  describe('migration operator parity', () => {
+    // operators are persisted as strings ("0"/"1"); the RuleDto type models the
+    // enum, so cast through unknown as the rest of the suite does.
+    const asOp = (v: string | null): RuleDto['operator'] =>
+      v as unknown as RuleDto['operator'];
+    const bigger5 = (
+      operator: RuleDto['operator'],
+      section: number,
+    ): RuleDto => ({
+      operator,
+      action: RulePossibility.BIGGER,
+      firstVal: [Application.PLEX, 5],
+      customVal: { ruleTypeId: 0, value: '5' },
+      section,
+    });
+
+    const runTwoSections = async (boundaryOperator: RuleDto['operator']) => {
+      // section 0 matches (10 > 5); section 1 does not (0 > 5)
+      mockGetterSequence(10, 0);
+      const rules: RuleDbDto[] = [
+        createStoredRule(1, bigger5(null, 0), 0),
+        createStoredRule(2, bigger5(boundaryOperator, 1), 1),
+      ];
+      return ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [createSingleMedia()],
+      );
+    };
+
+    it('backfilled "0" intersects sections (AND) — the preserved 3.12.1 behaviour', async () => {
+      const res = await runTwoSections(asOp('0'));
+      expect(res.stats[0].sectionResults[1].operator).toBe('AND');
+      expect(res.stats[0].result).toBe(false); // true AND false -> dropped
+    });
+
+    it('an unset section boundary unions (OR) — the corrected default for new/un-migrated rules', async () => {
+      const res = await runTwoSections(null);
+      expect(res.stats[0].sectionResults[1].operator).toBe('OR');
+      expect(res.stats[0].result).toBe(true); // true OR false -> kept
+    });
+
+    it('within-section backfill "1" is identical to leaving it unset (both OR)', async () => {
+      const sameSection = (op: RuleDto['operator']): RuleDbDto[] => [
+        createStoredRule(1, bigger5(null, 0), 0),
+        createStoredRule(2, bigger5(op, 0), 0),
+      ];
+      mockGetterSequence(10, 0);
+      const withNull = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules: sameSection(null) }),
+        [createSingleMedia()],
+      );
+      mockGetterSequence(10, 0);
+      const withOr = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules: sameSection(asOp('1')) }),
+        [createSingleMedia()],
+      );
+      expect(withOr.stats[0].result).toBe(withNull.stats[0].result);
+      expect(withOr.stats[0].result).toBe(true); // 10>5 OR 0>5 -> kept
+    });
+  });
 });
