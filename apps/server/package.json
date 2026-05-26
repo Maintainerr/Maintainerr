@@ -52,7 +52,7 @@
     "mime-types": "^3.0.2",
     "nestjs-zod": "^5.4.0",
     "node-cache": "^5.1.2",
-    "nodemailer": "8.0.8",
+    "nodemailer": "8.0.9",
     "octokit": "^3.2.2",
     "openpgp": "^6.3.0",
     "read-last-lines": "^1.8.0",
