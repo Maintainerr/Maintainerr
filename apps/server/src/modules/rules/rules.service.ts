@@ -250,7 +250,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { id: ruleGroupId },
-        relations: ['notifications'],
+        relations: { notifications: true },
       });
     } catch (error) {
       this.logger.warn('Rules - Action failed');
@@ -263,7 +263,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { collectionId: id },
-        relations: ['notifications'],
+        relations: { notifications: true },
       });
     } catch (error) {
       this.logger.warn('Rules - Action failed');
