@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
@@ -29,21 +28,6 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * are treated identically.
  */
 export class NormalizeRuleSectionOperators1779622081794 implements MigrationInterface {
-  private readonly logger = new Logger(
-    NormalizeRuleSectionOperators1779622081794.name,
-  );
-
-  // Logging is purely informational; it must never be able to abort the
-  // migration (and roll back its transaction), so any logger failure is
-  // swallowed.
-  private safeLog(write: () => void): void {
-    try {
-      write();
-    } catch {
-      // ignore — never let a log line break a migration
-    }
-  }
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     const rows: Array<{
       id: number;
@@ -61,27 +45,8 @@ export class NormalizeRuleSectionOperators1779622081794 implements MigrationInte
       .addOrderBy('rule.id', 'ASC')
       .getRawMany();
 
-    // Rule group names for human-readable logging — users know their groups by
-    // name, not id. Best-effort: fall back to the id if the lookup fails.
-    const groupNameById = new Map<number, string>();
-    try {
-      const groupRows: Array<{ id: number; name: string }> =
-        await queryRunner.manager
-          .createQueryBuilder()
-          .select('rg.id', 'id')
-          .addSelect('rg.name', 'name')
-          .from('rule_group', 'rg')
-          .getRawMany();
-      for (const g of groupRows) groupNameById.set(g.id, g.name);
-    } catch {
-      // rule_group not queryable (e.g. isolated migration test) — log ids.
-    }
-    const nameOf = (id: number) => groupNameById.get(id) ?? `group ${id}`;
-
     let currentGroupId: number | null = null;
     let previousSection: number | null = null;
-    let backfilled = 0;
-    const affectedGroups = new Set<string>();
 
     for (const row of rows) {
       const isFirstRuleOfGroup = row.ruleGroupId !== currentGroupId;
@@ -121,29 +86,6 @@ export class NormalizeRuleSectionOperators1779622081794 implements MigrationInte
         .set({ ruleJson: JSON.stringify(parsed) })
         .where('id = :id', { id: row.id })
         .execute();
-
-      backfilled += 1;
-      affectedGroups.add(nameOf(row.ruleGroupId));
-      this.safeLog(() =>
-        this.logger.debug(
-          `Rule group "${nameOf(row.ruleGroupId)}": a rule was missing its ` +
-            `AND/OR setting — set it to ${isFirstRuleOfSection ? 'AND' : 'OR'} ` +
-            `(the value it was already using).`,
-        ),
-      );
-    }
-
-    if (backfilled > 0) {
-      const ruleWord = backfilled === 1 ? 'rule' : 'rules';
-      const groupWord = affectedGroups.size === 1 ? 'group' : 'groups';
-      this.safeLog(() =>
-        this.logger.log(
-          `Filled in a missing AND/OR setting on ${backfilled} ${ruleWord} in ` +
-            `${affectedGroups.size} rule ${groupWord} ` +
-            `(${[...affectedGroups].join(', ')}). These rules still match the ` +
-            `same items as before.`,
-        ),
-      );
     }
   }
 
