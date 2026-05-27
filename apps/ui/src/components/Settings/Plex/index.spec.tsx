@@ -391,6 +391,36 @@ describe('PlexSettings', () => {
     ).toBeTruthy()
   })
 
+  it('clears the plex.tv unreachable warning once validation succeeds', async () => {
+    storedTokenValidationResponse = {
+      valid: false,
+      unreachable: true,
+      errorMessage:
+        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+    }
+
+    const { rerender } = render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        ),
+      ).toBeTruthy()
+    })
+
+    storedTokenValidationResponse = { valid: true }
+    rerender(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        ),
+      ).toBeNull()
+    })
+  })
+
   it('does not flash stored-token validation errors immediately after fresh Plex auth succeeds', async () => {
     currentSettings.plex_auth_token = undefined
     currentSettings.plex_hostname = undefined

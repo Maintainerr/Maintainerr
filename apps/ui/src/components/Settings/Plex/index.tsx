@@ -2,7 +2,7 @@ import { RefreshIcon } from '@heroicons/react/outline'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import {
   useDeletePlexAuth,
@@ -190,30 +190,17 @@ const PlexSettings = () => {
   // re-authentication.
   const tokenUnreachable =
     showStoredValidationResult && storedTokenValidation?.unreachable === true
-  const storedTokenValidationError =
-    showStoredValidationResult && !tokenUnreachable
-      ? storedTokenValidation?.errorMessage
-      : undefined
-  const storedTokenUnreachableWarning = tokenUnreachable
-    ? storedTokenValidation?.errorMessage
-    : undefined
+  const storedTokenValidationAlert = showStoredValidationResult
+    ? {
+        type: tokenUnreachable ? ('warning' as const) : ('error' as const),
+        title:
+          storedTokenValidation?.errorMessage ??
+          (tokenUnreachable
+            ? "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use."
+            : 'Stored Plex credentials are invalid. Re-authenticate with Plex.'),
+      }
+    : null
   const isAuthenticated = tokenValid || tokenUnreachable
-
-  useEffect(() => {
-    // TanStack Query v5 removed query-level onError; route validation feedback
-    // back through the shared settings feedback (error for a rejected token,
-    // warning while plex.tv is unreachable).
-    if (storedTokenValidationError) {
-      showError(storedTokenValidationError)
-    } else if (storedTokenUnreachableWarning) {
-      showWarning(storedTokenUnreachableWarning)
-    }
-  }, [
-    showError,
-    showWarning,
-    storedTokenValidationError,
-    storedTokenUnreachableWarning,
-  ])
 
   const {
     data: availableServers,
@@ -493,10 +480,16 @@ const PlexSettings = () => {
         ) : null}
 
         <SettingsAlertSlot>
-          {feedback || testBanner.version || storedTokenValidationError ? (
+          {feedback || storedTokenValidationAlert || testBanner.version ? (
             <div className="space-y-4">
               {feedback ? (
                 <Alert type={feedback.type} title={feedback.title} />
+              ) : null}
+              {storedTokenValidationAlert ? (
+                <Alert
+                  type={storedTokenValidationAlert.type}
+                  title={storedTokenValidationAlert.title}
+                />
               ) : null}
               {testBanner.version ? (
                 testBanner.status ? (
