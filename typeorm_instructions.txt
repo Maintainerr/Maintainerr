@@ -1,3 +1,7 @@
+// TypeORM 1.x (better-sqlite3). Repository code uses object-form
+// `relations`/`select` ({ rel: true }) and IsNull() to match SQL NULL — see
+// project-notes.instructions.md.
+
 // Generate migration after entity changes
 yarn workspace @maintainerr/server migration:generate src/database/migrations/<migr_name>
 

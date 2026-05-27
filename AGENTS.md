@@ -54,7 +54,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 ### Backend (`apps/server/`)
 
 - **Framework**: Nest.js v11+ with TypeScript
-- **Database**: TypeORM with SQLite
+- **Database**: TypeORM 1.x with SQLite (`better-sqlite3` driver)
 - **Testing**: Jest with @suites for dependency mocking and unit testing
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: Zod v4+ schemas with nestjs-zod
@@ -329,7 +329,7 @@ degrade gracefully.
 
 ### Environment Setup
 
-- **Node.js**: Version 20.19.0+ or 22.12.0+
+- **Node.js**: Version 20.19.0+, 22.13.0+, or 24.11.0+ (the floor is set by TypeORM 1.0.0's engine requirement; the Docker image ships Node 26)
 - **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 

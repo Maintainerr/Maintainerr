@@ -9,7 +9,6 @@ export const MEDIA_SERVER_FEATURES: Record<
   ReadonlySet<MediaServerFeature>
 > = {
   [MediaServerType.PLEX]: new Set([
-    MediaServerFeature.BULK_COLLECTION_CREATE,
     MediaServerFeature.COLLECTION_VISIBILITY,
     MediaServerFeature.WATCHLIST,
     MediaServerFeature.CENTRAL_WATCH_HISTORY,
@@ -19,7 +18,6 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.COLLECTION_SORT,
   ]),
   [MediaServerType.JELLYFIN]: new Set([
-    MediaServerFeature.BULK_COLLECTION_CREATE,
     MediaServerFeature.LABELS, // Tags in Jellyfin
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
@@ -29,7 +27,6 @@ export const MEDIA_SERVER_FEATURES: Record<
     // Note: COLLECTION_SORT not supported — no boxset reorder API; ForcedSortName has global side-effects.
   ]),
   [MediaServerType.EMBY]: new Set([
-    MediaServerFeature.BULK_COLLECTION_CREATE,
     MediaServerFeature.LABELS,
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,

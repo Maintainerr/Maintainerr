@@ -1,6 +1,4 @@
-import { MediaServerFeature } from '@maintainerr/contracts';
 import { AxiosError } from 'axios';
-import cacheManager from '../../lib/cache';
 import { EmbyAdapterService } from './emby-adapter.service';
 
 jest.mock('../../lib/cache', () => ({
@@ -80,37 +78,30 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
-  it('reports bulk-collection-create capability for Emby', () => {
-    expect(
-      service.supportsFeature(MediaServerFeature.BULK_COLLECTION_CREATE),
-    ).toBe(true);
-    expect(cacheManager.getCache).toHaveBeenCalledWith('emby');
-  });
-
   describe('createCollection', () => {
-    it('passes initial item ids on create and hydrates the created collection', async () => {
+    it('creates the collection empty without seeding item ids', async () => {
+      // Item ids must never be sent on create (they go in the query string →
+      // HTTP 414 at scale); items are added via addBatchToCollection.
       http.post.mockResolvedValueOnce({ data: { Id: 'collection-1' } });
       http.get.mockResolvedValueOnce({
         data: {
           Id: 'collection-1',
-          Name: 'Seeded Collection',
+          Name: 'New Collection',
           Overview: 'summary',
-          ChildCount: 2,
+          ChildCount: 0,
         },
       });
 
       const result = await service.createCollection({
         libraryId: 'library-1',
-        title: 'Seeded Collection',
+        title: 'New Collection',
         type: 'show',
-        initialItemIds: ['item-1', 'item-2'],
       });
 
       expect(http.post).toHaveBeenCalledWith('/Collections', null, {
         params: {
-          Name: 'Seeded Collection',
+          Name: 'New Collection',
           ParentId: 'library-1',
-          Ids: 'item-1,item-2',
           IsLocked: true,
         },
       });
@@ -118,7 +109,7 @@ describe('EmbyAdapterService', () => {
       expect(result).toEqual(
         expect.objectContaining({
           id: 'collection-1',
-          title: 'Seeded Collection',
+          title: 'New Collection',
         }),
       );
     });

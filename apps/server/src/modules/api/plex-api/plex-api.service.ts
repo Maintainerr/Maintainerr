@@ -855,19 +855,13 @@ export class PlexApiService {
 
   public async createCollection(params: CreateUpdateCollection) {
     try {
-      // When initial items are supplied, seed them at create time using the
-      // canonical server-URI form that python-plexapi's Collection.create()
-      // uses. Saves a round trip and avoids a half-created empty collection
-      // if the follow-up add were to fail.
-      const itemsUri = params.initialItemIds?.length
-        ? `&uri=${this.buildCollectionItemsUri(params.initialItemIds)}`
-        : '';
+      // Created empty; items are added afterwards via the batched add path.
       const response = await this.plexClient.postQuery<any>({
         uri: `/library/collections?type=${
           params.type
         }&title=${encodeURIComponent(params.title)}&sectionId=${
           params.libraryId
-        }${itemsUri}`,
+        }`,
       });
       const collection: PlexCollection = response.MediaContainer
         .Metadata[0] as PlexCollection;
