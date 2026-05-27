@@ -227,7 +227,6 @@ export interface CreateCollectionParams {
   summary?: string
   type: MediaItemType
   sortTitle?: string
-  initialItemIds?: string[]
 }
 
 /** Plex-only visibility settings */

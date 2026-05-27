@@ -1451,7 +1451,6 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
-    initialItemIds?: string[],
   ): Promise<
     | {
         dbCollection: addCollectionDbResponse;
@@ -1474,7 +1473,6 @@ export class CollectionsService {
           summary: collection?.description,
           sortTitle: collection?.sortTitle,
           type: collection.type,
-          initialItemIds,
         });
 
         // Store the media server ID from the created collection
@@ -1562,19 +1560,7 @@ export class CollectionsService {
     | undefined
   > {
     try {
-      const mediaServer = await this.getMediaServer();
-      const createWithItems = mediaServer.supportsFeature(
-        MediaServerFeature.BULK_COLLECTION_CREATE,
-      );
-      const initialItemIds =
-        createWithItems && media?.length
-          ? media.map((item) => item.mediaServerId)
-          : undefined;
-      const createdCollection = await this.createCollection(
-        collection,
-        false,
-        initialItemIds,
-      );
+      const createdCollection = await this.createCollection(collection, false);
 
       if (!createdCollection?.dbCollection) {
         return undefined;
@@ -1590,7 +1576,7 @@ export class CollectionsService {
           },
           media,
           false,
-          createWithItems && Boolean(initialItemIds?.length),
+          false,
         );
       }
 
@@ -2011,21 +1997,6 @@ export class CollectionsService {
           !collection.mediaServerId &&
           (newMedia.length > 0 || collectionMedia.length > 0);
 
-        const createWithItems = mediaServer.supportsFeature(
-          MediaServerFeature.BULK_COLLECTION_CREATE,
-        );
-        const initialItemIds = createWithItems
-          ? [
-              ...new Set([
-                ...collectionMedia.map(
-                  (existingMedia) => existingMedia.mediaServerId,
-                ),
-                ...newMedia.map((pendingMedia) => pendingMedia.mediaServerId),
-              ]),
-            ]
-          : undefined;
-        let seededOnCreate = false;
-
         // Create media server collection if needed
         if (needsMediaServerCollection) {
           let newColl: MediaCollection | undefined = undefined;
@@ -2047,9 +2018,7 @@ export class CollectionsService {
                 summary: collection.description,
                 sortTitle: collection.sortTitle,
                 type: collection.type,
-                initialItemIds,
               });
-              seededOnCreate = Boolean(initialItemIds?.length);
             }
           }
           if (newColl?.id) {
@@ -2087,8 +2056,9 @@ export class CollectionsService {
               );
             }
 
-            // Check if we need to sync existing items to a newly created collection
-            const needsResync = collectionMedia.length > 0 && !seededOnCreate;
+            // Sync existing collection_media rows to the freshly created
+            // (empty) media server collection via the batched add path.
+            const needsResync = collectionMedia.length > 0;
 
             // If we had existing collection_media items, sync them to the new media server collection
             if (needsResync) {
@@ -2178,7 +2148,7 @@ export class CollectionsService {
             { mediaServerId: collection.mediaServerId, dbId: collection.id },
             newMedia,
             manual,
-            skipMediaServerAdd || seededOnCreate,
+            skipMediaServerAdd,
             manualMembershipSource,
           );
 
