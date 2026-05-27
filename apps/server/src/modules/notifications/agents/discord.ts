@@ -118,9 +118,7 @@ class DiscordAgent implements NotificationAgent {
       color,
       timestamp: new Date().toISOString(),
       fields,
-      thumbnail: {
-        url: payload.image,
-      },
+      ...(payload.image ? { thumbnail: { url: payload.image } } : {}),
     };
   }
 
