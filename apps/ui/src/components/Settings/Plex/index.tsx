@@ -2,7 +2,7 @@ import { RefreshIcon } from '@heroicons/react/outline'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import {
   useDeletePlexAuth,
@@ -180,24 +180,27 @@ const PlexSettings = () => {
   const tokenValid =
     tokenValidationOverride?.valid ??
     (hasStoredPlexToken ? storedTokenValidation?.valid === true : false)
-  const storedTokenValidationError =
+  const showStoredValidationResult =
     tokenValidationOverride == null &&
     hasStoredPlexToken &&
     !tokenValidationPending &&
     storedTokenValidation?.valid === false
-      ? storedTokenValidation.errorMessage
-      : undefined
-  const isAuthenticated = tokenValid
-
-  useEffect(() => {
-    if (!storedTokenValidationError) {
-      return
-    }
-
-    // TanStack Query v5 removed query-level onError; route this back through
-    // shared settings feedback so Plex follows the same inline feedback pattern.
-    showError(storedTokenValidationError)
-  }, [showError, storedTokenValidationError])
+  // plex.tv couldn't be reached: the saved token may be fine, so stay
+  // authenticated and warn (the query keeps retrying) instead of demanding
+  // re-authentication.
+  const tokenUnreachable =
+    showStoredValidationResult && storedTokenValidation?.unreachable === true
+  const storedTokenValidationAlert = showStoredValidationResult
+    ? {
+        type: tokenUnreachable ? ('warning' as const) : ('error' as const),
+        title:
+          storedTokenValidation?.errorMessage ??
+          (tokenUnreachable
+            ? "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use."
+            : 'Stored Plex credentials are invalid. Re-authenticate with Plex.'),
+      }
+    : null
+  const isAuthenticated = tokenValid || tokenUnreachable
 
   const {
     data: availableServers,
@@ -477,10 +480,16 @@ const PlexSettings = () => {
         ) : null}
 
         <SettingsAlertSlot>
-          {feedback || testBanner.version || storedTokenValidationError ? (
+          {feedback || storedTokenValidationAlert || testBanner.version ? (
             <div className="space-y-4">
               {feedback ? (
                 <Alert type={feedback.type} title={feedback.title} />
+              ) : null}
+              {storedTokenValidationAlert ? (
+                <Alert
+                  type={storedTokenValidationAlert.type}
+                  title={storedTokenValidationAlert.title}
+                />
               ) : null}
               {testBanner.version ? (
                 testBanner.status ? (
@@ -512,7 +521,7 @@ const PlexSettings = () => {
                     <Button type="button" buttonType="default" disabled>
                       Checking authentication...
                     </Button>
-                  ) : tokenValid ? (
+                  ) : isAuthenticated ? (
                     clearTokenClicked ? (
                       <Button
                         type="button"
@@ -651,7 +660,7 @@ const PlexSettings = () => {
                       <button
                         type="button"
                         onClick={() => void refetchServers()}
-                        disabled={tokenValid !== true || updatePlexAuthPending}
+                        disabled={!isAuthenticated || updatePlexAuthPending}
                         className="input-action"
                       >
                         <RefreshIcon
