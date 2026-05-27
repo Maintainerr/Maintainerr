@@ -353,9 +353,9 @@ closes a cycle, follow that pattern**, or SWC's strict CommonJS live bindings
 will turn it into a runtime TDZ `ReferenceError: Cannot access 'X' before
 initialization`.
 
-`apps/server` also runs under **Yarn PnP**, so debug scripts cannot assume
-`node_modules/jest/bin/jest.js` exists locally. For direct Jest-under-Node
-entrypoints, use `yarn node $(yarn bin jest) ...`.
+Yarn uses the **node-modules linker** (`.yarnrc.yml` → `nodeLinker: node-modules`,
+not PnP), so `node_modules/.bin/jest` and `node_modules/jest/bin/jest.js` exist and
+standard Jest-under-Node entrypoints work without a PnP shim.
 
 ### TypeORM repository conventions
 
