@@ -180,24 +180,40 @@ const PlexSettings = () => {
   const tokenValid =
     tokenValidationOverride?.valid ??
     (hasStoredPlexToken ? storedTokenValidation?.valid === true : false)
-  const storedTokenValidationError =
+  const showStoredValidationResult =
     tokenValidationOverride == null &&
     hasStoredPlexToken &&
     !tokenValidationPending &&
     storedTokenValidation?.valid === false
-      ? storedTokenValidation.errorMessage
+  // plex.tv couldn't be reached: the saved token may be fine, so stay
+  // authenticated and warn (the query keeps retrying) instead of demanding
+  // re-authentication.
+  const tokenUnreachable =
+    showStoredValidationResult && storedTokenValidation?.unreachable === true
+  const storedTokenValidationError =
+    showStoredValidationResult && !tokenUnreachable
+      ? storedTokenValidation?.errorMessage
       : undefined
-  const isAuthenticated = tokenValid
+  const storedTokenUnreachableWarning = tokenUnreachable
+    ? storedTokenValidation?.errorMessage
+    : undefined
+  const isAuthenticated = tokenValid || tokenUnreachable
 
   useEffect(() => {
-    if (!storedTokenValidationError) {
-      return
+    // TanStack Query v5 removed query-level onError; route validation feedback
+    // back through the shared settings feedback (error for a rejected token,
+    // warning while plex.tv is unreachable).
+    if (storedTokenValidationError) {
+      showError(storedTokenValidationError)
+    } else if (storedTokenUnreachableWarning) {
+      showWarning(storedTokenUnreachableWarning)
     }
-
-    // TanStack Query v5 removed query-level onError; route this back through
-    // shared settings feedback so Plex follows the same inline feedback pattern.
-    showError(storedTokenValidationError)
-  }, [showError, storedTokenValidationError])
+  }, [
+    showError,
+    showWarning,
+    storedTokenValidationError,
+    storedTokenUnreachableWarning,
+  ])
 
   const {
     data: availableServers,
@@ -512,7 +528,7 @@ const PlexSettings = () => {
                     <Button type="button" buttonType="default" disabled>
                       Checking authentication...
                     </Button>
-                  ) : tokenValid ? (
+                  ) : isAuthenticated ? (
                     clearTokenClicked ? (
                       <Button
                         type="button"
@@ -651,7 +667,7 @@ const PlexSettings = () => {
                       <button
                         type="button"
                         onClick={() => void refetchServers()}
-                        disabled={tokenValid !== true || updatePlexAuthPending}
+                        disabled={!isAuthenticated || updatePlexAuthPending}
                         className="input-action"
                       >
                         <RefreshIcon

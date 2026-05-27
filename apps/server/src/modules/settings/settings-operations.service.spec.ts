@@ -83,7 +83,7 @@ describe('SettingsOperationsService', () => {
     settingsDataService.plex_auth_token = 'plex-token';
     mediaServerFactory.initialize.mockResolvedValue(undefined);
     plexApi.initialize.mockResolvedValue(undefined);
-    plexApi.validateAuthToken.mockResolvedValue(true);
+    plexApi.validateAuthToken.mockResolvedValue('valid');
     plexApi.getStatus.mockResolvedValue({ version: '1.0.0' } as never);
     seerr.init.mockImplementation();
     tautulli.init.mockImplementation();
@@ -221,6 +221,31 @@ describe('SettingsOperationsService', () => {
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
     expect(plexApi.validateAuthToken).toHaveBeenCalledTimes(1);
     expect(plexApi.getStatus).not.toHaveBeenCalled();
+  });
+
+  it('reports invalid credentials when plex.tv rejects the stored token', async () => {
+    settingsDataService.plex_auth_token = 'masked-plex-token';
+    plexApi.validateAuthToken.mockResolvedValue('invalid');
+
+    const response = await service.testPlexAuthToken();
+
+    expect(response).toEqual({
+      status: 'NOK',
+      code: 0,
+      message:
+        'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+    });
+  });
+
+  it('flags a plex.tv connectivity failure as unreachable, not invalid', async () => {
+    settingsDataService.plex_auth_token = 'masked-plex-token';
+    plexApi.validateAuthToken.mockResolvedValue('unreachable');
+
+    const response = await service.testPlexAuthToken();
+
+    expect(response.status).toBe('NOK');
+    expect(response.unreachable).toBe(true);
+    expect(response.message).not.toContain('invalid');
   });
 
   it('returns a clear message when no Plex auth token exists for auth validation', async () => {

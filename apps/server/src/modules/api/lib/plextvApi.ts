@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import xml2js, { parseStringPromise } from 'xml2js';
 import { PlexDevice } from '../../api/plex-api/interfaces/server.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -7,6 +8,10 @@ import cacheManager from './cache';
 interface PlexAccountResponse {
   user: PlexUser;
 }
+
+// `unreachable` (timeout/network/5xx/429) is distinct from `invalid` (plex.tv
+// rejected the token): a connectivity failure must not force re-authentication.
+export type PlexTokenValidation = 'valid' | 'invalid' | 'unreachable';
 
 export interface PlexUser {
   id: number;
@@ -164,6 +169,31 @@ export class PlexTvApi extends ExternalApiService {
       );
       this.logger.debug(error);
       throw new Error('Invalid auth token');
+    }
+  }
+
+  public async validateToken(): Promise<PlexTokenValidation> {
+    try {
+      const response = await this.getRawWithoutCache<PlexAccountResponse>(
+        '/users/account.json',
+      );
+
+      return response.data?.user ? 'valid' : 'unreachable';
+    } catch (error) {
+      const status =
+        error instanceof AxiosError ? error.response?.status : undefined;
+
+      // plex.tv rejects a bad token with 422 ("Invalid token"), 401, or 403.
+      // Other statuses (429 rate limit, 5xx) and network errors are transient.
+      if (status === 401 || status === 403 || status === 422) {
+        return 'invalid';
+      }
+
+      this.logger.debug(
+        `Could not reach plex.tv to validate the auth token${status ? ` (status ${status})` : ''}; keeping stored credentials`,
+      );
+      this.logger.debug(error);
+      return 'unreachable';
     }
   }
 

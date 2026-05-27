@@ -25,6 +25,7 @@ let loginErrorMessage: string | null = null
 let storedTokenValidationResponse:
   | {
       valid: boolean
+      unreachable?: boolean
       errorMessage?: string
     }
   | undefined
@@ -361,6 +362,33 @@ describe('PlexSettings', () => {
         expect.objectContaining({ enabled: true }),
       )
     })
+  })
+
+  it('stays authenticated and warns instead of erroring when plex.tv is unreachable', async () => {
+    storedTokenValidationResponse = {
+      valid: false,
+      unreachable: true,
+      errorMessage:
+        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+    }
+
+    render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
+    })
+
+    expect(
+      screen.queryByText(
+        'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+      ),
+    ).toBeNull()
+
+    expect(
+      screen.getByText(
+        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+      ),
+    ).toBeTruthy()
   })
 
   it('does not flash stored-token validation errors immediately after fresh Plex auth succeeds', async () => {
