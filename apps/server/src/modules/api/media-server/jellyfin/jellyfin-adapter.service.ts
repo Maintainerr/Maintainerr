@@ -1399,9 +1399,9 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     try {
+      // Created empty; items are added afterwards via addBatchToCollection.
       const response = await getCollectionApi(this.api).createCollection({
         name: params.title,
-        ids: params.initialItemIds,
         parentId: params.libraryId,
         // isLocked enables composite image generation from collection items
         isLocked: true,

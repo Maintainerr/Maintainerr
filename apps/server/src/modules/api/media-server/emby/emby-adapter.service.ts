@@ -827,6 +827,7 @@ export class EmbyAdapterService implements IMediaServerService {
   ): Promise<MediaCollection> {
     if (!this.http) throw new Error('Emby not initialized');
     try {
+      // Created empty; items are added afterwards via addBatchToCollection.
       const { data } = await this.http.post<EmbyBaseItemDto>(
         '/Collections',
         null,
@@ -834,7 +835,6 @@ export class EmbyAdapterService implements IMediaServerService {
           params: {
             Name: params.title,
             ParentId: params.libraryId,
-            Ids: params.initialItemIds?.join(','),
             // IsLocked enables composite image generation from items, matching
             // the Jellyfin adapter; without it, Emby may skip the auto-cover.
             IsLocked: true,

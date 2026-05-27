@@ -28,7 +28,6 @@ export interface CreateUpdateCollection {
   summary?: string;
   child?: string;
   sortTitle?: string;
-  initialItemIds?: string[];
 }
 
 export interface PlexPlaylist {
