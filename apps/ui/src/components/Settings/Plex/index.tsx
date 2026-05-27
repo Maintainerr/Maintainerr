@@ -2,7 +2,7 @@ import { RefreshIcon } from '@heroicons/react/outline'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
 import axios from 'axios'
 import { orderBy } from 'lodash-es'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSettingsOutletContext } from '..'
 import {
   useDeletePlexAuth,
@@ -180,24 +180,27 @@ const PlexSettings = () => {
   const tokenValid =
     tokenValidationOverride?.valid ??
     (hasStoredPlexToken ? storedTokenValidation?.valid === true : false)
-  const storedTokenValidationError =
+  const showStoredValidationResult =
     tokenValidationOverride == null &&
     hasStoredPlexToken &&
     !tokenValidationPending &&
     storedTokenValidation?.valid === false
-      ? storedTokenValidation.errorMessage
-      : undefined
-  const isAuthenticated = tokenValid
-
-  useEffect(() => {
-    if (!storedTokenValidationError) {
-      return
-    }
-
-    // TanStack Query v5 removed query-level onError; route this back through
-    // shared settings feedback so Plex follows the same inline feedback pattern.
-    showError(storedTokenValidationError)
-  }, [showError, storedTokenValidationError])
+  // plex.tv couldn't be reached: the saved token may be fine, so stay
+  // authenticated and warn (the query keeps retrying) instead of demanding
+  // re-authentication.
+  const tokenUnreachable =
+    showStoredValidationResult && storedTokenValidation?.unreachable === true
+  const storedTokenValidationAlert = showStoredValidationResult
+    ? {
+        type: tokenUnreachable ? ('warning' as const) : ('error' as const),
+        title:
+          storedTokenValidation?.errorMessage ??
+          (tokenUnreachable
+            ? "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use."
+            : 'Stored Plex credentials are invalid. Re-authenticate with Plex.'),
+      }
+    : null
+  const isAuthenticated = tokenValid || tokenUnreachable
 
   const {
     data: availableServers,
@@ -477,10 +480,16 @@ const PlexSettings = () => {
         ) : null}
 
         <SettingsAlertSlot>
-          {feedback || testBanner.version || storedTokenValidationError ? (
+          {feedback || storedTokenValidationAlert || testBanner.version ? (
             <div className="space-y-4">
               {feedback ? (
                 <Alert type={feedback.type} title={feedback.title} />
+              ) : null}
+              {storedTokenValidationAlert ? (
+                <Alert
+                  type={storedTokenValidationAlert.type}
+                  title={storedTokenValidationAlert.title}
+                />
               ) : null}
               {testBanner.version ? (
                 testBanner.status ? (
@@ -512,7 +521,7 @@ const PlexSettings = () => {
                     <Button type="button" buttonType="default" disabled>
                       Checking authentication...
                     </Button>
-                  ) : tokenValid ? (
+                  ) : isAuthenticated ? (
                     clearTokenClicked ? (
                       <Button
                         type="button"
@@ -566,17 +575,17 @@ const PlexSettings = () => {
                               {selectedServer.hostname}:{selectedServer.port}
                             </span>
                             {selectedServer.ssl && (
-                              <span className="inline-flex items-center rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                                 SSL/TLS
                               </span>
                             )}
                             {selectedServer.local !== undefined && (
-                              <span className="inline-flex items-center rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                                 {selectedServer.local ? 'Local' : 'Remote'}
                               </span>
                             )}
                             {selectedServer.latency !== undefined && (
-                              <span className="inline-flex items-center rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                                 {selectedServer.latency}ms
                               </span>
                             )}
@@ -651,7 +660,7 @@ const PlexSettings = () => {
                       <button
                         type="button"
                         onClick={() => void refetchServers()}
-                        disabled={tokenValid !== true || updatePlexAuthPending}
+                        disabled={!isAuthenticated || updatePlexAuthPending}
                         className="input-action"
                       >
                         <RefreshIcon
@@ -680,7 +689,7 @@ const PlexSettings = () => {
                   )}
                   Advanced Settings
                   {manualMode && (
-                    <span className="ml-1.5 inline-flex items-center rounded bg-amber-700 px-1.5 py-0.5 text-xs text-amber-200">
+                    <span className="ml-1.5 inline-flex items-center rounded-sm bg-maintainerr-600 px-1.5 py-0.5 text-xs text-white">
                       Manual
                     </span>
                   )}
@@ -721,7 +730,7 @@ const PlexSettings = () => {
                                   clearTestBanner()
                                 }
                               }}
-                              className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
+                              className="checkbox"
                             />
                             <span className="text-sm text-zinc-300">
                               Enable manual mode
@@ -813,7 +822,7 @@ const PlexSettings = () => {
                                       }),
                                     )
                                   }}
-                                  className="rounded border-zinc-500 bg-zinc-700 text-amber-600 focus:ring-amber-500"
+                                  className="checkbox"
                                 />
                                 <span className="text-sm text-zinc-300">
                                   Use HTTPS
@@ -831,7 +840,7 @@ const PlexSettings = () => {
 
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
                   <DocsButton page="Configuration/#plex" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
@@ -865,7 +874,7 @@ const PlexSettings = () => {
                               : undefined
                     }
                   />
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
+                  <span className="ml-3 inline-flex rounded-md shadow-xs">
                     <SaveButton
                       type="button"
                       onClick={() => void submit()}

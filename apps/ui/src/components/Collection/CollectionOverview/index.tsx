@@ -67,7 +67,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
           </div>
         </div>
         {showInitialLoading ? (
-          <div className="min-h-[20rem]">
+          <div className="min-h-80">
             <LoadingSpinner />
           </div>
         ) : hasCollections ? (
@@ -78,7 +78,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
             {props.collections?.map((col, index) => (
               <li
                 key={col.id ?? index}
-                className="collection relative flex h-fit transform-gpu flex-col overflow-hidden rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
+                className="collection relative flex h-fit transform-gpu flex-col overflow-hidden rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700"
               >
                 <CollectionItem
                   collection={col}
@@ -88,7 +88,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
             ))}
           </ul>
         ) : (
-          <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
+          <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
             No collections found for this library.
           </div>
         )}

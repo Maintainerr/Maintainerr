@@ -242,7 +242,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
         </>
       }
     >
-      <div className="min-h-[16rem]">
+      <div className="min-h-64">
         {isLoading ? (
           <LoadingSpinner />
         ) : (
@@ -301,6 +301,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                     type="checkbox"
                     name="enabled"
                     id="enabled"
+                    className="checkbox"
                     checked={enabled}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                       setEnabled(event.target.checked)
@@ -461,7 +462,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                       />
                       {/* Show only when 'Media About To Be Handled' is selected */}
                       {targetTypes.find((el) => el.id === 8) && n.id === 8 && (
-                        <div className="form-row mb-0 ml-9 mt-0">
+                        <div className="form-row mt-0 mb-0 ml-9">
                           <label htmlFor="about-scale" className="text-label">
                             Notify x days before removal
                           </label>

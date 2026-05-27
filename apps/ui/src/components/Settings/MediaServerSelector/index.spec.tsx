@@ -63,7 +63,7 @@ describe('MediaServerSelector', () => {
     const embyLogo = screen.getByRole('img', { name: 'Emby' })
 
     expect(plexLogo.getAttribute('class')).toBe(
-      'h-10 w-10 rounded object-contain',
+      'h-10 w-10 rounded-sm object-contain',
     )
     expect(jellyfinLogo.getAttribute('class')).toBe(
       plexLogo.getAttribute('class'),

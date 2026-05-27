@@ -1,12 +1,16 @@
 import {
+  MediaCollection,
   MediaItem,
   MediaItemType,
+  MediaPlaylist,
   MediaUser,
+  ServarrAction,
   WatchRecord,
 } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { createRulesDto } from '../../../../test/utils/data';
 
+import cacheManager from '../../api/lib/cache';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
 
@@ -59,6 +63,24 @@ const createWatchRecord = (
   ...overrides,
 });
 
+const createMediaCollection = (
+  overrides: Partial<MediaCollection> = {},
+): MediaCollection => ({
+  id: 'collection-1',
+  title: 'Collection One',
+  childCount: 1,
+  ...overrides,
+});
+
+const createMediaPlaylist = (
+  overrides: Partial<MediaPlaylist> = {},
+): MediaPlaylist => ({
+  id: 'playlist-1',
+  title: 'Playlist One',
+  itemCount: 1,
+  ...overrides,
+});
+
 describe('JellyfinGetterService', () => {
   let jellyfinGetterService: JellyfinGetterService;
   let jellyfinAdapter: Mocked<JellyfinAdapterService>;
@@ -78,6 +100,7 @@ describe('JellyfinGetterService', () => {
   });
 
   afterEach(() => {
+    cacheManager.getCache('jellyfin')?.flush();
     jest.clearAllMocks();
   });
 
@@ -108,7 +131,7 @@ describe('JellyfinGetterService', () => {
       {
         id: 0,
         name: 'addDate (missing)',
-        overrides: { addedAt: undefined as unknown as Date },
+        overrides: { addedAt: undefined },
         expected: null,
       },
       {
@@ -221,6 +244,116 @@ describe('JellyfinGetterService', () => {
     );
   });
 
+  describe('genre (id: 11)', () => {
+    it('uses parent genres for seasons', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        parentId: 'show-1',
+        genres: [{ name: 'Season Local Genre' }],
+      });
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+        genres: [{ name: 'Drama' }, { name: 'Mystery' }],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'season-1') return seasonItem;
+        if (itemId === 'show-1') return showItem;
+        return undefined;
+      });
+
+      const response = await jellyfinGetterService.get(
+        11,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Drama', 'Mystery']);
+    });
+
+    it('uses grandparent genres for episodes', async () => {
+      const episodeItem = createMediaItem({
+        id: 'episode-1',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+        genres: [{ name: 'Episode Local Genre' }],
+      });
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+        genres: [{ name: 'Sci-Fi' }],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'episode-1') return episodeItem;
+        if (itemId === 'show-1') return showItem;
+        return undefined;
+      });
+
+      const response = await jellyfinGetterService.get(
+        11,
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Sci-Fi']);
+      expect(jellyfinAdapter.getMetadata).toHaveBeenCalledWith('show-1');
+      expect(jellyfinAdapter.getMetadata).not.toHaveBeenCalledWith('season-1');
+    });
+
+    it('returns an empty list for seasons when parent metadata is missing', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-missing-parent',
+        type: 'season' as MediaItemType,
+        parentId: 'show-missing',
+        genres: [{ name: 'Season Local Genre' }],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'season-missing-parent') return seasonItem;
+        return undefined;
+      });
+
+      const response = await jellyfinGetterService.get(
+        11,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual([]);
+    });
+
+    it('returns an empty list for episodes when grandparent metadata is missing', async () => {
+      const episodeItem = createMediaItem({
+        id: 'episode-missing-grandparent',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-1',
+        grandparentId: 'show-missing',
+        genres: [{ name: 'Episode Local Genre' }],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'episode-missing-grandparent') return episodeItem;
+        return undefined;
+      });
+
+      const response = await jellyfinGetterService.get(
+        11,
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual([]);
+    });
+  });
+
   describe('IMDb rating semantics', () => {
     it('falls back to Jellyfin CommunityRating for rating_imdb', async () => {
       const mediaItem = createMediaItem({
@@ -266,6 +399,31 @@ describe('JellyfinGetterService', () => {
       expect(response).toEqual(['Alice', 'Bob']);
     });
 
+    it('preserves Jellyfin user id ordering and falls back to unknown ids', async () => {
+      const mediaItem = createMediaItem();
+      const users: MediaUser[] = [
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ];
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getItemSeenBy.mockResolvedValue([
+        'user-2',
+        'user-missing',
+        'user-1',
+      ]);
+      jellyfinAdapter.getUsers.mockResolvedValue(users);
+
+      const response = await jellyfinGetterService.get(
+        1,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toEqual(['Bob', 'user-missing', 'Alice']);
+    });
+
     it('should return empty array when no one has watched', async () => {
       const mediaItem = createMediaItem();
 
@@ -285,6 +443,33 @@ describe('JellyfinGetterService', () => {
   });
 
   describe('favoritedBy rules', () => {
+    it('favoritedBy (id: 39) should map favorite user ids from the current movie', async () => {
+      const mediaItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getItemFavoritedBy.mockResolvedValue([
+        'user-2',
+        'user-missing',
+        'user-1',
+      ]);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        39,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toEqual(['Bob', 'user-missing', 'Alice']);
+      expect(jellyfinAdapter.getItemFavoritedBy).toHaveBeenCalledWith(
+        'movie-1',
+      );
+    });
+
     it('sw_favoritedBy (id: 40) should only check favorites on the current item', async () => {
       const episodeItem = createMediaItem({
         id: 'ep-1',
@@ -441,6 +626,180 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toBe(false);
+    });
+  });
+
+  describe('collection rules', () => {
+    it('collections (id: 6) and collection_names (id: 19) trim names without deduping', async () => {
+      const mediaItem = createMediaItem({
+        id: 'movie-collections-1',
+        type: 'movie',
+      });
+      const collections = [
+        createMediaCollection({
+          id: 'collection-existing',
+          title: ' Existing Collection ',
+        }),
+        createMediaCollection({ id: 'collection-duplicate-a', title: 'Saga' }),
+        createMediaCollection({
+          id: 'collection-duplicate-b',
+          title: ' saga ',
+        }),
+        createMediaCollection({
+          id: 'collection-own',
+          title: ' Movie Cleanup ',
+        }),
+        createMediaCollection({
+          id: 'collection-manual',
+          title: ' Manual Picks ',
+        }),
+      ];
+      const ruleGroup = createRulesDto({
+        dataType: 'movie',
+        libraryId: mediaItem.library.id,
+        name: ' movie cleanup ',
+        collection: {
+          type: 'movie',
+          libraryId: mediaItem.library.id,
+          title: 'Movie Cleanup',
+          isActive: true,
+          arrAction: ServarrAction.DELETE,
+          manualCollectionName: ' manual picks ',
+        },
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getCollections.mockResolvedValue(collections);
+      jellyfinAdapter.getCollectionChildren.mockResolvedValue([mediaItem]);
+
+      const names = await jellyfinGetterService.get(
+        19,
+        mediaItem,
+        'movie',
+        ruleGroup,
+      );
+      const count = await jellyfinGetterService.get(
+        6,
+        mediaItem,
+        'movie',
+        ruleGroup,
+      );
+
+      expect(names).toEqual(['Existing Collection', 'Saga', 'saga']);
+      expect(count).toBe(3);
+      expect(jellyfinAdapter.getCollections).toHaveBeenCalledTimes(1);
+    });
+
+    it('applies different rule-group exclusions to cached raw collection names', async () => {
+      const mediaItem = createMediaItem({
+        id: 'movie-collections-cache',
+        type: 'movie',
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getCollections.mockResolvedValue([
+        createMediaCollection({ id: 'collection-a', title: 'Cleanup A' }),
+        createMediaCollection({ id: 'collection-b', title: 'Cleanup B' }),
+        createMediaCollection({ id: 'collection-shared', title: 'Shared' }),
+      ]);
+      jellyfinAdapter.getCollectionChildren.mockResolvedValue([mediaItem]);
+
+      const firstResponse = await jellyfinGetterService.get(
+        19,
+        mediaItem,
+        'movie',
+        createRulesDto({
+          dataType: 'movie',
+          libraryId: mediaItem.library.id,
+          name: ' cleanup a ',
+        }),
+      );
+      const secondResponse = await jellyfinGetterService.get(
+        19,
+        mediaItem,
+        'movie',
+        createRulesDto({
+          dataType: 'movie',
+          libraryId: mediaItem.library.id,
+          name: ' cleanup b ',
+        }),
+      );
+
+      expect(firstResponse).toEqual(['Cleanup B', 'Shared']);
+      expect(secondResponse).toEqual(['Cleanup A', 'Shared']);
+      expect(jellyfinAdapter.getCollections).toHaveBeenCalledTimes(1);
+      expect(jellyfinAdapter.getCollectionChildren).toHaveBeenCalledTimes(3);
+    });
+
+    it('sw collection rules (ids: 25, 26) include parent and grandparent matches with case-sensitive deduped names', async () => {
+      const episodeItem = createMediaItem({
+        id: 'episode-collections-1',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+      });
+      const seasonItem = createMediaItem({
+        id: 'season-1',
+        type: 'season' as MediaItemType,
+        parentId: 'show-1',
+      });
+      const showItem = createMediaItem({
+        id: 'show-1',
+        type: 'show' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'episode-collections-1') return episodeItem;
+        if (itemId === 'season-1') return seasonItem;
+        if (itemId === 'show-1') return showItem;
+        return undefined;
+      });
+      jellyfinAdapter.getCollections.mockResolvedValue([
+        createMediaCollection({ id: 'collection-episode', title: ' Episode ' }),
+        createMediaCollection({ id: 'collection-season-a', title: 'Season' }),
+        createMediaCollection({ id: 'collection-season-b', title: ' season ' }),
+        createMediaCollection({
+          id: 'collection-season-c',
+          title: 'Season ',
+        }),
+        createMediaCollection({ id: 'collection-show', title: 'Show' }),
+        createMediaCollection({
+          id: 'collection-own',
+          title: ' Show Cleanup ',
+        }),
+      ]);
+      jellyfinAdapter.getCollectionChildren.mockImplementation(
+        async (collectionId: string) => {
+          if (collectionId === 'collection-episode') return [episodeItem];
+          if (collectionId === 'collection-season-a') return [seasonItem];
+          if (collectionId === 'collection-season-b') return [seasonItem];
+          if (collectionId === 'collection-season-c') return [seasonItem];
+          if (collectionId === 'collection-show') return [showItem];
+          if (collectionId === 'collection-own') return [episodeItem];
+          return [];
+        },
+      );
+
+      const ruleGroup = createRulesDto({
+        dataType: 'episode',
+        libraryId: episodeItem.library.id,
+        name: ' show cleanup ',
+      });
+      const names = await jellyfinGetterService.get(
+        26,
+        episodeItem,
+        'episode',
+        ruleGroup,
+      );
+      const count = await jellyfinGetterService.get(
+        25,
+        episodeItem,
+        'episode',
+        ruleGroup,
+      );
+
+      expect(names).toEqual(['Episode', 'Season', 'season', 'Show']);
+      expect(count).toBe(4);
     });
   });
 
@@ -610,6 +969,225 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toEqual(new Date('2026-03-04'));
+    });
+  });
+
+  describe('show and season traversal rules', () => {
+    it('sw_allEpisodesSeenBy (id: 12) returns users that watched every episode', async () => {
+      const showItem = createMediaItem({
+        id: 'show-all-seen',
+        type: 'show' as MediaItemType,
+      });
+      const seasonItem = createMediaItem({
+        id: 'season-all-seen',
+        type: 'season' as MediaItemType,
+      });
+      const episode1 = createMediaItem({
+        id: 'episode-all-seen-1',
+        type: 'episode' as MediaItemType,
+      });
+      const episode2 = createMediaItem({
+        id: 'episode-all-seen-2',
+        type: 'episode' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+        createMediaUser({ id: 'user-3', name: 'Carol' }),
+      ]);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-all-seen' && childType === 'season') {
+            return [seasonItem];
+          }
+          if (parentId === 'season-all-seen' && childType === 'episode') {
+            return [episode1, episode2];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getItemSeenBy.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'episode-all-seen-1') return ['user-1', 'user-2'];
+          if (itemId === 'episode-all-seen-2') return ['user-2', 'user-3'];
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        12,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Bob']);
+    });
+
+    it('sw_episodes (id: 14) counts all episodes under a show', async () => {
+      const showItem = createMediaItem({
+        id: 'show-episode-count',
+        type: 'show' as MediaItemType,
+      });
+      const season1 = createMediaItem({
+        id: 'season-count-1',
+        type: 'season' as MediaItemType,
+      });
+      const season2 = createMediaItem({
+        id: 'season-count-2',
+        type: 'season' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-episode-count' && childType === 'season') {
+            return [season1, season2];
+          }
+          if (parentId === 'season-count-1' && childType === 'episode') {
+            return [
+              createMediaItem({ id: 'ep-count-1', type: 'episode' }),
+              createMediaItem({ id: 'ep-count-2', type: 'episode' }),
+            ];
+          }
+          if (parentId === 'season-count-2' && childType === 'episode') {
+            return [createMediaItem({ id: 'ep-count-3', type: 'episode' })];
+          }
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        14,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toBe(3);
+    });
+
+    it('sw_lastEpisodeAddedAt (id: 16) returns the newest episode add date', async () => {
+      const seasonItem = createMediaItem({
+        id: 'season-added',
+        type: 'season' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
+      jellyfinAdapter.getChildrenMetadata.mockResolvedValue([
+        createMediaItem({
+          id: 'episode-added-1',
+          type: 'episode',
+          addedAt: new Date('2026-01-03'),
+        }),
+        createMediaItem({
+          id: 'episode-added-2',
+          type: 'episode',
+          addedAt: new Date('2026-01-12'),
+        }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        16,
+        seasonItem,
+        'season',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-01-12'));
+      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+        'season-added',
+        'episode',
+      );
+    });
+
+    it('sw_lastEpisodeAiredAt (id: 27) returns the newest aired episode date under a show', async () => {
+      const showItem = createMediaItem({
+        id: 'show-aired',
+        type: 'show' as MediaItemType,
+      });
+      const seasonItem = createMediaItem({
+        id: 'season-aired',
+        type: 'season' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-aired' && childType === 'season') {
+            return [seasonItem];
+          }
+          if (parentId === 'season-aired' && childType === 'episode') {
+            return [
+              createMediaItem({
+                id: 'episode-aired-1',
+                type: 'episode',
+                originallyAvailableAt: new Date('2026-02-01'),
+              }),
+              createMediaItem({
+                id: 'episode-aired-2',
+                type: 'episode',
+                originallyAvailableAt: new Date('2026-02-08'),
+              }),
+            ];
+          }
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        27,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-02-08'));
+    });
+
+    it('sw_seasonLastEpisodeAiredAt (id: 29) uses the parent season for episodes', async () => {
+      const episodeItem = createMediaItem({
+        id: 'episode-season-aired',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-aired-parent',
+      });
+      const seasonItem = createMediaItem({
+        id: 'season-aired-parent',
+        type: 'season' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'episode-season-aired') return episodeItem;
+        if (itemId === 'season-aired-parent') return seasonItem;
+        return undefined;
+      });
+      jellyfinAdapter.getChildrenMetadata.mockResolvedValue([
+        createMediaItem({
+          id: 'episode-parent-aired-1',
+          type: 'episode',
+          originallyAvailableAt: new Date('2026-03-03'),
+        }),
+        createMediaItem({
+          id: 'episode-parent-aired-2',
+          type: 'episode',
+          originallyAvailableAt: new Date('2026-03-10'),
+        }),
+      ]);
+
+      const response = await jellyfinGetterService.get(
+        29,
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-10'));
+      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+        'season-aired-parent',
+        'episode',
+      );
     });
   });
 
@@ -1052,6 +1630,221 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toBe(0);
+    });
+  });
+
+  describe('playlist rules', () => {
+    it('playlists (id: 20) and playlist_names (id: 21) match movie playlist membership', async () => {
+      const mediaItem = createMediaItem({
+        id: 'movie-playlist-1',
+        type: 'movie',
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getPlaylists.mockResolvedValue([
+        createMediaPlaylist({ id: 'playlist-friday', title: 'Friday Queue' }),
+        createMediaPlaylist({ id: 'playlist-empty', title: 'Empty Queue' }),
+      ]);
+      jellyfinAdapter.getPlaylistItems.mockImplementation(
+        async (playlistId: string) => {
+          if (playlistId === 'playlist-friday') return [mediaItem];
+          return [createMediaItem({ id: 'other-movie', type: 'movie' })];
+        },
+      );
+
+      const names = await jellyfinGetterService.get(
+        21,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+      const count = await jellyfinGetterService.get(
+        20,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(names).toEqual(['Friday Queue']);
+      expect(count).toBe(1);
+      expect(jellyfinAdapter.getPlaylists).toHaveBeenCalledWith('');
+    });
+
+    it('playlist_names (id: 21) matches show playlists through descendant episodes', async () => {
+      const showItem = createMediaItem({
+        id: 'show-playlist-1',
+        type: 'show' as MediaItemType,
+      });
+      const seasonItem = createMediaItem({
+        id: 'season-playlist-1',
+        type: 'season' as MediaItemType,
+      });
+      const episodeItem = createMediaItem({
+        id: 'episode-playlist-1',
+        type: 'episode' as MediaItemType,
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-playlist-1' && childType === 'season') {
+            return [seasonItem];
+          }
+          if (parentId === 'season-playlist-1' && childType === 'episode') {
+            return [episodeItem];
+          }
+          return [];
+        },
+      );
+      jellyfinAdapter.getPlaylists.mockResolvedValue([
+        createMediaPlaylist({ id: 'playlist-show', title: 'Show Queue' }),
+      ]);
+      jellyfinAdapter.getPlaylistItems.mockResolvedValue([episodeItem]);
+
+      const response = await jellyfinGetterService.get(
+        21,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Show Queue']);
+    });
+  });
+
+  describe('play count rules', () => {
+    it.each([
+      { id: 30, type: 'movie' as MediaItemType, expected: 5 },
+      { id: 31, type: 'episode' as MediaItemType, expected: 2 },
+    ])(
+      'returns total Jellyfin play attempts for id $id',
+      async ({ id, type, expected }) => {
+        const mediaItem = createMediaItem({
+          id: `play-count-${id}`,
+          type,
+        });
+
+        jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+        jellyfinAdapter.getTotalPlayCount.mockResolvedValue(expected);
+
+        const response = await jellyfinGetterService.get(
+          id,
+          mediaItem,
+          type,
+          createRulesDto({ dataType: type }),
+        );
+
+        expect(response).toBe(expected);
+        expect(jellyfinAdapter.getTotalPlayCount).toHaveBeenCalledWith(
+          `play-count-${id}`,
+        );
+      },
+    );
+  });
+
+  describe('rating rules', () => {
+    it.each([
+      { id: 32, expected: 7.1 },
+      { id: 33, expected: 8.2 },
+      { id: 34, expected: 8.2 },
+      { id: 44, expected: 8.2 },
+    ])('returns item rating for id $id', async ({ id, expected }) => {
+      const mediaItem = createMediaItem({
+        id: `rating-${id}`,
+        type: 'movie',
+        ratings: [
+          { source: 'critic', value: 7.1, type: 'critic' },
+          { source: 'community', value: 8.2, type: 'audience' },
+        ],
+      });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+
+      const response = await jellyfinGetterService.get(
+        id,
+        mediaItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBe(expected);
+    });
+
+    it.each([
+      { id: 35, expected: 8.4 },
+      { id: 36, expected: 7.4 },
+      { id: 37, expected: 8.4 },
+      { id: 38, expected: 8.4 },
+    ])(
+      'returns show rating for season-backed id $id',
+      async ({ id, expected }) => {
+        const seasonItem = createMediaItem({
+          id: `season-rating-${id}`,
+          type: 'season' as MediaItemType,
+          parentId: 'show-rating-parent',
+          ratings: [
+            { source: 'community', value: 4.1, type: 'audience' },
+            { source: 'critic', value: 4.2, type: 'critic' },
+          ],
+        });
+        const showItem = createMediaItem({
+          id: 'show-rating-parent',
+          type: 'show' as MediaItemType,
+          ratings: [
+            { source: 'community', value: 8.4, type: 'audience' },
+            { source: 'critic', value: 7.4, type: 'critic' },
+          ],
+        });
+
+        jellyfinAdapter.getMetadata.mockImplementation(
+          async (itemId: string) => {
+            if (itemId === `season-rating-${id}`) return seasonItem;
+            if (itemId === 'show-rating-parent') return showItem;
+            return undefined;
+          },
+        );
+
+        const response = await jellyfinGetterService.get(
+          id,
+          seasonItem,
+          'season',
+          createRulesDto({ dataType: 'show' }),
+        );
+
+        expect(response).toBe(expected);
+      },
+    );
+
+    it('rating_imdbShow (id: 35) uses grandparent metadata for episodes', async () => {
+      const episodeItem = createMediaItem({
+        id: 'episode-rating-show',
+        type: 'episode' as MediaItemType,
+        parentId: 'season-rating-show',
+        grandparentId: 'show-rating-grandparent',
+      });
+      const showItem = createMediaItem({
+        id: 'show-rating-grandparent',
+        type: 'show' as MediaItemType,
+        ratings: [{ source: 'community', value: 9.1, type: 'audience' }],
+      });
+
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
+        if (itemId === 'episode-rating-show') return episodeItem;
+        if (itemId === 'show-rating-grandparent') return showItem;
+        return undefined;
+      });
+
+      const response = await jellyfinGetterService.get(
+        35,
+        episodeItem,
+        'episode',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toBe(9.1);
+      expect(jellyfinAdapter.getMetadata).toHaveBeenCalledWith(
+        'show-rating-grandparent',
+      );
     });
   });
 

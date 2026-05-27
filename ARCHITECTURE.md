@@ -25,6 +25,10 @@ Maintainerr/
 |-- docs/                    # Feature-level technical notes
 |-- docker/                  # Docker helper configuration
 |-- tools/                   # Release and maintenance scripts
+|   `-- dev/                 # Local dev mocks (fake Plex/Jellyfin) and DB seed
+|-- .codex/config.toml       # Codex project MCP server config
+|-- .mcp.json                # Claude Code project MCP server config
+|-- .vscode/mcp.json         # VS Code MCP server config mirror
 |-- Dockerfile               # Multi-stage production image
 |-- README.md                # Product overview and installation entry point
 |-- CONTRIBUTING.md          # Contributor setup and process
@@ -218,6 +222,13 @@ Testing conventions:
   `apps/server/src`.
 - UI tests use Vitest and React Testing Library.
 - Contracts use TypeScript checks and package-level linting.
+- Project MCP server config lives in `.codex/config.toml`, `.mcp.json`, and
+  `.vscode/mcp.json`; keep them in sync. The GitHub MCP server is read-only,
+  and Playwright screenshots should be saved under `.playwright-mcp/`.
+- End-to-end checks of media-server-dependent flows use the dev mocks and DB
+  seed under `tools/dev/` (`fake-plex.mjs` / `fake-jellyfin.mjs` +
+  `seed-db.mjs`) to drive the UI with Playwright against deterministic data;
+  see `AGENTS.md` for the workflow.
 
 See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 

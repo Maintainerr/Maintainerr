@@ -259,6 +259,14 @@ export class RuleConstants {
           showType: ['show', 'season'],
         },
         {
+          id: 45,
+          name: 'sw_markedWatchedEpisodes',
+          humanName: 'Amount of episodes marked as watched',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season'],
+        },
+        {
           id: 16,
           name: 'sw_lastEpisodeAddedAt',
           humanName: 'Last episode added at',
@@ -1398,6 +1406,35 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.DATE,
           cacheReset: true,
+        },
+      ],
+    },
+    {
+      // Streamystats is an optional, Jellyfin-only companion (the Jellyfin
+      // analog of Tautulli for Plex). It is removed from the constants unless
+      // configured and Jellyfin is the active server (see RulesService).
+      //
+      // A Streamystats "watchlist" is a user-created curated list, and only
+      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key — see
+      // the StreamystatsWatchlistMembership contract for why. These properties
+      // act as a "users curated this" protection signal.
+      id: Application.STREAMYSTATS,
+      name: 'Streamystats',
+      mediaType: MediaType.BOTH,
+      props: [
+        {
+          id: 0,
+          name: 'isInWatchlist',
+          humanName: 'Is in a watchlist',
+          mediaType: MediaType.BOTH,
+          type: RuleType.BOOL,
+        },
+        {
+          id: 1,
+          name: 'watchlistedByUsers',
+          humanName: '[list] In watchlist of (username)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST, // returns usernames []
         },
       ],
     },

@@ -123,7 +123,7 @@ const RadarrSettings = () => {
             ? settings.map((setting) => (
                 <li
                   key={setting.id}
-                  className="h-full rounded-xl bg-zinc-800 p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
+                  className="h-full rounded-xl bg-zinc-800 p-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700"
                 >
                   <div className="mb-2 flex items-center gap-x-3 text-base font-medium text-white sm:text-lg">
                     {setting.serverName}
@@ -158,10 +158,10 @@ const RadarrSettings = () => {
             : null}
 
           {loaded ? (
-            <li className="flex h-full min-h-[9.75rem] items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow">
+            <li className="flex h-full min-h-39 items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow-sm">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
+                className="add-button m-auto flex h-9 rounded-sm bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={showAddModal}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}

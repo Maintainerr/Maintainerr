@@ -198,7 +198,7 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.radarrSettingsRepo.findOne({
         where: { id: id },
-        relations: ['collections'],
+        relations: { collections: true },
       });
 
       if (settingsDb.collections.length > 0) {
@@ -800,7 +800,7 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.sonarrSettingsRepo.findOne({
         where: { id: id },
-        relations: ['collections'],
+        relations: { collections: true },
       });
 
       if (settingsDb.collections.length > 0) {
@@ -1219,7 +1219,9 @@ export class SettingsOperationsService {
     }
   }
 
-  public async testPlexAuthToken(): Promise<BasicResponseDto> {
+  public async testPlexAuthToken(): Promise<
+    BasicResponseDto & { unreachable?: boolean }
+  > {
     if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
@@ -1228,26 +1230,35 @@ export class SettingsOperationsService {
       };
     }
 
-    try {
-      const valid = await this.plexApi.validateAuthToken();
+    const unreachableMessage =
+      "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.";
 
-      return valid
-        ? { status: 'OK', code: 1, message: 'Success' }
-        : {
+    try {
+      switch (await this.plexApi.validateAuthToken()) {
+        case 'valid':
+          return { status: 'OK', code: 1, message: 'Success' };
+        case 'invalid':
+          return {
             status: 'NOK',
             code: 0,
             message:
               'Stored Plex credentials are invalid. Re-authenticate with Plex.',
           };
+        case 'unreachable':
+          return {
+            status: 'NOK',
+            code: 0,
+            unreachable: true,
+            message: unreachableMessage,
+          };
+      }
     } catch (error) {
       logConnectionTestError(this.logger, 'Plex auth');
       return {
         status: 'NOK',
         code: 0,
-        message: formatConnectionFailureMessage(
-          error,
-          'Stored Plex credentials could not be validated. Re-authenticate with Plex.',
-        ),
+        unreachable: true,
+        message: formatConnectionFailureMessage(error, unreachableMessage),
       };
     }
   }

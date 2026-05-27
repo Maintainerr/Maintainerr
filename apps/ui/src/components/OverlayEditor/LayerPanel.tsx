@@ -75,7 +75,7 @@ export function LayerPanel({
 
   return (
     <div>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-400">
+      <h3 className="mb-2 text-xs font-medium tracking-wider text-zinc-400 uppercase">
         Layers
       </h3>
       {sorted.length === 0 && (

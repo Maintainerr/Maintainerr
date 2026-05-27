@@ -101,7 +101,7 @@ const RulesListPage = () => {
             {data.map((el) => (
               <li
                 key={el.id}
-                className="collection relative flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow ring-1 ring-zinc-700"
+                className="collection relative flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700"
               >
                 <RuleGroup
                   onDelete={refreshData}

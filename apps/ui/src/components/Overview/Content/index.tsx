@@ -121,89 +121,94 @@ const OverviewContent = (props: IOverviewContent) => {
   return (
     <>
       {showInitialLoading ? (
-        <div className="min-h-[20rem]">
+        <div className="min-h-80">
           <LoadingSpinner />
         </div>
       ) : hasData ? (
-        <ul
-          className="cards-vertical"
-          aria-busy={loading || Boolean(extrasLoading)}
-        >
-          {data.map((el) => (
-            <li key={el.id}>
-              <MediaCard
-                id={el.id}
-                libraryId={props.libraryId}
-                type={el.type}
-                summary={
-                  el.type === 'movie' || el.type === 'show'
-                    ? el.summary
-                    : el.type === 'season'
-                      ? el.title
-                      : el.type === 'episode'
-                        ? 'Episode ' + el.index + ' - ' + el.title
-                        : ''
-                }
-                year={
-                  el.type === 'episode'
-                    ? el.parentTitle
-                    : getParentYear(el)
-                      ? getParentYear(el)?.toString()
-                      : el.year?.toString()
-                }
-                mediaType={el.type}
-                title={
-                  el.grandparentTitle
-                    ? el.grandparentTitle
-                    : el.parentTitle
+        // @container lets the grid size its columns to this wrapper's width
+        // (not the viewport), so it lays out correctly inside narrow contexts
+        // like the collection-detail exclusions slideover.
+        <div className="@container">
+          <ul
+            className="cards-vertical"
+            aria-busy={loading || Boolean(extrasLoading)}
+          >
+            {data.map((el) => (
+              <li key={el.id}>
+                <MediaCard
+                  id={el.id}
+                  libraryId={props.libraryId}
+                  type={el.type}
+                  summary={
+                    el.type === 'movie' || el.type === 'show'
+                      ? el.summary
+                      : el.type === 'season'
+                        ? el.title
+                        : el.type === 'episode'
+                          ? 'Episode ' + el.index + ' - ' + el.title
+                          : ''
+                  }
+                  year={
+                    el.type === 'episode'
                       ? el.parentTitle
-                      : el.title
-                }
-                exclusionId={
-                  el.maintainerrExclusionId
-                    ? el.maintainerrExclusionId
-                    : undefined
-                }
-                providerIds={extractProviderIds(el)}
-                collectionPage={
-                  props.collectionPage ? props.collectionPage : false
-                }
-                exclusionType={el.maintainerrExclusionType}
-                onRemove={props.onRemove}
-                collectionId={props.collectionId}
-                collection={
-                  props.collection ??
-                  props.collectionInfo?.find(
-                    (colEl) => colEl.mediaServerId === el.id,
-                  )?.collection
-                }
-                isManual={
-                  el.maintainerrIsManual ? el.maintainerrIsManual : false
-                }
-                {...(props.collectionInfo
-                  ? {
-                      daysLeft: getDaysLeft(el.id),
-                      collectionId: props.collectionInfo.find(
-                        (colEl) => colEl.mediaServerId === el.id,
-                      )?.collectionId,
-                    }
-                  : undefined)}
-              />
-            </li>
-          ))}
-          {showAppendLoading ? (
-            <li
-              className="flex min-h-10 items-center justify-center"
-              style={{ overflowAnchor: 'none' }}
-            >
-              <div role="status" aria-label="Loading more items">
-                <SmallLoadingSpinner className="h-10 w-10" />
-              </div>
-            </li>
-          ) : null}
-        </ul>
+                      : getParentYear(el)
+                        ? getParentYear(el)?.toString()
+                        : el.year?.toString()
+                  }
+                  mediaType={el.type}
+                  title={
+                    el.grandparentTitle
+                      ? el.grandparentTitle
+                      : el.parentTitle
+                        ? el.parentTitle
+                        : el.title
+                  }
+                  exclusionId={
+                    el.maintainerrExclusionId
+                      ? el.maintainerrExclusionId
+                      : undefined
+                  }
+                  providerIds={extractProviderIds(el)}
+                  collectionPage={
+                    props.collectionPage ? props.collectionPage : false
+                  }
+                  exclusionType={el.maintainerrExclusionType}
+                  onRemove={props.onRemove}
+                  collectionId={props.collectionId}
+                  collection={
+                    props.collection ??
+                    props.collectionInfo?.find(
+                      (colEl) => colEl.mediaServerId === el.id,
+                    )?.collection
+                  }
+                  isManual={
+                    el.maintainerrIsManual ? el.maintainerrIsManual : false
+                  }
+                  {...(props.collectionInfo
+                    ? {
+                        daysLeft: getDaysLeft(el.id),
+                        collectionId: props.collectionInfo.find(
+                          (colEl) => colEl.mediaServerId === el.id,
+                        )?.collectionId,
+                      }
+                    : undefined)}
+                />
+              </li>
+            ))}
+            {showAppendLoading ? (
+              <li
+                className="flex min-h-10 items-center justify-center"
+                style={{ overflowAnchor: 'none' }}
+              >
+                <div role="status" aria-label="Loading more items">
+                  <SmallLoadingSpinner className="h-10 w-10" />
+                </div>
+              </li>
+            ) : null}
+          </ul>
+        </div>
       ) : (
-        <div className="flex min-h-[20rem] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
+        <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
           No items found.
         </div>
       )}

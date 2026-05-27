@@ -20,7 +20,7 @@ import {
 import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import PlexApi from '../lib/plexApi';
-import PlexTvApi, { PlexUser } from '../lib/plextvApi';
+import PlexTvApi, { PlexTokenValidation, PlexUser } from '../lib/plextvApi';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
@@ -354,26 +354,19 @@ export class PlexApiService {
     }
   }
 
-  public async validateAuthToken(token?: string): Promise<boolean> {
+  public async validateAuthToken(token?: string): Promise<PlexTokenValidation> {
     const authToken = token ?? this.settings.plex_auth_token;
 
     if (!authToken) {
       throw new Error('Plex auth token is required for validation');
     }
 
-    try {
-      const plexTvClient = new PlexTvApi(
-        authToken,
-        this.loggerFactory.createLogger(),
-      );
+    const plexTvClient = new PlexTvApi(
+      authToken,
+      this.loggerFactory.createLogger(),
+    );
 
-      await plexTvClient.getUser();
-      return true;
-    } catch (error) {
-      this.logger.debug('Plex auth token validation failed');
-      this.logger.debug(error);
-      return false;
-    }
+    return plexTvClient.validateToken();
   }
 
   public async searchContent(input: string) {
@@ -862,19 +855,13 @@ export class PlexApiService {
 
   public async createCollection(params: CreateUpdateCollection) {
     try {
-      // When initial items are supplied, seed them at create time using the
-      // canonical server-URI form that python-plexapi's Collection.create()
-      // uses. Saves a round trip and avoids a half-created empty collection
-      // if the follow-up add were to fail.
-      const itemsUri = params.initialItemIds?.length
-        ? `&uri=${this.buildCollectionItemsUri(params.initialItemIds)}`
-        : '';
+      // Created empty; items are added afterwards via the batched add path.
       const response = await this.plexClient.postQuery<any>({
         uri: `/library/collections?type=${
           params.type
         }&title=${encodeURIComponent(params.title)}&sectionId=${
           params.libraryId
-        }${itemsUri}`,
+        }`,
       });
       const collection: PlexCollection = response.MediaContainer
         .Metadata[0] as PlexCollection;

@@ -143,6 +143,8 @@ type UseServarrSettingsQueryKey = ['settings', 'servarr', 'radarr' | 'sonarr']
 
 export interface PlexAuthValidationResult {
   valid: boolean
+  // plex.tv couldn't be reached to verify a stored token; it may still be valid.
+  unreachable?: boolean
   errorMessage?: string
 }
 
@@ -268,6 +270,7 @@ export const usePlexAuthValidation = (
       const result = await GetApiHandler<{
         status: string
         code: number
+        unreachable?: boolean
         message: string
       }>('/settings/test/plex/auth')
 
@@ -277,12 +280,19 @@ export const usePlexAuthValidation = (
 
       return {
         valid: false,
+        unreachable: result.unreachable === true,
         errorMessage:
           result.message ||
           'Stored Plex credentials are invalid. Re-authenticate with Plex.',
       }
     },
     staleTime: 0,
+    // If plex.tv was unreachable, retry a few times 3s apart so a transient
+    // blip self-heals; then stop to avoid an endless poll.
+    refetchInterval: (query) =>
+      query.state.data?.unreachable && query.state.dataUpdateCount < 3
+        ? 3000
+        : false,
     ...options,
   })
 }

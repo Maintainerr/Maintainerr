@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -46,6 +46,7 @@ export interface ReturnStatus {
   code: 0 | 1;
   result?: string;
   message?: string;
+  skipped?: number;
 }
 
 @Injectable()
@@ -119,6 +120,14 @@ export class RulesService {
       if (!settings.tautulli_url || !settings.tautulli_api_key) {
         localConstants.applications = localConstants.applications.filter(
           (el) => el.id !== Application.TAUTULLI,
+        );
+      }
+
+      // remove streamystats if not configured. It is Jellyfin-only and reuses
+      // the Jellyfin API key; the UI further restricts it to Jellyfin servers.
+      if (!settings.streamystats_url || !settings.jellyfin_api_key) {
+        localConstants.applications = localConstants.applications.filter(
+          (el) => el.id !== Application.STREAMYSTATS,
         );
       }
     }
@@ -241,7 +250,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { id: ruleGroupId },
-        relations: ['notifications'],
+        relations: { notifications: true },
       });
     } catch (error) {
       this.logger.warn('Rules - Action failed');
@@ -254,7 +263,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { collectionId: id },
-        relations: ['notifications'],
+        relations: { notifications: true },
       });
     } catch (error) {
       this.logger.warn('Rules - Action failed');
@@ -304,7 +313,13 @@ export class RulesService {
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -406,7 +421,13 @@ export class RulesService {
   async updateRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -652,12 +673,29 @@ export class RulesService {
       for (const media of handleMedia) {
         const metaData = await mediaServer.getMetadata(media.mediaServerId);
 
+        // Global subsumes scoped: skip a rule-group exclusion when the item is
+        // already globally excluded (an item is global or scoped, never both).
+        if (data.ruleGroupId !== undefined) {
+          const existingGlobal = await this.exclusionRepo.findOne({
+            where: {
+              mediaServerId: media.mediaServerId,
+              ruleGroupId: IsNull(),
+            },
+          });
+          if (existingGlobal) {
+            this.logger.log(
+              `Media ${media.mediaServerId} is already globally excluded; skipped rule group ${data.ruleGroupId} exclusion`,
+            );
+            continue;
+          }
+        }
+
         const old = await this.exclusionRepo.findOne({
           where: {
             mediaServerId: media.mediaServerId,
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
-              : { ruleGroupId: null }),
+              : { ruleGroupId: IsNull() }),
           },
         });
 
@@ -675,6 +713,15 @@ export class RulesService {
             type: metaData?.type,
           },
         ]);
+
+        // Global subsumes scoped: a new global exclusion drops the item's
+        // now-redundant rule-group exclusions.
+        if (data.ruleGroupId === undefined) {
+          await this.exclusionRepo.delete({
+            mediaServerId: media.mediaServerId,
+            ruleGroupId: Not(IsNull()),
+          });
+        }
 
         // add collection log record if needed
         if (data.collectionId) {
@@ -719,8 +766,8 @@ export class RulesService {
         return this.createReturnStatus(true, 'Success');
       }
 
-      // add collection log record if needed
-      if (exclcusion.ruleGroupId !== undefined) {
+      // global exclusions (null ruleGroupId) have no rule group to log against
+      if (exclcusion.ruleGroupId != null) {
         const rulegroup = await this.ruleGroupRepository.findOne({
           where: {
             id: exclcusion.ruleGroupId,
@@ -738,7 +785,13 @@ export class RulesService {
 
       // do delete
       await this.exclusionRepo.delete(id);
-      this.logger.log(`Removed exclusion with id ${id}`);
+      this.logger.log(
+        `Removed exclusion ${id} for media ${exclcusion.mediaServerId} (${
+          exclcusion.ruleGroupId != null
+            ? `rule group ${exclcusion.ruleGroupId}`
+            : 'global'
+        })`,
+      );
       return this.createReturnStatus(true, 'Success');
     } catch (error) {
       this.logger.warn(`Removing exclusion with id ${id} failed.`);
@@ -877,7 +930,7 @@ export class RulesService {
           ? exclusions.concat(
               await this.exclusionRepo.find({
                 where: {
-                  ruleGroupId: null,
+                  ruleGroupId: IsNull(),
                 },
               }),
             )
@@ -904,8 +957,18 @@ export class RulesService {
   private validateRule(rule: RuleDto): ReturnStatus {
     try {
       const val1: Property = this.ruleConstants.applications
-        .find((el) => el.id === rule.firstVal[0])
-        .props.find((el) => el.id === rule.firstVal[1]);
+        .find((el) => el.id === rule.firstVal?.[0])
+        ?.props.find((el) => el.id === rule.firstVal?.[1]);
+      // Guard against a first value whose application/property no longer exists
+      // (e.g. an imported rule referencing an unconfigured service). Returning a
+      // clean status beats throwing a TypeError that surfaces as a generic
+      // "Unexpected error occurred".
+      if (!val1) {
+        return this.createReturnStatus(
+          false,
+          'First value is not available for this server',
+        );
+      }
       if (
         [RulePossibility.EXISTS, RulePossibility.NOT_EXISTS].includes(
           +rule.action,
@@ -919,7 +982,13 @@ export class RulesService {
       if (rule.lastVal) {
         const val2: Property = this.ruleConstants.applications
           .find((el) => el.id === rule.lastVal[0])
-          .props.find((el) => el.id === rule.lastVal[1]);
+          ?.props.find((el) => el.id === rule.lastVal[1]);
+        if (!val2) {
+          return this.createReturnStatus(
+            false,
+            'Second value is not available for this server',
+          );
+        }
         if (
           val1.type === val2.type ||
           ([RuleType.TEXT_LIST, RuleType.TEXT].includes(val1.type) &&
@@ -1144,11 +1213,19 @@ export class RulesService {
             .loadMany(),
         );
 
-      // Associate new notifications to the RuleGroup
-      await connection
-        .relation(RuleGroup, 'notifications')
-        .of(id)
-        .add(notifications?.map((notification) => notification.id));
+      // Associate new notifications to the RuleGroup. Guard against an
+      // empty/omitted list: `.add(undefined)` (when `notifications` is omitted
+      // by an API/import client) inserts a join row with a null notificationId
+      // and fails the whole rule-group create.
+      const notificationIds = notifications?.map(
+        (notification) => notification.id,
+      );
+      if (notificationIds?.length) {
+        await connection
+          .relation(RuleGroup, 'notifications')
+          .of(id)
+          .add(notificationIds);
+      }
 
       return id;
     } catch (error) {
@@ -1306,11 +1383,17 @@ export class RulesService {
     // Migrate decoded rules to the configured media server
     if (result.code === 1 && result.result) {
       const parsed = JSON.parse(result.result);
+      const beforeMigrate = parsed.rules.length;
       const migrationResult = await this.migrateRules(parsed.rules);
       if (migrationResult.code === 1 && migrationResult.result) {
         parsed.rules = JSON.parse(migrationResult.result);
-        result.result = JSON.stringify(parsed);
       }
+      // Combine rules dropped by decode (unresolved identifier) and by
+      // migration (no equivalent on the target server) into the single
+      // top-level skipped count so the UI reads it the same way as export.
+      result.skipped =
+        (result.skipped ?? 0) + (beforeMigrate - parsed.rules.length);
+      result.result = JSON.stringify(parsed);
     }
 
     return result;

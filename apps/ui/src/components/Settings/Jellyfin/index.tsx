@@ -313,7 +313,7 @@ const JellyfinSettings = () => {
 
             <div className="actions mt-5 w-full">
               <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-sm sm:ml-3 sm:mr-auto">
+                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
                   <DocsButton page="Configuration/#jellyfin" />
                 </span>
                 <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
@@ -335,7 +335,7 @@ const JellyfinSettings = () => {
                     }
                   />
 
-                  <span className="ml-3 inline-flex rounded-md shadow-sm">
+                  <span className="ml-3 inline-flex rounded-md shadow-xs">
                     <SaveButton
                       type="submit"
                       disabled={!canSaveSettings}

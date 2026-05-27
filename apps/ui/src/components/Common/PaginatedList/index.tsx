@@ -82,7 +82,7 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
       <div className="mt-6 flex justify-center">
         <button
           onClick={onAdd}
-          className="button-md inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-maintainerr-600 border-transparent bg-maintainerr-600 px-4 py-2 text-sm font-medium leading-5 text-white transition duration-150 ease-in-out hover:border-maintainerr hover:bg-maintainerr focus:border-maintainerr-700 focus:outline-none focus:ring-maintainerr active:border-maintainerr-700 active:bg-maintainerr-700 disabled:opacity-50"
+          className="button-md inline-flex cursor-pointer items-center justify-center rounded-md border border-maintainerr-600 border-transparent bg-maintainerr-600 px-4 py-2 text-sm leading-5 font-medium whitespace-nowrap text-white transition duration-150 ease-in-out hover:border-maintainerr hover:bg-maintainerr focus:border-maintainerr-700 focus:ring-maintainerr focus:outline-hidden active:border-maintainerr-700 active:bg-maintainerr-700 disabled:opacity-50"
         >
           {addName ? addName : 'Add'}
         </button>

@@ -250,20 +250,22 @@ export class NotificationService implements OnModuleInit {
     notificationId: number;
   }) {
     try {
-      const ruleGroup = await this.ruleGroupRepo.findOne({
-        where: { id: payload.rulegroupId },
-      });
+      if (payload.rulegroupId && payload.notificationId) {
+        const ruleGroup = await this.ruleGroupRepo.findOne({
+          where: { id: payload.rulegroupId },
+        });
 
-      const notificationConfig = await this.notificationRepo.findOne({
-        where: { id: payload.notificationId },
-      });
+        const notificationConfig = await this.notificationRepo.findOne({
+          where: { id: payload.notificationId },
+        });
 
-      if (ruleGroup && notificationConfig) {
-        ruleGroup.notifications = ruleGroup.notifications.filter(
-          (c) => c.id !== payload.notificationId,
-        );
-        await this.ruleGroupRepo.save(ruleGroup);
-        return { code: 1, result: 'success' };
+        if (ruleGroup && notificationConfig) {
+          ruleGroup.notifications = ruleGroup.notifications.filter(
+            (c) => c.id !== payload.notificationId,
+          );
+          await this.ruleGroupRepo.save(ruleGroup);
+          return { code: 1, result: 'success' };
+        }
       }
 
       return { code: 0, result: 'failed' };

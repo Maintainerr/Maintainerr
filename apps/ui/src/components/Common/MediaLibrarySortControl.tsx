@@ -272,7 +272,7 @@ export const MediaLibrarySortControl = ({
         <div
           role="status"
           aria-label="Loading sorted items"
-          className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2"
+          className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2"
         >
           <SmallLoadingSpinner className="h-4 w-4" />
         </div>

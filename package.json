@@ -27,7 +27,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^20.19.0 || ^22.13.0 || >=24.11.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
@@ -35,9 +35,9 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@types/node": "^22.19.19",
-    "knip": "^6.14.1",
+    "knip": "^6.14.2",
     "semantic-release": "^25.0.3",
-    "turbo": "^2.9.14",
+    "turbo": "^2.9.15",
     "typescript": "^6.0.3"
   },
   "release": {
@@ -53,7 +53,7 @@
       [
         "@semantic-release/exec",
         {
-          "generateNotesCmd": "node tools/generate-release-notes.mjs",
+          "generateNotesCmd": "NEXT_RELEASE_VERSION=\"${nextRelease.version}\" LAST_RELEASE_GITTAG=\"${lastRelease.gitTag}\" NEXT_RELEASE_GITHEAD=\"${nextRelease.gitHead}\" node tools/generate-release-notes.mjs",
           "prepareCmd": "yarn --cwd apps/server version ${nextRelease.version} && yarn --cwd apps/ui version ${nextRelease.version}"
         }
       ],

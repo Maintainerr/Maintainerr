@@ -1807,7 +1807,10 @@ describe('CollectionsService', () => {
     expect(result[0].mediaData?.title).toBe('Fallback Movie');
   });
 
-  it('passes initial item ids on create for servers that support seeded collection creation', async () => {
+  it('creates a new media server collection empty, then batch-adds items', async () => {
+    // Regression: item ids must never be seeded into the create request (they
+    // travel in the query string → HTTP 414 at scale). Create empty, then add
+    // via the batched path.
     const collection = createCollection({
       id: 21,
       mediaServerId: null,
@@ -1820,9 +1823,6 @@ describe('CollectionsService', () => {
     collectionRepo.save.mockImplementation(async (entity) => entity as any);
     collectionMediaRepo.find.mockResolvedValue([]);
     collectionPosterService.loadStoredPoster.mockResolvedValue(null);
-    mediaServer.supportsFeature.mockImplementation(
-      (feature) => feature === MediaServerFeature.BULK_COLLECTION_CREATE,
-    );
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
@@ -1836,16 +1836,16 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.createCollection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialItemIds: ['episode-1', 'episode-2'],
+      expect.not.objectContaining({
+        initialItemIds: expect.anything(),
       }),
     );
-    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    // Not seeded on create, so the batched add path runs (skipMediaServerAdd=false).
     expect(addChildrenToCollection).toHaveBeenCalledWith(
       { mediaServerId: 'remote-collection', dbId: collection.id },
       [{ mediaServerId: 'episode-1' }, { mediaServerId: 'episode-2' }],
       false,
-      true,
+      false,
       CollectionMediaManualMembershipSource.LOCAL,
     );
   });

@@ -126,7 +126,19 @@ export class RuleComparatorService {
           this.handleSectionAction(sectionActionAnd);
 
           // save new section action
-          sectionActionAnd = +parsedRule.operator === 0;
+          // Null-guarded coercion. The section operator lives on the first
+          // condition of the new section and is persisted as a string
+          // ("0"/"1"), or null when unset. +null === 0 is true in JS, so the
+          // bare `+operator === 0` check coerced an unset operator to AND.
+          // Guard against null first, then coerce — mirroring the
+          // within-section idiom (`operator != null && +operator === ...`)
+          // used elsewhere in this service — so an unset operator falls
+          // through to OR while an explicit AND ("0") is still honoured.
+          // Persisted rules are normalised to an explicit operator by
+          // migration, so null should not reach here in practice.
+          sectionActionAnd =
+            parsedRule.operator != null &&
+            +parsedRule.operator === RuleOperators.AND;
           // reset first operator of new section
           parsedRule.operator = null;
           // add new section to stats
@@ -511,9 +523,17 @@ export class RuleComparatorService {
   }
 
   private getSecondValueName(rule: RuleDto): string {
-    return rule.lastVal
-      ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-      : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;
+    if (rule.lastVal) {
+      return this.ruleConstanstService.getValueHumanName(rule.lastVal);
+    }
+    // Unary actions (EXISTS / NOT_EXISTS) have neither a second value nor a
+    // custom value. Guard against it so this diagnostic-only helper never
+    // throws while logging a skipped comparison (which would abort the run).
+    if (rule.customVal) {
+      return this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
+        .type;
+    }
+    return 'none';
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {

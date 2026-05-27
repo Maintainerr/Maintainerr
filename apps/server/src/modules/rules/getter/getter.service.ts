@@ -16,6 +16,7 @@ import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
 import { SeerrGetterService } from './seerr-getter.service';
 import { SonarrGetterService } from './sonarr-getter.service';
+import { StreamystatsGetterService } from './streamystats-getter.service';
 import { TautulliGetterService } from './tautulli-getter.service';
 
 @Injectable()
@@ -26,6 +27,7 @@ export class ValueGetterService {
     private readonly sonarrGetter: SonarrGetterService,
     private readonly seerrGetter: SeerrGetterService,
     private readonly tautulliGetter: TautulliGetterService,
+    private readonly streamystatsGetter: StreamystatsGetterService,
     private readonly jellyfinGetter: JellyfinGetterService,
     private readonly embyGetter: EmbyGetterService,
     private readonly mediaServerFactory: MediaServerFactory,
@@ -90,6 +92,9 @@ export class ValueGetterService {
           dataType,
           ruleGroup,
         );
+      }
+      case Application.STREAMYSTATS: {
+        return await this.streamystatsGetter.get(val2, libItem);
       }
       default: {
         return null;

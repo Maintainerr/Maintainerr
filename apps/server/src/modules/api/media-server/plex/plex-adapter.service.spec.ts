@@ -618,13 +618,15 @@ describe('PlexAdapterService', () => {
       ).rejects.toThrow('Failed to create collection');
     });
 
-    it('forwards initialItemIds to PlexApiService for bulk create', async () => {
+    it('creates the collection empty without forwarding item ids', async () => {
+      // Items are added afterwards via the batched add path; seeding them into
+      // the create request overflows the URL (HTTP 414).
       plexApi.createCollection.mockResolvedValue(
         createPlexCollection({
           ratingKey: 'col456',
           key: '/library/collections/col456',
           guid: 'plex://collection/col456',
-          title: 'Seeded',
+          title: 'New',
           subtype: 'movie',
           summary: '',
           index: 0,
@@ -632,7 +634,7 @@ describe('PlexAdapterService', () => {
           thumb: '/thumb/col456',
           addedAt: 1609459200,
           updatedAt: 1609459200,
-          childCount: '2',
+          childCount: '0',
           maxYear: '2021',
           minYear: '2021',
         }),
@@ -640,14 +642,13 @@ describe('PlexAdapterService', () => {
 
       await service.createCollection({
         libraryId: 'lib1',
-        title: 'Seeded',
+        title: 'New',
         type: 'movie',
-        initialItemIds: ['item-1', 'item-2'],
       });
 
-      expect(plexApi.createCollection).toHaveBeenCalledWith(
+      expect(plexApi.createCollection).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          initialItemIds: ['item-1', 'item-2'],
+          initialItemIds: expect.anything(),
         }),
       );
     });

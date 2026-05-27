@@ -15,7 +15,15 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
-import { buildCollectionExcludeNames } from '../helpers/collection-exclude.helper';
+import {
+  countRuleCollectionNames,
+  definedUniqueValues,
+  filterRuleCollectionNames,
+  getParentBackedRuleItem,
+  mapMatchingRuleUsersToNames,
+  trimRulePropertyNames,
+  uniqueTrimmedRulePropertyNames,
+} from '../helpers/rule-property.helper';
 
 @Injectable()
 export class PlexGetterService {
@@ -85,9 +93,12 @@ export class PlexGetterService {
             metadata.ratingKey,
           );
           const viewerIds = viewers.map((el) => +el.accountID);
-          return plexUsers
-            .filter((el) => viewerIds.includes(el.plexId))
-            .map((el) => el.username);
+          return mapMatchingRuleUsersToNames(
+            viewerIds,
+            plexUsers,
+            (user) => user.plexId,
+            (user) => user.username,
+          );
         }
         case 'releaseDate': {
           return new Date(metadata.originallyAvailableAt)
@@ -123,38 +134,36 @@ export class PlexGetterService {
           return watchState.isWatched;
         }
         case 'labels': {
-          const item =
-            metadata.type === 'episode'
-              ? ((await getGrandparent()) ?? metadata)
-              : metadata.type === 'season'
-                ? ((await getParent()) ?? metadata)
-                : metadata;
+          const item = await getParentBackedRuleItem(
+            metadata.type,
+            metadata,
+            getParent,
+            getGrandparent,
+          );
 
           return item.Label ? item.Label.map((l) => l.tag) : [];
         }
         case 'collections': {
-          const excludeNames = buildCollectionExcludeNames(ruleGroup);
-          return metadata.Collection
-            ? metadata.Collection.filter(
-                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
-              ).length
-            : 0;
+          return countRuleCollectionNames(
+            metadata.Collection?.map((collection) => collection.tag) ?? [],
+            ruleGroup,
+          );
         }
         case 'sw_collections_including_parent': {
           const parent = await getParent();
           const grandparent = await getGrandparent();
-          const combinedCollections = [
-            ...(metadata?.Collection || []),
-            ...(parent?.Collection || []),
-            ...(grandparent?.Collection || []),
-          ];
-
-          const excludeNames = buildCollectionExcludeNames(ruleGroup);
-          return combinedCollections
-            ? combinedCollections.filter(
-                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
-              ).length
-            : 0;
+          return countRuleCollectionNames(
+            [
+              ...(metadata.Collection?.map((collection) => collection.tag) ??
+                []),
+              ...(parent?.Collection?.map((collection) => collection.tag) ??
+                []),
+              ...(grandparent?.Collection?.map(
+                (collection) => collection.tag,
+              ) ?? []),
+            ],
+            ruleGroup,
+          );
         }
         case 'playlists': {
           if (metadata.type !== 'episode' && metadata.type !== 'movie') {
@@ -214,31 +223,30 @@ export class PlexGetterService {
                 });
               }
             }
-            return filtered ? filtered.map((el) => el.title.trim()) : [];
+            return trimRulePropertyNames(filtered.map((el) => el.title));
           } else {
             const playlists = await this.plexApi.getPlaylists(
               metadata.ratingKey,
             );
-            return playlists ? playlists.map((el) => el.title.trim()) : [];
+            return trimRulePropertyNames(
+              playlists ? playlists.map((el) => el.title) : [],
+            );
           }
         }
         case 'collection_names': {
-          return metadata.Collection
-            ? metadata.Collection.map((el) => el.tag.trim())
-            : [];
+          return trimRulePropertyNames(
+            metadata.Collection?.map((collection) => collection.tag) ?? [],
+          );
         }
         case 'sw_collection_names_including_parent': {
           const parent = await getParent();
           const grandparent = await getGrandparent();
-          const combinedCollections = [
-            ...(metadata?.Collection || []),
-            ...(parent?.Collection || []),
-            ...(grandparent?.Collection || []),
-          ];
-
-          return combinedCollections
-            ? combinedCollections.map((el) => el.tag.trim())
-            : null;
+          return trimRulePropertyNames([
+            ...(metadata.Collection?.map((collection) => collection.tag) ?? []),
+            ...(parent?.Collection?.map((collection) => collection.tag) ?? []),
+            ...(grandparent?.Collection?.map((collection) => collection.tag) ??
+              []),
+          ]);
         }
         case 'lastViewedAt': {
           // Errors must surface so the outer catch returns `undefined` for an
@@ -269,12 +277,12 @@ export class PlexGetterService {
             : null;
         }
         case 'genre': {
-          const item =
-            metadata.type === 'episode'
-              ? ((await getGrandparent()) ?? metadata)
-              : metadata.type === 'season'
-                ? ((await getParent()) ?? metadata)
-                : metadata;
+          const item = await getParentBackedRuleItem(
+            metadata.type,
+            metadata,
+            getParent,
+            getGrandparent,
+          );
           return item.Genre ? item.Genre.map((el) => el.tag) : null;
         }
         case 'sw_allEpisodesSeenBy': {
@@ -313,9 +321,12 @@ export class PlexGetterService {
 
           if (allViewers && allViewers.length > 0) {
             const viewerIds = allViewers.map((el) => +el.plexId);
-            return plexUsers
-              .filter((el) => viewerIds.includes(el.plexId))
-              .map((el) => el.username);
+            return mapMatchingRuleUsersToNames(
+              viewerIds,
+              plexUsers,
+              (user) => user.plexId,
+              (user) => user.username,
+            );
           }
 
           return [];
@@ -338,9 +349,12 @@ export class PlexGetterService {
           const uniqueViewers = [...new Set(viewers)];
 
           if (uniqueViewers && uniqueViewers.length > 0) {
-            return plexUsers
-              .filter((el) => uniqueViewers.includes(+el.plexId))
-              .map((el) => el.username);
+            return mapMatchingRuleUsersToNames(
+              uniqueViewers,
+              plexUsers,
+              (user) => +user.plexId,
+              (user) => user.username,
+            );
           }
           return [];
         }
@@ -387,6 +401,13 @@ export class PlexGetterService {
             }
           }
           return viewCount;
+        }
+        case 'sw_markedWatchedEpisodes': {
+          // Uses Plex's watched STATE (viewedLeafCount) instead of play history.
+          // Unlike sw_viewedEpisodes (which counts episodes with a play-history
+          // entry), this also counts episodes manually marked as watched: Plex
+          // updates viewedLeafCount for manual marks but records no play history.
+          return metadata.viewedLeafCount ? +metadata.viewedLeafCount : 0;
         }
         case 'sw_amountOfViews': {
           let viewCount = 0;
@@ -657,12 +678,10 @@ export class PlexGetterService {
             }
           }
 
-          const excludeNames = buildCollectionExcludeNames(ruleGroup);
-          const normalCollectionCount = metadata.Collection
-            ? metadata.Collection.filter(
-                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
-              ).length
-            : 0;
+          const normalCollectionCount = countRuleCollectionNames(
+            metadata.Collection?.map((collection) => collection.tag) ?? [],
+            ruleGroup,
+          );
 
           return normalCollectionCount + smartCollectionCount;
         }
@@ -687,23 +706,21 @@ export class PlexGetterService {
               smartCollection.ratingKey,
             );
 
-            const ratingKeys = [
+            const ratingKeys = definedUniqueValues([
               metadata.ratingKey,
               parent?.ratingKey,
               grandparent?.ratingKey,
-            ].filter((x) => x != null);
+            ]);
 
             smartCollectionCount += children.filter((x) =>
               ratingKeys.includes(x.ratingKey),
             ).length;
           }
 
-          const excludeNames = buildCollectionExcludeNames(ruleGroup);
-          const normalCollectionCount = combinedCollections
-            ? combinedCollections.filter(
-                (el) => !excludeNames.includes(el.tag.toLowerCase().trim()),
-              ).length
-            : 0;
+          const normalCollectionCount = countRuleCollectionNames(
+            combinedCollections.map((collection) => collection.tag),
+            ruleGroup,
+          );
 
           return normalCollectionCount + smartCollectionCount;
         }
@@ -722,25 +739,23 @@ export class PlexGetterService {
               smartCollection.ratingKey,
             );
 
-            const ratingKeys = [
+            const ratingKeys = definedUniqueValues([
               metadata.ratingKey,
               parent?.ratingKey,
               grandparent?.ratingKey,
-            ].filter((x) => x != null);
+            ]);
 
             if (children.some((x) => ratingKeys.includes(x.ratingKey))) {
               smartCollectionNames.push(smartCollection.title);
             }
           }
 
-          const combinedCollections = new Set([
+          return uniqueTrimmedRulePropertyNames([
             ...(metadata.Collection?.map((x) => x.tag) || []),
             ...(parent?.Collection?.map((x) => x.tag) || []),
             ...(grandparent?.Collection?.map((x) => x.tag) || []),
             ...smartCollectionNames,
           ]);
-
-          return Array.from(combinedCollections).map((el) => el.trim());
         }
         case 'collection_names_including_smart': {
           if (
@@ -770,12 +785,10 @@ export class PlexGetterService {
             }
           }
 
-          const combinedCollections = new Set([
+          return uniqueTrimmedRulePropertyNames([
             ...(metadata.Collection?.map((x) => x.tag) || []),
             ...smartCollectionNames,
           ]);
-
-          return Array.from(combinedCollections).map((el) => el.trim());
         }
         case 'collection_siblings_lastViewedAt': {
           // Aggregate "last view date" across every movie that shares a Plex
@@ -787,10 +800,10 @@ export class PlexGetterService {
           // to the calling account (admin-only), while the history endpoint
           // returns every user's entries when called with an admin token.
           // Same pattern as the existing lastViewedAt rule (prop id 7).
-          const excludeNames = buildCollectionExcludeNames(ruleGroup);
-          const memberTags = (metadata.Collection ?? [])
-            .map((el) => el.tag.trim())
-            .filter((tag) => !excludeNames.includes(tag.toLowerCase()));
+          const memberTags = filterRuleCollectionNames(
+            metadata.Collection?.map((collection) => collection.tag) ?? [],
+            ruleGroup,
+          );
 
           if (memberTags.length === 0 || !ruleGroup?.libraryId) {
             return null;

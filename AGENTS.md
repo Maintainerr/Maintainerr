@@ -16,9 +16,24 @@ yarn test | tail -20
 
 ## Project Overview
 
-Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, and Tautulli to provide comprehensive media lifecycle management.
+Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Documentation map
+
+**Standing rules — read before writing any code (they apply to all work):**
+
+- [implementation.instructions.md](.github/instructions/implementation.instructions.md) — implementation rules and API-doc references.
+- [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) — non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
+
+**Task-specific — read only when the task calls for it (don't load them every session):**
+
+- [release-review.instructions.md](.github/instructions/release-review.instructions.md) — when auditing a release candidate before tagging.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — before changing cross-module boundaries.
+
+When you add a doc, list it under the matching heading here. For how each agent
+(Claude, Copilot, Cursor, Codex) loads these docs, see [README_AGENTS.md](README_AGENTS.md).
 
 ## Repository Structure
 
@@ -39,7 +54,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 ### Backend (`apps/server/`)
 
 - **Framework**: Nest.js v11+ with TypeScript
-- **Database**: TypeORM with SQLite
+- **Database**: TypeORM 1.x with SQLite (`better-sqlite3` driver)
 - **Testing**: Jest with @suites for dependency mocking and unit testing
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: Zod v4+ schemas with nestjs-zod
@@ -110,6 +125,14 @@ yarn turbo test
 
 The development Docker workflow builds the multi-stage `Dockerfile` for
 `linux/amd64` and `linux/arm64`.
+
+### Workspace MCP Servers
+
+Project MCP server config lives in `.codex/config.toml` for Codex, `.mcp.json`
+for Claude Code, and `.vscode/mcp.json` for VS Code. Keep all three files in
+sync when adding or changing servers. The configured GitHub MCP server is
+read-only, and Playwright MCP screenshots should be written under
+`.playwright-mcp/`.
 
 ### Package-Specific Commands
 
@@ -230,9 +253,11 @@ When modifying existing code, follow these specific refactoring priorities:
 The application integrates with several external services:
 
 - **Plex**: Media server API for collections and metadata
+- **Jellyfin/Emby**: Media server APIs through the shared media-server abstraction
 - **Radarr/Sonarr**: Movie/TV show management APIs
 - **Overseerr/Jellyseerr**: Request management systems
 - **Tautulli**: Plex analytics and statistics
+- **Streamystats**: Jellyfin item-level analytics surfaced on media details
 
 When working with these integrations:
 
@@ -276,11 +301,35 @@ These specifications provide comprehensive type definitions and endpoint documen
 - **Test Runner**: Vitest with React Testing Library
 - Keep tests focused on critical user flows
 
+### Local dev mocks & seeding (manual / Playwright testing)
+
+For end-to-end checks of media-server-dependent flows (rules, collections,
+overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
+has three scripts that **complement Playwright** — Playwright drives the UI, these
+provide the backend data:
+
+- `tools/dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
+- `tools/dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
+  getter paths (smart collections, watch history, accounts, ratings,
+  shows/seasons/episodes) that the Jellyfin mock can't.
+- `tools/dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
+  collections, and rule groups **with rules** covering ~all rule properties, plus
+  notifications, cron, logs, exclusions, and overlays. Target a server with
+  `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
+
+Workflow: start the matching mock, stop `yarn dev` (SQLite is single-writer),
+run the seed, restart `yarn dev`. Inspect a getter's live output with
+`POST /api/rules/test {"mediaId","rulegroupId"}` or run a rule with
+`POST /api/rules/:id/execute`. Note: after editing server code, **restart
+`yarn dev`** — a long-lived dev server can serve stale getter logic. Watchlist
+and plex.tv user enrichment can't be mocked locally (they hit plex.tv) and
+degrade gracefully.
+
 ## Development Notes
 
 ### Environment Setup
 
-- **Node.js**: Version 20.19.0+ or 22.12.0+
+- **Node.js**: Version 20.19.0+, 22.13.0+, or 24.11.0+ (the floor is set by TypeORM 1.0.0's engine requirement; the Docker image ships Node 26)
 - **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 
