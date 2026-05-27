@@ -1,9 +1,13 @@
 import { MediaItemType } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import Alert from '../Common/Alert'
-import { fetchMaintainerrStatusDetails } from '../Common/MediaCard/maintainerrStatus'
+import {
+  clearMaintainerrStatusDetailsCache,
+  fetchMaintainerrStatusDetails,
+} from '../Common/MediaCard/maintainerrStatus'
 import Button from '../Common/Button'
 import FormItem from '../Common/FormItem'
 import Modal from '../Common/Modal'
@@ -12,6 +16,7 @@ import { IAddModal, IAlterableMediaDto, ICollectionMedia } from './interfaces'
 
 const AddModal = (props: IAddModal) => {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [selectedCollection, setSelectedCollection] = useState<
     number | string
   >()
@@ -342,12 +347,22 @@ const AddModal = (props: IAddModal) => {
               {affectedExclusions.map((e) => (
                 <li key={`${e.title}-${e.targetPath}`}>
                   {e.title} —{' '}
-                  <a
-                    href={e.targetPath}
-                    className="text-maintainerr underline hover:text-maintainerr-400"
+                  <button
+                    type="button"
+                    className="text-maintainerr underline transition hover:text-maintainerr-400"
+                    onClick={() => {
+                      // SPA nav (honours router basename); clear caches so the
+                      // destination refetches fresh, as the old reload did.
+                      props.onCancel()
+                      clearMaintainerrStatusDetailsCache()
+                      queryClient.invalidateQueries({
+                        queryKey: ['collections'],
+                      })
+                      navigate(e.targetPath)
+                    }}
                   >
                     {e.label}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>

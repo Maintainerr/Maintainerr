@@ -10,12 +10,19 @@ import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import AddModal from './index'
 
 const invalidateQueries = vi.fn()
+const navigate = vi.fn()
 
 vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>(
     '@tanstack/react-query',
   )
   return { ...actual, useQueryClient: () => ({ invalidateQueries }) }
+})
+
+vi.mock('react-router-dom', async () => {
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useNavigate: () => navigate }
 })
 
 vi.mock('../../utils/ApiHandler', () => ({
@@ -48,16 +55,19 @@ describe('AddModal — global exclusion warning', () => {
     postApiHandlerMock.mockResolvedValue(undefined as never)
   }
 
-  const renderExclude = () =>
+  const renderExclude = () => {
+    const onCancel = vi.fn()
     render(
       <AddModal
         mediaServerId="m1"
         type="movie"
         modalType="exclude"
-        onCancel={vi.fn()}
+        onCancel={onCancel}
         onSubmit={vi.fn()}
       />,
     )
+    return { onCancel }
+  }
 
   const exclusionPost = () =>
     postApiHandlerMock.mock.calls.find(
@@ -67,6 +77,8 @@ describe('AddModal — global exclusion warning', () => {
   beforeEach(() => {
     getApiHandlerMock.mockReset()
     postApiHandlerMock.mockReset()
+    navigate.mockReset()
+    invalidateQueries.mockReset()
   })
   afterEach(() => cleanup())
 
@@ -78,12 +90,8 @@ describe('AddModal — global exclusion warning', () => {
 
     await screen.findByText('Confirmation Required')
     // each scoped exclusion is listed as "<item> — <linked rule group>"
-    expect(
-      screen.getByRole('link', { name: 'Archive Queue' }).getAttribute('href'),
-    ).toBe('/collections/9/exclusions')
-    expect(
-      screen.getByRole('link', { name: 'Stale Movies' }).getAttribute('href'),
-    ).toBe('/collections/7/exclusions')
+    expect(screen.getByRole('button', { name: 'Archive Queue' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Stale Movies' })).toBeTruthy()
     expect(screen.getAllByText(/Mock Charlie/).length).toBeGreaterThan(0)
     // not submitted until confirmed
     expect(postApiHandlerMock).not.toHaveBeenCalled()
@@ -92,6 +100,26 @@ describe('AddModal — global exclusion warning', () => {
 
     await waitFor(() => expect(exclusionPost()).toBeDefined())
     expect(exclusionPost()?.collectionId).toBeUndefined() // global
+  })
+
+  it('clicking a rule-group link navigates client-side (SPA) and closes the modal', async () => {
+    stubApi(scopedStatus)
+    const { onCancel } = renderExclude()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
+    await screen.findByText('Confirmation Required')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Archive Queue' }))
+
+    // SPA navigation + modal dismissed, and no exclusion submitted
+    expect(navigate).toHaveBeenCalledWith('/collections/9/exclusions')
+    expect(onCancel).toHaveBeenCalled()
+    // destination is invalidated so it fetches fresh (replacing the old
+    // full-reload's implicit cold load)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['collections'],
+    })
+    expect(postApiHandlerMock).not.toHaveBeenCalled()
   })
 
   it('Remove + all collections: no warning, submits directly', async () => {
