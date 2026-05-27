@@ -127,9 +127,11 @@ export class CollectionsService {
     try {
       if (title) {
         return await this.collectionRepo.findOne({ where: { title: title } });
-      } else {
+      }
+      if (id != null) {
         return await this.collectionRepo.findOne({ where: { id: id } });
       }
+      return undefined;
     } catch (error) {
       this.logger.warn('An error occurred while performing collection actions');
       this.logger.debug(error);

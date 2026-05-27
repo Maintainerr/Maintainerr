@@ -357,6 +357,24 @@ initialization`.
 `node_modules/jest/bin/jest.js` exists locally. For direct Jest-under-Node
 entrypoints, use `yarn node $(yarn bin jest) ...`.
 
+### TypeORM repository conventions
+
+The server is on **TypeORM 1.x** (`better-sqlite3`). Two conventions to follow
+when writing repository code:
+
+- **`relations` and `select` use the object form** —
+  `relations: { ruleGroup: true }`, not the array form. `find`/`findOne` only
+  accept objects.
+- **Never put a bare `null`/`undefined` in a `where`.** TypeORM 1.x throws on
+  them (the default `invalidWhereValuesBehavior` is `throw`, and we keep that
+  default rather than masking it). To match SQL `NULL`, use `IsNull()` —
+  e.g. `where: { ruleGroupId: IsNull() }`, `where: { sizeBytes: Not(IsNull()) }`.
+  For an optional value that may be absent, omit the key (conditional spread:
+  `...(x !== undefined ? { x } : {})`) or guard before querying — don't pass it
+  through. `where: {}` (no keys) is fine for the settings-singleton lookups.
+  Note: a bare `null` does **not** mean "ignore the filter" — older code that
+  relied on that was a latent bug (it matched everything); use `IsNull()`.
+
 ### Writing DATA migrations (backfills, no schema change)
 
 - `migration:generate` **cannot** produce them — it diffs entity metadata vs DB
