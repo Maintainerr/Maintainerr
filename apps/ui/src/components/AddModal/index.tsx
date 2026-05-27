@@ -362,8 +362,16 @@ const AddModal = (props: IAddModal) => {
                 setSelectedAction(+e.target.value)
               }}
             >
-              <option value={0}>Add</option>
-              <option value={1}>Remove</option>
+              <option value={0}>
+                {props.modalType === 'add'
+                  ? 'Add to collection'
+                  : 'Add exclusion'}
+              </option>
+              <option value={1}>
+                {props.modalType === 'add'
+                  ? 'Remove from collection'
+                  : 'Remove exclusion'}
+              </option>
             </Select>
           </FormItem>
 
