@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -673,12 +673,29 @@ export class RulesService {
       for (const media of handleMedia) {
         const metaData = await mediaServer.getMetadata(media.mediaServerId);
 
+        // Global subsumes scoped: skip a rule-group exclusion when the item is
+        // already globally excluded (an item is global or scoped, never both).
+        if (data.ruleGroupId !== undefined) {
+          const existingGlobal = await this.exclusionRepo.findOne({
+            where: {
+              mediaServerId: media.mediaServerId,
+              ruleGroupId: IsNull(),
+            },
+          });
+          if (existingGlobal) {
+            this.logger.log(
+              `Media ${media.mediaServerId} is already globally excluded; skipped rule group ${data.ruleGroupId} exclusion`,
+            );
+            continue;
+          }
+        }
+
         const old = await this.exclusionRepo.findOne({
           where: {
             mediaServerId: media.mediaServerId,
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
-              : { ruleGroupId: null }),
+              : { ruleGroupId: IsNull() }),
           },
         });
 
@@ -696,6 +713,15 @@ export class RulesService {
             type: metaData?.type,
           },
         ]);
+
+        // Global subsumes scoped: a new global exclusion drops the item's
+        // now-redundant rule-group exclusions.
+        if (data.ruleGroupId === undefined) {
+          await this.exclusionRepo.delete({
+            mediaServerId: media.mediaServerId,
+            ruleGroupId: Not(IsNull()),
+          });
+        }
 
         // add collection log record if needed
         if (data.collectionId) {
@@ -740,8 +766,8 @@ export class RulesService {
         return this.createReturnStatus(true, 'Success');
       }
 
-      // add collection log record if needed
-      if (exclcusion.ruleGroupId !== undefined) {
+      // global exclusions (null ruleGroupId) have no rule group to log against
+      if (exclcusion.ruleGroupId != null) {
         const rulegroup = await this.ruleGroupRepository.findOne({
           where: {
             id: exclcusion.ruleGroupId,
@@ -759,7 +785,13 @@ export class RulesService {
 
       // do delete
       await this.exclusionRepo.delete(id);
-      this.logger.log(`Removed exclusion with id ${id}`);
+      this.logger.log(
+        `Removed exclusion ${id} for media ${exclcusion.mediaServerId} (${
+          exclcusion.ruleGroupId != null
+            ? `rule group ${exclcusion.ruleGroupId}`
+            : 'global'
+        })`,
+      );
       return this.createReturnStatus(true, 'Success');
     } catch (error) {
       this.logger.warn(`Removing exclusion with id ${id} failed.`);
@@ -898,7 +930,7 @@ export class RulesService {
           ? exclusions.concat(
               await this.exclusionRepo.find({
                 where: {
-                  ruleGroupId: null,
+                  ruleGroupId: IsNull(),
                 },
               }),
             )

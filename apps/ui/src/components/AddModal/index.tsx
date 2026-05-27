@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import Alert from '../Common/Alert'
+import { fetchMaintainerrStatusDetails } from '../Common/MediaCard/maintainerrStatus'
 import Button from '../Common/Button'
 import FormItem from '../Common/FormItem'
 import Modal from '../Common/Modal'
@@ -17,6 +18,10 @@ const AddModal = (props: IAddModal) => {
   const [loading, setLoading] = useState(true)
   const [alert, setAlert] = useState(false)
   const [forceRemovalcheck, setForceRemovalCheck] = useState(false)
+  const [globalWarning, setGlobalWarning] = useState(false)
+  const [affectedExclusions, setAffectedExclusions] = useState<
+    { title: string; label: string; targetPath: string }[]
+  >([])
   const [submitting, setSubmitting] = useState(false)
   const [selectedAction, setSelectedAction] = useState<number>(0)
   // For show only
@@ -76,44 +81,90 @@ const AddModal = (props: IAddModal) => {
     props.onCancel()
   }
 
+  const submitMedia = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    const mediaDto: IAlterableMediaDto = {
+      id: selectedMediaId,
+      type: selectedContext,
+    }
+
+    try {
+      if (props.modalType === 'add') {
+        await PostApiHandler(`/collections/media/add`, {
+          mediaId: props.mediaServerId,
+          context: mediaDto,
+          collectionId: currentCollectionId,
+          action: selectedAction,
+        })
+
+        await queryClient.invalidateQueries({
+          queryKey: ['calendar', 'collections', 'overlay-data'],
+        })
+      } else {
+        await PostApiHandler('/rules/exclusion', {
+          mediaId: props.mediaServerId,
+          context: mediaDto,
+          collectionId:
+            currentCollectionId !== -1 ? currentCollectionId : undefined,
+          action: selectedAction,
+        })
+      }
+
+      props.onSubmit()
+    } catch {
+      setSubmitting(false)
+    }
+  }
+
   const handleOk = async () => {
     if (submitting) return
-    if (currentCollectionId !== undefined) {
-      setSubmitting(true)
-      const mediaDto: IAlterableMediaDto = {
-        id: selectedMediaId,
-        type: selectedContext,
-      }
-
-      try {
-        if (props.modalType === 'add') {
-          await PostApiHandler(`/collections/media/add`, {
-            mediaId: props.mediaServerId,
-            context: mediaDto,
-            collectionId: currentCollectionId,
-            action: selectedAction,
-          })
-
-          await queryClient.invalidateQueries({
-            queryKey: ['calendar', 'collections', 'overlay-data'],
-          })
-        } else {
-          await PostApiHandler('/rules/exclusion', {
-            mediaId: props.mediaServerId,
-            context: mediaDto,
-            collectionId:
-              currentCollectionId !== -1 ? currentCollectionId : undefined,
-            action: selectedAction,
-          })
-        }
-
-        props.onSubmit()
-      } catch {
-        setSubmitting(false)
-      }
-    } else {
+    if (currentCollectionId === undefined) {
       setAlert(true)
+      return
     }
+
+    // Only ADDING a global exclusion clears the item's rule-group exclusions.
+    // If it has any, warn and list each as "item — rule group", reusing the
+    // backdrop's status data (no-cache fetch) so labels/links match and stay
+    // fresh. (selectedAction 0 = Add, 1 = Remove.)
+    if (
+      props.modalType === 'exclude' &&
+      selectedAction === 0 &&
+      currentCollectionId === -1
+    ) {
+      // Best-effort: if either read fails we can't build the warning, so fall
+      // through and submit rather than blocking the exclusion the user asked for.
+      try {
+        const [meta, status] = await Promise.all([
+          GetApiHandler<{ title?: string }>(
+            `/media-server/meta/${props.mediaServerId}`,
+          ),
+          fetchMaintainerrStatusDetails({
+            id: props.mediaServerId,
+            getApiHandler: GetApiHandler,
+          }),
+        ])
+        const scoped = status.excludedFrom.filter((e) => e.targetPath)
+
+        if (scoped.length > 0) {
+          const title = meta?.title ?? String(props.mediaServerId)
+          setAffectedExclusions(
+            scoped.map((e) => ({
+              title,
+              label: e.label,
+              targetPath: e.targetPath as string,
+            })),
+          )
+          setGlobalWarning(true)
+          return
+        }
+      } catch {
+        // Warning data unavailable — proceed without it.
+      }
+    }
+
+    await submitMedia()
   }
 
   const handleForceRemoval = async () => {
@@ -265,6 +316,44 @@ const AddModal = (props: IAddModal) => {
           </Modal>
         ) : undefined}
 
+        {globalWarning ? (
+          <Modal
+            loading={loading}
+            backgroundClickable={false}
+            onCancel={() => setGlobalWarning(false)}
+            title={'Confirmation Required'}
+            footerActions={
+              <Button
+                buttonType="primary"
+                className="ml-3"
+                onClick={() => {
+                  setGlobalWarning(false)
+                  submitMedia()
+                }}
+              >
+                Proceed
+              </Button>
+            }
+          >
+            Making this a global exclusion removes the following rule-group
+            exclusions, and they will not return if you later remove the global
+            exclusion:
+            <ul className="mt-2 list-disc pl-5">
+              {affectedExclusions.map((e) => (
+                <li key={`${e.title}-${e.targetPath}`}>
+                  {e.title} —{' '}
+                  <a
+                    href={e.targetPath}
+                    className="text-maintainerr underline hover:text-maintainerr-400"
+                  >
+                    {e.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Modal>
+        ) : undefined}
+
         {alert ? (
           <Alert title="Please select a collection" type="warning" />
         ) : undefined}
@@ -279,8 +368,16 @@ const AddModal = (props: IAddModal) => {
                 setSelectedAction(+e.target.value)
               }}
             >
-              <option value={0}>Add</option>
-              <option value={1}>Remove</option>
+              <option value={0}>
+                {props.modalType === 'add'
+                  ? 'Add to collection'
+                  : 'Add exclusion'}
+              </option>
+              <option value={1}>
+                {props.modalType === 'add'
+                  ? 'Remove from collection'
+                  : 'Remove exclusion'}
+              </option>
             </Select>
           </FormItem>
 
