@@ -116,4 +116,25 @@ describe('AddModal — global exclusion warning', () => {
     await waitFor(() => expect(exclusionPost()).toBeDefined())
     expect(screen.queryByText('Confirmation Required')).toBeNull()
   })
+
+  it('Add + all collections, warning prefetch fails: submits instead of blocking', async () => {
+    // The status read rejects; the warning can't be built, but the exclusion
+    // the user asked for must still go through.
+    getApiHandlerMock.mockImplementation(((url: string) => {
+      if (url.includes('/maintainerr-status'))
+        return Promise.reject(new Error('boom'))
+      if (url.startsWith('/media-server/meta/'))
+        return Promise.resolve({ title: 'Mock Charlie' })
+      if (url.startsWith('/collections')) return Promise.resolve([])
+      return Promise.resolve(undefined)
+    }) as typeof GetApiHandler)
+    postApiHandlerMock.mockResolvedValue(undefined as never)
+    renderExclude()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
+
+    await waitFor(() => expect(exclusionPost()).toBeDefined())
+    expect(exclusionPost()?.collectionId).toBeUndefined() // global
+    expect(screen.queryByText('Confirmation Required')).toBeNull()
+  })
 })

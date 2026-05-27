@@ -133,28 +133,34 @@ const AddModal = (props: IAddModal) => {
       selectedAction === 0 &&
       currentCollectionId === -1
     ) {
-      const [meta, status] = await Promise.all([
-        GetApiHandler<{ title?: string }>(
-          `/media-server/meta/${props.mediaServerId}`,
-        ),
-        fetchMaintainerrStatusDetails({
-          id: props.mediaServerId,
-          getApiHandler: GetApiHandler,
-        }),
-      ])
-      const scoped = status.excludedFrom.filter((e) => e.targetPath)
+      // Best-effort: if either read fails we can't build the warning, so fall
+      // through and submit rather than blocking the exclusion the user asked for.
+      try {
+        const [meta, status] = await Promise.all([
+          GetApiHandler<{ title?: string }>(
+            `/media-server/meta/${props.mediaServerId}`,
+          ),
+          fetchMaintainerrStatusDetails({
+            id: props.mediaServerId,
+            getApiHandler: GetApiHandler,
+          }),
+        ])
+        const scoped = status.excludedFrom.filter((e) => e.targetPath)
 
-      if (scoped.length > 0) {
-        const title = meta?.title ?? String(props.mediaServerId)
-        setAffectedExclusions(
-          scoped.map((e) => ({
-            title,
-            label: e.label,
-            targetPath: e.targetPath as string,
-          })),
-        )
-        setGlobalWarning(true)
-        return
+        if (scoped.length > 0) {
+          const title = meta?.title ?? String(props.mediaServerId)
+          setAffectedExclusions(
+            scoped.map((e) => ({
+              title,
+              label: e.label,
+              targetPath: e.targetPath as string,
+            })),
+          )
+          setGlobalWarning(true)
+          return
+        }
+      } catch {
+        // Warning data unavailable — proceed without it.
       }
     }
 
