@@ -1948,7 +1948,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@inquirer/editor@npm:^4.2.23":
+"@inquirer/editor@npm:^4.2.23, @inquirer/editor@npm:^4.2.7":
   version: 4.2.23
   resolution: "@inquirer/editor@npm:4.2.23"
   dependencies:
@@ -1961,22 +1961,6 @@ __metadata:
     "@types/node":
       optional: true
   checksum: 10c0/aa02028ee35ae039a4857b6a9490d295a1b3558f042e7454dee0aa36fbc83ac25586a2dfe0b46a5ea7ea151e3f5cb97a8ee6229131b4619f3b3466ad74b9519f
-  languageName: node
-  linkType: hard
-
-"@inquirer/editor@npm:^4.2.7":
-  version: 4.2.7
-  resolution: "@inquirer/editor@npm:4.2.7"
-  dependencies:
-    "@inquirer/core": "npm:^10.1.7"
-    "@inquirer/type": "npm:^3.0.4"
-    external-editor: "npm:^3.1.0"
-  peerDependencies:
-    "@types/node": ">=18"
-  peerDependenciesMeta:
-    "@types/node":
-      optional: true
-  checksum: 10c0/8570bd5992dab031b7eea498941a728fbbada04072ce64192c46987a6d6e91669f9dd846049b5c49e87de01efd292fb2137606aafd7eee33e047864b2989d87f
   languageName: node
   linkType: hard
 
@@ -8458,13 +8442,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chardet@npm:^0.7.0":
-  version: 0.7.0
-  resolution: "chardet@npm:0.7.0"
-  checksum: 10c0/96e4731b9ec8050cbb56ab684e8c48d6c33f7826b755802d14e3ebfdc51c57afeece3ea39bc6b09acc359e4363525388b915e16640c1378053820f5e70d0f27d
-  languageName: node
-  linkType: hard
-
 "chardet@npm:^2.1.1":
   version: 2.1.1
   resolution: "chardet@npm:2.1.1"
@@ -10841,17 +10818,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"external-editor@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "external-editor@npm:3.1.0"
-  dependencies:
-    chardet: "npm:^0.7.0"
-    iconv-lite: "npm:^0.4.24"
-    tmp: "npm:^0.0.33"
-  checksum: 10c0/c98f1ba3efdfa3c561db4447ff366a6adb5c1e2581462522c56a18bf90dfe4da382f9cd1feee3e330108c3595a854b218272539f311ba1b3298f841eb0fbf339
-  languageName: node
-  linkType: hard
-
 "fast-content-type-parse@npm:^3.0.0":
   version: 3.0.0
   resolution: "fast-content-type-parse@npm:3.0.0"
@@ -12150,15 +12116,6 @@ __metadata:
   dependencies:
     safer-buffer: "npm:>= 2.1.2 < 3.0.0"
   checksum: 10c0/3c228920f3bd307f56bf8363706a776f4a060eb042f131cd23855ceca962951b264d0997ab38a1ad340e1c5df8499ed26e1f4f0db6b2a2ad9befaff22f14b722
-  languageName: node
-  linkType: hard
-
-"iconv-lite@npm:^0.4.24":
-  version: 0.4.24
-  resolution: "iconv-lite@npm:0.4.24"
-  dependencies:
-    safer-buffer: "npm:>= 2.1.2 < 3"
-  checksum: 10c0/c6886a24cc00f2a059767440ec1bc00d334a89f250db8e0f7feb4961c8727118457e27c495ba94d082e51d3baca378726cd110aaf7ded8b9bbfd6a44760cf1d4
   languageName: node
   linkType: hard
 
@@ -16190,13 +16147,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"os-tmpdir@npm:~1.0.2":
-  version: 1.0.2
-  resolution: "os-tmpdir@npm:1.0.2"
-  checksum: 10c0/f438450224f8e2687605a8dd318f0db694b6293c5d835ae509a69e97c8de38b6994645337e5577f5001115470414638978cc49da1cdcc25106dad8738dc69990
-  languageName: node
-  linkType: hard
-
 "own-keys@npm:^1.0.0, own-keys@npm:^1.0.1":
   version: 1.0.1
   resolution: "own-keys@npm:1.0.1"
@@ -18243,7 +18193,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"safer-buffer@npm:>= 2.1.2 < 3, safer-buffer@npm:>= 2.1.2 < 3.0.0":
+"safer-buffer@npm:>= 2.1.2 < 3.0.0":
   version: 2.1.2
   resolution: "safer-buffer@npm:2.1.2"
   checksum: 10c0/7e3c8b2e88a1841c9671094bbaeebd94448111dd90a81a1f606f3f67708a6ec57763b3b47f06da09fc6054193e0e6709e77325415dc8422b04497a8070fa02d4
@@ -19727,15 +19677,6 @@ __metadata:
   bin:
     tldts: bin/cli.js
   checksum: 10c0/8bd6d2ef27e27560ffca1784067f6ee45ce2eebb0c094126681ed8d42c728904418855dd165c8272039af46a9a8e832990e564c17f5dbff041c5306d50d4cf40
-  languageName: node
-  linkType: hard
-
-"tmp@npm:^0.0.33":
-  version: 0.0.33
-  resolution: "tmp@npm:0.0.33"
-  dependencies:
-    os-tmpdir: "npm:~1.0.2"
-  checksum: 10c0/69863947b8c29cabad43fe0ce65cec5bb4b481d15d4b4b21e036b060b3edbf3bc7a5541de1bacb437bb3f7c4538f669752627fdf9b4aaf034cebd172ba373408
   languageName: node
   linkType: hard
 

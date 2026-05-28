@@ -779,7 +779,7 @@ describe('MetadataService', () => {
 
     expect(result).toMatchObject({ tmdb: 606001, type: 'movie' });
     expect(logger.warn).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       expect.stringContaining('one-year drift'),
     );
   });

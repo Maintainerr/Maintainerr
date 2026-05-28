@@ -935,8 +935,8 @@ export class MetadataService {
 
       // ±1 tolerance covers festival/theatrical release drift.
       if (delta === 1) {
-        this.logger.debug(
-          `Accepted direct provider IDs for "${item.title}" (${itemYear}) with a one-year drift from ${provider.name} (${providerDetails.year}).`,
+        this.logger.log(
+          `Accepted direct provider IDs for "${item.title}" (${itemYear}) with a one-year drift from ${provider.name} id ${id} "${providerDetails.title}" (${providerDetails.year}).`,
         );
         return providerDetails;
       }
