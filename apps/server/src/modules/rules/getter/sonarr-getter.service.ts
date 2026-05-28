@@ -130,16 +130,43 @@ export class SonarrGetterService {
             )
           : sonarrApiClient.getSeriesByTvdbId(lookupId);
 
-      const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
-        tvdb: (lookupId) => resolveSeries(lookupId),
-      });
-      const showResponse: SonarrSeries | undefined = matchedResult?.result;
+      const matchedResult = await findMetadataLookupMatch<SonarrSeries | null>(
+        lookupCandidates,
+        {
+          tvdb: (lookupId) => resolveSeries(lookupId),
+        },
+      );
+      const showResponse: SonarrSeries | null | undefined =
+        matchedResult?.result;
+
+      if (showResponse === undefined) {
+        // The Sonarr lookup itself failed (or every candidate's lookup
+        // returned undefined) — could be a transient outage. Fail closed
+        // rather than substituting metadata-provider values, which would
+        // silently change rule evaluation while Sonarr is down.
+        return undefined;
+      }
 
       if (!showResponse?.id) {
+        // Sonarr confirmed the series isn't tracked. Fall back to the
+        // configured metadata provider for properties whose value doesn't
+        // depend on Sonarr's local state.
+        const fallback = await this.tryMetadataFallback(
+          libItem,
+          prop?.name,
+          dataType,
+        );
+        if (fallback.handled) {
+          this.logger.debug(
+            `Sonarr-Getter - '${libItem.title}' not in Sonarr; serving '${prop?.name}' from metadata provider. Is the series intentionally absent from Sonarr?`,
+          );
+          return fallback.value;
+        }
+
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
         this.logger.warn(
-          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a series in Sonarr.`,
+          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a series in Sonarr. Is the series tracked in Sonarr?`,
         );
         return null;
       }
@@ -514,5 +541,76 @@ export class SonarrGetterService {
       libItem,
       'sonarr',
     );
+  }
+
+  // Sonarr properties whose semantics match cleanly across Sonarr / TMDB /
+  // TVDB. Deliberately excluded even though providers expose something
+  // similar: `status` (Sonarr lowercase enum vs provider free-form strings),
+  // `originalLanguage` (full name vs ISO 639-1 vs ISO 639-2/B), and `rating`
+  // (different scales / aggregations). Sonarr-only state (monitored, tags,
+  // filePath, diskSize, …) is also absent — providers can't supply it.
+  private static readonly METADATA_FALLBACK_SUPPORTED = new Set([
+    'ended',
+    'firstAirDate',
+    'seasons',
+  ]);
+
+  private async tryMetadataFallback(
+    libItem: MediaItem,
+    propName: string | undefined,
+    dataType: MediaItemType | undefined,
+  ): Promise<
+    { handled: false } | { handled: true; value: number | string | Date | null }
+  > {
+    if (
+      !propName ||
+      !SonarrGetterService.METADATA_FALLBACK_SUPPORTED.has(propName)
+    ) {
+      return { handled: false };
+    }
+
+    // At season/episode scope these properties mean episode-specific values
+    // that a show-level provider record can't supply.
+    if (
+      (propName === 'firstAirDate' || propName === 'seasons') &&
+      (dataType === 'season' || dataType === 'episode')
+    ) {
+      return { handled: false };
+    }
+
+    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
+    if (!ids || ids.type !== 'tv') {
+      return { handled: false };
+    }
+
+    // Merge across every configured provider so a partial primary record
+    // doesn't mask a field a secondary could supply.
+    const details = await this.metadataService.getDetails(ids, 'tv', {
+      merge: true,
+    });
+    if (!details) {
+      return { handled: false };
+    }
+
+    switch (propName) {
+      case 'ended':
+        return {
+          handled: true,
+          value: details.ended === undefined ? null : details.ended ? 1 : 0,
+        };
+      case 'firstAirDate':
+        return {
+          handled: true,
+          value: details.firstAirDate ? new Date(details.firstAirDate) : null,
+        };
+      case 'seasons':
+        // Match the existing Sonarr-path truthiness check (0 → null).
+        return {
+          handled: true,
+          value: details.seasonCount ? details.seasonCount : null,
+        };
+    }
+
+    return { handled: false };
   }
 }

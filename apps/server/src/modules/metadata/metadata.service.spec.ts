@@ -808,4 +808,130 @@ describe('MetadataService', () => {
       expect.stringContaining('TMDB returned 2097'),
     );
   });
+
+  describe('getDetails({ merge: true })', () => {
+    it('fills missing show-only fields from the secondary provider', async () => {
+      const { service, tmdbProvider, tvdbProvider } = createService({});
+
+      // Preference defaults to TVDB_PRIMARY in createService; for this test we
+      // make TMDB primary by reordering. Easiest: make TVDB unavailable then
+      // re-run, OR mock getOrderedProviders. Instead, just match the existing
+      // order (TVDB first) and have TVDB return partial, TMDB fill in.
+      tvdbProvider.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        // No `ended` from TVDB — say its status was 'Unknown'.
+        ended: undefined,
+        firstAirDate: '2017-04-25',
+        seasonCount: 4,
+      });
+      tmdbProvider.getDetails.mockResolvedValue({
+        id: 2,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tmdb: 2 },
+        ended: true,
+        firstAirDate: '2017-04-25',
+        seasonCount: 4,
+      });
+
+      const merged = await service.getDetails(
+        { type: 'tv', tmdb: 2, tvdb: 1 },
+        'tv',
+        { merge: true },
+      );
+
+      // Primary (TVDB) provided everything except `ended`; secondary (TMDB)
+      // filled `ended: true`.
+      expect(merged?.ended).toBe(true);
+      expect(merged?.firstAirDate).toBe('2017-04-25');
+      expect(merged?.seasonCount).toBe(4);
+    });
+
+    it('keeps the primary provider value when both providers have the field', async () => {
+      const { service, tmdbProvider, tvdbProvider } = createService({});
+
+      tvdbProvider.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        ended: false,
+        firstAirDate: '2017-04-25',
+        seasonCount: 2,
+      });
+      tmdbProvider.getDetails.mockResolvedValue({
+        id: 2,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tmdb: 2 },
+        ended: true,
+        firstAirDate: '2018-01-01',
+        seasonCount: 9,
+      });
+
+      const merged = await service.getDetails(
+        { type: 'tv', tmdb: 2, tvdb: 1 },
+        'tv',
+        { merge: true },
+      );
+
+      // Primary (TVDB) wins for every field it supplied.
+      expect(merged?.ended).toBe(false);
+      expect(merged?.firstAirDate).toBe('2017-04-25');
+      expect(merged?.seasonCount).toBe(2);
+    });
+
+    it('walks every available provider so new providers compose automatically', async () => {
+      const { service, tmdbProvider, tvdbProvider } = createService({});
+
+      tvdbProvider.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        ended: undefined,
+        firstAirDate: undefined,
+        seasonCount: undefined,
+      });
+      tmdbProvider.getDetails.mockResolvedValue({
+        id: 2,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tmdb: 2 },
+        ended: true,
+        firstAirDate: '2017-04-25',
+        seasonCount: 4,
+      });
+
+      const merged = await service.getDetails(
+        { type: 'tv', tmdb: 2, tvdb: 1 },
+        'tv',
+        { merge: true },
+      );
+
+      expect(tvdbProvider.getDetails).toHaveBeenCalled();
+      expect(tmdbProvider.getDetails).toHaveBeenCalled();
+      expect(merged?.ended).toBe(true);
+      expect(merged?.firstAirDate).toBe('2017-04-25');
+      expect(merged?.seasonCount).toBe(4);
+    });
+
+    it('returns undefined when no provider has the series', async () => {
+      const { service, tmdbProvider, tvdbProvider } = createService({});
+
+      tvdbProvider.getDetails.mockResolvedValue(undefined);
+      tmdbProvider.getDetails.mockResolvedValue(undefined);
+
+      const merged = await service.getDetails(
+        { type: 'tv', tmdb: 2, tvdb: 1 },
+        'tv',
+        { merge: true },
+      );
+
+      expect(merged).toBeUndefined();
+    });
+  });
 });

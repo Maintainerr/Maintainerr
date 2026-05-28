@@ -847,6 +847,151 @@ describe('SonarrGetterService', () => {
     });
   });
 
+  describe('metadata fallback (series absent from Sonarr)', () => {
+    let collectionMedia: CollectionMedia;
+    let mediaItem: MediaItem;
+    let mockedSonarrApi: SonarrApi;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+      mediaItem = createMediaItem({ type: 'show', title: 'Sample Series' });
+      mockedSonarrApi = mockSonarrApi();
+      // Default: Sonarr confirms the series isn't tracked (null), as opposed
+      // to a transient error (undefined). Tests that need the error path
+      // override this.
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(null as any);
+    });
+
+    const callGet = (propId: number) =>
+      sonarrGetterService.get(
+        propId,
+        mediaItem,
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+    it('returns 1 for ended when metadata says the show ended', async () => {
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        type: 'tv',
+        tvdb: 322399,
+      } as any);
+      metadataService.getDetails.mockResolvedValue({
+        id: 322399,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 322399 },
+        ended: true,
+      } as any);
+
+      // id 7 = 'ended'
+      const response = await callGet(7);
+
+      expect(response).toBe(1);
+      expect(metadataService.getDetails).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'tv', tvdb: 322399 }),
+        'tv',
+        { merge: true },
+      );
+    });
+
+    it('returns 0 for ended when metadata says the show is continuing', async () => {
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        type: 'tv',
+        tvdb: 1,
+      } as any);
+      metadataService.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        ended: false,
+      } as any);
+
+      const response = await callGet(7);
+
+      expect(response).toBe(0);
+    });
+
+    it('returns the season count from metadata at show level', async () => {
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        type: 'tv',
+        tvdb: 1,
+      } as any);
+      metadataService.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        seasonCount: 4,
+      } as any);
+
+      // id 5 = 'seasons' (show-level returns seasonCount)
+      const response = await callGet(5);
+
+      expect(response).toBe(4);
+    });
+
+    it('returns null for ended when neither Sonarr nor metadata can supply it', async () => {
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue(undefined);
+
+      const response = await callGet(7);
+
+      expect(response).toBeNull();
+    });
+
+    it('returns null for a Sonarr-only property even when metadata is available', async () => {
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        type: 'tv',
+        tvdb: 1,
+      } as any);
+      metadataService.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        ended: true,
+      } as any);
+
+      // id 9 = 'monitored' (Sonarr-only state, no metadata fallback)
+      const response = await callGet(9);
+
+      expect(response).toBeNull();
+      expect(metadataService.getDetails).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fall back when the Sonarr lookup itself fails (fail closed)', async () => {
+      // Transient Sonarr outage: getSeriesByTvdbId returns undefined, not null.
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(undefined as any);
+      metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+        type: 'tv',
+        tvdb: 1,
+      } as any);
+      metadataService.getDetails.mockResolvedValue({
+        id: 1,
+        title: 'Sample Series',
+        type: 'tv',
+        externalIds: { type: 'tv', tvdb: 1 },
+        ended: true,
+      } as any);
+
+      const response = await callGet(7);
+
+      // Returns undefined (comparator skips) — must NOT serve metadata's
+      // 'ended: true' while Sonarr is unreachable, since that would change
+      // collection membership during an outage.
+      expect(response).toBeUndefined();
+      expect(metadataService.getDetails).not.toHaveBeenCalled();
+    });
+  });
+
   const mockSonarrApi = (series?: SonarrSeries) => {
     const mockedSonarrApi = new SonarrApi(
       { url: 'http://localhost:8989', apiKey: 'test' },
