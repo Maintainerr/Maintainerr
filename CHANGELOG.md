@@ -1,5 +1,22 @@
 # [3.13.0](https://github.com/Maintainerr/Maintainerr/compare/v3.12.1...v3.13.0) (2026-05-28)
 
+# PLEASE NOTE:
+
+## Global vs scoped exclusions
+
+Exclusions are now either global (everywhere) or per-group — not both. Setting a global exclusion replaces any per-group ones for that item. If you later remove the global exclusion, you'll need to re-add the per-group ones.
+
+## Per-group exclusions stay in their group
+
+Per-group exclusions used to hide an item in every group. They now apply only to the group you set them in, so items you excluded in one group may start showing up in others. Existing exclusions aren't auto-converted — to exclude something everywhere, use a global exclusion.
+
+## Rule section operators
+
+A section without an operator used to be treated as AND; it's now OR, which is what we always meant. Existing rules are migrated automatically so they keep evaluating the same way.
+
+If a multi-section rule wasn't matching as you expected, this is probably why. The operator between sections is now visible in the rule editor, and new rules need an explicit operator on every section after the first.
+
+This migration is not reversible.
 
 ## Highlights
 - Added metadata fallback for rules when series are absent from Sonarr, improving rule evaluation reliability (#3002).
