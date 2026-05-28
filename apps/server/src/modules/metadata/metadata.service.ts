@@ -495,28 +495,90 @@ export class MetadataService {
     );
   }
 
+  /**
+   * Returns metadata details for the given IDs.
+   *
+   * Default behavior (no options): walks providers in preference order and
+   * returns the first non-undefined record — the fast path that existing
+   * callers (poster/backdrop lookups, ID resolution) rely on.
+   *
+   * `{ merge: true }`: walks every available provider and fills any optional
+   * field the primary left undefined from later providers. Field-agnostic, so
+   * any new optional field on `MetadataDetails` is picked up automatically.
+   * Use this for fallback paths where it's worth doubling cold-cache API
+   * calls to avoid silent nulls when the primary returns a partial record.
+   */
   async getDetails(
     ids: ProviderIds,
     type: 'movie' | 'tv',
+    options: { merge?: boolean } = {},
   ): Promise<MetadataDetails | undefined> {
-    const providerResult = await this.withProviderFallbackDetailed(
-      ids,
-      (provider, id) => provider.getDetails(id, type),
-    );
+    if (!options.merge) {
+      const providerResult = await this.withProviderFallbackDetailed(
+        ids,
+        (provider, id) => provider.getDetails(id, type),
+      );
 
-    if (!providerResult) {
+      if (!providerResult) {
+        return undefined;
+      }
+
+      if (providerResult.result.externalIds) {
+        this.applyIdCorrections(
+          ids,
+          providerResult.result.externalIds,
+          providerResult.provider,
+        );
+      }
+
+      return providerResult.result;
+    }
+
+    let merged: MetadataDetails | undefined;
+    let primaryProviderName: string | undefined;
+
+    for (const provider of this.getOrderedProviders()) {
+      const id = provider.extractId(ids);
+      if (id === undefined) {
+        continue;
+      }
+
+      const details = await provider.getDetails(id, type);
+      if (!details) {
+        continue;
+      }
+
+      if (!merged) {
+        merged = { ...details };
+        primaryProviderName = provider.name;
+        continue;
+      }
+
+      // Safe write: optional MetadataDetails fields are the only ones that
+      // can be undefined on `merged`; required fields (id, title, type,
+      // externalIds) are always set by the primary, so the assignment only
+      // ever fills holes in optional slots.
+      const mergedRecord = merged as unknown as Record<string, unknown>;
+      const detailsRecord = details as unknown as Record<string, unknown>;
+      for (const key of Object.keys(detailsRecord)) {
+        if (
+          mergedRecord[key] === undefined &&
+          detailsRecord[key] !== undefined
+        ) {
+          mergedRecord[key] = detailsRecord[key];
+        }
+      }
+    }
+
+    if (!merged) {
       return undefined;
     }
 
-    if (providerResult.result.externalIds) {
-      this.applyIdCorrections(
-        ids,
-        providerResult.result.externalIds,
-        providerResult.provider,
-      );
+    if (merged.externalIds && primaryProviderName) {
+      this.applyIdCorrections(ids, merged.externalIds, primaryProviderName);
     }
 
-    return providerResult.result;
+    return merged;
   }
 
   private applyIdCorrections(

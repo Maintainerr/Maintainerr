@@ -104,7 +104,7 @@ export class RadarrGetterService {
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
         this.logger.warn(
-          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a movie in Radarr.`,
+          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a movie in Radarr. Is the movie tracked in Radarr?`,
         );
         return null;
       }
