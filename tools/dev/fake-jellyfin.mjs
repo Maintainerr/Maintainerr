@@ -85,7 +85,50 @@ const MOVIES = [
   movie('mock-movie-mid', 'Mock Bravo', 6, '2026-02-01'),
   movie('mock-movie-low', 'Mock Charlie', 2, '2026-03-01'),
 ];
-const ITEMS_BY_ID = new Map(MOVIES.map((m) => [m.Id, m]));
+
+// Show counterpart, used to drive Sonarr/show-side flows (e.g. the
+// metadata-fallback path when a series is absent from Sonarr). Provider IDs
+// are synthetic — they won't resolve against real TMDB/TVDB, which is fine
+// for any flow that doesn't depend on year-validation passing.
+function series(id, name, addDate, providerIds = {}) {
+  return {
+    Id: id,
+    Name: name,
+    Type: 'Series',
+    ServerId: 'mockserver',
+    ParentId: 'jellyfin-shows',
+    CommunityRating: 7,
+    CriticRating: 70,
+    ProductionYear: 2020,
+    DateCreated: ISO(addDate),
+    PremiereDate: ISO(addDate),
+    Genres: ['Placeholder'],
+    Tags: [],
+    ProviderIds: providerIds,
+    ImageTags: { Primary: 'mocktag' },
+    UserData: {
+      PlayCount: 0,
+      Played: false,
+      PlayedPercentage: 0,
+      IsFavorite: false,
+    },
+  };
+}
+
+const SHOWS = [
+  series('mock-show-1', 'Mock Show Alpha', '2026-01-01', {
+    Tvdb: '900000001',
+    Tmdb: '900000001',
+  }),
+  series('mock-show-2', 'Mock Show Bravo', '2026-02-01', {
+    Tvdb: '900000002',
+    Tmdb: '900000002',
+  }),
+];
+
+const ITEMS_BY_ID = new Map(
+  [...MOVIES, ...SHOWS].map((item) => [item.Id, item]),
+);
 
 // --- HTTP helpers ----------------------------------------------------------------
 function send(res, status, body) {
@@ -183,8 +226,12 @@ const server = http.createServer((req, res) => {
       );
     }
     const parentId = u.searchParams.get('parentId');
-    if (parentId === 'jellyfin-movies' || u.searchParams.get('includeItemTypes') === 'Movie') {
+    const itemTypes = u.searchParams.get('includeItemTypes');
+    if (parentId === 'jellyfin-movies' || itemTypes === 'Movie') {
       return send(res, 200, itemsResponse(MOVIES));
+    }
+    if (parentId === 'jellyfin-shows' || itemTypes === 'Series') {
+      return send(res, 200, itemsResponse(SHOWS));
     }
     // BoxSets / collections, episodes, etc. -> empty for now
     return send(res, 200, itemsResponse([]));

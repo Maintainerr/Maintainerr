@@ -67,7 +67,40 @@ export class TvdbMetadataProvider implements IMetadataProvider {
         type,
       },
       type,
+      ended:
+        'firstAired' in record
+          ? this.deriveEnded(record.status?.name)
+          : undefined,
+      firstAirDate:
+        'firstAired' in record ? record.firstAired || undefined : undefined,
+      seasonCount:
+        'firstAired' in record
+          ? this.countRealSeasons(record.seasons, record.defaultSeasonType)
+          : undefined,
     };
+  }
+
+  private deriveEnded(status: string | undefined): boolean | undefined {
+    if (status === 'Ended') return true;
+    if (status === 'Continuing' || status === 'Upcoming') return false;
+    return undefined;
+  }
+
+  // TVDB returns season entries for every alternative ordering (Aired / DVD /
+  // Absolute / Alternate / Regional), so filter to the series' default ordering
+  // before excluding Season 0.
+  private countRealSeasons(
+    seasons: { number: number; type: { id: number } }[] | undefined,
+    defaultSeasonType: number | undefined,
+  ): number | undefined {
+    if (!Array.isArray(seasons) || defaultSeasonType === undefined) {
+      return undefined;
+    }
+    let count = 0;
+    for (const season of seasons) {
+      if (season.type?.id === defaultSeasonType && season.number > 0) count++;
+    }
+    return count;
   }
 
   async getPosterUrl(

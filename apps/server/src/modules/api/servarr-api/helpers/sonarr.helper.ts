@@ -109,7 +109,14 @@ export class SonarrApi extends ServarrApi<{
   // (unmonitor + file deletes) by the empty-show cleanup, and also drives
   // rule evaluation — both need Sonarr's current truth, not a snapshot that
   // can be up to DEFAULT_TTL stale (see issue #2757 / #2891).
-  public async getSeriesByTvdbId(id: number): Promise<SonarrSeries> {
+  // Returns `null` when Sonarr confirms the series isn't tracked (empty
+  // response) and `undefined` when the lookup itself failed (transport, auth,
+  // 5xx). Callers must keep these distinct: a confirmed miss is safe to fall
+  // back from, a failure must fail closed so a transient Sonarr outage can't
+  // silently change rule evaluation.
+  public async getSeriesByTvdbId(
+    id: number,
+  ): Promise<SonarrSeries | null | undefined> {
     try {
       const response = await this.getWithoutCache<SonarrSeries[]>(
         `/series?tvdbId=${id}`,
@@ -117,13 +124,14 @@ export class SonarrApi extends ServarrApi<{
 
       if (!response?.[0]) {
         this.logger.warn(`Could not retrieve show by tvdb ID ${id}`);
-        return undefined;
+        return null;
       }
 
       return response[0];
     } catch (error) {
       this.logger.warn(`Error retrieving show by tvdb ID ${id}`);
       this.logger.debug(error);
+      return undefined;
     }
   }
 
