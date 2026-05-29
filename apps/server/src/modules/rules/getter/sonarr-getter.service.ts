@@ -105,7 +105,7 @@ export class SonarrGetterService {
 
       if (lookupCandidates.length === 0) {
         this.logger.warn(
-          `Failed to resolve external IDs for '${libItem.title}' with id '${libItem.id}'. As a result, no Sonarr query could be made.`,
+          `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Sonarr query could be made.`,
         );
         return null;
       }
