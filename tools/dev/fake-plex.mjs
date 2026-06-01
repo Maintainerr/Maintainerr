@@ -230,14 +230,7 @@ const HISTORY = {
     { ratingKey: 'p1', accountID: 1, viewedAt: daysAgo(3), deviceID: 1 },
     { ratingKey: 'p1', accountID: 2, viewedAt: daysAgo(8), deviceID: 1 },
   ],
-  p2: [
-    { ratingKey: 'p2', accountID: 1, viewedAt: daysAgo(10), deviceID: 1 },
-    // Another user watched more recently than the admin-scoped lastViewedAt
-    // (daysAgo(10)) — exercises the lastViewedAt cross-user max (prop id 7).
-    { ratingKey: 'p2', accountID: 2, viewedAt: daysAgo(2), deviceID: 1 },
-  ],
-  // p3 has no lastViewedAt on the item; history is the only signal.
-  p3: [{ ratingKey: 'p3', accountID: 2, viewedAt: daysAgo(4), deviceID: 1 }],
+  p2: [{ ratingKey: 'p2', accountID: 1, viewedAt: daysAgo(10), deviceID: 1 }],
   ep1: [{ ratingKey: 'ep1', accountID: 1, viewedAt: daysAgo(5), deviceID: 1 }],
 };
 

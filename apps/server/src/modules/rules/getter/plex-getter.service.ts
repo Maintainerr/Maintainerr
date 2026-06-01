@@ -249,46 +249,19 @@ export class PlexGetterService {
           ]);
         }
         case 'lastViewedAt': {
-          // Combine every "last viewed" signal and keep the most recent.
-          // libItem/metadata carry Plex's durable per-item `lastViewedAt`
-          // attribute — scoped to the admin account, but it survives session
-          // history pruning (and Plex 1.43.2 dropped it from the metadata
-          // endpoint, so the library item is the only place it now appears).
-          // getWatchHistory reports every user's views, but is a log Plex can
-          // prune or omit. Taking the max keeps the cross-user semantic without
-          // regressing when one source is missing.
-          const candidates: Date[] = [];
-
-          if (libItem.lastViewedAt) {
-            candidates.push(libItem.lastViewedAt);
-          }
-
-          if (metadata.lastViewedAt) {
-            candidates.push(new Date(metadata.lastViewedAt * 1000));
-          }
-
           // Errors must surface so the outer catch returns `undefined` for an
           // unknown watch state instead of collapsing the failure into a
           // confirmed never-watched `null`.
           const seenby = await this.plexApi.getWatchHistory(metadata.ratingKey);
           if (seenby && seenby.length > 0) {
-            candidates.push(
-              new Date(
-                +seenby
-                  .map((el) => el.viewedAt)
-                  .sort()
-                  .reverse()[0] * 1000,
-              ),
+            return new Date(
+              +seenby
+                .map((el) => el.viewedAt)
+                .sort()
+                .reverse()[0] * 1000,
             );
           }
-
-          if (candidates.length === 0) {
-            return null;
-          }
-
-          return new Date(
-            Math.max(...candidates.map((date) => date.getTime())),
-          );
+          return null;
         }
         case 'fileVideoResolution': {
           return metadata.Media[0].videoResolution
@@ -822,13 +795,11 @@ export class PlexGetterService {
           // collection with this item, so one recently-watched sibling keeps
           // the whole set out of the delete pool.
           //
-          // We use getWatchHistory (/status/sessions/history/all) because the
-          // history endpoint returns every user's entries when called with an
-          // admin token, while the per-child lastViewedAt field is scoped to
-          // the calling account (admin-only). The single-item lastViewedAt rule
-          // (prop id 7) combines both sources for the same reason; here we only
-          // consult history because there is no per-collection lastViewedAt to
-          // fold in.
+          // We use getWatchHistory (/status/sessions/history/all) — not the
+          // per-child lastViewedAt field — because library metadata is scoped
+          // to the calling account (admin-only), while the history endpoint
+          // returns every user's entries when called with an admin token.
+          // Same pattern as the existing lastViewedAt rule (prop id 7).
           const memberTags = filterRuleCollectionNames(
             metadata.Collection?.map((collection) => collection.tag) ?? [],
             ruleGroup,

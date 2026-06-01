@@ -21,7 +21,6 @@ export interface PlexMetadata {
   leafCount: number;
   grandparentRatingKey?: string;
   viewedLeafCount: number;
-  lastViewedAt?: number;
   addedAt: number;
   updatedAt: number;
   media: Media[];

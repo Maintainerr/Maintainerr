@@ -734,7 +734,17 @@ export class PlexApiService {
         },
         useCache,
       );
-    return (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
+    const container = response?.MediaContainer as
+      | { size?: number; totalSize?: number; Metadata?: unknown[] }
+      | undefined;
+    const items = (container?.Metadata as PlexSeenBy[]) ?? [];
+    // [3008] TEMP diagnostic — pinpoints why lastViewedAt resolves to null on
+    // Plex 1.43.2 even when history exists. Captures the in-process result vs
+    // the raw endpoint. Remove once the root cause is confirmed.
+    this.logger.log(
+      `[3008] getWatchHistory itemId=${itemId} useCache=${useCache} containerKeys=${container ? Object.keys(container).join('|') : 'NONE'} size=${container?.size} totalSize=${container?.totalSize} -> ${items.length} entries`,
+    );
+    return items;
   }
 
   public async getCollections(

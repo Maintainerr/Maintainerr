@@ -295,57 +295,6 @@ describe('PlexGetterService', () => {
       expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
     });
 
-    it('returns the library item lastViewedAt when watch history is empty (id 7)', async () => {
-      const lastViewedAt = new Date('2026-05-21T23:04:21.000Z');
-      plexApi.getMetadata.mockResolvedValue(makeMetadata());
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const result = await service.get(
-        7,
-        createMediaItem({ type: 'movie', lastViewedAt }),
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(result).toEqual(lastViewedAt);
-    });
-
-    it('returns the most recent of library item and watch history for lastViewedAt (id 7)', async () => {
-      // The admin-scoped library timestamp is older than another user's view in
-      // the cross-user history, so the newer history entry must win.
-      const libLastViewedAt = new Date(1_700_000_000 * 1000);
-      plexApi.getMetadata.mockResolvedValue(makeMetadata());
-      plexApi.getWatchHistory.mockResolvedValue([
-        makeWatchEntry({ viewedAt: 1_720_000_000 }),
-      ]);
-
-      const result = await service.get(
-        7,
-        createMediaItem({ type: 'movie', lastViewedAt: libLastViewedAt }),
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(result).toEqual(new Date(1_720_000_000 * 1000));
-    });
-
-    it('keeps the library item lastViewedAt when it is newer than watch history (id 7)', async () => {
-      const libLastViewedAt = new Date(1_730_000_000 * 1000);
-      plexApi.getMetadata.mockResolvedValue(makeMetadata());
-      plexApi.getWatchHistory.mockResolvedValue([
-        makeWatchEntry({ viewedAt: 1_720_000_000 }),
-      ]);
-
-      const result = await service.get(
-        7,
-        createMediaItem({ type: 'movie', lastViewedAt: libLastViewedAt }),
-        'movie',
-        createRulesDto({ dataType: 'movie' }),
-      );
-
-      expect(result).toEqual(libLastViewedAt);
-    });
-
     it('filters collection counts by rule and manual collection names case-insensitively (id 6)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({
