@@ -295,6 +295,21 @@ describe('PlexGetterService', () => {
       expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
     });
 
+    it('returns the library item lastViewedAt before querying watch history (id 7)', async () => {
+      const lastViewedAt = new Date('2026-05-21T23:04:21.000Z');
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+
+      const result = await service.get(
+        7,
+        createMediaItem({ type: 'movie', lastViewedAt }),
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toEqual(lastViewedAt);
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+    });
+
     it('filters collection counts by rule and manual collection names case-insensitively (id 6)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({

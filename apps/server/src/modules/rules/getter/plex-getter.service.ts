@@ -249,6 +249,14 @@ export class PlexGetterService {
           ]);
         }
         case 'lastViewedAt': {
+          if (libItem.lastViewedAt) {
+            return libItem.lastViewedAt;
+          }
+
+          if (metadata.lastViewedAt) {
+            return new Date(metadata.lastViewedAt * 1000);
+          }
+
           // Errors must surface so the outer catch returns `undefined` for an
           // unknown watch state instead of collapsing the failure into a
           // confirmed never-watched `null`.
