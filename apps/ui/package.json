@@ -77,7 +77,7 @@
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.14",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.8"
   },
   "optionalDependencies": {
     "rolldown": "^1.0.3"
