@@ -228,19 +228,19 @@ const run = db.transaction(() => {
   const insCollection = db.prepare(
     `INSERT INTO collection
        (libraryId, title, description, isActive, type, mediaServerType,
-        deleteAfterDays, visibleOnHome, visibleOnRecommended,
+        deleteAfterDays, visibleOnHome, visibleOnRecommended, arrAction, listExclusions,
         radarrSettingsId, sonarrSettingsId, handledMediaAmount,
         handledMediaSizeBytes, totalSizeBytes, lastDurationInSeconds, addDate)
      VALUES
        (@libraryId, @title, @description, 1, @type, @mediaServerType,
-        @deleteAfterDays, @visibleOnHome, 0,
+        @deleteAfterDays, @visibleOnHome, 0, @arrAction, @listExclusions,
         @radarrSettingsId, @sonarrSettingsId, @handledMediaAmount,
         @handledMediaSizeBytes, @totalSizeBytes, @lastDuration, @addDate)`,
   );
   const insMedia = db.prepare(
     `INSERT INTO collection_media
-       (collectionId, mediaServerId, addDate, image_path, isManual, includedByRule, sizeBytes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (collectionId, mediaServerId, addDate, image_path, isManual, includedByRule, sizeBytes, tmdbId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insRuleGroup = db.prepare(
     `INSERT INTO rule_group
@@ -266,6 +266,9 @@ const run = db.transaction(() => {
       mediaServerType: TARGET,
       deleteAfterDays: cfg.deleteAfterDays,
       visibleOnHome: cfg.visibleOnHome ? 1 : 0,
+      // ServarrAction: DELETE=0, UNMONITOR_DELETE_ALL=1, UNMONITOR=3, DO_NOTHING=4.
+      arrAction: cfg.arrAction ?? 0,
+      listExclusions: cfg.listExclusions ? 1 : 0,
       radarrSettingsId: cfg.type === "movie" ? radarrId : null,
       sonarrSettingsId: cfg.type === "show" ? sonarrId : null,
       handledMediaAmount: cfg.slugs.length,
@@ -277,6 +280,10 @@ const run = db.transaction(() => {
 
     cfg.slugs.forEach((slug, i) => {
       const age = Math.round((i / cfg.slugs.length) * cfg.maxAge);
+      // Movies get a deterministic tmdbId so the Radarr action handler resolves
+      // them without the media server (fake-radarr returns a movie for any
+      // tmdbId). Shows are left null (Sonarr resolves via tvdb, not exercised).
+      const tmdbId = cfg.type === "movie" ? colId * 1000 + i : null;
       insMedia.run(
         colId,
         jellyfinId(),
@@ -285,6 +292,7 @@ const run = db.transaction(() => {
         0,
         1,
         sizes[i],
+        tmdbId,
       );
     });
 
@@ -312,6 +320,10 @@ const run = db.transaction(() => {
       visibleOnHome: true,
       slugs: STALE_MOVIES,
       maxAge: 120,
+      // Unmonitor + add import list exclusion: exercises the Radarr exclusion
+      // path against tools/dev/fake-radarr.mjs (POST /exclusions/bulk).
+      arrAction: 3, // UNMONITOR
+      listExclusions: true,
     }),
     seedCollection({
       title: "Unwatched Series",
@@ -322,6 +334,9 @@ const run = db.transaction(() => {
       visibleOnHome: true,
       slugs: UNWATCHED_SHOWS,
       maxAge: 200,
+      // Do nothing: there is no fake Sonarr, so keep collection-handling runs
+      // focused on the Radarr path. Set to a real action once one exists.
+      arrAction: 4, // DO_NOTHING
     }),
     seedCollection({
       title: "Archive Queue",
@@ -332,6 +347,7 @@ const run = db.transaction(() => {
       visibleOnHome: false,
       slugs: ARCHIVE_MOVIES,
       maxAge: 365,
+      arrAction: 4, // DO_NOTHING (null deleteAfterDays would otherwise be "due now")
     }),
   ];
 

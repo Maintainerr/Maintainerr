@@ -189,6 +189,11 @@ describe('CollectionWorkerService', () => {
     expect(seerrApi.api.post).not.toHaveBeenCalled();
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.CollectionHandler_Failed,
+      expect.objectContaining({
+        collectionName: collection.title,
+        mediaItems: [{ mediaServerId: collectionMedia.mediaServerId }],
+        identifier: { type: 'collection', value: collection.id },
+      }),
     );
     expect(eventEmitter.emit).not.toHaveBeenCalledWith(
       MaintainerrEvent.CollectionMedia_Handled,
@@ -225,6 +230,11 @@ describe('CollectionWorkerService', () => {
     expect(seerrApi.api.post).toHaveBeenCalled();
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.CollectionHandler_Failed,
+      expect.objectContaining({
+        collectionName: collection.title,
+        mediaItems: [{ mediaServerId: firstCollectionMedia.mediaServerId }],
+        identifier: { type: 'collection', value: collection.id },
+      }),
     );
   });
 

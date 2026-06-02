@@ -17,6 +17,7 @@ import { getErrorMessage } from '../../utils/connection-error';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
+  CollectionHandlerFailedDto,
   CollectionMediaAddedDto,
   CollectionMediaHandledDto,
   CollectionMediaRemovedDto,
@@ -762,7 +763,7 @@ export class NotificationService implements OnModuleInit {
         case NotificationType.COLLECTION_HANDLING_FAILED:
           subject = 'Collection Handling Failed';
           message =
-            '⚠️ Oops! Something went wrong while processing your collections.';
+            "⚠️ Couldn't finish handling one or more items in '{collection_name}'. Check the Maintainerr logs for details.";
           break;
         case NotificationType.RULE_HANDLING_FAILED:
           subject = 'Rule Handling Failed';
@@ -861,57 +862,65 @@ export class NotificationService implements OnModuleInit {
     collectionName?: string,
     dayAmount?: number,
   ): Promise<string> {
-    try {
-      const mediaServer = await this.getMediaServer();
-      if (items) {
-        if (items.length > 1) {
-          // if multiple items
-          const titles = [];
-          let numUnknownItems = 0;
+    // Collection name and day count are plain string substitutions that don't
+    // need the media server — resolve them up front so an unavailable media
+    // server (which only affects the media-title lookups below) can't leave
+    // their placeholders raw. Strip the collection clause entirely when there's
+    // no collection context (e.g. an infrastructure-level failure) so we never
+    // deliver a raw "{collection_name}" token.
+    message = collectionName
+      ? message.replace('{collection_name}', collectionName)
+      : message.replace(" in '{collection_name}'", '');
 
-          for (const i of items) {
-            const item = await mediaServer.getMetadata(i.mediaServerId);
-
-            if (item) {
-              titles.push(this.getTitle(item));
-            } else {
-              numUnknownItems++;
-            }
-          }
-
-          if (numUnknownItems > 0) {
-            titles.push(
-              `${numUnknownItems} item${
-                numUnknownItems > 1 ? 's' : ''
-              } that no longer exist${numUnknownItems > 1 ? '' : 's'} in the media server`,
-            );
-          }
-
-          const result = titles
-            .map((name) => `* ${name.charAt(0).toUpperCase() + name.slice(1)}`)
-            .join(' \n');
-
-          message = message.replace('{media_items}', result);
-        } else {
-          // if 1 item
-          const item = await mediaServer.getMetadata(items[0].mediaServerId);
-          message = message.replace(
-            '{media_title}',
-            item
-              ? this.getTitle(item)
-              : '1 item that no longer exists in the media server',
-          );
-        }
-      }
-
-      message = collectionName
-        ? message.replace('{collection_name}', collectionName)
+    message =
+      dayAmount && dayAmount > 0
+        ? message.replace('{days}', dayAmount.toString())
         : message;
 
-      message =
-        dayAmount && dayAmount > 0
-          ? message.replace('{days}', dayAmount.toString())
-          : message;
+    if (!items) {
+      return message;
+    }
+
+    try {
+      const mediaServer = await this.getMediaServer();
+      if (items.length > 1) {
+        // if multiple items
+        const titles = [];
+        let numUnknownItems = 0;
+
+        for (const i of items) {
+          const item = await mediaServer.getMetadata(i.mediaServerId);
+
+          if (item) {
+            titles.push(this.getTitle(item));
+          } else {
+            numUnknownItems++;
+          }
+        }
+
+        if (numUnknownItems > 0) {
+          titles.push(
+            `${numUnknownItems} item${
+              numUnknownItems > 1 ? 's' : ''
+            } that no longer exist${numUnknownItems > 1 ? '' : 's'} in the media server`,
+          );
+        }
+
+        const result = titles
+          .map((name) => `* ${name.charAt(0).toUpperCase() + name.slice(1)}`)
+          .join(' \n');
+
+        message = message.replace('{media_items}', result);
+      } else {
+        // if 1 item
+        const item = await mediaServer.getMetadata(items[0].mediaServerId);
+        message = message.replace(
+          '{media_title}',
+          item
+            ? this.getTitle(item)
+            : '1 item that no longer exists in the media server',
+        );
+      }
 
       return message;
     } catch (error) {
@@ -961,8 +970,15 @@ export class NotificationService implements OnModuleInit {
   }
 
   @OnEvent(MaintainerrEvent.CollectionHandler_Failed)
-  private async collectionHandlerFailed() {
-    await this.handleNotification(NotificationType.COLLECTION_HANDLING_FAILED);
+  private async collectionHandlerFailed(data?: CollectionHandlerFailedDto) {
+    await this.handleNotification(
+      NotificationType.COLLECTION_HANDLING_FAILED,
+      undefined,
+      data?.collectionName,
+      undefined,
+      undefined,
+      data?.identifier,
+    );
   }
 
   @OnEvent(MaintainerrEvent.RuleHandlerQueue_StatusUpdated)

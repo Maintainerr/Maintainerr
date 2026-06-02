@@ -1,4 +1,5 @@
 import { MaintainerrEvent } from '@maintainerr/contracts';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { createMockLogger } from '../../../test/utils/data';
 import {
   CollectionMediaAddedDto,
@@ -87,6 +88,66 @@ describe('NotificationService', () => {
     expect(content).toBe(
       "🖼️ Overlay has been applied to 'Test Media' in 'My Collection'.",
     );
+  });
+
+  describe('collection handling failed message', () => {
+    it('names the collection that failed', async () => {
+      const { service } = createService();
+
+      const { message } = (service as any).getContent(
+        NotificationType.COLLECTION_HANDLING_FAILED,
+        false,
+      );
+      const content = await (service as any).transformMessageContent(
+        message,
+        undefined,
+        'My Collection',
+      );
+
+      expect(content).toBe(
+        "⚠️ Couldn't finish handling one or more items in 'My Collection'. Check the Maintainerr logs for details.",
+      );
+    });
+
+    it('drops the collection clause when there is no collection context', async () => {
+      const { service } = createService();
+
+      const { message } = (service as any).getContent(
+        NotificationType.COLLECTION_HANDLING_FAILED,
+        false,
+      );
+      const content = await (service as any).transformMessageContent(message);
+
+      expect(content).toBe(
+        "⚠️ Couldn't finish handling one or more items. Check the Maintainerr logs for details.",
+      );
+      expect(content).not.toContain('{collection_name}');
+    });
+
+    it('still resolves the collection name when the media server is unavailable', async () => {
+      // The media-server-unreachable failure path emits this notification while
+      // the media server throws ServiceUnavailableException. Collection name is
+      // a plain substitution, so it must not leak the raw placeholder.
+      const { service, mediaServerFactory } = createService();
+      mediaServerFactory.getService.mockRejectedValue(
+        new ServiceUnavailableException(),
+      );
+
+      const { message } = (service as any).getContent(
+        NotificationType.COLLECTION_HANDLING_FAILED,
+        false,
+      );
+      const content = await (service as any).transformMessageContent(
+        message,
+        undefined,
+        'My Collection',
+      );
+
+      expect(content).toBe(
+        "⚠️ Couldn't finish handling one or more items in 'My Collection'. Check the Maintainerr logs for details.",
+      );
+      expect(content).not.toContain('{collection_name}');
+    });
   });
 
   describe('rule batch dedupe', () => {

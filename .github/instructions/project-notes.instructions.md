@@ -445,6 +445,15 @@ Playwright against deterministic data. Full workflow is in
   hydration uses this, not `/Items/{id}`). Item images 302-redirect to picsum.
 - `tools/dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
   getter paths.
+- `tools/dev/fake-radarr.mjs` — mock Radarr v3 (`:7878`). The media-server mocks
+  don't cover \*arr, so the collection-handler → RadarrActionHandler flow
+  (DELETE / UNMONITOR / add-import-list-exclusion) needs this. Resolves any
+  `tmdbId` to a movie (movie id == tmdbId), and faithfully replicates Radarr's
+  exclusion semantics: `POST /exclusions/bulk` de-dupes server-side (idempotent),
+  singular `POST /exclusions` returns HTTP 400 on a duplicate. The seed's "Stale
+  Movies" collection is UNMONITOR + listExclusions with `tmdbId`s set, so
+  `POST /api/collections/handle` exercises this path end-to-end. No fake Sonarr
+  exists yet, so the seed's show collection is DO_NOTHING.
 - `tools/dev/seed-db.mjs` — the only DB-touching script. Resets and seeds
   collections / rule groups (with rules covering ~all properties) / settings /
   notifications / exclusions / overlays into `data/maintainerr.sqlite`. Target a
