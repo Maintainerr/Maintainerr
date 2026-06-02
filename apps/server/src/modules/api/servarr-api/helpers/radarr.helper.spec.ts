@@ -1,9 +1,7 @@
 import { Mocked } from '@suites/doubles.jest';
-import {
-  createRadarrMovie,
-  createRadarrMovieFile,
-} from '../../../../../test/utils/data';
+import { createRadarrMovie } from '../../../../../test/utils/data';
 import { MaintainerrLogger } from '../../../logging/logs.service';
+import { RadarrImportListExclusion } from '../interfaces/radarr.interface';
 import { RadarrApi } from './radarr.helper';
 
 describe('RadarrApi', () => {
@@ -24,7 +22,7 @@ describe('RadarrApi', () => {
     );
   });
 
-  it('returns false when adding an import exclusion fails', async () => {
+  describe('updateMovie import list exclusions', () => {
     const movie = createRadarrMovie({
       id: 5,
       monitored: true,
@@ -33,33 +31,56 @@ describe('RadarrApi', () => {
       year: 2024,
     });
 
-    jest.spyOn(api, 'getWithoutCache').mockImplementation(async (endpoint) => {
-      if (endpoint === 'movie/5') {
-        return movie;
-      }
-
-      if (endpoint === 'moviefile?movieId=5') {
-        return [createRadarrMovieFile()];
-      }
-
-      return undefined;
+    const exclusionFor = (m: typeof movie): RadarrImportListExclusion => ({
+      tmdbId: m.tmdbId,
+      movieTitle: m.title,
+      movieYear: m.year,
     });
 
-    jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
-    jest.spyOn(api as any, 'runDelete').mockResolvedValue(true);
-    jest.spyOn(api, 'post').mockResolvedValue(undefined);
+    let postSpy: jest.SpyInstance;
 
-    await expect(
-      api.updateMovie(5, {
+    beforeEach(() => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockImplementation(async (endpoint) => {
+          if (endpoint === `movie/${movie.id}`) return movie;
+          return undefined;
+        });
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+      postSpy = jest.spyOn(api, 'post');
+    });
+
+    const unmonitorWithExclusion = () =>
+      api.updateMovie(movie.id, {
         monitored: false,
         addImportExclusion: true,
-      }),
-    ).resolves.toBe(false);
+      });
 
-    expect(api.post).toHaveBeenCalledWith('/exclusions', {
-      tmdbId: movie.tmdbId,
-      movieTitle: movie.title,
-      movieYear: movie.year,
+    // The bulk endpoint de-dupes server-side, so re-adding an existing
+    // exclusion is a no-op rather than the HTTP 400 the singular endpoint
+    // returns.
+    it('adds the exclusion via the de-duping bulk endpoint', async () => {
+      postSpy.mockResolvedValue([exclusionFor(movie)]);
+
+      await expect(unmonitorWithExclusion()).resolves.toBe(true);
+      expect(postSpy).toHaveBeenCalledWith('/exclusions/bulk', [
+        exclusionFor(movie),
+      ]);
+    });
+
+    // Radarr's bulk endpoint documents 200 with no response schema, so a
+    // successful add can have an empty body (''); only undefined (a failed
+    // request) is a failure.
+    it('treats a successful empty-body response as success', async () => {
+      postSpy.mockResolvedValue('');
+
+      await expect(unmonitorWithExclusion()).resolves.toBe(true);
+    });
+
+    it('returns false when the bulk exclusion request fails', async () => {
+      postSpy.mockResolvedValue(undefined);
+
+      await expect(unmonitorWithExclusion()).resolves.toBe(false);
     });
   });
 
