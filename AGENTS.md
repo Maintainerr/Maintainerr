@@ -305,22 +305,30 @@ These specifications provide comprehensive type definitions and endpoint documen
 
 For end-to-end checks of media-server-dependent flows (rules, collections,
 overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
-has three scripts that **complement Playwright** — Playwright drives the UI, these
+has scripts that **complement Playwright** — Playwright drives the UI, these
 provide the backend data:
 
 - `tools/dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
 - `tools/dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
   getter paths (smart collections, watch history, accounts, ratings,
   shows/seasons/episodes) that the Jellyfin mock can't.
+- `tools/dev/fake-radarr.mjs` — mock Radarr v3 (`:7878`); covers the
+  collection-handler → RadarrActionHandler flow (DELETE / UNMONITOR / "add import
+  list exclusion") that the media-server mocks can't. Resolves any `tmdbId` to a
+  movie, and replicates Radarr's exclusion semantics: `POST /exclusions/bulk`
+  de-dupes (idempotent), singular `POST /exclusions` 400s on a duplicate.
 - `tools/dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
   collections, and rule groups **with rules** covering ~all rule properties, plus
-  notifications, cron, logs, exclusions, and overlays. Target a server with
-  `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
+  notifications, cron, logs, exclusions, and overlays. The "Stale Movies"
+  collection is seeded as UNMONITOR + listExclusions with `tmdbId`s set, so it
+  exercises the Radarr exclusion path against `fake-radarr.mjs`. Target a server
+  with `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
 
-Workflow: start the matching mock, stop `yarn dev` (SQLite is single-writer),
+Workflow: start the matching mock(s), stop `yarn dev` (SQLite is single-writer),
 run the seed, restart `yarn dev`. Inspect a getter's live output with
-`POST /api/rules/test {"mediaId","rulegroupId"}` or run a rule with
-`POST /api/rules/:id/execute`. Note: after editing server code, **restart
+`POST /api/rules/test {"mediaId","rulegroupId"}`, run a rule with
+`POST /api/rules/:id/execute`, or run collection handling with
+`POST /api/collections/handle`. Note: after editing server code, **restart
 `yarn dev`** — a long-lived dev server can serve stale getter logic. Watchlist
 and plex.tv user enrichment can't be mocked locally (they hit plex.tv) and
 degrade gracefully.
