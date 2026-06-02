@@ -1350,7 +1350,7 @@ const AddModal = (props: AddModal) => {
                       </div>
                     )}
 
-                    {seerrEnabled && (
+                    {seerrEnabled && selectedType !== 'episode' && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="force_seerr" className="text-label">
                           Force delete Seerr request
