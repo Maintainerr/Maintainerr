@@ -310,6 +310,19 @@ export class RulesService {
     }
   }
 
+  // Resolve the collection's media type: a movie library is always 'movie';
+  // a TV library uses the rule group's selected dataType (show/season/episode),
+  // defaulting to 'show'.
+  private resolveCollectionType(
+    libType: MediaItemType,
+    params: RulesDto,
+  ): MediaItemType {
+    if (libType === 'movie') {
+      return 'movie';
+    }
+    return params.dataType !== undefined ? params.dataType : 'show';
+  }
+
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
@@ -344,21 +357,22 @@ export class RulesService {
       const lib = (await mediaServer.getLibraries()).find(
         (el) => el.id === params.libraryId,
       );
+      const collectionType = this.resolveCollectionType(lib.type, params);
       const collection = (
         await this.collectionService.createCollection({
           libraryId: params.libraryId,
-          type:
-            lib.type === 'movie'
-              ? 'movie'
-              : params.dataType !== undefined
-                ? params.dataType
-                : 'show',
+          type: collectionType,
           title: params.name,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
-          forceSeerr: params.forceSeerr ? params.forceSeerr : false,
+          // Force Seerr is unsupported for episode rules (Seerr has no
+          // per-episode request granularity), so never persist it enabled. The
+          // UI hides the toggle; this also clears the flag on re-save for rules
+          // created before it was hidden.
+          forceSeerr:
+            collectionType !== 'episode' && params.forceSeerr ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -518,20 +532,21 @@ export class RulesService {
           (el) => el.id === params.libraryId,
         );
 
+        const collectionType = this.resolveCollectionType(lib.type, params);
         const collectionData = {
           libraryId: params.libraryId,
-          type:
-            lib.type === 'movie'
-              ? 'movie'
-              : params.dataType !== undefined
-                ? params.dataType
-                : 'show',
+          type: collectionType,
           title: params.name,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
-          forceSeerr: params.forceSeerr ? params.forceSeerr : false,
+          // Force Seerr is unsupported for episode rules (Seerr has no
+          // per-episode request granularity), so never persist it enabled. The
+          // UI hides the toggle; this also clears the flag on re-save for rules
+          // created before it was hidden.
+          forceSeerr:
+            collectionType !== 'episode' && params.forceSeerr ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,

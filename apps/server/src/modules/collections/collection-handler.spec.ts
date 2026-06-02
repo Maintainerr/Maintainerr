@@ -241,7 +241,7 @@ describe('CollectionHandler', () => {
     expect(seerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
   });
 
-  it('should call removeSeasonRequest for episodes', async () => {
+  it('does not mutate Seerr requests for episodes (no per-episode request granularity)', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceSeerr: true,
@@ -263,11 +263,10 @@ describe('CollectionHandler', () => {
       collectionHandler.handleMedia(collection, collectionMedia),
     ).resolves.toBe(true);
 
-    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledWith(
-      collectionMedia.tmdbId,
-      collectionMedia.mediaData.parentIndex,
-    );
-    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
+    // Removing one episode must not delete the whole season's request (which
+    // covers the still-present episodes); rely on Seerr's availability sync.
+    expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
+    expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
   });
 
   it('should not mutate Seerr requests for DELETE_SHOW_IF_EMPTY season actions', async () => {

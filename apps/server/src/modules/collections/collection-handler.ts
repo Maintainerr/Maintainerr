@@ -144,20 +144,16 @@ export class CollectionHandler {
               break;
             }
             case 'episode': {
-              const mediaDataEpisode = await mediaServer.getMetadata(
-                media.mediaServerId,
+              // Seerr tracks requests per season, not per episode, so there is
+              // no per-episode request to remove — deleting the season request
+              // would drop the request for every other (still-present) episode
+              // in that season. Skip the force-removal and let Seerr's
+              // availability sync reconcile, as it does when Force Seerr is off.
+              // The UI hides the toggle for episode rules; this also guards
+              // existing collections that still have it set.
+              this.logger.debug(
+                `[Seerr] Skipping request removal for episode-level collection '${collection.title}' (TMDB ID '${tmdbId}'): Seerr has no per-episode request granularity. Relying on availability sync.`,
               );
-
-              if (mediaDataEpisode?.parentIndex !== undefined) {
-                await this.seerrApi.removeSeasonRequest(
-                  tmdbId,
-                  mediaDataEpisode.parentIndex,
-                );
-
-                this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataEpisode.parentIndex} from show with TMDB ID '${tmdbId}'. Because episode ${mediaDataEpisode.index} was removed.`,
-                );
-              }
               break;
             }
             default:
