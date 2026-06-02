@@ -11,7 +11,10 @@ import { LessThanOrEqual, Repository } from 'typeorm';
 import { delay } from '../../utils/delay';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { CollectionMediaHandledDto } from '../events/events.dto';
+import {
+  CollectionHandlerFailedDto,
+  CollectionMediaHandledDto,
+} from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
@@ -85,6 +88,7 @@ export class CollectionWorkerService extends TaskBase {
           'Media server unreachable. Skipping collection handling.',
         );
         this.logger.debug(error);
+        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
         return;
       }
 
@@ -192,9 +196,11 @@ export class CollectionWorkerService extends TaskBase {
 
         this.logger.log(`Handling collection '${collection.title}'`);
         const handledMediaForNotification = [];
+        const failedMediaForNotification: { mediaServerId: string }[] = [];
 
         for (const media of collectionMedia) {
           let mediaHandled = false;
+          let handlingError: unknown;
 
           try {
             mediaHandled = await this.collectionHandler.handleMedia(
@@ -202,23 +208,34 @@ export class CollectionWorkerService extends TaskBase {
               media,
             );
           } catch (error) {
-            collectionHandlingFailed = true;
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error';
-
-            this.logger.warn(
-              `Failed to handle media with id ${media.mediaServerId} in collection '${collection.title}': ${errorMessage}`,
-            );
-            this.logger.debug(error);
+            handlingError = error;
           }
 
-          if (!mediaHandled) {
-            collectionHandlingFailed = true;
-          } else {
+          if (mediaHandled) {
             handledCollectionMedia++;
             handledMediaForNotification.push({
               mediaServerId: media.mediaServerId,
             });
+          } else {
+            collectionHandlingFailed = true;
+            failedMediaForNotification.push({
+              mediaServerId: media.mediaServerId,
+            });
+
+            // Warn so a failed action stays visible without DEBUG; the
+            // per-collection failure notification below is the user-facing
+            // signal. A thrown error carries its message; a soft `false` was
+            // already logged at debug in the API layer.
+            const reason =
+              handlingError instanceof Error
+                ? handlingError.message
+                : 'the configured action could not be completed';
+            this.logger.warn(
+              `Failed to handle media with id ${media.mediaServerId} in collection '${collection.title}': ${reason}`,
+            );
+            if (handlingError) {
+              this.logger.debug(handlingError);
+            }
           }
 
           if (progressedEvent) {
@@ -235,6 +252,20 @@ export class CollectionWorkerService extends TaskBase {
             new CollectionMediaHandledDto(
               handledMediaForNotification,
               collection.title,
+              { type: 'collection', value: collection.id },
+            ),
+          );
+        }
+
+        // Emit per failing collection so the notification can name which
+        // collection failed.
+        if (failedMediaForNotification.length > 0) {
+          this.eventEmitter.emit(
+            MaintainerrEvent.CollectionHandler_Failed,
+            new CollectionHandlerFailedDto(
+              failedMediaForNotification,
+              collection.title,
+              undefined,
               { type: 'collection', value: collection.id },
             ),
           );
@@ -293,11 +324,10 @@ export class CollectionWorkerService extends TaskBase {
       failed = true;
       this.logger.error('Collection handling failed');
       this.logger.debug(error);
+      // Run-level failure with no single collection in context; the per
+      // collection failures above emit their own, more specific events.
+      this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
     } finally {
-      if (failed) {
-        this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
-      }
-
       release();
 
       this.eventEmitter.emit(
