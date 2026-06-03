@@ -215,7 +215,7 @@ export class RuleComparatorService {
     let secondVal: RuleValueType;
 
     if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
-      data = this.plexData;
+      data = this.plexData.filter((mediaItem) => !this.workerIds.has(mediaItem.id));
     } else {
       data = this.workerData;
     }
