@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import { delay } from '../../utils/delay';
+import type { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import {
@@ -80,8 +81,9 @@ export class CollectionWorkerService extends TaskBase {
       // exercised at the call site by the handler, so a transient blip in
       // an unrelated backend must not abort the whole run. Plex auto
       // re-discovery is handled inside verifyConnection().
+      let mediaServer: IMediaServerService;
       try {
-        await this.mediaServerFactory.verifyConnection();
+        mediaServer = await this.mediaServerFactory.verifyConnection();
       } catch (error) {
         failed = true;
         this.logger.log(
@@ -91,6 +93,13 @@ export class CollectionWorkerService extends TaskBase {
         this.eventEmitter.emit(MaintainerrEvent.CollectionHandler_Failed);
         return;
       }
+
+      // Currently-playing media is deferred to the next run so we don't act on
+      // it — chiefly delete it — out from under an active viewer. Best-effort:
+      // fetched once at the start of the run (media that starts playing mid-run
+      // isn't protected until next time), and an empty set (nothing playing or
+      // a failed lookup) simply means "handle as usual".
+      const playingItemIds = await mediaServer.getActiveSessions();
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
@@ -125,7 +134,7 @@ export class CollectionWorkerService extends TaskBase {
           new Date().getTime() - +collection.deleteAfterDays * 86400000,
         );
 
-        const mediaToHandle = (
+        const eligibleMedia = (
           await this.collectionMediaRepo.find({
             where: {
               collectionId: collection.id,
@@ -137,6 +146,22 @@ export class CollectionWorkerService extends TaskBase {
             !media.ruleEvaluationFailed ||
             hasCollectionMediaManualMembership(media),
         );
+
+        // Defer any eligible media that is currently being streamed; it stays
+        // eligible and is picked up on the next run.
+        const mediaToHandle =
+          playingItemIds.size > 0
+            ? eligibleMedia.filter(
+                (media) => !playingItemIds.has(media.mediaServerId),
+              )
+            : eligibleMedia;
+
+        const deferredPlaying = eligibleMedia.length - mediaToHandle.length;
+        if (deferredPlaying > 0) {
+          this.logger.log(
+            `Deferring ${deferredPlaying} currently-playing media item(s) in collection '${collection.title}' to the next run`,
+          );
+        }
 
         if (mediaToHandle.length === 0) {
           noDueMediaCollectionCount++;

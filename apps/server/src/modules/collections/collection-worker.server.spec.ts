@@ -60,7 +60,10 @@ describe('CollectionWorkerService', () => {
 
     executionLock.acquire.mockResolvedValue(jest.fn());
     eventEmitter.emit.mockImplementation();
-    mediaServerFactory.verifyConnection.mockResolvedValue({} as any);
+    mediaServerFactory.verifyConnection.mockResolvedValue({
+      supportsFeature: jest.fn().mockReturnValue(false),
+      getActiveSessions: jest.fn().mockResolvedValue(new Set<string>()),
+    } as any);
   });
 
   it('should abort if another instance is running', async () => {
@@ -168,6 +171,43 @@ describe('CollectionWorkerService', () => {
     expect(collectionHandler.handleMedia).not.toHaveBeenCalledWith(
       collection,
       flaggedRuleOwnedMedia,
+    );
+  });
+
+  it('defers currently-playing media to the next run when the server reports active sessions', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'movie',
+    });
+    const playingMedia = createCollectionMedia(collection, {
+      mediaServerId: 'playing',
+    });
+    const idleMedia = createCollectionMedia(collection, {
+      mediaServerId: 'idle',
+    });
+
+    mediaServerFactory.verifyConnection.mockResolvedValue({
+      supportsFeature: jest.fn().mockReturnValue(true),
+      getActiveSessions: jest.fn().mockResolvedValue(new Set(['playing'])),
+    } as any);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([playingMedia, idleMedia]);
+    collectionHandler.handleMedia.mockResolvedValue(true);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).toHaveBeenCalledTimes(1);
+    expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
+      collection,
+      idleMedia,
+    );
+    expect(collectionHandler.handleMedia).not.toHaveBeenCalledWith(
+      collection,
+      playingMedia,
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      `Deferring 1 currently-playing media item(s) in collection '${collection.title}' to the next run`,
     );
   });
 

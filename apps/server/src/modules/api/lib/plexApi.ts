@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
-import axiosRetry from 'axios-retry';
 import { PlexLibraryResponse } from '../plex-api/interfaces/library.interfaces';
 import cacheManager, { Cache } from './cache';
+import { applyHttpRetry } from './httpRetry';
 import { describeRequestTarget } from './requestLogging';
 
 type PlexApiOptions = {
@@ -37,10 +37,7 @@ class PlexApi {
         'X-Plex-Token': this.options.token,
       },
     });
-    axiosRetry(this.axios, {
-      retries: 3,
-      retryDelay: axiosRetry.exponentialDelay,
-    });
+    applyHttpRetry(this.axios);
   }
 
   async query<T>(
