@@ -31,6 +31,7 @@ import { SettingsDataService } from '../modules/settings/settings-data.service';
 import { StorageMetricsModule } from '../modules/storage-metrics/storage-metrics.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HealthController } from './health.controller';
 import ormConfig from './config/typeOrmConfig';
 
 @Module({
@@ -73,7 +74,7 @@ import ormConfig from './config/typeOrmConfig';
       },
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [
     AppService,
     {
