@@ -16,6 +16,7 @@ import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { ServarrAction } from './interfaces/collection.interface';
+import { RecentlyHandledMediaService } from './recently-handled-media.service';
 
 describe('CollectionHandler', () => {
   let collectionHandler: CollectionHandler;
@@ -27,6 +28,7 @@ describe('CollectionHandler', () => {
   let seerrApi: Mocked<SeerrApiService>;
   let settings: Mocked<SettingsDataService>;
   let metadataService: Mocked<MetadataService>;
+  let recentlyHandledMedia: Mocked<RecentlyHandledMediaService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -40,8 +42,12 @@ describe('CollectionHandler', () => {
     seerrApi = unitRef.get(SeerrApiService);
     settings = unitRef.get(SettingsDataService);
     metadataService = unitRef.get(MetadataService);
+    recentlyHandledMedia = unitRef.get(RecentlyHandledMediaService);
 
     metadataService.resolveIdsForService.mockResolvedValue(undefined);
+    // The sibling-prune cascade returns the collection ids it pruned; default
+    // to none so the disk-freeing tests don't iterate `undefined`.
+    collectionsService.removeMediaFromOtherCollections.mockResolvedValue([]);
 
     // Setup media server mock
     mediaServer = {
@@ -96,6 +102,94 @@ describe('CollectionHandler', () => {
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
+  });
+
+  it('prunes the item from sibling collections after a file-removal action', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+      }),
+    );
+    // Two sibling collections still listed the now-deleted item.
+    collectionsService.removeMediaFromOtherCollections.mockResolvedValue([
+      42, 43,
+    ]);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(
+      collectionsService.removeMediaFromOtherCollections,
+    ).toHaveBeenCalledWith(collectionMedia.mediaServerId, collection.id);
+    // The dead-link cleanup must run after the item left its own collection,
+    // so the sibling removal sees the up-to-date membership.
+    expect(
+      collectionsService.removeFromCollection.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      collectionsService.removeMediaFromOtherCollections.mock
+        .invocationCallOrder[0],
+    );
+    // Each pruned sibling is marked handled so the executor's next pass does
+    // not immediately re-add the item and recreate the stale membership.
+    expect(recentlyHandledMedia.markHandled).toHaveBeenCalledWith(
+      42,
+      collectionMedia.mediaServerId,
+    );
+    expect(recentlyHandledMedia.markHandled).toHaveBeenCalledWith(
+      43,
+      collectionMedia.mediaServerId,
+    );
+  });
+
+  it('prunes siblings for DELETE_SHOW_IF_EMPTY (it deletes the season files)', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(
+      collectionsService.removeMediaFromOtherCollections,
+    ).toHaveBeenCalledWith(collectionMedia.mediaServerId, collection.id);
+  });
+
+  it('does not prune sibling collections for unmonitor-only actions (file stays)', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(
+      collectionsService.removeMediaFromOtherCollections,
+    ).not.toHaveBeenCalled();
   });
 
   it('should call Radarr action handler', async () => {

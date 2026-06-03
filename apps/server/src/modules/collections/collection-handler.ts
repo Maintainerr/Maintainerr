@@ -176,6 +176,34 @@ export class CollectionHandler {
       },
     ]);
 
+    // The file is gone after a disk-freeing action (DELETE, DELETE_SHOW_IF_EMPTY,
+    // and the UNMONITOR_DELETE_* variants all delete files), but the item still
+    // resolves on the media server until its next library scan. Prune it from
+    // any other managed collection that still lists it now, while a valid id
+    // exists to remove — otherwise those collections keep a dead BoxSet link
+    // that the media server re-resolves on every rule run (#3023). Unmonitor /
+    // quality actions leave the file in place, so the item legitimately stays.
+    if (freesDisk) {
+      const prunedCollectionIds =
+        await this.collectionService.removeMediaFromOtherCollections(
+          media.mediaServerId,
+          collection.id,
+        );
+
+      // Mark the item handled for each sibling it was pruned from. The rule
+      // executor checks this guard per collection, so without it the sibling's
+      // next pass would re-add the item — it still resolves on the media server
+      // until the next scan and conditions like `isWatched` stay true — firing
+      // a spurious `Media Added` notification and recreating the dead BoxSet
+      // link this cleanup just removed.
+      for (const prunedCollectionId of prunedCollectionIds) {
+        this.recentlyHandledMedia.markHandled(
+          prunedCollectionId,
+          media.mediaServerId,
+        );
+      }
+    }
+
     collection.handledMediaAmount++;
 
     // Credit bytes for delete-style actions only; unmonitor / quality-change
