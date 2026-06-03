@@ -65,6 +65,7 @@ describe('CollectionsService', () => {
         .fn()
         .mockResolvedValue({ id: 'remote-collection' }),
       addBatchToCollection: jest.fn().mockResolvedValue([]),
+      removeBatchFromCollection: jest.fn().mockResolvedValue([]),
       getCollection: jest.fn().mockResolvedValue(undefined),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
@@ -84,6 +85,132 @@ describe('CollectionsService', () => {
     jest
       .spyOn(service, 'updateCollectionTotalSize')
       .mockResolvedValue(undefined);
+  });
+
+  describe('removeMediaFromOtherCollections', () => {
+    it('prunes the item from sibling collections, deduped and excluding the source', async () => {
+      collectionMediaRepo.find.mockResolvedValue([
+        { collectionId: 1, mediaServerId: 'item-1' },
+        { collectionId: 2, mediaServerId: 'item-1' },
+        { collectionId: 2, mediaServerId: 'item-1' },
+        { collectionId: 3, mediaServerId: 'item-1' },
+      ] as CollectionMedia[]);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 2, mediaServerId: 'remote-collection-2' }),
+        createCollection({ id: 3, mediaServerId: 'remote-collection-3' }),
+      ] as Collection[]);
+
+      const removeSpy = jest
+        .spyOn(service as never, 'removeFromCollectionInternal')
+        .mockResolvedValue(createCollection() as never);
+
+      const pruned = await service.removeMediaFromOtherCollections('item-1', 1);
+
+      expect(collectionMediaRepo.find).toHaveBeenCalledWith({
+        where: { mediaServerId: 'item-1' },
+      });
+      expect(collectionRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: expect.anything(),
+          }),
+        }),
+      );
+      // Collection 1 is the source (excluded); 2 (deduped to one call) and 3
+      // are the siblings that still listed the now-deleted item.
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledTimes(2);
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'remote-collection-2',
+        ['item-1'],
+      );
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'remote-collection-3',
+        ['item-1'],
+      );
+      expect(removeSpy).toHaveBeenCalledTimes(2);
+      expect(removeSpy).toHaveBeenCalledWith(
+        2,
+        [{ mediaServerId: 'item-1' }],
+        false,
+        'all',
+        true,
+      );
+      expect(removeSpy).toHaveBeenCalledWith(
+        3,
+        [{ mediaServerId: 'item-1' }],
+        false,
+        'all',
+        true,
+      );
+      // Returns the pruned sibling ids so the caller can suppress re-adds.
+      expect(pruned).toEqual([2, 3]);
+    });
+
+    it('removes a shared media-server collection only once before pruning each local sibling', async () => {
+      collectionMediaRepo.find.mockResolvedValue([
+        { collectionId: 1, mediaServerId: 'item-1' },
+        { collectionId: 2, mediaServerId: 'item-1' },
+        { collectionId: 3, mediaServerId: 'item-1' },
+      ] as CollectionMedia[]);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 2, mediaServerId: 'shared-remote-collection' }),
+        createCollection({ id: 3, mediaServerId: 'shared-remote-collection' }),
+      ] as Collection[]);
+
+      const removeSpy = jest
+        .spyOn(service as never, 'removeFromCollectionInternal')
+        .mockResolvedValue(createCollection() as never);
+
+      const pruned = await service.removeMediaFromOtherCollections('item-1', 1);
+
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledTimes(1);
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'shared-remote-collection',
+        ['item-1'],
+      );
+      expect(removeSpy).toHaveBeenCalledTimes(2);
+      expect(pruned).toEqual([2, 3]);
+    });
+
+    it('skips local pruning when the shared media-server removal fails', async () => {
+      collectionMediaRepo.find.mockResolvedValue([
+        { collectionId: 1, mediaServerId: 'item-1' },
+        { collectionId: 2, mediaServerId: 'item-1' },
+        { collectionId: 3, mediaServerId: 'item-1' },
+      ] as CollectionMedia[]);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 2, mediaServerId: 'shared-remote-collection' }),
+        createCollection({ id: 3, mediaServerId: 'shared-remote-collection' }),
+      ] as Collection[]);
+      mediaServer.removeBatchFromCollection.mockResolvedValue(['item-1']);
+
+      const removeSpy = jest
+        .spyOn(service as never, 'removeFromCollectionInternal')
+        .mockResolvedValue(createCollection() as never);
+
+      await expect(
+        service.removeMediaFromOtherCollections('item-1', 1),
+      ).resolves.toEqual([]);
+
+      expect(removeSpy).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no other collection lists the item', async () => {
+      collectionMediaRepo.find.mockResolvedValue([
+        { collectionId: 1, mediaServerId: 'item-1' },
+      ] as CollectionMedia[]);
+
+      const removeSpy = jest
+        .spyOn(service as never, 'removeFromCollectionInternal')
+        .mockResolvedValue(createCollection() as never);
+
+      await expect(
+        service.removeMediaFromOtherCollections('item-1', 1),
+      ).resolves.toEqual([]);
+
+      expect(removeSpy).not.toHaveBeenCalled();
+      expect(collectionRepo.find).not.toHaveBeenCalled();
+    });
   });
 
   it('persists overlay settings when creating a collection', async () => {
