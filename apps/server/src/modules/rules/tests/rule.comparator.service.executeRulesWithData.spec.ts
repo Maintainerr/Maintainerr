@@ -665,6 +665,62 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       expect(result.stats[0].result).toBe(true);
     });
 
+    it('short-circuits later OR rules for items that already matched earlier rules in the same section', async () => {
+      const rules = [
+        createStoredRule(
+          1,
+          {
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 5],
+            customVal: { ruleTypeId: +RuleType.NUMBER, value: '1' },
+            section: 0,
+          },
+          0,
+        ),
+        createStoredRule(
+          2,
+          {
+            operator: RuleOperators.OR,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 5],
+            customVal: { ruleTypeId: +RuleType.NUMBER, value: '2' },
+            section: 0,
+          },
+          0,
+        ),
+      ];
+      const matchedByFirstRule = createMediaItem({
+        id: 'matched-first',
+        type: 'movie' as const,
+      });
+      const matchedBySecondRule = createMediaItem({
+        id: 'matched-second',
+        type: 'movie' as const,
+      });
+
+      mockGetterSequence(1, 0, 2);
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [matchedByFirstRule, matchedBySecondRule],
+      );
+
+      expect(result.data.map((item) => item.id).sort()).toEqual([
+        'matched-first',
+        'matched-second',
+      ]);
+      expect(valueGetterService.get).toHaveBeenCalledTimes(3);
+      expect(
+        result.stats.find((stat) => stat.mediaServerId === 'matched-first')
+          ?.sectionResults[0].ruleResults,
+      ).toHaveLength(1);
+      expect(
+        result.stats.find((stat) => stat.mediaServerId === 'matched-second')
+          ?.sectionResults[0].ruleResults,
+      ).toHaveLength(2);
+    });
+
     it('honours an explicit AND section operator (intersection), not OR', async () => {
       // The section operator is persisted as a string. An explicit AND is "0",
       // so the section combine must use null-guarded coercion: +"0" === 0.

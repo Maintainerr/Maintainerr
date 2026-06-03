@@ -2236,11 +2236,109 @@ export class CollectionsService {
     );
   }
 
+  /**
+   * Drop a media-server item from every managed collection that still lists
+   * it, except `excludeCollectionId` (the collection that just handled it).
+   *
+   * Called after a delete-style action frees the underlying file. The item
+   * still resolves on the media server at this point, so removing it from the
+   * sibling BoxSets now — while we still have a valid id to remove — keeps the
+   * media server from holding unresolved linked-item paths once the library
+   * drops the item on its next scan. Those dead links are what Jellyfin
+   * re-resolves on every rule run, producing the "Unable to find linked item
+   * at path" warning storm and the Jellyfin CPU spike in #3023. Once the item
+   * is gone there is no id left to remove, so this is the only window to clean
+   * the sibling memberships.
+   *
+   * Returns the ids of the sibling collections it pruned, so the caller can
+   * mark the item recently-handled for each of them — otherwise the rule
+   * executor's next pass re-adds it (the id still resolves and conditions like
+   * `isWatched` stay true), recreating the membership this just removed.
+   */
+  async removeMediaFromOtherCollections(
+    mediaServerId: string,
+    excludeCollectionId: number,
+  ): Promise<number[]> {
+    const memberships = await this.CollectionMediaRepo.find({
+      where: { mediaServerId },
+    });
+
+    const otherCollectionIds = [
+      ...new Set(
+        memberships
+          .map((membership) => membership.collectionId)
+          .filter((collectionId) => collectionId !== excludeCollectionId),
+      ),
+    ];
+
+    if (otherCollectionIds.length === 0) {
+      return [];
+    }
+
+    const siblingCollections = await this.collectionRepo.find({
+      where: { id: In(otherCollectionIds) },
+    });
+    const siblingCollectionById = new Map(
+      siblingCollections.map((collection) => [collection.id, collection]),
+    );
+    const siblingCollectionsByMediaServerId = new Map<string, Collection[]>();
+
+    for (const collectionId of otherCollectionIds) {
+      const siblingCollection = siblingCollectionById.get(collectionId);
+
+      if (!siblingCollection) {
+        continue;
+      }
+
+      const groupKey = siblingCollection.mediaServerId ?? `db:${collectionId}`;
+      const group =
+        siblingCollectionsByMediaServerId.get(groupKey) ?? ([] as Collection[]);
+
+      group.push(siblingCollection);
+      siblingCollectionsByMediaServerId.set(groupKey, group);
+    }
+
+    const mediaServer = await this.getMediaServer();
+    const prunedCollectionIds: number[] = [];
+
+    for (const siblingCollectionsGroup of siblingCollectionsByMediaServerId.values()) {
+      const representativeCollection = siblingCollectionsGroup[0];
+
+      if (representativeCollection.mediaServerId) {
+        const failedItemIds = await mediaServer.removeBatchFromCollection(
+          representativeCollection.mediaServerId,
+          [mediaServerId],
+        );
+
+        if (failedItemIds.includes(mediaServerId)) {
+          this.logger.warn(
+            `Couldn't prune media ${mediaServerId} from sibling collection ${representativeCollection.mediaServerId}`,
+          );
+          continue;
+        }
+      }
+
+      for (const siblingCollection of siblingCollectionsGroup) {
+        await this.removeFromCollectionInternal(
+          siblingCollection.id,
+          [{ mediaServerId }],
+          false,
+          'all',
+          true,
+        );
+        prunedCollectionIds.push(siblingCollection.id);
+      }
+    }
+
+    return prunedCollectionIds;
+  }
+
   private async removeFromCollectionInternal(
     collectionDbId: number,
     media: CollectionMediaChange[],
     skipAutomaticLinkCheck = false,
     removalScope: CollectionMediaRemovalScope = 'all',
+    skipMediaServerRemove = false,
   ): Promise<Collection | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
@@ -2298,6 +2396,7 @@ export class CollectionsService {
                     dbId: collection.id,
                   },
                   childrenMedia,
+                  skipMediaServerRemove,
                 ),
               )
             : new Set<string>();
@@ -2821,6 +2920,7 @@ export class CollectionsService {
   private async removeChildrenFromCollection(
     collectionIds: { mediaServerId: string | null; dbId: number },
     childrenMedia: CollectionMediaChange[],
+    skipMediaServerRemove = false,
   ): Promise<string[]> {
     if (childrenMedia.length === 0) return [];
 
@@ -2829,7 +2929,7 @@ export class CollectionsService {
     );
 
     let failedItemIds = new Set<string>();
-    if (collectionIds.mediaServerId) {
+    if (collectionIds.mediaServerId && !skipMediaServerRemove) {
       const mediaServer = await this.getMediaServer();
       failedItemIds = new Set(
         await mediaServer.removeBatchFromCollection(
