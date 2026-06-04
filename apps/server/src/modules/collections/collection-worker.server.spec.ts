@@ -193,7 +193,7 @@ describe('CollectionWorkerService', () => {
 
     collectionRepository.find.mockResolvedValue([collection]);
     collectionMediaRepository.find.mockResolvedValue([playingMedia, idleMedia]);
-    collectionHandler.handleMedia.mockResolvedValue(true);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
 
     await collectionWorkerService.execute();
 

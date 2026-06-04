@@ -21,6 +21,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.LABELS, // Tags in Jellyfin
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
+    MediaServerFeature.CROSS_LIBRARY_COLLECTIONS, // BoxSets are server-global
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
     // Note: CENTRAL_WATCH_HISTORY not supported (requires user iteration)
@@ -30,6 +31,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.LABELS,
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
+    MediaServerFeature.CROSS_LIBRARY_COLLECTIONS, // BoxSets are server-global
     // Conservative defaults mirroring Jellyfin:
     // - COLLECTION_VISIBILITY: Emby has no Plex-style home/recommended pinning.
     // - WATCHLIST: no public watchlist API.

@@ -126,8 +126,24 @@ const SHOWS = [
   }),
 ];
 
+// A manual ("custom name") collection the user created in Jellyfin/Emby. BoxSets
+// are server-global, but the server only reports one under libraries whose content
+// it currently holds. This one holds movies only, so it is visible under the movie
+// library and INVISIBLE under the show library — exactly the #3026 reproduction.
+const SHARED_BOXSET = {
+  Id: 'mock-boxset-shared',
+  Name: 'Franchise A Collection',
+  Type: 'BoxSet',
+  ServerId: 'mockserver',
+  ParentId: 'jellyfin-movies',
+  ChildCount: 3,
+  DateCreated: ISO('2026-01-01'),
+  Overview: 'Shared manual collection (mock)',
+  ImageTags: { Primary: 'mocktag' },
+};
+
 const ITEMS_BY_ID = new Map(
-  [...MOVIES, ...SHOWS].map((item) => [item.Id, item]),
+  [...MOVIES, ...SHOWS, SHARED_BOXSET].map((item) => [item.Id, item]),
 );
 
 // --- HTTP helpers ----------------------------------------------------------------
@@ -227,13 +243,24 @@ const server = http.createServer((req, res) => {
     }
     const parentId = u.searchParams.get('parentId');
     const itemTypes = u.searchParams.get('includeItemTypes');
+    // BoxSet (collection) listing. A BoxSet is server-global but the server only
+    // reports it under libraries whose content it currently holds. Our shared
+    // boxset holds movies only -> surfaced under the movie library, absent under
+    // the show library. This is the #3026 condition. (Checked before the generic
+    // parentId branches, which would otherwise return the library's media.)
+    if (itemTypes && itemTypes.includes('BoxSet')) {
+      if (parentId === 'jellyfin-movies') {
+        return send(res, 200, itemsResponse([SHARED_BOXSET]));
+      }
+      return send(res, 200, itemsResponse([]));
+    }
     if (parentId === 'jellyfin-movies' || itemTypes === 'Movie') {
       return send(res, 200, itemsResponse(MOVIES));
     }
     if (parentId === 'jellyfin-shows' || itemTypes === 'Series') {
       return send(res, 200, itemsResponse(SHOWS));
     }
-    // BoxSets / collections, episodes, etc. -> empty for now
+    // Episodes, etc. -> empty for now
     return send(res, 200, itemsResponse([]));
   }
   // Item images -> redirect to a deterministic placeholder so grids render.

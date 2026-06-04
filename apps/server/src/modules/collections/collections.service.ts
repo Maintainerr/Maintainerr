@@ -1509,6 +1509,7 @@ export class CollectionsService {
         const foundCollection = await this.findMediaServerCollection(
           collection.manualCollectionName,
           collection.libraryId,
+          true,
         );
         if (foundCollection) {
           // Handle visibility settings (Plex-only feature)
@@ -1741,6 +1742,7 @@ export class CollectionsService {
       const foundColl = await this.findMediaServerCollection(
         collection.manualCollectionName,
         collection.libraryId,
+        true,
       );
       if (foundColl) {
         collection.mediaServerId = foundColl.id;
@@ -2017,6 +2019,7 @@ export class CollectionsService {
             newColl = await this.findMediaServerCollection(
               collection.manualCollectionName,
               collection.libraryId,
+              true,
             );
           } else {
             newColl = await this.findMediaServerCollection(
@@ -3107,6 +3110,7 @@ export class CollectionsService {
   public async findMediaServerCollection(
     name: string,
     libraryId: string,
+    searchAllLibraries = false,
   ): Promise<MediaCollection | undefined> {
     // Cannot search for collections without a valid library ID
     if (!libraryId || libraryId === '') {
@@ -3118,13 +3122,58 @@ export class CollectionsService {
 
     try {
       const mediaServer = await this.getMediaServer();
-      const collections = await mediaServer.getCollections(libraryId);
-      if (collections) {
-        const found = collections.find((coll) => {
-          return coll.title.trim() === name.trim() && !coll.smart;
-        });
+
+      // Primary lookup: the collection's own library.
+      const found = await this.matchCollectionInLibrary(
+        mediaServer,
+        name,
+        libraryId,
+      );
+      if (found) {
         return found;
       }
+
+      // Fallback for manual collections on servers where a single collection
+      // can span libraries (Jellyfin/Emby BoxSets are server-global; Plex
+      // collections are bound to one library). A manual collection reused
+      // across e.g. a movie rule and a show rule may currently hold items from
+      // one library only, so the server reports it under that library alone and
+      // the own-library lookup misses. Search the remaining libraries so the
+      // shared collection can still be located; once seeded it becomes
+      // discoverable under its own library on subsequent runs.
+      //
+      // getLibraries() already returns only movie/show libraries (never
+      // music/photos), so the search stays scoped to relevant types. The
+      // movie<->show crossover is intentional and required: a BoxSet is one
+      // server-global container that can hold both, and this fallback exists
+      // precisely to let a show rule find a BoxSet currently populated with
+      // movies only. Do not narrow this to the collection's own type — that
+      // would reintroduce the bug. Matching reuses matchCollectionInLibrary so
+      // the primary and fallback share one comparison; the name match only
+      // bootstraps the first link, after which the stored mediaServerId is used.
+      if (
+        searchAllLibraries &&
+        mediaServer.supportsFeature(
+          MediaServerFeature.CROSS_LIBRARY_COLLECTIONS,
+        )
+      ) {
+        const libraries = await mediaServer.getLibraries();
+        for (const library of libraries) {
+          if (library.id === libraryId) {
+            continue;
+          }
+          const crossLibraryMatch = await this.matchCollectionInLibrary(
+            mediaServer,
+            name,
+            library.id,
+          );
+          if (crossLibraryMatch) {
+            return crossLibraryMatch;
+          }
+        }
+      }
+
+      return undefined;
     } catch (error) {
       this.logger.warn(
         'An error occurred while searching for a specific collection.',
@@ -3132,6 +3181,21 @@ export class CollectionsService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  private async matchCollectionInLibrary(
+    mediaServer: IMediaServerService,
+    name: string,
+    libraryId: string,
+  ): Promise<MediaCollection | undefined> {
+    const collections = await mediaServer.getCollections(libraryId);
+    if (!collections) {
+      return undefined;
+    }
+    const target = name.trim();
+    return collections.find(
+      (coll) => coll.title.trim() === target && !coll.smart,
+    );
   }
 
   async getCollectionLogsWithPaging(
