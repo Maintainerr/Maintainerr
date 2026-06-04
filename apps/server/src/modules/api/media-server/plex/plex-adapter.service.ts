@@ -190,6 +190,10 @@ export class PlexAdapterService implements IMediaServerService {
     return PlexMapper.metadataToMediaItem(metadata);
   }
 
+  async itemExists(itemId: string): Promise<boolean> {
+    return this.plexApi.itemExists(itemId);
+  }
+
   async getChildrenMetadata(parentId: string): Promise<MediaItem[]> {
     const children = await this.plexApi.getChildrenMetadata(parentId);
     if (!children) return [];

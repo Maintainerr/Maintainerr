@@ -69,6 +69,7 @@ describe('CollectionsService', () => {
       getCollection: jest.fn().mockResolvedValue(undefined),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
+      itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<IMediaServerService>;
@@ -2038,5 +2039,33 @@ describe('CollectionsService', () => {
       'remote-99',
       ['leaves-soonest', 'leaves-middle', 'leaves-latest'],
     );
+  });
+
+  describe('removeStaleCollectionMedia', () => {
+    const buildMedia = (id: number, mediaServerId: string) =>
+      Object.assign(new CollectionMedia(), { id, mediaServerId });
+
+    it('removes only the rows the server confirms are gone', async () => {
+      collectionMediaRepo.find.mockResolvedValue([
+        buildMedia(1, 'present'),
+        buildMedia(2, 'gone'),
+      ]);
+      mediaServer.itemExists.mockImplementation(async (id) => id !== 'gone');
+
+      await service.removeStaleCollectionMedia();
+
+      expect(collectionMediaRepo.delete).toHaveBeenCalledTimes(1);
+      expect(collectionMediaRepo.delete).toHaveBeenCalledWith(2);
+    });
+
+    it('keeps the row when the existence check is inconclusive (throws)', async () => {
+      collectionMediaRepo.find.mockResolvedValue([buildMedia(1, 'maybe')]);
+      // A transient failure must never be read as "gone".
+      mediaServer.itemExists.mockRejectedValue(new Error('media server down'));
+
+      await service.removeStaleCollectionMedia();
+
+      expect(collectionMediaRepo.delete).not.toHaveBeenCalled();
+    });
   });
 });

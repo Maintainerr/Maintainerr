@@ -60,8 +60,4 @@ export class PlexOverlayProvider implements IOverlayProvider {
   ): Promise<void> {
     await this.plex.setThumb(itemId, buffer, contentType);
   }
-
-  async itemExists(itemId: string): Promise<boolean> {
-    return this.plex.itemExists(itemId);
-  }
 }

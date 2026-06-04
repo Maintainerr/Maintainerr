@@ -119,7 +119,7 @@ describe('CollectionWorkerService', () => {
 
     collectionRepository.find.mockResolvedValue([collection]);
     collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
-    collectionHandler.handleMedia.mockResolvedValue(true);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
 
     await collectionWorkerService.execute();
 
@@ -156,7 +156,7 @@ describe('CollectionWorkerService', () => {
       flaggedRuleOwnedMedia,
       flaggedManualMedia,
     ]);
-    collectionHandler.handleMedia.mockResolvedValue(true);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
 
     await collectionWorkerService.execute();
 
@@ -182,7 +182,7 @@ describe('CollectionWorkerService', () => {
 
     collectionRepository.find.mockResolvedValue([collection]);
     collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
-    collectionHandler.handleMedia.mockResolvedValue(false);
+    collectionHandler.handleMedia.mockResolvedValue('failed');
 
     await collectionWorkerService.execute();
 
@@ -194,6 +194,34 @@ describe('CollectionWorkerService', () => {
         mediaItems: [{ mediaServerId: collectionMedia.mediaServerId }],
         identifier: { type: 'collection', value: collection.id },
       }),
+    );
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Handled,
+      expect.anything(),
+    );
+  });
+
+  it('does not notify or trigger availability sync when media was pruned as missing', async () => {
+    settings.seerrConfigured.mockReturnValue(true);
+
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue('removed-missing');
+
+    await collectionWorkerService.execute();
+
+    // The item was already gone — nothing on disk changed, so no sync and
+    // neither the handled nor the failed notification fires.
+    expect(seerrApi.api.post).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionHandler_Failed,
+      expect.anything(),
     );
     expect(eventEmitter.emit).not.toHaveBeenCalledWith(
       MaintainerrEvent.CollectionMedia_Handled,
@@ -222,7 +250,7 @@ describe('CollectionWorkerService', () => {
     ]);
     collectionHandler.handleMedia
       .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce(true);
+      .mockResolvedValueOnce('handled');
 
     await collectionWorkerService.execute();
 

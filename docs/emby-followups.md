@@ -150,31 +150,11 @@ async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
 
 ---
 
-### H5. Overlay `itemExists` can permanently delete the original poster backup
+### H5. Overlay `itemExists` can permanently delete the original poster backup — RESOLVED
 
 **Source**: Review
-**Files**: [emby-overlay.provider.ts:74-76](../apps/server/src/modules/overlays/providers/emby-overlay.provider.ts#L74-L76), chained through [emby-adapter.service.ts:399-418](../apps/server/src/modules/api/media-server/emby/emby-adapter.service.ts#L399-L418), consumed by [overlay-processor.service.ts:163-174](../apps/server/src/modules/overlays/overlay-processor.service.ts#L163-L174).
 
-**Current code**:
-```ts
-async itemExists(itemId: string): Promise<boolean> {
-  const meta = await this.emby.getMetadata(itemId);
-  return meta !== undefined;
-}
-```
-
-`getMetadata` swallows every error (auth, network, 5xx) and returns `undefined`. The overlay processor treats `false` as **"item has been deleted from the server"** and removes the saved original poster backup. A transient Emby outage during overlay processing can therefore permanently lose the user's original posters.
-
-The Jellyfin adapter avoids this by having a dedicated `itemExists` that distinguishes 404 from other failures — see [jellyfin-adapter.service.ts:888-908](../apps/server/src/modules/api/media-server/jellyfin/jellyfin-adapter.service.ts#L888-L908).
-
-**Fix**: add a dedicated `EmbyAdapterService.itemExists(itemId)` that:
-- Returns `true` on 200
-- Returns `false` **only** on confirmed 404 from `GET /Items/{itemId}` (or equivalent narrow probe)
-- Rethrows on any other status / network error
-
-Then change the overlay provider to call `this.emby.itemExists(itemId)` directly instead of going through `getMetadata`.
-
-**Verification**: spec covering (a) 200 → true, (b) 404 → false, (c) 500 → throws, (d) network error → throws. Snapshot a corresponding overlay processor test that verifies the backup is NOT deleted on a thrown error.
+`EmbyAdapterService.itemExists` is now a dedicated probe that returns `false` only on a confirmed 404 and rethrows on any other status / network error (matching the Jellyfin adapter), so a transient Emby outage can no longer be read as "item deleted." `itemExists` has since been promoted to the shared `IMediaServerService` interface and is the single source of truth; the overlay processor calls it through `MediaServerFactory.getService()` (the overlay provider no longer carries its own `itemExists`). The existence check is wrapped so any throw leaves the item optimistically "present" and the backup is preserved for retry. Covered by adapter specs (200 → true, 404 → false, 5xx/network → throws) and the overlay-processor revert specs.
 
 ---
 
