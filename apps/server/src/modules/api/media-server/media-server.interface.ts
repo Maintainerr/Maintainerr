@@ -131,6 +131,17 @@ export interface IMediaServerService {
   getMetadata(itemId: string): Promise<MediaItem | undefined>;
 
   /**
+   * Confirm an item is still present on the media server.
+   *
+   * Returns `false` only when the server explicitly reports the item as
+   * absent (404 / empty result); any other failure (auth, network, 5xx)
+   * throws so callers don't treat "couldn't check" as "gone" and drop state
+   * on a transient blip. Unlike `getMetadata`, which returns `undefined` for
+   * both absent and failed reads, this is safe for cleanup decisions.
+   */
+  itemExists(itemId: string): Promise<boolean>;
+
+  /**
    * Get child items (seasons for shows, episodes for seasons).
    */
   getChildrenMetadata(parentId: string): Promise<MediaItem[]>;

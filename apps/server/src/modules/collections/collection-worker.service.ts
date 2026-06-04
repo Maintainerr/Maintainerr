@@ -24,7 +24,7 @@ import {
 } from '../tasks/execution-lock.service';
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
-import { CollectionHandler } from './collection-handler';
+import { CollectionHandler, HandleMediaResult } from './collection-handler';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import {
@@ -103,6 +103,7 @@ export class CollectionWorkerService extends TaskBase {
 
       this.logger.log('Started handling of all collections');
       let handledCollectionMedia = 0;
+      let removedMissingMedia = 0;
       let collectionHandlingFailed = false;
       let doNothingCollectionCount = 0;
       let noDueMediaCollectionCount = 0;
@@ -224,11 +225,11 @@ export class CollectionWorkerService extends TaskBase {
         const failedMediaForNotification: { mediaServerId: string }[] = [];
 
         for (const media of collectionMedia) {
-          let mediaHandled = false;
+          let result: HandleMediaResult = 'failed';
           let handlingError: unknown;
 
           try {
-            mediaHandled = await this.collectionHandler.handleMedia(
+            result = await this.collectionHandler.handleMedia(
               collection,
               media,
             );
@@ -236,11 +237,18 @@ export class CollectionWorkerService extends TaskBase {
             handlingError = error;
           }
 
-          if (mediaHandled) {
+          if (result === 'handled') {
             handledCollectionMedia++;
             handledMediaForNotification.push({
               mediaServerId: media.mediaServerId,
             });
+          } else if (result === 'removed-missing') {
+            // The item was already gone from the media server and has been
+            // pruned from the collection(s). It wasn't a failure and nothing
+            // on disk was altered, so it stays out of both notification lists
+            // and doesn't trigger availability sync — the handler already
+            // logged the cleanup.
+            removedMissingMedia++;
           } else {
             collectionHandlingFailed = true;
             failedMediaForNotification.push({
@@ -249,7 +257,7 @@ export class CollectionWorkerService extends TaskBase {
 
             // Warn so a failed action stays visible without DEBUG; the
             // per-collection failure notification below is the user-facing
-            // signal. A thrown error carries its message; a soft `false` was
+            // signal. A thrown error carries its message; a soft `'failed'` was
             // already logged at debug in the API layer.
             const reason =
               handlingError instanceof Error
@@ -306,6 +314,12 @@ export class CollectionWorkerService extends TaskBase {
 
       if (collectionHandlingFailed) {
         failed = true;
+      }
+
+      if (removedMissingMedia > 0) {
+        this.logger.log(
+          `Removed ${removedMissingMedia} item(s) from collections because they no longer exist on the media server`,
+        );
       }
 
       if (handledCollectionMedia > 0) {

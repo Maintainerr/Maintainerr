@@ -14,21 +14,18 @@ describe('EmbyOverlayProvider', () => {
     emby = unitRef.get(EmbyAdapterService);
   });
 
-  describe('itemExists', () => {
-    it('delegates to EmbyAdapterService.itemExists', async () => {
-      emby.itemExists.mockResolvedValue(true);
+  describe('uploadImage', () => {
+    it('delegates to EmbyAdapterService.setCollectionImage', async () => {
+      const buf = Buffer.from('poster');
+      emby.setCollectionImage.mockResolvedValue(undefined);
 
-      await expect(provider.itemExists('42')).resolves.toBe(true);
-      expect(emby.itemExists).toHaveBeenCalledWith('42');
+      await provider.uploadImage('42', buf, 'image/jpeg');
 
-      emby.itemExists.mockResolvedValue(false);
-      await expect(provider.itemExists('42')).resolves.toBe(false);
-    });
-
-    it('propagates errors so revert callers preserve state on transient failures', async () => {
-      emby.itemExists.mockRejectedValue(new Error('5xx'));
-
-      await expect(provider.itemExists('42')).rejects.toThrow('5xx');
+      expect(emby.setCollectionImage).toHaveBeenCalledWith(
+        '42',
+        buf,
+        'image/jpeg',
+      );
     });
   });
 });

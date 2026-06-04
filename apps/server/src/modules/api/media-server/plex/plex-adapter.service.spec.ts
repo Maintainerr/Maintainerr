@@ -389,6 +389,21 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('itemExists', () => {
+    it('delegates to the Plex API existence check', async () => {
+      plexApi.itemExists.mockResolvedValue(true);
+
+      await expect(service.itemExists('movie-1')).resolves.toBe(true);
+      expect(plexApi.itemExists).toHaveBeenCalledWith('movie-1');
+    });
+
+    it('propagates an inconclusive check so callers do not drop state', async () => {
+      plexApi.itemExists.mockRejectedValue(new Error('network'));
+
+      await expect(service.itemExists('movie-1')).rejects.toThrow('network');
+    });
+  });
+
   describe('getLibraryContents', () => {
     it('should return empty result for empty libraryId', async () => {
       const result = await service.getLibraryContents('');

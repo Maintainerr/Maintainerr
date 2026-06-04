@@ -425,12 +425,15 @@ export class CollectionsController {
     }
 
     try {
-      const handled = await this.collectionHandler.handleMedia(
+      const result = await this.collectionHandler.handleMedia(
         collection,
         collectionMedia,
       );
 
-      if (!handled) {
+      // 'handled' and 'removed-missing' both leave the item resolved (acted on
+      // or pruned because it no longer exists); only an unrecoverable 'failed'
+      // is surfaced as a conflict.
+      if (result === 'failed') {
         throw new ConflictException(
           'The collection action could not be executed for this item',
         );
