@@ -40,6 +40,7 @@ import type {
   EmbyAuthenticationResult,
   EmbyBaseItemDto,
   EmbyItemsQueryResponse,
+  EmbySessionInfoDto,
   EmbySystemInfo,
   EmbyUserDto,
 } from './emby.types';
@@ -777,15 +778,54 @@ export class EmbyAdapterService implements IMediaServerService {
     return history.map((r) => r.userId);
   }
 
+  async getActiveSessions(): Promise<Set<string>> {
+    if (!this.http) return new Set<string>();
+    try {
+      const { data } = await this.http.get<EmbySessionInfoDto[]>('/Sessions');
+      const playing = new Set<string>();
+      for (const session of data ?? []) {
+        const item = session.NowPlayingItem;
+        if (!item) continue;
+        // A collection can track an episode at any level, so protect the
+        // episode and its season and series. ParentId is intentionally
+        // omitted — for Emby movies it is the library folder, not a
+        // collectable ancestor. Movies only carry Id.
+        if (item.Id) playing.add(item.Id);
+        if (item.SeasonId) playing.add(item.SeasonId);
+        if (item.SeriesId) playing.add(item.SeriesId);
+      }
+      return playing;
+    } catch (error) {
+      this.logger.warn('Failed to fetch active Emby sessions.');
+      this.logger.debug(error);
+      return new Set<string>();
+    }
+  }
+
   // ============================================================================
   // Collections
   // ============================================================================
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
     if (!this.http) return [];
+
+    const cacheKey = `${EMBY_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
+    const cached = this.cache.data.get<MediaCollection[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
+      // User-scoped read: Emby resolves the BoxSet query against a user's
+      // library view, so an unscoped read can miss or 404. Pass the user via the
+      // UserId query param on the literal /Items path — functionally the same as
+      // /Users/{id}/Items, and the param idiom already used elsewhere here. (A
+      // user value interpolated into the request path is a CodeQL SSRF sink; a
+      // query param is not.)
+      const userId = await this.resolveUserId();
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
         params: {
+          ...(userId ? { UserId: userId } : {}),
           ParentId: libraryId,
           IncludeItemTypes: 'BoxSet',
           Recursive: true,
@@ -793,13 +833,71 @@ export class EmbyAdapterService implements IMediaServerService {
           Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
         },
       });
-      return (data.Items ?? []).map(EmbyMapper.toMediaCollection);
+      const collections = (data.Items ?? []).map(EmbyMapper.toMediaCollection);
+      // Skip caching empty results so a transient zero-collection response
+      // (e.g. mid-library-scan) can't mask a just-created entry.
+      if (collections.length > 0) {
+        this.cache.data.set(cacheKey, collections, EMBY_CACHE_TTL.COLLECTIONS);
+      }
+      return collections;
     } catch (error) {
       this.logger.debug(
         `Emby getCollections(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
+  }
+
+  /**
+   * The userId to scope item reads to. Emby resolves ParentId/BoxSet/recursive
+   * queries against a user's library view, so those reads need a userId even
+   * though auth is a server-level admin key. Prefer the configured admin user;
+   * otherwise resolve and cache the first admin so token-only setups still get
+   * a user-scoped read instead of the unreliable plain /Items path. Returns
+   * undefined only when no admin can be resolved (callers then fall back to
+   * /Items).
+   */
+  private async resolveUserId(): Promise<string | undefined> {
+    if (this.embyUserId) return this.embyUserId;
+    if (!this.http) return undefined;
+
+    const cached = this.cache.data.get<string>(
+      EMBY_CACHE_KEYS.RESOLVED_USER_ID,
+    );
+    if (cached) return cached;
+
+    try {
+      const users = await this.fetchUsersQuery(this.http);
+      const adminId = users.find((u) => u.Policy?.IsAdministrator)?.Id;
+      if (adminId) {
+        this.cache.data.set(
+          EMBY_CACHE_KEYS.RESOLVED_USER_ID,
+          adminId,
+          EMBY_CACHE_TTL.USERS,
+        );
+        return adminId;
+      }
+    } catch (error) {
+      this.logger.debug(
+        `Emby resolveUserId failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      );
+    }
+    return undefined;
+  }
+
+  /**
+   * Drop the cached getCollections() result so a create/rename/delete is
+   * visible immediately. Mirrors the Jellyfin adapter: pass a libraryId to
+   * clear that library, or omit it to clear every library's cache.
+   */
+  private invalidateCollectionsCache(libraryId?: string): void {
+    if (libraryId) {
+      this.cache.data.del(`${EMBY_CACHE_KEYS.COLLECTIONS}:${libraryId}`);
+      return;
+    }
+    const prefix = `${EMBY_CACHE_KEYS.COLLECTIONS}:`;
+    const stale = this.cache.data.keys().filter((k) => k.startsWith(prefix));
+    if (stale.length > 0) this.cache.data.del(stale);
   }
 
   async getCollection(
@@ -866,6 +964,7 @@ export class EmbyAdapterService implements IMediaServerService {
           );
         }
       }
+      this.invalidateCollectionsCache(params.libraryId);
       return collection;
     } catch (error) {
       const message = formatConnectionFailureMessage(
@@ -881,6 +980,7 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) throw new Error('Emby not initialized');
     try {
       await this.http.delete(`/Items/${collectionId}`);
+      this.invalidateCollectionsCache();
     } catch (error) {
       const message = formatConnectionFailureMessage(
         error,
@@ -919,8 +1019,14 @@ export class EmbyAdapterService implements IMediaServerService {
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
     if (!this.http) return [];
     try {
+      // User-scoped read for the same reason as getCollections; Jellyfin's
+      // adapter likewise requires a userId to enumerate BoxSet children. UserId
+      // goes in the query param (not the path) to stay clear of CodeQL's SSRF
+      // sink while keeping the read user-scoped.
+      const userId = await this.resolveUserId();
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
         params: {
+          ...(userId ? { UserId: userId } : {}),
           ParentId: collectionId,
           Fields: 'ProviderIds,DateCreated,Overview',
           Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
@@ -1011,6 +1117,8 @@ export class EmbyAdapterService implements IMediaServerService {
         ForcedSortName: params.sortTitle ?? current.ForcedSortName,
       };
       await this.http.post(`/Items/${params.collectionId}`, updated);
+      // Title/sortTitle may have changed, which affects name-based lookups.
+      this.invalidateCollectionsCache(params.libraryId);
       const refreshed = await this.getCollection(params.collectionId);
       if (!refreshed) {
         throw new Error('Collection vanished after update');

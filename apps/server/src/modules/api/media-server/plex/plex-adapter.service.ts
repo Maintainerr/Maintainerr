@@ -190,6 +190,10 @@ export class PlexAdapterService implements IMediaServerService {
     return PlexMapper.metadataToMediaItem(metadata);
   }
 
+  async itemExists(itemId: string): Promise<boolean> {
+    return this.plexApi.itemExists(itemId);
+  }
+
   async getChildrenMetadata(parentId: string): Promise<MediaItem[]> {
     const children = await this.plexApi.getChildrenMetadata(parentId);
     if (!children) return [];
@@ -261,6 +265,20 @@ export class PlexAdapterService implements IMediaServerService {
     const history = await this.getWatchHistory(itemId);
     const userIds = new Set(history.map((record) => record.userId));
     return Array.from(userIds);
+  }
+
+  async getActiveSessions(): Promise<Set<string>> {
+    const sessions = await this.plexApi.getActiveSessions();
+    const playing = new Set<string>();
+    for (const session of sessions) {
+      // A collection can track an episode at any level, so protect the
+      // episode and its season and show (movies only carry ratingKey).
+      if (session.ratingKey) playing.add(session.ratingKey);
+      if (session.parentRatingKey) playing.add(session.parentRatingKey);
+      if (session.grandparentRatingKey)
+        playing.add(session.grandparentRatingKey);
+    }
+    return playing;
   }
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {

@@ -1,7 +1,5 @@
 # [3.13.0](https://github.com/Maintainerr/Maintainerr/compare/v3.12.1...v3.13.0) (2026-05-28)
 
-# PLEASE NOTE:
-
 ## Global vs scoped exclusions
 
 Exclusions are now either global (everywhere) or per-group — not both. Setting a global exclusion replaces any per-group ones for that item. If you later remove the global exclusion, you'll need to re-add the per-group ones.
@@ -12,44 +10,44 @@ Per-group exclusions used to hide an item in every group. They now apply only to
 
 ## Rule section operators
 
-A section without an operator used to be treated as AND; it's now OR, which is what we always meant. Existing rules are migrated automatically so they keep evaluating the same way.
+A section without an operator used to be treated as AND; it's now OR instead. Existing rules are migrated automatically so they keep evaluating the same way.
 
 If a multi-section rule wasn't matching as you expected, this is probably why. The operator between sections is now visible in the rule editor, and new rules need an explicit operator on every section after the first.
 
-This migration is not reversible.
+**This migration is not reversible.**
 
 ## Highlights
-- Added metadata fallback for rules when series are absent from Sonarr, improving rule evaluation reliability (#3002).
-- Introduced Streamystats watchlist rule properties for Jellyfin, enabling watchlist-based rule creation (#2977).
+- Added metadata fallback for rules when series are absent from Sonarr, using the configured metadata provider (#3002).
+- Introduced Streamystats watchlist rule properties for Jellyfin, enabling watchlist-based rules (#2977).
 - Fixed OR rule sections incorrectly evaluated as AND due to operator coercion, ensuring accurate rule logic (#2971).
+- Scoped exclusions to their rule group under TypeORM 1.0, resolving latent bugs (#2991).
 
 ## Features
-- Added Plex "Amount of episodes marked as watched" rule (#2975).
+- Added Plex rule for "Amount of episodes marked as watched" (#2975).
 - Added Streamystats watchlist rule properties for Jellyfin (#2977).
-- Adopted Tailwind CSS v4 and its new features, including container queries and dark mode enhancements.
+- Adopted Tailwind CSS v4 and implemented related UI enhancements.
 
 ## Fixes
 - Fixed OR rule sections incorrectly evaluated as AND due to operator coercion (#2971).
-- Scoped exclusions to their rule group under TypeORM 1.0, resolving latent bugs (#2991).
 - Prevented Plex auth drop when plex.tv is unreachable (#2996).
-- Improved rule import robustness for YAML and community rules across media servers (#2976, #2986).
-- Resolved HTTP 414 errors when creating large collections by batching item additions (#3001).
-- Fixed navigation issues in the UI's global-exclusion warning links.
+- Improved rule import robustness for YAML and community rules across media servers (#2986, #2976).
+- Fixed HTTP 414 errors when creating large collections by batching item additions (#3001).
+- Resolved navigation issues in the UI for global-exclusion warning links.
 - Omitted empty Discord embed thumbnails to prevent webhook failures.
-- Addressed styling issues and unary-rule crashes in the Test Media search field (#2978).
+- Fixed styling and crash issues in Test Media search and unary-rule comparisons (#2978).
 
 ## Performance
 - Improved cache hygiene for external API and metadata responses (#2972).
 
 ## Database migrations
-- Backfilled `operator` field for rules with null values, ensuring explicit AND/OR logic without altering existing behavior.
+- Backfilled the `operator` field in stored rules where it was previously null, ensuring explicit AND/OR values for accurate rule evaluation.
 
 ## Internal
 - Refactored shared media getter rule helpers to reduce duplication (#2922).
 - Unified form field styling into a single source for consistency.
 
 ## Dependencies
-- Updated 14 dependencies, including @typescript-eslint/eslint-plugin, typeorm, and react-hook-form.
+- Updated 14 dependencies, including notable packages like `typeorm`, `@tanstack/react-query`, and `@typescript-eslint/eslint-plugin`.
 
 ## New Contributors
 * @stormshaker made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/2972

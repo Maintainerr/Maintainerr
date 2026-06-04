@@ -22,6 +22,8 @@ export const EMBY_CACHE_KEYS = {
   USERS: 'emby:users',
   LIBRARIES: 'emby:libraries',
   STATUS: 'emby:status',
+  COLLECTIONS: 'emby:collections',
+  RESOLVED_USER_ID: 'emby:resolved-user-id',
 } as const;
 
 // Emby uses the same .NET DateTime tick convention as Jellyfin.

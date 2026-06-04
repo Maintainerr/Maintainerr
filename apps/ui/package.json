@@ -22,10 +22,10 @@
     "@hookform/resolvers": "^5.4.0",
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
-    "@tanstack/react-query": "^5.100.14",
+    "@tanstack/react-query": "^5.101.0",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
-    "axios": "^1.16.1",
+    "axios": "^1.17.0",
     "bowser": "^2.14.1",
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",
@@ -35,11 +35,11 @@
     "monaco-editor": "0.55.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-hook-form": "^7.76.1",
+    "react-hook-form": "^7.77.0",
     "react-konva": "^19.2.4",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
-    "react-router-dom": "^7.16.0",
+    "react-router-dom": "^7.17.0",
     "react-select": "^5.10.2",
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
@@ -64,7 +64,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22",
-    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.0",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9.39.2",
@@ -80,6 +80,6 @@
     "vitest": "^4.1.8"
   },
   "optionalDependencies": {
-    "rolldown": "^1.0.3"
+    "rolldown": "^1.1.0"
   }
 }
