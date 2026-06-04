@@ -78,6 +78,40 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
+  describe('getActiveSessions', () => {
+    it('collects the playing item plus its season and series ids', async () => {
+      http.get.mockResolvedValue({
+        data: [
+          { NowPlayingItem: { Id: 'movie1', Type: 'Movie' } },
+          {
+            NowPlayingItem: {
+              Id: 'episode1',
+              SeasonId: 'season1',
+              SeriesId: 'series1',
+              Type: 'Episode',
+            },
+          },
+          // No NowPlayingItem (idle/remote-control session) is skipped.
+          { Id: 'idle-session' },
+        ],
+      });
+
+      const playing = await service.getActiveSessions();
+
+      expect(http.get).toHaveBeenCalledWith('/Sessions');
+      expect(playing).toEqual(
+        new Set(['movie1', 'episode1', 'season1', 'series1']),
+      );
+    });
+
+    it('returns an empty set when the sessions request fails', async () => {
+      http.get.mockRejectedValue(new Error('boom'));
+      await expect(service.getActiveSessions()).resolves.toEqual(
+        new Set<string>(),
+      );
+    });
+  });
+
   describe('createCollection', () => {
     it('creates the collection empty without seeding item ids', async () => {
       // Item ids must never be sent on create (they go in the query string →

@@ -40,6 +40,7 @@ import type {
   EmbyAuthenticationResult,
   EmbyBaseItemDto,
   EmbyItemsQueryResponse,
+  EmbySessionInfoDto,
   EmbySystemInfo,
   EmbyUserDto,
 } from './emby.types';
@@ -775,6 +776,30 @@ export class EmbyAdapterService implements IMediaServerService {
   async getItemSeenBy(itemId: string): Promise<string[]> {
     const history = await this.getWatchHistory(itemId);
     return history.map((r) => r.userId);
+  }
+
+  async getActiveSessions(): Promise<Set<string>> {
+    if (!this.http) return new Set<string>();
+    try {
+      const { data } = await this.http.get<EmbySessionInfoDto[]>('/Sessions');
+      const playing = new Set<string>();
+      for (const session of data ?? []) {
+        const item = session.NowPlayingItem;
+        if (!item) continue;
+        // A collection can track an episode at any level, so protect the
+        // episode and its season and series. ParentId is intentionally
+        // omitted — for Emby movies it is the library folder, not a
+        // collectable ancestor. Movies only carry Id.
+        if (item.Id) playing.add(item.Id);
+        if (item.SeasonId) playing.add(item.SeasonId);
+        if (item.SeriesId) playing.add(item.SeriesId);
+      }
+      return playing;
+    } catch (error) {
+      this.logger.warn('Failed to fetch active Emby sessions.');
+      this.logger.debug(error);
+      return new Set<string>();
+    }
   }
 
   // ============================================================================

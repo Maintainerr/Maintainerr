@@ -118,6 +118,12 @@ export interface EmbyUserDto {
   PrimaryImageTag?: string;
 }
 
+export interface EmbySessionInfoDto {
+  Id?: string;
+  UserId?: string;
+  NowPlayingItem?: EmbyBaseItemDto;
+}
+
 export interface EmbyItemsQueryResponse<T = EmbyBaseItemDto> {
   Items: T[];
   TotalRecordCount?: number;

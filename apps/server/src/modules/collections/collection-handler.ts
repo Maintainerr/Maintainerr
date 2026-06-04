@@ -13,6 +13,15 @@ import { CollectionMedia } from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
 import { RecentlyHandledMediaService } from './recently-handled-media.service';
 
+/**
+ * Outcome of handling a single collection media item.
+ * - `handled`: the configured action ran and the item was processed.
+ * - `failed`: the action could not be completed; the item stays for retry.
+ * - `removed-missing`: the item no longer existed on the media server and was
+ *   pruned from the collection(s) — a cleanup, not a failure or a real handle.
+ */
+export type HandleMediaResult = 'handled' | 'failed' | 'removed-missing';
+
 @Injectable()
 export class CollectionHandler {
   constructor(
@@ -39,9 +48,9 @@ export class CollectionHandler {
   public async handleMedia(
     collection: Collection,
     media: CollectionMedia,
-  ): Promise<boolean> {
+  ): Promise<HandleMediaResult> {
     if (collection.arrAction === ServarrAction.DO_NOTHING) {
-      return false;
+      return 'failed';
     }
 
     const mediaServer = await this.getMediaServer();
@@ -102,7 +111,38 @@ export class CollectionHandler {
     }
 
     if (!actionHandled) {
-      return false;
+      // The action didn't run. Before treating this as a retryable failure,
+      // check whether the item still exists: if it's already gone from the
+      // media server there is nothing left to act on, and leaving it in the
+      // collection means re-processing it — and re-resolving its dead BoxSet
+      // link — on every run (#3023). A failed existence check is treated as
+      // "still present" so a transient blip never drops a live item.
+      let exists = true;
+      try {
+        exists = await mediaServer.itemExists(media.mediaServerId);
+      } catch (error) {
+        this.logger.debug(error);
+      }
+
+      if (exists) {
+        return 'failed';
+      }
+
+      this.logger.log(
+        `Media with id ${media.mediaServerId} no longer exists on the media server; removing it from collection '${collection.title}' and any others that still list it.`,
+      );
+      // The removal-by-id is a no-op on the media server for a gone item (Plex
+      // skips 404, Jellyfin/Emby return 2xx), so these drop the stale DB rows.
+      // A genuinely transient removal failure keeps the row, which the next run
+      // retries — no permanent stale state, so no special-casing needed here.
+      await this.collectionService.removeFromCollection(collection.id, [
+        {
+          mediaServerId: media.mediaServerId,
+        },
+      ]);
+      await this.pruneSiblingCollections(collection.id, media.mediaServerId);
+      this.recentlyHandledMedia.markHandled(collection.id, media.mediaServerId);
+      return 'removed-missing';
     }
 
     // Only remove requests & file if needed
@@ -180,28 +220,10 @@ export class CollectionHandler {
     // and the UNMONITOR_DELETE_* variants all delete files), but the item still
     // resolves on the media server until its next library scan. Prune it from
     // any other managed collection that still lists it now, while a valid id
-    // exists to remove — otherwise those collections keep a dead BoxSet link
-    // that the media server re-resolves on every rule run (#3023). Unmonitor /
-    // quality actions leave the file in place, so the item legitimately stays.
+    // exists to remove. Unmonitor / quality actions leave the file in place, so
+    // the item legitimately stays.
     if (freesDisk) {
-      const prunedCollectionIds =
-        await this.collectionService.removeMediaFromOtherCollections(
-          media.mediaServerId,
-          collection.id,
-        );
-
-      // Mark the item handled for each sibling it was pruned from. The rule
-      // executor checks this guard per collection, so without it the sibling's
-      // next pass would re-add the item — it still resolves on the media server
-      // until the next scan and conditions like `isWatched` stay true — firing
-      // a spurious `Media Added` notification and recreating the dead BoxSet
-      // link this cleanup just removed.
-      for (const prunedCollectionId of prunedCollectionIds) {
-        this.recentlyHandledMedia.markHandled(
-          prunedCollectionId,
-          media.mediaServerId,
-        );
-      }
+      await this.pruneSiblingCollections(collection.id, media.mediaServerId);
     }
 
     collection.handledMediaAmount++;
@@ -228,6 +250,30 @@ export class CollectionHandler {
 
     await this.collectionService.saveCollection(collection);
 
-    return true;
+    return 'handled';
+  }
+
+  /**
+   * Prune an item from every OTHER managed collection that still lists it, so a
+   * dead BoxSet link doesn't linger and get re-resolved on every rule run
+   * (#3023). Each pruned sibling is marked handled: the rule executor checks
+   * that guard per collection, so without it the sibling's next pass could
+   * re-add the item — it may still resolve on the media server, and conditions
+   * like `isWatched` stay true — firing a spurious `Media Added` notification
+   * and recreating the link this cleanup just removed.
+   */
+  private async pruneSiblingCollections(
+    collectionId: number,
+    mediaServerId: string,
+  ): Promise<void> {
+    const prunedCollectionIds =
+      await this.collectionService.removeMediaFromOtherCollections(
+        mediaServerId,
+        collectionId,
+      );
+
+    for (const prunedCollectionId of prunedCollectionIds) {
+      this.recentlyHandledMedia.markHandled(prunedCollectionId, mediaServerId);
+    }
   }
 }

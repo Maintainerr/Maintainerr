@@ -737,6 +737,29 @@ export class PlexApiService {
     return (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
   }
 
+  /**
+   * Returns the items in every active play session. Plex's
+   * `/status/sessions` returns only the `MediaContainer` (no `Metadata`) when
+   * nothing is playing, so an empty array is the normal "idle" result. Never
+   * cached — sessions are live state. Best-effort: the plexClient retries
+   * transient failures (axios-retry, exponential backoff), and a persistent
+   * failure returns [] so a session outage degrades to normal handling rather
+   * than blocking the run.
+   */
+  public async getActiveSessions(): Promise<PlexLibraryItem[]> {
+    try {
+      const response = await this.plexClient.query<PlexLibraryResponse>(
+        { uri: '/status/sessions' },
+        false,
+      );
+      return (response?.MediaContainer?.Metadata as PlexLibraryItem[]) ?? [];
+    } catch (error) {
+      this.logger.error('Failed to fetch active Plex sessions.');
+      this.logger.debug(error);
+      return [];
+    }
+  }
+
   public async getCollections(
     libraryId: string | number,
     subType?: 'movie' | 'show' | 'season' | 'episode',

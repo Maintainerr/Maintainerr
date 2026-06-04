@@ -64,6 +64,39 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('getActiveSessions', () => {
+    it('collects ratingKey plus season and show ids and de-duplicates', async () => {
+      plexApi.getActiveSessions.mockResolvedValue([
+        { ratingKey: 'movie1', type: 'movie' },
+        {
+          ratingKey: 'episode1',
+          parentRatingKey: 'season1',
+          grandparentRatingKey: 'show1',
+          type: 'episode',
+        },
+        // A second episode of the same show contributes a new episode id but
+        // the show id should only appear once.
+        {
+          ratingKey: 'episode2',
+          parentRatingKey: 'season1',
+          grandparentRatingKey: 'show1',
+          type: 'episode',
+        },
+      ] as any);
+
+      const playing = await service.getActiveSessions();
+
+      expect(playing).toEqual(
+        new Set(['movie1', 'episode1', 'season1', 'show1', 'episode2']),
+      );
+    });
+
+    it('returns an empty set when nothing is playing', async () => {
+      plexApi.getActiveSessions.mockResolvedValue([]);
+      expect(await service.getActiveSessions()).toEqual(new Set<string>());
+    });
+  });
+
   describe('cache management', () => {
     it('should delegate resetMetadataCache to PlexApiService when itemId provided', () => {
       service.resetMetadataCache('item123');
@@ -353,6 +386,21 @@ describe('PlexAdapterService', () => {
         new Map([['movie-lib', 321]]),
       );
       expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1');
+    });
+  });
+
+  describe('itemExists', () => {
+    it('delegates to the Plex API existence check', async () => {
+      plexApi.itemExists.mockResolvedValue(true);
+
+      await expect(service.itemExists('movie-1')).resolves.toBe(true);
+      expect(plexApi.itemExists).toHaveBeenCalledWith('movie-1');
+    });
+
+    it('propagates an inconclusive check so callers do not drop state', async () => {
+      plexApi.itemExists.mockRejectedValue(new Error('network'));
+
+      await expect(service.itemExists('movie-1')).rejects.toThrow('network');
     });
   });
 

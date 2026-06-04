@@ -19,6 +19,7 @@ import {
   getItemUpdateApi,
   getLibraryApi,
   getPlaylistsApi,
+  getSessionApi,
   getSystemApi,
   getTvShowsApi,
   getUserApi,
@@ -50,6 +51,7 @@ import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
 import cacheManager, { type Cache } from '../../lib/cache';
+import { applyHttpRetry } from '../../lib/httpRetry';
 import {
   isBlankMediaServerId,
   isForeignServerId,
@@ -144,7 +146,14 @@ export class JellyfinAdapterService implements IMediaServerService {
       },
     });
 
-    return jellyfin.createApi(url, apiKey);
+    const api = jellyfin.createApi(url, apiKey);
+
+    // Retry transient failures with exponential backoff, like every other
+    // outbound client (e.g. so a momentary blip doesn't surface as a null
+    // active-sessions lookup that would defer deletions).
+    applyHttpRetry(api.axiosInstance);
+
+    return api;
   }
 
   /**
@@ -1085,6 +1094,30 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getItemSeenBy(itemId: string): Promise<string[]> {
     const history = await this.getWatchHistory(itemId);
     return history.map((record) => record.userId);
+  }
+
+  async getActiveSessions(): Promise<Set<string>> {
+    if (!this.api) return new Set<string>();
+    try {
+      const response = await getSessionApi(this.api).getSessions();
+      const playing = new Set<string>();
+      for (const session of response.data ?? []) {
+        const item = session.NowPlayingItem;
+        if (!item) continue;
+        // A collection can track an episode at any level, so protect the
+        // episode and its season and series. ParentId is intentionally
+        // omitted — for Jellyfin movies it is the library folder, not a
+        // collectable ancestor. Movies only carry Id.
+        if (item.Id) playing.add(item.Id);
+        if (item.SeasonId) playing.add(item.SeasonId);
+        if (item.SeriesId) playing.add(item.SeriesId);
+      }
+      return playing;
+    } catch (error) {
+      this.logger.warn('Failed to fetch active Jellyfin sessions.');
+      this.logger.debug(error);
+      return new Set<string>();
+    }
   }
 
   /**

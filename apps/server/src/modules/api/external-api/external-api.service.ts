@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, RawAxiosRequestConfig } from 'axios';
-import axiosRetry from 'axios-retry';
 import NodeCache from 'node-cache';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { applyHttpRetry } from '../lib/httpRetry';
 import { describeRequestTarget } from '../lib/requestLogging';
 
 // 20 minute default TTL (in seconds)
@@ -36,10 +36,7 @@ export class ExternalApiService {
         ...options.headers,
       },
     });
-    axiosRetry(this.axios, {
-      retries: 3,
-      retryDelay: axiosRetry.exponentialDelay,
-    });
+    applyHttpRetry(this.axios);
     this.baseUrl = baseUrl;
     this.cache = options.nodeCache;
   }

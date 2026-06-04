@@ -237,7 +237,7 @@ describe('CollectionsController', () => {
 
     collectionsService.getCollectionRecord.mockResolvedValue(collection);
     collectionsService.getCollectionMediaRecord.mockResolvedValue(media);
-    collectionHandler.handleMedia.mockResolvedValue(true);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
 
     await expect(
       controller.handleCollectionMedia({
@@ -341,7 +341,7 @@ describe('CollectionsController', () => {
 
     collectionsService.getCollectionRecord.mockResolvedValue(collection);
     collectionsService.getCollectionMediaRecord.mockResolvedValue(media);
-    collectionHandler.handleMedia.mockResolvedValue(false);
+    collectionHandler.handleMedia.mockResolvedValue('failed');
 
     await expect(
       controller.handleCollectionMedia({
@@ -349,6 +349,22 @@ describe('CollectionsController', () => {
         mediaId: media.mediaServerId,
       }),
     ).rejects.toThrow(ConflictException);
+  });
+
+  it('does not throw when the item was pruned because it no longer exists', async () => {
+    const collection = createCollection();
+    const media = createCollectionMedia(collection);
+
+    collectionsService.getCollectionRecord.mockResolvedValue(collection);
+    collectionsService.getCollectionMediaRecord.mockResolvedValue(media);
+    collectionHandler.handleMedia.mockResolvedValue('removed-missing');
+
+    await expect(
+      controller.handleCollectionMedia({
+        collectionId: collection.id,
+        mediaId: media.mediaServerId,
+      }),
+    ).resolves.not.toThrow();
   });
 
   describe('uploadCollectionPoster', () => {

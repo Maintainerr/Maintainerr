@@ -28,6 +28,7 @@ const jellyfinApiMocks = {
   refreshItem: jest.fn(),
   getItemImage: jest.fn(),
   setItemImage: jest.fn(),
+  getSessions: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -55,6 +56,14 @@ jest.mock('@jellyfin/sdk', () => ({
     createApi: jest.fn().mockReturnValue({
       accessToken: '',
       configuration: {},
+      // axios-retry attaches interceptors to this instance during
+      // createApiClient; stub them so the real attach call is a no-op in tests.
+      axiosInstance: {
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() },
+        },
+      },
     }),
   })),
 }));
@@ -161,6 +170,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
       jellyfinApiMocks.getItemImage(...args),
     setItemImage: (...args: unknown[]) =>
       jellyfinApiMocks.setItemImage(...args),
+  })),
+  getSessionApi: jest.fn().mockImplementation(() => ({
+    getSessions: (...args: unknown[]) => jellyfinApiMocks.getSessions(...args),
   })),
   getSearchApi: jest.fn(),
   getPlaylistsApi: jest.fn(),
@@ -781,6 +793,48 @@ describe('JellyfinAdapterService', () => {
         }
       },
     );
+  });
+
+  describe('getActiveSessions', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('collects the playing item plus its season and series ids', async () => {
+      jellyfinApiMocks.getSessions.mockResolvedValue({
+        data: [
+          { NowPlayingItem: { Id: 'movie1', Type: 'Movie' } },
+          {
+            NowPlayingItem: {
+              Id: 'episode1',
+              SeasonId: 'season1',
+              SeriesId: 'series1',
+              Type: 'Episode',
+            },
+          },
+          // No NowPlayingItem (idle/remote-control session) is skipped.
+          { Id: 'idle-session' },
+        ],
+      });
+
+      const playing = await service.getActiveSessions();
+
+      expect(playing).toEqual(
+        new Set(['movie1', 'episode1', 'season1', 'series1']),
+      );
+    });
+
+    it('returns an empty set when the sessions request fails', async () => {
+      jellyfinApiMocks.getSessions.mockRejectedValue(new Error('boom'));
+      await expect(service.getActiveSessions()).resolves.toEqual(
+        new Set<string>(),
+      );
+    });
   });
 
   describe('getWatchHistory', () => {
