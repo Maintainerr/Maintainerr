@@ -188,6 +188,27 @@ export interface IMediaServerService {
   getItemSeenBy(itemId: string): Promise<string[]>;
 
   /**
+   * Get the set of media server item IDs that are currently being played in
+   * an active streaming session. The collection worker uses this to defer
+   * handling of in-use media to the next run (deletion is the case that
+   * matters; the occasional non-destructive action is deferred too rather
+   * than scoped — a deliberate simplification).
+   *
+   * For hierarchical media the set includes every level a collection might
+   * track: a playing episode contributes its own id plus its season and show
+   * ids, so a collection holding the episode, season, or whole show is
+   * protected.
+   *
+   * Best-effort: returns an empty set when nothing is playing and, after the
+   * HTTP client's own retries, when the lookup could not be completed — so a
+   * session outage degrades to the pre-existing behaviour (handle as usual)
+   * rather than blocking the run. The worker reads this once at the start of a
+   * run, so media that starts playing mid-run isn't protected until the next
+   * run.
+   */
+  getActiveSessions(): Promise<Set<string>>;
+
+  /**
    * Get all collections in a library.
    */
   getCollections(libraryId: string): Promise<MediaCollection[]>;

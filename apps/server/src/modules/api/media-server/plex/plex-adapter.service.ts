@@ -267,6 +267,20 @@ export class PlexAdapterService implements IMediaServerService {
     return Array.from(userIds);
   }
 
+  async getActiveSessions(): Promise<Set<string>> {
+    const sessions = await this.plexApi.getActiveSessions();
+    const playing = new Set<string>();
+    for (const session of sessions) {
+      // A collection can track an episode at any level, so protect the
+      // episode and its season and show (movies only carry ratingKey).
+      if (session.ratingKey) playing.add(session.ratingKey);
+      if (session.parentRatingKey) playing.add(session.parentRatingKey);
+      if (session.grandparentRatingKey)
+        playing.add(session.grandparentRatingKey);
+    }
+    return playing;
+  }
+
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
     const collections = await this.plexApi.getCollections(libraryId);
     if (!collections) return [];
