@@ -311,6 +311,16 @@ Quick checks (Jellyfin server configured):
   `emby_user_id` is configured; the plain `/Items/...` path can miss or 404 in
   user-authenticated flows even though the update write endpoint remains
   `POST /Items/{itemId}`.
+- **"Is this item gone?" → use `IMediaServerService.itemExists`, never
+  `getMetadata` falsiness.** `getMetadata` returns `undefined` for both a
+  genuinely-absent item _and_ a transient error (network / 5xx / auth) on all
+  three servers, so keying a deletion/cleanup off `!getMetadata()?.id` can drop
+  live data on a blip. `itemExists` returns `false` only on a confirmed
+  404/empty result and **throws** on anything inconclusive; callers default to
+  "present" on throw (`let exists = true; try { … } catch { logger.debug }`) so
+  uncertainty never deletes. It's the single existence primitive on the shared
+  interface — consumed by the collection handler, `removeStaleCollectionMedia`,
+  and the overlay processor — so don't reintroduce a per-subsystem copy.
 
 ---
 

@@ -67,8 +67,4 @@ export class EmbyOverlayProvider implements IOverlayProvider {
     // accepts a base64 body with the original Content-Type on POST.
     await this.emby.setCollectionImage(itemId, buffer, contentType);
   }
-
-  async itemExists(itemId: string): Promise<boolean> {
-    return this.emby.itemExists(itemId);
-  }
 }

@@ -1049,8 +1049,19 @@ export class CollectionsService {
     let removedCount = 0;
 
     for (const entry of allMedia) {
-      const metadata = await mediaServer.getMetadata(entry.mediaServerId);
-      if (!metadata?.id) {
+      // Only remove a row when the media server *confirms* the item is gone.
+      // `itemExists` returns false solely on a 404/empty result and throws on
+      // an inconclusive check (network / 5xx / auth), unlike `getMetadata`
+      // which returns undefined for both absent and failed reads — so a
+      // transient blip can no longer delete a still-present item's row.
+      let exists = true;
+      try {
+        exists = await mediaServer.itemExists(entry.mediaServerId);
+      } catch (error) {
+        this.logger.debug(error);
+      }
+
+      if (!exists) {
         await this.CollectionMediaRepo.delete(entry.id);
         removedCount++;
       }
