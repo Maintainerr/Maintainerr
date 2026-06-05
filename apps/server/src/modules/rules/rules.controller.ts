@@ -330,11 +330,19 @@ export class RulesController {
     @Body() body: { yaml: string; mediaType: MediaItemType },
   ): Promise<ReturnStatus> {
     try {
-      return this.rulesService.decodeFromYaml(body.yaml, body.mediaType);
+      return await this.rulesService.decodeFromYaml(body.yaml, body.mediaType);
     } catch (error) {
+      // A genuine YAML syntax/structure error is already handled inside the
+      // service (it returns a clear message). Reaching here means a later
+      // failure (e.g. rule migration) threw, which is not a YAML problem - log
+      // the real fault and surface a plain, accurate message instead.
+      this.logger.error('Failed to import rules from YAML');
+      this.logger.debug(error);
+      const message = 'Failed to import rules';
       return {
         code: 0,
-        result: 'Invalid input',
+        result: message,
+        message,
       };
     }
   }

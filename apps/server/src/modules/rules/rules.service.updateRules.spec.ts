@@ -330,6 +330,82 @@ describe('RulesService.updateRules', () => {
     });
   });
 
+  // Leaving the collection block out of an update shouldn't throw, wipe media,
+  // or quietly drop the saved keepLogsForMonths, manual link, or visibility
+  // (#3044 + partial-update review).
+  it('keeps existing collection settings when the collection block is omitted', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const dbCollection = {
+      id: 42,
+      libraryId: 'lib-1',
+      mediaServerId: 'col-1',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+      visibleOnHome: true,
+      visibleOnRecommended: true,
+    };
+
+    const collectionMediaRepository = { delete: jest.fn() };
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue(dbCollection),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: { id: 42 } }),
+    };
+    const mediaServer = {
+      cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: 'lib-1', title: 'Movies', type: 'movie' }]),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository,
+      exclusionRepo: { delete: jest.fn() },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+    });
+
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    const result = await service.updateRules({
+      id: group.id,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'No collection block',
+      description: '',
+      rules: [],
+      useRules: true,
+      isActive: true,
+      // collection intentionally omitted
+    } as any);
+
+    // An absent block means "unchanged", not a crucial change or a reset.
+    expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
+    expect(collectionService.updateCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keepLogsForMonths: 6,
+        manualCollection: true,
+        manualCollectionName: 'Shared Collection',
+        visibleOnHome: true,
+        visibleOnRecommended: true,
+      }),
+    );
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+  });
+
   const buildSortTransitionFixture = (options: {
     previousSort: string | null;
     nextSort: string | null;

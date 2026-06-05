@@ -198,4 +198,15 @@ describe('RuleYamlService', () => {
     expect(rules[0].operator).toBeNull(); // first rule of the group
     expect(rules[1].operator).toBe(RuleOperators.AND); // section boundary, not OR
   });
+
+  it('returns a clear, structured message when the YAML is not valid', () => {
+    // Malformed YAML (an unterminated flow sequence) makes the parser throw,
+    // which the decoder catches and reports as a structured failure.
+    const decoded = service.decode('rules: [unterminated', 'movie');
+
+    expect(decoded.code).toBe(0);
+    expect(decoded.message).toBe(
+      'Validation failed - Please check your YAML structure.',
+    );
+  });
 });

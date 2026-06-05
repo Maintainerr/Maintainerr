@@ -122,5 +122,5 @@ Currently, <b>Maintainerr</b> supports rule parameters from these apps :
 # Preview
 
 <p align="center">
-  <img src="https://github.com/maintainerr/maintainerr/blob/development/apps/ui/public/screenshots/collections_screenshot.png?raw=true" alt="Maintainerr's overview"/>
+  <img src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/Collections.png" alt="Maintainerr collections"/>
 </p>

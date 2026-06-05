@@ -384,7 +384,7 @@ export class RulesService {
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
           manualCollection: params.collection?.manualCollection,
           manualCollectionName: params.collection?.manualCollectionName,
-          keepLogsForMonths: +params.collection?.keepLogsForMonths,
+          keepLogsForMonths: params.collection?.keepLogsForMonths ?? 6,
           sortTitle: params.collection?.sortTitle,
           mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
@@ -393,7 +393,7 @@ export class RulesService {
       )?.dbCollection;
 
       if (!collection) {
-        return undefined;
+        return this.createReturnStatus(false, 'Failed to create collection');
       }
 
       const groupId = await this.createOrUpdateGroup(
@@ -428,7 +428,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return this.createReturnStatus(false, 'Failed to save the rule group');
     }
   }
 
@@ -477,9 +477,11 @@ export class RulesService {
         if (
           dbCollection &&
           (group.dataType !== params.dataType ||
-            params.collection.manualCollection !==
+            (params.collection?.manualCollection ??
+              dbCollection.manualCollection) !==
               dbCollection.manualCollection ||
-            params.collection.manualCollectionName !==
+            (params.collection?.manualCollectionName ??
+              dbCollection.manualCollectionName) !==
               dbCollection.manualCollectionName ||
             params.libraryId !== dbCollection.libraryId)
         ) {
@@ -553,12 +555,22 @@ export class RulesService {
           sonarrSettingsId: params.sonarrSettingsId ?? null,
           radarrQualityProfileId: params.radarrQualityProfileId ?? null,
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
-          visibleOnRecommended: params.collection?.visibleOnRecommended,
-          visibleOnHome: params.collection?.visibleOnHome,
+          // If the collection block is left out of an update, keep the saved
+          // values instead of sending undefined — otherwise we'd unlink a manual
+          // collection or switch off Plex visibility.
+          visibleOnRecommended:
+            params.collection?.visibleOnRecommended ??
+            dbCollection?.visibleOnRecommended,
+          visibleOnHome:
+            params.collection?.visibleOnHome ?? dbCollection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
-          manualCollection: params.collection?.manualCollection,
-          manualCollectionName: params.collection?.manualCollectionName,
-          keepLogsForMonths: +params.collection?.keepLogsForMonths,
+          manualCollection:
+            params.collection?.manualCollection ??
+            dbCollection?.manualCollection,
+          manualCollectionName:
+            params.collection?.manualCollectionName ??
+            dbCollection?.manualCollectionName,
+          keepLogsForMonths: params.collection?.keepLogsForMonths ?? 6,
           sortTitle: params.collection?.sortTitle,
           mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
@@ -640,7 +652,7 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return this.createReturnStatus(false, 'Failed to save the rule group');
     }
   }
   async setExclusion(data: ExclusionContextDto) {
