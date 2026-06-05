@@ -250,7 +250,7 @@ export class RuleYamlService {
       this.logger.debug(error);
       return {
         code: 0,
-        message: 'Import failed, please check your yaml',
+        message: 'Validation failed - Please check your YAML structure.',
       };
     }
   }
