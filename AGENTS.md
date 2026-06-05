@@ -103,6 +103,13 @@ yarn test
 yarn check-types
 ```
 
+> **`yarn test` / `yarn lint` fails with `command not found: <tool>` (exit 127)?**
+> Almost always a stale `node_modules` out of sync with `yarn.lock` — yarn can't
+> resolve the binary (commonly `vitest`, which is the one test binary not hoisted
+> to the root `node_modules/.bin`). Run `yarn install` to resync, then retry. It
+> is **not** a PATH or workspace-config problem, so don't reach for explicit
+> `./node_modules/.bin/...` paths — fix the install instead.
+
 ### CI Workflow Commands
 
 GitHub quality workflows include a separate YAML lint job:
