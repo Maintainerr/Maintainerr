@@ -1,3 +1,39 @@
+# [3.14.0](https://github.com/Maintainerr/Maintainerr/compare/v3.13.0...v3.14.0) (2026-06-05)
+
+
+## Highlights
+- Added `/api/health` endpoints with liveness and readiness checks for monitoring and integration with tools like Kubernetes and Docker Compose (#3029).
+- Collection handler now skips media currently being streamed to avoid disrupting active viewers (#3027).
+- Fixed issue where saving log settings would overwrite an active `LOG_LEVEL` environment variable override (#3053).
+
+## Features
+- Added `/api/health` endpoints with liveness and readiness checks (#3029).
+- Collection handler now skips media currently being streamed (#3027).
+- Logging system now honors the `LOG_LEVEL` environment variable on startup (#3030).
+
+## Fixes
+- Fixed issue where saving log settings would overwrite an active `LOG_LEVEL` environment variable override (#3053).
+- Validated webhook URL schemes to prevent invalid or potentially harmful requests (#3031).
+- Fixed issue where rule groups lost collection links and visibility on partial updates (#3045, #3046).
+- Fixed issue with manual collections not being found across libraries on Jellyfin/Emby (#3026, #3042).
+- Resolved issue where deleted media remained stuck in Jellyfin/Emby collections and caused repeated processing errors (#3023, #3024, #3040).
+- Fixed issue where Seerr requests for episode rules incorrectly deleted entire season requests (#3015).
+- Improved error notifications for collection handling failures to include the name of the failing collection (#3013).
+- Used Radarr bulk exclusions endpoint to avoid duplicate 400 errors when adding exclusions (#3012).
+
+## Performance
+- Pruned media that no longer exists on the media server to improve collection handling efficiency (#3023, #3040).
+
+## Internal
+- Refreshed README with updated features, deployment examples, and credits (#3048).
+- Clarified that a missing `yarn` command indicates a stale `node_modules` directory.
+
+## Dependencies
+- Updated 20 dependencies, including `@typescript-eslint/parser`, `react-router-dom`, `axios`, and `vite`.
+
+## New Contributors
+* @Arvuno made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3029
+
 # [3.13.0](https://github.com/Maintainerr/Maintainerr/compare/v3.12.1...v3.13.0) (2026-05-28)
 
 ## Global vs scoped exclusions
