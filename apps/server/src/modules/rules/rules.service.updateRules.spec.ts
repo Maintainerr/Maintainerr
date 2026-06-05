@@ -330,19 +330,19 @@ describe('RulesService.updateRules', () => {
     });
   });
 
-  // Regression for #3044: an update payload that omits the `collection` block
-  // used to throw on `params.collection.manualCollection` during the
-  // "crucial setting changed" check. It must now update without throwing, fall
-  // back to the default keepLogsForMonths (6), and not trigger a spurious media
-  // wipe (an absent field means "unchanged", not "changed to undefined").
-  it('updates without throwing when the collection block is omitted', async () => {
+  // Leaving the collection block out of an update shouldn't throw, wipe media,
+  // or quietly drop the saved keepLogsForMonths, manual link, or visibility
+  // (#3044 + partial-update review).
+  it('keeps existing collection settings when the collection block is omitted', async () => {
     const group = { id: 5, collectionId: 42, dataType: 'movie' };
     const dbCollection = {
       id: 42,
       libraryId: 'lib-1',
       mediaServerId: 'col-1',
-      manualCollection: false,
-      manualCollectionName: '',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+      visibleOnHome: true,
+      visibleOnRecommended: true,
     };
 
     const collectionMediaRepository = { delete: jest.fn() };
@@ -388,10 +388,16 @@ describe('RulesService.updateRules', () => {
       // collection intentionally omitted
     } as any);
 
-    // Absent collection settings must not be read as a "crucial" change.
+    // An absent block means "unchanged", not a crucial change or a reset.
     expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
     expect(collectionService.updateCollection).toHaveBeenCalledWith(
-      expect.objectContaining({ keepLogsForMonths: 6 }),
+      expect.objectContaining({
+        keepLogsForMonths: 6,
+        manualCollection: true,
+        manualCollectionName: 'Shared Collection',
+        visibleOnHome: true,
+        visibleOnRecommended: true,
+      }),
     );
     expect(result).toEqual({
       code: 1,

@@ -555,11 +555,21 @@ export class RulesService {
           sonarrSettingsId: params.sonarrSettingsId ?? null,
           radarrQualityProfileId: params.radarrQualityProfileId ?? null,
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
-          visibleOnRecommended: params.collection?.visibleOnRecommended,
-          visibleOnHome: params.collection?.visibleOnHome,
+          // If the collection block is left out of an update, keep the saved
+          // values instead of sending undefined — otherwise we'd unlink a manual
+          // collection or switch off Plex visibility.
+          visibleOnRecommended:
+            params.collection?.visibleOnRecommended ??
+            dbCollection?.visibleOnRecommended,
+          visibleOnHome:
+            params.collection?.visibleOnHome ?? dbCollection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
-          manualCollection: params.collection?.manualCollection,
-          manualCollectionName: params.collection?.manualCollectionName,
+          manualCollection:
+            params.collection?.manualCollection ??
+            dbCollection?.manualCollection,
+          manualCollectionName:
+            params.collection?.manualCollectionName ??
+            dbCollection?.manualCollectionName,
           keepLogsForMonths: params.collection?.keepLogsForMonths ?? 6,
           sortTitle: params.collection?.sortTitle,
           mediaServerSort: params.collection?.mediaServerSort ?? null,
