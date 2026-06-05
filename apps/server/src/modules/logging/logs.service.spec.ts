@@ -1,5 +1,7 @@
+import type { Repository } from 'typeorm';
 import winston from 'winston';
-import { MaintainerrLogger } from './logs.service';
+import { LogSettings } from './entities/logSettings.entities';
+import { LogSettingsService, MaintainerrLogger } from './logs.service';
 
 describe('MaintainerrLogger', () => {
   let logger: MaintainerrLogger;
@@ -200,6 +202,52 @@ describe('MaintainerrLogger', () => {
         context: 'TestContext',
         message: 'Error while saving settings: save failed',
       }),
+    );
+  });
+});
+
+describe('LogSettingsService', () => {
+  const originalLogLevel = process.env.LOG_LEVEL;
+
+  afterEach(() => {
+    if (originalLogLevel === undefined) {
+      delete process.env.LOG_LEVEL;
+      return;
+    }
+
+    process.env.LOG_LEVEL = originalLogLevel;
+  });
+
+  it('keeps the LOG_LEVEL env override active after saving settings', async () => {
+    process.env.LOG_LEVEL = 'debug';
+
+    const logger = {
+      level: 'info',
+      transports: [],
+    } as unknown as winston.Logger;
+
+    const repo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 1,
+        level: 'warn',
+        max_size: 20,
+        max_files: 7,
+      } satisfies LogSettings),
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as Repository<LogSettings>;
+
+    const service = new LogSettingsService(logger, repo);
+    await service.update({
+      level: 'warn',
+      max_size: 30,
+      max_files: 14,
+    });
+
+    expect(logger.level).toBe('debug');
+    // The override applies to the live logger only; the persisted value stays
+    // the user-facing UI choice so the env var never leaks into the database.
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ level: 'warn' }),
     );
   });
 });
