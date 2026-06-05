@@ -16,14 +16,14 @@ jest.mock('axios', () => ({
 }));
 
 describe('NtfyAgent', () => {
-  const createAgent = (token?: string) => {
+  const createAgent = (token?: string, url = 'https://ntfy.sh/') => {
     const notification = new Notification();
     const settings: NotificationAgentNtfy = {
       enabled: true,
       types: [NotificationType.TEST_NOTIFICATION],
       options: {
         agent: NotificationAgentKey.NTFY,
-        url: 'https://ntfy.sh/',
+        url,
         topic: '/maintainerr',
         ...(token ? { token } : {}),
       },
@@ -41,6 +41,18 @@ describe('NtfyAgent', () => {
     const agent = createAgent();
 
     expect(agent.shouldSend()).toBe(true);
+  });
+
+  it('rejects a non-http(s) URL without posting', async () => {
+    const agent = createAgent(undefined, 'file:///etc/passwd');
+
+    const result = await agent.send(NotificationType.TEST_NOTIFICATION, {
+      subject: 'Test subject',
+      message: 'Test message',
+    });
+
+    expect(result).toBe('Failure: unsupported webhook URL scheme');
+    expect(axios.post).not.toHaveBeenCalled();
   });
 
   it('omits the authorization header when no token is configured', async () => {

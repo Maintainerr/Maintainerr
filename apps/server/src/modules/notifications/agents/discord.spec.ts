@@ -18,14 +18,14 @@ jest.mock('axios', () => ({
 describe('DiscordAgent', () => {
   const webhookUrl = 'https://discord.com/api/webhooks/123/abc';
 
-  const createAgent = () => {
+  const createAgent = (url: string = webhookUrl) => {
     const notification = new Notification();
     const settings: NotificationAgentDiscord = {
       enabled: true,
       types: [NotificationType.TEST_NOTIFICATION],
       options: {
         agent: NotificationAgentKey.DISCORD,
-        webhookUrl,
+        webhookUrl: url,
       },
     };
 
@@ -62,5 +62,17 @@ describe('DiscordAgent', () => {
     expect(body.embeds[0].thumbnail).toEqual({
       url: 'https://example.com/poster.jpg',
     });
+  });
+
+  it('rejects a non-http(s) webhook URL without posting', async () => {
+    const agent = createAgent('file:///etc/passwd');
+
+    const result = await agent.send(NotificationType.TEST_NOTIFICATION, {
+      subject: 'Test subject',
+      message: 'Test message',
+    });
+
+    expect(result).toBe('Failure: unsupported webhook URL scheme');
+    expect(axios.post).not.toHaveBeenCalled();
   });
 });
