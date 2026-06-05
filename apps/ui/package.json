@@ -65,7 +65,7 @@
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
-    "@typescript-eslint/parser": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.1",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
