@@ -9,6 +9,7 @@ import {
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
+import { validateWebhookUrl } from './webhookUrl';
 
 interface NtfyPayload {
   title: string;
@@ -65,11 +66,27 @@ class NtfyAgent implements NotificationAgent {
       return 'Success';
     }
 
+    const webhookUrl = validateWebhookUrl(settings.options.url);
+    if (!webhookUrl.ok) {
+      this.logger.error(
+        `Webhook URL ${JSON.stringify(settings.options.url)} rejected: ${webhookUrl.reason}.`,
+      );
+      return `Failure: ${webhookUrl.reason}`;
+    }
+
     this.logger.log('Sending Ntfy notification');
 
     try {
-      const baseUrl = settings.options.url.replace(/\/+$/, '');
-      const topic = settings.options.topic.replace(/^\/+/, '');
+      // Trim trailing/leading slashes with the codebase's char idiom rather
+      // than regex, then join the validated base URL to the topic.
+      let baseUrl = webhookUrl.url;
+      while (baseUrl.endsWith('/')) {
+        baseUrl = baseUrl.slice(0, -1);
+      }
+      let topic = settings.options.topic;
+      while (topic.startsWith('/')) {
+        topic = topic.slice(1);
+      }
       const endpoint = `${baseUrl}/${topic}`;
       const notificationPayload = this.getNotificationPayload(type, payload);
       const headers: Record<string, string> = {

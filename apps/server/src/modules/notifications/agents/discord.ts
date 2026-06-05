@@ -8,6 +8,7 @@ import {
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
+import { validateWebhookUrl } from './webhookUrl';
 
 enum EmbedColors {
   DEFAULT = 0,
@@ -138,10 +139,20 @@ class DiscordAgent implements NotificationAgent {
       return 'Success';
     }
 
+    const webhookUrl = validateWebhookUrl(
+      this.getSettings().options.webhookUrl,
+    );
+    if (!webhookUrl.ok) {
+      this.logger.error(
+        `Webhook URL ${JSON.stringify(this.getSettings().options.webhookUrl)} rejected: ${webhookUrl.reason}.`,
+      );
+      return `Failure: ${webhookUrl.reason}`;
+    }
+
     this.logger.log('Sending Discord notification');
 
     try {
-      await axios.post(this.getSettings().options.webhookUrl, {
+      await axios.post(webhookUrl.url, {
         username: this.getSettings().options.botUsername
           ? this.getSettings().options.botUsername
           : 'Maintainerr',

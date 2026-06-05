@@ -10,6 +10,7 @@ import {
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
+import { validateWebhookUrl } from './webhookUrl';
 
 type KeyMapFunction = (
   payload: NotificationPayload,
@@ -109,11 +110,19 @@ class WebhookAgent implements NotificationAgent {
       return 'Success';
     }
 
+    const webhookUrl = validateWebhookUrl(settings.options.webhookUrl);
+    if (!webhookUrl.ok) {
+      this.logger.error(
+        `Webhook URL ${JSON.stringify(settings.options.webhookUrl)} rejected: ${webhookUrl.reason}.`,
+      );
+      return `Failure: ${webhookUrl.reason}`;
+    }
+
     this.logger.log('Sending webhook notification');
 
     try {
       await axios.post(
-        settings.options.webhookUrl,
+        webhookUrl.url,
         this.buildPayload(type, payload),
         settings.options.authHeader
           ? {
