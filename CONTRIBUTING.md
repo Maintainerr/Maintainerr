@@ -132,7 +132,7 @@ If you prefer to set up your development environment manually (specific to a Win
 
 ## Use of AI Tools
 
-We allow the use of AI tools as development aids, but not as a substitute for understanding. If using AI assistance, prefer **GPT-5.4+ (High)** or **Claude Opus 4.6 (High)** for best results.
+We allow the use of AI tools as development aids, but not as a substitute for understanding. If using AI assistance, prefer the latest GPT or Claude Opus models (highest-reasoning tier) for best results.
 
 By submitting a pull request, you confirm that:
 
