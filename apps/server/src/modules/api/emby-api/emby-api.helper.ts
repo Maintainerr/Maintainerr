@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios';
+import { applyHttpRetry } from '../lib/httpRetry';
 
 interface EmbyApiOptions {
   url: string;
@@ -43,5 +44,9 @@ export class EmbyApi {
       timeout: options.timeout ?? 30000,
       headers,
     });
+
+    // Retry transient failures with exponential backoff, like every other
+    // outbound client.
+    applyHttpRetry(this.axios);
   }
 }

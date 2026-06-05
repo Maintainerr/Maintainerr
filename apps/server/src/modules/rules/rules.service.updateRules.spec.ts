@@ -330,6 +330,76 @@ describe('RulesService.updateRules', () => {
     });
   });
 
+  // Regression for #3044: an update payload that omits the `collection` block
+  // used to throw on `params.collection.manualCollection` during the
+  // "crucial setting changed" check. It must now update without throwing, fall
+  // back to the default keepLogsForMonths (6), and not trigger a spurious media
+  // wipe (an absent field means "unchanged", not "changed to undefined").
+  it('updates without throwing when the collection block is omitted', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const dbCollection = {
+      id: 42,
+      libraryId: 'lib-1',
+      mediaServerId: 'col-1',
+      manualCollection: false,
+      manualCollectionName: '',
+    };
+
+    const collectionMediaRepository = { delete: jest.fn() };
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue(dbCollection),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: { id: 42 } }),
+    };
+    const mediaServer = {
+      cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: 'lib-1', title: 'Movies', type: 'movie' }]),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository,
+      exclusionRepo: { delete: jest.fn() },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+    });
+
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    const result = await service.updateRules({
+      id: group.id,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'No collection block',
+      description: '',
+      rules: [],
+      useRules: true,
+      isActive: true,
+      // collection intentionally omitted
+    } as any);
+
+    // Absent collection settings must not be read as a "crucial" change.
+    expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
+    expect(collectionService.updateCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ keepLogsForMonths: 6 }),
+    );
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+  });
+
   const buildSortTransitionFixture = (options: {
     previousSort: string | null;
     nextSort: string | null;

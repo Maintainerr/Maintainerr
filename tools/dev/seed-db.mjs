@@ -11,6 +11,7 @@
  * This is the only one of the three dev scripts that touches the DB; the
  * companion mocks are stateless HTTP servers:
  *   - tools/dev/fake-jellyfin.mjs  (mock Jellyfin, :8096) — pairs with MEDIA_SERVER=jellyfin
+ *   - tools/dev/fake-emby.mjs      (mock Emby, :8097)     — pairs with MEDIA_SERVER=emby
  *   - tools/dev/fake-plex.mjs      (mock Plex, :32400)    — pairs with MEDIA_SERVER=plex
  *
  * Notes
@@ -34,6 +35,7 @@
  *   1. Start the matching mock (tools/dev/fake-jellyfin.mjs or tools/dev/fake-plex.mjs).
  *   2. Stop `yarn dev` (SQLite allows a single writer).
  *   3. node tools/dev/seed-db.mjs                 # Jellyfin (default)
+ *      MEDIA_SERVER=emby node tools/dev/seed-db.mjs   # Emby
  *      MEDIA_SERVER=plex node tools/dev/seed-db.mjs   # Plex
  *   4. Start `yarn dev` and open http://localhost:3000/collections
  */
@@ -66,12 +68,19 @@ const jellyfinId = () =>
     .join("");
 
 // --- Target media server + rule coverage -------------------------------------
-const TARGET = process.env.MEDIA_SERVER === "plex" ? "plex" : "jellyfin";
-const APP = TARGET === "plex" ? 0 : 6; // Application id: Plex=0, Jellyfin=6
+const TARGET =
+  process.env.MEDIA_SERVER === "plex"
+    ? "plex"
+    : process.env.MEDIA_SERVER === "emby"
+      ? "emby"
+      : "jellyfin";
+const APP = TARGET === "plex" ? 0 : TARGET === "emby" ? 7 : 6; // Application id: Plex=0, Jellyfin=6, Emby=7
 const LIB =
   TARGET === "plex"
     ? { movie: "1", show: "2" } // tools/dev/fake-plex.mjs section ids
-    : { movie: "jellyfin-movies", show: "jellyfin-shows" }; // tools/dev/fake-jellyfin.mjs
+    : TARGET === "emby"
+      ? { movie: "emby-movies", show: "emby-shows" } // tools/dev/fake-emby.mjs
+      : { movie: "jellyfin-movies", show: "jellyfin-shows" }; // tools/dev/fake-jellyfin.mjs
 
 // ruleTypeId: NUMBER=0 DATE=1 TEXT=2 BOOL=3 TEXT_LIST=4. Property ids/types
 // differ per server, so keep one map each (mirrors RuleConstants).
@@ -91,6 +100,10 @@ const COVERAGE = {
     show: [0,2,4,11,12,13,14,15,16,17,18,19,25,26,27,29,31,35,36,37,38,40,41,42],
   },
 };
+// Emby mirrors Jellyfin's rule-property constants (RulesConstants clones the
+// Jellyfin application as Application.EMBY), so reuse the same maps.
+TYPES.emby = TYPES.jellyfin;
+COVERAGE.emby = COVERAGE.jellyfin;
 const EXISTS = 18; // RulePossibility.EXISTS — valid for every RuleType
 const ruleType = TYPES[TARGET];
 const ruleJson = (id, i) =>
@@ -183,6 +196,25 @@ const run = db.transaction(() => {
       port: 32400,
       token: "devseed000000000000000000000plex",
       machine: "mockplexmachine0000000000000000",
+      tmdb: "devseed00000000000000000000000tmdb",
+    });
+  } else if (TARGET === "emby") {
+    // Points at tools/dev/fake-emby.mjs. emby_user_id is the mock's admin user;
+    // leave it null instead to exercise the admin auto-resolve path.
+    db.prepare(
+      `UPDATE settings SET
+         media_server_type = 'emby',
+         emby_url = @url,
+         emby_api_key = @key,
+         emby_user_id = @user,
+         emby_server_name = @name,
+         tmdb_api_key = @tmdb
+       WHERE id = 1`,
+    ).run({
+      url: "http://localhost:8097",
+      key: "devseed00000000000000000000000emby",
+      user: "emby-admin",
+      name: "Emby (dev seed)",
       tmdb: "devseed00000000000000000000000tmdb",
     });
   } else {
@@ -451,7 +483,7 @@ console.log(
   `Seeded ${results.length} collections, ${totalItems} media items, ${totalRules} rules into ${dbPath}`,
 );
 console.log(
-  `Media server set to ${TARGET === "plex" ? "Plex" : "Jellyfin"} (dev seed); Radarr + Sonarr configured.`,
+  `Media server set to ${TARGET === "plex" ? "Plex" : TARGET === "emby" ? "Emby" : "Jellyfin"} (dev seed); Radarr + Sonarr configured.`,
 );
 console.log(
   "Also seeded: notifications, cron schedules, collection logs, exclusions, overlays.",

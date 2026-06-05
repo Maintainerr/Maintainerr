@@ -49,11 +49,14 @@ describe('CollectionHandler', () => {
     // to none so the disk-freeing tests don't iterate `undefined`.
     collectionsService.removeMediaFromOtherCollections.mockResolvedValue([]);
 
-    // Setup media server mock
+    // Setup media server mock. `itemExists` defaults to true (item present) so
+    // the action-failure tests exercise the retryable path; the gone-item test
+    // overrides it to false.
     mediaServer = {
       getMetadata: jest.fn(),
       deleteFromDisk: jest.fn(),
       getLibraries: jest.fn(),
+      itemExists: jest.fn().mockResolvedValue(true),
     } as unknown as Mocked<IMediaServerService>;
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
@@ -78,7 +81,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(false);
+    ).resolves.toBe('failed');
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
   });
@@ -98,7 +101,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
@@ -211,7 +214,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(radarrActionHandler.handleAction).toHaveBeenCalled();
@@ -241,7 +244,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
     expect(sonarrActionHandler.handleAction).toHaveBeenCalled();
@@ -270,7 +273,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(false);
+    ).resolves.toBe('failed');
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
     expect(
@@ -297,13 +300,88 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(false);
+    ).resolves.toBe('failed');
 
     expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
     expect(
       collectionsService.CollectionLogRecordForChild,
     ).not.toHaveBeenCalled();
     expect(collectionsService.saveCollection).not.toHaveBeenCalled();
+  });
+
+  it('prunes the item from all collections when it no longer exists on the media server', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    // The action can't run because the item is already gone from the server.
+    sonarrActionHandler.handleAction.mockResolvedValue(false);
+    mediaServer.itemExists.mockResolvedValue(false);
+    collectionsService.removeMediaFromOtherCollections.mockResolvedValue([42]);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('removed-missing');
+
+    // Removed from its own collection and cascaded to any sibling still listing
+    // it, with each marked handled so it isn't immediately re-added.
+    expect(collectionsService.removeFromCollection).toHaveBeenCalledWith(
+      collection.id,
+      [{ mediaServerId: collectionMedia.mediaServerId }],
+    );
+    expect(
+      collectionsService.removeMediaFromOtherCollections,
+    ).toHaveBeenCalledWith(collectionMedia.mediaServerId, collection.id);
+    expect(recentlyHandledMedia.markHandled).toHaveBeenCalledWith(
+      42,
+      collectionMedia.mediaServerId,
+    );
+    expect(recentlyHandledMedia.markHandled).toHaveBeenCalledWith(
+      collection.id,
+      collectionMedia.mediaServerId,
+    );
+    // Not a real handle: no byte accounting / handle log record.
+    expect(
+      collectionsService.CollectionLogRecordForChild,
+    ).not.toHaveBeenCalled();
+    expect(collectionsService.saveCollection).not.toHaveBeenCalled();
+  });
+
+  it('keeps the item when the existence check is inconclusive (throws)', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(false);
+    // A transient failure (network/5xx) must never be read as "gone".
+    mediaServer.itemExists.mockRejectedValue(new Error('media server down'));
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('failed');
+
+    expect(collectionsService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionsService.removeMediaFromOtherCollections,
+    ).not.toHaveBeenCalled();
   });
 
   it('should call removeSeasonRequest for seasons', async () => {
@@ -326,7 +404,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(seerrApi.removeSeasonRequest).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
@@ -355,7 +433,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     // Removing one episode must not delete the whole season's request (which
     // covers the still-present episodes); rely on Seerr's availability sync.
@@ -412,7 +490,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(sonarrActionHandler.handleAction).toHaveBeenCalledWith(
       collection,
@@ -452,7 +530,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
@@ -480,7 +558,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
       collectionMedia.tmdbId,
@@ -506,7 +584,7 @@ describe('CollectionHandler', () => {
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe(true);
+    ).resolves.toBe('handled');
 
     expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
     expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
