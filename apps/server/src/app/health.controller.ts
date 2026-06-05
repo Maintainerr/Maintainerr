@@ -1,70 +1,52 @@
+import { HealthResponse, LivenessResponse } from '@maintainerr/contracts';
 import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-
-interface HealthResponse {
-  status: 'ok' | 'degraded';
-  uptimeSeconds: number;
-  database: 'ok' | 'unreachable';
-  timestamp: string;
-}
+import { HealthService } from './health.service';
 
 @Controller('/api/health')
 export class HealthController {
-  private readonly startedAt = Date.now();
-
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(private readonly healthService: HealthService) {}
 
   /**
-   * Liveness probe. Returns 200 as long as the process is up.
-   * Suitable for `livenessProbe` in Kubernetes / Docker restart loops.
+   * Liveness probe. Returns 200 as long as the process is up, without touching
+   * the database. Suitable for `livenessProbe` in Kubernetes / Docker restart
+   * loops (no restarts on transient DB blips).
    */
   @Get('/live')
-  live(): { status: 'ok' } {
-    return { status: 'ok' };
-  }
-
-  /**
-   * Readiness probe. Pings the database with `SELECT 1` and returns 503 if
-   * the query fails. Suitable for `readinessProbe` in Kubernetes / Docker
-   * healthchecks.
-   */
-  @Get('/ready')
-  async ready(): Promise<HealthResponse> {
-    let database: HealthResponse['database'] = 'ok';
-    try {
-      await this.dataSource.query('SELECT 1');
-    } catch {
-      database = 'unreachable';
-      throw new HttpException(
-        {
-          status: 'degraded',
-          uptimeSeconds: this.uptime(),
-          database,
-          timestamp: new Date().toISOString(),
-        },
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
+  live(): LivenessResponse {
     return {
       status: 'ok',
-      uptimeSeconds: this.uptime(),
-      database,
+      uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
     };
   }
 
   /**
-   * Combined endpoint for simple health checks that do not distinguish
-   * liveness from readiness. Returns 200 when the DB is reachable and
-   * 503 otherwise.
+   * Readiness probe. Pings the database and returns 503 if it is unreachable.
+   * Suitable for `readinessProbe` in Kubernetes and the Docker `HEALTHCHECK`.
    */
-  @Get('/')
-  async health(): Promise<HealthResponse> {
-    return this.ready();
+  @Get('/ready')
+  async ready(): Promise<HealthResponse> {
+    const reachable = await this.healthService.isDatabaseReachable();
+    const response: HealthResponse = {
+      status: reachable ? 'ok' : 'degraded',
+      uptimeSeconds: Math.floor(process.uptime()),
+      database: reachable ? 'ok' : 'unreachable',
+      timestamp: new Date().toISOString(),
+    };
+
+    if (!reachable) {
+      throw new HttpException(response, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    return response;
   }
 
-  private uptime(): number {
-    return Math.floor((Date.now() - this.startedAt) / 1000);
+  /**
+   * Combined endpoint for simple checks that don't distinguish liveness from
+   * readiness. Mirrors `/ready`: 200 when the DB is reachable, 503 otherwise.
+   */
+  @Get()
+  async health(): Promise<HealthResponse> {
+    return this.ready();
   }
 }

@@ -32,6 +32,7 @@ import { StorageMetricsModule } from '../modules/storage-metrics/storage-metrics
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health.controller';
+import { HealthService } from './health.service';
 import ormConfig from './config/typeOrmConfig';
 
 @Module({
@@ -77,6 +78,7 @@ import ormConfig from './config/typeOrmConfig';
   controllers: [AppController, HealthController],
   providers: [
     AppService,
+    HealthService,
     {
       provide: APP_PIPE,
       useClass: ZodValidationPipe,

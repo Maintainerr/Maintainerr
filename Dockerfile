@@ -69,6 +69,7 @@ COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/packag
 COPY --from=builder --chmod=777 --chown=node:node /app/packages/contracts/node_modules ./packages/contracts/node_modules
 
 COPY --chmod=777 --chown=node:node docker/start.sh /opt/app/start.sh
+COPY --chmod=777 --chown=node:node docker/healthcheck.sh /opt/app/healthcheck.sh
 
 # Create required directories
 RUN mkdir -m 777 /opt/data && \
@@ -76,7 +77,7 @@ RUN mkdir -m 777 /opt/data && \
     chown -R node:node /opt/data
 
 # This is required for docker user directive to work
-RUN chmod 777 /opt/app/start.sh
+RUN chmod 777 /opt/app/start.sh /opt/app/healthcheck.sh
 
 # Runtime dependencies for node-canvas (cairo) and sharp (vips)
 RUN apk --update --no-cache add \
@@ -119,6 +120,11 @@ ENV UV_USE_IO_URING=0
 USER node
 
 EXPOSE 6246
+
+# Readiness probe: 200 while the DB answers, 503 otherwise. start-period covers
+# the first boot (UI base-path rewrite + Nest bootstrap + migrations).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+	CMD ["/opt/app/healthcheck.sh"]
 
 VOLUME [ "/opt/data" ]
 ENTRYPOINT ["/opt/app/start.sh"]
