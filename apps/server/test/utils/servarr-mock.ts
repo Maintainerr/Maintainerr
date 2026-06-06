@@ -45,6 +45,10 @@ export const mockSonarrApi = (
   jest.spyOn(api, 'deleteShow').mockResolvedValue(true);
   jest.spyOn(api, 'delete').mockImplementation(jest.fn());
   jest.spyOn(api, 'updateSeries').mockResolvedValue(true);
+  // Download-client cleanup helpers default to "no coverage" so tests that
+  // don't exercise cleanup never hit the network; coverage tests override these.
+  jest.spyOn(api, 'getEpisodes').mockResolvedValue([]);
+  jest.spyOn(api, 'getSeriesDownloadHistory').mockResolvedValue([]);
 
   servarrService.getSonarrApiClient.mockResolvedValue(api);
 

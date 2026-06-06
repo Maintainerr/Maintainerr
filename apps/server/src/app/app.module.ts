@@ -10,6 +10,8 @@ import { ExternalApiModule } from '../modules/api/external-api/external-api.modu
 import { GitHubApiModule } from '../modules/api/github-api/github-api.module';
 import { MediaServerFactory } from '../modules/api/media-server/media-server.factory';
 import { MediaServerModule } from '../modules/api/media-server/media-server.module';
+import { DownloadClientApiModule } from '../modules/api/download-client-api/download-client-api.module';
+import { DownloadClientApiService } from '../modules/api/download-client-api/download-client-api.service';
 import { PlexApiModule } from '../modules/api/plex-api/plex-api.module';
 import { SeerrApiModule } from '../modules/api/seerr-api/seerr-api.module';
 import { SeerrApiService } from '../modules/api/seerr-api/seerr-api.service';
@@ -53,6 +55,7 @@ import ormConfig from './config/typeOrmConfig';
     SeerrApiModule,
     TautulliApiModule,
     StreamystatsApiModule,
+    DownloadClientApiModule,
     RulesModule,
     CollectionsModule,
     NotificationsModule,
@@ -92,6 +95,7 @@ export class AppModule implements OnModuleInit {
     private readonly seerrApi: SeerrApiService,
     private readonly tautulliApi: TautulliApiService,
     private readonly streamystatsApi: StreamystatsApiService,
+    private readonly downloadClientApi: DownloadClientApiService,
     private readonly notificationService: NotificationService,
   ) {}
   async onModuleInit() {
@@ -104,6 +108,7 @@ export class AppModule implements OnModuleInit {
     this.seerrApi.init();
     this.tautulliApi.init();
     this.streamystatsApi.init();
+    this.downloadClientApi.init();
 
     // intialize notification agents
     await this.notificationService.registerConfiguredAgents();

@@ -66,6 +66,15 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     }
   }
 
+  /**
+   * Resolve the torrent infohashes (download-client `downloadId`s) that produced
+   * this movie's files, from Radarr's history. Used to clean up the matching
+   * torrents in the download client after a delete.
+   */
+  public async getDownloadIdsForMovie(movieId: number): Promise<string[]> {
+    return this.getDownloadIdsFromHistory(`/history/movie?movieId=${movieId}`);
+  }
+
   public async searchMovie(movieId: number): Promise<void> {
     this.logger.log('Executing movie search command');
 

@@ -9,6 +9,8 @@ import {
   MediaServerSwitchPreview,
   MediaServerType,
   MetadataProviderPreference,
+  DownloadClientSetting,
+  downloadClientSettingSchema,
   MetadataProviderSetting,
   metadataProviderSettingSchema,
   RadarrSetting,
@@ -269,6 +271,49 @@ export class SettingsController {
   ): Promise<BasicResponseDto> {
     this.assertJellyfinActive();
     return this.settingsOperationsService.testStreamystats(payload);
+  }
+
+  @Get('/download-client')
+  async getDownloadClientSetting(): Promise<
+    DownloadClientSetting | BasicResponseDto
+  > {
+    const settings = await this.settingsOperationsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      download_client_url: settings.download_client_url ?? '',
+      download_client_username: settings.download_client_username ?? '',
+      download_client_password: settings.download_client_password ?? '',
+      download_client_delete_data: settings.download_client_delete_data ?? true,
+      download_client_fallback_ratio:
+        settings.download_client_fallback_ratio ?? 0.5,
+    };
+  }
+
+  @Post('/download-client')
+  async updateDownloadClientSetting(
+    @Body(new ZodValidationPipe(downloadClientSettingSchema))
+    payload: DownloadClientSetting,
+  ) {
+    return await this.settingsOperationsService.updateDownloadClientSetting(
+      payload,
+    );
+  }
+
+  @Delete('/download-client')
+  async removeDownloadClientSetting() {
+    return await this.settingsOperationsService.removeDownloadClientSetting();
+  }
+
+  @Post('/test/download-client')
+  testDownloadClient(
+    @Body(new ZodValidationPipe(downloadClientSettingSchema))
+    payload: DownloadClientSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsOperationsService.testDownloadClient(payload);
   }
 
   private assertJellyfinActive(): void {

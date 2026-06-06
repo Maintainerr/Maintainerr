@@ -101,6 +101,16 @@ export class SettingsDataService implements SettingDto {
 
   streamystats_url: string;
 
+  download_client_url: string;
+
+  download_client_username: string;
+
+  download_client_password: string;
+
+  download_client_delete_data: boolean;
+
+  download_client_fallback_ratio: number;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;
@@ -155,6 +165,13 @@ export class SettingsDataService implements SettingDto {
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
       this.streamystats_url = settingsDb?.streamystats_url;
+      this.download_client_url = settingsDb?.download_client_url;
+      this.download_client_username = settingsDb?.download_client_username;
+      this.download_client_password = settingsDb?.download_client_password;
+      this.download_client_delete_data =
+        settingsDb?.download_client_delete_data ?? true;
+      this.download_client_fallback_ratio =
+        settingsDb?.download_client_fallback_ratio ?? 0.5;
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
@@ -261,6 +278,7 @@ export class SettingsDataService implements SettingDto {
       tmdb_api_key: maskSecret(settings.tmdb_api_key),
       tvdb_api_key: maskSecret(settings.tvdb_api_key),
       tautulli_api_key: maskSecret(settings.tautulli_api_key),
+      download_client_password: maskSecret(settings.download_client_password),
     };
   }
 
@@ -334,6 +352,10 @@ export class SettingsDataService implements SettingDto {
 
   public tautulliConfigured(): boolean {
     return this.tautulli_url !== null && this.tautulli_api_key !== null;
+  }
+
+  public downloadClientConfigured(): boolean {
+    return this.download_client_url != null;
   }
 
   /**
