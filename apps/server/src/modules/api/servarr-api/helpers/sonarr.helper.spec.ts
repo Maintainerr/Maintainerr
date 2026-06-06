@@ -241,4 +241,151 @@ describe('SonarrApi', () => {
       expect(result).toBe(true);
     });
   });
+
+  describe('getSeriesDownloadHistory', () => {
+    it('requests the series history endpoint', async () => {
+      const getWithoutCache = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([]);
+
+      await sonarrApi.getSeriesDownloadHistory(42);
+
+      expect(getWithoutCache).toHaveBeenCalledWith(
+        '/history/series?seriesId=42',
+      );
+    });
+
+    it('keeps only grabbed/import events, lowercases the hash, and carries the episodeId', async () => {
+      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
+        { id: 1, eventType: 'grabbed', downloadId: 'ABCDEF', episodeId: 10 },
+        {
+          id: 2,
+          eventType: 'downloadFolderImported',
+          downloadId: 'abcdef',
+          episodeId: 10,
+        },
+        // non-file events must be ignored: they don't establish that the torrent
+        // backs a wanted file.
+        {
+          id: 3,
+          eventType: 'downloadFailed',
+          downloadId: 'failed',
+          episodeId: 11,
+        },
+        {
+          id: 4,
+          eventType: 'episodeFileDeleted',
+          downloadId: 'gone',
+          episodeId: 12,
+        },
+        {
+          id: 5,
+          eventType: 'downloadIgnored',
+          downloadId: 'ignored',
+          episodeId: 13,
+        },
+      ]);
+
+      const result = await sonarrApi.getSeriesDownloadHistory(1);
+
+      expect(result).toEqual([
+        { hash: 'abcdef', episodeId: 10 },
+        { hash: 'abcdef', episodeId: 10 },
+      ]);
+    });
+
+    it('falls back to data.torrentInfoHash when downloadId is absent', async () => {
+      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
+        {
+          id: 1,
+          eventType: 'grabbed',
+          episodeId: 7,
+          data: { torrentInfoHash: 'HASH-X' },
+        },
+      ]);
+
+      const result = await sonarrApi.getSeriesDownloadHistory(1);
+
+      expect(result).toEqual([{ hash: 'hash-x', episodeId: 7 }]);
+    });
+
+    it('drops rows that have neither a downloadId nor a torrentInfoHash', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([{ id: 1, eventType: 'grabbed', episodeId: 7 }]);
+
+      const result = await sonarrApi.getSeriesDownloadHistory(1);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns [] when the history response is not an array', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+
+      const result = await sonarrApi.getSeriesDownloadHistory(1);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns [] when the history fetch throws', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockRejectedValue(new Error('boom'));
+
+      await expect(sonarrApi.getSeriesDownloadHistory(1)).resolves.toEqual([]);
+    });
+
+    it('falls back to torrentInfoHash when downloadId is empty or whitespace', async () => {
+      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
+        {
+          id: 1,
+          eventType: 'grabbed',
+          downloadId: '   ',
+          episodeId: 7,
+          data: { torrentInfoHash: 'HASH-Y' },
+        },
+      ]);
+
+      const result = await sonarrApi.getSeriesDownloadHistory(1);
+
+      expect(result).toEqual([{ hash: 'hash-y', episodeId: 7 }]);
+    });
+  });
+
+  describe('getDownloadIdsForSeries', () => {
+    it('returns deduped, lowercased ids from grab/import events only', async () => {
+      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
+        { id: 1, eventType: 'grabbed', downloadId: 'ABCDEF', episodeId: 1 },
+        {
+          id: 2,
+          eventType: 'downloadFolderImported',
+          downloadId: '  abcdef  ',
+          episodeId: 1,
+        },
+        { id: 3, eventType: 'grabbed', downloadId: 'ghijkl', episodeId: 2 },
+        { id: 4, eventType: 'grabbed', episodeId: 3 }, // no hash -> dropped
+        // failed grab: a torrent that never produced a file -> not removed
+        {
+          id: 5,
+          eventType: 'downloadFailed',
+          downloadId: 'failed',
+          episodeId: 4,
+        },
+      ]);
+
+      const result = await sonarrApi.getDownloadIdsForSeries(1);
+
+      expect(result).toEqual(['abcdef', 'ghijkl']);
+    });
+
+    it('returns [] when the fetch throws', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockRejectedValue(new Error('boom'));
+
+      await expect(sonarrApi.getDownloadIdsForSeries(1)).resolves.toEqual([]);
+    });
+  });
 });

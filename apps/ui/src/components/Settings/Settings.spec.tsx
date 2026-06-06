@@ -34,9 +34,11 @@ type MockSettingsResult = {
 }
 
 let currentSettingsResult: MockSettingsResult
+let currentServarrSettings: { data: unknown[] } = { data: [] }
 
 vi.mock('../../api/settings', () => ({
   useSettings: () => currentSettingsResult,
+  useServarrSettings: () => currentServarrSettings,
 }))
 
 vi.mock('../Common/Alert', () => ({
@@ -95,6 +97,7 @@ describe('SettingsWrapper', () => {
       isLoading: true,
       error: undefined,
     }
+    currentServarrSettings = { data: [] }
   })
 
   afterEach(() => {
@@ -296,6 +299,48 @@ describe('SettingsWrapper', () => {
     expect(
       screen.getByRole('link', { name: 'Emby' }).getAttribute('href'),
     ).toBe('/settings/emby')
+  })
+
+  it('hides the Download client tab when no Radarr/Sonarr is configured', () => {
+    currentSettingsResult = {
+      data: {
+        media_server_type: MediaServerType.JELLYFIN,
+        plex_auth_token: null,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'token',
+      },
+      isLoading: false,
+      error: undefined,
+    }
+    currentServarrSettings = { data: [] }
+
+    const { container } = render(<SettingsWrapper />)
+
+    expect(getDesktopTabLabels(container)).not.toContain('Download client')
+  })
+
+  it('shows the Download client tab when Radarr/Sonarr is configured', () => {
+    currentSettingsResult = {
+      data: {
+        media_server_type: MediaServerType.JELLYFIN,
+        plex_auth_token: null,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'token',
+      },
+      isLoading: false,
+      error: undefined,
+    }
+    currentServarrSettings = { data: [{ id: 1 }] }
+
+    const { container } = render(<SettingsWrapper />)
+
+    const labels = getDesktopTabLabels(container)
+    expect(labels).toContain('Download client')
+    expect(
+      screen
+        .getByRole('link', { name: 'Download client' })
+        .getAttribute('href'),
+    ).toBe('/settings/download-client')
   })
 
   it('shows an error toast when a blocked settings tab is clicked during first setup', () => {

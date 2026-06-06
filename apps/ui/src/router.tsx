@@ -97,6 +97,9 @@ const settingsTautulliRoute = createLazyRoute(
 const settingsStreamystatsRoute = createLazyRoute(
   () => import('./components/Settings/Streamystats'),
 )
+const settingsDownloadClientRoute = createLazyRoute(
+  () => import('./components/Settings/DownloadClient'),
+)
 const settingsNotificationsRoute = createLazyRoute(
   () => import('./components/Settings/Notifications'),
 )
@@ -295,6 +298,11 @@ const appRoutes: AppRoute[] = [
         path: 'streamystats',
         lazy: settingsStreamystatsRoute.lazy,
         preload: settingsStreamystatsRoute.preload,
+      },
+      {
+        path: 'download-client',
+        lazy: settingsDownloadClientRoute.lazy,
+        preload: settingsDownloadClientRoute.preload,
       },
       {
         path: 'notifications',

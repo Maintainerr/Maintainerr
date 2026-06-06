@@ -1,5 +1,6 @@
 import {
   BasicResponseDto,
+  DownloadClientSetting,
   EmbySetting,
   JellyfinSetting,
   MediaServerSwitchPreview,
@@ -58,6 +59,13 @@ export interface ISettings {
   seerr_api_key: string
   tautulli_url: string
   tautulli_api_key: string
+  streamystats_url?: string
+  // Download client integration (currently qBittorrent)
+  download_client_url?: string
+  download_client_username?: string
+  download_client_password?: string
+  download_client_delete_data?: boolean
+  download_client_fallback_ratio?: number
   collection_handler_job_cron: string
   rules_handler_job_cron: string
   metadata_provider_preference?: MetadataProviderPreference
@@ -471,6 +479,153 @@ export const useDeleteJellyfinSettings = (
 
 export type UseDeleteJellyfinSettingsResult = ReturnType<
   typeof useDeleteJellyfinSettings
+>
+
+// --------------------------------------------------------------------------
+// Download client (currently qBittorrent)
+// --------------------------------------------------------------------------
+
+type UseDownloadClientSettingsQueryKey = ['settings', 'download-client']
+
+type UseDownloadClientSettingsOptions = Omit<
+  UseQueryOptions<
+    DownloadClientSetting,
+    Error,
+    DownloadClientSetting,
+    UseDownloadClientSettingsQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+export const useDownloadClientSettings = (
+  options?: UseDownloadClientSettingsOptions,
+) => {
+  return useQuery<
+    DownloadClientSetting,
+    Error,
+    DownloadClientSetting,
+    UseDownloadClientSettingsQueryKey
+  >({
+    queryKey: ['settings', 'download-client'],
+    queryFn: async () => {
+      return await GetApiHandler<DownloadClientSetting>(
+        `/settings/download-client`,
+      )
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseDownloadClientSettingsResult = ReturnType<
+  typeof useDownloadClientSettings
+>
+
+type UseTestDownloadClientOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, DownloadClientSetting>,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useTestDownloadClient = (
+  options?: UseTestDownloadClientOptions,
+) => {
+  return useMutation<BasicResponseDto, Error, DownloadClientSetting>({
+    mutationKey: ['settings', 'testDownloadClient'],
+    mutationFn: async (payload) => {
+      return await PostApiHandler<BasicResponseDto>(
+        '/settings/test/download-client',
+        payload,
+      )
+    },
+    ...options,
+  })
+}
+
+export type UseTestDownloadClientResult = ReturnType<
+  typeof useTestDownloadClient
+>
+
+type UseSaveDownloadClientSettingsOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, DownloadClientSetting>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useSaveDownloadClientSettings = (
+  options?: UseSaveDownloadClientSettingsOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, DownloadClientSetting>({
+    mutationKey: ['settings', 'saveDownloadClient'],
+    mutationFn: async (payload) => {
+      const response = await PostApiHandler<BasicResponseDto>(
+        '/settings/download-client',
+        payload,
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Download client settings could not be updated',
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'settings',
+          'download-client',
+        ] satisfies UseDownloadClientSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseSaveDownloadClientSettingsResult = ReturnType<
+  typeof useSaveDownloadClientSettings
+>
+
+type UseDeleteDownloadClientSettingsOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, void>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useDeleteDownloadClientSettings = (
+  options?: UseDeleteDownloadClientSettingsOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, void>({
+    mutationKey: ['settings', 'deleteDownloadClient'],
+    mutationFn: async () => {
+      const response = await DeleteApiHandler<BasicResponseDto>(
+        '/settings/download-client',
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Download client settings could not be updated',
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'settings',
+          'download-client',
+        ] satisfies UseDownloadClientSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseDeleteDownloadClientSettingsResult = ReturnType<
+  typeof useDeleteDownloadClientSettings
 >
 
 // --------------------------------------------------------------------------

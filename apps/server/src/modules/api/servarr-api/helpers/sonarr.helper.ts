@@ -2,6 +2,7 @@ import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
+  DownloadHistoryItem,
   SonarrEpisode,
   SonarrEpisodeFile,
   SonarrInfo,
@@ -152,6 +153,41 @@ export class SonarrApi extends ServarrApi<{
       );
       this.logger.debug(error);
     }
+  }
+
+  /**
+   * The distinct torrent infohashes that produced this series' files, for a
+   * whole-show delete. Derived from the same grab/import-filtered history as the
+   * coverage path, so a torrent that only ever failed for this series isn't
+   * removed.
+   */
+  public async getDownloadIdsForSeries(seriesId: number): Promise<string[]> {
+    const history = await this.getSeriesDownloadHistory(seriesId);
+    return [...new Set(history.map((item) => item.hash))];
+  }
+
+  /**
+   * Per-torrent episode coverage from a series' Sonarr history: one item per
+   * grab/import event, giving the torrent infohash and the episode it backed.
+   * Used by season/episode deletes to remove only torrents whose every backed
+   * episode is being deleted. Never throws (returns [] on failure).
+   */
+  public async getSeriesDownloadHistory(
+    seriesId: number,
+  ): Promise<DownloadHistoryItem[]> {
+    const records = await this.getHistoryRecords(
+      `/history/series?seriesId=${seriesId}`,
+    );
+
+    const items: DownloadHistoryItem[] = [];
+    for (const record of records) {
+      const hash = this.downloadProducingHash(record);
+      if (hash) {
+        items.push({ hash, episodeId: record.episodeId });
+      }
+    }
+
+    return items;
   }
 
   public async deleteShow(

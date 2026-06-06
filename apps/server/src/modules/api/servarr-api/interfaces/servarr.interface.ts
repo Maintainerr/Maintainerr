@@ -65,6 +65,24 @@ export interface Tag {
   label: string;
 }
 
+/**
+ * A Radarr/Sonarr history record. `downloadId` is the download-client item id —
+ * for a torrent client (e.g. qBittorrent) this is the torrent infohash. Only
+ * the fields we consume are typed.
+ *
+ * `episodeId` is always populated by Sonarr (independent of the includeEpisode
+ * query flag) and is the reliable key for deciding which torrents a delete
+ * fully covers. `data.torrentInfoHash` is a fallback infohash carried on some
+ * grab/import events when `downloadId` itself is absent.
+ */
+export interface HistoryRecord {
+  id: number;
+  eventType?: string;
+  downloadId?: string;
+  episodeId?: number;
+  data?: Record<string, string>;
+}
+
 export interface QueueResponse<QueueItemAppendT> {
   page: number;
   pageSize: number;

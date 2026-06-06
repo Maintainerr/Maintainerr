@@ -44,6 +44,16 @@ export interface SonarrEpisode {
   finaleType?: 'series' | 'season' | 'midseason';
 }
 
+/**
+ * One download-relevant Sonarr history event: the torrent (`hash`, lowercased)
+ * that grabbed/imported a file, and the `episodeId` it pertains to. Used to
+ * work out which torrents a season/episode delete fully covers.
+ */
+export interface DownloadHistoryItem {
+  hash: string;
+  episodeId?: number;
+}
+
 export interface SonarrEpisodeFile {
   id: number;
   seriesId: number;

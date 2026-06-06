@@ -121,4 +121,47 @@ describe('RadarrApi', () => {
       );
     });
   });
+
+  describe('getDownloadIdsForMovie', () => {
+    it('requests the movie history endpoint', async () => {
+      const getWithoutCache = jest
+        .spyOn(api as any, 'getWithoutCache')
+        .mockResolvedValue([]);
+
+      await api.getDownloadIdsForMovie(5);
+
+      expect(getWithoutCache).toHaveBeenCalledWith('/history/movie?movieId=5');
+    });
+
+    it('returns deduped, lowercased hashes from grab/import events only', async () => {
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([
+        { id: 1, eventType: 'grabbed', downloadId: 'ABCDEF' },
+        {
+          id: 2,
+          eventType: 'downloadFolderImported',
+          downloadId: '  abcdef  ',
+        },
+        {
+          id: 3,
+          eventType: 'grabbed',
+          data: { torrentInfoHash: 'HASH-Z' },
+        },
+        // a torrent that only ever failed for this movie must not be removed
+        { id: 4, eventType: 'downloadFailed', downloadId: 'failed' },
+        { id: 5, eventType: 'movieFileDeleted', downloadId: 'deleted' },
+      ]);
+
+      const result = await api.getDownloadIdsForMovie(5);
+
+      expect(result).toEqual(['abcdef', 'hash-z']);
+    });
+
+    it('returns [] when the history fetch throws', async () => {
+      jest
+        .spyOn(api as any, 'getWithoutCache')
+        .mockRejectedValue(new Error('boom'));
+
+      await expect(api.getDownloadIdsForMovie(5)).resolves.toEqual([]);
+    });
+  });
 });
