@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddMetadataWriteback1780792815252 implements MigrationInterface {
-    name = 'AddMetadataWriteback1780792815252'
+  name = 'AddMetadataWriteback1780792815252';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "temporary_settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -46,7 +46,7 @@ export class AddMetadataWriteback1780792815252 implements MigrationInterface {
                 "metadata_writeback" boolean DEFAULT (0)
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "temporary_settings"(
                     "id",
                     "clientId",
@@ -125,21 +125,21 @@ export class AddMetadataWriteback1780792815252 implements MigrationInterface {
                 "download_client_fallback_ratio"
             FROM "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "temporary_settings"
                 RENAME TO "settings"
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "settings"
                 RENAME TO "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "settings" (
                 "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 "clientId" varchar,
@@ -180,7 +180,7 @@ export class AddMetadataWriteback1780792815252 implements MigrationInterface {
                 "download_client_fallback_ratio" float NOT NULL DEFAULT (0.5)
             )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO "settings"(
                     "id",
                     "clientId",
@@ -259,9 +259,8 @@ export class AddMetadataWriteback1780792815252 implements MigrationInterface {
                 "download_client_fallback_ratio"
             FROM "temporary_settings"
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             DROP TABLE "temporary_settings"
         `);
-    }
-
+  }
 }

@@ -1134,7 +1134,9 @@ export class MetadataService {
       const mediaServer = await this.mediaServerFactory.getService();
       // Only write where the date can be locked per-field (Plex); Jellyfin/Emby
       // can't, so their agent would revert it — see RELEASE_DATE_WRITEBACK.
-      if (!mediaServer.supportsFeature(MediaServerFeature.RELEASE_DATE_WRITEBACK)) {
+      if (
+        !mediaServer.supportsFeature(MediaServerFeature.RELEASE_DATE_WRITEBACK)
+      ) {
         return;
       }
       const written = await mediaServer.setReleaseDate(
