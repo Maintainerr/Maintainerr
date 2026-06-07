@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import xml2js, { parseStringPromise } from 'xml2js';
+import { parseStringPromise } from 'xml2js';
 import { PlexDevice } from '../../api/plex-api/interfaces/server.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExternalApiService } from '../external-api/external-api.service';
@@ -35,43 +35,42 @@ export interface PlexUser {
   entitlements: string[];
 }
 
-interface ConnectionResponse {
-  $: {
-    protocol: string;
-    address: string;
-    port: string;
-    uri: string;
-    local: string;
-  };
+// plex.tv v2 resource shapes (JSON). Unlike the legacy v1 /api/resources XML,
+// v2 returns native booleans/numbers and ISO-8601 timestamps, and includes
+// owned servers that v1 omits.
+interface PlexV2Connection {
+  protocol: string;
+  address: string;
+  port: number;
+  uri: string;
+  local: boolean;
+  relay?: boolean;
+  IPv6?: boolean;
 }
 
-interface DeviceResponse {
-  $: {
-    name: string;
-    product: string;
-    productVersion: string;
-    platform: string;
-    platformVersion: string;
-    device: string;
-    clientIdentifier: string;
-    createdAt: string;
-    lastSeenAt: string;
-    provides: string;
-    owned: string;
-    accessToken?: string;
-    publicAddress?: string;
-    httpsRequired?: string;
-    synced?: string;
-    relay?: string;
-    dnsRebindingProtection?: string;
-    natLoopbackSupported?: string;
-    publicAddressMatches?: string;
-    presence?: string;
-    ownerID?: string;
-    home?: string;
-    sourceTitle?: string;
-  };
-  Connection: ConnectionResponse[];
+interface PlexV2Resource {
+  name: string;
+  product: string;
+  productVersion: string;
+  platform: string;
+  platformVersion: string;
+  device: string;
+  clientIdentifier: string;
+  createdAt: string;
+  lastSeenAt: string;
+  provides: string;
+  owned: boolean;
+  ownerId?: number | null;
+  sourceTitle?: string | null;
+  publicAddress?: string;
+  accessToken?: string | null;
+  httpsRequired?: boolean;
+  synced?: boolean;
+  relay?: boolean;
+  home?: boolean;
+  presence?: boolean;
+  publicAddressMatches?: boolean;
+  connections: PlexV2Connection[];
 }
 
 interface ServerResponse {
@@ -284,53 +283,54 @@ export class PlexTvApi extends ExternalApiService {
     }
   }
 
-  public async getDevices(): Promise<PlexDevice[]> {
+  public async getDevices(clientIdentifier: string): Promise<PlexDevice[]> {
     try {
-      const devicesResp = await this.get('/api/resources?includeHttps=1', {
-        transformResponse: [],
-        responseType: 'text',
-      });
+      // v2 /api/v2/resources returns owned servers that legacy v1 /api/resources
+      // omits. It requires X-Plex-Client-Identifier — use the same id the UI
+      // authenticates with so plex.tv sees a consistent client.
+      const resources = await this.get<PlexV2Resource[]>(
+        '/api/v2/resources?includeHttps=1',
+        {
+          headers: {
+            'X-Plex-Client-Identifier': clientIdentifier,
+            'X-Plex-Product': 'Maintainerr',
+          },
+        },
+      );
 
-      if (!devicesResp) {
+      if (!resources) {
         throw new Error('Failed to fetch devices from plex.tv');
       }
 
-      const parsedXml = await xml2js.parseStringPromise(
-        devicesResp as DeviceResponse,
-      );
-      return parsedXml?.MediaContainer?.Device?.map((pxml: DeviceResponse) => ({
-        name: pxml.$.name,
-        product: pxml.$.product,
-        productVersion: pxml.$.productVersion,
-        platform: pxml.$?.platform,
-        platformVersion: pxml.$?.platformVersion,
-        device: pxml.$?.device,
-        clientIdentifier: pxml.$.clientIdentifier,
-        createdAt: new Date(parseInt(pxml.$?.createdAt, 10) * 1000),
-        lastSeenAt: new Date(parseInt(pxml.$?.lastSeenAt, 10) * 1000),
-        provides: pxml.$.provides.split(','),
-        owned: pxml.$.owned == '1' ? true : false,
-        accessToken: pxml.$?.accessToken,
-        publicAddress: pxml.$?.publicAddress,
-        publicAddressMatches:
-          pxml.$?.publicAddressMatches == '1' ? true : false,
-        httpsRequired: pxml.$?.httpsRequired == '1' ? true : false,
-        synced: pxml.$?.synced == '1' ? true : false,
-        relay: pxml.$?.relay == '1' ? true : false,
-        dnsRebindingProtection:
-          pxml.$?.dnsRebindingProtection == '1' ? true : false,
-        natLoopbackSupported:
-          pxml.$?.natLoopbackSupported == '1' ? true : false,
-        presence: pxml.$?.presence == '1' ? true : false,
-        ownerID: pxml.$?.ownerID,
-        home: pxml.$?.home == '1' ? true : false,
-        sourceTitle: pxml.$?.sourceTitle,
-        connection: pxml?.Connection?.map((conn: ConnectionResponse) => ({
-          protocol: conn.$.protocol,
-          address: conn.$.address,
-          port: parseInt(conn.$.port, 10),
-          uri: conn.$.uri,
-          local: conn.$.local == '1' ? true : false,
+      return resources.map((resource) => ({
+        name: resource.name,
+        product: resource.product,
+        productVersion: resource.productVersion,
+        platform: resource.platform,
+        platformVersion: resource.platformVersion,
+        device: resource.device,
+        clientIdentifier: resource.clientIdentifier,
+        createdAt: new Date(resource.createdAt),
+        lastSeenAt: new Date(resource.lastSeenAt),
+        provides: resource.provides.split(','),
+        owned: resource.owned,
+        accessToken: resource.accessToken ?? undefined,
+        publicAddress: resource.publicAddress,
+        publicAddressMatches: resource.publicAddressMatches,
+        httpsRequired: resource.httpsRequired,
+        synced: resource.synced,
+        relay: resource.relay,
+        presence: resource.presence,
+        ownerID:
+          resource.ownerId != null ? String(resource.ownerId) : undefined,
+        home: resource.home,
+        sourceTitle: resource.sourceTitle ?? undefined,
+        connection: (resource.connections ?? []).map((conn) => ({
+          protocol: conn.protocol,
+          address: conn.address,
+          port: conn.port,
+          uri: conn.uri,
+          local: conn.local,
         })),
       }));
     } catch (error) {
