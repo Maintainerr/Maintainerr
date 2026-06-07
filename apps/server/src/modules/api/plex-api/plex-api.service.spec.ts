@@ -141,6 +141,38 @@ describe('PlexApiService.getMetadata', () => {
     );
   });
 
+  // Plex's JSON puts librarySectionID/Title on the MediaContainer, not the item
+  // (only the XML response puts them on the item). The item is what callers map,
+  // so getMetadata copies them down — this is what makes release-date writeback
+  // (which needs the section id) work against real Plex.
+  it('copies librarySectionID/Title from the MediaContainer onto the item', async () => {
+    const query = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        librarySectionID: 3,
+        librarySectionTitle: 'Movies',
+        Metadata: [{ ratingKey: '1', type: 'movie', title: 'X' }],
+      },
+    });
+    (service as any).plexClient = { query };
+
+    const meta = await service.getMetadata('1');
+
+    expect(meta.librarySectionID).toBe(3);
+    expect(meta.librarySectionTitle).toBe('Movies');
+  });
+
+  it('keeps an item-level librarySectionID when Plex already provides one', async () => {
+    const query = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        librarySectionID: 3,
+        Metadata: [{ ratingKey: '1', librarySectionID: 9 }],
+      },
+    });
+    (service as any).plexClient = { query };
+
+    expect((await service.getMetadata('1')).librarySectionID).toBe(9);
+  });
+
   it('queries the live sessions endpoint without caching', async () => {
     const query = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [{ ratingKey: '123' }] },

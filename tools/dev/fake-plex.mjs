@@ -323,11 +323,21 @@ const server = http.createServer((req, res) => {
   if (itemKids) return send(res, 200, list('Metadata', CHILDREN[itemKids[1]] ?? []));
 
   // Single item: /library/metadata/:key
+  // Real Plex JSON carries librarySectionID/Title on the MediaContainer, NOT on
+  // the item (only the XML response puts them on the item) — mirror that so the
+  // mock doesn't hide getMetadata's "copy section info down to the item" path.
   const itemMatch = path.match(/^\/library\/metadata\/([^/]+)$/);
   if (itemMatch) {
     const item = ITEMS_BY_ID.get(itemMatch[1]) ??
       baseItem(itemMatch[1], 'movie', `Mock item ${itemMatch[1]}`, { audienceRating: 5 });
-    return send(res, 200, list('Metadata', [item]));
+    const { librarySectionID, ...itemWithoutSection } = item;
+    return send(res, 200, container({
+      size: 1,
+      totalSize: 1,
+      librarySectionID,
+      librarySectionTitle: librarySectionID === 1 ? 'Movies (mock)' : 'Shows (mock)',
+      Metadata: [itemWithoutSection],
+    }));
   }
 
   // Watch history: /status/sessions/history/all?metadataItemID=X

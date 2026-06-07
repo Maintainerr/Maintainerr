@@ -608,11 +608,19 @@ export class PlexApiService {
         `/library/metadata/${key}${queryString.length > 0 ? `?${queryString}` : ''}`,
         useCache,
       );
-      if (response) {
-        return response.MediaContainer.Metadata[0];
-      } else {
+      const item = response?.MediaContainer?.Metadata?.[0];
+      if (!item) {
         return undefined;
       }
+      // Plex's JSON carries librarySectionID/Title on the MediaContainer, not on
+      // the item (only the XML response puts them on the item). metadataToMediaItem
+      // reads them off the item, so copy them down when the item omits them — this
+      // is what makes release-date writeback (which needs the section id) work.
+      if (item.librarySectionID == null) {
+        item.librarySectionID = response.MediaContainer.librarySectionID;
+        item.librarySectionTitle = response.MediaContainer.librarySectionTitle;
+      }
+      return item;
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',

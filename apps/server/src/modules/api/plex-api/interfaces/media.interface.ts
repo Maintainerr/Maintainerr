@@ -66,6 +66,8 @@ export interface Media {
 }
 export interface PlexMetadataResponse {
   MediaContainer: {
+    librarySectionID?: number;
+    librarySectionTitle?: string;
     Metadata: PlexMetadata[];
   };
 }
