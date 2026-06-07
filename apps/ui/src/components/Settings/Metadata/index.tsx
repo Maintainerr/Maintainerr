@@ -528,8 +528,15 @@ function ProviderSection({
 }
 
 const MetadataSettings = () => {
-  const { feedback, clear, showUpdated, showUpdateError, showWarning } =
-    useSettingsFeedback('Metadata provider preference')
+  const {
+    feedback,
+    clear,
+    showUpdated,
+    showUpdateError,
+    showSuccess,
+    showError,
+    showWarning,
+  } = useSettingsFeedback('Metadata provider preference')
   const {
     data: preference = MetadataProviderPreference.TMDB_PRIMARY,
     isLoading: preferenceLoading,
@@ -605,9 +612,9 @@ const MetadataSettings = () => {
 
     try {
       await saveWriteback(!writebackEnabled)
-      showUpdated()
+      showSuccess('Release date writeback updated')
     } catch {
-      showUpdateError()
+      showError('Release date writeback could not be updated')
     }
   }
 

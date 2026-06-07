@@ -1,4 +1,8 @@
-import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
+import {
+  EPlexDataType,
+  MediaServerFeature,
+  MediaServerType,
+} from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
   createPlexCollection,
@@ -401,6 +405,50 @@ describe('PlexAdapterService', () => {
       plexApi.itemExists.mockRejectedValue(new Error('network'));
 
       await expect(service.itemExists('movie-1')).rejects.toThrow('network');
+    });
+  });
+
+  describe('setReleaseDate', () => {
+    it.each([
+      ['movie', EPlexDataType.MOVIES],
+      ['show', EPlexDataType.SHOWS],
+      ['season', EPlexDataType.SEASONS],
+      ['episode', EPlexDataType.EPISODES],
+    ] as const)(
+      'forwards the library section and the %s data type to PlexApiService',
+      async (type, expectedType) => {
+        plexApi.getMetadata.mockResolvedValue(
+          createPlexMetadata({
+            ratingKey: 'item-1',
+            type,
+            librarySectionID: 3,
+            librarySectionTitle: 'Library',
+          }),
+        );
+        plexApi.updateReleaseDate.mockResolvedValue(true);
+
+        await expect(
+          service.setReleaseDate('item-1', '2021-04-05T00:00:00.000Z'),
+        ).resolves.toBe(true);
+
+        expect(plexApi.updateReleaseDate).toHaveBeenCalledWith({
+          libraryId: '3',
+          itemId: 'item-1',
+          type: expectedType,
+          date: '2021-04-05',
+        });
+      },
+    );
+
+    it('returns false without writing when the item has no library section', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({ ratingKey: 'movie-1', type: 'movie' }),
+      );
+
+      await expect(
+        service.setReleaseDate('movie-1', '2021-04-05'),
+      ).resolves.toBe(false);
+      expect(plexApi.updateReleaseDate).not.toHaveBeenCalled();
     });
   });
 

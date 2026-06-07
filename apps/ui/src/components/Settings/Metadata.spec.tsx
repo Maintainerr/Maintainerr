@@ -14,6 +14,7 @@ const getApiHandler = vi.fn()
 const deleteApiHandler = vi.fn()
 const postApiHandler = vi.fn()
 const mutateAsync = vi.fn()
+const writebackMutateAsync = vi.fn()
 
 let currentPreference = MetadataProviderPreference.TMDB_PRIMARY
 let preferenceLoading = false
@@ -33,7 +34,7 @@ vi.mock('../../api/settings', () => ({
     isLoading: false,
   }),
   useUpdateMetadataWriteback: () => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: writebackMutateAsync,
     isPending: false,
   }),
 }))
@@ -56,6 +57,7 @@ describe('MetadataSettings', () => {
     deleteApiHandler.mockReset()
     postApiHandler.mockReset()
     mutateAsync.mockReset()
+    writebackMutateAsync.mockReset()
 
     getApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/tmdb' || url === '/settings/tvdb') {
@@ -448,6 +450,26 @@ describe('MetadataSettings', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
 
     expect(await screen.findByText('TMDB settings updated')).toBeTruthy()
+    expect(
+      screen.queryByText('Metadata provider preference updated'),
+    ).toBeNull()
+  })
+
+  it('labels the release-date writeback toggle feedback distinctly from provider preference', async () => {
+    render(<MetadataSettings />)
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: /Correct release dates on Plex/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(writebackMutateAsync).toHaveBeenCalledWith(true)
+    })
+    expect(
+      await screen.findByText('Release date writeback updated'),
+    ).toBeTruthy()
     expect(
       screen.queryByText('Metadata provider preference updated'),
     ).toBeNull()
