@@ -194,6 +194,23 @@ export class PlexAdapterService implements IMediaServerService {
     return this.plexApi.itemExists(itemId);
   }
 
+  async setReleaseDate(itemId: string, date: string): Promise<boolean> {
+    const item = await this.getMetadata(itemId);
+    const libraryId = item?.library?.id;
+    if (!item || !libraryId) {
+      this.logger.debug(
+        `Cannot set release date for ${itemId}: item or library section not found.`,
+      );
+      return false;
+    }
+    return this.plexApi.updateReleaseDate({
+      libraryId,
+      itemId,
+      type: PlexMapper.toPlexDataType(item.type),
+      date: date.slice(0, 10),
+    });
+  }
+
   async getChildrenMetadata(parentId: string): Promise<MediaItem[]> {
     const children = await this.plexApi.getChildrenMetadata(parentId);
     if (!children) return [];

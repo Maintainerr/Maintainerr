@@ -28,6 +28,8 @@ export interface MetadataDetails {
   rating?: number;
   externalIds: ResolvedMediaIds;
   type: 'movie' | 'tv';
+  // Full original release/air date (YYYY-MM-DD) when known; used for write-back.
+  releaseDate?: string;
   // Show-only fallback fields. Limited to values whose semantics match across
   // Sonarr / TMDB / TVDB; status strings, language codes vs names, and the
   // rating scale differ enough between sources that exposing them would let

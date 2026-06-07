@@ -16,6 +16,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
     MediaServerFeature.COLLECTION_SORT,
+    MediaServerFeature.RELEASE_DATE_WRITEBACK, // per-field originallyAvailableAt lock
   ]),
   [MediaServerType.JELLYFIN]: new Set([
     MediaServerFeature.LABELS, // Tags in Jellyfin

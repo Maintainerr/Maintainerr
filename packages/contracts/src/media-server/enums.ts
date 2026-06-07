@@ -64,4 +64,10 @@ export enum MediaServerFeature {
    * bound to one library. Gates the cross-library lookup for manual collections.
    */
   CROSS_LIBRARY_COLLECTIONS = 'cross_library_collections',
+  /**
+   * A corrected release date can be written back and locked per-field so the
+   * server's own agent won't revert it. Plex locks `originallyAvailableAt`;
+   * Jellyfin/Emby can only lock all metadata at once, so they're excluded.
+   */
+  RELEASE_DATE_WRITEBACK = 'release_date_writeback',
 }

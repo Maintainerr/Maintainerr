@@ -100,6 +100,9 @@ export class Settings implements SettingDto {
   })
   metadata_provider_preference?: MetadataProviderPreference;
 
+  @Column({ type: 'boolean', nullable: true, default: false })
+  metadata_writeback?: boolean;
+
   @Column({ nullable: true })
   tautulli_url: string;
 

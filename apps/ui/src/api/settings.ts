@@ -7,6 +7,7 @@ import {
   MediaServerType,
   MetadataProviderPreference,
   MetadataProviderSetting,
+  MetadataWritebackSetting,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
 } from '@maintainerr/contracts'
@@ -892,6 +893,74 @@ export const useUpdateMetadataProviderPreference = (
 
 export type UseUpdateMetadataProviderPreferenceResult = ReturnType<
   typeof useUpdateMetadataProviderPreference
+>
+
+type UseMetadataWritebackQueryKey = ['settings', 'metadata-writeback']
+
+export const useMetadataWriteback = (
+  options?: Omit<
+    UseQueryOptions<
+      { enabled: boolean },
+      Error,
+      boolean,
+      UseMetadataWritebackQueryKey
+    >,
+    'queryKey' | 'queryFn'
+  >,
+) => {
+  return useQuery<
+    { enabled: boolean },
+    Error,
+    boolean,
+    UseMetadataWritebackQueryKey
+  >({
+    queryKey: ['settings', 'metadata-writeback'],
+    queryFn: async () => {
+      return await GetApiHandler<{ enabled: boolean }>(
+        '/settings/metadata/writeback',
+      )
+    },
+    select: (result) => result.enabled,
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseMetadataWritebackResult = ReturnType<typeof useMetadataWriteback>
+
+export const useUpdateMetadataWriteback = (
+  options?: Omit<
+    UseMutationOptions<BasicResponseDto, Error, boolean>,
+    'mutationFn' | 'mutationKey' | 'onSuccess'
+  >,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, boolean>({
+    mutationKey: ['settings', 'updateMetadataWriteback'],
+    mutationFn: async (enabled) => {
+      return await PostApiHandler<BasicResponseDto>(
+        '/settings/metadata/writeback',
+        { enabled } satisfies MetadataWritebackSetting,
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'settings',
+          'metadata-writeback',
+        ] satisfies UseMetadataWritebackQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseUpdateMetadataWritebackResult = ReturnType<
+  typeof useUpdateMetadataWriteback
 >
 
 export const downloadDatabase = async (

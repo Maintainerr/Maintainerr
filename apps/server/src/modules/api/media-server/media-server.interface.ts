@@ -142,6 +142,13 @@ export interface IMediaServerService {
   itemExists(itemId: string): Promise<boolean>;
 
   /**
+   * Write a corrected original release/air date (YYYY-MM-DD) to an item.
+   * Best-effort: returns whether the write was accepted. All servers implement
+   * it (Plex locks the field; Jellyfin/Emby update the item's premiere date).
+   */
+  setReleaseDate(itemId: string, date: string): Promise<boolean>;
+
+  /**
    * Get child items (seasons for shows, episodes for seasons).
    */
   getChildrenMetadata(parentId: string): Promise<MediaItem[]>;

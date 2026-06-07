@@ -9,7 +9,9 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
   useMetadataProviderPreference,
+  useMetadataWriteback,
   useUpdateMetadataProviderPreference,
+  useUpdateMetadataWriteback,
 } from '../../../api/settings'
 import {
   getApiErrorMessage,
@@ -536,6 +538,10 @@ const MetadataSettings = () => {
   const tvdbProvider = useProviderForm(providers[1])
   const { mutateAsync: savePreference, isPending: preferenceSaving } =
     useUpdateMetadataProviderPreference()
+  const { data: writebackEnabled = false, isLoading: writebackLoading } =
+    useMetadataWriteback()
+  const { mutateAsync: saveWriteback, isPending: writebackSaving } =
+    useUpdateMetadataWriteback()
 
   const providerControllers = {
     tmdb: tmdbProvider,
@@ -586,6 +592,21 @@ const MetadataSettings = () => {
       showUpdated()
     } catch {
       setPendingPreference(null)
+      showUpdateError()
+    }
+  }
+
+  const handleWritebackToggle = async () => {
+    if (writebackLoading || writebackSaving) {
+      return
+    }
+
+    clearAllFeedback()
+
+    try {
+      await saveWriteback(!writebackEnabled)
+      showUpdated()
+    } catch {
       showUpdateError()
     }
   }
@@ -672,6 +693,29 @@ const MetadataSettings = () => {
             )
           })}
         </ul>
+
+        <div className="mt-6 max-w-6xl sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+          <label htmlFor="metadata-writeback" className="sm:mt-2">
+            Correct release dates on Plex
+            <p className="text-xs font-normal">
+              When TMDB and TVDB agree on a release year Plex disagrees with,
+              write the corrected date back and lock it so Plex won&apos;t revert
+              it. Off by default; only items two providers confirm are changed,
+              and provider IDs are never touched. Jellyfin and Emby can&apos;t
+              lock a single field, so this is Plex-only.
+            </p>
+          </label>
+          <div className="px-3 py-2 sm:col-span-2">
+            <input
+              id="metadata-writeback"
+              type="checkbox"
+              className="checkbox"
+              checked={writebackEnabled}
+              disabled={writebackLoading || writebackSaving}
+              onChange={() => void handleWritebackToggle()}
+            />
+          </div>
+        </div>
       </div>
     </>
   )

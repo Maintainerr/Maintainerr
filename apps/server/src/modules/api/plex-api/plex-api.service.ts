@@ -924,6 +924,23 @@ export class PlexApiService {
     }
   }
 
+  // Locks originallyAvailableAt so Plex keeps the corrected date across refreshes.
+  public async updateReleaseDate(body: {
+    libraryId: string;
+    itemId: string;
+    type: EPlexDataType;
+    date: string;
+  }): Promise<boolean> {
+    try {
+      const uri = `/library/sections/${body.libraryId}/all?type=${body.type}&id=${body.itemId}&originallyAvailableAt.value=${encodeURIComponent(body.date)}&originallyAvailableAt.locked=1`;
+      await this.plexClient.putQuery({ uri });
+      return true;
+    } catch (error) {
+      this.logLibrarySectionError(body.libraryId, error);
+      return false;
+    }
+  }
+
   public async setCollectionCustomSort(collectionId: string): Promise<void> {
     try {
       await this.plexClient.putQuery({

@@ -140,6 +140,19 @@ export class MetadataSettingsService {
     }
   }
 
+  public async updateMetadataWriteback(
+    enabled: boolean,
+  ): Promise<BasicResponseDto> {
+    try {
+      await this.saveSettings({ metadata_writeback: enabled });
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating metadata writeback setting');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async refreshMetadataCache(
     provider: MetadataProvider,
   ): Promise<BasicResponseDto> {

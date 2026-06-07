@@ -17,14 +17,18 @@ describe('MetadataService', () => {
     tvdbMovieId = 202,
     mediaServer = {
       getMetadata: jest.fn(),
+      setReleaseDate: jest.fn().mockResolvedValue(true),
+      supportsFeature: jest.fn().mockReturnValue(true),
     },
     providerMocks,
     preference = MetadataProviderPreference.TVDB_PRIMARY,
+    writeback = false,
   }: {
     tmdbDetails?: {
       title?: string;
       year?: number;
       type?: 'movie' | 'tv';
+      releaseDate?: string;
       externalIds?: {
         tmdb?: number;
         imdb?: string;
@@ -36,6 +40,7 @@ describe('MetadataService', () => {
       title?: string;
       year?: number;
       type?: 'movie' | 'tv';
+      releaseDate?: string;
       externalIds?: {
         tmdb?: number;
         imdb?: string;
@@ -45,10 +50,13 @@ describe('MetadataService', () => {
     };
     mediaServer?: {
       getMetadata: jest.Mock;
+      setReleaseDate?: jest.Mock;
+      supportsFeature?: jest.Mock;
     };
     tvdbMovieId?: number;
     providerMocks?: MetadataProviderMockConfig[];
     preference?: MetadataProviderPreference;
+    writeback?: boolean;
   }) => {
     const providers = (
       providerMocks ?? [
@@ -94,6 +102,7 @@ describe('MetadataService', () => {
       mediaServerFactory as never,
       {
         metadata_provider_preference: preference,
+        metadata_writeback: writeback,
       } as never,
       logger,
     );
@@ -666,6 +675,136 @@ describe('MetadataService', () => {
       expect.stringContaining('provider agreement'),
     );
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('writes the corrected release date back on agreement when writeback is enabled', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-wb',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Runners',
+      providerIds: { tmdb: ['777002'], imdb: [], tvdb: ['888002'] },
+    });
+    const { service, mediaServer } = createService({
+      writeback: true,
+      tmdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        releaseDate: '2096-05-01',
+        externalIds: { tmdb: 777002, type: 'movie' },
+      },
+      tvdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        releaseDate: '2096-05-01',
+        externalIds: { tvdb: 888002, type: 'movie' },
+      },
+    });
+
+    await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.setReleaseDate).toHaveBeenCalledWith(
+      'movie-wb',
+      '2096-05-01',
+    );
+  });
+
+  it('does not write back when writeback is disabled', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-wb-off',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Runners',
+      providerIds: { tmdb: ['777002'], imdb: [], tvdb: ['888002'] },
+    });
+    const { service, mediaServer } = createService({
+      tmdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        releaseDate: '2096-05-01',
+        externalIds: { tmdb: 777002, type: 'movie' },
+      },
+      tvdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        releaseDate: '2096-05-01',
+        externalIds: { tvdb: 888002, type: 'movie' },
+      },
+    });
+
+    await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.setReleaseDate).not.toHaveBeenCalled();
+  });
+
+  it('does not write back on a server without per-field date locking', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-wb-unsupported',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Runners',
+      providerIds: { tmdb: ['777002'], imdb: [], tvdb: ['888002'] },
+    });
+    const mediaServer = {
+      getMetadata: jest.fn(),
+      setReleaseDate: jest.fn().mockResolvedValue(true),
+      supportsFeature: jest.fn().mockReturnValue(false),
+    };
+    const { service } = createService({
+      writeback: true,
+      mediaServer,
+      tmdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        releaseDate: '2096-05-01',
+        externalIds: { tmdb: 777002, type: 'movie' },
+      },
+      tvdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        releaseDate: '2096-05-01',
+        externalIds: { tvdb: 888002, type: 'movie' },
+      },
+    });
+
+    await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.setReleaseDate).not.toHaveBeenCalled();
+  });
+
+  it('does not write back when no provider supplies a full release date', async () => {
+    const libraryItem = createMediaItem({
+      id: 'movie-wb-yearonly',
+      type: 'movie',
+      year: 2099,
+      title: 'Fixture Runners',
+      providerIds: { tmdb: ['777002'], imdb: [], tvdb: ['888002'] },
+    });
+    const { service, mediaServer } = createService({
+      writeback: true,
+      tmdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        externalIds: { tmdb: 777002, type: 'movie' },
+      },
+      tvdbDetails: {
+        title: 'Fixture Runners',
+        year: 2096,
+        type: 'movie',
+        externalIds: { tvdb: 888002, type: 'movie' },
+      },
+    });
+
+    await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(mediaServer.setReleaseDate).not.toHaveBeenCalled();
   });
 
   it('rejects direct ids when providers disagree with the media server and with each other', async () => {

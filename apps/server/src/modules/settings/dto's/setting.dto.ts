@@ -54,6 +54,8 @@ export class SettingDto {
 
   metadata_provider_preference?: MetadataProviderPreference;
 
+  metadata_writeback?: boolean;
+
   tautulli_url: string;
 
   tautulli_api_key: string;

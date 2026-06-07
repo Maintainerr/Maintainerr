@@ -28,6 +28,14 @@ vi.mock('../../api/settings', () => ({
     mutateAsync,
     isPending: preferenceSaving,
   }),
+  useMetadataWriteback: () => ({
+    data: false,
+    isLoading: false,
+  }),
+  useUpdateMetadataWriteback: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('../../utils/ApiHandler', () => ({

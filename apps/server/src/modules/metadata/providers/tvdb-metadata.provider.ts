@@ -67,6 +67,8 @@ export class TvdbMetadataProvider implements IMetadataProvider {
         type,
       },
       type,
+      releaseDate:
+        'firstAired' in record ? record.firstAired || undefined : undefined,
       ended:
         'firstAired' in record
           ? this.deriveEnded(record.status?.name)

@@ -1,6 +1,7 @@
 import {
   MaintainerrEvent,
   MediaItem,
+  MediaServerFeature,
   MetadataProviderPreference,
 } from '@maintainerr/contracts';
 import { Inject, Injectable } from '@nestjs/common';
@@ -35,6 +36,10 @@ interface ProviderYearDisagreement {
 export class MetadataService {
   private preference: MetadataProviderPreference =
     MetadataProviderPreference.TMDB_PRIMARY;
+
+  // Dedupes release-date write-backs so a cached stale year can't trigger
+  // repeated PUTs for the same item/date within a process.
+  private readonly writtenReleaseDates = new Set<string>();
 
   constructor(
     @Inject(MetadataProviders)
@@ -1053,6 +1058,7 @@ export class MetadataService {
           ' and ',
         )} agree on ${agreement.year}, but the media server reports ${itemYear}. Treating the media server's year as incorrect.`,
       );
+      await this.maybeWriteBackReleaseDate(item, agreement.details);
       return agreement.details;
     }
 
@@ -1105,6 +1111,45 @@ export class MetadataService {
       (disagreement) =>
         `${disagreement.providerName} returned ${disagreement.year}`,
     );
+  }
+
+  // Opt-in (metadata_writeback): persist a provider-agreed release date back to
+  // the media server. Best-effort and silent on failure so it never affects
+  // resolution. Skipped when no full date is known (year-only) so we never
+  // clobber the day/month.
+  private async maybeWriteBackReleaseDate(
+    item: MediaItem,
+    details: MetadataDetails,
+  ): Promise<void> {
+    if (!this.settings.metadata_writeback || !details.releaseDate || !item.id) {
+      return;
+    }
+
+    const key = `${item.id}:${details.releaseDate.slice(0, 10)}`;
+    if (this.writtenReleaseDates.has(key)) {
+      return;
+    }
+
+    try {
+      const mediaServer = await this.mediaServerFactory.getService();
+      // Only write where the date can be locked per-field (Plex); Jellyfin/Emby
+      // can't, so their agent would revert it — see RELEASE_DATE_WRITEBACK.
+      if (!mediaServer.supportsFeature(MediaServerFeature.RELEASE_DATE_WRITEBACK)) {
+        return;
+      }
+      const written = await mediaServer.setReleaseDate(
+        item.id,
+        details.releaseDate,
+      );
+      if (written) {
+        this.writtenReleaseDates.add(key);
+        this.logger.log(
+          `Wrote corrected release date ${details.releaseDate.slice(0, 10)} back to media server item "${item.title}".`,
+        );
+      }
+    } catch (error) {
+      this.logger.debug(error);
+    }
   }
 
   private async bridgeMissingProviderIds(ids: ResolvedMediaIds): Promise<void> {

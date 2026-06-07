@@ -81,6 +81,10 @@ export class TmdbMetadataProvider implements IMetadataProvider {
         type,
       },
       type,
+      releaseDate:
+        ('release_date' in record
+          ? record.release_date
+          : record.first_air_date) || undefined,
       ended:
         'in_production' in record
           ? this.deriveEnded(record.status, record.in_production)

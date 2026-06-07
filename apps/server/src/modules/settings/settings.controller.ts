@@ -13,6 +13,8 @@ import {
   downloadClientSettingSchema,
   MetadataProviderSetting,
   metadataProviderSettingSchema,
+  MetadataWritebackSetting,
+  metadataWritebackSettingSchema,
   RadarrSetting,
   radarrSettingSchema,
   SeerrSetting,
@@ -418,6 +420,27 @@ export class SettingsController {
   ): Promise<BasicResponseDto> {
     return this.metadataSettingsService.updateMetadataProviderPreference(
       payload.preference,
+    );
+  }
+
+  @Get('/metadata/writeback')
+  async getMetadataWriteback(): Promise<{ enabled: boolean }> {
+    const settings = await this.settingsOperationsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return { enabled: false };
+    }
+
+    return { enabled: settings.metadata_writeback ?? false };
+  }
+
+  @Post('/metadata/writeback')
+  async updateMetadataWriteback(
+    @Body(new ZodValidationPipe(metadataWritebackSettingSchema))
+    payload: MetadataWritebackSetting,
+  ): Promise<BasicResponseDto> {
+    return this.metadataSettingsService.updateMetadataWriteback(
+      payload.enabled,
     );
   }
 

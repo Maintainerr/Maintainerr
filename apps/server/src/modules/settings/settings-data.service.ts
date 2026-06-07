@@ -95,6 +95,8 @@ export class SettingsDataService implements SettingDto {
 
   metadata_provider_preference?: MetadataProviderPreference;
 
+  metadata_writeback?: boolean;
+
   tautulli_url: string;
 
   tautulli_api_key: string;
@@ -162,6 +164,7 @@ export class SettingsDataService implements SettingDto {
       this.metadata_provider_preference =
         settingsDb?.metadata_provider_preference ??
         MetadataProviderPreference.TMDB_PRIMARY;
+      this.metadata_writeback = settingsDb?.metadata_writeback ?? false;
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
       this.streamystats_url = settingsDb?.streamystats_url;
@@ -225,6 +228,7 @@ export class SettingsDataService implements SettingDto {
       tmdb_api_key?: string | null;
       tvdb_api_key?: string | null;
       metadata_provider_preference?: MetadataProviderPreference;
+      metadata_writeback?: boolean;
     };
   }) {
     if ('tmdb_api_key' in payload.settings) {
@@ -239,6 +243,10 @@ export class SettingsDataService implements SettingDto {
       this.metadata_provider_preference =
         payload.settings.metadata_provider_preference ??
         MetadataProviderPreference.TMDB_PRIMARY;
+    }
+
+    if ('metadata_writeback' in payload.settings) {
+      this.metadata_writeback = payload.settings.metadata_writeback ?? false;
     }
   }
 

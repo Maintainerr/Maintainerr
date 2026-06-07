@@ -1100,6 +1100,31 @@ export class EmbyAdapterService implements IMediaServerService {
     return failed;
   }
 
+  async setReleaseDate(itemId: string, date: string): Promise<boolean> {
+    if (!this.http) throw new Error('Emby not initialized');
+    try {
+      // Emby's POST /Items/{id} expects the full updated item. Fetch, mutate, send.
+      const path = this.embyUserId
+        ? `/Users/${this.embyUserId}/Items/${itemId}`
+        : `/Items/${itemId}`;
+      const { data: current } = await this.http.get<EmbyBaseItemDto>(path);
+      if (!current?.Id) {
+        return false;
+      }
+      const ymd = date.slice(0, 10);
+      const updated: EmbyBaseItemDto = {
+        ...current,
+        PremiereDate: `${ymd}T00:00:00.0000000Z`,
+        ProductionYear: Number(ymd.slice(0, 4)),
+      };
+      await this.http.post(`/Items/${itemId}`, updated);
+      return true;
+    } catch (error) {
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
   async updateCollection(
     params: UpdateCollectionParams,
   ): Promise<MediaCollection> {

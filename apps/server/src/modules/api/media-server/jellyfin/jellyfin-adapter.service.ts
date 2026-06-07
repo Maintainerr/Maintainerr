@@ -1755,6 +1755,53 @@ export class JellyfinAdapterService implements IMediaServerService {
     return failedIds;
   }
 
+  async setReleaseDate(itemId: string, date: string): Promise<boolean> {
+    if (!this.api) {
+      throw new Error('Jellyfin client not initialized');
+    }
+    try {
+      const userId = await this.getUserId();
+      const existing = (
+        await getItemsApi(this.api).getItems({
+          userId,
+          ids: [itemId],
+          fields: [
+            ItemFields.Overview,
+            ItemFields.Genres,
+            ItemFields.Studios,
+            ItemFields.Tags,
+            ItemFields.People,
+          ],
+        })
+      ).data.Items?.[0];
+      if (!existing) {
+        return false;
+      }
+      const ymd = date.slice(0, 10);
+      await getItemUpdateApi(this.api).updateItem({
+        itemId,
+        baseItemDto: {
+          ...existing,
+          PremiereDate: `${ymd}T00:00:00.0000000Z`,
+          ProductionYear: Number(ymd.slice(0, 4)),
+          // Jellyfin's updateItem requires array properties to be present.
+          Tags: existing.Tags ?? [],
+          Genres: existing.Genres ?? [],
+          Studios: existing.Studios ?? [],
+          People: existing.People ?? [],
+          GenreItems: existing.GenreItems ?? [],
+          RemoteTrailers: existing.RemoteTrailers ?? [],
+          ProviderIds: existing.ProviderIds ?? {},
+          LockedFields: existing.LockedFields ?? [],
+        },
+      });
+      return true;
+    } catch (error) {
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
   // COLLECTION METADATA UPDATE
 
   async updateCollection(
