@@ -705,11 +705,14 @@ const MetadataSettings = () => {
           <label htmlFor="metadata-writeback" className="sm:mt-2">
             Correct release dates on Plex
             <p className="text-xs font-normal">
-              When TMDB and TVDB agree on a release year Plex disagrees with,
-              write the corrected date back and lock it so Plex won&apos;t
-              revert it. Off by default; only items two providers confirm are
-              changed, and provider IDs are never touched. Jellyfin and Emby
-              can&apos;t lock a single field, so this is Plex-only.
+              When TMDB and TVDB agree on a year Plex got wrong, write the
+              corrected date back and lock it (Plex-only).{' '}
+              <BrandLink
+                external
+                href="https://docs.maintainerr.info/configuration/#metadata"
+              >
+                Learn more
+              </BrandLink>
             </p>
           </label>
           <div className="px-3 py-2 sm:col-span-2">
