@@ -41,6 +41,17 @@ const isRedPixel = (
   return data[offset] > 170 && data[offset + 1] < 90 && data[offset + 2] < 90;
 };
 
+const isDarkPixel = (
+  data: Buffer,
+  width: number,
+  channels: number,
+  x: number,
+  y: number,
+) => {
+  const offset = (y * width + x) * channels;
+  return data[offset] < 80 && data[offset + 1] < 80 && data[offset + 2] < 80;
+};
+
 describe('OverlayRenderService', () => {
   afterEach(() => {
     mockedExistsSync.mockImplementation(realExistsSync);
@@ -163,5 +174,115 @@ describe('OverlayRenderService', () => {
 
     expect(isRedPixel(data, info.width, info.channels, 100, 42)).toBe(true);
     expect(isRedPixel(data, info.width, info.channels, 100, 48)).toBe(false);
+  });
+
+  it('uses uniform scaling (min axis) for style values when aspect ratio differs (issue #3025)', async () => {
+    const logger = createMockLogger();
+    const service = new OverlayRenderService(logger);
+
+    // Poster with non-square aspect ratio
+    const posterBuffer = await sharp({
+      create: {
+        width: 200,
+        height: 400,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const elements: TemplateElements = [
+      {
+        id: 'text-1',
+        type: 'text',
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 20,
+        rotation: 0,
+        layerOrder: 0,
+        opacity: 1,
+        visible: true,
+        text: 'Sample',
+        fontFamily: 'sans-serif',
+        fontPath: '',
+        fontSize: 12,
+        fontColor: '#000000',
+        fontWeight: 'normal',
+        textAlign: 'left',
+        verticalAlign: 'middle',
+        backgroundColor: null,
+        backgroundRadius: 0,
+        backgroundPadding: 0,
+        shadow: false,
+        uppercase: false,
+      },
+    ];
+
+    // spy on the private renderer to capture the scale value passed
+    const spy = jest.spyOn(service as any, 'renderTextElement' as any);
+
+    await service.renderFromTemplate(posterBuffer, elements, 100, 100, {
+      deleteDate: new Date('2026-04-27T00:00:00.000Z'),
+      daysLeft: 14,
+    });
+
+    // scaleX = 200/100 = 2, scaleY = 400/100 = 4 -> uniformScale = 2
+    expect(spy).toHaveBeenCalled();
+    const calledWith = spy.mock.calls[0];
+    expect(calledWith[3]).toBe(2);
+  });
+
+  it('rotates elements around top-left pivot to preserve template placement', async () => {
+    const logger = createMockLogger();
+    const service = new OverlayRenderService(logger);
+    const posterBuffer = await sharp({
+      create: {
+        width: 200,
+        height: 400,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const elements: TemplateElements = [
+      {
+        id: 'rotated-shape',
+        type: 'shape',
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 40,
+        rotation: 90,
+        layerOrder: 0,
+        opacity: 1,
+        visible: true,
+        shapeType: 'rectangle',
+        fillColor: '#000000',
+        strokeColor: 'transparent',
+        strokeWidth: 0,
+        cornerRadius: 0,
+      },
+    ];
+
+    const result = await service.renderFromTemplate(
+      posterBuffer,
+      elements,
+      100,
+      100,
+      {
+        deleteDate: new Date('2026-04-27T00:00:00.000Z'),
+        daysLeft: 14,
+      },
+    );
+
+    const { data, info } = await sharp(Buffer.from(result.buffer))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    expect(isDarkPixel(data, info.width, info.channels, 30, 220)).toBe(true);
   });
 });
