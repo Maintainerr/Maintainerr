@@ -242,8 +242,10 @@ class PlexApi {
 
   public async getStatus(): Promise<boolean> {
     try {
+      // `/identity` (not `/`): returns the server MediaContainer without the
+      // 401 that bare `/` gives behind reverse proxies.
       const status: { MediaContainer: any } = await this.query(
-        { uri: `/` },
+        { uri: `/identity` },
         false,
       );
       return status?.MediaContainer ? true : false;

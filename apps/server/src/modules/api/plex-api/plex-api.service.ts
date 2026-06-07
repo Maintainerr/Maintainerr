@@ -343,8 +343,12 @@ export class PlexApiService {
         this.logger.debug('Plex client not initialized, skipping getStatus');
         return undefined;
       }
+      // Probe `/identity`, not `/`: it returns machineIdentifier + version
+      // without auth quirks. Bare `/` returns 401 behind reverse proxies (it
+      // redirects to the web UI), which would break connection/machine-id
+      // detection for proxied servers.
       const response: PlexStatusResponse = await this.plexClient.query(
-        '/',
+        '/identity',
         false,
       );
       return response.MediaContainer;
