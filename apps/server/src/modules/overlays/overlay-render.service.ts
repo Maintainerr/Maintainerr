@@ -472,11 +472,14 @@ export class OverlayRenderService {
     const imgH = meta.height!;
 
     // Scale factor: template canvas → actual poster dimensions.
-    // Style values (fontSize, padding, radii, strokeWidth) all scale by
-    // `scaleX` so text and shape styling stay proportional with each other;
-    // canvas and poster share the same aspect ratio in practice.
+    // Geometry (positions/sizes) use `scaleX`/`scaleY` to map to pixel
+    // coordinates. Style values (fontSize, padding, radii, strokeWidth)
+    // should scale uniformly to preserve visual proportions when the
+    // poster and template aspect ratios differ. Use the smaller axis
+    // scale to avoid overstretching style metrics.
     const scaleX = imgW / canvasWidth;
     const scaleY = imgH / canvasHeight;
+    const uniformScale = Math.min(scaleX, scaleY);
 
     // Sort elements by layerOrder, then render bottom-up
     const sorted = [...elements]
@@ -495,13 +498,19 @@ export class OverlayRenderService {
 
       switch (el.type) {
         case 'text':
-          layerBuf = this.renderTextElement(el, sw, sh, scaleX);
+          layerBuf = this.renderTextElement(el, sw, sh, uniformScale);
           break;
         case 'variable':
-          layerBuf = this.renderVariableElement(el, sw, sh, scaleX, context);
+          layerBuf = this.renderVariableElement(
+            el,
+            sw,
+            sh,
+            uniformScale,
+            context,
+          );
           break;
         case 'shape':
-          layerBuf = this.renderShapeElement(el, sw, sh, scaleX);
+          layerBuf = this.renderShapeElement(el, sw, sh, uniformScale);
           break;
         case 'image':
           layerBuf = await this.renderImageElement(el, sw, sh);

@@ -164,4 +164,53 @@ describe('OverlayRenderService', () => {
     expect(isRedPixel(data, info.width, info.channels, 100, 42)).toBe(true);
     expect(isRedPixel(data, info.width, info.channels, 100, 48)).toBe(false);
   });
+
+  it('uses uniform scaling (min axis) for style values when aspect ratio differs (issue #3025)', async () => {
+    const logger = createMockLogger();
+    const service = new OverlayRenderService(logger);
+
+    // Poster with non-square aspect ratio
+    const posterBuffer = await sharp({
+      create: {
+        width: 200,
+        height: 400,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const elements: TemplateElements = [
+      {
+        id: 'text-1',
+        type: 'text',
+        x: 10,
+        y: 10,
+        width: 80,
+        height: 20,
+        rotation: 0,
+        layerOrder: 0,
+        opacity: 1,
+        visible: true,
+        text: 'Sample',
+        fontPath: '',
+        fontSize: 12,
+        fontColor: '#000000',
+      },
+    ];
+
+    // spy on the private renderer to capture the scale value passed
+    const spy = jest.spyOn(service as any, 'renderTextElement' as any);
+
+    await service.renderFromTemplate(posterBuffer, elements, 100, 100, {
+      deleteDate: new Date('2026-04-27T00:00:00.000Z'),
+      daysLeft: 14,
+    });
+
+    // scaleX = 200/100 = 2, scaleY = 400/100 = 4 -> uniformScale = 2
+    expect(spy).toHaveBeenCalled();
+    const calledWith = spy.mock.calls[0];
+    expect(calledWith[3]).toBe(2);
+  });
 });
