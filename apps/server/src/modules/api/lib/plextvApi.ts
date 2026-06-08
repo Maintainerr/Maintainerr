@@ -70,6 +70,8 @@ interface PlexV2Resource {
   home?: boolean;
   presence?: boolean;
   publicAddressMatches?: boolean;
+  dnsRebindingProtection?: boolean;
+  natLoopbackSupported?: boolean;
   connections: PlexV2Connection[];
 }
 
@@ -321,6 +323,8 @@ export class PlexTvApi extends ExternalApiService {
         synced: resource.synced,
         relay: resource.relay,
         presence: resource.presence,
+        dnsRebindingProtection: resource.dnsRebindingProtection,
+        natLoopbackSupported: resource.natLoopbackSupported,
         ownerID:
           resource.ownerId != null ? String(resource.ownerId) : undefined,
         home: resource.home,
