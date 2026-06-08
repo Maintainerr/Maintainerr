@@ -32,8 +32,8 @@
     "typescript-eslint": "^8.60.1"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.24",
-    "@nestjs/core": "^11.1.24",
+    "@nestjs/common": "^11.1.26",
+    "@nestjs/core": "^11.1.26",
     "@nestjs/swagger": "^11.4.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
