@@ -104,36 +104,6 @@ interface UsersResponse {
   };
 }
 
-interface WatchlistResponse {
-  MediaContainer: {
-    totalSize: number;
-    Metadata?: {
-      ratingKey: string;
-    }[];
-  };
-}
-
-interface MetadataResponse {
-  MediaContainer: {
-    Metadata: {
-      ratingKey: string;
-      type: 'movie' | 'show';
-      title: string;
-      Guid: {
-        id: `imdb://tt${number}` | `tmdb://${number}` | `tvdb://${number}`;
-      }[];
-    }[];
-  };
-}
-
-export interface PlexWatchlistItem {
-  ratingKey: string;
-  tmdbId: number;
-  tvdbId?: number;
-  type: 'movie' | 'show';
-  title: string;
-}
-
 export class PlexTvApi extends ExternalApiService {
   private authToken: string;
 
@@ -210,79 +180,6 @@ export class PlexTvApi extends ExternalApiService {
 
     const parsedXml = (await parseStringPromise(response)) as UsersResponse;
     return parsedXml;
-  }
-
-  public async getWatchlist({
-    offset = 0,
-    size = 20,
-  }: { offset?: number; size?: number } = {}): Promise<{
-    offset: number;
-    size: number;
-    totalSize: number;
-    items: PlexWatchlistItem[];
-  }> {
-    try {
-      const response = await this.get<WatchlistResponse>(
-        '/library/sections/watchlist/all',
-        {
-          params: {
-            'X-Plex-Container-Start': offset,
-            'X-Plex-Container-Size': size,
-          },
-          baseURL: 'https://metadata.provider.plex.tv',
-        },
-      );
-
-      const watchlistDetails = await Promise.all(
-        (response.MediaContainer.Metadata ?? []).map(async (watchlistItem) => {
-          const detailedResponse = await this.getRolling<MetadataResponse>(
-            `/library/metadata/${watchlistItem.ratingKey}`,
-            {
-              baseURL: 'https://metadata.provider.plex.tv',
-            },
-          );
-
-          const metadata = detailedResponse.MediaContainer.Metadata[0];
-
-          const tmdbString = metadata.Guid.find((guid) =>
-            guid.id.startsWith('tmdb'),
-          );
-          const tvdbString = metadata.Guid.find((guid) =>
-            guid.id.startsWith('tvdb'),
-          );
-
-          return {
-            ratingKey: metadata.ratingKey,
-            // This should always be set? But I guess it also cannot be?
-            // We will filter out the 0's afterwards
-            tmdbId: tmdbString ? Number(tmdbString.id.split('//')[1]) : 0,
-            tvdbId: tvdbString
-              ? Number(tvdbString.id.split('//')[1])
-              : undefined,
-            title: metadata.title,
-            type: metadata.type,
-          };
-        }),
-      );
-
-      const filteredList = watchlistDetails.filter((detail) => detail.tmdbId);
-
-      return {
-        offset,
-        size,
-        totalSize: response.MediaContainer.totalSize,
-        items: filteredList,
-      };
-    } catch (error) {
-      this.logger.error('Failed to retrieve watchlist items');
-      this.logger.debug(error);
-      return {
-        offset,
-        size,
-        totalSize: 0,
-        items: [],
-      };
-    }
   }
 
   public async getDevices(clientIdentifier: string): Promise<PlexDevice[]> {

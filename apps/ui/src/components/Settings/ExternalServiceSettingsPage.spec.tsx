@@ -89,7 +89,9 @@ describe('ExternalServiceSettingsPage', () => {
       name: 'Save Changes',
     })
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
+    await waitFor(() => {
+      expect((saveButton as HTMLButtonElement).disabled).toBe(false)
+    })
 
     fireEvent.change(screen.getByLabelText(/URL/), {
       target: { value: 'http://seerr.internal' },
