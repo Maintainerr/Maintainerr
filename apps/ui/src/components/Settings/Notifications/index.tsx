@@ -21,8 +21,6 @@ const NotificationSettings = () => {
   const [editConfig, setEditConfig] = useState<AgentConfiguration>()
   const { feedback, showSuccess } = useSettingsFeedback('Notification settings')
 
-  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-
   useEffect(() => {
     GetApiHandler<AgentConfiguration[]>('/notifications/configurations').then(
       (configs) => setConfigurations(configs),
@@ -54,16 +52,7 @@ const NotificationSettings = () => {
       <title>Notification settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading flex items-center gap-2">
-            Notification Settings
-            <img
-              className="h-[1em] w-[2.5em]"
-              width={'0'}
-              height={'0'}
-              src={`${basePath}/beta.svg`}
-              alt="BETA"
-            />
-          </h3>
+          <h3 className="heading">Notification Settings</h3>
           <p className="description">Notification Agent configuration</p>
         </div>
 

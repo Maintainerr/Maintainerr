@@ -60,6 +60,16 @@ export class SettingDto {
 
   streamystats_url: string;
 
+  download_client_url: string;
+
+  download_client_username: string;
+
+  download_client_password: string;
+
+  download_client_delete_data: boolean;
+
+  download_client_fallback_ratio: number;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;

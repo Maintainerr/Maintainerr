@@ -1,8 +1,12 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { SonarrSeries } from '../api/servarr-api/interfaces/sonarr.interface';
+import {
+  SonarrEpisode,
+  SonarrSeries,
+} from '../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -13,6 +17,7 @@ import {
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 
 @Injectable()
 export class SonarrActionHandler {
@@ -21,6 +26,8 @@ export class SonarrActionHandler {
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly seerrApi: SeerrApiService,
     private readonly metadataService: MetadataService,
+    private readonly settings: SettingsDataService,
+    private readonly downloadClient: DownloadClientApiService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SonarrActionHandler.name);
@@ -90,6 +97,34 @@ export class SonarrActionHandler {
       }
     }
 
+    // Capture the download ids before any delete (the history is consumed
+    // afterwards). A whole-show delete removes every torrent the series
+    // produced; a season/episode delete removes only the torrents fully covered
+    // by it, since a season/series pack also backs episodes that are kept.
+    const isFileDeletingAction =
+      collection.arrAction === ServarrAction.DELETE ||
+      collection.arrAction === ServarrAction.UNMONITOR_DELETE_ALL ||
+      collection.arrAction === ServarrAction.UNMONITOR_DELETE_EXISTING ||
+      collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY;
+    let downloadIds: string[] = [];
+    if (isFileDeletingAction && this.settings.downloadClientConfigured()) {
+      if (collection.type === 'show') {
+        downloadIds = await sonarrApiClient.getDownloadIdsForSeries(
+          sonarrMedia.id,
+        );
+      } else if (
+        collection.type === 'season' ||
+        collection.type === 'episode'
+      ) {
+        downloadIds = await this.resolveCoveredDownloadIds(
+          sonarrApiClient,
+          sonarrMedia,
+          collection.type,
+          mediaData,
+        );
+      }
+    }
+
     switch (collection.arrAction) {
       case ServarrAction.DELETE_SHOW_IF_EMPTY:
         if (collection.type !== 'season') {
@@ -118,6 +153,7 @@ export class SonarrActionHandler {
           mediaData?.index,
           collection.listExclusions,
         );
+        await this.downloadClient.removeDownloads(downloadIds);
         return true;
       case ServarrAction.DELETE:
         switch (collection.type) {
@@ -135,6 +171,7 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
+            await this.downloadClient.removeDownloads(downloadIds);
             return true;
           case 'episode': {
             const episodeLookup = this.getEpisodeLookup(mediaData);
@@ -161,6 +198,7 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Removed season ${mediaData?.parentIndex} ${this.getEpisodeLogLabel(mediaData)} from show '${sonarrMedia.title}'`,
             );
+            await this.downloadClient.removeDownloads(downloadIds);
             return true;
           }
           default:
@@ -174,6 +212,7 @@ export class SonarrActionHandler {
               return false;
             }
             this.logger.log(`Removed show '${sonarrMedia.title}' from Sonarr`);
+            await this.downloadClient.removeDownloads(downloadIds);
             return true;
         }
         break;
@@ -283,6 +322,7 @@ export class SonarrActionHandler {
               this.logger.log(
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed all episodes`,
               );
+              await this.downloadClient.removeDownloads(downloadIds);
               return true;
             }
 
@@ -310,6 +350,7 @@ export class SonarrActionHandler {
             this.logger.log(
               `[Sonarr] Removed existing episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
+            await this.downloadClient.removeDownloads(downloadIds);
             return true;
           case 'show':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
@@ -326,6 +367,7 @@ export class SonarrActionHandler {
               this.logger.log(
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed existing episodes`,
               );
+              await this.downloadClient.removeDownloads(downloadIds);
               return true;
             }
 
@@ -380,6 +422,103 @@ export class SonarrActionHandler {
     }
 
     return false;
+  }
+
+  /**
+   * The torrents a season/episode delete fully covers: those whose every backed
+   * episode is in the deleted set. A season/series pack also backs episodes that
+   * are kept, so it is excluded. Keyed on Sonarr's episodeId — this is the only
+   * safeguard for a lone pack, since removeDownloads' cross-seed guard protects
+   * torrents that share a content path, not one torrent backing several wanted
+   * episodes. Fails closed: returns [] whenever coverage cannot be proven.
+   */
+  private async resolveCoveredDownloadIds(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    sonarrMedia: SonarrSeries,
+    type: 'season' | 'episode',
+    mediaData?: MediaItem,
+  ): Promise<string[]> {
+    try {
+      // The deleted set comes from Sonarr's episode list (what the delete acts
+      // on), not history, so it matches the files actually removed.
+      let deletedEpisodes: SonarrEpisode[];
+      if (type === 'season') {
+        const seasonNumber = mediaData?.index;
+        if (seasonNumber === undefined || seasonNumber === null) {
+          this.logger.debug(
+            `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': season number could not be determined.`,
+          );
+          return [];
+        }
+        deletedEpisodes = await sonarrApiClient.getEpisodes(
+          sonarrMedia.id,
+          seasonNumber,
+        );
+      } else {
+        const lookup = this.getEpisodeLookup(mediaData);
+        if (!lookup || lookup.episodeNumbers.length === 0) {
+          this.logger.debug(
+            `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': episode(s) could not be identified (e.g. air-date only).`,
+          );
+          return [];
+        }
+        deletedEpisodes = await sonarrApiClient.getEpisodes(
+          sonarrMedia.id,
+          lookup.seasonNumber,
+          lookup.episodeNumbers,
+        );
+      }
+
+      const deletedEpisodeIds = new Set(deletedEpisodes.map((e) => e.id));
+      if (deletedEpisodeIds.size === 0) {
+        this.logger.debug(
+          `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': no matching episodes resolved.`,
+        );
+        return [];
+      }
+
+      const history = await sonarrApiClient.getSeriesDownloadHistory(
+        sonarrMedia.id,
+      );
+      if (history.length === 0) {
+        this.logger.debug(
+          `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': no download history found.`,
+        );
+        return [];
+      }
+
+      const episodesByHash = new Map<string, Set<number | undefined>>();
+      for (const item of history) {
+        let episodes = episodesByHash.get(item.hash);
+        if (!episodes) {
+          episodes = new Set();
+          episodesByHash.set(item.hash, episodes);
+        }
+        episodes.add(item.episodeId);
+      }
+
+      const covered: string[] = [];
+      for (const [hash, episodes] of episodesByHash) {
+        const fullyCovered = [...episodes].every(
+          (episodeId) =>
+            episodeId !== undefined && deletedEpisodeIds.has(episodeId),
+        );
+        if (fullyCovered) {
+          covered.push(hash);
+        } else {
+          this.logger.debug(
+            `[Sonarr] Keeping download ${hash} for '${sonarrMedia.title}': it also backs episodes outside this delete.`,
+          );
+        }
+      }
+
+      return covered;
+    } catch (error) {
+      this.logger.debug(
+        `[Sonarr] Download cleanup coverage check failed for '${sonarrMedia.title}'; skipping. ${error}`,
+      );
+      return [];
+    }
   }
 
   private getEpisodeLookup(mediaData?: MediaItem):

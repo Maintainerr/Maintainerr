@@ -35,7 +35,8 @@ const normalizeMessageText = (message?: string): string | undefined => {
   if (
     lower.includes('timeout') ||
     lower.includes('aborted') ||
-    lower.includes('econnaborted')
+    lower.includes('econnaborted') ||
+    lower.includes('etimedout')
   ) {
     return `Connection timed out after ${CONNECTION_TEST_TIMEOUT_MS / 1000} seconds. Verify URL and network reachability.`;
   }
@@ -56,8 +57,14 @@ export const formatConnectionFailureMessage = (
       return `Connection failed: received response ${error.response.status} ${error.response.statusText}.`;
     }
 
+    // Network-level failure (no HTTP response). Classify from the error code as
+    // well as the message: Node surfaces ECONNREFUSED/ENOTFOUND for a dual-stack
+    // host (e.g. localhost) as an AggregateError whose `message` is empty, so
+    // the message alone would miss them and fall through to the generic text.
     const normalizedAxiosMessage = normalizeMessageText(
-      error.code === 'ECONNABORTED' ? 'timeout' : error.message,
+      error.code === 'ECONNABORTED'
+        ? 'timeout'
+        : [error.code, error.message].filter(Boolean).join(' '),
     );
     if (normalizedAxiosMessage) {
       return normalizedAxiosMessage;

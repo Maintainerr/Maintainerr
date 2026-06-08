@@ -11,10 +11,12 @@ import {
 } from '../../../test/utils/servarr-mock';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 describe('RadarrActionHandler', () => {
   let radarrActionHandler: RadarrActionHandler;
@@ -22,6 +24,8 @@ describe('RadarrActionHandler', () => {
   let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
   let metadataService: Mocked<MetadataService>;
+  let settings: Mocked<SettingsDataService>;
+  let downloadClient: Mocked<DownloadClientApiService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -32,6 +36,8 @@ describe('RadarrActionHandler', () => {
     mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
     metadataService = unitRef.get(MetadataService);
+    settings = unitRef.get(SettingsDataService);
+    downloadClient = unitRef.get(DownloadClientApiService);
     logger = unitRef.get(MaintainerrLogger);
 
     metadataService.resolveLookupCandidatesForService.mockImplementation(
@@ -295,5 +301,86 @@ describe('RadarrActionHandler', () => {
       expect.stringContaining('No target quality profile configured'),
     );
     validateNoRadarrActionsTaken(mockedRadarrApi);
+  });
+
+  describe('download client cleanup', () => {
+    it('removes the movie downloads after a successful delete when a download client is configured', async () => {
+      settings.downloadClientConfigured.mockReturnValue(true);
+
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        radarrSettingsId: 1,
+        type: 'movie',
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5 }));
+      jest
+        .spyOn(mockedRadarrApi, 'getDownloadIdsForMovie')
+        .mockResolvedValue(['hash-1', 'hash-2']);
+
+      await radarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(mockedRadarrApi.getDownloadIdsForMovie).toHaveBeenCalledWith(5);
+      expect(downloadClient.removeDownloads).toHaveBeenCalledWith([
+        'hash-1',
+        'hash-2',
+      ]);
+    });
+
+    it('does not look up downloads when no download client is configured', async () => {
+      settings.downloadClientConfigured.mockReturnValue(false);
+
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        radarrSettingsId: 1,
+        type: 'movie',
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5 }));
+      const downloadIdsSpy = jest.spyOn(
+        mockedRadarrApi,
+        'getDownloadIdsForMovie',
+      );
+
+      await radarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(downloadIdsSpy).not.toHaveBeenCalled();
+      expect(downloadClient.removeDownloads).not.toHaveBeenCalledWith(
+        expect.arrayContaining([expect.any(String)]),
+      );
+    });
+
+    it('does not remove downloads for a non-file-deleting action (UNMONITOR)', async () => {
+      settings.downloadClientConfigured.mockReturnValue(true);
+
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR,
+        radarrSettingsId: 1,
+        type: 'movie',
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5 }));
+      const downloadIdsSpy = jest.spyOn(
+        mockedRadarrApi,
+        'getDownloadIdsForMovie',
+      );
+
+      await radarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(downloadIdsSpy).not.toHaveBeenCalled();
+      expect(downloadClient.removeDownloads).not.toHaveBeenCalled();
+    });
   });
 });

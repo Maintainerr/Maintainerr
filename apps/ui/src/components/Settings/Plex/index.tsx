@@ -470,9 +470,7 @@ const PlexSettings = () => {
           <p className="description">Plex configuration</p>
         </div>
 
-        {tokenValidationPending && hasStoredPlexToken ? (
-          <Alert type="info" title="Validating stored Plex authentication..." />
-        ) : !isAuthenticated ? (
+        {!isAuthenticated && !(tokenValidationPending && hasStoredPlexToken) ? (
           <Alert
             type="info"
             title="Plex configuration is required. Authenticate with Plex to get started."

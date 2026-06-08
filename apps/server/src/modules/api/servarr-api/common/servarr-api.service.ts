@@ -5,6 +5,7 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import cacheManager from '../../lib/cache';
 import {
   DiskSpaceResource,
+  HistoryRecord,
   QueueItem,
   QueueResponse,
   RootFolder,
@@ -168,6 +169,63 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       this.logger.debug(error);
     }
   };
+
+  /**
+   * Fetch raw history records from a history endpoint. The *arr per-movie and
+   * per-series history endpoints return a plain array (only the base /history
+   * endpoint is paged), so a non-array response is treated as "no records".
+   * Never throws (returns [] on failure) so callers can treat history-driven
+   * work as best-effort.
+   */
+  protected async getHistoryRecords(path: string): Promise<HistoryRecord[]> {
+    try {
+      const records = await this.getWithoutCache<HistoryRecord[]>(path);
+
+      return Array.isArray(records) ? records : [];
+    } catch (error) {
+      this.logger.warn('Failed to retrieve download history');
+      this.logger.debug(error);
+      return [];
+    }
+  }
+
+  /**
+   * The download-client torrent hash a history record points to, or undefined
+   * if the event didn't produce a file. Only `grabbed` / `downloadFolderImported`
+   * events identify a torrent that actually backs media (the strings are shared
+   * by Radarr and Sonarr); failed/ignored/rename/delete events are skipped.
+   * Falls back to `data.torrentInfoHash` when `downloadId` is absent, normalized
+   * to a trimmed lowercase hash.
+   */
+  protected downloadProducingHash(record: HistoryRecord): string | undefined {
+    const eventType = record?.eventType?.toLowerCase();
+    if (eventType !== 'grabbed' && eventType !== 'downloadfolderimported') {
+      return undefined;
+    }
+
+    return (
+      record.downloadId?.trim() || record.data?.torrentInfoHash?.trim()
+    )?.toLowerCase();
+  }
+
+  /**
+   * Fetch the distinct download-client item ids (torrent infohashes) that
+   * produced files from a history endpoint. Never throws (returns [] on failure)
+   * so callers can treat torrent cleanup as best-effort.
+   */
+  protected async getDownloadIdsFromHistory(path: string): Promise<string[]> {
+    const records = await this.getHistoryRecords(path);
+
+    const ids = new Set<string>();
+    for (const record of records) {
+      const hash = this.downloadProducingHash(record);
+      if (hash) {
+        ids.add(hash);
+      }
+    }
+
+    return [...ids];
+  }
 
   public getTags = async (): Promise<Tag[]> => {
     try {

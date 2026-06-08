@@ -599,6 +599,21 @@ describe('PlexApiService.initialize', () => {
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith('Plex status probe failed');
   });
+
+  it('probes /identity (not bare /) so it works behind reverse proxies', async () => {
+    jest.restoreAllMocks();
+    // Bare `/` 401s behind reverse proxies; `/identity` returns the same
+    // machineIdentifier + version without auth quirks.
+    const query = jest.fn().mockResolvedValue({
+      MediaContainer: { machineIdentifier: 'm1', version: '1.43.2' },
+    });
+    (service as any).plexClient = { query };
+
+    const status = await service.getStatus();
+
+    expect(query).toHaveBeenCalledWith('/identity', false);
+    expect(status).toEqual({ machineIdentifier: 'm1', version: '1.43.2' });
+  });
 });
 
 describe('PlexApiService overlay helpers', () => {
