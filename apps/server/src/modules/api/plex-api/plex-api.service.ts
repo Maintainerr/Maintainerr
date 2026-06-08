@@ -51,14 +51,6 @@ import {
 } from './interfaces/server.interface';
 import { PLEX_PAGE_SIZE, PLEX_REQUEST_TIMEOUT_MS } from './plex-api.constants';
 
-type PlexDiscoverUserState = Record<string, unknown>;
-
-type PlexDiscoverUserStateResponse = {
-  MediaContainer: {
-    UserState: PlexDiscoverUserState;
-  };
-};
-
 @Injectable()
 export class PlexApiService {
   private plexClient: PlexApi;
@@ -628,32 +620,6 @@ export class PlexApiService {
         uri: `/library/metadata/${mediaId}`,
       }),
     );
-  }
-
-  public async getDiscoverDataUserState(
-    metaDataRatingKey: string,
-  ): Promise<PlexDiscoverUserState | undefined> {
-    const settings = this.getDbSettings();
-
-    try {
-      const response = await axios.get<PlexDiscoverUserStateResponse>(
-        `https://discover.provider.plex.tv/library/metadata/${metaDataRatingKey}/userState`,
-        {
-          headers: {
-            'content-type': 'application/json',
-            'X-Plex-Token': settings.auth_token,
-          },
-        },
-      );
-
-      return response.data.MediaContainer.UserState;
-    } catch (error) {
-      this.logger.error(
-        "Outbound call to discover.provider.plex.tv failed. Couldn't fetch userState",
-      );
-      this.logger.debug(error);
-      return undefined;
-    }
   }
 
   public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {
