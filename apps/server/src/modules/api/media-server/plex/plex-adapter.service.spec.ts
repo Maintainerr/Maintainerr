@@ -431,6 +431,14 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('prefetchWatchHistory', () => {
+    it('delegates to plexApi.prefetchWatchHistory', async () => {
+      plexApi.prefetchWatchHistory = jest.fn().mockResolvedValue(undefined);
+      await service.prefetchWatchHistory();
+      expect(plexApi.prefetchWatchHistory).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('getWatchHistory', () => {
     it('should return empty array when Plex returned no history entries', async () => {
       plexApi.getWatchHistory.mockResolvedValue([]);

@@ -615,4 +615,8 @@ describe('EmbyAdapterService', () => {
       await expect(service.itemExists('42')).rejects.toBe(error);
     });
   });
+
+  it('does not implement prefetchWatchHistory (Plex-only bulk fetch)', () => {
+    expect('prefetchWatchHistory' in service).toBe(false);
+  });
 });

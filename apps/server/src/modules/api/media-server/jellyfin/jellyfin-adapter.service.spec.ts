@@ -381,6 +381,10 @@ describe('JellyfinAdapterService', () => {
         service.reorderCollectionItems('col1', ['a', 'b']),
       ).rejects.toThrow('Collection sort not supported on Jellyfin');
     });
+
+    it('does not implement prefetchWatchHistory (Plex-only bulk fetch)', () => {
+      expect('prefetchWatchHistory' in service).toBe(false);
+    });
   });
 
   describe('getLibraryContents', () => {

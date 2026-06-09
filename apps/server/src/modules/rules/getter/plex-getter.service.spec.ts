@@ -292,7 +292,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(new Date(1_720_000_000 * 1000));
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        '12345',
+        true,
+        'movie',
+      );
     });
 
     it('filters collection counts by rule and manual collection names case-insensitively (id 6)', async () => {
@@ -447,6 +451,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(new Date(1_710_000_000 * 1000));
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'show-1',
+        true,
+        'show',
+      );
     });
 
     it('returns season episode counts, watched episode counts, and total views from child metadata and history (ids 14, 15, 17)', async () => {
@@ -569,6 +578,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(['bob', 'alice']);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'show-1',
+        true,
+        'show',
+      );
     });
 
     it('dedupes playlists by ratingKey for show-level count and names, then trims names (ids 20 and 21)', async () => {
@@ -1282,6 +1296,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(['bob', 'alice']);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        '12345',
+        true,
+        'movie',
+      );
     });
 
     it('returns [] for confirmed-empty history (no one has watched the item)', async () => {
