@@ -49,7 +49,14 @@ import {
   PlexDevice,
   PlexStatusResponse,
 } from './interfaces/server.interface';
-import { PLEX_PAGE_SIZE, PLEX_REQUEST_TIMEOUT_MS } from './plex-api.constants';
+import {
+  PLEX_PAGE_SIZE,
+  PLEX_REQUEST_TIMEOUT_MS,
+  WATCH_HISTORY_BULK_CACHE_KEY,
+  WATCH_HISTORY_BULK_TTL_SECONDS,
+  WATCH_HISTORY_SEASON_BULK_CACHE_KEY,
+  WATCH_HISTORY_SHOW_BULK_CACHE_KEY,
+} from './plex-api.constants';
 
 type PlexDiscoverUserState = Record<string, unknown>;
 
@@ -718,10 +725,150 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * Fetches the complete watch history for all library items in a single
+   * paginated sweep and stores the result in an in-memory lookup map within
+   * the plexguid cache. Subsequent calls to getWatchHistory will be served
+   * from this map rather than issuing individual HTTP requests, reducing rule
+   * evaluation time from O(items × conditions) HTTP calls to O(1).
+   *
+   * The cache entry expires after 8 hours. If the entry already exists this
+   * method returns immediately so it is safe to call at the start of every
+   * rule group without re-fetching on each one.
+   *
+   * On failure the error is logged and swallowed — getWatchHistory falls back
+   * to per-item queries automatically when the map is absent.
+   */
+  public async prefetchWatchHistory(): Promise<void> {
+    const cache = cacheManager.getCache('plexguid').data;
+    if (cache.has(WATCH_HISTORY_BULK_CACHE_KEY)) {
+      return;
+    }
+
+    this.logger.log('Prefetching watch history for all library items...');
+
+    try {
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
+        false,
+      );
+
+      const records =
+        (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
+
+      // leafMap  — movies and episodes keyed by their own ratingKey
+      // showMap  — shows keyed by show ratingKey (extracted from grandparentKey)
+      // seasonMap — seasons keyed by season ratingKey (extracted from parentKey)
+      // All three are built in a single pass over the history records.
+      const leafMap = new Map<string, PlexSeenBy[]>();
+      const showMap = new Map<string, PlexSeenBy[]>();
+      const seasonMap = new Map<string, PlexSeenBy[]>();
+
+      for (const record of records) {
+        // Leaf map: every record is indexed by its own ratingKey
+        const leafExisting = leafMap.get(record.ratingKey);
+        if (leafExisting) {
+          leafExisting.push(record);
+        } else {
+          leafMap.set(record.ratingKey, [record]);
+        }
+
+        // Show and season maps: episode records carry path-format parent keys
+        // (grandparentKey = "/library/metadata/<showId>",
+        //  parentKey      = "/library/metadata/<seasonId>")
+        // that are not present on movie records.
+        if (record.type === 'episode') {
+          if (record.grandparentKey) {
+            const showId = record.grandparentKey.split('/').pop();
+            if (showId) {
+              const showExisting = showMap.get(showId);
+              if (showExisting) {
+                showExisting.push(record);
+              } else {
+                showMap.set(showId, [record]);
+              }
+            }
+          }
+
+          if (record.parentKey) {
+            const seasonId = record.parentKey.split('/').pop();
+            if (seasonId) {
+              const seasonExisting = seasonMap.get(seasonId);
+              if (seasonExisting) {
+                seasonExisting.push(record);
+              } else {
+                seasonMap.set(seasonId, [record]);
+              }
+            }
+          }
+        }
+      }
+
+      cache.set(
+        WATCH_HISTORY_BULK_CACHE_KEY,
+        leafMap,
+        WATCH_HISTORY_BULK_TTL_SECONDS,
+      );
+      cache.set(
+        WATCH_HISTORY_SHOW_BULK_CACHE_KEY,
+        showMap,
+        WATCH_HISTORY_BULK_TTL_SECONDS,
+      );
+      cache.set(
+        WATCH_HISTORY_SEASON_BULK_CACHE_KEY,
+        seasonMap,
+        WATCH_HISTORY_BULK_TTL_SECONDS,
+      );
+
+      this.logger.log(
+        `Watch history prefetch complete: ${records.length} records — ` +
+          `${leafMap.size} leaf items, ${showMap.size} shows, ${seasonMap.size} seasons cached for 8 hours.`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Watch history prefetch failed — falling back to per-item queries. Error: ${error}`,
+      );
+    }
+  }
+
   public async getWatchHistory(
     itemId: string,
     useCache: boolean = true,
+    itemType?: string,
   ): Promise<PlexSeenBy[]> {
+    const plexguid = cacheManager.getCache('plexguid').data;
+
+    // Show-level queries: aggregate episode records keyed by show ratingKey.
+    if (itemType === 'show') {
+      const showMap = plexguid.get<Map<string, PlexSeenBy[]>>(
+        WATCH_HISTORY_SHOW_BULK_CACHE_KEY,
+      );
+      if (showMap !== undefined) {
+        return showMap.get(itemId) ?? [];
+      }
+    }
+
+    // Season-level queries: aggregate episode records keyed by season ratingKey.
+    if (itemType === 'season') {
+      const seasonMap = plexguid.get<Map<string, PlexSeenBy[]>>(
+        WATCH_HISTORY_SEASON_BULK_CACHE_KEY,
+      );
+      if (seasonMap !== undefined) {
+        return seasonMap.get(itemId) ?? [];
+      }
+    }
+
+    // Movie and episode lookups (and legacy untyped callers, which always pass
+    // leaf ratingKeys): use the leaf map keyed by the item's own ratingKey.
+    if (itemType !== 'show' && itemType !== 'season') {
+      const leafMap = plexguid.get<Map<string, PlexSeenBy[]>>(
+        WATCH_HISTORY_BULK_CACHE_KEY,
+      );
+      if (leafMap !== undefined) {
+        return leafMap.get(itemId) ?? [];
+      }
+    }
+
     // Errors must propagate so callers can distinguish a real outage from a
     // confirmed empty history. Returning [] (or undefined) here would
     // misclassify failures as "never watched", which leaks into NOT_EXISTS

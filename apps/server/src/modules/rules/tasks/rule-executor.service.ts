@@ -210,6 +210,13 @@ export class RuleExecutorService {
       const comparator = this.comparatorFactory.create();
       const mediaServer = await this.getMediaServer();
 
+      // Prefetch watch history upfront so per-item getWatchHistory calls during
+      // evaluation are served from an in-memory map instead of individual HTTP
+      // requests. The result is cached across rule groups in this run. If the
+      // prefetch is unsupported (e.g. Jellyfin) or fails, evaluation continues
+      // unaffected using the existing per-item fallback.
+      await mediaServer.prefetchWatchHistory?.();
+
       const mediaItemCount = await mediaServer.getLibraryContentCount(
         ruleGroup.libraryId.toString(),
         ruleGroup.dataType ? ruleGroup.dataType : undefined,

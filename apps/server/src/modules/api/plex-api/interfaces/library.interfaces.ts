@@ -5,6 +5,10 @@ export interface PlexLibraryItem {
   ratingKey: string;
   parentRatingKey?: string;
   grandparentRatingKey?: string;
+  // Path-format parent keys returned by the history endpoint
+  // (e.g. "/library/metadata/13693"); the numeric ID is the last path segment.
+  parentKey?: string;
+  grandparentKey?: string;
   title: string;
   parentTitle?: string;
   guid: string;
