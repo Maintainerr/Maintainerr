@@ -1,3 +1,29 @@
+# [3.15.0](https://github.com/Maintainerr/Maintainerr/compare/v3.14.0...v3.15.0) (2026-06-09)
+
+
+## Highlights
+- Added functionality to delete items from the download client and manage collection membership within the media server.
+- Optional integration for qBittorrent to remove completed downloads when Radarr/Sonarr deletes media (#3054).
+- Plex connection fixes: updated server discovery to use v2 API and improved connection probe reliability (#3063).
+
+## Features
+- Added item deletion and collection management features in the media server.
+- Optional download-client integration for qBittorrent to clean up completed downloads when Radarr/Sonarr removes media (#3054).
+
+## Fixes
+- Fixed Plex connection probe to use `/identity` endpoint and updated server discovery to use v2 API resources (#3063).
+- Resolved overlay rendering issues with uniform style scaling, rotation anchoring, and improved font register logging (#3057).
+- Improved metadata handling to retain media-server IDs unless corroborated by provider data, with additional checks for year agreement (#3011).
+
+## Database migrations
+- Added new columns to the `settings` table for download client configuration, including URL, credentials, and deletion settings.
+
+## Internal
+- Removed unused Plex API helpers: `getWatchlist` and `getDiscoverDataUserState` (#3064).
+
+## Dependencies
+- Updated 8 dependencies, including `typescript-eslint`, `@types/node`, and `react-hook-form`.
+
 # [3.14.0](https://github.com/Maintainerr/Maintainerr/compare/v3.13.0...v3.14.0) (2026-06-05)
 
 
