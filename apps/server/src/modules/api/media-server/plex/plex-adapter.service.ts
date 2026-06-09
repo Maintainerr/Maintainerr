@@ -19,6 +19,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
+import { PlexLibraryItem } from '../../plex-api/interfaces/library.interfaces';
 import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import {
@@ -220,6 +221,10 @@ export class PlexAdapterService implements IMediaServerService {
     return results.map(PlexMapper.metadataToMediaItem);
   }
 
+  async prefetchWatchHistory(): Promise<void> {
+    await this.plexApi.prefetchWatchHistory();
+  }
+
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     const history = await this.plexApi.getWatchHistory(itemId);
     return history.map(PlexMapper.toWatchRecord);
@@ -229,8 +234,9 @@ export class PlexAdapterService implements IMediaServerService {
     itemId: string,
     nativeViewCount?: number,
     itemTitle?: string,
+    itemType?: PlexLibraryItem['type'],
   ): Promise<MediaWatchState> {
-    const history = await this.plexApi.getWatchHistory(itemId, false);
+    const history = await this.plexApi.getWatchHistory(itemId, false, itemType);
 
     if (history.length > 0) {
       return {

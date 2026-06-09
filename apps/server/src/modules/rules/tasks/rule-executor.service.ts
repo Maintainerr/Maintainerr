@@ -236,6 +236,13 @@ export class RuleExecutorService {
           ruleGroup,
         );
 
+        // Prefetch watch history so per-item getWatchHistory calls during
+        // evaluation are served from an in-memory map instead of individual
+        // HTTP requests. Cached across rule groups in this run; rebuilt here
+        // when the reset above flushed it. A media server that doesn't
+        // support bulk prefetch (e.g. Jellyfin) keeps its per-item path.
+        await mediaServer.prefetchWatchHistory?.();
+
         // prepare
         this.workerData = [];
         this.resultData = [];

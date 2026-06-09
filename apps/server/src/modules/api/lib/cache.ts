@@ -4,6 +4,7 @@ type AvailableCacheIds =
   | 'tmdb'
   | 'tvdb'
   | 'plexguid'
+  | 'plexwatchhistory'
   | 'plextv'
   | 'seerr'
   | 'plexcommunity'
@@ -24,6 +25,11 @@ type CacheOptions = {
   // If true, this cache is NOT flushed by flushAll(). Use for external metadata
   // caches (e.g. TMDB, TVDB) whose data doesn't change between rule group runs.
   persistent?: boolean;
+  // If false, NodeCache stores and returns object references without cloning.
+  // Required for non-POJO values (Maps, Sets) and for high-frequency lookups
+  // where cloning large objects on every get() would be prohibitively expensive.
+  // Never mutate values returned from caches that set this to false.
+  useClones?: boolean;
 };
 
 export class Cache {
@@ -46,6 +52,7 @@ export class Cache {
     this.data = new NodeCache({
       stdTTL: options.stdTtl ?? DEFAULT_TTL,
       checkperiod: options.checkPeriod ?? DEFAULT_CHECK_PERIOD,
+      useClones: options.useClones ?? true,
     });
   }
 
@@ -71,6 +78,20 @@ class CacheManager {
       persistent: true,
     }),
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
+    // Holds the bulk watch-history maps built by PlexApiService.prefetchWatchHistory.
+    // Persistent so the maps survive flushAll() between rule groups in the same
+    // cron window; useClones is off because the values are large Maps —
+    // getWatchHistory returns copies of the per-item arrays instead.
+    plexwatchhistory: new Cache(
+      'plexwatchhistory',
+      'Plex watch history',
+      'plexwatchhistory',
+      {
+        stdTtl: 3600, // 1 hour
+        persistent: true,
+        useClones: false,
+      },
+    ),
     plextv: new Cache('plextv', 'Plex.tv', 'plextv'),
     seerr: new Cache('seerr', 'Seerr API', 'seerr'),
     plexcommunity: new Cache(

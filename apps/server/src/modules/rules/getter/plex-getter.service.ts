@@ -91,6 +91,8 @@ export class PlexGetterService {
           const plexUsers = await this.plexApi.getCorrectedUsers(false);
           const viewers = await this.plexApi.getWatchHistory(
             metadata.ratingKey,
+            true,
+            metadata.type,
           );
           const viewerIds = viewers.map((el) => +el.accountID);
           return mapMatchingRuleUsersToNames(
@@ -122,6 +124,7 @@ export class PlexGetterService {
             metadata.ratingKey,
             libItem.viewCount,
             libItem.title,
+            metadata.type,
           );
           return watchState.viewCount;
         }
@@ -130,6 +133,7 @@ export class PlexGetterService {
             metadata.ratingKey,
             libItem.viewCount,
             libItem.title,
+            metadata.type,
           );
           return watchState.isWatched;
         }
@@ -252,7 +256,11 @@ export class PlexGetterService {
           // Errors must surface so the outer catch returns `undefined` for an
           // unknown watch state instead of collapsing the failure into a
           // confirmed never-watched `null`.
-          const seenby = await this.plexApi.getWatchHistory(metadata.ratingKey);
+          const seenby = await this.plexApi.getWatchHistory(
+            metadata.ratingKey,
+            true,
+            metadata.type,
+          );
           if (seenby && seenby.length > 0) {
             return new Date(
               +seenby
@@ -303,6 +311,8 @@ export class PlexGetterService {
               // `allViewers` and mark the show as unwatched-by-everyone.
               const viewers = await this.plexApi.getWatchHistory(
                 episode.ratingKey,
+                true,
+                'episode',
               );
 
               const arrLength = allViewers.length - 1;
@@ -341,6 +351,8 @@ export class PlexGetterService {
 
           const watchHistory = await this.plexApi.getWatchHistory(
             metadata.ratingKey,
+            true,
+            metadata.type,
           );
 
           const viewers = watchHistory
@@ -361,6 +373,8 @@ export class PlexGetterService {
         case 'sw_lastWatched': {
           let watchHistory = await this.plexApi.getWatchHistory(
             metadata.ratingKey,
+            true,
+            metadata.type,
           );
           watchHistory?.sort((a, b) => a.parentIndex - b.parentIndex).reverse();
           watchHistory = watchHistory?.filter(
@@ -394,6 +408,8 @@ export class PlexGetterService {
             for (const episode of episodes) {
               const views = await this.plexApi.getWatchHistory(
                 episode.ratingKey,
+                true,
+                'episode',
               );
               if (views?.length > 0) {
                 viewCount++;
@@ -416,6 +432,8 @@ export class PlexGetterService {
           if (metadata.type === 'episode') {
             const views = await this.plexApi.getWatchHistory(
               metadata.ratingKey,
+              true,
+              metadata.type,
             );
             viewCount =
               views?.length > 0 ? viewCount + views.length : viewCount;
@@ -432,6 +450,8 @@ export class PlexGetterService {
               for (const episode of episodes) {
                 const views = await this.plexApi.getWatchHistory(
                   episode.ratingKey,
+                  true,
+                  'episode',
                 );
                 viewCount =
                   views?.length > 0 ? viewCount + views.length : viewCount;
@@ -829,6 +849,8 @@ export class PlexGetterService {
               // false delete on a recently-watched sibling collection.
               const history = await this.plexApi.getWatchHistory(
                 child.ratingKey,
+                true,
+                child.type,
               );
               for (const entry of history) {
                 if (entry.viewedAt && +entry.viewedAt > latest) {

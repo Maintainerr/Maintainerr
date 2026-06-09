@@ -1612,4 +1612,44 @@ describe('RuleExecutorService', () => {
       expect.anything(),
     );
   });
+
+  describe('prefetchWatchHistory', () => {
+    const ruleGroup = {
+      id: 10,
+      name: 'Test Rule',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Test Collection' },
+    };
+
+    it('calls prefetchWatchHistory on the media server when the method is present', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.PLEX,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await service.executeForRuleGroups(10, new AbortController().signal);
+
+      expect((mediaServer as any).prefetchWatchHistory).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it('completes without error when prefetchWatchHistory is absent (e.g. Jellyfin)', async () => {
+      const { service, rulesService } = createService(MediaServerType.JELLYFIN);
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+
+      await expect(
+        service.executeForRuleGroups(10, new AbortController().signal),
+      ).resolves.toEqual({ status: 'success' });
+    });
+  });
 });

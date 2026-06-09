@@ -181,6 +181,7 @@ describe('PlexGetterService', () => {
         '12345',
         0,
         libItem.title,
+        'movie',
       );
     });
 
@@ -197,6 +198,7 @@ describe('PlexGetterService', () => {
         '12345',
         0,
         libItem.title,
+        'movie',
       );
     });
   });
@@ -292,7 +294,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(new Date(1_720_000_000 * 1000));
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        '12345',
+        true,
+        'movie',
+      );
     });
 
     it('filters collection counts by rule and manual collection names case-insensitively (id 6)', async () => {
@@ -447,6 +453,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(new Date(1_710_000_000 * 1000));
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'show-1',
+        true,
+        'show',
+      );
     });
 
     it('returns season episode counts, watched episode counts, and total views from child metadata and history (ids 14, 15, 17)', async () => {
@@ -569,6 +580,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(['bob', 'alice']);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'show-1',
+        true,
+        'show',
+      );
     });
 
     it('dedupes playlists by ratingKey for show-level count and names, then trims names (ids 20 and 21)', async () => {
@@ -1130,9 +1146,21 @@ describe('PlexGetterService', () => {
       expect(plexApi.getCollections).toHaveBeenCalledWith('lib-1', 'movie');
       expect(plexApi.getCollectionChildren).toHaveBeenCalledTimes(1);
       expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('coll-1');
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('12345');
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('sibling-a');
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('sibling-b');
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        '12345',
+        true,
+        'movie',
+      );
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'sibling-a',
+        true,
+        'movie',
+      );
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'sibling-b',
+        true,
+        'movie',
+      );
     });
 
     it('returns null when the movie is in no collections', async () => {
@@ -1282,6 +1310,11 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(['bob', 'alice']);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        '12345',
+        true,
+        'movie',
+      );
     });
 
     it('returns [] for confirmed-empty history (no one has watched the item)', async () => {
