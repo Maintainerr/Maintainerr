@@ -76,7 +76,7 @@
     "@suites/di.nestjs": "^3.1.0",
     "@suites/doubles.jest": "^3.1.0",
     "@suites/unit": "^3.1.1",
-    "@swc/core": "^1.15.40",
+    "@swc/core": "^1.15.41",
     "@swc/jest": "^0.2.39",
     "@types/email-templates": "^10.0.4",
     "@types/jest": "^30.0.0",
