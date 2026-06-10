@@ -3,6 +3,7 @@ import {
   MaintainerrEvent,
   MediaItem,
   MediaItemType,
+  MediaServerFeature,
   MediaServerType,
   RuleHandlerFinishedEventDto,
   RuleHandlerStartedEventDto,
@@ -235,6 +236,20 @@ export class RuleExecutorService {
         await this.rulesService.resetCacheIfGroupUsesRuleThatRequiresIt(
           ruleGroup,
         );
+
+        // Prefetch watch history so per-item getWatchHistory calls during
+        // evaluation are served from an in-memory map instead of individual
+        // HTTP requests. Reused across rule groups within a scheduler batch;
+        // rebuilt here when the reset above flushed it. Gated on a centrally
+        // queryable history endpoint — Jellyfin/Emby (per-user history) keep
+        // their per-item path. Abort-checked first so a cancellation that
+        // lands just before evaluation doesn't kick off a long history sweep.
+        abortSignal.throwIfAborted();
+        if (
+          mediaServer.supportsFeature(MediaServerFeature.CENTRAL_WATCH_HISTORY)
+        ) {
+          await mediaServer.prefetchWatchHistory();
+        }
 
         // prepare
         this.workerData = [];

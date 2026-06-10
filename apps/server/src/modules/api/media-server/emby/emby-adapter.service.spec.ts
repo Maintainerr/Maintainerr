@@ -592,6 +592,12 @@ describe('EmbyAdapterService', () => {
 
       await expect(service.getWatchHistory('item-1')).rejects.toBe(error);
     });
+
+    it('prefetchWatchHistory throws because Emby has no central history endpoint', async () => {
+      await expect(service.prefetchWatchHistory()).rejects.toThrow(
+        'not supported on Emby',
+      );
+    });
   });
 
   describe('itemExists', () => {

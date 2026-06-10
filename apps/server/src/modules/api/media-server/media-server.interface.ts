@@ -160,6 +160,18 @@ export interface IMediaServerService {
   searchContent(query: string): Promise<MediaItem[]>;
 
   /**
+   * Prefetch watch history for all library items in a single bulk request,
+   * caching the result so that subsequent per-item getWatchHistory /
+   * getWatchState calls can be served from memory instead of making individual
+   * HTTP requests.
+   *
+   * Gated by MediaServerFeature.CENTRAL_WATCH_HISTORY (a centrally queryable
+   * history endpoint). Throws if not supported — callers must check
+   * supportsFeature() first; when unsupported, evaluation uses per-item queries.
+   */
+  prefetchWatchHistory(): Promise<void>;
+
+  /**
    * Get watch history for a specific item.
    * Implementation varies by server:
    * - Plex: Single API call to history endpoint
@@ -179,6 +191,8 @@ export interface IMediaServerService {
   getWatchState(
     itemId: string,
     nativeViewCount?: number,
+    itemTitle?: string,
+    itemType?: MediaItemType,
   ): Promise<MediaWatchState>;
 
   /**

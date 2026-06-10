@@ -725,6 +725,16 @@ export class EmbyAdapterService implements IMediaServerService {
   // IsPlayed=true filter. The implementations below mirror the Jellyfin
   // adapter's shape but use Emby endpoint paths.
 
+  async prefetchWatchHistory(): Promise<void> {
+    // Emby has no central watch-history endpoint (history is per-user), so
+    // there is nothing to bulk prefetch. Gated by
+    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Emby — callers
+    // shouldn't reach here.
+    throw new Error(
+      'Bulk watch-history prefetch is not supported on Emby (per-user history)',
+    );
+  }
+
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     if (!this.http) return [];
     let users: EmbyUserDto[];

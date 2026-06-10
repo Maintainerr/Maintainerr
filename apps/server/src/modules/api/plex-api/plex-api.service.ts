@@ -49,7 +49,11 @@ import {
   PlexDevice,
   PlexStatusResponse,
 } from './interfaces/server.interface';
-import { PLEX_PAGE_SIZE, PLEX_REQUEST_TIMEOUT_MS } from './plex-api.constants';
+import {
+  PLEX_PAGE_SIZE,
+  PLEX_REQUEST_TIMEOUT_MS,
+  WATCH_HISTORY_BULK_CACHE_KEY,
+} from './plex-api.constants';
 
 @Injectable()
 export class PlexApiService {
@@ -57,6 +61,7 @@ export class PlexApiService {
   private plexTvClient: PlexTvApi;
   private plexCommunityClient: PlexCommunityApi;
   private machineId: string;
+  private watchHistoryPrefetch?: Promise<void>;
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -182,9 +187,13 @@ export class PlexApiService {
     this.plexClient = undefined;
     this.plexCommunityClient = undefined;
     this.plexTvClient = undefined;
+    // Drop the watch-history snapshot too — on a server/token switch it would
+    // otherwise serve the previous server's history for up to its TTL.
+    this.watchHistoryPrefetch = undefined;
     cacheManager.getCache('plexguid').data.flushAll();
     cacheManager.getCache('plextv').data.flushAll();
     cacheManager.getCache('plexcommunity').data.flushAll();
+    cacheManager.getCache('plexwatchhistory').data.flushAll();
   }
 
   public async initialize() {
@@ -688,10 +697,130 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * Fetches the complete watch history in a single paginated sweep and stores
+   * a leaf lookup map (movies + episodes keyed by their own ratingKey) in the
+   * 'plexwatchhistory' cache (1 hour TTL). Subsequent getWatchHistory calls for
+   * leaf items are served from this map instead of issuing one HTTP request per
+   * item. Returns immediately when the map is already cached, so it is safe to
+   * call at the start of every rule group.
+   *
+   * Show/season history is intentionally NOT rolled up here: the bulk endpoint
+   * keys each row by leaf ratingKey, and grouping to show/season would depend on
+   * grandparentKey/parentKey, which are undocumented on this endpoint and absent
+   * over some Plex connections — a missing key would silently read as "never
+   * watched". Show/season queries therefore fall through to the per-item
+   * metadataItemID query in getWatchHistory, which Plex rolls up server-side.
+   *
+   * On failure the error is logged and swallowed — getWatchHistory falls back
+   * to per-item queries automatically when the map is absent.
+   */
+  public prefetchWatchHistory(): Promise<void> {
+    const cache = cacheManager.getCache('plexwatchhistory').data;
+    if (cache.has(WATCH_HISTORY_BULK_CACHE_KEY)) {
+      return Promise.resolve();
+    }
+
+    // Deduplicate concurrent callers onto one in-flight fetch.
+    this.watchHistoryPrefetch ??= this.fetchWatchHistoryMap().finally(() => {
+      this.watchHistoryPrefetch = undefined;
+    });
+    return this.watchHistoryPrefetch;
+  }
+
+  private async fetchWatchHistoryMap(): Promise<void> {
+    this.logger.log('Prefetching watch history for all library items...');
+
+    try {
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
+        false,
+      );
+
+      const records =
+        (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
+
+      const leafMap = new Map<string, PlexSeenBy[]>();
+      for (const record of records) {
+        const existing = leafMap.get(record.ratingKey);
+        if (existing) {
+          existing.push(record);
+        } else {
+          leafMap.set(record.ratingKey, [record]);
+        }
+      }
+
+      cacheManager
+        .getCache('plexwatchhistory')
+        .data.set(WATCH_HISTORY_BULK_CACHE_KEY, leafMap);
+
+      this.logger.log(
+        `Watch history prefetch complete: ${records.length} records — ` +
+          `${leafMap.size} leaf items.`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Watch history prefetch failed — falling back to per-item queries. Error: ${error}`,
+      );
+    }
+  }
+
+  // The 'plexwatchhistory' cache stores by reference (useClones: false), so
+  // always hand callers a copy — plex-getter sorts these arrays in place.
+  private getBulkWatchHistory(
+    mapKey: string,
+    itemId: string,
+  ): PlexSeenBy[] | undefined {
+    const map = cacheManager
+      .getCache('plexwatchhistory')
+      .data.get<Map<string, PlexSeenBy[]>>(mapKey);
+    if (map === undefined) {
+      return undefined;
+    }
+    const records = map.get(itemId);
+    return records ? [...records] : [];
+  }
+
   public async getWatchHistory(
     itemId: string,
     useCache: boolean = true,
+    itemType?: PlexLibraryItem['type'],
   ): Promise<PlexSeenBy[]> {
+    // Serve leaf items (movies, episodes) from the bulk map when it is
+    // populated. This applies even to useCache: false callers (e.g.
+    // getWatchState): that flag opts out of the stale per-item HTTP response
+    // cache (5 min TTL, survives across runs), whereas the bulk map is a
+    // deliberate snapshot with a run-scoped lifecycle — rebuilt by
+    // prefetchWatchHistory and flushed whenever a rule group requires a cache
+    // reset.
+    switch (itemType) {
+      case 'movie':
+      case 'episode': {
+        const records = this.getBulkWatchHistory(
+          WATCH_HISTORY_BULK_CACHE_KEY,
+          itemId,
+        );
+        if (records !== undefined) return records;
+        break;
+      }
+      case 'show':
+      case 'season':
+        // The bulk map holds no show/season rollups (see prefetchWatchHistory);
+        // fall through to the per-item metadataItemID query, which Plex rolls up
+        // server-side.
+        break;
+      default: {
+        // Untyped callers may pass any kind of ratingKey, so only a non-empty
+        // leaf hit is trusted — a miss falls through to the per-item query.
+        const records = this.getBulkWatchHistory(
+          WATCH_HISTORY_BULK_CACHE_KEY,
+          itemId,
+        );
+        if (records !== undefined && records.length > 0) return records;
+        break;
+      }
+    }
+
     // Errors must propagate so callers can distinguish a real outage from a
     // confirmed empty history. Returning [] (or undefined) here would
     // misclassify failures as "never watched", which leaks into NOT_EXISTS
