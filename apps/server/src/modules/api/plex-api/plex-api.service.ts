@@ -730,9 +730,7 @@ export class PlexApiService {
     return this.watchHistoryPrefetch;
   }
 
-  private async fetchWatchHistoryMap(
-    abortSignal?: AbortSignal,
-  ): Promise<void> {
+  private async fetchWatchHistoryMap(abortSignal?: AbortSignal): Promise<void> {
     this.logger.log('Prefetching watch history for all library items...');
 
     try {
