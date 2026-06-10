@@ -460,6 +460,24 @@ describe('PlexGetterService', () => {
       );
     });
 
+    it('returns null for sw_lastWatched when the show has no view history (id 13)', async () => {
+      // An empty history array is truthy; without a length guard this read
+      // viewedAt off undefined and threw. A never-watched show must yield null.
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
+      );
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const result = await service.get(
+        13,
+        createMediaItem({ type: 'show' }),
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(result).toBeNull();
+    });
+
     it('returns season episode counts, watched episode counts, and total views from child metadata and history (ids 14, 15, 17)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'season-1', type: 'season' }),

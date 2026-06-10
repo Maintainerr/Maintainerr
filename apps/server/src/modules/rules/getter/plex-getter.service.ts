@@ -381,7 +381,9 @@ export class PlexGetterService {
             (el) => el.parentIndex === watchHistory[0].parentIndex,
           );
           watchHistory?.sort((a, b) => a.index - b.index).reverse();
-          return watchHistory
+          // An empty array is truthy, so guard on length: a show with no view
+          // history must return null here, not read viewedAt off undefined.
+          return watchHistory?.length
             ? new Date(+watchHistory[0].viewedAt * 1000)
             : null;
         }
