@@ -715,27 +715,41 @@ export class PlexApiService {
    * On failure the error is logged and swallowed — getWatchHistory falls back
    * to per-item queries automatically when the map is absent.
    */
-  public prefetchWatchHistory(): Promise<void> {
+  public prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
     const cache = cacheManager.getCache('plexwatchhistory').data;
     if (cache.has(WATCH_HISTORY_BULK_CACHE_KEY)) {
       return Promise.resolve();
     }
 
     // Deduplicate concurrent callers onto one in-flight fetch.
-    this.watchHistoryPrefetch ??= this.fetchWatchHistoryMap().finally(() => {
+    this.watchHistoryPrefetch ??= this.fetchWatchHistoryMap(
+      abortSignal,
+    ).finally(() => {
       this.watchHistoryPrefetch = undefined;
     });
     return this.watchHistoryPrefetch;
   }
 
-  private async fetchWatchHistoryMap(): Promise<void> {
+  private async fetchWatchHistoryMap(
+    abortSignal?: AbortSignal,
+  ): Promise<void> {
     this.logger.log('Prefetching watch history for all library items...');
 
     try {
-      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
-        { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
-        false,
-      );
+      abortSignal?.throwIfAborted();
+      const historyQuery = {
+        uri: '/status/sessions/history/all?sort=viewedAt:desc',
+      };
+      const response = abortSignal
+        ? await this.plexClient.queryAll<PlexLibraryResponse>(
+            historyQuery,
+            false,
+            abortSignal,
+          )
+        : await this.plexClient.queryAll<PlexLibraryResponse>(
+            historyQuery,
+            false,
+          );
 
       const records =
         (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
@@ -759,6 +773,10 @@ export class PlexApiService {
           `${leafMap.size} leaf items.`,
       );
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
+
       this.logger.warn(
         `Watch history prefetch failed — falling back to per-item queries. Error: ${error}`,
       );

@@ -169,7 +169,7 @@ export interface IMediaServerService {
    * history endpoint). Throws if not supported — callers must check
    * supportsFeature() first; when unsupported, evaluation uses per-item queries.
    */
-  prefetchWatchHistory(): Promise<void>;
+  prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void>;
 
   /**
    * Get watch history for a specific item.

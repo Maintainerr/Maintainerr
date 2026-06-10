@@ -223,14 +223,15 @@ export class RuleComparatorService {
     }
 
     // Value resolution (firstVal/secondVal) is the slow part: each item may
-    // trigger an external lookup with no bulk equivalent — most expensively a
-    // Plex watch-history round-trip (no bulk endpoint, see feature #2936).
-    // Those getters are pure reads and touch no comparator state, so we resolve
-    // them up front in bounded parallel batches — the same chunk + Promise.all
-    // idiom used for Plex collection writes. Batching lives only here, so the
-    // total in-flight lookups never exceed RULE_EVALUATION_CONCURRENCY. The
-    // mutation pass below then stays strictly sequential and in the original
-    // backward order, preserving the index-based splice semantics exactly.
+    // trigger an external lookup. Plex leaf watch history is prefetched for the
+    // rule batch, but show/season rollups and other integrations can still make
+    // per-item calls. These getters are pure reads and touch no comparator
+    // state, so we resolve them up front in bounded parallel batches — the same
+    // chunk + Promise.all idiom used for Plex collection writes. Batching lives
+    // only here, so the total in-flight lookups never exceed
+    // RULE_EVALUATION_CONCURRENCY. The mutation pass below then stays strictly
+    // sequential and in the original backward order, preserving the index-based
+    // splice semantics exactly.
     const firstVals: RuleValueType[] = new Array(data.length);
     const secondVals: RuleValueType[] = new Array(data.length);
     for (

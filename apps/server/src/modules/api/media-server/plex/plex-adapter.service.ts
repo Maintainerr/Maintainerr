@@ -221,8 +221,8 @@ export class PlexAdapterService implements IMediaServerService {
     return results.map(PlexMapper.metadataToMediaItem);
   }
 
-  async prefetchWatchHistory(): Promise<void> {
-    await this.plexApi.prefetchWatchHistory();
+  async prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
+    await this.plexApi.prefetchWatchHistory(abortSignal);
   }
 
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {

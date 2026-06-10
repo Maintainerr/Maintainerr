@@ -9,6 +9,16 @@ import { WATCH_HISTORY_BULK_CACHE_KEY } from './plex-api.constants';
 import { PlexConnection } from './interfaces/server.interface';
 import { PlexApiService } from './plex-api.service';
 
+const createDeferred = () => {
+  let resolve: () => void;
+  let reject: (error?: unknown) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve: resolve!, reject: reject! };
+};
+
 type PlexApiSettingsStub = Pick<
   Settings,
   | 'plex_hostname'
@@ -761,6 +771,42 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('Watch history prefetch failed'),
     );
+  });
+
+  it('propagates aborts while the bulk watch-history fetch is in flight', async () => {
+    const abortController = new AbortController();
+    const requestStarted = createDeferred();
+    const queryAll = jest.fn().mockImplementation(async () => {
+      requestStarted.resolve();
+      await new Promise((_resolve, reject) => {
+        abortController.signal.addEventListener(
+          'abort',
+          () => reject(abortController.signal.reason),
+          { once: true },
+        );
+      });
+    });
+
+    (service as any).plexClient = { queryAll };
+
+    const prefetch = service.prefetchWatchHistory(abortController.signal);
+    await requestStarted.promise;
+    abortController.abort();
+
+    await expect(prefetch).rejects.toMatchObject({ name: 'AbortError' });
+    expect(queryAll).toHaveBeenCalledWith(
+      { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
+      false,
+      abortController.signal,
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+
+    const cacheManager = (await import('../lib/cache')).default;
+    expect(
+      cacheManager
+        .getCache('plexwatchhistory')
+        .data.has(WATCH_HISTORY_BULK_CACHE_KEY),
+    ).toBe(false);
   });
 });
 

@@ -248,7 +248,7 @@ export class RuleExecutorService {
         if (
           mediaServer.supportsFeature(MediaServerFeature.CENTRAL_WATCH_HISTORY)
         ) {
-          await mediaServer.prefetchWatchHistory();
+          await mediaServer.prefetchWatchHistory(abortSignal);
         }
 
         // prepare
