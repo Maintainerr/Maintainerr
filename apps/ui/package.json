@@ -80,6 +80,6 @@
     "vitest": "^4.1.8"
   },
   "optionalDependencies": {
-    "rolldown": "^1.1.0"
+    "rolldown": "^1.1.1"
   }
 }
