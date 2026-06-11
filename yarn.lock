@@ -6355,12 +6355,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22, @types/node@npm:^22.19.20":
+"@types/node@npm:^22":
   version: 22.19.20
   resolution: "@types/node@npm:22.19.20"
   dependencies:
     undici-types: "npm:~6.21.0"
   checksum: 10c0/933d4466f1a498dd7c8e173af7265a53e9d410cab4a827ccc348414d5065a9a40ba7a7c994a71b3ee651188111db3b43573b830dc30a61a7489f3e6efc537bf7
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^22.19.21":
+  version: 22.19.21
+  resolution: "@types/node@npm:22.19.21"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/9a18a5fabaf75a55d63796d6086029c4f9fdd1c026a26d629804f5cc99b3302c749be321df29d7a7141dc227501ed645b5f9d01095d926f5d2c0e2230fcd3f59
   languageName: node
   linkType: hard
 
@@ -14685,7 +14694,7 @@ __metadata:
     "@semantic-release/commit-analyzer": "npm:^13.0.1"
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^10.0.1"
-    "@types/node": "npm:^22.19.20"
+    "@types/node": "npm:^22.19.21"
     knip: "npm:^6.16.1"
     semantic-release: "npm:^25.0.5"
     turbo: "npm:^2.9.16"
