@@ -444,6 +444,33 @@ describe('CollectionsService', () => {
     expect(result.mediaServerId).toBe('remote-collection');
   });
 
+  // Sibling recovery after a shared-collection heal depends on this
+  // clearing: the surviving rule group must drop its dead link so the
+  // next add pass recreates the collection.
+  it('clears the automatic link when the collection is gone and no title match exists', async () => {
+    const collection = createCollection({
+      id: 28,
+      mediaServerId: 'deleted-remote-collection',
+      manualCollection: false,
+      title: 'Healed Sibling',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue(undefined);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    jest
+      .spyOn(service as any, 'findMediaServerCollection')
+      .mockResolvedValue(undefined);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBeNull();
+    expect(collectionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 28, mediaServerId: null }),
+    );
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
   it('repopulates a shared empty automatic collection from local rule-owned items', async () => {
     const collection = createCollection({
       id: 13,
