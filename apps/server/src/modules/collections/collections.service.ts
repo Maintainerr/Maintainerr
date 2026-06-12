@@ -2253,19 +2253,21 @@ export class CollectionsService {
 
         // add new children to collection
         if (newMedia.length > 0 && collection.mediaServerId) {
-          const rejectedItemIds = await this.addChildrenToCollection(
-            { mediaServerId: collection.mediaServerId, dbId: collection.id },
-            newMedia,
-            manual,
-            skipMediaServerAdd,
-            manualMembershipSource,
-          );
+          const { serverRejectedIds, persistedIds } =
+            await this.addChildrenToCollection(
+              { mediaServerId: collection.mediaServerId, dbId: collection.id },
+              newMedia,
+              manual,
+              skipMediaServerAdd,
+              manualMembershipSource,
+            );
 
-          // Only notify for items the media server actually accepted —
-          // rejected items never entered the collection and will be
-          // retried (and re-notified) on a later run.
-          const addedMedia = newMedia.filter(
-            (m) => !rejectedItemIds.has(m.mediaServerId),
+          // Only notify for items whose membership was persisted — both
+          // server-rejected items and locally-rolled-back items never
+          // entered the collection and will be retried (and re-notified)
+          // on a later run.
+          const addedMedia = newMedia.filter((m) =>
+            persistedIds.has(m.mediaServerId),
           );
           if (addedMedia.length > 0) {
             this.eventEmitter.emit(
@@ -2280,14 +2282,15 @@ export class CollectionsService {
             );
           }
 
-          if (rejectedItemIds.size < newMedia.length) {
+          if (serverRejectedIds.size < newMedia.length) {
             this.healedCollectionIds.delete(collection.id);
           }
 
-          // Every add rejected: if the collection is also empty it is
-          // unpopulatable in place — heal by delete so the next pass
-          // recreates it fresh.
-          if (rejectedItemIds.size >= newMedia.length) {
+          // Every add rejected by the server: if the collection is also
+          // empty it is unpopulatable in place — heal by delete so the
+          // next pass recreates it fresh. Keyed to server rejections only;
+          // local persistence failures must never delete the collection.
+          if (serverRejectedIds.size >= newMedia.length) {
             const deleted =
               await this.deleteEmptyCollectionRejectingAdds(collection);
             if (deleted) {
@@ -2947,15 +2950,21 @@ export class CollectionsService {
     }
   }
 
-  /** Returns the ids the media server rejected (empty when none failed). */
+  /**
+   * Returns the ids the media server rejected (drives the empty-collection
+   * heal) and the ids whose local membership was persisted (drives the
+   * added notification). An item missing from both sets was accepted by
+   * the server but failed local persistence and got rolled back.
+   */
   private async addChildrenToCollection(
     collectionIds: { mediaServerId: string; dbId: number },
     childrenMedia: CollectionMediaChange[],
     manual = false,
     skipMediaServerAdd = false,
     manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
-  ): Promise<Set<string>> {
-    if (childrenMedia.length === 0) return new Set();
+  ): Promise<{ serverRejectedIds: Set<string>; persistedIds: Set<string> }> {
+    if (childrenMedia.length === 0)
+      return { serverRejectedIds: new Set(), persistedIds: new Set() };
 
     const mediaServer = await this.getMediaServer();
 
@@ -2966,6 +2975,7 @@ export class CollectionsService {
     );
 
     let failedItemIds = new Set<string>();
+    const persistedIds = new Set<string>();
 
     if (!skipMediaServerAdd) {
       failedItemIds = new Set(
@@ -2994,6 +3004,7 @@ export class CollectionsService {
           },
           childMedia.reason,
         );
+        persistedIds.add(childMedia.mediaServerId);
       } catch (error) {
         this.logger.warn(
           `Couldn't add media ${childMedia.mediaServerId} to collection`,
@@ -3014,7 +3025,7 @@ export class CollectionsService {
       }
     }
 
-    return failedItemIds;
+    return { serverRejectedIds: failedItemIds, persistedIds };
   }
 
   public async CollectionLogRecordForChild(

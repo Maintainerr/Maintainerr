@@ -832,6 +832,11 @@ describe('CollectionsService', () => {
       'remote-collection',
       'item-1',
     );
+    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Added,
+      expect.anything(),
+    );
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
 
   it('emits CollectionMedia_Added only for items the media server accepted', async () => {
@@ -925,6 +930,64 @@ describe('CollectionsService', () => {
       .mockResolvedValue(collection);
 
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('does not heal on Jellyfin even when an empty collection rejects every add', async () => {
+    const collection = createCollection({
+      id: 26,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Rejecting Jellyfin Collection',
+    });
+
+    mediaServerFactory.getConfiguredServerType.mockResolvedValue(
+      MediaServerType.JELLYFIN,
+    );
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    mediaServer.addBatchToCollection.mockResolvedValue(['item-1']);
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Rejecting Jellyfin Collection',
+      childCount: 0,
+    } as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('does not heal a manual collection that rejects every add', async () => {
+    const collection = createCollection({
+      id: 27,
+      mediaServerId: 'remote-collection',
+      manualCollection: true,
+      title: 'Rejecting Manual Collection',
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    mediaServer.addBatchToCollection.mockResolvedValue(['item-1']);
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Rejecting Manual Collection',
+      childCount: 0,
+    } as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    await service.addToCollection(
+      collection.id,
+      [{ mediaServerId: 'item-1' }],
+      true,
+    );
 
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
