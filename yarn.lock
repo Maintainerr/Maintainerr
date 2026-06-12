@@ -3126,7 +3126,7 @@ __metadata:
     "@types/node": "npm:^22"
     "@types/xml2js": "npm:^0.4.14"
     "@typescript-eslint/eslint-plugin": "npm:^8.60.1"
-    "@typescript-eslint/parser": "npm:^8.60.1"
+    "@typescript-eslint/parser": "npm:^8.61.0"
     axios: "npm:^1.17.0"
     axios-retry: "npm:^4.5.0"
     better-sqlite3: "npm:^12.10.0"
@@ -3186,7 +3186,7 @@ __metadata:
     "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.2.3"
     "@typescript-eslint/eslint-plugin": "npm:^8.60.1"
-    "@typescript-eslint/parser": "npm:^8.60.1"
+    "@typescript-eslint/parser": "npm:^8.61.0"
     "@vitejs/plugin-react": "npm:^6.0.2"
     axios: "npm:^1.17.0"
     bowser: "npm:^2.14.1"
@@ -6655,7 +6655,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/parser@npm:8.61.0":
+"@typescript-eslint/parser@npm:8.61.0, @typescript-eslint/parser@npm:^8.61.0":
   version: 8.61.0
   resolution: "@typescript-eslint/parser@npm:8.61.0"
   dependencies:
@@ -6668,22 +6668,6 @@ __metadata:
     eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
     typescript: ">=4.8.4 <6.1.0"
   checksum: 10c0/39b122ab20a3b5fbd4e66874f60917b37c49f32eb987531797561d2f96b443e81546f1c9d03d44d37dede89098276e5d8d0f05c1e5f9e1b998f8cf6c24e8e5e7
-  languageName: node
-  linkType: hard
-
-"@typescript-eslint/parser@npm:^8.60.1":
-  version: 8.60.1
-  resolution: "@typescript-eslint/parser@npm:8.60.1"
-  dependencies:
-    "@typescript-eslint/scope-manager": "npm:8.60.1"
-    "@typescript-eslint/types": "npm:8.60.1"
-    "@typescript-eslint/typescript-estree": "npm:8.60.1"
-    "@typescript-eslint/visitor-keys": "npm:8.60.1"
-    debug: "npm:^4.4.3"
-  peerDependencies:
-    eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-    typescript: ">=4.8.4 <6.1.0"
-  checksum: 10c0/8bc9ecccac411cda8f6bc38fce2427639071a41f44594b047b40a4a50fd40959797acd373b87ab40e4f4b49e9069d42e1480d91e100800d5fb5e6ec6e4afba71
   languageName: node
   linkType: hard
 
