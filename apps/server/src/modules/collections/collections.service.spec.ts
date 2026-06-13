@@ -1607,10 +1607,10 @@ describe('CollectionsService', () => {
 
     await service.createCollectionWithChildren(collection, media);
 
+    // Seeded with the first item so Emby can create it (#3075); the full set is
+    // still added via the batched path below.
     expect(mediaServer.createCollection).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        initialItemIds: expect.anything(),
-      }),
+      expect.objectContaining({ initialItemId: 'item-1' }),
     );
     expect(addChildrenToCollectionSpy).toHaveBeenCalledWith(
       {
@@ -1621,6 +1621,31 @@ describe('CollectionsService', () => {
       false,
       false,
     );
+  });
+
+  it('creates the DB row only (no remote collection) when no media is provided', async () => {
+    // No items to seed → the remote collection would be empty (pointless
+    // everywhere, a hard 500 on Emby, #3075), so defer it to the first add.
+    const collection = createCollection({
+      id: 41,
+      mediaServerId: null,
+      manualCollection: false,
+      libraryId: 'library-1',
+      title: 'Empty Collection',
+    });
+
+    jest.spyOn(service as any, 'addCollectionToDB').mockResolvedValue({
+      id: collection.id,
+      mediaServerId: null,
+    });
+    const addChildrenToCollectionSpy = jest
+      .spyOn(service as any, 'addChildrenToCollection')
+      .mockResolvedValue(undefined);
+
+    await service.createCollectionWithChildren(collection, []);
+
+    expect(mediaServer.createCollection).not.toHaveBeenCalled();
+    expect(addChildrenToCollectionSpy).not.toHaveBeenCalled();
   });
 
   it('returns undefined without adding media when collection creation fails', async () => {
@@ -2318,10 +2343,11 @@ describe('CollectionsService', () => {
     expect(result[0].mediaData?.title).toBe('Fallback Movie');
   });
 
-  it('creates a new media server collection empty, then batch-adds items', async () => {
-    // Regression: item ids must never be seeded into the create request (they
-    // travel in the query string → HTTP 414 at scale). Create empty, then add
-    // via the batched path.
+  it('creates a new media server collection seeded with one item, then batch-adds the rest', async () => {
+    // The create request carries a single item id (the first), not the whole set
+    // (the full set in the query string → HTTP 414 at scale, #3001). One item is
+    // required so Emby can create the collection at all (#3075); the full set is
+    // then added via the batched path.
     const collection = createCollection({
       id: 21,
       mediaServerId: null,
@@ -2347,11 +2373,10 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.createCollection).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        initialItemIds: expect.anything(),
-      }),
+      expect.objectContaining({ initialItemId: 'episode-1' }),
     );
-    // Not seeded on create, so the batched add path runs (skipMediaServerAdd=false).
+    // The full set is still added via the batched path (skipMediaServerAdd=false);
+    // re-adding the seeded item there is an idempotent no-op.
     expect(addChildrenToCollection).toHaveBeenCalledWith(
       { mediaServerId: 'remote-collection', dbId: collection.id },
       [{ mediaServerId: 'episode-1' }, { mediaServerId: 'episode-2' }],
