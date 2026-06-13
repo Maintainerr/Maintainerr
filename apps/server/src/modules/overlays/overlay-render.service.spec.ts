@@ -53,6 +53,11 @@ const isDarkPixel = (
 };
 
 describe('OverlayRenderService', () => {
+  // The render tests do real sharp image processing and TrueType font loading;
+  // the native cold-start can exceed Jest's 5s default on a slow/cold CI runner
+  // (locally the whole suite is ~1.5s). Give the suite headroom to avoid flakes.
+  jest.setTimeout(15000);
+
   afterEach(() => {
     mockedExistsSync.mockImplementation(realExistsSync);
     jest.clearAllMocks();
