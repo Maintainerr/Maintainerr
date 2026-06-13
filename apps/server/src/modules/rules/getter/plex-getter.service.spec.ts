@@ -1314,4 +1314,72 @@ describe('PlexGetterService', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('sw_lastWatched (id 13) - Newest episode view date', () => {
+    const SW_LAST_WATCHED_PROP_ID = 13;
+
+    const getLastWatched = () =>
+      service.get(
+        SW_LAST_WATCHED_PROP_ID,
+        createMediaItem({ type: 'show' }),
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+    it('returns the newest watched episode date (highest season, then episode)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
+      );
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeWatchEntry({ parentIndex: 1, index: 1, viewedAt: 1_700_000_100 }),
+        makeWatchEntry({ parentIndex: 2, index: 1, viewedAt: 1_700_000_200 }),
+        makeWatchEntry({ parentIndex: 2, index: 2, viewedAt: 1_700_000_300 }),
+      ]);
+
+      await expect(getLastWatched()).resolves.toEqual(
+        new Date(1_700_000_300 * 1000),
+      );
+    });
+
+    it('uses the most recent view when the newest episode was watched more than once', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
+      );
+      // getWatchHistory returns viewedAt-descending (the wrapper queries
+      // sort=viewedAt:desc). The newest episode (s2e2) appears twice; the stable
+      // descending sorts must keep the most recent view first, so its latest
+      // view date wins rather than an older one.
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeWatchEntry({ parentIndex: 2, index: 2, viewedAt: 1_700_000_900 }),
+        makeWatchEntry({ parentIndex: 2, index: 1, viewedAt: 1_700_000_500 }),
+        makeWatchEntry({ parentIndex: 2, index: 2, viewedAt: 1_700_000_100 }),
+      ]);
+
+      await expect(getLastWatched()).resolves.toEqual(
+        new Date(1_700_000_900 * 1000),
+      );
+    });
+
+    // #3083: getWatchHistory returns [] for a confirmed-empty history, and [] is
+    // truthy - the getter must return null (never watched), not read viewedAt off
+    // undefined and throw (which the outer catch would surface as a transient
+    // undefined, wrongly preserving the item in its collection).
+    it('returns null for a confirmed-empty history (never watched)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
+      );
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      await expect(getLastWatched()).resolves.toBeNull();
+    });
+
+    it('returns undefined when the history lookup fails (transient)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
+      );
+      plexApi.getWatchHistory.mockRejectedValue(new Error('plex unreachable'));
+
+      await expect(getLastWatched()).resolves.toBeUndefined();
+    });
+  });
 });
