@@ -368,7 +368,17 @@ export class MetadataService {
     item: MediaItem,
     sourceMediaServerId?: string,
   ): Promise<MediaItem | undefined> {
-    const hierarchyTargetId = item.grandparentId ?? item.parentId;
+    // Only episodes/seasons resolve their ids from a parent (up to the show).
+    // A movie's (or show's) own provider ids live on the item itself, and on
+    // Emby/Jellyfin a movie's parentId points at an id-less library/container
+    // folder — walking up there discards the real ids and the lookup fails
+    // (#3065). Switch on item.type, never on parentId presence.
+    if (item.type !== 'season' && item.type !== 'episode') {
+      return item;
+    }
+
+    const hierarchyTargetId =
+      item.type === 'episode' ? item.grandparentId : item.parentId;
 
     if (!hierarchyTargetId) {
       return item;
