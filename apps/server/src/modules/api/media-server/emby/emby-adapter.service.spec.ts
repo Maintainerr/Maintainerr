@@ -126,9 +126,9 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('createCollection', () => {
-    it('creates the collection empty without seeding item ids', async () => {
-      // Item ids must never be sent on create (they go in the query string →
-      // HTTP 414 at scale); items are added via addBatchToCollection.
+    it('omits Ids when no initial item is provided', async () => {
+      // The full item set must never be sent on create (the ids go in the query
+      // string → HTTP 414 at scale); they are added via addBatchToCollection.
       http.post.mockResolvedValueOnce({ data: { Id: 'collection-1' } });
       http.get.mockResolvedValueOnce({
         data: {
@@ -159,6 +159,31 @@ describe('EmbyAdapterService', () => {
           title: 'New Collection',
         }),
       );
+    });
+
+    it('creates with a single initial item id when provided', async () => {
+      // Emby 500s on an empty create, so it gets exactly one item; the rest are
+      // added via addBatchToCollection (#3075). One id keeps it under the URL
+      // length limit that an all-ids create would hit (#3001).
+      http.post.mockResolvedValueOnce({
+        data: { Id: 'collection-1', Name: 'New Collection', ChildCount: 1 },
+      });
+
+      await service.createCollection({
+        libraryId: 'library-1',
+        title: 'New Collection',
+        type: 'show',
+        initialItemId: 'item-1',
+      });
+
+      expect(http.post).toHaveBeenCalledWith('/Collections', null, {
+        params: {
+          Name: 'New Collection',
+          ParentId: 'library-1',
+          Ids: 'item-1',
+          IsLocked: true,
+        },
+      });
     });
 
     it('runs the metadata follow-up when sortTitle is provided without summary', async () => {

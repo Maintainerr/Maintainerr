@@ -1533,6 +1533,7 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
+    initialItemId?: string,
   ): Promise<
     | {
         dbCollection: addCollectionDbResponse;
@@ -1555,6 +1556,7 @@ export class CollectionsService {
           summary: collection?.description,
           sortTitle: collection?.sortTitle,
           type: collection.type,
+          initialItemId,
         });
 
         // Store the media server ID from the created collection
@@ -1643,7 +1645,11 @@ export class CollectionsService {
     | undefined
   > {
     try {
-      const createdCollection = await this.createCollection(collection, false);
+      const createdCollection = await this.createCollection(
+        collection,
+        false,
+        media?.[0]?.mediaServerId,
+      );
 
       if (!createdCollection?.dbCollection) {
         return undefined;
@@ -2127,6 +2133,10 @@ export class CollectionsService {
                 summary: collection.description,
                 sortTitle: collection.sortTitle,
                 type: collection.type,
+                // Create with one item so Emby accepts it (it 500s on an empty
+                // create, #3075). The full set is synced below.
+                initialItemId: (newMedia[0] ?? collectionMedia[0])
+                  ?.mediaServerId,
               });
             }
           }
