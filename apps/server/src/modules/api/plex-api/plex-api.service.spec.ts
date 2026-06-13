@@ -226,6 +226,39 @@ describe('PlexApiService.getMetadata', () => {
     expect(logger.debug).not.toHaveBeenCalled();
   });
 
+  it('unwraps lib/plexApi-wrapped errors to surface the 400 response body', async () => {
+    // lib/plexApi throws a plain Error with the axios failure on `cause`.
+    const putQuery = jest.fn().mockRejectedValue(
+      new Error(
+        'PUT http://plex.local:32400/li...55 failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: 400',
+        {
+          cause: {
+            isAxiosError: true,
+            response: {
+              status: 400,
+              statusText: 'Bad Request',
+              data: { errors: [{ message: 'unable to match items' }] },
+            },
+          },
+        },
+      ),
+    );
+
+    (service as any).machineId = 'machine123';
+    (service as any).plexClient = { putQuery };
+
+    const result = await service.addChildrenToCollection('55', ['1', '2']);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'NOK',
+        code: 400,
+        message:
+          'Plex request failed with 400 Bad Request. Response body: {"errors":[{"message":"unable to match items"}]}',
+      }),
+    );
+  });
+
   it('switches a collection into custom sort mode via prefs', async () => {
     const putQuery = jest.fn().mockResolvedValue(undefined);
     (service as any).plexClient = { putQuery };

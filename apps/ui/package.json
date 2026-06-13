@@ -64,15 +64,15 @@
     "@testing-library/react": "^16.3.2",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22",
-    "@typescript-eslint/eslint-plugin": "^8.60.1",
-    "@typescript-eslint/parser": "^8.60.1",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.1.1",
-    "prettier": "^3.8.3",
+    "prettier": "^3.8.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
@@ -80,6 +80,6 @@
     "vitest": "^4.1.8"
   },
   "optionalDependencies": {
-    "rolldown": "^1.1.0"
+    "rolldown": "^1.1.1"
   }
 }
