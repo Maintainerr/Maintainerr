@@ -56,29 +56,35 @@ describe('RadarrApi', () => {
         addImportExclusion: true,
       });
 
-    // The bulk endpoint de-dupes server-side, so re-adding an existing
-    // exclusion is a no-op rather than the HTTP 400 the singular endpoint
-    // returns.
     it('adds the exclusion via the de-duping bulk endpoint', async () => {
       postSpy.mockResolvedValue([exclusionFor(movie)]);
 
       await expect(unmonitorWithExclusion()).resolves.toBe(true);
-      expect(postSpy).toHaveBeenCalledWith('/exclusions/bulk', [
-        exclusionFor(movie),
-      ]);
+      expect(postSpy).toHaveBeenCalledWith(
+        '/exclusions/bulk',
+        [exclusionFor(movie)],
+        undefined,
+        { rethrow: true },
+      );
     });
 
-    // Radarr's bulk endpoint documents 200 with no response schema, so a
-    // successful add can have an empty body (''); only undefined (a failed
-    // request) is a failure.
-    it('treats a successful empty-body response as success', async () => {
-      postSpy.mockResolvedValue('');
+    // Radarr validates the exclusion POST and returns HTTP 400 when the movie is
+    // already excluded; the goal ("movie is excluded") is already met, so a
+    // re-run must not fail the whole collection action (#3084).
+    it('treats an already-excluded 400 as success', async () => {
+      postSpy.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 400 },
+      });
 
       await expect(unmonitorWithExclusion()).resolves.toBe(true);
     });
 
-    it('returns false when the bulk exclusion request fails', async () => {
-      postSpy.mockResolvedValue(undefined);
+    it('returns false when the exclusion request fails for another reason', async () => {
+      postSpy.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 500 },
+      });
 
       await expect(unmonitorWithExclusion()).resolves.toBe(false);
     });

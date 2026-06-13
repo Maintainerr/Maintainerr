@@ -9,11 +9,12 @@
  * DB seed alone. This stub answers the handful of endpoints that flow needs so the
  * whole thing can be driven without a real Radarr.
  *
- * It deliberately replicates the one behaviour this exists to demonstrate: adding an
- * import list exclusion is idempotent on POST /exclusions/bulk (server de-dupes, no
- * error), whereas the singular POST /exclusions runs a uniqueness validator and
- * returns HTTP 400 ("This exclusion has already been added") on a duplicate — exactly
- * as the real Radarr controller does.
+ * It deliberately replicates the behaviour this exists to demonstrate: Radarr
+ * validates every exclusion POST (RestController.OnActionExecuting runs the
+ * uniqueness validator on each resource), so both the singular POST /exclusions
+ * and POST /exclusions/bulk return HTTP 400 ("This exclusion has already been
+ * added") on a duplicate tmdbId. Maintainerr therefore treats that 400 as
+ * "already excluded" (#3084).
  *
  * It is intentionally minimal and invented — no real media names (repo rule). Any
  * tmdbId queried resolves to a deterministic movie (movie id == tmdbId), so it pairs
@@ -36,7 +37,7 @@ const LOG = process.env.FAKE_RADARR_LOG !== "0";
 
 // In-memory import-list-exclusion store (tmdbId -> resource). Persists for the
 // lifetime of the process so re-running collection handling demonstrates the
-// idempotent de-dupe.
+// duplicate-rejection 400.
 const exclusions = new Map();
 let nextExclusionId = 1;
 
@@ -94,19 +95,26 @@ const server = http.createServer(async (req, res) => {
 
     // --- Import list exclusions ----------------------------------------------
   } else if (method === "POST" && path === "/exclusions/bulk") {
-    // Bulk endpoint: de-dupes server-side, never 400s (the idempotent path).
+    // Bulk endpoint: validated like the singular one. The validator runs on
+    // every posted resource, so a single already-excluded tmdbId fails the whole
+    // request with HTTP 400 and nothing is inserted.
     const body = (await readBody(req)) ?? [];
-    for (const item of body) {
-      if (!exclusions.has(item.tmdbId)) {
+    const duplicate = body.find((item) => exclusions.has(item.tmdbId));
+    if (duplicate) {
+      status = send(res, 400, [
+        {
+          propertyName: "TmdbId",
+          errorMessage: "This exclusion has already been added.",
+          severity: "error",
+        },
+      ]);
+    } else {
+      for (const item of body) {
         exclusions.set(item.tmdbId, { ...item, id: nextExclusionId++ });
         if (LOG) console.log(`  + exclusion added: tmdbId ${item.tmdbId}`);
-      } else if (LOG) {
-        console.log(
-          `  = exclusion already present (no-op): tmdbId ${item.tmdbId}`,
-        );
       }
+      status = send(res, 200, body);
     }
-    status = send(res, 200, body);
   } else if (method === "POST" && path === "/exclusions") {
     // Singular endpoint: uniqueness validator -> HTTP 400 on a duplicate.
     const body = (await readBody(req)) ?? {};
@@ -144,6 +152,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`fake-radarr listening on http://localhost:${PORT} (api/v3)`);
   console.log(
-    "POST /exclusions/bulk de-dupes (idempotent); POST /exclusions 400s on a duplicate.",
+    "POST /exclusions and POST /exclusions/bulk both 400 on a duplicate tmdbId.",
   );
 });

@@ -115,11 +115,17 @@ export class ExternalApiService {
     endpoint: string,
     data?: any,
     config?: RawAxiosRequestConfig,
+    options?: { rethrow?: boolean },
   ): Promise<T> {
     try {
       const response = await this.axios.post<T>(endpoint, data, config);
       return response.data;
     } catch (error) {
+      // rethrow lets a caller inspect the failure (e.g. the HTTP status) instead
+      // of collapsing every error to undefined; it then owns the logging.
+      if (options?.rethrow) {
+        throw error;
+      }
       this.logRequestFailure('POST', endpoint, config, error);
       return undefined;
     }
