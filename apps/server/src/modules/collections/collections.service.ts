@@ -1645,9 +1645,13 @@ export class CollectionsService {
     | undefined
   > {
     try {
+      const hasMedia = !!media && media.length > 0;
+      // With no items to add, create the DB row only and defer the remote
+      // collection to the first add (which seeds it). An empty remote collection
+      // is pointless on every server and Emby rejects it outright (#3075).
       const createdCollection = await this.createCollection(
         collection,
-        false,
+        !hasMedia,
         media?.[0]?.mediaServerId,
       );
 
