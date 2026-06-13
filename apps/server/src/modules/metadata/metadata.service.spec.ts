@@ -410,6 +410,43 @@ describe('MetadataService', () => {
     });
   });
 
+  it('resolves a movie from its own ids, not its parent (Emby id-less container, #3065)', async () => {
+    // Emby/Jellyfin set a movie's parentId to an id-less library/container
+    // folder. Resolution must read the movie itself, never walk up to the parent.
+    const movieItem = createMediaItem({
+      id: 'movie-1',
+      type: 'movie',
+      parentId: 'container-1',
+      title: 'Fixture Movie',
+      year: 1994,
+      providerIds: { tmdb: ['555001'], imdb: ['tt5550001'] },
+    });
+    const mediaServer = {
+      getMetadata: jest.fn().mockImplementation(async (id: string) => {
+        if (id === 'movie-1') {
+          return movieItem;
+        }
+        // The id-less container — must never be fetched for a movie.
+        return createMediaItem({
+          id: 'container-1',
+          type: 'movie',
+          providerIds: {},
+        });
+      }),
+    };
+    const { service } = createService({
+      mediaServer,
+      tmdbDetails: {
+        externalIds: { tmdb: 555001, imdb: 'tt5550001', type: 'movie' },
+      },
+    });
+
+    const result = await service.resolveIdsFromHierarchyMediaItem(movieItem);
+
+    expect(mediaServer.getMetadata).not.toHaveBeenCalledWith('container-1');
+    expect(result).toMatchObject({ tmdb: 555001 });
+  });
+
   it('accepts direct provider ids when titles differ but release years agree', async () => {
     const libraryItem = createMediaItem({
       id: 'movie-1',

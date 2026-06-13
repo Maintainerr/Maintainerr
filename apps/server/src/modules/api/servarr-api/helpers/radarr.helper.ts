@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
@@ -144,29 +145,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       if (options?.addImportExclusion) {
-        // Use the bulk endpoint, not the singular POST /exclusions: the latter
-        // runs a validator that rejects an already-excluded movie with HTTP 400
-        // ("This exclusion has already been added"), which would fail the whole
-        // collection run on every re-run. /exclusions/bulk skips that validator
-        // and de-dupes server-side (the same idempotent behaviour as Radarr's
-        // movie-delete path and Sonarr's exclusion handling), so re-adding is a
-        // no-op.
-        const result = await this.post<RadarrImportListExclusion[]>(
-          `/exclusions/bulk`,
-          [
-            {
-              tmdbId: movieData.tmdbId,
-              movieTitle: movieData.title,
-              movieYear: movieData.year,
-            } satisfies RadarrImportListExclusion,
-          ],
-        );
-
-        // post() returns the body on success and undefined only on a failed
-        // request. Radarr's bulk endpoint documents 200 with no response schema,
-        // so a successful add can have an empty body ('') — check for undefined
-        // rather than falsiness so an empty-body success isn't read as failure.
-        if (result === undefined) {
+        if (!(await this.addImportExclusion(movieData))) {
           return false;
         }
       }
@@ -177,6 +156,83 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       this.logger.debug(error);
       return false;
     }
+  }
+
+  /**
+   * Add a movie to Radarr's import-list exclusions via the bulk endpoint, which
+   * de-dupes server-side when a request reaches its service layer.
+   *
+   * Letting Radarr handle duplicates is not enough on its own: since Radarr
+   * v5.26.2 (RestController.OnActionExecuting now unpacks and validates
+   * IEnumerable bodies) the controller's ImportListExclusionExistsValidator runs
+   * on every posted resource and throws HTTP 400 ("This exclusion has already
+   * been added") *before* the request reaches that server-side de-dup. The
+   * singular POST /exclusions always validated, so neither endpoint avoids the
+   * duplicate 400 (#3084).
+   *
+   * Adding the exclusion is best-effort and our goal is only "the movie is
+   * excluded", which an already-excluded 400 already satisfies. So treat the
+   * "already added" 400 as success rather than failing the whole collection
+   * action (its unmonitor/delete has already run) on every re-run. The validator
+   * also enforces non-empty tmdbId/title and a non-negative year, so a 400 from
+   * one of those is a real failure — surface it instead of silently marking the
+   * movie excluded when it isn't.
+   *
+   * Goes through the shared post() client (rethrowing so we can read the status)
+   * rather than this.axios directly, keeping the outbound request on the one HTTP
+   * client the rest of servarr uses.
+   */
+  private async addImportExclusion(movie: RadarrMovie): Promise<boolean> {
+    try {
+      await this.post(
+        '/exclusions/bulk',
+        [
+          {
+            tmdbId: movie.tmdbId,
+            movieTitle: movie.title,
+            movieYear: movie.year,
+          } satisfies RadarrImportListExclusion,
+        ],
+        undefined,
+        { rethrow: true },
+      );
+      return true;
+    } catch (error) {
+      if (
+        isAxiosError(error) &&
+        error.response?.status === 400 &&
+        this.isAlreadyExcludedError(error.response.data)
+      ) {
+        this.logger.debug(
+          `Movie tmdbId ${movie.tmdbId} is already in Radarr's import exclusion list`,
+        );
+        return true;
+      }
+      this.logger.warn('Failed to add movie to Radarr import exclusion list');
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
+  /**
+   * True only for the exclusion validator's uniqueness failure. Radarr returns a
+   * 400 with an array of `{ propertyName, errorMessage }`; the uniqueness rule is
+   * the one that means "already excluded — goal met". Any other validation
+   * failure (empty title, negative year, …) must stay a failure.
+   */
+  private isAlreadyExcludedError(body: unknown): boolean {
+    const entries: unknown[] = Array.isArray(body) ? body : [body];
+    return entries.some((entry) => {
+      if (typeof entry !== 'object' || entry === null) {
+        return false;
+      }
+      const { errorMessage, message } = entry as Record<string, unknown>;
+      const text = errorMessage ?? message;
+      return (
+        typeof text === 'string' &&
+        text.toLowerCase().includes('already been added')
+      );
+    });
   }
 
   public async info(): Promise<RadarrInfo> {

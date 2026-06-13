@@ -171,6 +171,12 @@ const server = http.createServer((req, res) => {
   // Writes: create collection, add/remove items, update item -> accept.
   if (req.method === 'POST' || req.method === 'DELETE') {
     if (path === '/Collections') {
+      // Real Emby 500s when creating an empty collection under a library folder
+      // (CollectionManager "Sequence contains no elements", #3075). It needs at
+      // least one item (Ids), so reject an empty create the same way.
+      if (!u.searchParams.get('Ids')) {
+        return send(res, 500, { error: 'Sequence contains no elements' });
+      }
       return send(res, 200, { Id: 'emby-boxset-new' });
     }
     return send(res, 204, undefined);

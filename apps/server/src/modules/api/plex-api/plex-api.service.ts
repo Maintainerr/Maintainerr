@@ -1062,14 +1062,24 @@ export class PlexApiService {
     logLevel: 'warn' | 'error';
     message: string;
   } {
-    if (axios.isAxiosError(error) && error.response?.status) {
-      const responseBody = this.stringifyResponseBody(error.response.data);
-      const statusMessage = `Plex request failed with ${error.response.status}${error.response.statusText ? ` ${error.response.statusText}` : ''}`;
+    // lib/plexApi wraps Axios failures in a plain Error with the original
+    // attached as `cause` — unwrap it, or the status and response body
+    // (Plex's actual rejection reason) never reach the logs.
+    const cause = error instanceof Error ? error.cause : undefined;
+    const axiosError = axios.isAxiosError(error)
+      ? error
+      : axios.isAxiosError(cause)
+        ? cause
+        : undefined;
+
+    if (axiosError && axiosError.response?.status) {
+      const responseBody = this.stringifyResponseBody(axiosError.response.data);
+      const statusMessage = `Plex request failed with ${axiosError.response.status}${axiosError.response.statusText ? ` ${axiosError.response.statusText}` : ''}`;
 
       return {
-        code: error.response.status,
+        code: axiosError.response.status,
         logLevel:
-          error.response.status >= 400 && error.response.status < 500
+          axiosError.response.status >= 400 && axiosError.response.status < 500
             ? 'warn'
             : 'error',
         message: responseBody
