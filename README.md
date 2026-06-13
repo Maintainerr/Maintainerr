@@ -166,8 +166,9 @@ spec:
 # Features
 
 - Build rules from properties across Plex, Jellyfin, Emby, Radarr, Sonarr, Seerr, Tautulli and Streamystats, combined with AND/OR logic.
-- Use Plex, Jellyfin or Emby as your media server, and switch between them with rule migration.
-- Run several media servers at once - one Maintainerr instance per server, each with its own rules, collections and data.
+- Use Plex, Jellyfin or Emby as your media server.
+- Switch between media server types with rule migration.
+- Deploy separate Maintainerr instances for separate media servers, each with isolated rules, collections and data.
 - Smart metadata matching - resolves every item across your media server, the \*arrs and Seerr by external IDs (IMDB/TMDB/TVDB), bridges missing IDs, and sanity-checks each match by release year so the right title is acted on.
 - Bring your own TVDB key for a second metadata source alongside the built-in TMDB - Maintainerr cross-checks IDs and years between providers and fills the gaps from whichever has the data.
 - Collect rule-matched media into a Maintainerr collection that is held for a configurable period before action - optionally pinned to the Plex home screen as a "Leaving soon" shelf.
@@ -200,7 +201,7 @@ Maintainerr builds rules from data across these apps:
 
 # API
 
-Each instance serves interactive Swagger / OpenAPI docs at `/api/swagger` (prefixed with `BASE_PATH` when set). For everything else, see the [documentation](#documentation).
+Each instance serves interactive Swagger / OpenAPI docs at `/api/swagger` (prefixed with `BASE_PATH` when set). For everything else, see the [API documentation](https://docs.maintainerr.info/api/).
 
 Compatibility:
 
