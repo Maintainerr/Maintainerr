@@ -68,16 +68,44 @@ describe('RadarrApi', () => {
       );
     });
 
-    // Radarr validates the exclusion POST and returns HTTP 400 when the movie is
-    // already excluded; the goal ("movie is excluded") is already met, so a
-    // re-run must not fail the whole collection action (#3084).
-    it('treats an already-excluded 400 as success', async () => {
+    // Radarr validates the exclusion POST and returns HTTP 400 with the
+    // uniqueness message when the movie is already excluded; the goal ("movie is
+    // excluded") is already met, so a re-run must not fail the whole collection
+    // action (#3084).
+    it('treats the "already added" 400 as success', async () => {
       postSpy.mockRejectedValue({
         isAxiosError: true,
-        response: { status: 400 },
+        response: {
+          status: 400,
+          data: [
+            {
+              propertyName: 'TmdbId',
+              errorMessage: 'This exclusion has already been added.',
+            },
+          ],
+        },
       });
 
       await expect(unmonitorWithExclusion()).resolves.toBe(true);
+    });
+
+    // A 400 from a different validation rule (e.g. an invalid year) is a real
+    // failure — it must not be silently reported as "already excluded".
+    it('returns false on a non-duplicate validation 400', async () => {
+      postSpy.mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          status: 400,
+          data: [
+            {
+              propertyName: 'MovieYear',
+              errorMessage: 'Must be greater than or equal to 0',
+            },
+          ],
+        },
+      });
+
+      await expect(unmonitorWithExclusion()).resolves.toBe(false);
     });
 
     it('returns false when the exclusion request fails for another reason', async () => {
