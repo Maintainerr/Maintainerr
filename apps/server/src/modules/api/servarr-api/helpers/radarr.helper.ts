@@ -171,11 +171,12 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
    * duplicate 400 (#3084).
    *
    * Adding the exclusion is best-effort and our goal is only "the movie is
-   * excluded", which an already-excluded 400 already satisfies. So treat a 400 as
-   * success rather than failing the whole collection action (its unmonitor/delete
-   * has already run) on every re-run. Other failures still return false. We post a
-   * single-movie array, so a 400 unambiguously means that one movie is already
-   * excluded.
+   * excluded", which an already-excluded 400 already satisfies. So treat the
+   * "already added" 400 as success rather than failing the whole collection
+   * action (its unmonitor/delete has already run) on every re-run. The validator
+   * also enforces non-empty tmdbId/title and a non-negative year, so a 400 from
+   * one of those is a real failure — surface it instead of silently marking the
+   * movie excluded when it isn't.
    *
    * Goes through the shared post() client (rethrowing so we can read the status)
    * rather than this.axios directly, keeping the outbound request on the one HTTP
@@ -197,7 +198,11 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       );
       return true;
     } catch (error) {
-      if (isAxiosError(error) && error.response?.status === 400) {
+      if (
+        isAxiosError(error) &&
+        error.response?.status === 400 &&
+        this.isAlreadyExcludedError(error.response.data)
+      ) {
         this.logger.debug(
           `Movie tmdbId ${movie.tmdbId} is already in Radarr's import exclusion list`,
         );
@@ -207,6 +212,27 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       this.logger.debug(error);
       return false;
     }
+  }
+
+  /**
+   * True only for the exclusion validator's uniqueness failure. Radarr returns a
+   * 400 with an array of `{ propertyName, errorMessage }`; the uniqueness rule is
+   * the one that means "already excluded — goal met". Any other validation
+   * failure (empty title, negative year, …) must stay a failure.
+   */
+  private isAlreadyExcludedError(body: unknown): boolean {
+    const entries: unknown[] = Array.isArray(body) ? body : [body];
+    return entries.some((entry) => {
+      if (typeof entry !== 'object' || entry === null) {
+        return false;
+      }
+      const { errorMessage, message } = entry as Record<string, unknown>;
+      const text = errorMessage ?? message;
+      return (
+        typeof text === 'string' &&
+        text.toLowerCase().includes('already been added')
+      );
+    });
   }
 
   public async info(): Promise<RadarrInfo> {
