@@ -39,7 +39,7 @@
     "react-konva": "^19.2.5",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
-    "react-router-dom": "^7.17.0",
+    "react-router-dom": "^7.18.0",
     "react-select": "^5.10.2",
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
