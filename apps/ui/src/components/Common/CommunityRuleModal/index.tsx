@@ -46,7 +46,7 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [selectedRule, setSelectedRule] = useState<number | undefined>()
   const [history, setHistory] = useState<ICommunityRuleKarmaHistory[]>([])
-  const [showInfo, setInfo] = useState<boolean>(false)
+  const [showInfo, setShowInfo] = useState<boolean>(false)
   const [uploadMyRules, setUploadMyRules] = useState<boolean>(false)
   const [appVersion, setAppVersion] = useState<string>('0.0.0')
   const [searchText, setSearchText] = useState<string>('')
@@ -310,7 +310,7 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
                                         key={index}
                                         clicked={selectedRule === cr.id}
                                         onClick={handleClick}
-                                        onDoubleClick={() => setInfo(true)}
+                                        onDoubleClick={() => setShowInfo(true)}
                                         thumbsActive={
                                           history.find(
                                             (e) =>
@@ -341,7 +341,7 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
                 <InfoButton
                   text="Info"
                   enabled={selectedRule != null}
-                  onClick={() => setInfo(true)}
+                  onClick={() => setShowInfo(true)}
                 />
               </span>
               <span className="float-right">
@@ -374,7 +374,7 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
         {showInfo ? (
           <Modal
             loading={false}
-            onCancel={() => setInfo(false)}
+            onCancel={() => setShowInfo(false)}
             cancelText="Close"
             title="Community Rule Description"
             iconSvg=""

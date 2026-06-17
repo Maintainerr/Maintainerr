@@ -15,7 +15,7 @@ interface IRemoveFromCollectionButton {
 const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
   const queryClient = useQueryClient()
   const [sure, setSure] = useState<boolean>(false)
-  const [popup, setppopup] = useState<boolean>(false)
+  const [popup, setPopup] = useState<boolean>(false)
   const [removing, setRemoving] = useState<boolean>(false)
   const isCreatingExclusion = !props.exclusionId
   const actionLabel = isCreatingExclusion ? 'Exclude' : 'Remove'
@@ -25,7 +25,7 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
   const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {
     e?.stopPropagation()
     if (props.popup) {
-      setppopup(!popup)
+      setPopup(!popup)
     }
   }
 

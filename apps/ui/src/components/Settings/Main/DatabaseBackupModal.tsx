@@ -19,7 +19,7 @@ const DatabaseBackupModal = ({
   onDownloaded,
 }: DatabaseBackupModalProps) => {
   const filenameRef = useRef<HTMLInputElement>(null)
-  const [filename, setFilename] = useState(createDateStampedFilename())
+  const [filename, setFilename] = useState(() => createDateStampedFilename())
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {

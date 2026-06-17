@@ -66,14 +66,14 @@ export function OverlayCanvas({
   useEffect(() => {
     const node = containerRef.current
     if (!node) return
-    const update = () => {
+    // ResizeObserver delivers an initial measurement on observe(), so size
+    // does not need to be set synchronously here.
+    const observer = new ResizeObserver(() => {
       setContainerSize({
         width: node.clientWidth,
         height: node.clientHeight,
       })
-    }
-    update()
-    const observer = new ResizeObserver(update)
+    })
     observer.observe(node)
     return () => observer.disconnect()
   }, [])
