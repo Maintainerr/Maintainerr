@@ -198,6 +198,44 @@ describe('SonarrApi', () => {
     });
   });
 
+  // The transient-failure protection in rule evaluation depends on this
+  // contract: `undefined` = the lookup itself failed (fail closed), `null` =
+  // Sonarr confirmed the series isn't tracked. getWithoutCache swallows HTTP
+  // errors to `undefined` without throwing, so the failure must be detected
+  // from that value — the catch path never sees it. (#3125)
+  describe('getSeriesByTvdbId null/undefined contract (#3125)', () => {
+    it('returns undefined when the lookup fails transiently (getWithoutCache → undefined)', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+
+      await expect(sonarrApi.getSeriesByTvdbId(555)).resolves.toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Error retrieving show by tvdb ID 555',
+      );
+    });
+
+    it('returns null when Sonarr confirms the series is not tracked (empty array)', async () => {
+      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([]);
+
+      await expect(sonarrApi.getSeriesByTvdbId(555)).resolves.toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not retrieve show by tvdb ID 555',
+      );
+    });
+
+    it('returns the series when Sonarr has it', async () => {
+      const series = createSonarrSeries({ id: 1, tvdbId: 555 });
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([series]);
+
+      await expect(sonarrApi.getSeriesByTvdbId(555)).resolves.toEqual(
+        expect.objectContaining({ id: 1 }),
+      );
+    });
+  });
+
   describe('runPut / runDelete failure contract', () => {
     it('should return false when PUT returns undefined (API failure)', async () => {
       jest.spyOn(sonarrApi as any, 'put').mockResolvedValue(undefined);

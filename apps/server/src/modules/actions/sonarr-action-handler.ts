@@ -70,6 +70,16 @@ export class SonarrActionHandler {
     });
     let sonarrMedia = matchedResult?.result;
 
+    if (sonarrMedia === undefined) {
+      // Transient Sonarr lookup failure (vs. null = confirmed not tracked):
+      // fail closed instead of falling through to a media-server delete on a
+      // blip. The item stays in the collection and is retried next run. (#3125)
+      this.logger.log(
+        `Couldn't reach Sonarr to resolve a series for media server item ${media.mediaServerId}. No action was taken; will retry next run.`,
+      );
+      return false;
+    }
+
     if (!sonarrMedia?.id) {
       const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
