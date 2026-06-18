@@ -43,7 +43,7 @@ const RuleGroup = (props: {
   onDelete: () => void
   onEdit: (group: IRuleGroup) => void
 }) => {
-  const [showsureDelete, setShowSureDelete] = useState<boolean>(false)
+  const [showSureDelete, setShowSureDelete] = useState<boolean>(false)
   const {
     title: libraryTitle,
     hasLibraryId,
@@ -201,7 +201,7 @@ const RuleGroup = (props: {
             />
           </div>
           <div>
-            {showsureDelete ? (
+            {showSureDelete ? (
               <DeleteButton onClick={confirmedDelete} text="Are you sure?" />
             ) : (
               <DeleteButton

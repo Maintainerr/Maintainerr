@@ -22,7 +22,9 @@ const useClickOutside = (
     document.body.addEventListener('click', handleBodyClick, { capture: true })
 
     return () => {
-      document.body.removeEventListener('click', handleBodyClick)
+      document.body.removeEventListener('click', handleBodyClick, {
+        capture: true,
+      })
     }
   }, [ref, callback])
 }

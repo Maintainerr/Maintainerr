@@ -1,37 +1,31 @@
 import { MaintainerrEvent } from '@maintainerr/contracts'
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { createContext, use, useEffect, useMemo, useRef, useState } from 'react'
 import ReconnectingEventSource from 'reconnecting-eventsource'
 import { API_BASE_PATH } from '../utils/ApiHandler'
 import { logClientError } from '../utils/ClientLogger'
 
 const EventsContext = createContext<EventSource | undefined>(undefined)
+EventsContext.displayName = 'EventsContext'
 
 export const EventsProvider = (props: any) => {
-  const hasWarnedStreamError = useRef(false)
-  const hasConnectedOnce = useRef(false)
+  const hasWarnedStreamErrorRef = useRef(false)
+  const hasConnectedOnceRef = useRef(false)
   const eventSource = useMemo(() => {
     const source = new ReconnectingEventSource(
       `${API_BASE_PATH}/api/events/stream`,
     )
 
     source.onopen = () => {
-      hasConnectedOnce.current = true
-      hasWarnedStreamError.current = false
+      hasConnectedOnceRef.current = true
+      hasWarnedStreamErrorRef.current = false
     }
 
     source.onerror = (error) => {
-      if (!hasConnectedOnce.current || hasWarnedStreamError.current) {
+      if (!hasConnectedOnceRef.current || hasWarnedStreamErrorRef.current) {
         return
       }
 
-      hasWarnedStreamError.current = true
+      hasWarnedStreamErrorRef.current = true
       console.warn(
         'Event stream disconnected. Reconnecting automatically.',
         error,
@@ -47,14 +41,14 @@ export const EventsProvider = (props: any) => {
     }
   }, [eventSource])
 
-  return <EventsContext.Provider value={eventSource} {...props} />
+  return <EventsContext value={eventSource} {...props} />
 }
 
 export const useEvent = <T,>(
   type: MaintainerrEvent,
   listener?: (event: T) => any,
 ) => {
-  const context = useContext(EventsContext)
+  const context = use(EventsContext)
   const listenerRef = useRef(listener)
   const [lastEvent, setLastEvent] = useState<T>()
 

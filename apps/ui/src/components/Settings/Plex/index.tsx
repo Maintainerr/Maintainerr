@@ -120,7 +120,7 @@ const PlexSettings = () => {
   const [advancedDraftOverride, setAdvancedDraftOverride] = useState<
     PlexAdvancedDraft | undefined
   >(undefined)
-  const [testBanner, setTestbanner] = useState<{
+  const [testBanner, setTestBanner] = useState<{
     status: boolean
     version: string
   }>({ status: false, version: '' })
@@ -230,7 +230,7 @@ const PlexSettings = () => {
       advancedSsl !== savedAdvancedDraft.ssl)
 
   const clearTestBanner = () => {
-    setTestbanner({ status: false, version: '' })
+    setTestBanner({ status: false, version: '' })
   }
 
   const submit = async () => {
@@ -441,7 +441,7 @@ const PlexSettings = () => {
         message: string
       }>('/settings/test/plex')
 
-      setTestbanner({
+      setTestBanner({
         status: result.code === 1,
         version: normalizeConnectionErrorMessage(
           result.message,
@@ -449,7 +449,7 @@ const PlexSettings = () => {
         ),
       })
     } catch (error) {
-      setTestbanner({
+      setTestBanner({
         status: false,
         version: getApiErrorMessage(
           error,

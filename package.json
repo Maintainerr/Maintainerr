@@ -27,7 +27,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": "^20.19.0 || ^22.13.0 || >=24.11.0"
+    "node": "^22.13.0 || >=24.11.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",

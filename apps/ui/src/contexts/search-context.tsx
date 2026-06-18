@@ -15,18 +15,19 @@ const SearchContext = createContext<SearchContextType>({
   addText: (_input: string) => {},
   removeText: () => {},
 })
+SearchContext.displayName = 'SearchContext'
 
 export function SearchContextProvider(props: { children: ReactNode }) {
-  const [searchText, setSearch] = useState<ISearch>({ text: '' } as ISearch)
+  const [searchText, setSearchText] = useState<ISearch>({ text: '' } as ISearch)
 
   function addSearchHandler(input: string) {
-    setSearch(() => {
+    setSearchText(() => {
       return { text: input } as ISearch
     })
   }
 
   function removeSearchHandler() {
-    setSearch(() => {
+    setSearchText(() => {
       return { text: '' } as ISearch
     })
   }
@@ -37,11 +38,7 @@ export function SearchContextProvider(props: { children: ReactNode }) {
     removeText: removeSearchHandler,
   }
 
-  return (
-    <SearchContext.Provider value={context}>
-      {props.children}
-    </SearchContext.Provider>
-  )
+  return <SearchContext value={context}>{props.children}</SearchContext>
 }
 
 export default SearchContext

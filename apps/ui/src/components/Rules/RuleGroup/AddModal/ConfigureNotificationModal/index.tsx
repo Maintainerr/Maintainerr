@@ -15,7 +15,7 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
   const [activatedNotifications, setActivatedNotifications] = useState<
     AgentConfiguration[]
   >([])
-  const [isLoading, setIsloading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     GetApiHandler('/notifications/configurations').then(
@@ -24,7 +24,7 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
         if (props.selectedAgents) {
           setActivatedNotifications(props.selectedAgents)
         }
-        setIsloading(false)
+        setIsLoading(false)
       },
     )
   }, [props.selectedAgents])

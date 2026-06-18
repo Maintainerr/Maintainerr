@@ -168,8 +168,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       key: string
       details: MaintainerrMediaStatusDetails
     } | null>(null)
-    const [maintainerrDetailsLoading, setMaintainerrDetailsLoading] =
-      useState(false)
 
     const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
     const maintainerrDetailsKey = useMemo(
@@ -183,6 +181,9 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             }),
       [exclusionType, forceStatusLoad, id, isManual],
     )
+    const maintainerrDetailsLoading =
+      !!maintainerrDetailsKey &&
+      maintainerrDetailsState?.key !== maintainerrDetailsKey
     const maintainerrDetails = useMemo(() => {
       if (
         !maintainerrDetailsKey ||
@@ -245,7 +246,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
 
       let active = true
-      setMaintainerrDetailsLoading(true)
 
       const loadDetails = async () => {
         try {
@@ -281,10 +281,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               emptyMaintainerrMediaStatusDetails,
             ),
           })
-        } finally {
-          if (active) {
-            setMaintainerrDetailsLoading(false)
-          }
         }
       }
 
@@ -434,6 +430,17 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         </ul>
       )
     }
+
+    const backdropProviderKey =
+      isCurrentBackdrop && backdropResult.provider
+        ? metadataProviderLogos[backdropResult.provider]?.providerIdKey
+        : undefined
+    const showBackdropProviderBadge =
+      !!backdropProviderKey &&
+      backdropResult.providerId != null &&
+      !providerIds?.[backdropProviderKey]?.includes(
+        String(backdropResult.providerId),
+      )
 
     return (
       <div
@@ -756,30 +763,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         tvdb://{id}
                       </span>
                     ))}
-                    {isCurrentBackdrop &&
-                      backdropResult.provider &&
-                      backdropResult.providerId != null &&
-                      (() => {
-                        const key =
-                          metadataProviderLogos[backdropResult.provider!]
-                            ?.providerIdKey
-                        if (
-                          !key ||
-                          providerIds[key]?.includes(
-                            String(backdropResult.providerId),
-                          )
-                        ) {
-                          return null
-                        }
-                        return (
-                          <span
-                            key={`${key}-${backdropResult.providerId}`}
-                            className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                          >
-                            {key}://{backdropResult.providerId}
-                          </span>
-                        )
-                      })()}
+                    {showBackdropProviderBadge && backdropProviderKey && (
+                      <span
+                        key={`${backdropProviderKey}-${backdropResult.providerId}`}
+                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
+                      >
+                        {backdropProviderKey}://{backdropResult.providerId}
+                      </span>
+                    )}
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
