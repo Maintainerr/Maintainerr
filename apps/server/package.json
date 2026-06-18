@@ -125,7 +125,7 @@
       ]
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk)/)",
+      "node_modules/(?!(@octokit|octokit|bottleneck|@jellyfin/sdk|@faker-js/faker)/)",
       "/packages/contracts/dist/"
     ],
     "collectCoverageFrom": [
