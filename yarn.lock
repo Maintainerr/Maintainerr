@@ -2983,7 +2983,7 @@ __metadata:
     "@types/jest": "npm:^30.0.0"
     "@types/lodash": "npm:^4.17.24"
     "@types/mime-types": "npm:^3"
-    "@types/node": "npm:^22"
+    "@types/node": "npm:^26"
     "@types/xml2js": "npm:^0.4.14"
     "@typescript-eslint/eslint-plugin": "npm:^8.61.1"
     "@typescript-eslint/parser": "npm:^8.61.1"
@@ -3042,7 +3042,7 @@ __metadata:
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.2"
     "@types/lodash-es": "npm:^4.17.12"
-    "@types/node": "npm:^22"
+    "@types/node": "npm:^26"
     "@types/react": "npm:^19.2.17"
     "@types/react-dom": "npm:^19.2.3"
     "@typescript-eslint/eslint-plugin": "npm:^8.61.1"
@@ -6145,12 +6145,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22, @types/node@npm:^22.19.21":
-  version: 22.19.21
-  resolution: "@types/node@npm:22.19.21"
+"@types/node@npm:^26, @types/node@npm:^26.0.0":
+  version: 26.0.0
+  resolution: "@types/node@npm:26.0.0"
   dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10c0/9a18a5fabaf75a55d63796d6086029c4f9fdd1c026a26d629804f5cc99b3302c749be321df29d7a7141dc227501ed645b5f9d01095d926f5d2c0e2230fcd3f59
+    undici-types: "npm:~8.3.0"
+  checksum: 10c0/f36e21634fd8e8ded162ca486508bd8bb229d398a8d5541f6d8c1255968d4464e53327a77f403b216ef98e3b6f6956882eef83e4857d4bc2be9569dd55d37aae
   languageName: node
   linkType: hard
 
@@ -13324,7 +13324,7 @@ __metadata:
     "@semantic-release/commit-analyzer": "npm:^13.0.1"
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^10.0.1"
-    "@types/node": "npm:^22.19.21"
+    "@types/node": "npm:^26.0.0"
     knip: "npm:^6.17.1"
     semantic-release: "npm:^25.0.5"
     turbo: "npm:^2.9.18"
@@ -18565,10 +18565,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~6.21.0":
-  version: 6.21.0
-  resolution: "undici-types@npm:6.21.0"
-  checksum: 10c0/c01ed51829b10aa72fc3ce64b747f8e74ae9b60eafa19a7b46ef624403508a54c526ffab06a14a26b3120d055e1104d7abe7c9017e83ced038ea5cf52f8d5e04
+"undici-types@npm:~8.3.0":
+  version: 8.3.0
+  resolution: "undici-types@npm:8.3.0"
+  checksum: 10c0/c8aa7e2fbebfce519654dafadc0ece59be888d2ccaf180fb4495da875e7b536d2456345c384069c7e6f3e9c9ab7435f074957da306f142343eee86ff8048855a
   languageName: node
   linkType: hard
 
