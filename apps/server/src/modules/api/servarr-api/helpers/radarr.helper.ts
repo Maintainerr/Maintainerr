@@ -50,20 +50,38 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
   // Intentionally uncached: this drives rule evaluation and resolves the
   // movie that actions then mutate — both need Radarr's current truth, not a
   // snapshot that can be up to DEFAULT_TTL stale.
-  public async getMovieByTmdbId(id: number): Promise<RadarrMovie> {
+  // Returns `null` when Radarr confirms the movie isn't tracked (empty
+  // response) and `undefined` when the lookup itself failed (transport, auth,
+  // 5xx). Callers must keep these distinct: a confirmed miss is safe to fall
+  // back from, a failure must fail closed so a transient Radarr outage can't
+  // silently change rule evaluation.
+  public async getMovieByTmdbId(
+    id: number,
+  ): Promise<RadarrMovie | null | undefined> {
     try {
       const response = await this.getWithoutCache<RadarrMovie[]>(
         `/movie?tmdbId=${id}`,
       );
 
+      // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
+      // throws), so the catch below can't see those failures. Distinguish them
+      // here and fail closed (undefined), rather than letting the empty check
+      // collapse a transient outage into `null` ("not tracked"). (#3125)
+      if (response === undefined) {
+        this.logger.warn(`Error retrieving movie by TMDb ID ${id}`);
+        return undefined;
+      }
+
       if (!response[0]) {
         this.logger.warn(`Could not find Movie with TMDb id ${id} in Radarr`);
+        return null;
       }
 
       return response[0];
     } catch (error) {
       this.logger.warn(`Error retrieving movie by TMDb ID ${id}`);
       this.logger.debug(error);
+      return undefined;
     }
   }
 
