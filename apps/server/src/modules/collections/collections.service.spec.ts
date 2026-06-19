@@ -834,6 +834,322 @@ describe('CollectionsService', () => {
     expect(result.mediaServerId).toBe('remote-collection');
   });
 
+  it('repopulates a drained Jellyfin automatic collection from local rule-owned items', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 40,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Drained',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Drained',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-2',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'manual-only',
+        includedByRule: false,
+        manualMembershipSource: CollectionMediaManualMembershipSource.LOCAL,
+      }),
+    ]);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    // Empty BoxSets are not auto-deleted; repopulate in place, never delete.
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-collection',
+      ['rule-owned-1', 'rule-owned-2'],
+    );
+  });
+
+  it('re-adds only the items a partially-drained Jellyfin collection is missing', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 41,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Partial',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Partial',
+      childCount: 1,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'rule-owned-still-present' },
+    ] as any);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-still-present',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-missing',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+
+    await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-collection',
+      ['rule-owned-missing'],
+    );
+  });
+
+  it('does not re-add when a Jellyfin collection already holds all rule-owned items', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 42,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin In Sync',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin In Sync',
+      childCount: 2,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'rule-owned-1' },
+      { id: 'rule-owned-2' },
+    ] as any);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-2',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+
+    await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('does not resync a Jellyfin collection that was only just linked by title', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    // mediaServerId null on entry → freshly linked this run; the server may not
+    // have finished indexing, so the resync must not fire yet.
+    const collection = createCollection({
+      id: 43,
+      mediaServerId: null,
+      manualCollection: false,
+      title: 'Jellyfin Fresh Link',
+      libraryId: 'library-1',
+    });
+
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    jest.spyOn(service as any, 'findMediaServerCollection').mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Fresh Link',
+      childCount: 0,
+    });
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+  });
+
+  it('repopulates a drained Emby automatic collection from local rule-owned items', async () => {
+    settingsDataService.media_server_type = MediaServerType.EMBY;
+    const collection = createCollection({
+      id: 44,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Emby Drained',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Emby Drained',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+
+    await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+      'remote-collection',
+      ['rule-owned-1'],
+    );
+  });
+
+  it('deletes a genuinely-empty non-shared Jellyfin automatic collection', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 45,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Truly Empty',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Truly Empty',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    // Nothing in the DB should be in this collection → genuinely empty.
+    collectionMediaRepo.find.mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(false);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).toHaveBeenCalledWith(
+      'remote-collection',
+    );
+    expect(result.mediaServerId).toBeNull();
+  });
+
+  it('does not delete a genuinely-empty shared Jellyfin collection', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 46,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Empty Shared',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Empty Shared',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+  });
+
+  it('keeps an empty Jellyfin collection whose rule-owned items could not be re-added', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 47,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Stale Ids',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Stale Ids',
+      childCount: 0,
+    } as any);
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    // The DB says these belong here, but every re-add is rejected (stale ids):
+    // the collection must NOT be deleted — it should be repopulated once the
+    // rule re-matches with fresh ids.
+    mediaServer.addBatchToCollection.mockResolvedValue([
+      'rule-owned-1',
+      'rule-owned-2',
+    ]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-2',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+    const sharedSpy = jest.spyOn(service, 'isMediaServerCollectionShared');
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    // Short-circuit: emptiness/share check is skipped when there were items to
+    // re-add, so the shared lookup never runs.
+    expect(sharedSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not delete a Jellyfin collection on a transient empty child read when metadata reports children', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 48,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Transient Empty Read',
+      libraryId: 'library-1',
+    });
+
+    // getCollection succeeds and reports 5 children...
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Transient Empty Read',
+      childCount: 5,
+    } as any);
+    // ...but the child enumeration transiently fails soft (returns []). The
+    // metadata count must veto the delete so a populated collection survives.
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    const sharedSpy = jest.spyOn(service, 'isMediaServerCollectionShared');
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(sharedSpy).not.toHaveBeenCalled();
+  });
+
   it('rolls back a remote add when local bookkeeping fails', async () => {
     const collection = createCollection({
       id: 2,

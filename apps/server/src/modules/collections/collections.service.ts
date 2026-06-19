@@ -270,7 +270,7 @@ export class CollectionsService {
     );
   }
 
-  private async resyncRuleOwnedItemsToSharedCollection(
+  private async resyncRuleOwnedItemsToMediaServerCollection(
     collection: Pick<Collection, 'id' | 'mediaServerId' | 'title'>,
     serverChildIds: Set<string>,
   ): Promise<{ attempted: number; rejected: number }> {
@@ -293,7 +293,7 @@ export class CollectionsService {
 
       const mediaServer = await this.getMediaServer();
       this.logger.log(
-        `[checkAutomaticMediaServerLink] Resyncing ${missingRuleOwnedIds.length} local rule-owned item(s) into shared media server collection ${collection.mediaServerId} for "${collection.title}"`,
+        `[checkAutomaticMediaServerLink] Resyncing ${missingRuleOwnedIds.length} local rule-owned item(s) into media server collection ${collection.mediaServerId} for "${collection.title}"`,
       );
 
       const failedItemIds = new Set(
@@ -306,7 +306,7 @@ export class CollectionsService {
       for (const itemId of missingRuleOwnedIds) {
         if (failedItemIds.has(itemId)) {
           this.logger.warn(
-            `Failed to resync item ${itemId} into shared media server collection ${collection.mediaServerId}`,
+            `Failed to resync item ${itemId} into media server collection ${collection.mediaServerId}`,
           );
         }
       }
@@ -317,7 +317,7 @@ export class CollectionsService {
       };
     } catch (error) {
       this.logger.warn(
-        'Failed to resync local rule-owned items into shared media server collection',
+        'Failed to resync local rule-owned items into media server collection',
       );
       this.logger.debug(error);
       // An exception is not evidence the server rejected the adds, so
@@ -339,8 +339,9 @@ export class CollectionsService {
    * record): delete it so the regular add flow recreates it fresh on the
    * next pass. Deletion is gated on a successful live read confirming the
    * collection is still empty, so a transient outage never triggers it.
-   * Plex-only, matching the empty-collection cleanup in
-   * checkAutomaticMediaServerLink (Jellyfin lags and auto-deletes empties).
+   * Plex-only: an empty Plex collection rejects every add, so it must be
+   * recreated. Jellyfin/Emby accept adds into an empty BoxSet, so those are
+   * repopulated in place by checkAutomaticMediaServerLink instead of deleted.
    */
   private async deleteEmptyCollectionRejectingAdds(
     collection: Pick<
@@ -1886,13 +1887,13 @@ export class CollectionsService {
         }
       }
 
-      // If the collection is empty, remove it. Otherwise issues when adding media.
-      // ONLY check this if we already had a mediaServerId when entering this function.
-      // If we just linked/found it (originalMediaServerId was null), don't delete it -
-      // the media server may not have finished processing recent additions yet.
+      // Reconcile an automatic collection that already exists on the server.
+      // ONLY act when we had a mediaServerId on entry; if we just linked/found
+      // it (originalMediaServerId was null) the server may not have finished
+      // indexing recent additions yet.
       //
-      // Skip for Jellyfin because API lag causes false positives.
-      // Jellyfin natively auto-deletes empty collections, so no manual cleanup needed.
+      // Plex: an empty Plex collection rejects subsequent adds, so delete the
+      // empty/stale record and let the regular add flow recreate it fresh.
       if (
         this.settingsDataService.media_server_type === MediaServerType.PLEX &&
         serverColl &&
@@ -1920,7 +1921,7 @@ export class CollectionsService {
             `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children — checking for local rule-owned drift`,
           );
           const resyncResult =
-            await this.resyncRuleOwnedItemsToSharedCollection(
+            await this.resyncRuleOwnedItemsToMediaServerCollection(
               collection,
               serverChildIds,
             );
@@ -1969,6 +1970,61 @@ export class CollectionsService {
                 ? `[checkAutomaticMediaServerLink] Trusting Plex metadata childCount=${metadataChildCount} for collection ${serverColl.id}, keeping it`
                 : `[checkAutomaticMediaServerLink] Collection ${serverColl.id} has ${actualChildCount} children, keeping it`,
             );
+          }
+        }
+      } else if (
+        serverColl &&
+        collection.mediaServerId !== null &&
+        originalMediaServerId !== null
+      ) {
+        // Jellyfin/Emby: an empty BoxSet is NOT auto-deleted, and a BoxSet
+        // drains when its underlying items are re-imported with new ids
+        // (routine *arr churn), so an automatic collection can sit empty on the
+        // server while the DB still lists its rule-owned items. (#3129)
+        const serverChildren =
+          (await mediaServer.getCollectionChildren(serverColl.id)) ?? [];
+        const serverChildIds = new Set(
+          serverChildren
+            .map((child) => child?.id?.toString())
+            .filter((childId): childId is string => Boolean(childId)),
+        );
+
+        // 1) Repopulate: re-add rule-owned DB items missing from the BoxSet.
+        // Empty BoxSets accept adds, so this fixes them in place — the BoxSet
+        // id (and its overlays/poster) stays stable, no delete/recreate churn.
+        // Re-add only: adding an item already present is an idempotent no-op, so
+        // a transient empty read just re-adds the full set harmlessly.
+        const resyncResult =
+          await this.resyncRuleOwnedItemsToMediaServerCollection(
+            collection,
+            serverChildIds,
+          );
+
+        // 2) Heal a genuinely-empty collection: delete it so it doesn't linger
+        // once its rule stops matching, matching the Plex empty-collection
+        // cleanup. The destructive gate uses the child count from the
+        // (successful) getCollection above — a read that distinguishes a truly
+        // empty collection from a transient child-enumeration failure. Child
+        // reads return [] on failure (see media-server.interface.ts), so an
+        // empty getCollectionChildren() result alone is NOT proof of emptiness
+        // and must never drive a delete. Require all of: a finite metadata
+        // count of 0, an empty live read, nothing rule-owned to re-add, and a
+        // non-shared collection (a sibling rule group may own a shared BoxSet).
+        const metadataChildCount = Number.isFinite(serverColl.childCount)
+          ? serverColl.childCount
+          : undefined;
+        if (
+          metadataChildCount === 0 &&
+          serverChildIds.size === 0 &&
+          resyncResult.attempted === 0
+        ) {
+          const isShared = await this.isMediaServerCollectionShared(collection);
+          if (!isShared) {
+            this.logger.debug(
+              `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} for "${collection.title}" — server reports no children and there are no rule-owned items to re-add`,
+            );
+            await mediaServer.deleteCollection(serverColl.id);
+            serverColl = undefined;
           }
         }
       }
