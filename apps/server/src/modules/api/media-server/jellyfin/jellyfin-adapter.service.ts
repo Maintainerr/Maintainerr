@@ -1473,8 +1473,9 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
     } catch (error) {
-      // Jellyfin auto-deletes empty BoxSets — this races with our explicit
-      // delete and 404/500s once the item is gone. Re-check and swallow if so.
+      // The BoxSet may already be gone (a concurrent delete, or the user
+      // removed it in Jellyfin), which 404/500s here. Re-check and swallow if
+      // so. Note: Jellyfin does NOT auto-delete BoxSets that merely go empty.
       if (await this.getCollection(collectionId).then(Boolean)) {
         this.logger.error(`Failed to delete collection ${collectionId}`);
         this.logger.debug(error);
@@ -1697,8 +1698,9 @@ export class JellyfinAdapterService implements IMediaServerService {
       );
     }
 
-    // Delete the collection if all items belonged to this library and it's not manual.
-    // Jellyfin auto-deletes empty collections, but we explicitly delete when appropriate.
+    // Delete the collection if all items belonged to this library and it's not
+    // manual. Jellyfin does NOT auto-delete a BoxSet that merely goes empty, so
+    // this explicit delete is what removes it.
     if (childIds.length === itemsToRemove.length && !isManualCollection) {
       await this.deleteCollection(collectionId);
     }
