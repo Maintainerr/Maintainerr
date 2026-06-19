@@ -361,6 +361,58 @@ describe('RuleExecutorService', () => {
     );
   });
 
+  it('skips manual import using the pre-run link snapshot even when the collection now reports as linked', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    // Mirrors production: by sync time the collection already has a
+    // mediaServerId because handleCollection linked it to a pre-existing,
+    // same-named BoxSet earlier in this run. The pre-run snapshot (false) must
+    // still win so the BoxSet's existing contents are NOT absorbed as manual.
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-existing' }]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+          collectionLinkedBeforeRun: boolean,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+      false,
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping manual child import for newly linked automatic collection 'Test Collection' to avoid marking existing collection contents as manual.",
+    );
+  });
+
   it('skips importing items that are rule-owned by sibling automatic collections', async () => {
     const { service, mediaServer, collectionService } = createService(
       MediaServerType.PLEX,
