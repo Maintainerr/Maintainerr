@@ -1,6 +1,6 @@
 # Use the official Node.js image as base
-# Matches production Node version (Node 24)
-ARG NODE_VERSION=24
+# Matches production Node version (Node 26)
+ARG NODE_VERSION=26
 FROM node:${NODE_VERSION}-bookworm
 
 # Install additional OS packages needed for development

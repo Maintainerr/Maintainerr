@@ -502,7 +502,7 @@ const AddModal = (props: AddModal) => {
   const hasSelectedSonarrServer = sonarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
-  const [configureNotificionModal, setConfigureNotificationModal] =
+  const [configureNotificationModal, setConfigureNotificationModal] =
     useState(false)
 
   const [yaml, setYaml] = useState<string | undefined>(undefined)
@@ -967,35 +967,29 @@ const AddModal = (props: AddModal) => {
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
-                        {(() => {
-                          const field = register('libraryId')
-                          return (
-                            <Select
-                              id="library"
-                              {...field}
-                              onChange={(event) => {
-                                field.onChange(event)
-                                updateLibraryId(event.target.value)
-                              }}
-                            >
-                              {selectedLibraryId === '' && (
-                                <option value="" disabled></option>
-                              )}
-                              {showStoredLibraryFallback && storedLibraryId && (
-                                <option value={storedLibraryId}>
-                                  Stored library (unavailable)
-                                </option>
-                              )}
-                              {libraries?.map((data: MediaLibrary) => {
-                                return (
-                                  <option key={data.id} value={data.id}>
-                                    {data.title}
-                                  </option>
-                                )
-                              })}
-                            </Select>
-                          )
-                        })()}
+                        <Select
+                          id="library"
+                          {...register('libraryId', {
+                            onChange: (event) =>
+                              updateLibraryId(event.target.value),
+                          })}
+                        >
+                          {selectedLibraryId === '' && (
+                            <option value="" disabled></option>
+                          )}
+                          {showStoredLibraryFallback && storedLibraryId && (
+                            <option value={storedLibraryId}>
+                              Stored library (unavailable)
+                            </option>
+                          )}
+                          {libraries?.map((data: MediaLibrary) => {
+                            return (
+                              <option key={data.id} value={data.id}>
+                                {data.title}
+                              </option>
+                            )
+                          })}
+                        </Select>
                       </div>
                       {(librariesError || storedLibraryMissing) && (
                         <p className="mt-1 text-xs text-warning-500">
@@ -1055,30 +1049,24 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field">
-                            {(() => {
-                              const field = register('dataType')
-                              return (
-                                <Select
-                                  id="type"
-                                  {...field}
-                                  onChange={(event) => {
-                                    field.onChange(event)
-                                    updateArrOption(ServarrAction.DELETE)
-                                  }}
-                                >
-                                  {/* Show TV-related types: show, season, episode */}
-                                  {(['show', 'season', 'episode'] as const).map(
-                                    (mediaType) => (
-                                      <option key={mediaType} value={mediaType}>
-                                        {mediaType[0].toUpperCase() +
-                                          mediaType.slice(1) +
-                                          's'}
-                                      </option>
-                                    ),
-                                  )}
-                                </Select>
-                              )
-                            })()}
+                            <Select
+                              id="type"
+                              {...register('dataType', {
+                                onChange: () =>
+                                  updateArrOption(ServarrAction.DELETE),
+                              })}
+                            >
+                              {/* Show TV-related types: show, season, episode */}
+                              {(['show', 'season', 'episode'] as const).map(
+                                (mediaType) => (
+                                  <option key={mediaType} value={mediaType}>
+                                    {mediaType[0].toUpperCase() +
+                                      mediaType.slice(1) +
+                                      's'}
+                                  </option>
+                                ),
+                              )}
+                            </Select>
                           </div>
                           {errors.dataType && (
                             <p className="mt-1 text-xs text-error-400">
@@ -1462,7 +1450,7 @@ const AddModal = (props: AddModal) => {
                             className="w-full bg-maintainerr-600! hover:bg-maintainerr!"
                             onClick={() => {
                               setConfigureNotificationModal(
-                                !configureNotificionModal,
+                                !configureNotificationModal,
                               )
                             }}
                           >
@@ -1733,7 +1721,7 @@ const AddModal = (props: AddModal) => {
                   </LazyModalBoundary>
                 )}
 
-                {configureNotificionModal && (
+                {configureNotificationModal && (
                   <LazyModalBoundary
                     title="Configure Notifications"
                     onCancel={() => {
