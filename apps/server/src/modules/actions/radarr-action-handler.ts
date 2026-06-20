@@ -50,6 +50,16 @@ export class RadarrActionHandler {
       });
       const radarrMedia = matchedResult?.result;
 
+      if (radarrMedia === undefined) {
+        // Transient Radarr lookup failure (vs. null = confirmed not tracked):
+        // fail closed instead of falling through to a media-server delete on a
+        // blip. The item stays in the collection and is retried next run. (#3125)
+        this.logger.log(
+          `Couldn't reach Radarr to resolve a movie for media server item ${media.mediaServerId}. No action was taken; will retry next run.`,
+        );
+        return false;
+      }
+
       if (radarrMedia?.id) {
         const matchedProvider =
           matchedResult.candidate.providerKey.toUpperCase();
