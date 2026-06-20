@@ -76,6 +76,29 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 - **Purpose**: Shared TypeScript types, DTOs, validation schemas
 - **Technologies**: Zod schemas, class-validator decorators, Nest.js decorators
 
+## Development Environment
+
+The development environment runs inside **`devbox`** — a rootless Docker container
+managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this project.
+
+- `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
+- All `yarn` commands must be run **inside `devbox`**, not on the bare host (Node is
+  only installed in the container).
+- `docker exec devbox bash` to get a shell; or from the host:
+  ```bash
+  docker exec devbox bash -c "cd /workspace && yarn dev --concurrency=4"
+  ```
+- `yarn dev` serves UI on port 3000 and API on port 6246 inside `devbox`.
+- Logs: `docker exec devbox bash -c "tail -f /tmp/yarn-dev.log"`
+
+**Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless Docker containers
+in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
+- Plex → `http://dev-plex:32400`
+- Jellyfin → `http://dev-jellyfin:8096`
+- Emby → `http://dev-emby:8096`
+
+Credentials are in `~/dev-media-creds.env` (not committed). Media lives on `/mnt/dev-media`.
+
 ## Development Workflow
 
 ### Key Commands
