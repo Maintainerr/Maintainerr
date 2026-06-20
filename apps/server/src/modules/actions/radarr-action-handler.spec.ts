@@ -129,6 +129,59 @@ describe('RadarrActionHandler', () => {
     validateNoRadarrActionsTaken(mockedRadarrApi);
   });
 
+  it('should fail closed without deleting when the Radarr lookup is transient (undefined) and action is DELETE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: 1,
+    });
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    // undefined = transient lookup failure (vs. null = confirmed not tracked).
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+      .mockResolvedValue(undefined);
+
+    const result = await radarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(false);
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+    validateNoRadarrActionsTaken(mockedRadarrApi);
+  });
+
+  it('should remove via media server when the movie is confirmed not tracked (null) and action is DELETE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: 1,
+    });
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    // null = Radarr confirmed the movie isn't tracked, so fall back to the
+    // media-server delete (the guard above must not swallow this path).
+    jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
+
+    const result = await radarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mediaServer.deleteFromDisk).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+    );
+    validateNoRadarrActionsTaken(mockedRadarrApi);
+  });
+
   it.each([
     { action: ServarrAction.DELETE, title: 'DELETE' },
     {
