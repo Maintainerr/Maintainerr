@@ -57,14 +57,14 @@ const calculateRelativeTime = (dateString: string): string => {
 }
 
 const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
-  const [isModalOpen, setModalOpen] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
     <div className="flex w-full flex-col space-y-3 rounded-md bg-zinc-700 px-4 py-2 shadow-md ring-1 ring-gray-700 sm:flex-row sm:space-y-0 sm:space-x-3">
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <Modal
-            onCancel={() => setModalOpen(false)}
+            onCancel={() => setIsModalOpen(false)}
             title={messages.versionChangelog.replace('{version}', release.name)}
             cancelText={messages.close}
             footerActions={
@@ -97,7 +97,7 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
           <Badge badgeType="primary">{messages.currentversion}</Badge>
         )}
       </div>
-      <Button buttonType="primary" onClick={() => setModalOpen(true)}>
+      <Button buttonType="primary" onClick={() => setIsModalOpen(true)}>
         <span>{messages.viewchangelog}</span>
       </Button>
     </div>

@@ -100,6 +100,14 @@ export class RadarrGetterService {
       });
       const movieResponse = matchedResult?.result;
 
+      if (movieResponse === undefined) {
+        // The Radarr lookup itself failed (or every candidate's lookup
+        // returned undefined) — could be a transient outage. Fail closed
+        // rather than returning null (definitive absence), which would drop
+        // the item from the collection on a transient blip. (#3125)
+        return undefined;
+      }
+
       if (!movieResponse) {
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
@@ -167,7 +175,7 @@ export class RadarrGetterService {
           }
           case 'releaseDate': {
             return movieResponse.physicalRelease && movieResponse.digitalRelease
-              ? (await new Date(movieResponse.physicalRelease)) >
+              ? new Date(movieResponse.physicalRelease) >
                 new Date(movieResponse.digitalRelease)
                 ? new Date(movieResponse.digitalRelease)
                 : new Date(movieResponse.physicalRelease)

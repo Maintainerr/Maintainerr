@@ -212,7 +212,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       // accepted and stored the file, refreshing the list is a separate,
       // non-fatal concern. A transient list-fetch failure must not roll
       // back the success message or prevent selecting the new asset.
-      let result: { name: string; path: string } | null = null
+      let result: { name: string; path: string } | null
       try {
         result = await uploadOverlayImage(file)
       } catch (err) {

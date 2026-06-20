@@ -156,6 +156,39 @@ describe('RadarrApi', () => {
     });
   });
 
+  // Same null/undefined contract as Sonarr (#3125): `undefined` = the lookup
+  // itself failed (fail closed), `null` = Radarr confirmed the movie isn't
+  // tracked. getWithoutCache swallows HTTP errors to `undefined` without
+  // throwing, so the failure must be detected from that value.
+  describe('getMovieByTmdbId null/undefined contract (#3125)', () => {
+    it('returns undefined when the lookup fails transiently (getWithoutCache → undefined)', async () => {
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue(undefined);
+
+      await expect(api.getMovieByTmdbId(123)).resolves.toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Error retrieving movie by TMDb ID 123',
+      );
+    });
+
+    it('returns null when Radarr confirms the movie is not tracked (empty array)', async () => {
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([]);
+
+      await expect(api.getMovieByTmdbId(123)).resolves.toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not find Movie with TMDb id 123 in Radarr',
+      );
+    });
+
+    it('returns the movie when Radarr has it', async () => {
+      const movie = createRadarrMovie({ id: 5, tmdbId: 123 });
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([movie]);
+
+      await expect(api.getMovieByTmdbId(123)).resolves.toEqual(
+        expect.objectContaining({ id: 5 }),
+      );
+    });
+  });
+
   describe('getDownloadIdsForMovie', () => {
     it('requests the movie history endpoint', async () => {
       const getWithoutCache = jest

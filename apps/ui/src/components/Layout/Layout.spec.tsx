@@ -41,7 +41,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 const SearchProbe = () => {
-  const { search } = React.useContext(SearchContext)
+  const { search } = React.use(SearchContext)
 
   return <span data-testid="search-text">{search.text}</span>
 }

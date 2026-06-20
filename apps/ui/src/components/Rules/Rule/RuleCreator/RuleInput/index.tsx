@@ -270,7 +270,7 @@ const RuleInput = (props: IRuleInput) => {
   const [operator, setOperator] = useState<string | undefined>(
     initialRuleState.operator,
   )
-  const [firstval, setFirstVal] = useState<string | undefined>(
+  const [firstVal, setFirstVal] = useState<string | undefined>(
     initialRuleState.firstVal,
   )
   const [action, setAction] = useState<RulePossibility | undefined>(
@@ -330,20 +330,20 @@ const RuleInput = (props: IRuleInput) => {
   ])
 
   const validFirstVal = useMemo(() => {
-    if (!firstval) {
+    if (!firstVal) {
       return undefined
     }
 
     // Keep the raw saved selection in state so edit flows can recover it if later inputs make it valid again.
-    const [applicationId, propertyId] = JSON.parse(firstval) as [number, number]
+    const [applicationId, propertyId] = JSON.parse(firstVal) as [number, number]
     const application = availableApplications.find(
       (currentApplication) => currentApplication.id === +applicationId,
     )
 
     return application?.props.find((prop) => prop.id === +propertyId)
-      ? firstval
+      ? firstVal
       : undefined
-  }, [availableApplications, firstval])
+  }, [availableApplications, firstVal])
 
   const firstValueTuple = useMemo<[number, number] | undefined>(() => {
     if (!validFirstVal) return undefined

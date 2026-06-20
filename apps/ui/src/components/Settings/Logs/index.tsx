@@ -134,37 +134,37 @@ export const Logs = () => {
   const [logFilter, setLogFilter] = useState<string>('')
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
   const logsRef = useRef<HTMLDivElement>(null)
-  const hasLoggedStreamError = useRef(false)
-  const isClosingStream = useRef(false)
-  const streamErrorTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  )
-  const pendingStreamError = useRef<unknown>(undefined)
+  const hasLoggedStreamErrorRef = useRef(false)
+  const isClosingStreamRef = useRef(false)
+  const streamErrorTimeoutRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined)
+  const pendingStreamErrorRef = useRef<unknown>(undefined)
 
   const clearPendingStreamErrorReport = () => {
-    if (streamErrorTimeout.current) {
-      clearTimeout(streamErrorTimeout.current)
-      streamErrorTimeout.current = undefined
+    if (streamErrorTimeoutRef.current) {
+      clearTimeout(streamErrorTimeoutRef.current)
+      streamErrorTimeoutRef.current = undefined
     }
 
-    pendingStreamError.current = undefined
+    pendingStreamErrorRef.current = undefined
   }
 
   const reportPendingStreamError = () => {
-    streamErrorTimeout.current = undefined
+    streamErrorTimeoutRef.current = undefined
 
     if (
-      isClosingStream.current ||
-      hasLoggedStreamError.current ||
-      pendingStreamError.current === undefined
+      isClosingStreamRef.current ||
+      hasLoggedStreamErrorRef.current ||
+      pendingStreamErrorRef.current === undefined
     ) {
-      pendingStreamError.current = undefined
+      pendingStreamErrorRef.current = undefined
       return
     }
 
-    hasLoggedStreamError.current = true
-    const error = pendingStreamError.current
-    pendingStreamError.current = undefined
+    hasLoggedStreamErrorRef.current = true
+    const error = pendingStreamErrorRef.current
+    pendingStreamErrorRef.current = undefined
 
     void logClientError(
       'Log stream connection failed',
@@ -175,7 +175,7 @@ export const Logs = () => {
 
   useEffect(() => {
     const es = new ReconnectingEventSource(`${API_BASE_PATH}/api/logs/stream`)
-    isClosingStream.current = false
+    isClosingStreamRef.current = false
 
     const handleLog = (event: MessageEvent) => {
       try {
@@ -197,28 +197,31 @@ export const Logs = () => {
 
     es.onopen = () => {
       clearPendingStreamErrorReport()
-      hasLoggedStreamError.current = false
+      hasLoggedStreamErrorRef.current = false
     }
 
     es.onerror = (error) => {
-      if (isClosingStream.current || hasLoggedStreamError.current) {
+      if (isClosingStreamRef.current || hasLoggedStreamErrorRef.current) {
         return
       }
 
-      pendingStreamError.current = error
+      pendingStreamErrorRef.current = error
 
-      if (streamErrorTimeout.current) {
+      if (streamErrorTimeoutRef.current) {
         return
       }
 
-      streamErrorTimeout.current = setTimeout(
+      // Cleared on cleanup via clearPendingStreamErrorReport(); the rule can't
+      // trace clearTimeout through the helper.
+      // eslint-disable-next-line @eslint-react/web-api-no-leaked-timeout
+      streamErrorTimeoutRef.current = setTimeout(
         reportPendingStreamError,
         LOG_STREAM_ERROR_DELAY_MS,
       )
     }
 
     return () => {
-      isClosingStream.current = true
+      isClosingStreamRef.current = true
       clearPendingStreamErrorReport()
       es.removeEventListener('log', handleLog)
       es.close()

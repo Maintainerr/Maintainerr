@@ -283,6 +283,48 @@ describe('RadarrGetterService', () => {
     });
   });
 
+  // A transient Radarr outage must fail closed: the getter returns undefined so
+  // the comparator skips the item and preserves collection membership, rather
+  // than returning null (definitive absence) and dropping the item from the
+  // collection for that run. (#3125)
+  describe('transient lookup failure (#3125)', () => {
+    let collectionMedia: CollectionMedia;
+    let mediaItem: MediaItem;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia('movie');
+      collectionMedia.collection.radarrSettingsId = 1;
+      mediaItem = createMediaItem({ type: 'movie' });
+    });
+
+    // id 0 = 'addDate'
+    const callAddDate = () =>
+      radarrGetterService.get(
+        0,
+        mediaItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'movie',
+        }),
+      );
+
+    it('returns undefined (fail closed) when the movie lookup fails transiently', async () => {
+      const mockedRadarrApi = mockRadarrApi();
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(undefined);
+
+      await expect(callAddDate()).resolves.toBeUndefined();
+    });
+
+    it('returns null when Radarr confirms the movie is not tracked', async () => {
+      const mockedRadarrApi = mockRadarrApi();
+      jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
+
+      await expect(callAddDate()).resolves.toBeNull();
+    });
+  });
+
   const mockRadarrApi = (movie?: RadarrMovie) => {
     const mockedRadarrApi = new RadarrApi(
       { url: 'http://localhost:7878', apiKey: 'test' },

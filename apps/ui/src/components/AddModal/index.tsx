@@ -22,7 +22,7 @@ const AddModal = (props: IAddModal) => {
   >()
   const [loading, setLoading] = useState(true)
   const [alert, setAlert] = useState(false)
-  const [forceRemovalcheck, setForceRemovalCheck] = useState(false)
+  const [forceRemovalCheck, setForceRemovalCheck] = useState(false)
   const [globalWarning, setGlobalWarning] = useState(false)
   const [affectedExclusions, setAffectedExclusions] = useState<
     { title: string; label: string; targetPath: string }[]
@@ -297,7 +297,7 @@ const AddModal = (props: IAddModal) => {
         }
         iconSvg={''}
       >
-        {forceRemovalcheck ? (
+        {forceRemovalCheck ? (
           <Modal
             loading={loading}
             backgroundClickable={false}

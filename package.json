@@ -27,15 +27,15 @@
     "packages/*"
   ],
   "engines": {
-    "node": "^20.19.0 || ^22.13.0 || >=24.11.0"
+    "node": "^22.13.0 || >=24.11.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
-    "@types/node": "^22.19.21",
-    "knip": "^6.16.1",
+    "@types/node": "^26.0.0",
+    "knip": "^6.17.1",
     "semantic-release": "^25.0.5",
     "turbo": "^2.9.18",
     "typescript": "^6.0.3"

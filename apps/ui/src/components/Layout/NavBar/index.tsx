@@ -9,7 +9,7 @@ import {
   PhotographIcon,
   XIcon,
 } from '@heroicons/react/outline'
-import { ReactNode, useContext, useMemo, useRef } from 'react'
+import { ReactNode, use, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import { prefetchRoute } from '../../../router'
@@ -32,7 +32,7 @@ interface NavBarProps {
 
 const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const navRef = useRef<HTMLDivElement>(null)
-  const SearchCtx = useContext(SearchContext)
+  const SearchCtx = use(SearchContext)
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
   const { isRouteBlocked, showBlockedNavigationToast } =

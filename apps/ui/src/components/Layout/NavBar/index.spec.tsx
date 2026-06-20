@@ -32,7 +32,7 @@ vi.mock('@headlessui/react', () => ({
 const renderNavBar = () =>
   render(
     <MemoryRouter>
-      <SearchContext.Provider
+      <SearchContext
         value={{
           search: { text: '' },
           addText: vi.fn(),
@@ -40,7 +40,7 @@ const renderNavBar = () =>
         }}
       >
         <NavBar setClosed={vi.fn()} />
-      </SearchContext.Provider>
+      </SearchContext>
     </MemoryRouter>,
   )
 

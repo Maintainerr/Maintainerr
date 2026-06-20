@@ -176,13 +176,13 @@ const useScrollbarCompensation = (
 }
 
 const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia('(max-width: 639px)').matches,
+  )
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 639px)')
     const onChange = () => setIsMobile(mql.matches)
-    onChange()
-
     mql.addEventListener?.('change', onChange)
     return () => mql.removeEventListener?.('change', onChange)
   }, [])
