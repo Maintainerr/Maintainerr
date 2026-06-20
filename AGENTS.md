@@ -5,7 +5,7 @@
 **When running yarn commands (build, test, etc.), always execute from the workspace root:**
 
 ```bash
-cd /workspaces/Maintainerr  <--- ensure you are in the root workspace
+cd /home/maintainerr-dev/Maintainerr  <--- ensure you are in the root workspace
 yarn build | tail -20
 yarn test | tail -20
 ```
