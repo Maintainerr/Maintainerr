@@ -1,3 +1,22 @@
+# [3.15.2](https://github.com/Maintainerr/Maintainerr/compare/v3.15.1...v3.15.2) (2026-06-20)
+
+
+## Highlights
+- Fixed transient failure handling for Sonarr and Radarr lookups, preventing data loss during rule evaluations under heavy load (#3125, #3128, #3139).
+- Resolved issues with Jellyfin/Emby automatic collections, ensuring proper handling of empty collections and preventing resurrection of deleted media-server links (#3129, #3134, #3135, #3137).
+- Improved Streamystats watchlist handling by inheriting parent show information for season/episode-level rules, preventing unintended deletions or unmonitoring (#3127, #3133).
+
+## Fixes
+- Fixed transient failure handling for Sonarr and Radarr lookups, ensuring fail-closed behavior to prevent data loss during rule evaluations under heavy load (#3125, #3128, #3139).
+- Resolved issues with Jellyfin/Emby automatic collections:
+  - Fixed empty collections not healing properly for Jellyfin/Emby servers (#3129, #3134).
+  - Prevented resurrection of deleted media-server links when handling empty collections (#3135).
+  - Removed redundant empty-collection delete logic for Jellyfin/Emby, retaining only the repopulation path (#3137).
+- Improved Streamystats watchlist handling by inheriting parent show information for season/episode-level rules, preventing unintended deletions or unmonitoring (#3127, #3133).
+
+## Dependencies
+- Updated 12 dependencies, including @types/node, sharp, @faker-js/faker, and typescript-eslint.
+
 # [3.15.1](https://github.com/Maintainerr/Maintainerr/compare/v3.15.0...v3.15.1) (2026-06-17)
 
 
