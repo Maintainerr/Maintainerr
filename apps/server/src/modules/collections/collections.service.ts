@@ -1977,10 +1977,19 @@ export class CollectionsService {
         collection.mediaServerId !== null &&
         originalMediaServerId !== null
       ) {
-        // Jellyfin/Emby: an empty BoxSet is NOT auto-deleted, and a BoxSet
-        // drains when its underlying items are re-imported with new ids
-        // (routine *arr churn), so an automatic collection can sit empty on the
-        // server while the DB still lists its rule-owned items. (#3129)
+        // Jellyfin/Emby: a BoxSet can drain — its items re-imported with new
+        // ids, or a one-time add that didn't fully land — and sit on the server
+        // under-populated while the DB still lists its rule-owned items. Re-add
+        // the missing ones: empty BoxSets accept adds, so this repopulates in
+        // place, the BoxSet id (with its overlays/poster) stays stable, and
+        // re-adding an item already present is an idempotent no-op. (#3129)
+        //
+        // Removal is intentionally left to the existing flow, which Maintainerr
+        // already drives: when handling empties an automatic collection,
+        // removeFromCollection deletes the BoxSet (or just unlinks it when a
+        // sibling rule group shares it), and the (!serverColl) clear-link path
+        // below recovers a collection whose BoxSet is already gone. This branch
+        // only ever re-adds, never deletes.
         const serverChildren =
           (await mediaServer.getCollectionChildren(serverColl.id)) ?? [];
         const serverChildIds = new Set(
@@ -1988,45 +1997,10 @@ export class CollectionsService {
             .map((child) => child?.id?.toString())
             .filter((childId): childId is string => Boolean(childId)),
         );
-
-        // 1) Repopulate: re-add rule-owned DB items missing from the BoxSet.
-        // Empty BoxSets accept adds, so this fixes them in place — the BoxSet
-        // id (and its overlays/poster) stays stable, no delete/recreate churn.
-        // Re-add only: adding an item already present is an idempotent no-op, so
-        // a transient empty read just re-adds the full set harmlessly.
-        const resyncResult =
-          await this.resyncRuleOwnedItemsToMediaServerCollection(
-            collection,
-            serverChildIds,
-          );
-
-        // 2) Heal a genuinely-empty collection: delete it so it doesn't linger
-        // once its rule stops matching, matching the Plex empty-collection
-        // cleanup. The destructive gate uses the child count from the
-        // (successful) getCollection above — a read that distinguishes a truly
-        // empty collection from a transient child-enumeration failure. Child
-        // reads return [] on failure (see media-server.interface.ts), so an
-        // empty getCollectionChildren() result alone is NOT proof of emptiness
-        // and must never drive a delete. Require all of: a finite metadata
-        // count of 0, an empty live read, nothing rule-owned to re-add, and a
-        // non-shared collection (a sibling rule group may own a shared BoxSet).
-        const metadataChildCount = Number.isFinite(serverColl.childCount)
-          ? serverColl.childCount
-          : undefined;
-        if (
-          metadataChildCount === 0 &&
-          serverChildIds.size === 0 &&
-          resyncResult.attempted === 0
-        ) {
-          const isShared = await this.isMediaServerCollectionShared(collection);
-          if (!isShared) {
-            this.logger.debug(
-              `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} for "${collection.title}" — server reports no children and there are no rule-owned items to re-add`,
-            );
-            await mediaServer.deleteCollection(serverColl.id);
-            serverColl = undefined;
-          }
-        }
+        await this.resyncRuleOwnedItemsToMediaServerCollection(
+          collection,
+          serverChildIds,
+        );
       }
 
       if (!serverColl) {
