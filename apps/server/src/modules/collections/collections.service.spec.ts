@@ -957,6 +957,37 @@ describe('CollectionsService', () => {
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { serverType: MediaServerType.JELLYFIN, name: 'Jellyfin' },
+    { serverType: MediaServerType.EMBY, name: 'Emby' },
+  ])(
+    'keeps an empty $name automatic collection with no rule-owned items',
+    async ({ serverType, name }) => {
+      settingsDataService.media_server_type = serverType;
+      const collection = createCollection({
+        id: 45,
+        mediaServerId: 'remote-collection',
+        manualCollection: false,
+        title: `${name} Empty NoLocal`,
+        libraryId: 'library-1',
+      });
+
+      mediaServer.getCollection.mockResolvedValue({
+        id: 'remote-collection',
+        title: `${name} Empty NoLocal`,
+        childCount: 0,
+      } as any);
+      mediaServer.getCollectionChildren.mockResolvedValue([]);
+      collectionMediaRepo.find.mockResolvedValue([]);
+
+      const result = await service.checkAutomaticMediaServerLink(collection);
+
+      expect(result.mediaServerId).toBe('remote-collection');
+      expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not resync a Jellyfin collection that was only just linked by title', async () => {
     settingsDataService.media_server_type = MediaServerType.JELLYFIN;
     // mediaServerId null on entry → freshly linked this run; the server may not
