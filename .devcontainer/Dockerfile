@@ -22,7 +22,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable corepack for Yarn 4.x support
-RUN corepack enable && corepack prepare yarn@4.11.0 --activate
+# Node 26+ no longer bundles corepack, so install it explicitly first
+RUN npm install -g corepack@latest && corepack enable && corepack prepare yarn@4.11.0 --activate
 
 # Use the non-root node user that exists in the base image
 ARG USERNAME=node
