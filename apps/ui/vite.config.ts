@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 3000,
+      allowedHosts: ['dev.maintainerr.info'],
       proxy: {
         '/api': {
           target: 'http://localhost:6246',
