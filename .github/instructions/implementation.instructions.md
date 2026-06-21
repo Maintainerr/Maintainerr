@@ -18,10 +18,11 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 
 ### Workspace MCP servers
 
-- Workspace MCP config lives in `.vscode/mcp.json` (VS Code) and `.mcp.json` (Claude Code). Keep them in sync.
+- Workspace MCP config lives in `.vscode/mcp.json` (VS Code), `.mcp.json` (Claude Code), and `.codex/config.toml` (Codex). Keep all three in sync.
 - `github` MCP: read-only — use for live GitHub context, never for writes.
 - `playwright` MCP: use for browser-driven UI validation. **Screenshots must be saved as `filename: ".playwright-mcp/<name>.png"`** — bare filenames land at the repo root (the `--output-dir` flag doesn't apply to explicit filenames).
-- Reload VS Code / restart the Claude Code session after editing either mcp.json.
+- **Browser:** the MCP uses the **system Chromium baked into the devbox image** (`/usr/bin/chromium`, via `--executable-path` + `--no-sandbox` because the container runs as root). It does **not** download a browser per-session — the per-session CDN download is blocked by the IPv4-only egress firewall (the CDN redirects to IPv6 hosts with no route). If `/usr/bin/chromium` is missing, the devbox image needs rebuilding (it's installed in `infra/Dockerfile.agents`).
+- **These stdio MCP servers only load when your AI client (VS Code, Claude Code, or Codex) is launched from inside devbox at `/workspace`** — `npx` (the server command) is only on PATH in the container, and the client must start at the repo root to pick up its mcp config. Launched on the bare host or from another directory, the `playwright`/`github` servers never register. Reload the editor / restart the client session after editing any mcp config.
 
 ### API documentation references
 
