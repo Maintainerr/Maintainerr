@@ -177,7 +177,14 @@ Important runtime environment variables include:
 - `BASE_PATH`: optional subdirectory mount path for both API and UI serving.
 - `GITHUB_TOKEN`: optional token for higher GitHub API rate limits.
 - `VERSION_TAG` and `GIT_SHA`: release metadata surfaced by the app.
+- `LOG_LEVEL`: optional process-local log level override; recognised values
+  take precedence over the saved setting without writing the database.
 - `DEBUG`: influences default log level during migration seeding.
+
+The server exposes health probes under `/api/health`: `/live` is process-only,
+`/ready` checks database readiness, and `/api/health` mirrors readiness. The
+Docker image runs `/opt/app/healthcheck.sh`, normalises `BASE_PATH`, and probes
+`/api/health/ready` on the local `UI_PORT`.
 
 ## Security Notes
 
