@@ -1437,9 +1437,6 @@ const AddModal = (props: AddModal) => {
                         className="text-label flex flex-wrap gap-1"
                       >
                         Notifications
-                        <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-white">
-                          BETA
-                        </span>
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-32">
