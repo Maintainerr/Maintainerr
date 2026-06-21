@@ -7,7 +7,12 @@ FROM node:${NODE_VERSION}-bookworm
 # - python3, make, g++: Required for building native node modules (like sqlite3)
 # - curl, wget: Useful for downloading files
 # - git: Already in base image but ensuring latest version
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+# Use https apt mirrors — the host egress firewall blocks outbound port 80, so
+# plain http://deb.debian.org would hang. (bookworm uses deb822 debian.sources.)
+RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
+        [ -f "$f" ] && sed -i 's|http://deb.debian.org|https://deb.debian.org|g; s|http://security.debian.org|https://security.debian.org|g' "$f"; \
+    done \
+    && apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     python3 \
     python3-pip \
