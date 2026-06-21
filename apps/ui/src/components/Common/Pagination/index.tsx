@@ -29,7 +29,7 @@ const Pagination = (props: IPagination) => {
         {props.currentPage === 1 ? undefined : (
           <button
             onClick={() => props.handleBackward()}
-            className="rounded-l bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            className="rounded-l bg-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-500"
           >
             Prev{' '}
           </button>
@@ -38,7 +38,7 @@ const Pagination = (props: IPagination) => {
           <button
             onClick={() => props.handleForward()}
             className={
-              'rounded-r border-0 border-l border-gray-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800'
+              'rounded-r border-0 border-l border-zinc-700 bg-zinc-600 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-500'
             }
           >
             Next
