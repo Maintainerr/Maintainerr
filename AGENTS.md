@@ -82,32 +82,17 @@ The development environment runs inside **`devbox`** — a rootless Docker conta
 managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this project.
 
 - `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
-- All `yarn` commands must be run **inside `devbox`**, not on the bare host (Node is
-  only installed in the container).
-- All migrated agent state must remain under `/mnt/dev-media/home-backup/agent-home`.
-  `~/infra/compose.yml` intentionally mounts Claude, Copilot, SSH, Git config, and
-  related agent data from that `/mnt` path into `/root` inside `devbox`; do not
-  move those mounts back to `~/agent-home` unless the user explicitly asks.
-- Host GitHub SSH auth is not expected to work. Commit from the repo on the host,
-  but push through `devbox` so the mounted `/mnt` SSH key is used:
-  ```bash
-  cd /home/maintainerr-dev/Maintainerr
-  git status --short
-  git diff -- <specific-file>
-  git add <specific-file>
-  git commit -m "..."
-  cd /home/maintainerr-dev/infra
-  docker compose exec -T devbox bash -lc 'cd /workspace && git push'
-  ```
-- `~/infra` is live server config outside the Maintainerr git repo. Treat it as
-  operational state, not project code, and do not assume it can be committed from
-  this repository.
-- `docker exec devbox bash` to get a shell; or from the host:
-  ```bash
-  docker exec devbox bash -c "cd /workspace && yarn dev --concurrency=4"
-  ```
-- `yarn dev` serves UI on port 3000 and API on port 6246 inside `devbox`.
-- Logs: `docker exec devbox bash -c "tail -f /tmp/yarn-dev.log"`
+  Work directly inside the container at `/workspace` — open your editor/agent here,
+  run all `yarn` commands here. Node is only installed in the container, not the host.
+- Git works normally from `/workspace`: `git commit` and `git push` directly. The
+  SSH key for GitHub is mounted into the container, so no host-side push relay is
+  needed.
+- Agent state (Claude, Copilot, VS Code server/extensions, SSH, Git config) is mounted
+  into `/root` from the host, so it persists across container restarts and recreates.
+  Leave those mounts as configured.
+- `~/infra/compose.yml` (which defines `devbox`) is live server config on the host,
+  outside this git repo. Treat it as operational state, not project code.
+- `yarn dev` serves UI on port 3000 and API on port 6246. Logs at `/tmp/yarn-dev.log`.
 
 **Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless Docker containers
 in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
