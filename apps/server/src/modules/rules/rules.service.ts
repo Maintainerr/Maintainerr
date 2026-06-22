@@ -1558,6 +1558,7 @@ export class RulesService {
         } else if (serverType === MediaServerType.PLEX) {
           cacheManager.getCache('plextv').flush();
           cacheManager.getCache('plexguid').flush();
+          cacheManager.getCache('plexwatchhistory').flush();
           this.logger.log(
             `Flushed Plex cache because a rule in the group required it`,
           );

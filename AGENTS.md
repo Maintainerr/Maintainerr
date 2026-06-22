@@ -5,7 +5,7 @@
 **When running yarn commands (build, test, etc.), always execute from the workspace root:**
 
 ```bash
-cd /home/maintainerr-dev/Maintainerr  <--- ensure you are in the root workspace
+cd /workspace  <--- ensure you are in the root workspace (inside the devbox container)
 yarn build | tail -20
 yarn test | tail -20
 ```
@@ -101,6 +101,23 @@ in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
 - Emby → `http://dev-emby:8096`
 
 Credentials are in `~/dev-media-creds.env` (not committed). Media lives on `/mnt/dev-media`.
+
+### Security model — you are L3, the confined devbox
+
+Three trust levels, privilege descending: **`root`@host** (everything) › **`maintainerr-dev`**
+(the SSH host — runs the dev media stack, holds its secrets, controls the devbox) ›
+**`devbox`** (you: dev/test only). You can reach the media/service stack by hostname
+(`dev-plex`, `dev-radarr`, …) to test and seed against it, but you **cannot break out** to
+the host — and that boundary is enforced from above you, so you can't disable it:
+
+- **Read-only Docker** — the socket-proxy allows `ps`/`logs`, never `start`/`stop`/`exec`/`create`.
+- **Host egress firewall** — outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
+  Plex/TMDB) plus the internal docker network; `NET_ADMIN` is stripped from the container.
+- **Rootless + `cap_drop: ALL` + `no-new-privileges`** — even container-root is an unprivileged
+  subuid, never the host user.
+
+Don't fight these (e.g. trying to `exec` into another container, or reaching a non-allowlisted
+host) — they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
 
 ## Development Workflow
 

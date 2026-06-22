@@ -1,4 +1,9 @@
-import { MaintainerrEvent, MediaServerType } from '@maintainerr/contracts';
+import {
+  MaintainerrEvent,
+  MediaServerFeature,
+  MediaServerType,
+  supportsFeature as serverSupportsFeature,
+} from '@maintainerr/contracts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createMockLogger } from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
@@ -27,6 +32,9 @@ describe('RuleExecutorService', () => {
         items: [],
         totalSize: 0,
       }),
+      supportsFeature: jest.fn((feature: MediaServerFeature) =>
+        serverSupportsFeature(mediaServerType, feature),
+      ),
     };
 
     const mediaServerFactory = {
@@ -1663,5 +1671,76 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.CollectionMedia_Removed,
       expect.anything(),
     );
+  });
+
+  describe('prefetchWatchHistory', () => {
+    const ruleGroup = {
+      id: 10,
+      name: 'Test Rule',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Test Collection' },
+    };
+
+    it('calls prefetchWatchHistory when the server supports central watch history (Plex)', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.PLEX,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await service.executeForRuleGroups(10, new AbortController().signal);
+
+      expect((mediaServer as any).prefetchWatchHistory).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it('does not prefetch when the server lacks central watch history (e.g. Jellyfin)', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.JELLYFIN,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest.fn();
+
+      await expect(
+        service.executeForRuleGroups(10, new AbortController().signal),
+      ).resolves.toEqual({ status: 'success' });
+      expect((mediaServer as any).prefetchWatchHistory).not.toHaveBeenCalled();
+    });
+
+    it('does not start the prefetch when aborted just before evaluation', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.PLEX,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      // Abort during the pre-evaluation cache reset, i.e. after the top-level
+      // abort check but before the prefetch — so only the pre-prefetch check
+      // can stop the sweep.
+      const abortController = new AbortController();
+      rulesService.resetCacheIfGroupUsesRuleThatRequiresIt.mockImplementation(
+        async () => {
+          abortController.abort();
+          return false;
+        },
+      );
+
+      await expect(
+        service.executeForRuleGroups(10, abortController.signal),
+      ).resolves.toEqual({ status: 'aborted' });
+      expect((mediaServer as any).prefetchWatchHistory).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,6 +1,6 @@
 const BROKEN_PIPE_CODES = new Set(['EPIPE', 'ERR_STREAM_DESTROYED']);
 
-const isBrokenPipeError = (error: unknown): boolean => {
+export const isBrokenPipeError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') return false;
   const code = (error as NodeJS.ErrnoException).code;
   return typeof code === 'string' && BROKEN_PIPE_CODES.has(code);

@@ -72,7 +72,7 @@ function Button<P extends ElementTypes = 'button'>({
       break
     case 'ghost':
       buttonStyle.push(
-        'text-white bg-transaprent border-zinc-600 hover:border-zinc-200 focus:border-zinc-100 rounded-md active:border-zinc-100',
+        'text-white bg-transparent border-zinc-600 hover:border-zinc-200 focus:border-zinc-100 rounded-md active:border-zinc-100',
       )
       break
     case 'twin-primary-l':
