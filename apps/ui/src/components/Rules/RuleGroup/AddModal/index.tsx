@@ -1620,8 +1620,8 @@ const AddModal = (props: AddModal) => {
                         <label className="text-label text-left">
                           Custom {collectionTerm} poster
                           <p className="text-xs font-normal">
-                            Upload your own cover art for the {collectionTerm} on{' '}
-                            {mediaServerName}
+                            Upload your own cover art for the {collectionTerm}{' '}
+                            on {mediaServerName}
                           </p>
                         </label>
                         <div className="py-2">

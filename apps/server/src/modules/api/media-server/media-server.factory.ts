@@ -166,9 +166,7 @@ export class MediaServerFactory {
       settings.plex_auth_token,
     );
     const embyConfigured = Boolean(settings.emby_url && settings.emby_api_key);
-    const kodiConfigured = Boolean(
-      settings.kodi_url && settings.kodi_username,
-    );
+    const kodiConfigured = Boolean(settings.kodi_url && settings.kodi_username);
     const inferredType = this.resolveServerType(
       plexConfigured,
       jellyfinConfigured,

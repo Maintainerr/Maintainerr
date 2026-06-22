@@ -19,11 +19,6 @@ export const KODI_PAGE_SIZE = {
   MAX: 500,
 } as const;
 
-/** Read-modify-write of the `tag` array is per-item, so writes run in batches. */
-export const KODI_BATCH_SIZE = {
-  COLLECTION_MUTATION: 8,
-} as const;
-
 /**
  * Synthetic libraries. Kodi has no library sections — content is split only by
  * media kind — so Maintainerr presents one virtual library per kind.

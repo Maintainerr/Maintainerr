@@ -163,7 +163,6 @@ describe('KodiGetterService', () => {
 
       expect(response).toEqual([]);
     });
-
   });
 
   describe('genre', () => {

@@ -35,7 +35,6 @@ import {
   KodiCollectionMember,
 } from './kodi-collection.entities';
 import {
-  KODI_BATCH_SIZE,
   KODI_CACHE_KEYS,
   KODI_CACHE_TTL,
   KODI_COLLECTION_TAG_PREFIX,
@@ -51,10 +50,8 @@ import { KodiMapper } from './kodi.mapper';
 import type {
   KodiApplicationProperties,
   KodiActivePlayer,
-  KodiEpisode,
   KodiEpisodeDetailsResult,
   KodiEpisodesResult,
-  KodiMovie,
   KodiMovieDetailsResult,
   KodiMoviesResult,
   KodiPlayerItemResult,
@@ -62,7 +59,6 @@ import type {
   KodiSeasonDetailsResult,
   KodiSeasonsResult,
   KodiTagsResult,
-  KodiTVShow,
   KodiTVShowDetailsResult,
   KodiTVShowsResult,
 } from './kodi.types';
@@ -182,7 +178,11 @@ export class KodiAdapterService implements IMediaServerService {
           { properties: ['version', 'name'] },
         ));
       if (!cached) {
-        this.cache.data.set(KODI_CACHE_KEYS.STATUS, props, KODI_CACHE_TTL.STATUS);
+        this.cache.data.set(
+          KODI_CACHE_KEYS.STATUS,
+          props,
+          KODI_CACHE_TTL.STATUS,
+        );
       }
       const v = props.version;
       const version = v ? `${v.major}.${v.minor}` : 'unknown';
@@ -547,9 +547,7 @@ export class KodiAdapterService implements IMediaServerService {
     if (!this.client) return [];
     const item = await this.fetchItem(itemId);
     if (!item || !item.viewCount || item.viewCount <= 0) return [];
-    return [
-      KodiMapper.toWatchRecord(KODI_USER.id, itemId, item.lastViewedAt),
-    ];
+    return [KodiMapper.toWatchRecord(KODI_USER.id, itemId, item.lastViewedAt)];
   }
 
   async getWatchState(
@@ -572,8 +570,9 @@ export class KodiAdapterService implements IMediaServerService {
   async getActiveSessions(): Promise<Set<string>> {
     if (!this.client) return new Set<string>();
     try {
-      const players =
-        await this.client.call<KodiActivePlayer[]>('Player.GetActivePlayers');
+      const players = await this.client.call<KodiActivePlayer[]>(
+        'Player.GetActivePlayers',
+      );
       const playing = new Set<string>();
       for (const player of players ?? []) {
         if (player.type !== 'video') continue;
@@ -1096,7 +1095,9 @@ export class KodiAdapterService implements IMediaServerService {
         'VideoLibrary.GetMovieDetails',
         { movieid: numericId, properties: [...KODI_MOVIE_PROPERTIES] },
       );
-      return res.moviedetails ? KodiMapper.toMovie(res.moviedetails) : undefined;
+      return res.moviedetails
+        ? KodiMapper.toMovie(res.moviedetails)
+        : undefined;
     }
     if (type === 'show') {
       const res = await this.client.call<KodiTVShowDetailsResult>(
@@ -1125,7 +1126,9 @@ export class KodiAdapterService implements IMediaServerService {
       : undefined;
   }
 
-  private async fetchSeasonRaw(seasonid: number): Promise<KodiSeason | undefined> {
+  private async fetchSeasonRaw(
+    seasonid: number,
+  ): Promise<KodiSeason | undefined> {
     if (!this.client) return undefined;
     const res = await this.client.call<KodiSeasonDetailsResult>(
       'VideoLibrary.GetSeasonDetails',
@@ -1218,10 +1221,10 @@ export class KodiAdapterService implements IMediaServerService {
   private async tagExists(type: MediaItemType, tag: string): Promise<boolean> {
     if (!this.client) return false;
     const kodiTagType = type === 'movie' ? 'movie' : 'tvshow';
-    const res = await this.client.call<KodiTagsResult>(
-      'VideoLibrary.GetTags',
-      { type: kodiTagType, properties: [] },
-    );
+    const res = await this.client.call<KodiTagsResult>('VideoLibrary.GetTags', {
+      type: kodiTagType,
+      properties: [],
+    });
     return (res.tags ?? []).some((t) => t.label === tag);
   }
 
@@ -1284,7 +1287,10 @@ export class KodiAdapterService implements IMediaServerService {
         const current = await this.readItemTags(type, numericId);
         const next = mutate(current);
         // Skip the write when membership is already in the desired state.
-        if (next.length === current.length && next.every((t, i) => t === current[i])) {
+        if (
+          next.length === current.length &&
+          next.every((t, i) => t === current[i])
+        ) {
           continue;
         }
         if (type === 'movie') {

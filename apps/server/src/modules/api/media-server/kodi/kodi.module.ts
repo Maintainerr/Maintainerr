@@ -7,9 +7,7 @@ import {
 } from './kodi-collection.entities';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([KodiCollection, KodiCollectionMember]),
-  ],
+  imports: [TypeOrmModule.forFeature([KodiCollection, KodiCollectionMember])],
   providers: [KodiAdapterService],
   exports: [KodiAdapterService],
 })

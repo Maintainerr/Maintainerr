@@ -6,10 +6,7 @@ import {
   type MediaSource,
   type WatchRecord,
 } from '@maintainerr/contracts';
-import {
-  KODI_COLLECTION_TAG_PREFIX,
-  KODI_LIBRARIES,
-} from './kodi.constants';
+import { KODI_COLLECTION_TAG_PREFIX, KODI_LIBRARIES } from './kodi.constants';
 import type {
   KodiCast,
   KodiEpisode,
@@ -81,8 +78,7 @@ export class KodiMapper {
       lastViewedAt: KodiMapper.parseDate(item.lastplayed) ?? undefined,
       year: item.year || undefined,
       durationMs: item.runtime ? item.runtime * 1000 : undefined,
-      originallyAvailableAt:
-        KodiMapper.parseDate(item.premiered) ?? undefined,
+      originallyAvailableAt: KodiMapper.parseDate(item.premiered) ?? undefined,
       ratings:
         item.rating != null
           ? [{ source: 'community', value: item.rating, type: 'audience' }]
@@ -108,8 +104,7 @@ export class KodiMapper {
       viewCount: item.playcount || undefined,
       lastViewedAt: KodiMapper.parseDate(item.lastplayed) ?? undefined,
       year: item.year || undefined,
-      originallyAvailableAt:
-        KodiMapper.parseDate(item.premiered) ?? undefined,
+      originallyAvailableAt: KodiMapper.parseDate(item.premiered) ?? undefined,
       ratings:
         item.rating != null
           ? [{ source: 'community', value: item.rating, type: 'audience' }]
@@ -176,8 +171,7 @@ export class KodiMapper {
       summary: item.plot || undefined,
       viewCount: item.playcount || undefined,
       lastViewedAt: KodiMapper.parseDate(item.lastplayed) ?? undefined,
-      originallyAvailableAt:
-        KodiMapper.parseDate(item.firstaired) ?? undefined,
+      originallyAvailableAt: KodiMapper.parseDate(item.firstaired) ?? undefined,
       ratings:
         item.rating != null
           ? [{ source: 'community', value: item.rating, type: 'audience' }]
@@ -246,7 +240,9 @@ export class KodiMapper {
     }));
   }
 
-  private static toMediaSources(stream?: KodiStreamDetails | null): MediaSource[] {
+  private static toMediaSources(
+    stream?: KodiStreamDetails | null,
+  ): MediaSource[] {
     const video = stream?.video?.[0];
     const audio = stream?.audio?.[0];
     if (!video && !audio) return [];

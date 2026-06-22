@@ -48,9 +48,15 @@ export class AddKodiSupport1782604800000 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TABLE "kodi_collection_member"`);
     await queryRunner.query(`DROP TABLE "kodi_collection"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "kodi_server_name"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "kodi_password"`);
-    await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "kodi_username"`);
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "kodi_server_name"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "kodi_password"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "settings" DROP COLUMN "kodi_username"`,
+    );
     await queryRunner.query(`ALTER TABLE "settings" DROP COLUMN "kodi_url"`);
   }
 }

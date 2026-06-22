@@ -208,7 +208,9 @@ describe('KodiAdapterService', () => {
         return Promise.resolve('OK');
       });
 
-      const failed = await service.addBatchToCollection(created.id, ['movie-2']);
+      const failed = await service.addBatchToCollection(created.id, [
+        'movie-2',
+      ]);
       expect(failed).toEqual([]);
       const setCall = call.mock.calls.find(
         ([m]) => m === 'VideoLibrary.SetMovieDetails',
@@ -216,7 +218,7 @@ describe('KodiAdapterService', () => {
       expect(setCall).toBeDefined();
       // Existing tag preserved, managed tag appended (full-replace write).
       expect(setCall![1].tag).toContain('x');
-      expect(setCall![1].tag.length).toBe(2);
+      expect(setCall![1].tag).toHaveLength(2);
     });
 
     it('getCollectionChildren filters movies by the managed tag', async () => {
@@ -282,7 +284,11 @@ describe('KodiAdapterService', () => {
         service.reorderCollectionItems('kc_tag:movie:x', []),
       ).rejects.toThrow();
       await expect(
-        service.setCollectionImage('kc_tag:movie:x', Buffer.from(''), 'image/png'),
+        service.setCollectionImage(
+          'kc_tag:movie:x',
+          Buffer.from(''),
+          'image/png',
+        ),
       ).rejects.toThrow();
     });
   });

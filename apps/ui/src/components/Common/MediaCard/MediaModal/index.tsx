@@ -602,7 +602,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     <div>
                       {/* Kodi's web UI (Chorus) exposes no stable per-item deep
                           link, so this opens the web interface root. */}
-                      <a href={`${serverUrl}/`} target="_blank" rel="noreferrer">
+                      <a
+                        href={`${serverUrl}/`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         <img
                           src={`${basePath}/icons_logos/kodi.svg`}
                           alt="Kodi Logo"

@@ -221,9 +221,7 @@ const KodiSettings = () => {
                   helpText={
                     <>
                       Enable Kodi&apos;s web server under{' '}
-                      <strong>
-                        Settings &rarr; Services &rarr; Control
-                      </strong>{' '}
+                      <strong>Settings &rarr; Services &rarr; Control</strong>{' '}
                       with <em>Allow remote control via HTTP</em>, then point
                       this at that host and port.
                     </>

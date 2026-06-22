@@ -770,7 +770,6 @@ export class KodiGetterService {
     return filterRuleCollectionNames(allCollectionNames, ruleGroup);
   }
 
-
   private async getCollectionsIncludingParent(
     itemId: string,
     parentId: string | undefined,

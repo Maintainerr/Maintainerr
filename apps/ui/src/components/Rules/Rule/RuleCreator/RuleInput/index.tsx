@@ -110,10 +110,7 @@ const shouldFilterApplication = (
         : isKodi
           ? Application.KODI
           : null
-  if (
-    MEDIA_SERVER_APPLICATIONS.includes(appId) &&
-    appId !== activeServerApp
-  ) {
+  if (MEDIA_SERVER_APPLICATIONS.includes(appId) && appId !== activeServerApp) {
     return true
   }
 
